@@ -24,6 +24,14 @@ class Question(models.Model):
     question_number = models.IntegerField()
     category = models.CharField(max_length=64)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question_number", "questionnaire"], name="unique_question"
+            )
+        ]
+        ordering = ["question_number"]
+
     def __str__(self):
         return f"{self.question_number}: {self.question_text[:30]}"
 
@@ -44,7 +52,20 @@ class Submission(models.Model):
 class Answer(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="answers")
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
-    score = models.IntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["submission", "question"], name="unique_submission_question"
+            )
+        ]
+
+    class Score(models.IntegerChoices):
+        ALWAYS = 4, "是"
+        SOMETIMES = 2, "有時"
+        NEVER = 0, "否"
+
+    score = models.IntegerField(choices=Score.choices)
 
     def __str__(self):
         return f"{self.question}: {self.score}"

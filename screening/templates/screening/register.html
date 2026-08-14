@@ -29,9 +29,9 @@
 <body class="text-center">
     <div class="container">
         <h1 class="h3 mb-3 fw-normal">註冊</h1>
-        {% if message %}
-        <div class="mb-3 text-danger">{{message}}</div>
-        {% endif %}
+        {% for message in messages %}
+        <div class="mb-3 text-danger">{{ message }}</div>
+        {% endfor %}
         <form method="post" action="{% url 'register' %}">
             {% csrf_token %}
             <div class="form-floating mb-2">
@@ -49,6 +49,9 @@
                 <input class="form-control" id="floatingPassword" type="password" name="password"
                     placeholder="Password">
                 <label for="floatingPassword">密碼</label>
+                {% for password_message in password_messages %}
+                <small class="form-text text-muted">{{ password_message }}</small>
+                {% endfor %}
             </div>
 
             <div class="form-floating mb-2">
