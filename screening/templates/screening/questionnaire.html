@@ -1,0 +1,11 @@
+{% extends "screening/layout.html" %}
+
+{% block body %}
+{% for questionnaire in questionnaires %}
+<div class="h3 mb-3">
+    <ul>
+        <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a></li>
+    </ul>
+</div>
+{% endfor %}
+{% endblock %}

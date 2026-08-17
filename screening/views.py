@@ -10,7 +10,7 @@ from django.shortcuts import render
 from django.urls import reverse
 
 # Create your views here.
-from .models import User
+from .models import Questionnaire, User
 
 
 def index(request):
@@ -62,3 +62,24 @@ def register(request):
             "screening/register.html",
             {"password_messages": password_validators_help_texts()},
         )
+
+
+def which_questionnaire(request):
+    return render(
+        request,
+        "screening/questionnaire.html",
+        {"questionnaires": Questionnaire.objects.all()},
+    )
+
+
+def screening(request, questionnaire_id):
+    questionnaire = Questionnaire.objects.get(pk=questionnaire_id)
+    return render(
+        request,
+        "screening/screening.html",
+        {"questions": questionnaire.questions.all(), "questionnaire": questionnaire},
+    )
+
+
+def my_hearing(request):
+    return render(request, "screening/my_hearing.html")
