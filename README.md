@@ -47,9 +47,9 @@ Answer {
 }
 
 User ||--o{ Submission : "填寫"
-Submission ||--o{ Questionnaire
-Question ||--o{ Answer
-Submission ||--o{ Answer
-Questionnaire ||--o{ Question
+Questionnaire ||--o{ Submission : "作答"
+Question ||--o{ Answer : "對應"
+Submission ||--o{ Answer : "紀錄"
+Questionnaire ||--o{ Question : "包含"
 
 ```
