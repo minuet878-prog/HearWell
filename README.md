@@ -10,3 +10,46 @@ HearWell 的設計目標是縮短這段延遲：讓使用者能在家中完成�
 
 **線上展示：** [連結]
 **技術棧：** Django · PostgreSQL · JavaScript · Chart.js
+
+資料模型
+(User繼承自Django AbstractUser)
+```mermaid
+erDiagram
+User {
+    date birth_date
+}
+
+Questionnaire {
+    int id PK
+    string questionnaire_name
+}
+
+Submission {
+    int id PK
+    int user  FK
+    int questionnaire FK
+    timestamp created_at
+}
+
+Question {
+    int id PK
+    int questionnaire FK
+    string question_text
+    int question_number
+    string category
+}
+
+Answer {
+    int id PK
+    int submission FK
+    int question FK
+    int score
+}
+
+User ||--o{ Submission : "填寫"
+Submission ||--o{ Questionnaire
+Question ||--o{ Answer
+Submission ||--o{ Answer
+Questionnaire ||--o{ Question
+
+```
