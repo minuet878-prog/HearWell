@@ -6,11 +6,11 @@ from django.contrib.auth.password_validation import (
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.urls import reverse
 
 # Create your views here.
-from .models import Questionnaire, User
+from .models import Answer, Questionnaire, Submission, User
 
 
 def index(request):
@@ -73,13 +73,41 @@ def which_questionnaire(request):
 
 
 def screening(request, questionnaire_id):
-    questionnaire = Questionnaire.objects.get(pk=questionnaire_id)
-    return render(
-        request,
-        "screening/screening.html",
-        {"questions": questionnaire.questions.all(), "questionnaire": questionnaire},
-    )
+    if request.method == "GET":
+        q = Questionnaire.objects.get(pk=questionnaire_id)
+        return render(
+            request,
+            "screening/screening.html",
+            {"questions": q.questions.all(), "questionnaire": q},
+        )
+    if request.method == "POST":
+        q = Questionnaire.objects.get(pk=questionnaire_id)
+        questions = q.questions.all()
+        scores = {}
+        for question in questions:
+            question_id = str(question.id)
+            if request.POST.get(question_id) is not None:
+                scores[question_id] = int(request.POST.get(question_id))
+            else:
+                return render(
+                    request,
+                    "screening/screening.html",
+                    {
+                        "message": "尚有未作答的題目",
+                        "questions": questions,
+                        "questionnaire": q,
+                    },
+                )
+        sub = Submission.objects.create(user=request.user, questionnaire=q)
+        for question in questions:
+            question_id = str(question.id)
+            Answer.objects.create(submission=sub, question=question, score=scores[question_id])
+        return redirect("result", submission_id=sub.id)
 
 
 def my_hearing(request):
-    return render(request, "screening/my_hearing.html")
+    pass
+
+
+def submission_result(request, submission_id):
+    pass

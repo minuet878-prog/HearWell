@@ -10,4 +10,5 @@ urlpatterns = [
     path("questionnaire", views.which_questionnaire, name="questionnaire"),
     path("questionnaire/<int:questionnaire_id>", views.screening, name="screening"),
     path("my_hearing", views.my_hearing, name="my_hearing"),
+    path("submission/<int:submission_id>", views.submission_result, name="result"),
 ]
