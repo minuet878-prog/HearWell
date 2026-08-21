@@ -5,6 +5,7 @@ from django.contrib.auth.password_validation import (
 )
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.db.models import Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -110,4 +111,20 @@ def my_hearing(request):
 
 
 def submission_result(request, submission_id):
-    pass
+    sub = Submission.objects.get(pk=submission_id)
+    answers = sub.answers.all()
+    total_score = answers.aggregate(total=Sum("score"))
+    emotional = answers.filter(question__category="emotional").aggregate(total=Sum("score"))
+    social = answers.filter(question__category="social").aggregate(total=Sum("score"))
+
+    return render(
+        request,
+        "screening/result.html",
+        {
+            "submission": sub,
+            "answers": answers,
+            "total_score": total_score["total"],
+            "emotional": emotional["total"],
+            "social": social["total"],
+        },
+    )

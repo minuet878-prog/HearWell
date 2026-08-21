@@ -1,5 +1,19 @@
 {% extends "screening/layout.html" %}
 
 {% block body %}
-
+<div class="submission">
+    {{ submission }}
+</div>
+<div class="answers">
+    {% for answer in answers %}
+    <ul>
+        <li>{{ answer }}</li>
+    </ul>
+    {% endfor %}
+</div>
+<div class="score">
+    {{ total_score }}
+    {{ emotional }}
+    {{ social }}
+</div>
 {% endblock %}
