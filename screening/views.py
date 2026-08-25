@@ -116,9 +116,11 @@ def my_hearing(request):
 def submission_result(request, submission_id):
     sub = Submission.objects.get(pk=submission_id)
     answers = sub.answers.all()
-    total_score = answers.aggregate(total=Sum("score"))
-    emotional = answers.filter(question__category="emotional").aggregate(total=Sum("score"))
-    social = answers.filter(question__category="social").aggregate(total=Sum("score"))
+    total_score = answers.aggregate(total=Sum("score", default=0))
+    emotional = answers.filter(question__category="emotional").aggregate(
+        total=Sum("score", default=0)
+    )
+    social = answers.filter(question__category="social").aggregate(total=Sum("score", default=0))
 
     return render(
         request,
