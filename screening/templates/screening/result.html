@@ -2,18 +2,18 @@
 
 {% block body %}
 <div class="submission">
-    {{ submission }}
+    {{ submission.user }}於{{ submission.created_at|date:"Y/m/d" }}作答
 </div>
 <div class="answers">
     {% for answer in answers %}
     <ul>
-        <li>{{ answer }}</li>
+        <li>{{ answer.question.question_text }}:{{ answer.get_score_display }}</li>
     </ul>
     {% endfor %}
 </div>
 <div class="score">
-    {{ total_score }}
-    {{ emotional }}
-    {{ social }}
+    <p>總分: {{ total_score }}</p>
+    <p>情緒分數: {{ emotional }}</p>
+    <p>社交分數: {{ social }}</p>
 </div>
 {% endblock %}
