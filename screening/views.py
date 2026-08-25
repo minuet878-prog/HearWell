@@ -10,6 +10,8 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from screening.scoring import classify
+
 # Create your views here.
 from .models import Answer, Questionnaire, Submission, User
 
@@ -107,10 +109,16 @@ def screening(request, questionnaire_id):
 
 
 def my_hearing(request):
-    submissions = request.user.submissions.annotate(total_score=Sum("answers__score")).order_by(
-        "-created_at"
+    submissions = request.user.submissions.annotate(
+        total_score=Sum("answers__score", default=0)
+    ).order_by("-created_at")
+    for submission in submissions:
+        submission.classified = classify(submission.total_score)
+    return render(
+        request,
+        "screening/my_hearing.html",
+        {"submissions": submissions},
     )
-    return render(request, "screening/my_hearing.html", {"submissions": submissions})
 
 
 def submission_result(request, submission_id):
@@ -121,7 +129,7 @@ def submission_result(request, submission_id):
         total=Sum("score", default=0)
     )
     social = answers.filter(question__category="social").aggregate(total=Sum("score", default=0))
-
+    classified_score = classify(total_score["total"])
     return render(
         request,
         "screening/result.html",
@@ -131,5 +139,6 @@ def submission_result(request, submission_id):
             "total_score": total_score["total"],
             "emotional": emotional["total"],
             "social": social["total"],
+            "classified_score": classified_score,
         },
     )

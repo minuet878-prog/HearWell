@@ -4,7 +4,7 @@
 {% for submission in submissions %}
 <div>
     <ul>
-        <li>{{ submission.created_at|date:"Y/m/d" }} 總分:{{ submission.total_score }}<a
+        <li>{{ submission.created_at|date:"Y/m/d" }} 總分:{{ submission.total_score }} 結果:{{ submission.classified }}<a
                 href="{% url 'result' submission.id %}">連結</a></li>
     </ul>
 </div>
