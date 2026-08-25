@@ -107,7 +107,10 @@ def screening(request, questionnaire_id):
 
 
 def my_hearing(request):
-    pass
+    submissions = request.user.submissions.annotate(total_score=Sum("answers__score")).order_by(
+        "-created_at"
+    )
+    return render(request, "screening/my_hearing.html", {"submissions": submissions})
 
 
 def submission_result(request, submission_id):

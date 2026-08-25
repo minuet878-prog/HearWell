@@ -1,5 +1,14 @@
 {% extends "screening/layout.html" %}
 
 {% block body %}
-
+{% for submission in submissions %}
+<div>
+    <ul>
+        <li>{{ submission.created_at|date:"Y/m/d" }} 總分:{{ submission.total_score }}<a
+                href="{% url 'result' submission.id %}">連結</a></li>
+    </ul>
+</div>
+{% empty %}
+<p>你還沒有做過篩檢紀錄</p>
+{% endfor %}
 {% endblock %}
