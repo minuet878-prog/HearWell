@@ -13,13 +13,16 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1 class="mb-2">HearWell</h1>
-        {% if user.is_authenticated %}
-        <p class="mb-2 mt-2">Signed in as <strong>{{ user.username }}</strong></p>
-        {% else %}
-        Not signed in
-        {% endif %}
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-2">HearWell</h1>
+            {% if user.is_authenticated %}
+            <p class="mb-2 mt-2">Signed in as <strong>{{ user.username }}</strong></p>
+            {% else %}
+            <p class="mb-2 mt-2">Not signed in</p>
+            {% endif %}
+        </div>
+        
         <nav class="navbar navbar-expand-lg bg-primary rounded-3" data-bs-theme="dark">
             <div class="container-fluid">
                 <ul class="navbar-nav">
