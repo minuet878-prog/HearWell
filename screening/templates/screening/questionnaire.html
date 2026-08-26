@@ -2,10 +2,10 @@
 
 {% block body %}
 {% for questionnaire in questionnaires %}
-<div class="h3 mb-3">
-    <ul>
-        <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a></li>
-    </ul>
+<div class="card mt-3">
+    <div class="card-body fs-3">
+        <a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a></li>
+    </div>
 </div>
 {% endfor %}
 {% endblock %}

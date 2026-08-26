@@ -139,6 +139,7 @@ def submission_result(request, submission_id):
             "total_score": total_score["total"],
             "emotional": emotional["total"],
             "social": social["total"],
-            "classified_score": classified_score,
+            "classified_score_text": classified_score["text"],
+            "classified_score_color": classified_score["color"],
         },
     )

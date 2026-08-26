@@ -1,20 +1,24 @@
 {% extends "screening/layout.html" %}
 
 {% block body %}
-<div class="submission">
+<div class="submission text-muted">
     {{ submission.user }}於{{ submission.created_at|date:"Y/m/d" }}作答
 </div>
 <div class="answers">
     {% for answer in answers %}
-    <ul>
-        <li>{{ answer.question.question_text }}:{{ answer.get_score_display }}</li>
-    </ul>
+    <div class="card mb-2">
+        <div class="card-body">
+            <span class="fw-bold fs-4">{{ answer.question.question_text }}</span>:<span class="text-muted fs-4">
+                {{ answer.get_score_display }}</span>
+        </div>
+    </div>
+
     {% endfor %}
 </div>
 <div class="score">
-    <p>總分: {{ total_score }}</p>
-    <p>{{ classified_score }}</p>
-    <p>情緒分數: {{ emotional }}</p>
-    <p>社交分數: {{ social }}</p>
+    <p class="fw-bold text-center display-3 text-{{ classified_score_color }}">結果：{{ classified_score_text }}</p>
+    <p class="fs-2 text-muted text-center">總分: {{ total_score }}</p>
+    <p class="fs-2 text-muted text-center">情緒分數: {{ emotional }}</p>
+    <p class="fs-2 text-muted text-center">社交分數: {{ social }}</p>
 </div>
 {% endblock %}
