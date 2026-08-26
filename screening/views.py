@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Sum
 from django.http import HttpResponseRedirect
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from screening.scoring import classify
@@ -122,7 +122,7 @@ def my_hearing(request):
 
 
 def submission_result(request, submission_id):
-    sub = Submission.objects.get(pk=submission_id)
+    sub = get_object_or_404(Submission, pk=submission_id, user=request.user)
     answers = sub.answers.all()
     total_score = answers.aggregate(total=Sum("score", default=0))
     emotional = answers.filter(question__category="emotional").aggregate(
