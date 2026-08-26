@@ -1,0 +1,109 @@
+[
+{
+  "model": "screening.questionnaire",
+  "pk": 1,
+  "fields": {
+    "questionnaire_name": "HHIE-S"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 1,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "認識新朋友時，聽力問題使你不好意思嗎？",
+    "question_number": 1,
+    "category": "emotional"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 2,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "當你與家人談話時，聽力問題會讓你感到挫折嗎？",
+    "question_number": 2,
+    "category": "emotional"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 3,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "有人對你用耳語聲講話時，你會有困難嗎？",
+    "question_number": 3,
+    "category": "social"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 4,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "你覺得聽力問題會讓你有障礙嗎？",
+    "question_number": 4,
+    "category": "emotional"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 5,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "拜訪親朋好友或鄰居時，聽力問題會讓你感到困難嗎？",
+    "question_number": 5,
+    "category": "social"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 6,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "聽力問題讓你較少參加各項活動（例如宗教活動、社團活動等）嗎？",
+    "question_number": 6,
+    "category": "social"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 7,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "聽力問題讓你和家人相處時產生爭執嗎？",
+    "question_number": 7,
+    "category": "emotional"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 8,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "當你在看電視或聽收音機時，聽力問題會讓你感到困難嗎？",
+    "question_number": 8,
+    "category": "social"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 9,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "你覺得聽力問題會限制你的個人生活或社交生活嗎？",
+    "question_number": 9,
+    "category": "emotional"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 10,
+  "fields": {
+    "questionnaire": 1,
+    "question_text": "和親友在餐館吃飯時，聽力問題會讓你感到困難嗎？",
+    "question_number": 10,
+    "category": "social"
+  }
+}
+]
