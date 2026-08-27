@@ -48,14 +48,14 @@ def register(request):
         password = request.POST.get("password")
         confirmation = request.POST.get("confirmation")
         if password != confirmation:
-            return render(request, "screening/register.html", {"message": "密碼必須相同"})
+            return render(request, "screening/register.html", {"messages": ["密碼必須相同"]})
 
         try:
             validate_password(password)
             user = User.objects.create_user(username, email, password)
             user.save()
         except IntegrityError:
-            return render(request, "screening/register.html", {"message": "使用者名稱已被使用"})
+            return render(request, "screening/register.html", {"messages": ["使用者名稱已被使用"]})
         except ValidationError as e:
             return render(request, "screening/register.html", {"messages": e.messages})
         login(request, user)
