@@ -92,18 +92,38 @@ def screening(request, questionnaire_id):
         scores = {}
         for question in questions:
             question_id = str(question.id)
-            if request.POST.get(question_id) is not None:
-                scores[question_id] = int(request.POST.get(question_id))
-            else:
+            raw_value = request.POST.get(question_id)
+            if raw_value is None:
                 return render(
                     request,
                     "screening/screening.html",
-                    {
-                        "message": "尚有未作答的題目",
-                        "questions": questions,
-                        "questionnaire": q,
-                    },
+                    {"message": "尚有未作答的題目", "questions": questions, "questionnaire": q},
                 )
+            else:
+                try:
+                    score = int(raw_value)
+                except ValueError:
+                    return render(
+                        request,
+                        "screening/screening.html",
+                        {
+                            "message": "請重新填寫,偵測到不正確的答案格式",
+                            "questions": questions,
+                            "questionnaire": q,
+                        },
+                    )
+                if score not in Answer.Score.values:
+                    return render(
+                        request,
+                        "screening/screening.html",
+                        {
+                            "message": "請重新填寫,數字不正確",
+                            "questions": questions,
+                            "questionnaire": q,
+                        },
+                    )
+                scores[question_id] = score
+
         sub = Submission.objects.create(user=request.user, questionnaire=q)
         for question in questions:
             question_id = str(question.id)
