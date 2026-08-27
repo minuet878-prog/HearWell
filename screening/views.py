@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import (
     password_validators_help_texts,
     validate_password,
@@ -67,6 +68,7 @@ def register(request):
         )
 
 
+@login_required
 def which_questionnaire(request):
     return render(
         request,
@@ -75,6 +77,7 @@ def which_questionnaire(request):
     )
 
 
+@login_required
 def screening(request, questionnaire_id):
     if request.method == "GET":
         q = Questionnaire.objects.get(pk=questionnaire_id)
@@ -108,6 +111,7 @@ def screening(request, questionnaire_id):
         return redirect("result", submission_id=sub.id)
 
 
+@login_required
 def my_hearing(request):
     submissions = request.user.submissions.annotate(
         total_score=Sum("answers__score", default=0)
@@ -121,6 +125,7 @@ def my_hearing(request):
     )
 
 
+@login_required
 def submission_result(request, submission_id):
     sub = get_object_or_404(Submission, pk=submission_id, user=request.user)
     answers = sub.answers.all()
