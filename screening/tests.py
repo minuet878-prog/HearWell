@@ -1,5 +1,7 @@
 from django.test import TestCase
+from django.urls import reverse
 
+from screening.models import Questionnaire, Submission, User
 from screening.scoring import classify
 
 
@@ -28,3 +30,19 @@ class ClassifyTests(TestCase):
     def test_forty_score_is_maximum(self):
         result = classify(40)
         self.assertEqual(result["text"], "顯著影響")
+
+
+class SubmissionResultAccessTests(TestCase):
+    def setUp(self):
+        self.user_a = User.objects.create_user(username="user_a", password="testpass123")
+        self.user_b = User.objects.create_user(username="user_b", password="testpass123")
+        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        self.submission = Submission.objects.create(
+            user=self.user_a, questionnaire=self.questionnaire
+        )
+
+    def test_user_cannot_view_others_submission(self):
+        self.client.login(username="user_b", password="testpass123")
+        url = reverse("result", kwargs={"submission_id": self.submission.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
