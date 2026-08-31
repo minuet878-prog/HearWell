@@ -16,19 +16,27 @@ class Questionnaire(models.Model):
         return self.questionnaire_name
 
 
+class Category(models.TextChoices):
+    EMOTIONAL = "emotional"
+    SOCIAL = "social"
+
+
 class Question(models.Model):
     questionnaire = models.ForeignKey(
         Questionnaire, on_delete=models.CASCADE, related_name="questions"
     )
     question_text = models.TextField()
     question_number = models.IntegerField()
-    category = models.CharField(max_length=64)
+    category = models.CharField(max_length=64, choices=Category.choices)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["question_number", "questionnaire"], name="unique_question"
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(category__in=Category.values), name="category_must_be"
+            ),
         ]
         ordering = ["question_number"]
 
