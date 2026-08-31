@@ -10,6 +10,7 @@ from django.db.models import Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet
 from screening.scoring import classify
@@ -22,6 +23,7 @@ def index(request):
     return render(request, "screening/index.html")
 
 
+@require_http_methods(["GET", "POST"])
 def login_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -37,11 +39,13 @@ def login_view(request):
         return render(request, "screening/login.html")
 
 
+@require_http_methods(["POST"])
 def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse("index"))
 
 
+@require_http_methods(["GET", "POST"])
 def register(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -79,6 +83,7 @@ def which_questionnaire(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def screening(request, questionnaire_id):
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)

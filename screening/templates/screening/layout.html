@@ -39,7 +39,10 @@
                         <a class="nav-link" href="{% url 'my_hearing' %}">我的聽力</a>
                     </li>
                     <li class="nav-item me-3">
-                        <a class="nav-link" href="{% url 'logout' %}">登出</a>
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button class="btn btn-link nav-link" type="submit">登出</button>
+                        </form>
                     </li>
                     {% else %}
                     <li class="nav-item me-3">
