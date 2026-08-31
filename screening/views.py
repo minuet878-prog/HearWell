@@ -56,7 +56,8 @@ def register(request):
             return render(request, "screening/register.html", {"messages": ["密碼必須相同"]})
 
         try:
-            validate_password(password)
+            user = User(username=username)
+            validate_password(password, user=user)
             user = User.objects.create_user(username, email, password)
             user.save()
         except IntegrityError:
