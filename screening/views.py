@@ -91,48 +91,44 @@ def screening(request, questionnaire_id):
             {"question_form": question_form, "questionnaire": questionnaire, "formset": formset},
         )
     if request.method == "POST":
-        q = Questionnaire.objects.get(pk=questionnaire_id)
-        questions = q.questions.all()
-        scores = {}
-        for question in questions:
-            question_id = str(question.id)
-            raw_value = request.POST.get(question_id)
-            if raw_value is None:
+        questionnaire = Questionnaire.objects.get(pk=questionnaire_id)
+        questions = questionnaire.questions.all()
+        formset = AnswerFormSet(data=request.POST)
+        question_form = list(zip(questions, formset))
+        if formset.is_valid():
+            expected_id = {question.id for question in questions}
+            submitted_id = {form.cleaned_data["question_id"].id for form in formset}
+            if expected_id == submitted_id:
+                sub = Submission.objects.create(user=request.user, questionnaire=questionnaire)
+                for form in formset:
+                    Answer.objects.create(
+                        submission=sub,
+                        question=form.cleaned_data["question_id"],
+                        score=form.cleaned_data["score"],
+                    )
+                return redirect("result", submission_id=sub.id)
+            else:
                 return render(
                     request,
                     "screening/screening.html",
-                    {"message": "尚有未作答的題目", "questions": questions, "questionnaire": q},
+                    {
+                        "message": "表單答案數量錯誤，請重新確認",
+                        "question_form": question_form,
+                        "questionnaire": questionnaire,
+                        "formset": formset,
+                    },
                 )
-            else:
-                try:
-                    score = int(raw_value)
-                except ValueError:
-                    return render(
-                        request,
-                        "screening/screening.html",
-                        {
-                            "message": "請重新填寫,偵測到不正確的答案格式",
-                            "questions": questions,
-                            "questionnaire": q,
-                        },
-                    )
-                if score not in Answer.Score.values:
-                    return render(
-                        request,
-                        "screening/screening.html",
-                        {
-                            "message": "請重新填寫,數字不正確",
-                            "questions": questions,
-                            "questionnaire": q,
-                        },
-                    )
-                scores[question_id] = score
-
-        sub = Submission.objects.create(user=request.user, questionnaire=q)
-        for question in questions:
-            question_id = str(question.id)
-            Answer.objects.create(submission=sub, question=question, score=scores[question_id])
-        return redirect("result", submission_id=sub.id)
+        else:
+            return render(
+                request,
+                "screening/screening.html",
+                {
+                    "message": "表單資料有誤，請重新確認每一題的作答",
+                    "question_form": question_form,
+                    "questionnaire": questionnaire,
+                    "formset": formset,
+                },
+            )
 
 
 @login_required
