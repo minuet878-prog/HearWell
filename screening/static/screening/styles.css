@@ -9,3 +9,8 @@
 .navbar .nav-link:hover {
     color: rgba(255, 255, 255, 1);
 }
+
+[id$="-score"] {
+    display: flex;
+    gap: 10px;
+}

@@ -11,6 +11,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from screening.forms import AnswerFormSet
 from screening.scoring import classify
 
 # Create your views here.
@@ -80,11 +81,14 @@ def which_questionnaire(request):
 @login_required
 def screening(request, questionnaire_id):
     if request.method == "GET":
-        q = Questionnaire.objects.get(pk=questionnaire_id)
+        questionnaire = Questionnaire.objects.get(pk=questionnaire_id)
+        questions = questionnaire.questions.all()
+        formset = AnswerFormSet(initial=[{"question_id": q.id} for q in questions])
+        question_form = list(zip(questions, formset))
         return render(
             request,
             "screening/screening.html",
-            {"questions": q.questions.all(), "questionnaire": q},
+            {"question_form": question_form, "questionnaire": questionnaire, "formset": formset},
         )
     if request.method == "POST":
         q = Questionnaire.objects.get(pk=questionnaire_id)
