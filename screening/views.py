@@ -139,9 +139,7 @@ def screening(request, questionnaire_id):
 
 @login_required
 def my_hearing(request):
-    submissions = request.user.submissions.annotate(
-        total_score=Sum("answers__score", default=0)
-    ).order_by("-created_at")
+    submissions = request.user.submissions.annotate(total_score=Sum("answers__score", default=0))
     for submission in submissions:
         submission.classified = classify(submission.total_score)
     return render(

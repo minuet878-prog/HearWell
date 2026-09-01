@@ -10,7 +10,7 @@ class User(AbstractUser):
 
 
 class Questionnaire(models.Model):
-    questionnaire_name = models.CharField(max_length=64)
+    questionnaire_name = models.CharField(max_length=64, unique=True)
 
     def __str__(self):
         return self.questionnaire_name
@@ -52,6 +52,10 @@ class Submission(models.Model):
         Questionnaire, on_delete=models.PROTECT, related_name="submissions"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "-created_at"], name="user_created_at_index")]
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.user} submit at {self.created_at}"
