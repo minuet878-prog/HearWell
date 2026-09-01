@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import (
     validate_password,
 )
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -105,13 +105,17 @@ def screening(request, questionnaire_id):
             expected_id = {question.id for question in questions}
             submitted_id = {form.cleaned_data["question_id"].id for form in formset}
             if expected_id == submitted_id:
-                sub = Submission.objects.create(user=request.user, questionnaire=questionnaire)
-                for form in formset:
-                    Answer.objects.create(
-                        submission=sub,
-                        question=form.cleaned_data["question_id"],
-                        score=form.cleaned_data["score"],
-                    )
+                with transaction.atomic():
+                    sub = Submission.objects.create(user=request.user, questionnaire=questionnaire)
+                    answers = [
+                        Answer(
+                            submission=sub,
+                            question=form.cleaned_data["question_id"],
+                            score=form.cleaned_data["score"],
+                        )
+                        for form in formset
+                    ]
+                    Answer.objects.bulk_create(answers)
                 return redirect("result", submission_id=sub.id)
             else:
                 return render(
