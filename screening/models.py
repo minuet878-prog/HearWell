@@ -23,7 +23,7 @@ class Category(models.TextChoices):
 
 class Question(models.Model):
     questionnaire = models.ForeignKey(
-        Questionnaire, on_delete=models.CASCADE, related_name="questions"
+        Questionnaire, on_delete=models.PROTECT, related_name="questions"
     )
     question_text = models.TextField()
     question_number = models.IntegerField()
@@ -46,10 +46,10 @@ class Question(models.Model):
 
 class Submission(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="submissions"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="submissions"
     )
     questionnaire = models.ForeignKey(
-        Questionnaire, on_delete=models.CASCADE, related_name="submissions"
+        Questionnaire, on_delete=models.PROTECT, related_name="submissions"
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -64,8 +64,8 @@ class Score(models.IntegerChoices):
 
 
 class Answer(models.Model):
-    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="answers")
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
+    submission = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="answers")
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
     score = models.IntegerField(choices=Score.choices)
 
     class Meta:
