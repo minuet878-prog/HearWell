@@ -141,3 +141,29 @@ Python 的 class body 是「由上到下依序執行」的程式碼區塊，巢�
 **代價 / 取捨**
 `SECURE_HSTS_SECONDS` 刻意沒加——一旦被瀏覽器記住會強制拒絕降級回 HTTP，若 HTTPS
 之後出問題會直接卡死使用者，且無法從伺服器端即時補救。等部署環境穩定後再加。
+
+## 2026-09-01 計分邏輯收斂到 Submission model
+
+**情境**
+`my_hearing` 用 `annotate` 一次算多筆總分，`submission_result` 用三次 `aggregate` 算
+單筆的總分/情緒/社交分數，同一件事寫兩種寫法。`my_hearing` 還會迴圈動態塞
+`submission.classified` 到 model instance 上，model 檔案裡完全看不出來有這個屬性。
+
+**決定**
+- 一次算多筆：`SubmissionQuerySet.with_scores()`，掛成 `Submission.objects`
+- 單筆分數：`total_answer_score`、`emotional_score`、`social_score` 三個 property，
+  情緒/社交共用 `_score_by_category` 輔助方法，不再各寫一次 filter+aggregate
+- `classified` 也做成 property，內部呼叫 `classify()`，view 裡的猴子補丁迴圈整個刪掉
+
+**踩到的坑**
+- `with_scores()` 用了 `annotate(Sum(...))` 之後，發現 `Meta.ordering` 被蓋掉了，
+  查了文件後嘗試加 `.order_by()` 解決，結果一開始沒傳參數（空的），反而讓排序
+  完全消失。查證後才發現空的 `order_by()` 在 Django 裡是「清除排序」的意思，不是
+  「維持原樣」，要明確傳 `"-created_at"` 才對。
+- `@property total_score` 跟 `annotate(total_score=...)` 撞名——annotate 想把算好的
+  值寫進物件屬性，但 property 是唯讀的沒有 setter，直接噴 `AttributeError`。後來把
+  property 改名成 `total_answer_score` 才解決（因為它只在一個地方被用，改名影響小）。
+
+**代價 / 取捨**
+無明顯代價，這次是單純的整理，行為完全沒變，template 也完全不用改（因為
+`classified` property 回傳的型別跟原本猴子補丁塞的一樣）。
