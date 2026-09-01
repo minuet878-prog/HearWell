@@ -57,23 +57,26 @@ class Submission(models.Model):
         return f"{self.user} submit at {self.created_at}"
 
 
+class Score(models.IntegerChoices):
+    ALWAYS = 4, "是"
+    SOMETIMES = 2, "有時"
+    NEVER = 0, "否"
+
+
 class Answer(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name="answers")
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
+    score = models.IntegerField(choices=Score.choices)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=["submission", "question"], name="unique_submission_question"
-            )
+            ),
+            models.CheckConstraint(
+                condition=models.Q(score__in=Score.values), name="score_must_be"
+            ),
         ]
-
-    class Score(models.IntegerChoices):
-        ALWAYS = 4, "是"
-        SOMETIMES = 2, "有時"
-        NEVER = 0, "否"
-
-    score = models.IntegerField(choices=Score.choices)
 
     def __str__(self):
         return f"{self.question}: {self.score}"

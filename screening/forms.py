@@ -1,12 +1,12 @@
 from django import forms
 from django.forms import formset_factory
 
-from screening.models import Answer, Question
+from screening.models import Question, Score
 
 
 class AnswerForm(forms.Form):
     score = forms.TypedChoiceField(
-        choices=Answer.Score.choices,
+        choices=Score.choices,
         coerce=int,
         widget=forms.RadioSelect(attrs={"class": "score-radio-group"}),
     )
