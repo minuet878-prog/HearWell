@@ -119,3 +119,25 @@ Python 的 class body 是「由上到下依序執行」的程式碼區塊，巢�
 
 **代價 / 取捨**
 針對`PROTECT`的部分只能夠擋住誤刪的風險，以後仍需新增軟刪除(ex:is_active)欄位
+
+## 2026-09-01 SECRET_KEY 從「安靜使用不安全預設值」改成「正式環境缺少就報錯
+
+**情境**
+`SECRET_KEY` 的 fallback 值已經在 git 歷史裡公開過。正式環境若忘記設定環境變數，
+程式不會報錯，會安靜用這把已外洩的 key 簽 session/CSRF，任何人都能偽造 session。
+
+**決定**
+`DEBUG=True` 維持原本 fallback；`DEBUG=False` 改成不給預設值，拿到 falsy 值就
+`raise ImproperlyConfigured`。同時加上 `SECURE_SSL_REDIRECT`、`SESSION_COOKIE_SECURE`、
+`CSRF_COOKIE_SECURE`，一樣用 `if not DEBUG:` 包住。
+
+**除錯過程**
+用 `DEBUG=False SECRET_KEY=xxx python manage.py check` 模擬正式環境測試：
+- `SECRET_KEY=None` 沒觸發——shell 環境變數永遠是字串，讀到的是字串 `"None"`，
+  不是 Python 的 `None`
+- `SECRET_KEY=""` 也沒觸發——原判斷式只寫 `is None`，沒涵蓋空字串
+- 改成 `if not SECRET_KEY:`（利用 truthy/falsy）才一次涵蓋兩種情況
+
+**代價 / 取捨**
+`SECURE_HSTS_SECONDS` 刻意沒加——一旦被瀏覽器記住會強制拒絕降級回 HTTP，若 HTTPS
+之後出問題會直接卡死使用者，且無法從伺服器端即時補救。等部署環境穩定後再加。
