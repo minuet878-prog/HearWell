@@ -95,3 +95,27 @@ Python 的 class body 是「由上到下依序執行」的程式碼區塊，巢�
 - 無明顯代價，純粹是程式碼組織方式的調整。附帶好處：`Category` 放在模組頂層後，
   之後如果 `forms.py` 或別的檔案需要用到這個選項定義，可以直接 import，不用透過
   `Question.Category` 這種比較繞的路徑。
+
+## 2026-09-01 models CheckConstraints 及 on_delete參數
+
+**情境**
+發現Answer model的分數設定並未擋住來自前端以外的資料庫寫入，以及思考on_delete的參
+數設定為models.CASCADE是否得宜。
+
+**除錯過程**
+使用shell手動創建一個Answer的資料並且發現資料庫並未擋住這樣的寫入，on_delete的參數
+設定則是在閱讀官方文件以及與claude討論之後發現使用CASCADE會讓相關資料全部被刪掉。
+
+**決定**
+- 把Answer的CheckConstraints加入限制寫入的分數一定要為0/2/4其中之一
+- 將on_delete改成PROTECT
+
+**理由**
+- 透過shell的驗證得知choices只能擋住表單驗證及在admin的下拉式選單生效，並不能擋住來
+  自直接呼叫shell寫入
+- `on_delete=CASCADE`的問題是會導致一些無形的問題，比如說若我刪除其中一個question
+  對應的answer score也會一並被刪除，譬如總分以及結果之類的也會隨之改變，`SET_NULL`
+  會造成沒用的資料產生(沒有對應問卷的回答)因此選擇使用`PROTECT`
+
+**代價 / 取捨**
+針對`PROTECT`的部分只能夠擋住誤刪的風險，以後仍需新增軟刪除(ex:is_active)欄位
