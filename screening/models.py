@@ -2,6 +2,8 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from screening.scoring import classify
+
 # Create your models here.
 
 
@@ -44,6 +46,13 @@ class Question(models.Model):
         return f"{self.question_number}: {self.question_text[:30]}"
 
 
+class SubmissionQuerySet(models.QuerySet):
+    def with_scores(self):
+        return self.annotate(total_score=models.Sum("answers__score", default=0)).order_by(
+            "-created_at"
+        )
+
+
 class Submission(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="submissions"
@@ -52,6 +61,7 @@ class Submission(models.Model):
         Questionnaire, on_delete=models.PROTECT, related_name="submissions"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    objects = SubmissionQuerySet.as_manager()
 
     class Meta:
         indexes = [models.Index(fields=["user", "-created_at"], name="user_created_at_index")]
@@ -59,6 +69,27 @@ class Submission(models.Model):
 
     def __str__(self):
         return f"{self.user} submit at {self.created_at}"
+
+    def _score_by_category(self, category):
+        return self.answers.filter(question__category=category).aggregate(
+            total=models.Sum("score", default=0)
+        )["total"]
+
+    @property
+    def total_answer_score(self):
+        return self.answers.aggregate(total=models.Sum("score", default=0))["total"]
+
+    @property
+    def emotional_score(self):
+        return self._score_by_category(Category.EMOTIONAL)
+
+    @property
+    def social_score(self):
+        return self._score_by_category(Category.SOCIAL)
+
+    @property
+    def classified(self):
+        return classify(self.total_answer_score)
 
 
 class Score(models.IntegerChoices):

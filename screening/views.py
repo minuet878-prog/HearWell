@@ -6,7 +6,6 @@ from django.contrib.auth.password_validation import (
 )
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -143,9 +142,7 @@ def screening(request, questionnaire_id):
 
 @login_required
 def my_hearing(request):
-    submissions = request.user.submissions.annotate(total_score=Sum("answers__score", default=0))
-    for submission in submissions:
-        submission.classified = classify(submission.total_score)
+    submissions = request.user.submissions.with_scores()
     return render(
         request,
         "screening/my_hearing.html",
@@ -157,21 +154,19 @@ def my_hearing(request):
 def submission_result(request, submission_id):
     sub = get_object_or_404(Submission, pk=submission_id, user=request.user)
     answers = sub.answers.all()
-    total_score = answers.aggregate(total=Sum("score", default=0))
-    emotional = answers.filter(question__category="emotional").aggregate(
-        total=Sum("score", default=0)
-    )
-    social = answers.filter(question__category="social").aggregate(total=Sum("score", default=0))
-    classified_score = classify(total_score["total"])
+    total_score = sub.total_answer_score
+    emotional = sub.emotional_score
+    social = sub.social_score
+    classified_score = classify(total_score)
     return render(
         request,
         "screening/result.html",
         {
             "submission": sub,
             "answers": answers,
-            "total_score": total_score["total"],
-            "emotional": emotional["total"],
-            "social": social["total"],
+            "total_score": total_score,
+            "emotional": emotional,
+            "social": social,
             "classified_score_text": classified_score["text"],
             "classified_score_color": classified_score["color"],
         },
