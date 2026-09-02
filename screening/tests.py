@@ -2,19 +2,19 @@ from django.db import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Answer, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify
 
 
 # Create your tests here.
 class ClassifyTests(TestCase):
     def test_score_out_of_range_positive(self):
-        result = classify(42)
-        self.assertEqual(result["text"], "不合規的分數")
+        with self.assertRaises(ValueError):
+            classify(42)
 
     def test_score_out_of_range_negative(self):
-        result = classify(-5)
-        self.assertEqual(result["text"], "不合規的分數")
+        with self.assertRaises(ValueError):
+            classify(-5)
 
     def test_zero_score_is_minimal(self):
         result = classify(0)
@@ -66,13 +66,19 @@ class ScreeningViewAcceptValueTests(TestCase):
             questionnaire=self.questionnaire,
             question_text="數值正確？",
             question_number=1,
-            category="",
+            category=Category.EMOTIONAL,
         )
 
     def test_screening_view_accept_correct_value(self):
         self.client.login(username="user_a", password="testpass123")
         url = reverse("screening", kwargs={"questionnaire_id": self.questionnaire.id})
-        response = self.client.post(url, {str(self.question.id): "4"})
+        data = {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 0,
+            "form-0-score": "4",
+            "form-0-question_id": str(self.question.id),
+        }
+        response = self.client.post(url, data)
         submission = Submission.objects.get(user=self.user_a, questionnaire=self.questionnaire)
         expected_reversed_url = reverse("result", kwargs={"submission_id": submission.id})
         self.assertTrue(Answer.objects.filter(question=self.question, score=4).exists())
@@ -87,7 +93,7 @@ class ModelsUniqueConstraintTests(TestCase):
             questionnaire=self.questionnaire,
             question_text="constraint正確?",
             question_number=1,
-            category="",
+            category=Category.EMOTIONAL,
         )
         self.submission = Submission.objects.create(
             user=self.user_a, questionnaire=self.questionnaire
@@ -102,7 +108,7 @@ class ModelsUniqueConstraintTests(TestCase):
                 questionnaire=self.questionnaire,
                 question_text="constraint正確?",
                 question_number=1,
-                category="",
+                category=Category.EMOTIONAL,
             )
 
     def test_answer_model_unique_constraint(self):
