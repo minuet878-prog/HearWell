@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet
-from screening.scoring import classify
+from screening.scoring import classify, level_to_color
 
 # Create your views here.
 from .models import Answer, Questionnaire, Submission, User
@@ -170,6 +170,6 @@ def submission_result(request, submission_id):
             "emotional": emotional,
             "social": social,
             "classified_score_text": classified_score["text"],
-            "classified_score_color": classified_score["color"],
+            "classified_score_color": level_to_color(classified_score["level"]),
         },
     )
