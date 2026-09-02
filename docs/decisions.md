@@ -181,3 +181,42 @@ HHIE-S 有年齡適用範圍，User model 已經有 birth_date 欄位但目前�
 **下次要做這件事時，先確認**
 第二份問卷實際需要哪些條件，再回頭決定要不要現在就做成通用機制，還是先用簡單的
 方式應付得過去就好。
+
+## 2026-09-02 login/register 改成繼承 layout
+
+**情境**
+`login.html`、`register.html` 沒用 `extends`，整個 `<head>`（Bootstrap CDN、
+static 引入）重複打了一份，只是因為想拿掉導覽列、要置中顯示。
+
+**決定**
+`layout.html` 加三個新 block：`extra_head`（給子頁面塞專屬 CSS）、`body_class`
+（讓子頁面能控制 `<body>` 的 class）、`nav`（導覽列本身，包起來讓子頁面可以蓋成空的）。
+`login.html`/`register.html` 改成 `extends`，`nav` 蓋空、`body_class` 填 `text-center`。
+
+**踩到的坑**
+一開始改完還留著 `<!DOCTYPE html>`、`<body>` 這些標籤——但 `extends` 生效後,
+block 以外的內容全部不會輸出,這些留著的標籤是無效的,要整個拿掉,只留 block。
+
+**代價 / 取捨**
+無明顯代價，純粹是拆重複，畫面效果跟改之前完全一樣。
+
+---
+
+## 2026-09-02 register 表單沒有必填檢查，空 username 直接 500（順手測到的 bug）
+
+**情境**
+測試的時候，順手把 register 表單空白送出，結果整個網站噴 500，不是正常的
+錯誤訊息。原因是 `<input>` 沒寫 `required`，view 也完全沒檢查欄位是不是空的，
+`username` 是空字串一路傳到 Django 內建的 `create_user()`，才在那裡 `raise ValueError`，
+但 view 的 `try/except` 沒接住這個例外。
+
+**決定**
+view 裡在建立 User 之前，先檢查 `username`/`email`/`password`/`confirmation`
+四個欄位是不是空的（用 `not username` 這種寫法，同時涵蓋 `None` 和空字串），
+不合格就 render 錯誤訊息。同時在 `<input>` 上補 `required`，讓正常使用者在前端
+就會被擋下來，不用等到送出才知道漏填。
+
+**代價 / 取捨**
+`required` 只是體驗優化，擋不住繞過前端的請求（curl、改 HTML），真正的防線
+還是 view 裡的檢查——這跟前面處理過的好幾個安全性問題是同一個道理：前端擋
+使用者體驗，後端擋真正的資料完整性。
