@@ -51,6 +51,8 @@ def register(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
         confirmation = request.POST.get("confirmation")
+        if not username or not password or not confirmation or not email:
+            return render(request, "screening/register.html", {"messages": ["請完整填寫所有欄位"]})
         if password != confirmation:
             return render(request, "screening/register.html", {"messages": ["密碼必須相同"]})
 

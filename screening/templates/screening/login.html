@@ -30,13 +30,13 @@
         {% csrf_token %}
         <div class="form-floating mb-2">
             <input autofocus class="form-control" id="floatingInput" type="text" name="username"
-                placeholder="Username">
+                placeholder="Username" required>
             <label for="floatingInput">使用者名稱</label>
         </div>
 
         <div class="form-floating mb-2">
             <input class="form-control" id="floatingPassword" type="password" name="password"
-                placeholder="Password">
+                placeholder="Password" required>
             <label for="floatingPassword">密碼</label>
         </div>
         <div class="d-flex gap-2">

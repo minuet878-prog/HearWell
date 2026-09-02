@@ -30,18 +30,18 @@
         {% csrf_token %}
         <div class="form-floating mb-2">
             <input autofocus class="form-control" id="floatingInput" type="text" name="username"
-                placeholder="Username">
+                placeholder="Username" required>
             <label for="floatingInput">使用者名稱</label>
         </div>
 
         <div class="form-floating mb-2">
-            <input class="form-control" id="floatingEmail" type="email" placeholder="電子信箱地址" name="email">
-            <label for="floatingEmail">電子郵件</label>
+            <input class="form-control" id="floatingEmail" type="email" placeholder="電子信箱地址" name="email" required>
+            <label for="floatingEmail" >電子郵件</label>
         </div>
 
         <div class="form-floating mb-2">
             <input class="form-control" id="floatingPassword" type="password" name="password"
-                placeholder="Password">
+                placeholder="Password" required>
             <label for="floatingPassword">密碼</label>
             {% for password_message in password_messages %}
             <small class="form-text text-muted">{{ password_message }}</small>
@@ -50,7 +50,7 @@
 
         <div class="form-floating mb-2">
             <input class="form-control" id="floatingConfirmation" type="password" name="confirmation"
-                placeholder="Cofirmation">
+                placeholder="Cofirmation" required>
             <label for="floatingConfirmation">請再輸入一次</label>
         </div>
         <input class="w-100 btn btn-lg btn-primary" type="submit" value="註冊">
