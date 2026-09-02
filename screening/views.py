@@ -76,7 +76,7 @@ def register(request):
 
 
 @login_required
-def which_questionnaire(request):
+def questionnaire_list(request):
     return render(
         request,
         "screening/questionnaire.html",

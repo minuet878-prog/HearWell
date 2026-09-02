@@ -34,7 +34,7 @@
                     {% if user.is_authenticated %}
                     {% if request.resolver_match.url_name != "index" %}
                     <li class="nav-item me-3">
-                        <a class="nav-link" href="{% url 'questionnaire' %}">篩檢</a>
+                        <a class="nav-link" href="{% url 'questionnaire_list' %}">篩檢</a>
                     </li>
                     {% endif %}
                     <li class="nav-item me-3">
