@@ -10,10 +10,13 @@
         integrity="sha512-2rlhob8L606Mt1c8oB20JR78cIX27wzWelusr5yq+4VX6ly4F3Tr88Vhj8B63yxB7k8i1BRq3fKaiaYESpo8rA=="
         crossorigin="anonymous">
     <link href="{% static 'screening/styles.css' %}" rel="stylesheet">
+    {% block extra_head %}
+    {% endblock%}
 </head>
 
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <div class="container mt-4">
+        {% block nav %}
         <div class="d-flex justify-content-between align-items-center">
             <h1 class="mb-2">HearWell</h1>
             {% if user.is_authenticated %}
@@ -22,7 +25,6 @@
             <p class="mb-2 mt-2">Not signed in</p>
             {% endif %}
         </div>
-        
         <nav class="navbar navbar-expand-lg bg-primary rounded-3" data-bs-theme="dark">
             <div class="container-fluid">
                 <ul class="navbar-nav">
@@ -52,6 +54,7 @@
                 </ul>
             </div>
         </nav>
+        {% endblock %}
         {% block body %} {% endblock %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
