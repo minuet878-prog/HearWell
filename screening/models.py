@@ -70,22 +70,39 @@ class Submission(models.Model):
     def __str__(self):
         return f"{self.user} submit at {self.created_at}"
 
-    def _score_by_category(self, category):
-        return self.answers.filter(question__category=category).aggregate(
-            total=models.Sum("score", default=0)
-        )["total"]
+    def _calculate_scores(self):
+        if getattr(self, "_scores_cache", None) is None:
+            self._scores_cache = self.answers.aggregate(
+                total=models.Sum("score", default=0),
+                emotional=models.Sum(
+                    models.Case(
+                        models.When(
+                            question__category=Category.EMOTIONAL,
+                            then=models.F("score"),
+                        ),
+                        default=0,
+                    )
+                ),
+                social=models.Sum(
+                    models.Case(
+                        models.When(question__category=Category.SOCIAL, then=models.F("score")),
+                        default=0,
+                    )
+                ),
+            )
+        return self._scores_cache
 
     @property
     def total_answer_score(self):
-        return self.answers.aggregate(total=models.Sum("score", default=0))["total"]
+        return self._calculate_scores()["total"]
 
     @property
     def emotional_score(self):
-        return self._score_by_category(Category.EMOTIONAL)
+        return self._calculate_scores()["emotional"]
 
     @property
     def social_score(self):
-        return self._score_by_category(Category.SOCIAL)
+        return self._calculate_scores()["social"]
 
     @property
     def classified(self):
