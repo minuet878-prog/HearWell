@@ -250,3 +250,22 @@ view 裡在建立 User 之前，先檢查 `username`/`email`/`password`/`confirm
 **代價 / 取捨**
   總分上限寫死成 40（HHIE-S 專用）還沒動，先記錄下來，等真的要加第二份問卷、知道實際需要 
   哪些條件時再一起設計
+
+## 2026-09-02 三次分數查詢合併成一次 conditional aggregation
+
+**情境**
+`total_answer_score`、`emotional_score`、`social_score` 三個 property 各自獨立
+呼叫一次 `aggregate()`，一筆 submission_result 要顯示三個分數，變成 3 次查詢。
+
+**決定**
+新增 `_calculate_scores()`，用 `Case`/`When`/`F` 做 conditional aggregation，
+一次查詢同時算出 total/emotional/social 三個值，結果存進 `self._scores_cache`。三
+個 property 改成從這個 dict 裡各自取值，`_score_by_category` 這個舊的輔助方法整個刪掉。
+
+**踩到的坑**
+- `Sum("score")` 沒加 `default=0`，同一個坑踩了第二次——第一次是完全不知道
+  Sum 對空集合會回傳 None，這次是改寫時漏抄了舊版本裡已經有的 default=0，
+  導致 `classify(None)` 直接 TypeError。這次是自己肉眼發現的，不用再靠報錯提示。
+
+**代價 / 取捨**
+練習conditional aggregation 跟物件層級快取這兩個技巧。
