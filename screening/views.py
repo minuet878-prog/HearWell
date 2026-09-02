@@ -153,7 +153,7 @@ def my_hearing(request):
 @login_required
 def submission_result(request, submission_id):
     sub = get_object_or_404(Submission, pk=submission_id, user=request.user)
-    answers = sub.answers.all()
+    answers = sub.answers.select_related("question").all()
     total_score = sub.total_answer_score
     emotional = sub.emotional_score
     social = sub.social_score
