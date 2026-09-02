@@ -220,3 +220,33 @@ view 裡在建立 User 之前，先檢查 `username`/`email`/`password`/`confirm
 `required` 只是體驗優化，擋不住繞過前端的請求（curl、改 HTML），真正的防線
 還是 view 裡的檢查——這跟前面處理過的好幾個安全性問題是同一個道理：前端擋
 使用者體驗，後端擋真正的資料完整性。
+
+## 2026-09-02 classify() 拆掉呈現層，加 template filter 轉顏色
+
+**情境**
+`classify()` 原本回傳的 dict 裡直接帶 Bootstrap 顏色（`"color": "success"`），
+把「算分級」跟「畫面要顯示什麼顏色」混在同一個 function 裡。而且超出範圍的分數
+（<0 或 >40）也是回傳一個看起來正常的 dict（`{"text": "不合規的分數", ...}`），
+呼叫端很容易忘記檢查，直接把異常狀況當正常結果用。
+
+**決定**
+- `classify()` 只回傳 `text` 跟 `level`（`normal`/`mild_to_moderate`/`severe`），
+  完全不含任何顏色字串
+- 分數超出範圍改成 `raise ValueError(f"{total_score}是不合規的分數")`，不再假裝
+  是正常結果
+- 顏色轉換獨立成 `level_to_color(level)`，跟 `classify()` 分開，各自負責一件事
+- `my_hearing.html` 需要在 template 裡呼叫 `level_to_color`，改寫成 Django 自訂
+  template filter（`templatetags/custom_filters.py`），`views.py` 跟 template
+  共用同一份轉換邏輯，不重複定義
+
+**踩到的坑**
+- template filter 的 function 一開始想跟 import 進來的 `level_to_color` 同名，
+  會造成無限遞迴（——用 `import ... as get_color` 改名解決
+- filter 語法一開始寫成 `{{ level_to_color:xxx }}`（冒號），正確應該是
+  `{{ xxx|level_to_color }}`（值在前、filter 在後）
+- 新增 `templatetags/` 這個 package 之後，`runserver` 沒有自動偵測到，噴
+  `TemplateSyntaxError: not a registered tag library`，要手動重啟才抓到
+
+**代價 / 取捨**
+  總分上限寫死成 40（HHIE-S 專用）還沒動，先記錄下來，等真的要加第二份問卷、知道實際需要 
+  哪些條件時再一起設計
