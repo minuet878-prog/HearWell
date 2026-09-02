@@ -4,8 +4,6 @@ from django.db import models
 
 from screening.scoring import classify
 
-# Create your models here.
-
 
 class User(AbstractUser):
     birth_date = models.DateField(null=True, blank=True)
@@ -110,9 +108,9 @@ class Submission(models.Model):
 
 
 class Score(models.IntegerChoices):
-    ALWAYS = 4, "是"
+    ALWAYS = 4, "常常"
     SOMETIMES = 2, "有時"
-    NEVER = 0, "否"
+    NEVER = 0, "從未"
 
 
 class Answer(models.Model):

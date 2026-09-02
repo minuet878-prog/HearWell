@@ -14,7 +14,6 @@ from django.views.decorators.http import require_http_methods
 from screening.forms import AnswerFormSet
 from screening.scoring import classify, level_to_color
 
-# Create your views here.
 from .models import Answer, Questionnaire, Submission, User
 
 
@@ -90,7 +89,7 @@ def screening(request, questionnaire_id):
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         questions = questionnaire.questions.all()
-        formset = AnswerFormSet(initial=[{"question_id": q.id} for q in questions])
+        formset = AnswerFormSet(initial=[{"question_id": question.id} for question in questions])
         question_form = list(zip(questions, formset))
         return render(
             request,
@@ -107,17 +106,19 @@ def screening(request, questionnaire_id):
             submitted_id = {form.cleaned_data["question_id"].id for form in formset}
             if expected_id == submitted_id:
                 with transaction.atomic():
-                    sub = Submission.objects.create(user=request.user, questionnaire=questionnaire)
+                    submission = Submission.objects.create(
+                        user=request.user, questionnaire=questionnaire
+                    )
                     answers = [
                         Answer(
-                            submission=sub,
+                            submission=submission,
                             question=form.cleaned_data["question_id"],
                             score=form.cleaned_data["score"],
                         )
                         for form in formset
                     ]
                     Answer.objects.bulk_create(answers)
-                return redirect("result", submission_id=sub.id)
+                return redirect("result", submission_id=submission.id)
             else:
                 return render(
                     request,
@@ -154,17 +155,17 @@ def my_hearing(request):
 
 @login_required
 def submission_result(request, submission_id):
-    sub = get_object_or_404(Submission, pk=submission_id, user=request.user)
-    answers = sub.answers.select_related("question").all()
-    total_score = sub.total_answer_score
-    emotional = sub.emotional_score
-    social = sub.social_score
+    submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
+    answers = submission.answers.select_related("question").all()
+    total_score = submission.total_answer_score
+    emotional = submission.emotional_score
+    social = submission.social_score
     classified_score = classify(total_score)
     return render(
         request,
         "screening/result.html",
         {
-            "submission": sub,
+            "submission": submission,
             "answers": answers,
             "total_score": total_score,
             "emotional": emotional,

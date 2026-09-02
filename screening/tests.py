@@ -6,7 +6,6 @@ from screening.models import Answer, Category, Question, Questionnaire, Submissi
 from screening.scoring import classify
 
 
-# Create your tests here.
 class ClassifyTests(TestCase):
     def test_score_out_of_range_positive(self):
         with self.assertRaises(ValueError):
