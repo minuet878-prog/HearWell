@@ -269,3 +269,32 @@ view 裡在建立 User 之前，先檢查 `username`/`email`/`password`/`confirm
 
 **代價 / 取捨**
 練習conditional aggregation 跟物件層級快取這兩個技巧。
+
+## 2026-09-07 加上行動建議
+
+**情境**
+classify() 只回傳分級文字，使用者拿到分數之後不知道該怎麼辦，這是 MVP 一直
+缺的一段。
+
+**決定**
+新增 get_advice(level)，跟 level_to_color() 用同一套「查表」模式，回傳對應
+分級的臨床建議文字。三段內容自己寫（normal 建議定期篩檢、mild_to_moderate
+建議耳鼻喉科檢查、severe 建議立即就醫並考慮助聽器），每段都附具體情境舉例。
+view 裡呼叫 get_advice()，傳到 result.html，用一張獨立卡片呈現，跟上面的
+分數區塊做視覺區隔。
+
+**踩到的坑（大多是環境問題，不是程式碼邏輯錯）**
+- 換到 Windows 電腦跑測試，兩個用到 static 檔案的測試直接炸掉，錯誤是
+  「Missing staticfiles manifest entry」。原因是這台電腦還沒跑過
+  `python manage.py collectstatic`——用了 CompressedManifestStaticFilesStorage
+  的話，staticfiles 資料夾跟 manifest 清單不會自動產生，每次到新環境都要
+  記得先跑一次。
+- Windows 上 ruff 存檔不會自動修正，原因是 `.vscode/settings.json` 檔名
+  打成 `setting.json`（少一個 s），VS Code 完全不認得，等於沒有這個設定檔。
+- 卡片底部邊框「看起來消失」，來回排查了好一陣子，最後用開發工具的元素選取
+  框線確認卡片本身完全正常（四邊都有邊框）——純粹是螢幕沒捲到底、或工作列
+  自動隱藏造成的視覺誤判，不是 CSS 或程式碼的問題。
+
+**代價 / 取捨**
+無明顯代價。這次主要學到的是「跨電腦開發要注意的環境差異」，跟排版問題要
+先用開發工具驗證再下結論，不要憑肉眼截圖猜。
