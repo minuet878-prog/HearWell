@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -7,6 +9,17 @@ from screening.scoring import classify
 
 class User(AbstractUser):
     birth_date = models.DateField(null=True, blank=True)
+
+    @property
+    def age(self):
+        today = date.today()
+        if self.birth_date is None:
+            return None
+        else:
+            if (today.month, today.day) >= (self.birth_date.month, self.birth_date.day):
+                return today.year - self.birth_date.year
+            else:
+                return today.year - self.birth_date.year - 1
 
 
 class Questionnaire(models.Model):
