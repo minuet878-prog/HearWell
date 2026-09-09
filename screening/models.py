@@ -86,19 +86,10 @@ class Submission(models.Model):
             self._scores_cache = self.answers.aggregate(
                 total=models.Sum("score", default=0),
                 emotional=models.Sum(
-                    models.Case(
-                        models.When(
-                            question__category=Category.EMOTIONAL,
-                            then=models.F("score"),
-                        ),
-                        default=0,
-                    )
+                    "score", filter=models.Q(question__category=Category.EMOTIONAL), default=0
                 ),
                 social=models.Sum(
-                    models.Case(
-                        models.When(question__category=Category.SOCIAL, then=models.F("score")),
-                        default=0,
-                    )
+                    "score", filter=models.Q(question__category=Category.SOCIAL), default=0
                 ),
             )
         return self._scores_cache
