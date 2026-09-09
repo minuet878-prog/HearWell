@@ -298,3 +298,38 @@ view 裡呼叫 get_advice()，傳到 result.html，用一張獨立卡片呈現�
 **代價 / 取捨**
 無明顯代價。這次主要學到的是「跨電腦開發要注意的環境差異」，跟排版問題要
 先用開發工具驗證再下結論，不要憑肉眼截圖猜。
+
+## 2026-09-09 default=0 的坑第三次，改用 filter=
+
+**情境**
+`total` 有 `default=0`，但 `emotional` 和 `social` 沒有。空的 submission 會回
+`{'total': 0, 'emotional': None, 'social': None}`，result 頁面直接印出「情緒分數: None」。
+
+**為什麼會這樣**
+`Sum(Case(When(...), default=0))` 這個 default 是 `Case` 的，不是 `Sum` 的。兩個
+作用在不同層級：
+- `Case` 的 default 管**每一列**（不符合條件就算 0）
+- `Sum` 的 default 管**整份聚合的結果**（算完是 NULL 才換成 0）
+
+沒有任何 answer 的時候是 0 列，`CASE` 根本不會被執行，所以 `ELSE 0` 救不了。
+
+但 `ELSE 0` 也不是沒用，它防的是另一種空：「有列，但沒有一列符合條件」。
+兩種空各要一個機制，我只裝了一半。
+
+**決定**
+三個都改成 `Sum("score", filter=models.Q(...), default=0)`，`Case`/`When`/`F` 拿掉。
+
+**理由**
+`filter=` 是把不符合的列**排除掉**，所以兩種空變成同一種，一個 `default=0` 就全包。
+要記得的事從 2 件變 1 件，而且三行長得一模一樣，少裝一個一眼就看得出來。
+
+**踩到的坑**
+- `_scores_cache` 在測試的時候會造成誤判。在 shell 裡先算過一次分數（結果被快取），再新增一筆
+  answer，第二次算還是拿到舊的 0，差點以為改壞了。**要重新從 DB 拿一個新物件。**
+  在 web request 裡不會發生（每次都是新物件），但 shell 和測試裡一定會。
+- lookup 打成 `question__answer`（想寫 `category`）。這個會直接噴 `FieldError`
+  還列出正確選項——打錯欄位名 Django 攔得住，打錯值攔不住。
+
+**還沒做**
+測試還沒補（E 滿分 / S 滿分 / 混合 / 完全沒 answer 四個案例），所以現在算是
+「改了但沒驗證」。
