@@ -43,15 +43,15 @@ class Question(models.Model):
     category = models.CharField(max_length=64, choices=Category.choices)
 
     class Meta:
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=["question_number", "questionnaire"], name="unique_question"
             ),
             models.CheckConstraint(
                 condition=models.Q(category__in=Category.values), name="category_must_be"
             ),
-        ]
-        ordering = ["question_number"]
+        )
+        ordering = ("question_number",)
 
     def __str__(self):
         return f"{self.question_number}: {self.question_text[:30]}"
@@ -75,8 +75,8 @@ class Submission(models.Model):
     objects = SubmissionQuerySet.as_manager()
 
     class Meta:
-        indexes = [models.Index(fields=["user", "-created_at"], name="user_created_at_index")]
-        ordering = ["-created_at"]
+        indexes = (models.Index(fields=["user", "-created_at"], name="user_created_at_index"),)
+        ordering = (("-created_at"),)
 
     def __str__(self):
         return f"{self.user} submit at {self.created_at}"
@@ -123,14 +123,14 @@ class Answer(models.Model):
     score = models.IntegerField(choices=Score.choices)
 
     class Meta:
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=["submission", "question"], name="unique_submission_question"
             ),
             models.CheckConstraint(
                 condition=models.Q(score__in=Score.values), name="score_must_be"
             ),
-        ]
+        )
 
     def __str__(self):
         return f"{self.question}: {self.score}"
