@@ -6,8 +6,14 @@ from .models import Answer, Question, Questionnaire, Submission, User
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    fieldsets = UserAdmin.fieldsets + (("birth_date", {"fields": ("birth_date",)}),)
-    add_fieldsets = UserAdmin.add_fieldsets + (("birth_date", {"fields": ("birth_date",)}),)
+    fieldsets = (
+        *UserAdmin.fieldsets,
+        ("個人資料", {"fields": ("birth_date",)}),
+    )
+    add_fieldsets = (
+        *UserAdmin.add_fieldsets,
+        ("個人資料", {"fields": ("birth_date",)}),
+    )
 
 
 admin.site.register(Questionnaire)
