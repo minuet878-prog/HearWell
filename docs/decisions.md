@@ -419,3 +419,24 @@ else:
 
 **下次**
 在 shell 做任何破壞性操作，一律 `atomic()` + 最後 `raise`。真的要驗證行為就寫進 `tests.py`。
+
+## 2026-09-23 ruff 排除 migrations
+
+- migrations 是 Django 自動產生的，31 個 E501 全在裡面，真正的錯誤會被淹沒，linter 等於沒在用。
+- 用 `extend-exclude` 不用 `exclude`：`exclude` 會蓋掉 ruff 內建的排除清單（`.venv`、`.git` 那些），`extend-exclude` 是往上加。
+- 驗證要做兩個方向：migration 的錯誤不見了，**而且**在 screening 故意加一行沒用到的 import 還抓得到。只驗證前者的話，把全部都排除掉也會「通過」。
+
+## 2026-09-23 Git 流程：main 分岔
+
+- 在本機 main 直接 commit 了 CLAUDE.md 沒 push，同時 PR 在 GitHub 上合併，`git pull` 就分岔了。
+- 用 `git pull --rebase` 解決：commit 還沒 push 過，rebase 是安全的。已經 push 的 commit 不要 rebase。
+- 設了 `pull.ff only`：main 只該透過 PR 前進，一旦分岔就是流程出錯，要讓 Git 擋下來。
+- 教訓：連改文件都要開分支。
+
+## 2026-09-23 ruff 擴充規則集（B / DJ / TID / RUF）
+
+- 一次加一組規則、每組跑一次 check，才分得出哪個錯是哪組抓的。DJ、TID 沒抓到東西，B 抓 2 個、RUF 抓 22 個。
+- **RUF001 用白名單不用全域忽略**：中文文案的全形「，」「？」是刻意的，但全域忽略會連西里爾字母、零寬字元這些真正危險的一起放過。`allowed-confusables` 只放行這兩個，以後用到新的全形符號再加。
+- **RUF012 list 改 tuple，接受多一個 migration**：`ordering` 從 list 改 tuple，Django 會判定成設定變更，生出 0011。`sqlmigrate` 確認是 no-op。選擇接受它，不用 `noqa`，因為 `noqa` 會在程式碼裡留下越積越多的例外。
+- **B905 GET 和 POST 分開處理**：GET 的長度由 `questions` 決定，`strict=True` 是保險。POST 的長度來自使用者，而且 zip 在驗證之前跑，加 `strict` 會讓竄改的送出變成 500。POST 先 `noqa` ＋ `TODO(phase1-7)`，等驗證搬到 form 層再改。
+- 坑：`# noqa` 要寫在出錯那一行的行尾，寫在上一行沒效。
