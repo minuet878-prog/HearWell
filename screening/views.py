@@ -90,7 +90,7 @@ def screening(request, questionnaire_id):
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(initial=[{"question_id": question.id} for question in questions])
-        question_form = list(zip(questions, formset))
+        question_form = list(zip(questions, formset, strict=True))
         return render(
             request,
             "screening/screening.html",
@@ -100,7 +100,8 @@ def screening(request, questionnaire_id):
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(data=request.POST)
-        question_form = list(zip(questions, formset))
+        # TODO(phase1-7): 驗證移到 form 層後改用 strict
+        question_form = list(zip(questions, formset))  # noqa: B905
         if formset.is_valid():
             expected_id = {question.id for question in questions}
             submitted_id = {form.cleaned_data["question_id"].id for form in formset}

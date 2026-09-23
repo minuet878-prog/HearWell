@@ -4,4 +4,5 @@ target-version = 'py313'
 extend-exclude = ["**/migrations"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "B", "DJ", "TID", "RUF"]
+allowed-confusables = ["，", "？"]
