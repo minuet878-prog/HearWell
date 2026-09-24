@@ -1,12 +1,12 @@
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify
 
 
-class ClassifyTests(TestCase):
+class ClassifyTests(SimpleTestCase):
     def test_score_out_of_range_positive(self):
         with self.assertRaises(ValueError):
             classify(42)
@@ -34,15 +34,15 @@ class ClassifyTests(TestCase):
 
 class SubmissionResultAccessTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a", password="testpass123")
-        self.user_b = User.objects.create_user(username="user_b", password="testpass123")
+        self.user_a = User.objects.create_user(username="user_a")
+        self.user_b = User.objects.create_user(username="user_b")
         self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
         self.submission = Submission.objects.create(
             user=self.user_a, questionnaire=self.questionnaire
         )
 
     def test_user_cannot_view_others_submission(self):
-        self.client.login(username="user_b", password="testpass123")
+        self.client.force_login(self.user_b)
         url = reverse("result", kwargs={"submission_id": self.submission.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
@@ -59,7 +59,7 @@ class LoginRequiredTests(TestCase):
 
 class ScreeningViewAcceptValueTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a", password="testpass123")
+        self.user_a = User.objects.create_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
         self.question = Question.objects.create(
             questionnaire=self.questionnaire,
@@ -69,7 +69,7 @@ class ScreeningViewAcceptValueTests(TestCase):
         )
 
     def test_screening_view_accept_correct_value(self):
-        self.client.login(username="user_a", password="testpass123")
+        self.client.force_login(self.user_a)
         url = reverse("screening", kwargs={"questionnaire_id": self.questionnaire.id})
         data = {
             "form-TOTAL_FORMS": 1,
@@ -86,7 +86,7 @@ class ScreeningViewAcceptValueTests(TestCase):
 
 class ModelsUniqueConstraintTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a", password="testpass123")
+        self.user_a = User.objects.create_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
         self.question = Question.objects.create(
             questionnaire=self.questionnaire,
