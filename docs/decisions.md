@@ -440,3 +440,24 @@ else:
 - **RUF012 list 改 tuple，接受多一個 migration**：`ordering` 從 list 改 tuple，Django 會判定成設定變更，生出 0011。`sqlmigrate` 確認是 no-op。選擇接受它，不用 `noqa`，因為 `noqa` 會在程式碼裡留下越積越多的例外。
 - **B905 GET 和 POST 分開處理**：GET 的長度由 `questions` 決定，`strict=True` 是保險。POST 的長度來自使用者，而且 zip 在驗證之前跑，加 `strict` 會讓竄改的送出變成 500。POST 先 `noqa` ＋ `TODO(phase1-7)`，等驗證搬到 form 層再改。
 - 坑：`# noqa` 要寫在出錯那一行的行尾，寫在上一行沒效。
+
+## 2026-09-24 本機改用 PostgreSQL（Docker）
+
+- 本機一直是 SQLite，正式環境是 PostgreSQL 18。兩邊的型別寬鬆度、大小寫比對、鎖定方式都不同，有些 bug 只會在上線後出現。
+- 用 Docker 跑 `postgres:18`，版本跟 Render 一致。port 只綁 `127.0.0.1`，資料存在 named volume。
+- 坑：PostgreSQL 18 的映像檔改了資料目錄，volume 要掛 `/var/lib/postgresql`，舊教學的 `/var/lib/postgresql/data` 會出問題。
+- 坑：`DATABASE_URL` 的主機寫 `127.0.0.1` 不寫 `localhost`，`localhost` 可能先試 IPv6，容器只綁了 IPv4。
+
+## 2026-09-24 拿掉 SQLite 退路，缺 DATABASE_URL 直接報錯
+
+- 原本讀不到 `DATABASE_URL` 會默默退回 SQLite，可能好幾天都沒發現在用錯的資料庫。
+- 改用 `parse()` 搭配自己的檢查：環境變數只讀一次，缺少就拋 `ImproperlyConfigured`。
+- 坑：`config()` 的參數是環境變數的**名稱**，不是網址本身。傳錯不會報錯，只會安靜回傳空 dict。
+- 暫存變數用小寫 `database_url`。大寫會變成 Django 設定，而 `DATABASE_URL` 不在除錯頁的遮蔽名單裡，密碼會被印出來。
+
+## 2026-09-24 DEBUG 預設改成 False
+
+- 原本沒設 `DEBUG` 就會開除錯模式，連帶讓 `SECRET_KEY` 退回程式碼裡公開的那把。這是 fail open。
+- 改成沒設定就是 False（fail closed）。本機要在 `.env` 明確寫 `DEBUG=True`。
+- 坑：比對是區分大小寫的字串比對，`DEBUG=true` 會是 False，而且不會報錯。
+- 坑：本機測 `DEBUG=False` 會被 SSL 導向，瀏覽器會記住 301，恢復後要用無痕視窗或清快取。
