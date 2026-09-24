@@ -113,3 +113,68 @@ class ModelsUniqueConstraintTests(TestCase):
     def test_answer_model_unique_constraint(self):
         with self.assertRaises(IntegrityError):
             Answer.objects.create(submission=self.submission, question=self.question, score=0)
+
+
+class ScoringAggregateTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        questions_emo = [
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"情緒題{i}",
+                question_number=i,
+                category=Category.EMOTIONAL,
+            )
+            for i in range(1, 6)
+        ]
+        questions_soc = [
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"社交題{i}",
+                question_number=i,
+                category=Category.SOCIAL,
+            )
+            for i in range(6, 11)
+        ]
+        cls.questions_e = Question.objects.bulk_create(questions_emo)
+        cls.questions_s = Question.objects.bulk_create(questions_soc)
+
+    def _make_submission(self, emotional_score, social_score):
+        submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
+        answers_e = [
+            Answer(submission=submission, question=question, score=emotional_score)
+            for question in self.questions_e
+        ]
+        answers_s = [
+            Answer(submission=submission, question=question, score=social_score)
+            for question in self.questions_s
+        ]
+        answers = [*answers_e, *answers_s]
+        Answer.objects.bulk_create(answers)
+        return submission
+
+    def test_emotional_full_marks(self):
+        submission = self._make_submission(emotional_score=4, social_score=0)
+        self.assertEqual(submission.total_answer_score, 20)
+        self.assertEqual(submission.emotional_score, 20)
+        self.assertEqual(submission.social_score, 0)
+
+    def test_social_full_marks(self):
+        submission = self._make_submission(emotional_score=0, social_score=4)
+        self.assertEqual(submission.total_answer_score, 20)
+        self.assertEqual(submission.emotional_score, 0)
+        self.assertEqual(submission.social_score, 20)
+
+    def test_mix_marks(self):
+        submission = self._make_submission(emotional_score=4, social_score=2)
+        self.assertEqual(submission.total_answer_score, 30)
+        self.assertEqual(submission.emotional_score, 20)
+        self.assertEqual(submission.social_score, 10)
+
+    def test_calculate_score_return_zero(self):
+        submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
+        self.assertEqual(submission.total_answer_score, 0)
+        self.assertEqual(submission.emotional_score, 0)
+        self.assertEqual(submission.social_score, 0)
