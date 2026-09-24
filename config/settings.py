@@ -86,8 +86,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-DATABASES = {"default": dj_database_url.config(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
+database_url = os.environ.get("DATABASE_URL")
+if not database_url:
+    raise ImproperlyConfigured(
+        "缺少 DATABASE_URL 環境變數，本機請檢查 .env 正式環境請在部署平台設定"
+    )
+DATABASES = {"default": dj_database_url.parse(database_url)}
 
 
 # Password validation
