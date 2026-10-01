@@ -469,3 +469,13 @@ else:
 - 如果不加default=0的話沒有任何 answer 的 Submission會讓None 傳進 classify() 後，None < 0 會丟 TypeError，頁面直接 500。
   現在確定不會有沒有題目的問卷的話default=0就不會將傳進去的None偽裝成0分
 - 原本的空白資料因為我之前遷移資料庫到postgres所以不需要再清
+
+## 2026-10-01 Render網頁回server error(500)
+
+- 在確認render網頁狀況時回server error請claude發request卻是正常(200)，後來發現是因為瀏覽器帶著session去request但因為資料庫
+  已經expired了所以查不到資料回server error
+- 解決方法:原本考慮是否要定時重置render提供的postgre資料庫(需定時檢查 容易有問題)或升級付費方案(無真實使用者故無需求)最後決定使用
+  其他平台(neon)提供的免費postgre資料庫方案並且伺服器與render同區(ohio)
+- 坑：在貼上Neon的DATABASE_URL參數時把引號也寫進去了，但因為render解析時是直接拿整個字串所以報錯，把引號去掉就可以了
+- 坑：migrate完成之後發現questionnaire_list頁面沒有東西，發現是因為沒有跑loaddata後來將fixture的json檔放到新建的/screening/fixtures
+  資料夾中(讓django自己去讀)並且在build.sh裡面新增`python manage.py loaddata questions_fixture.json`指令即可正常顯示
