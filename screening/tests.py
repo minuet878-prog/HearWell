@@ -84,6 +84,24 @@ class ScreeningViewAcceptValueTests(TestCase):
         self.assertRedirects(response, expected_reversed_url)
 
 
+class EmptyQuestionnaireSubmissionTests(TestCase):
+    def setUp(self):
+        self.user_a = User.objects.create_user(username="user_a")
+        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試空submission")
+
+    def test_zero_question_questionnaire(self):
+        self.client.force_login(self.user_a)
+        url = reverse("screening", kwargs={"questionnaire_id": self.questionnaire.id})
+        data = {
+            "form-TOTAL_FORMS": 0,
+            "form-INITIAL_FORMS": 0,
+        }
+        self.client.post(url, data)
+        self.assertFalse(
+            Submission.objects.filter(user=self.user_a, questionnaire=self.questionnaire).exists()
+        )
+
+
 class ModelsUniqueConstraintTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")

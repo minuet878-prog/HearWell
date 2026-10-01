@@ -99,6 +99,8 @@ def screening(request, questionnaire_id):
     if request.method == "POST":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         questions = questionnaire.questions.all()
+        if not questions:
+            return redirect("questionnaire_list")
         formset = AnswerFormSet(data=request.POST)
         # TODO(phase1-7): 驗證移到 form 層後改用 strict
         question_form = list(zip(questions, formset))  # noqa: B905

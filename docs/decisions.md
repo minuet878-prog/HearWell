@@ -461,3 +461,11 @@ else:
 - 改成沒設定就是 False（fail closed）。本機要在 `.env` 明確寫 `DEBUG=True`。
 - 坑：比對是區分大小寫的字串比對，`DEBUG=true` 會是 False，而且不會報錯。
 - 坑：本機測 `DEBUG=False` 會被 SSL 導向，瀏覽器會記住 301，恢復後要用無痕視窗或清快取。
+
+## 2026-10-01 修復空的Submission
+
+- 開發初期用來測試的Submission當時的問卷以及題目都未設計好(無題目)在formset的驗證邏輯時因為(set() == set())會通過
+- 目前處理是用一個guard clause(直接擋掉)但預計未來會加入填答到一半的狀態
+- 如果不加default=0的話沒有任何 answer 的 Submission會讓None 傳進 classify() 後，None < 0 會丟 TypeError，頁面直接 500。
+  現在確定不會有沒有題目的問卷的話default=0就不會將傳進去的None偽裝成0分
+- 原本的空白資料因為我之前遷移資料庫到postgres所以不需要再清
