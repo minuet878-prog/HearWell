@@ -479,3 +479,11 @@ else:
 - 坑：在貼上Neon的DATABASE_URL參數時把引號也寫進去了，但因為render解析時是直接拿整個字串所以報錯，把引號去掉就可以了
 - 坑：migrate完成之後發現questionnaire_list頁面沒有東西，發現是因為沒有跑loaddata後來將fixture的json檔放到新建的/screening/fixtures
   資料夾中(讓django自己去讀)並且在build.sh裡面新增`python manage.py loaddata questions_fixture.json`指令即可正常顯示
+
+## 2026-10-05 Screening驗證邏輯搬到forms
+- Why? 原本用的set comprehension會把重複的題目吃掉,如果使用者11題的submission過來(第11題重複第1題)程式不會報錯,而是順利進入到
+  `transaction.atomic()`那邊然後Answer會撞到一題對應一個答案的unique constraint而報錯->500->Submission因為Answer失敗消失
+  ,之後要進行DRF的重構,怕view要寫兩次所以搬到form層
+- 坑:在寫BaseAnswerFormSet的時候覆寫`clean()`時原本想用raise自訂exception但會報錯->500,一定要用`forms.ValidationError`
+- `screening view`裡面POST分支的`question_form`只有在AnswerFormSet驗證失敗時才會用到(用來顯示畫面),如果設定`strict=True`的話
+  `zip()`如果兩邊長短不相等時會直接報錯->500 改用`strict=False`少了重複的那題不影響使用者體驗
