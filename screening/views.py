@@ -89,7 +89,9 @@ def screening(request, questionnaire_id):
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         questions = questionnaire.questions.all()
-        formset = AnswerFormSet(initial=[{"question_id": question.id} for question in questions])
+        formset = AnswerFormSet(
+            questions=questions, initial=[{"question_id": question.id} for question in questions]
+        )
         question_form = list(zip(questions, formset, strict=True))
         return render(
             request,
@@ -101,44 +103,31 @@ def screening(request, questionnaire_id):
         questions = questionnaire.questions.all()
         if not questions:
             return redirect("questionnaire_list")
-        formset = AnswerFormSet(data=request.POST)
-        # TODO(phase1-7): 驗證移到 form 層後改用 strict
-        question_form = list(zip(questions, formset))  # noqa: B905
+        formset = AnswerFormSet(questions=questions, data=request.POST)
+        # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
+        # ，所以不能用 strict=True
+        question_form = list(zip(questions, formset, strict=False))
         if formset.is_valid():
-            expected_id = {question.id for question in questions}
-            submitted_id = {form.cleaned_data["question_id"].id for form in formset}
-            if expected_id == submitted_id:
-                with transaction.atomic():
-                    submission = Submission.objects.create(
-                        user=request.user, questionnaire=questionnaire
-                    )
-                    answers = [
-                        Answer(
-                            submission=submission,
-                            question=form.cleaned_data["question_id"],
-                            score=form.cleaned_data["score"],
-                        )
-                        for form in formset
-                    ]
-                    Answer.objects.bulk_create(answers)
-                return redirect("result", submission_id=submission.id)
-            else:
-                return render(
-                    request,
-                    "screening/screening.html",
-                    {
-                        "message": "表單答案數量錯誤，請重新確認",
-                        "question_form": question_form,
-                        "questionnaire": questionnaire,
-                        "formset": formset,
-                    },
+            with transaction.atomic():
+                submission = Submission.objects.create(
+                    user=request.user, questionnaire=questionnaire
                 )
+                answers = [
+                    Answer(
+                        submission=submission,
+                        question=form.cleaned_data["question_id"],
+                        score=form.cleaned_data["score"],
+                    )
+                    for form in formset
+                ]
+                Answer.objects.bulk_create(answers)
+            return redirect("result", submission_id=submission.id)
         else:
             return render(
                 request,
                 "screening/screening.html",
                 {
-                    "message": "表單資料有誤，請重新確認每一題的作答",
+                    "message": formset.non_form_errors(),
                     "question_form": question_form,
                     "questionnaire": questionnaire,
                     "formset": formset,

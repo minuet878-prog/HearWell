@@ -102,6 +102,43 @@ class EmptyQuestionnaireSubmissionTests(TestCase):
         )
 
 
+class DuplicateAnswerSubmissionTests(TestCase):
+    def setUp(self):
+        self.user_a = User.objects.create_user(username="user_a")
+        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試重複答案")
+        self.question_1 = Question.objects.create(
+            questionnaire=self.questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        self.question_2 = Question.objects.create(
+            questionnaire=self.questionnaire,
+            question_text="第二題",
+            question_number=2,
+            category=Category.SOCIAL,
+        )
+
+    def test_duplicate_answer_submission(self):
+        self.client.force_login(self.user_a)
+        url = reverse("screening", kwargs={"questionnaire_id": self.questionnaire.id})
+        data = {
+            "form-TOTAL_FORMS": 3,
+            "form-INITIAL_FORMS": 0,
+            "form-0-score": 4,
+            "form-0-question_id": str(self.question_1.id),
+            "form-1-score": 2,
+            "form-1-question_id": str(self.question_2.id),
+            "form-2-score": 2,
+            "form-2-question_id": str(self.question_1.id),
+        }
+        response = self.client.post(url, data)
+        self.assertFalse(
+            Submission.objects.filter(user=self.user_a, questionnaire=self.questionnaire).exists()
+        )
+        self.assertEqual(response.status_code, 200)
+
+
 class ModelsUniqueConstraintTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
