@@ -1,8 +1,11 @@
 import re
 from datetime import date
+from io import StringIO
+from pathlib import Path
 from typing import ClassVar
 
 from django.contrib.staticfiles import finders
+from django.core.management import call_command
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
@@ -1081,3 +1084,78 @@ class AccessibilityTests(TestCase):
         # The input sits inside its label, so the whole button is clickable.
         self.assertRegex(response.content.decode(), r'<label for="id_form-0-score_0">\s*<input')
         self.assertIn("display: flex", self._rule("div.choice-group"))
+
+
+class ApiFoundationTests(TestCase):
+    QUESTIONNAIRES = "/api/questionnaires/"
+    SCHEMA = "/api/schema/"
+    SCHEMA_FILE = Path(__file__).resolve().parent.parent / "docs" / "api" / "schema.yaml"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+
+    def test_anonymous_gets_403_json(self):
+        response = self.client.get(self.QUESTIONNAIRES)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn("detail", response.json())
+
+    def test_anonymous_cannot_read_schema(self):
+        # The schema view renders errors in its own OpenAPI format (YAML), not JSON.
+        response = self.client.get(self.SCHEMA)
+        self.assertEqual(response.status_code, 403)
+        content = response.content.decode()
+        self.assertIn("detail", content)
+        self.assertNotIn("openapi", content)
+        self.assertNotIn("/api/questionnaires/", content)
+
+    def test_questionnaire_list_is_read_only(self):
+        self.client.force_login(self.user)
+        for method in ("post", "put", "patch", "delete"):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.QUESTIONNAIRES)
+                self.assertEqual(response.status_code, 405)
+
+    def test_questionnaire_list(self):
+        # Lower id sorts last by code and name, so only ordering by id passes.
+        first = Questionnaire.objects.create(questionnaire_name="ZZ 問卷", code="zz")
+        second = Questionnaire.objects.create(questionnaire_name="AA 問卷", code="aa")
+        self.client.force_login(self.user)
+        response = self.client.get(self.QUESTIONNAIRES)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            [
+                {"id": first.id, "code": "zz", "name": "ZZ 問卷"},
+                {"id": second.id, "code": "aa", "name": "AA 問卷"},
+            ],
+        )
+
+    def test_questionnaire_list_empty(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.QUESTIONNAIRES).json(), [])
+
+    def test_schema_lists_endpoints(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.SCHEMA)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertTrue(content.startswith("openapi:"))
+        self.assertIn(self.QUESTIONNAIRES, content)
+
+    def test_schema_is_yaml_only(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(self.SCHEMA, {"format": "json"}).status_code, 404)
+        self.assertEqual(
+            self.client.get(self.SCHEMA, HTTP_ACCEPT="application/json").status_code, 406
+        )
+
+    def test_committed_schema_is_up_to_date(self):
+        out = StringIO()
+        call_command("spectacular", stdout=out)
+        self.assertEqual(
+            out.getvalue(),
+            self.SCHEMA_FILE.read_text(encoding="utf-8"),
+            "API changed: run `python manage.py spectacular --file docs/api/schema.yaml`",
+        )

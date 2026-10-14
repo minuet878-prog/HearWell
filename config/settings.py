@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -121,6 +123,9 @@ LOGIN_URL = "login"
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
+# Project translations win over app translations (e.g. Django REST framework's).
+LOCALE_PATHS = [BASE_DIR / "locale"]
+
 LANGUAGE_CODE = "zh-hant"
 
 TIME_ZONE = "Asia/Taipei"
@@ -147,3 +152,19 @@ STORAGES = {
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# API: read-only, logged-in users only (session cookie), JSON only.
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "HearWell API",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # drf-spectacular serves the schema publicly by default.
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
+}

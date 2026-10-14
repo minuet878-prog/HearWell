@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: HearWell API
+  version: 0.1.0
+paths:
+  /api/questionnaires/:
+    get:
+      operationId: questionnaires_list
+      tags:
+      - questionnaires
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Questionnaire'
+          description: ''
+components:
+  schemas:
+    Questionnaire:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+      required:
+      - code
+      - id
+      - name
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
