@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 1**（2026-10-14 確認；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 2**（Phase 1 於 2026-10-14 完成；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -31,7 +31,7 @@
 - [ ] 裝 debug-toolbar
 - [ ] `check --deploy`（要在 `DEBUG=False` 下跑）
 
-### Phase 1：正確性 ← 目前
+### Phase 1：正確性（完成）
 Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去。
 - [x] 1-1 空 submission 不存（PR #5）
 - [x] 1-2 作答驗證搬到 formset（PR #6）
@@ -39,10 +39,9 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
     F-6 位置耦合（POST 順序被打亂會對錯題）
 - [x] 1-3 `classify()` 改成門檻表（`Questionnaire.code` ＋ `scoring.THRESHOLDS`，滿分＝最後一級上限）
 - [x] 1-4 `my_hearing` N+1 → 計分公式只剩 `_score_expressions()` 一份，列表 annotate、單筆 aggregate
-- [ ] 1-5 快照決策：題目被改、歷史分數跟著變，要不要存當時分數
-  （先做決定，不一定現在實作；A3 和 C3 之前要想清楚）
+- [x] 1-5 快照決策：題目作答過就鎖（admin），門檻將來用規則版本號，`completed_at` 等 D2（見 decisions.md）
 
-### Phase 2：產品價值（仍用 Django template）
+### Phase 2：產品價值（仍用 Django template）← 目前
 - **A3 分項解讀**：emotional_score、social_score 已經算得出來，目前只顯示數字。
   要針對「哪個分項偏高」給出不同的解讀文字。
 - **B1 助聽器配戴標記**：填問卷時標記「這次有沒有戴助聽器」，需要在 Submission
@@ -102,7 +101,8 @@ Questionnaire/Question/Answer 這套結構理論上可以重複使用（不同�
 一樣的作答/計分流程），但幾個地方目前是寫死成 HHIE-S 專用，真的要加第二份問卷時
 需要一起解決：
 
-- classify() 的總分上限寫死 40（R8 記錄過，還沒動）
+- 門檻表已經以 `Questionnaire.code` 分開（1-3），新問卷要在 `scoring.THRESHOLDS` 加一組
+- 第一次要調整既有門檻時，先做規則版本號（Submission 記下當時的版本），見 1-5 的決定
 - Category（emotional/social）是 HHIE-S 專屬的分類，其他問卷的分項可能完全不同
   （例如 APHAB 分 easy listening/background noise/reverberation/aversiveness，
   跟 HHIE-S 的兩分類邏輯不一樣）

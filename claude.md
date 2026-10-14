@@ -119,9 +119,11 @@
 ## 已知陷阱
 
 - `_scores_cache` 不會失效：「讀 → 改 → 再讀」會拿到舊值，測試斷言前要重新從 DB 取物件。
-- `PROTECT` 擋得住刪除、擋不住編輯：題目被改，歷史分數會跟著改（Phase 1-5 快照決策）。
+- 作答過的題目、有作答紀錄的問卷 `code`，在 admin 是唯讀的；Submission／Answer 在 admin 只能看，不能新增、修改、刪除。要改題目就新增一份問卷（新 pk、新 code），不要改舊的。
+- 已上線的問卷不能加題（admin 沒擋，靠規則）：加了之後新作答的滿分會超過門檻表，變成「無法判讀」。
 - `Submission.user` 是 `PROTECT`，做過篩檢的帳號無法刪除，但個資法下使用者有權刪除自己的健康資料，之後必須處理。
-- `classify()` 的 40 分上限是 HHIE-S 專用，寫死在 `scoring.py`（Phase 1-3）。
+- `build.sh` 每次部署都會 `loaddata`，而且繞過 admin 的鎖：fixture 裡已上線的題目不能改，要改就新增一份問卷。
+- 門檻（`scoring.THRESHOLDS`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
 - macOS 檔名不分大小寫：git 追蹤的是小寫 `claude.md`，clone 到 Linux 會讀不到 `CLAUDE.md`。
@@ -135,4 +137,4 @@
 
 ## 目前階段
 
-Phase 1：正確性（1-3 `classify()` 門檻表 → 1-4 N+1 → 1-5 快照決策）。Phase 0 還剩 debug-toolbar 和 `check --deploy`。細節見 `docs/roadmap.md`。
+Phase 2：產品價值（仍用 Django template）。Phase 1 已完成；Phase 0 還剩 debug-toolbar 和 `check --deploy`。細節見 `docs/roadmap.md`。
