@@ -48,12 +48,13 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - 以下從 code review 報告補回，不做的話寫一句原因再刪：
   - [x] 未登入動線：登入／註冊後回到 `?next=`（只接受本站網址），登入頁說明、首頁提示
     （見 `docs/specs/phase2_login_next.md`）
-  - 註冊改用 `UserCreationForm`，順便收 `birth_date`（解鎖 A1）
-    - 已知（未登入動線審查時發現）：註冊出錯重新顯示時，密碼規則提示（`password_messages`）不見了
-    - 登入也可以一併改用內建 `LoginView`（會自己處理 `next`）
+  - [x] 註冊改用 `UserCreationForm`，選填民國出生年（存西元 `birth_year`，取代 `birth_date`；見 `docs/specs/phase2_register_form.md`）
+    - 還沒做：登入改用內建 `LoginView`（會自己處理 `next`）
+    - 還沒做：Django 內建訊息（密碼規則、欄位說明）用「你」，跟站內「您」不一致；要改得覆寫驗證器或翻譯檔
+    - 已知：兩個人幾乎同時用同一個名字註冊會 500（舊版有接 `IntegrityError`，新版沒有），機率極低
   - [x] 錯字、英文殘留、孤兒 `</li>`、作答頁題目被 `__str__` 截斷成 30 字（見 `docs/specs/phase2_copy_fixes.md`）
     - 範圍外、還沒處理：首頁只寫 HHIE-S、沒提 HHIA-S（內容正確性）；分數旁的半形冒號；
-      註冊頁 placeholder 拼錯 `Cofirmation`（畫面不顯示，改 `UserCreationForm` 時一併處理）
+      ~~註冊頁 placeholder 拼錯 `Cofirmation`~~（改用 `UserCreationForm` 後已不存在）
   - 無障礙基準線（字級、對比、focus、觸控尺寸），React 之前先量一次當對照
     - 已知（2026-10-14）：Minty 的 `text-muted` 對白底只有 2.44:1，預設內文色 #888 也只有 3.54:1，
       都沒達到 WCAG AA 的 4.5:1。結果頁的分數、建議都用 `text-muted`。`text-body-emphasis`（#000）是 21:1
@@ -100,8 +101,10 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ## 待定：尚未排入任何 phase
 
-- **A1 年齡導引**：User 已經有 birth_date 欄位但沒用到。等真的要做第二份問卷、
+- **A1 年齡導引**：註冊已經可以選填出生年（`User.birth_year`，西元），但還沒用到。等真的要做第二份問卷、
   知道實際需要哪些條件時，再一起設計成通用機制。
+  - 注意：`age` 是「今年 − 出生年」，生日還沒過的人會多 1 歲；64 歲的人可能被分到 65+ 的量表
+  - 舊帳號大多沒有出生年，要決定沒有年齡時怎麼導引
 - **C2 衛教內容**：提供聽力保健的教育性文章／資訊。
 - **C3 可分享報告**：把結果匯出成可以拿去看診的報告（PDF 或類似格式）。
 - 以及下方各個「待定」段落。

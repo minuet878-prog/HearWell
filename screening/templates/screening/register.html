@@ -23,36 +23,29 @@
 {% block body %}
 <div class="container">
     <h1 class="h3 mb-3 fw-normal">註冊</h1>
-    {% for message in messages %}
-    <div class="mb-3 text-danger">{{ message }}</div>
-    {% endfor %}
     <form method="post" action="{% url 'register' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="form-floating mb-2">
-            <input autofocus class="form-control" id="floatingInput" type="text" name="username"
-                placeholder="Username" required>
-            <label for="floatingInput">使用者名稱</label>
+        {% for error in form.non_field_errors %}
+        <p class="fs-5 text-danger">{{ error }}</p>
+        {% endfor %}
+        {% for field in form %}
+        {% if field.name != "roc_birth_year" %}
+        <div class="mb-3 text-start">
+            {{ field.label_tag }}
+            {{ field }}
+            {% include "screening/field_messages.html" %}
         </div>
-
-        <div class="form-floating mb-2">
-            <input class="form-control" id="floatingEmail" type="email" placeholder="電子信箱地址" name="email" required>
-            <label for="floatingEmail" >電子郵件</label>
-        </div>
-
-        <div class="form-floating mb-2">
-            <input class="form-control" id="floatingPassword" type="password" name="password"
-                placeholder="Password" required>
-            <label for="floatingPassword">密碼</label>
-            {% for password_message in password_messages %}
-            <small class="form-text text-muted">{{ password_message }}</small>
-            {% endfor %}
-        </div>
-
-        <div class="form-floating mb-2">
-            <input class="form-control" id="floatingConfirmation" type="password" name="confirmation"
-                placeholder="Cofirmation" required>
-            <label for="floatingConfirmation">請再輸入一次</label>
+        {% endif %}
+        {% endfor %}
+        <div class="mb-3 text-start">
+            {{ form.roc_birth_year.label_tag }}
+            <div class="input-group">
+                <span class="input-group-text">民國</span>
+                {{ form.roc_birth_year }}
+                <span class="input-group-text">年</span>
+            </div>
+            {% include "screening/field_messages.html" with field=form.roc_birth_year %}
         </div>
         <input class="w-100 btn btn-lg btn-primary" type="submit" value="註冊">
     </form>

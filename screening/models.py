@@ -8,18 +8,14 @@ from screening.scoring import classify
 
 
 class User(AbstractUser):
-    birth_date = models.DateField(null=True, blank=True)
+    # Western calendar year; only the year is collected (data minimisation).
+    birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
 
     @property
     def age(self):
-        today = date.today()
-        if self.birth_date is None:
+        if self.birth_year is None:
             return None
-        else:
-            if (today.month, today.day) >= (self.birth_date.month, self.birth_date.day):
-                return today.year - self.birth_date.year
-            else:
-                return today.year - self.birth_date.year - 1
+        return date.today().year - self.birth_year
 
 
 class Questionnaire(models.Model):

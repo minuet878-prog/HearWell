@@ -1,8 +1,10 @@
 import re
+from datetime import date
 from typing import ClassVar
 
 from django.db import IntegrityError, connection
-from django.test import SimpleTestCase, TestCase
+from django.db.migrations.executor import MigrationExecutor
+from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -659,8 +661,8 @@ class LoginNextTests(TestCase):
         data = {
             "username": username,
             "email": f"{username}@example.com",
-            "password": self.PASSWORD,
-            "confirmation": confirmation or self.PASSWORD,
+            "password1": self.PASSWORD,
+            "password2": confirmation or self.PASSWORD,
         }
         if next_url is not None:
             data["next"] = next_url
@@ -709,7 +711,7 @@ class LoginNextTests(TestCase):
 
     def test_next_kept_after_register_error(self):
         response = self._register(self.target, confirmation="Different#123")
-        self.assertContains(response, "密碼必須相同")
+        self.assertContains(response, "輸入的兩個密碼不一致。")
         self._assert_next_kept(response)
         self.assertRedirects(self._register(self.target), self.target)
 
@@ -853,3 +855,144 @@ class CopyTests(TestCase):
         content = self.client.get(reverse("questionnaire_list")).content.decode()
         # <li followed by space or >, so <link> in <head> is not counted.
         self.assertEqual(len(re.findall(r"<li[\s>]", content)), content.count("</li>"))
+
+
+class RegisterFormTests(TestCase):
+    PASSWORD = "Xk9#mPq2vLw"
+    NOTE = "選填。用來推薦適合您年齡的問卷，不會公開。"
+
+    def setUp(self):
+        self.url = reverse("register")
+        self.max_roc = date.today().year - 18 - 1911
+        self.range_error = f"請輸入民國 1 到 {self.max_roc} 年之間的數字"
+
+    def _post(self, **overrides):
+        data = {
+            "username": "newcomer",
+            "email": "newcomer@example.com",
+            "password1": self.PASSWORD,
+            "password2": self.PASSWORD,
+            "roc_birth_year": "",
+            **overrides,
+        }
+        return self.client.post(self.url, data)
+
+    def test_register_page_fields(self):
+        response = self.client.get(self.url)
+        for name in ("username", "email", "password1", "password2", "roc_birth_year"):
+            self.assertContains(response, f'name="{name}"')
+        self.assertContains(response, "民國")
+        self.assertContains(response, self.NOTE)
+        self.assertContains(response, "<li>你的密碼必須包含至少 8 個字元。</li>", html=True)
+
+    def test_register_without_birth_year(self):
+        response = self._post()
+        self.assertRedirects(response, reverse("index"))
+        user = User.objects.get(username="newcomer")
+        self.assertIsNone(user.birth_year)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
+
+    def test_roc_year_is_stored_as_western_year(self):
+        self._post(roc_birth_year="44")
+        self.assertEqual(User.objects.get(username="newcomer").birth_year, 1955)
+
+    def test_roc_year_boundaries_accepted(self):
+        for i, roc in enumerate((1, self.max_roc)):
+            with self.subTest(roc=roc):
+                self.client.logout()
+                self._post(
+                    username=f"edge{i}", email=f"edge{i}@example.com", roc_birth_year=str(roc)
+                )
+                self.assertEqual(User.objects.get(username=f"edge{i}").birth_year, roc + 1911)
+
+    def test_invalid_roc_year_rejected(self):
+        for value in ("0", str(self.max_roc + 1), "abc", "1955", "²"):
+            with self.subTest(value=value):
+                response = self._post(roc_birth_year=value)
+                self.assertFalse(User.objects.exists())
+                self.assertIn(self.range_error, response.context["form"].errors["roc_birth_year"])
+                self.assertContains(response, self.range_error)
+
+    def test_password_mismatch_keeps_input(self):
+        response = self._post(password2="Different#123", roc_birth_year="44")
+        self.assertFalse(User.objects.exists())
+        self.assertIn("輸入的兩個密碼不一致。", response.context["form"].errors["password2"])
+        self.assertContains(response, 'value="newcomer"')
+        self.assertContains(response, 'value="newcomer@example.com"')
+        self.assertContains(response, 'value="44"')
+        self.assertNotContains(response, self.PASSWORD)
+        self.assertContains(response, "你的密碼必須包含至少 8 個字元。")
+
+    def test_duplicate_username_rejected(self):
+        User.objects.create_user(username="newcomer")
+        response = self._post()
+        self.assertEqual(User.objects.count(), 1)
+        for error in response.context["form"].errors["username"]:
+            self.assertContains(response, error)
+
+    def test_required_fields(self):
+        for field in ("username", "email", "password1"):
+            with self.subTest(field=field):
+                response = self._post(**{field: ""})
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(User.objects.exists())
+                self.assertIn("這個欄位是必須的。", response.context["form"].errors[field])
+
+    def test_password_similar_to_username_rejected(self):
+        response = self._post(
+            username="hearwellsenior", password1="hearwellsenior1", password2="hearwellsenior1"
+        )
+        self.assertFalse(User.objects.exists())
+        errors = response.context["form"].errors["password2"]
+        self.assertTrue(any("使用者名稱太相近" in error for error in errors), errors)
+
+    def test_age_from_birth_year(self):
+        self.assertEqual(User(birth_year=1955).age, date.today().year - 1955)
+        self.assertIsNone(User().age)
+
+    def test_note_uses_readable_style(self):
+        self.assertContains(
+            self.client.get(self.url),
+            f'<div id="id_roc_birth_year_helptext" class="fs-5 text-body-emphasis mt-1">'
+            f"{self.NOTE}</div>",
+            html=True,
+        )
+
+    def test_password_rules_use_rem_size(self):
+        response = self.client.get(self.url)
+        self.assertNotContains(response, "form-text")
+        self.assertContains(
+            response, 'id="id_password1_helptext" class="fs-5 text-body-emphasis mt-1"'
+        )
+
+    def test_aria_describedby_targets_exist(self):
+        response = self._post(username="", password2="Different#123", roc_birth_year="abc")
+        content = response.content.decode()
+        targets = re.findall(r'aria-describedby="([^"]+)"', content)
+        self.assertTrue(targets)
+        for ids in targets:
+            for target in ids.split():
+                with self.subTest(target=target):
+                    self.assertIn(f'id="{target}"', content)
+
+
+class BirthYearMigrationTests(TransactionTestCase):
+    before = (("screening", "0014_submission_wearing_hearing_aid"),)
+    after = (("screening", "0016_remove_user_birth_date"),)
+
+    def _migrate(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.migrate(list(targets))
+        return executor.loader.project_state(list(targets)).apps
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def test_birth_date_year_is_kept(self):
+        old_user = self._migrate(self.before).get_model("screening", "User")
+        old_user.objects.create(username="with_date", birth_date=date(1955, 6, 1))
+        old_user.objects.create(username="without_date")
+        new_user = self._migrate(self.after).get_model("screening", "User")
+        self.assertEqual(new_user.objects.get(username="with_date").birth_year, 1955)
+        self.assertIsNone(new_user.objects.get(username="without_date").birth_year)

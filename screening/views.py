@@ -1,21 +1,16 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.password_validation import (
-    password_validators_help_texts,
-    validate_password,
-)
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
-from screening.forms import AnswerFormSet, HearingAidForm
+from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
 from screening.scoring import get_advice, level_to_color
 
-from .models import Answer, Questionnaire, Submission, User
+from .models import Answer, Questionnaire, Submission
 
 
 def _safe_next(request):
@@ -61,46 +56,16 @@ def logout_view(request):
 
 @require_http_methods(["GET", "POST"])
 def register(request):
+    next_url = _safe_next(request)
     if request.method == "POST":
-        username = request.POST.get("username")
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-        confirmation = request.POST.get("confirmation")
-        next_url = _safe_next(request)
-        if not username or not password or not confirmation or not email:
-            return render(
-                request,
-                "screening/register.html",
-                {"messages": ["請完整填寫所有欄位"], "next": next_url},
-            )
-        if password != confirmation:
-            return render(
-                request, "screening/register.html", {"messages": ["密碼必須相同"], "next": next_url}
-            )
-
-        try:
-            user = User(username=username)
-            validate_password(password, user=user)
-            user = User.objects.create_user(username, email, password)
-            user.save()
-        except IntegrityError:
-            return render(
-                request,
-                "screening/register.html",
-                {"messages": ["使用者名稱已被使用"], "next": next_url},
-            )
-        except ValidationError as e:
-            return render(
-                request, "screening/register.html", {"messages": e.messages, "next": next_url}
-            )
-        login(request, user)
-        return HttpResponseRedirect(next_url or reverse("index"))
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return HttpResponseRedirect(next_url or reverse("index"))
     else:
-        return render(
-            request,
-            "screening/register.html",
-            {"password_messages": password_validators_help_texts(), "next": _safe_next(request)},
-        )
+        form = RegisterForm()
+    return render(request, "screening/register.html", {"form": form, "next": next_url})
 
 
 @login_required

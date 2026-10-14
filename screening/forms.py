@@ -1,7 +1,49 @@
+from datetime import date
+
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
 from django.forms import BaseFormSet, formset_factory
 
-from screening.models import Question, Score
+from screening.models import Question, Score, User
+
+ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
+
+
+class RegisterForm(UserCreationForm):
+    email = forms.EmailField(label="電子郵件")
+    roc_birth_year = forms.CharField(
+        label="出生年",
+        required=False,
+        help_text="選填。用來推薦適合您年齡的問卷，不會公開。",
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 3}),
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("username", "email")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "form-control")
+
+    def clean_roc_birth_year(self):
+        value = self.cleaned_data["roc_birth_year"]
+        if not value:
+            return None
+        max_roc = date.today().year - 18 - ROC_OFFSET
+        # isdecimal() accepts exactly what int() accepts; isdigit() also lets through "²".
+        if not value.isdecimal() or not 1 <= int(value) <= max_roc:
+            raise forms.ValidationError(f"請輸入民國 1 到 {max_roc} 年之間的數字")
+        return int(value)
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        roc = self.cleaned_data["roc_birth_year"]
+        user.birth_year = None if roc is None else roc + ROC_OFFSET
+        if commit:
+            user.save()
+        return user
 
 
 class AnswerForm(forms.Form):
