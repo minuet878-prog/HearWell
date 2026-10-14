@@ -15,6 +15,18 @@ class AnswerForm(forms.Form):
     )
 
 
+class HearingAidForm(forms.Form):
+    wearing_hearing_aid = forms.TypedChoiceField(
+        choices=((True, "有戴"), (False, "沒戴")),
+        coerce=lambda value: value == "True",
+        widget=forms.RadioSelect,
+        error_messages={
+            "required": "請選擇這次有沒有戴助聽器",
+            "invalid_choice": "請選擇這次有沒有戴助聽器",
+        },
+    )
+
+
 class BaseAnswerFormSet(BaseFormSet):
     def __init__(
         self,

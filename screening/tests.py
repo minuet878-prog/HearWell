@@ -129,6 +129,7 @@ class ScreeningViewAcceptValueTests(TestCase):
             "form-INITIAL_FORMS": 0,
             "form-0-score": "4",
             "form-0-question_id": str(self.question.id),
+            "wearing_hearing_aid": "True",
         }
         response = self.client.post(url, data)
         submission = Submission.objects.get(user=self.user_a, questionnaire=self.questionnaire)
@@ -188,6 +189,7 @@ class DuplicateAnswerSubmissionTests(TestCase):
             "form-1-question_id": str(self.question_2.id),
             "form-2-score": 2,
             "form-2-question_id": str(self.question_1.id),
+            "wearing_hearing_aid": "True",
         }
         response = self.client.post(url, data)
         self.assertFalse(
@@ -507,4 +509,118 @@ class SubscaleNoteTests(TestCase):
         response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(
             response, f'<p class="fs-4 text-body-emphasis text-center">{self.NOTE}</p>', html=True
+        )
+
+
+class HearingAidTests(TestCase):
+    PROMPT = "這次填答時，您有沒有戴助聽器？"
+    ERROR = "請選擇這次有沒有戴助聽器"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.questionnaire.id])
+
+    def _post(self, **extra):
+        data = {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 0,
+            "form-0-score": "4",
+            "form-0-question_id": str(self.question.id),
+            **extra,
+        }
+        return self.client.post(self.url, data)
+
+    def _make_submission(self, wearing):
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.create(submission=submission, question=self.question, score=4)
+        return submission
+
+    def test_question_shown_before_first_question_without_default(self):
+        response = self.client.get(self.url)
+        content = response.content.decode()
+        self.assertLess(content.index(self.PROMPT), content.index("第一題"))
+        self.assertContains(response, 'name="wearing_hearing_aid" value="True"')
+        self.assertContains(response, 'name="wearing_hearing_aid" value="False"')
+        self.assertContains(response, "有戴")
+        self.assertContains(response, "沒戴")
+        self.assertNotContains(response, "checked")
+
+    def test_wearing_saved_and_shown_on_result(self):
+        response = self._post(wearing_hearing_aid="True")
+        submission = Submission.objects.get(user=self.user)
+        self.assertIs(submission.wearing_hearing_aid, True)
+        response = self.client.get(response.url)
+        self.assertContains(response, "助聽器：有戴")
+
+    def test_not_wearing_saved_and_shown_on_result(self):
+        response = self._post(wearing_hearing_aid="False")
+        submission = Submission.objects.get(user=self.user)
+        self.assertIs(submission.wearing_hearing_aid, False)
+        response = self.client.get(response.url)
+        self.assertContains(response, "助聽器：沒戴")
+
+    def test_missing_answer_rejected_and_answers_kept(self):
+        response = self._post()
+        self.assertFalse(Submission.objects.exists())
+        self.assertContains(response, self.ERROR)
+        self.assertContains(
+            response,
+            '<input type="radio" name="form-0-score" value="4" class="score-radio-group"'
+            ' id="id_form-0-score_0" checked>',
+            html=True,
+        )
+
+    def test_hearing_aid_choice_kept_when_answer_missing(self):
+        response = self._post(**{"form-0-score": "", "wearing_hearing_aid": "False"})
+        self.assertFalse(Submission.objects.exists())
+        self.assertContains(
+            response,
+            '<input type="radio" name="wearing_hearing_aid" value="False" required'
+            ' id="id_wearing_hearing_aid_1" checked>',
+            html=True,
+        )
+
+    def test_tampered_value_rejected(self):
+        response = self._post(wearing_hearing_aid="maybe")
+        self.assertFalse(Submission.objects.exists())
+        self.assertContains(response, self.ERROR)
+
+    def test_unrecorded_submission_shows_unrecorded(self):
+        submission = self._make_submission(None)
+        response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertContains(response, "助聽器：未記錄")
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, "助聽器：未記錄")
+
+    def test_history_shows_each_status(self):
+        for wearing in (True, False, None):
+            self._make_submission(wearing)
+        response = self.client.get(reverse("my_hearing"))
+        for label in ("助聽器：有戴", "助聽器：沒戴", "助聽器：未記錄"):
+            self.assertContains(response, label, count=1)
+
+    def test_status_does_not_change_score(self):
+        wearing = self._make_submission(True)
+        not_wearing = self._make_submission(False)
+        self.assertEqual(wearing.total_answer_score, not_wearing.total_answer_score)
+        self.assertEqual(wearing.classified, not_wearing.classified)
+
+    def test_new_text_uses_readable_style(self):
+        submission = self._make_submission(True)
+        response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertContains(
+            response, '<p class="fs-4 text-body-emphasis text-center">助聽器：有戴</p>', html=True
         )

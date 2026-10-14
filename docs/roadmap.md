@@ -43,8 +43,8 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ### Phase 2：產品價值（仍用 Django template）← 目前
 - [x] **結果頁分項說明**（取代 A3）：分項分數下方註明「僅供參考，沒有正式的解讀標準」
-- **B1 助聽器配戴標記**：填問卷時標記「這次有沒有戴助聽器」，需要在 Submission
-  加一個欄位（例如 wearing_hearing_aid）。
+- [x] **B1 助聽器配戴標記**：作答頁第一題前必填「有戴／沒戴」，結果頁與歷史頁顯示，
+  舊紀錄顯示「未記錄」（`Submission.wearing_hearing_aid`，見 `docs/specs/phase2_b1_hearing_aid.md`）
 - 以下從 code review 報告補回，不做的話寫一句原因再刪：
   - 未登入動線：登入忽略 `?next=`、CTA 文案
   - 註冊改用 `UserCreationForm`，順便收 `birth_date`（解鎖 A1）
@@ -52,6 +52,10 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - 無障礙基準線（字級、對比、focus、觸控尺寸），React 之前先量一次當對照
     - 已知（2026-10-14）：Minty 的 `text-muted` 對白底只有 2.44:1，預設內文色 #888 也只有 3.54:1，
       都沒達到 WCAG AA 的 4.5:1。結果頁的分數、建議都用 `text-muted`。`text-body-emphasis`（#000）是 21:1
+    - 已知（B1 審查）：作答頁的選項沒有用 `fieldset`／`legend` 跟題目綁在一起，錯誤訊息也沒用
+      `aria-describedby` 連到選項，螢幕閱讀器念選項時不會念題目和錯誤
+    - 已知（B1 審查）：助聽器選項是直排、分數選項是橫排（`styles.css` 的 `[id$="-score"]` 只套到分數題），
+      排版不一致，統一處理
 
 ### Phase 3：DRF 唯讀 API（AI 代工）
 - `/api/` 與既有 template view 並存，不改動既有頁面。
