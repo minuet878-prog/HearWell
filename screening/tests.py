@@ -1,10 +1,13 @@
+import re
+from typing import ClassVar
+
 from django.db import IntegrityError, connection
 from django.test import SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
-from screening.scoring import classify
+from screening.scoring import classify, get_advice
 
 
 class ClassifyTests(SimpleTestCase):
@@ -744,3 +747,109 @@ class LoginNextTests(TestCase):
             f'<p class="fs-5 text-body-emphasis mt-2">{self.HINT}</p>',
             html=True,
         )
+
+
+class CopyTests(TestCase):
+    LONG_QUESTION = "這是一題為了測試截斷而刻意寫得很長的題目，超過三十個字之後也必須完整顯示嗎？"
+    INTRO = (
+        "本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。"
+        "已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。"
+        "請在閱讀每項問題後圈選常常、有時或從未。"
+    )
+    ADVICE: ClassVar[dict[str, str]] = {
+        "mild_to_moderate": (
+            "聽力的問題已經慢慢開始影響到您的社交活動以及情緒，例如"
+            "與家人之間常常因為聽不清楚或是電視聲音等而產生爭吵、在多人且吵雜的"
+            "社交環境當中會因為聽不清楚而導致社交上的窘迫及退縮，許多聽力衰退"
+            "帶來的問題是微妙且和緩的，但經過此次篩檢能夠讓您體認到聽力對自身生"
+            "活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。"
+        ),
+        "severe": (
+            "聽力問題已經嚴重影響到您的生活了，許多人常常會忽視這一塊，聽不到這件事"
+            "情往往已經十分嚴重了才會發現，若您尚未採取任何行動建議立即前往醫院耳鼻"
+            "喉科尋求專業建議，並且考慮配戴助聽器。聽力喪失影響的並不只是聽不聽得到，"
+            "無形中也會增加社交活動的壓力（例如因為聽不清楚常會在聊天的過程中退縮、"
+            "裝作聽得懂等），這些壓力以及情緒的低落會增加長者的認知負擔。"
+        ),
+    }
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text=cls.LONG_QUESTION,
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.questionnaire.id])
+
+    def test_question_text_is_not_truncated(self):
+        self.assertGreater(len(self.LONG_QUESTION), 30)
+        self.assertContains(self.client.get(self.url), f"1. {self.LONG_QUESTION}")
+
+    def test_question_text_full_after_validation_error(self):
+        data = {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 0,
+            "form-0-score": "4",
+            "form-0-question_id": str(self.question.id),
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"1. {self.LONG_QUESTION}")
+
+    def test_intro_typo_fixed(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, self.INTRO)
+        self.assertNotContains(response, "以選配了助聽器格")
+
+    def test_advice_text(self):
+        for level in ("normal", "mild_to_moderate", "severe", "unknown"):
+            with self.subTest(level=level):
+                advice = get_advice(level)
+                for banned in ("ex.", "(", ")", "你"):
+                    self.assertNotIn(banned, advice)
+                if level in self.ADVICE:
+                    self.assertEqual(advice, self.ADVICE[level])
+
+    def test_login_title_in_chinese(self):
+        self.client.logout()
+        response = self.client.get(reverse("login"))
+        self.assertContains(response, '<h1 class="h3 mb-3 fw-normal">登入</h1>', html=True)
+        self.assertNotContains(response, "Welcome")
+
+    def test_sign_in_status_in_chinese(self):
+        response = self.client.get(reverse("index"))
+        self.assertContains(response, "目前登入：<strong>tester</strong>")
+        self.assertNotContains(response, "Signed in")
+        self.client.logout()
+        response = self.client.get(reverse("index"))
+        self.assertContains(response, "尚未登入")
+        for english in ("Signed in", "Not signed in"):
+            self.assertNotContains(response, english)
+
+    def test_history_button_label(self):
+        submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
+        result_url = reverse("result", args=[submission.id])
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(
+            response,
+            f'<a class="btn btn-primary mb-2 ms-2" href="{result_url}">查看結果</a>',
+            html=True,
+        )
+        self.assertNotContains(response, "連結")
+
+    def test_empty_history_uses_polite_you(self):
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, "您還沒有做過篩檢紀錄")
+        self.assertNotContains(response, "你還沒有")
+
+    def test_questionnaire_list_has_no_orphan_li(self):
+        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        # <li followed by space or >, so <link> in <head> is not counted.
+        self.assertEqual(len(re.findall(r"<li[\s>]", content)), content.count("</li>"))

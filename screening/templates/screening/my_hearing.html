@@ -8,10 +8,10 @@
         <span class="text-muted fs-4">{{ submission.created_at|date:"Y/m/d" }} 總分:{{ submission.total_answer_score }}
             </span><span class="fs-4 text-body-emphasis">助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>{% with classified=submission.classified %}<span class="text-{{ classified.level|level_to_color }} fs-4">
             {{ classified.text }}</span>{% endwith %}<a class="btn btn-primary mb-2 ms-2"
-            href="{% url 'result' submission.id %}">連結</a>
+            href="{% url 'result' submission.id %}">查看結果</a>
     </div>
 </div>
 {% empty %}
-<p>你還沒有做過篩檢紀錄</p>
+<p>您還沒有做過篩檢紀錄</p>
 {% endfor %}
 {% endblock %}

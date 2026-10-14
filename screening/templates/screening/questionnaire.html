@@ -4,7 +4,7 @@
 {% for questionnaire in questionnaires %}
 <div class="card mt-3">
     <div class="card-body fs-3">
-        <a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a></li>
+        <a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a>
     </div>
 </div>
 {% endfor %}
