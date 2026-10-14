@@ -1,0 +1,28 @@
+# Restore Django's own zh_Hant wording for messages that Django REST framework
+# also translates. App translations otherwise override Django core site-wide.
+# Add "Plural-Forms: nplurals=1; plural=0;" to the header before adding plural messages.
+msgid ""
+msgstr ""
+"Project-Id-Version: HearWell\n"
+"PO-Revision-Date: 2026-10-14 00:00+0800\n"
+"Last-Translator: HearWell\n"
+"Language-Team: zh_Hant\n"
+"Language: zh_Hant\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Enter a valid URL."
+msgstr "請輸入有效的 URL。"
+
+msgid "No file was submitted."
+msgstr "沒有檔案送出"
+
+msgid "The submitted file is empty."
+msgstr "送出的檔案是空的。"
+
+msgid "This field is required."
+msgstr "這個欄位是必須的。"
+
+msgid "Value must be valid JSON."
+msgstr "必須是有效的 JSON 值"
