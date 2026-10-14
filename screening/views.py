@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from screening.forms import AnswerFormSet
+from screening.forms import AnswerFormSet, HearingAidForm
 from screening.scoring import get_advice, level_to_color
 
 from .models import Answer, Questionnaire, Submission, User
@@ -96,7 +96,12 @@ def screening(request, questionnaire_id):
         return render(
             request,
             "screening/screening.html",
-            {"question_form": question_form, "questionnaire": questionnaire, "formset": formset},
+            {
+                "question_form": question_form,
+                "questionnaire": questionnaire,
+                "formset": formset,
+                "hearing_aid_form": HearingAidForm(),
+            },
         )
     if request.method == "POST":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
@@ -104,13 +109,16 @@ def screening(request, questionnaire_id):
         if not questions:
             return redirect("questionnaire_list")
         formset = AnswerFormSet(questions=questions, data=request.POST)
+        hearing_aid_form = HearingAidForm(data=request.POST)
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
         # ，所以不能用 strict=True
         question_form = list(zip(questions, formset, strict=False))
-        if formset.is_valid():
+        if formset.is_valid() and hearing_aid_form.is_valid():
             with transaction.atomic():
                 submission = Submission.objects.create(
-                    user=request.user, questionnaire=questionnaire
+                    user=request.user,
+                    questionnaire=questionnaire,
+                    wearing_hearing_aid=hearing_aid_form.cleaned_data["wearing_hearing_aid"],
                 )
                 answers = [
                     Answer(
@@ -131,6 +139,7 @@ def screening(request, questionnaire_id):
                     "question_form": question_form,
                     "questionnaire": questionnaire,
                     "formset": formset,
+                    "hearing_aid_form": hearing_aid_form,
                 },
             )
 

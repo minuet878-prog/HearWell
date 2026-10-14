@@ -88,6 +88,10 @@ class Submission(models.Model):
         Questionnaire, on_delete=models.PROTECT, related_name="submissions"
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    # None means the submission predates this question, not "not wearing".
+    wearing_hearing_aid = models.BooleanField(
+        null=True, choices=((True, "有戴"), (False, "沒戴"), (None, "未記錄"))
+    )
     objects = SubmissionQuerySet.as_manager()
 
     class Meta:

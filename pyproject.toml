@@ -5,4 +5,4 @@ extend-exclude = ["**/migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "DJ", "TID", "RUF"]
-allowed-confusables = ["，", "？", "；"]
+allowed-confusables = ["，", "？", "；", "："]
