@@ -497,3 +497,9 @@ else:
 - 坑：已經有資料的表不能直接加「必填＋唯一」的欄位，migration 拆成兩個檔（先加可空欄位補資料、再收緊）。放同一個檔在 PostgreSQL 可能撞 pending trigger events
 - 坑：歷史頁模板呼叫兩次 `submission.classified`（顏色一次、文字一次），log 寫兩次，用 `{% with %}` 改成算一次
 - 坑：舊測試建問卷沒給 code，預設是空字串，測試照過但其實走到「無法判讀」，補上 code
+
+## 2026-10-14 歷史頁 N+1、分數收成一條路
+- Why? 歷史頁總分用 `with_scores()` 的 annotation，分級卻走 `total_answer_score` 每筆各查一次，N 筆就多 N 次查詢（1 筆 4 次、5 筆 8 次），而且同一頁的分數算了兩種方法
+- 三個 Sum（總分／情緒／社交）抽成 `_score_expressions()`，全專案只有這一份。列表用 annotate、單筆用 aggregate，`_calculate_scores()` 看到已經 annotate 過就直接用
+- 測試比「1 筆跟 5 筆查詢數一樣」，不寫死次數；同時斷言真的列出 5 筆，不然列表壞掉什麼都沒查也會假通過
+- 坑：`with_scores()` 不能跟篩 answers 的 filter 串在一起用，Django 會多 JOIN 一次或先篩掉答案，分數會錯（審查時重現過 26 變 20 或 130）

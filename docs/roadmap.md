@@ -38,8 +38,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - 尾巴：補 `assertContains` 測試，確認錯誤訊息真的出現在畫面上；
     F-6 位置耦合（POST 順序被打亂會對錯題）
 - [x] 1-3 `classify()` 改成門檻表（`Questionnaire.code` ＋ `scoring.THRESHOLDS`，滿分＝最後一級上限）
-- [ ] 1-4 `my_hearing` N+1：先用 `assertNumQueries` 量，再收斂成單一計算路徑
-  （歷史頁的總分用 `with_scores()` annotation、分級用 `total_answer_score`，目前是兩條路）
+- [x] 1-4 `my_hearing` N+1 → 計分公式只剩 `_score_expressions()` 一份，列表 annotate、單筆 aggregate
 - [ ] 1-5 快照決策：題目被改、歷史分數跟著變，要不要存當時分數
   （先做決定，不一定現在實作；A3 和 C3 之前要想清楚）
 

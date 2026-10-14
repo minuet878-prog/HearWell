@@ -58,11 +58,26 @@ class Question(models.Model):
         return f"{self.question_number}: {self.question_text[:30]}"
 
 
+def _score_expressions():
+    # The only definition of score sums: aggregate() for one submission, annotate() for lists.
+    return {
+        "score_total": models.Sum("answers__score", default=0),
+        "score_emotional": models.Sum(
+            "answers__score",
+            filter=models.Q(answers__question__category=Category.EMOTIONAL),
+            default=0,
+        ),
+        "score_social": models.Sum(
+            "answers__score",
+            filter=models.Q(answers__question__category=Category.SOCIAL),
+            default=0,
+        ),
+    }
+
+
 class SubmissionQuerySet(models.QuerySet):
     def with_scores(self):
-        return self.annotate(total_score=models.Sum("answers__score", default=0)).order_by(
-            "-created_at"
-        )
+        return self.annotate(**_score_expressions()).order_by("-created_at")
 
 
 class Submission(models.Model):
@@ -84,28 +99,24 @@ class Submission(models.Model):
 
     def _calculate_scores(self):
         if getattr(self, "_scores_cache", None) is None:
-            self._scores_cache = self.answers.aggregate(
-                total=models.Sum("score", default=0),
-                emotional=models.Sum(
-                    "score", filter=models.Q(question__category=Category.EMOTIONAL), default=0
-                ),
-                social=models.Sum(
-                    "score", filter=models.Q(question__category=Category.SOCIAL), default=0
-                ),
-            )
+            expressions = _score_expressions()
+            if hasattr(self, "score_total"):  # already annotated by with_scores()
+                self._scores_cache = {name: getattr(self, name) for name in expressions}
+            else:
+                self._scores_cache = Submission.objects.filter(pk=self.pk).aggregate(**expressions)
         return self._scores_cache
 
     @property
     def total_answer_score(self):
-        return self._calculate_scores()["total"]
+        return self._calculate_scores()["score_total"]
 
     @property
     def emotional_score(self):
-        return self._calculate_scores()["emotional"]
+        return self._calculate_scores()["score_emotional"]
 
     @property
     def social_score(self):
-        return self._calculate_scores()["social"]
+        return self._calculate_scores()["score_social"]
 
     @property
     def classified(self):
