@@ -487,3 +487,13 @@ else:
 - 坑:在寫BaseAnswerFormSet的時候覆寫`clean()`時原本想用raise自訂exception但會報錯->500,一定要用`forms.ValidationError`
 - `screening view`裡面POST分支的`question_form`只有在AnswerFormSet驗證失敗時才會用到(用來顯示畫面),如果設定`strict=True`的話
   `zip()`如果兩邊長短不相等時會直接報錯->500 改用`strict=False`少了重複的那題不影響使用者體驗
+## 2026-10-14 classify() 改門檻表
+- Why? 40 分寫死在 if/elif 裡，加第二份問卷分數一超過就 500，歷史頁整頁打不開
+- 門檻表放 `scoring.py` 的 `THRESHOLDS`，用 `Questionnaire.code`（新欄位）當 key，不用顯示名稱，免得 admin 改名分級就壞掉。不放資料庫，臨床規則不該在 admin 被隨手改
+- 滿分＝最後一級的上限，不另外存 40
+- 分數超出範圍或問卷沒有門檻表 → 顯示「無法判讀」＋寫 error log，不 500
+- 結果頁改走 `submission.classified`，跟歷史頁同一條路
+- 這次只放 HHIE-S，HHIA-S 等真的加題目再補
+- 坑：已經有資料的表不能直接加「必填＋唯一」的欄位，migration 拆成兩個檔（先加可空欄位補資料、再收緊）。放同一個檔在 PostgreSQL 可能撞 pending trigger events
+- 坑：歷史頁模板呼叫兩次 `submission.classified`（顏色一次、文字一次），log 寫兩次，用 `{% with %}` 改成算一次
+- 坑：舊測試建問卷沒給 code，預設是空字串，測試照過但其實走到「無法判讀」，補上 code

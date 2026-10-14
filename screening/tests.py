@@ -7,36 +7,86 @@ from screening.scoring import classify
 
 
 class ClassifyTests(SimpleTestCase):
-    def test_score_out_of_range_positive(self):
-        with self.assertRaises(ValueError):
-            classify(42)
+    def test_hhie_s_boundaries(self):
+        expected = {
+            0: "normal",
+            8: "normal",
+            10: "mild_to_moderate",
+            24: "mild_to_moderate",
+            26: "severe",
+            40: "severe",
+        }
+        for score, level in expected.items():
+            with self.subTest(score=score):
+                self.assertEqual(classify(score, "hhie-s")["level"], level)
 
-    def test_score_out_of_range_negative(self):
-        with self.assertRaises(ValueError):
-            classify(-5)
+    def test_score_out_of_range_is_unknown(self):
+        for score in (-2, 42):
+            with self.subTest(score=score), self.assertLogs("screening.scoring", "ERROR"):
+                self.assertEqual(classify(score, "hhie-s")["level"], "unknown")
 
-    def test_zero_score_is_minimal(self):
-        result = classify(0)
-        self.assertEqual(result["text"], "無/極輕微影響")
+    def test_questionnaire_without_thresholds_is_unknown(self):
+        with self.assertLogs("screening.scoring", "ERROR"):
+            result = classify(10, "hhia-s")
+        self.assertEqual(result["level"], "unknown")
+        self.assertEqual(result["text"], "無法判讀")
 
-    def test_margin_of_moderate_impact(self):
-        result = classify(9)
-        self.assertEqual(result["text"], "輕度到中度影響")
 
-    def test_margin_of_severe_impact(self):
-        result = classify(25)
-        self.assertEqual(result["text"], "顯著影響")
+class ClassifyViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
 
-    def test_forty_score_is_maximum(self):
-        result = classify(40)
-        self.assertEqual(result["text"], "顯著影響")
+    def _make_submission(self, questionnaire, score):
+        question = Question.objects.create(
+            questionnaire=questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        Answer.objects.create(submission=submission, question=question, score=score)
+        return submission
+
+    def test_result_page_shows_unknown_for_questionnaire_without_thresholds(self):
+        submission = self._make_submission(self.hhia_s, score=4)
+        self.client.force_login(self.user)
+        with self.assertLogs("screening.scoring", "ERROR"):
+            response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "無法判讀")
+        self.assertContains(response, "text-secondary")
+        self.assertContains(response, "這次的作答結果無法判讀分級")
+
+    def test_history_page_survives_unknown_submission(self):
+        self._make_submission(self.hhie_s, score=4)
+        self._make_submission(self.hhia_s, score=4)
+        self.client.force_login(self.user)
+        with self.assertLogs("screening.scoring", "ERROR") as logs:
+            response = self.client.get(reverse("my_hearing"))
+        self.assertEqual(len(logs.output), 1)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "無/極輕微影響")
+        self.assertContains(response, "無法判讀")
+
+    def test_result_and_history_show_same_classification(self):
+        submission = self._make_submission(self.hhie_s, score=4)
+        self.client.force_login(self.user)
+        result = self.client.get(reverse("result", args=[submission.id]))
+        history = self.client.get(reverse("my_hearing"))
+        self.assertContains(result, "無/極輕微影響")
+        self.assertContains(history, "無/極輕微影響")
 
 
 class SubmissionResultAccessTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
         self.user_b = User.objects.create_user(username="user_b")
-        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        self.questionnaire = Questionnaire.objects.create(
+            questionnaire_name="測試問卷", code="test"
+        )
         self.submission = Submission.objects.create(
             user=self.user_a, questionnaire=self.questionnaire
         )
@@ -60,7 +110,9 @@ class LoginRequiredTests(TestCase):
 class ScreeningViewAcceptValueTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
-        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        self.questionnaire = Questionnaire.objects.create(
+            questionnaire_name="測試問卷", code="hhie-s"
+        )
         self.question = Question.objects.create(
             questionnaire=self.questionnaire,
             question_text="數值正確？",
@@ -87,7 +139,9 @@ class ScreeningViewAcceptValueTests(TestCase):
 class EmptyQuestionnaireSubmissionTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
-        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試空submission")
+        self.questionnaire = Questionnaire.objects.create(
+            questionnaire_name="測試空submission", code="test"
+        )
 
     def test_zero_question_questionnaire(self):
         self.client.force_login(self.user_a)
@@ -105,7 +159,9 @@ class EmptyQuestionnaireSubmissionTests(TestCase):
 class DuplicateAnswerSubmissionTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
-        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試重複答案")
+        self.questionnaire = Questionnaire.objects.create(
+            questionnaire_name="測試重複答案", code="test"
+        )
         self.question_1 = Question.objects.create(
             questionnaire=self.questionnaire,
             question_text="第一題",
@@ -142,7 +198,9 @@ class DuplicateAnswerSubmissionTests(TestCase):
 class ModelsUniqueConstraintTests(TestCase):
     def setUp(self):
         self.user_a = User.objects.create_user(username="user_a")
-        self.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        self.questionnaire = Questionnaire.objects.create(
+            questionnaire_name="測試問卷", code="test"
+        )
         self.question = Question.objects.create(
             questionnaire=self.questionnaire,
             question_text="constraint正確?",
@@ -174,7 +232,7 @@ class ScoringAggregateTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(username="user")
-        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷", code="test")
         questions_emo = [
             Question(
                 questionnaire=cls.questionnaire,

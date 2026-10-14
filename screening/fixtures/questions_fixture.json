@@ -3,7 +3,8 @@
   "model": "screening.questionnaire",
   "pk": 1,
   "fields": {
-    "questionnaire_name": "HHIE-S"
+    "questionnaire_name": "HHIE-S",
+    "code": "hhie-s"
   }
 },
 {

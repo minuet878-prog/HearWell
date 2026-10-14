@@ -1,12 +1,30 @@
-def classify(total_score):
-    if total_score < 0 or total_score > 40:
-        raise ValueError(f"{total_score}是不合規的分數")
-    elif total_score <= 8:
-        return {"text": "無/極輕微影響", "level": "normal"}
-    elif total_score <= 24:
-        return {"text": "輕度到中度影響", "level": "mild_to_moderate"}
-    else:
-        return {"text": "顯著影響", "level": "severe"}
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Each tuple is (upper bound inclusive, text, level); the last upper bound is the max score.
+THRESHOLDS = {
+    "hhie-s": (
+        (8, "無/極輕微影響", "normal"),
+        (24, "輕度到中度影響", "mild_to_moderate"),
+        (40, "顯著影響", "severe"),
+    ),
+}
+
+UNKNOWN = {"text": "無法判讀", "level": "unknown"}
+
+
+def classify(total_score, questionnaire_code):
+    thresholds = THRESHOLDS.get(questionnaire_code)
+    if thresholds is None:
+        logger.error("No thresholds for questionnaire %r", questionnaire_code)
+        return UNKNOWN
+    if total_score >= 0:
+        for upper, text, level in thresholds:
+            if total_score <= upper:
+                return {"text": text, "level": level}
+    logger.error("Score %s out of range for questionnaire %r", total_score, questionnaire_code)
+    return UNKNOWN
 
 
 def level_to_color(level):
@@ -14,6 +32,7 @@ def level_to_color(level):
         "normal": "success",
         "mild_to_moderate": "warning",
         "severe": "danger",
+        "unknown": "secondary",
     }
     return colors[level]
 
@@ -38,6 +57,10 @@ def get_advice(level):
             "喉科尋求專業建議，並且考慮配戴助聽器。聽力喪失影響的並不只是聽不聽的到，"
             "無形中對也會增加社交活動的壓力(ex.因為聽不清楚常會在聊天的過程中退縮、"
             "裝作聽得懂等)這些壓力以及情緒的低落會增加長者的認知負擔。"
+        ),
+        "unknown": (
+            "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"
+            "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
         ),
     }
     return advices[level]
