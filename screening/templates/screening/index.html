@@ -14,6 +14,9 @@
 </div>
 <div class="text-center mt-4">
     <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">3 分鐘了解我的聽力狀況</a>
+    {% if not user.is_authenticated %}
+    <p class="fs-5 text-body-emphasis mt-2">首次使用請先註冊，已有帳號請登入</p>
+    {% endif %}
 </div>
 
 {% endblock %}

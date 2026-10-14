@@ -9,12 +9,23 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet, HearingAidForm
 from screening.scoring import get_advice, level_to_color
 
 from .models import Answer, Questionnaire, Submission, User
+
+
+def _safe_next(request):
+    # Only same-site URLs; anything else is treated as no next (open redirect guard).
+    next_url = request.POST.get("next") or request.GET.get("next", "")
+    if url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return next_url
+    return ""
 
 
 def index(request):
@@ -27,14 +38,19 @@ def login_view(request):
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
+        next_url = _safe_next(request)
 
         if user is not None:
             login(request, user)
-            return HttpResponseRedirect(reverse("index"))
+            return HttpResponseRedirect(next_url or reverse("index"))
         else:
-            return render(request, "screening/login.html", {"message": "使用者名稱或密碼錯誤"})
+            return render(
+                request,
+                "screening/login.html",
+                {"message": "使用者名稱或密碼錯誤", "next": next_url},
+            )
     else:
-        return render(request, "screening/login.html")
+        return render(request, "screening/login.html", {"next": _safe_next(request)})
 
 
 @require_http_methods(["POST"])
@@ -50,10 +66,17 @@ def register(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
         confirmation = request.POST.get("confirmation")
+        next_url = _safe_next(request)
         if not username or not password or not confirmation or not email:
-            return render(request, "screening/register.html", {"messages": ["請完整填寫所有欄位"]})
+            return render(
+                request,
+                "screening/register.html",
+                {"messages": ["請完整填寫所有欄位"], "next": next_url},
+            )
         if password != confirmation:
-            return render(request, "screening/register.html", {"messages": ["密碼必須相同"]})
+            return render(
+                request, "screening/register.html", {"messages": ["密碼必須相同"], "next": next_url}
+            )
 
         try:
             user = User(username=username)
@@ -61,16 +84,22 @@ def register(request):
             user = User.objects.create_user(username, email, password)
             user.save()
         except IntegrityError:
-            return render(request, "screening/register.html", {"messages": ["使用者名稱已被使用"]})
+            return render(
+                request,
+                "screening/register.html",
+                {"messages": ["使用者名稱已被使用"], "next": next_url},
+            )
         except ValidationError as e:
-            return render(request, "screening/register.html", {"messages": e.messages})
+            return render(
+                request, "screening/register.html", {"messages": e.messages, "next": next_url}
+            )
         login(request, user)
-        return HttpResponseRedirect(reverse("index"))
+        return HttpResponseRedirect(next_url or reverse("index"))
     else:
         return render(
             request,
             "screening/register.html",
-            {"password_messages": password_validators_help_texts()},
+            {"password_messages": password_validators_help_texts(), "next": _safe_next(request)},
         )
 
 
