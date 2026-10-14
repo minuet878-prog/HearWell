@@ -8,11 +8,11 @@ from .models import Answer, Question, Questionnaire, Submission, User
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
         *UserAdmin.fieldsets,
-        ("個人資料", {"fields": ("birth_date",)}),
+        ("個人資料", {"fields": ("birth_year",)}),
     )
     add_fieldsets = (
         *UserAdmin.add_fieldsets,
-        ("個人資料", {"fields": ("birth_date",)}),
+        ("個人資料", {"fields": ("birth_year",)}),
     )
 
 
