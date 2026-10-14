@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet
-from screening.scoring import classify, get_advice, level_to_color
+from screening.scoring import get_advice, level_to_color
 
 from .models import Answer, Questionnaire, Submission, User
 
@@ -137,7 +137,7 @@ def screening(request, questionnaire_id):
 
 @login_required
 def my_hearing(request):
-    submissions = request.user.submissions.with_scores()
+    submissions = request.user.submissions.select_related("questionnaire").with_scores()
     return render(
         request,
         "screening/my_hearing.html",
@@ -152,7 +152,7 @@ def submission_result(request, submission_id):
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
     social = submission.social_score
-    classified_score = classify(total_score)
+    classified_score = submission.classified
     return render(
         request,
         "screening/result.html",

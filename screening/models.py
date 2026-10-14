@@ -24,6 +24,7 @@ class User(AbstractUser):
 
 class Questionnaire(models.Model):
     questionnaire_name = models.CharField(max_length=64, unique=True)
+    code = models.SlugField(max_length=32, unique=True)
 
     def __str__(self):
         return self.questionnaire_name
@@ -108,7 +109,7 @@ class Submission(models.Model):
 
     @property
     def classified(self):
-        return classify(self.total_answer_score)
+        return classify(self.total_answer_score, self.questionnaire.code)
 
 
 class Score(models.IntegerChoices):
