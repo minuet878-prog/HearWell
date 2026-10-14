@@ -456,3 +456,55 @@ class AdminLockAnsweredTests(TestCase):
             Submission.objects.get(pk=submission.pk).questionnaire_id, self.answered_q.pk
         )
         self.assertEqual(Answer.objects.get(pk=answer.pk).score, 4)
+
+
+class SubscaleNoteTests(TestCase):
+    NOTE = "情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+
+    def _make_submission(self, questionnaire):
+        question = Question.objects.create(
+            questionnaire=questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        Answer.objects.create(submission=submission, question=question, score=4)
+        return submission
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_result_page_shows_note_below_subscales(self):
+        submission = self._make_submission(self.hhie_s)
+        response = self.client.get(reverse("result", args=[submission.id]))
+        content = response.content.decode()
+        self.assertIn(self.NOTE, content)
+        self.assertLess(content.index("社交分數"), content.index(self.NOTE))
+        self.assertLess(content.index(self.NOTE), content.index("建議"))
+
+    def test_note_shown_when_unclassifiable(self):
+        submission = self._make_submission(self.hhia_s)
+        with self.assertLogs("screening.scoring", "ERROR"):
+            response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertContains(response, "無法判讀")
+        self.assertContains(response, self.NOTE)
+
+    def test_history_page_has_no_note(self):
+        self._make_submission(self.hhie_s)
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, "總分")
+        self.assertNotContains(response, self.NOTE)
+
+    def test_note_uses_readable_rem_size(self):
+        submission = self._make_submission(self.hhie_s)
+        response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertContains(
+            response, f'<p class="fs-4 text-body-emphasis text-center">{self.NOTE}</p>', html=True
+        )
