@@ -1,5 +1,6 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.test import SimpleTestCase, TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
@@ -291,3 +292,72 @@ class ScoringAggregateTest(TestCase):
         self.assertEqual(submission.total_answer_score, 0)
         self.assertEqual(submission.emotional_score, 0)
         self.assertEqual(submission.social_score, 0)
+
+
+class HistoryScorePathTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user")
+        cls.other = User.objects.create_user(username="other")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+
+    def _make_submission(self, user, scores):
+        submission = Submission.objects.create(user=user, questionnaire=self.questionnaire)
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questions, scores, strict=False)
+        )
+        return submission
+
+    def _count_history_queries(self, expected_rows):
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("my_hearing"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["submissions"]), expected_rows)
+        return len(ctx.captured_queries)
+
+    def test_query_count_does_not_grow_with_submissions(self):
+        self.client.force_login(self.user)
+        self._make_submission(self.user, [4] * 10)
+        one = self._count_history_queries(expected_rows=1)
+        for _ in range(4):
+            self._make_submission(self.user, [2] * 10)
+        five = self._count_history_queries(expected_rows=5)
+        self.assertEqual(one, five)
+
+    def test_history_and_result_show_same_scores(self):
+        # emotional 5 x 4 = 20, social 3 x 2 = 6 -> total 26 (severe)
+        submission = self._make_submission(self.user, [4, 4, 4, 4, 4, 2, 2, 2, 0, 0])
+        self.client.force_login(self.user)
+        history = self.client.get(reverse("my_hearing"))
+        result = self.client.get(reverse("result", args=[submission.id]))
+        self.assertContains(history, "總分:26")
+        self.assertContains(history, "顯著影響")
+        self.assertContains(result, "總分: 26")
+        self.assertContains(result, "情緒分數: 20")
+        self.assertContains(result, "社交分數: 6")
+        self.assertContains(result, "顯著影響")
+
+    def test_submission_without_answers_scores_zero(self):
+        self._make_submission(self.user, [])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, "總分:0")
+        self.assertContains(response, "無/極輕微影響")
+
+    def test_history_only_shows_own_submissions(self):
+        own = self._make_submission(self.user, [0] * 10)
+        others = self._make_submission(self.other, [4] * 10)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, reverse("result", args=[own.id]))
+        self.assertNotContains(response, reverse("result", args=[others.id]))
