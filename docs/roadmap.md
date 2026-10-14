@@ -46,8 +46,11 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] **B1 助聽器配戴標記**：作答頁第一題前必填「有戴／沒戴」，結果頁與歷史頁顯示，
   舊紀錄顯示「未記錄」（`Submission.wearing_hearing_aid`，見 `docs/specs/phase2_b1_hearing_aid.md`）
 - 以下從 code review 報告補回，不做的話寫一句原因再刪：
-  - 未登入動線：登入忽略 `?next=`、CTA 文案
+  - [x] 未登入動線：登入／註冊後回到 `?next=`（只接受本站網址），登入頁說明、首頁提示
+    （見 `docs/specs/phase2_login_next.md`）
   - 註冊改用 `UserCreationForm`，順便收 `birth_date`（解鎖 A1）
+    - 已知（未登入動線審查時發現）：註冊出錯重新顯示時，密碼規則提示（`password_messages`）不見了
+    - 登入也可以一併改用內建 `LoginView`（會自己處理 `next`）
   - 錯字、英文殘留、孤兒 `</li>`（有些 template 之後會被 React 取代，先修才不白改）
   - 無障礙基準線（字級、對比、focus、觸控尺寸），React 之前先量一次當對照
     - 已知（2026-10-14）：Minty 的 `text-muted` 對白底只有 2.44:1，預設內文色 #888 也只有 3.54:1，

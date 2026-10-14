@@ -28,6 +28,7 @@
     {% endfor %}
     <form method="post" action="{% url 'register' %}">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
         <div class="form-floating mb-2">
             <input autofocus class="form-control" id="floatingInput" type="text" name="username"
                 placeholder="Username" required>
@@ -56,6 +57,6 @@
         <input class="w-100 btn btn-lg btn-primary" type="submit" value="註冊">
     </form>
 
-    已經有帳號了嗎？ <a href="{% url 'login' %}">從這裡登入</a>
+    已經有帳號了嗎？ <a href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">從這裡登入</a>
 </div>
 {% endblock %}

@@ -624,3 +624,123 @@ class HearingAidTests(TestCase):
         self.assertContains(
             response, '<p class="fs-4 text-body-emphasis text-center">助聽器：有戴</p>', html=True
         )
+
+
+class LoginNextTests(TestCase):
+    NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
+    HINT = "首次使用請先註冊，已有帳號請登入"
+    PASSWORD = "Xk9#mPq2vLw"
+    EXTERNAL = (
+        "https://evil.example.com",
+        "//evil.example.com",
+        "/\\evil.example.com",
+        "javascript:alert(1)",
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester", password=cls.PASSWORD)
+
+    def setUp(self):
+        self.target = reverse("questionnaire_list")
+        self.login_url = f"{reverse('login')}?next={self.target}"
+        self.register_url = f"{reverse('register')}?next={self.target}"
+
+    def _login(self, next_url=None, password=None):
+        data = {"username": "tester", "password": password or self.PASSWORD}
+        if next_url is not None:
+            data["next"] = next_url
+        return self.client.post(reverse("login"), data)
+
+    def _register(self, next_url=None, username="newcomer", confirmation=None):
+        data = {
+            "username": username,
+            "email": f"{username}@example.com",
+            "password": self.PASSWORD,
+            "confirmation": confirmation or self.PASSWORD,
+        }
+        if next_url is not None:
+            data["next"] = next_url
+        return self.client.post(reverse("register"), data)
+
+    def _assert_next_kept(self, response):
+        self.assertContains(
+            response, f'<input type="hidden" name="next" value="{self.target}">', html=True
+        )
+
+    def test_cta_leads_to_login_with_note(self):
+        self.assertContains(self.client.get(reverse("index")), f'href="{self.target}"')
+        response = self.client.get(self.target, follow=True)
+        self.assertRedirects(response, self.login_url)
+        self.assertContains(response, self.NOTE)
+
+    def test_plain_login_page_has_no_note(self):
+        response = self.client.get(reverse("login"))
+        self.assertNotContains(response, self.NOTE)
+
+    def test_login_redirects_to_next(self):
+        self.assertRedirects(self._login(self.target), self.target)
+
+    def test_login_without_next_goes_home(self):
+        self.assertRedirects(self._login(), reverse("index"))
+
+    def test_next_kept_after_wrong_password(self):
+        response = self._login(self.target, password="wrong-password")
+        self.assertContains(response, "使用者名稱或密碼錯誤")
+        self.assertContains(response, self.NOTE)
+        self._assert_next_kept(response)
+        self.assertRedirects(self._login(self.target), self.target)
+
+    def test_external_next_is_ignored_on_login(self):
+        for bad in self.EXTERNAL:
+            with self.subTest(next=bad):
+                self.client.logout()
+                response = self.client.get(f"{reverse('login')}?next={bad}")
+                self.assertNotContains(response, self.NOTE)
+                self.assertRedirects(self._login(bad), reverse("index"))
+
+    def test_register_link_carries_next_and_register_redirects(self):
+        response = self.client.get(self.login_url)
+        self.assertContains(response, f'href="{self.register_url}"')
+        self.assertRedirects(self._register(self.target), self.target)
+
+    def test_next_kept_after_register_error(self):
+        response = self._register(self.target, confirmation="Different#123")
+        self.assertContains(response, "密碼必須相同")
+        self._assert_next_kept(response)
+        self.assertRedirects(self._register(self.target), self.target)
+
+    def test_login_link_on_register_page_carries_next(self):
+        response = self.client.get(self.register_url)
+        self._assert_next_kept(response)
+        self.assertContains(response, f'href="{self.login_url}"')
+        self.assertContains(self.client.get(self.login_url), self.NOTE)
+
+    def test_external_next_is_ignored_on_register(self):
+        for i, bad in enumerate(self.EXTERNAL):
+            with self.subTest(next=bad):
+                self.client.logout()
+                response = self._register(bad, username=f"newcomer{i}")
+                self.assertRedirects(response, reverse("index"))
+
+    def test_next_is_escaped_in_html(self):
+        response = self.client.get(reverse("login"), {"next": '/x"><script>alert(1)</script>'})
+        self.assertNotContains(response, "<script>alert(1)</script>")
+        self.assertContains(response, "&lt;script&gt;")
+
+    def test_home_hint_only_for_anonymous(self):
+        self.assertContains(self.client.get(reverse("index")), self.HINT)
+        self.client.force_login(self.user)
+        self.assertNotContains(self.client.get(reverse("index")), self.HINT)
+
+    def test_new_text_uses_readable_style(self):
+        self.assertContains(
+            self.client.get(self.login_url),
+            f'<p class="fs-5 text-body-emphasis">{self.NOTE}</p>',
+            html=True,
+        )
+        self.assertContains(
+            self.client.get(reverse("index")),
+            f'<p class="fs-5 text-body-emphasis mt-2">{self.HINT}</p>',
+            html=True,
+        )

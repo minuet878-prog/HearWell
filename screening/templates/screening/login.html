@@ -23,11 +23,15 @@
 {% block body %}
 <div class="container">
     <h1 class="h3 mb-3 fw-normal">Welcome</h1>
+    {% if next %}
+    <p class="fs-5 text-body-emphasis">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
+    {% endif %}
     {% if message %}
     <div class="mb-3 text-danger">{{message}}</div>
     {% endif %}
     <form method="post" action="{% url 'login' %}">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
         <div class="form-floating mb-2">
             <input autofocus class="form-control" id="floatingInput" type="text" name="username"
                 placeholder="Username" required>
@@ -41,7 +45,7 @@
         </div>
         <div class="d-flex gap-2">
             <input class="w-50 btn btn-lg btn-primary" type="submit" value="登入">
-            <a href="{% url 'register' %}" class="w-50 btn btn-lg btn-outline-primary">註冊</a>
+            <a href="{% url 'register' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="w-50 btn btn-lg btn-outline-primary">註冊</a>
         </div>
     </form>
 </div>
