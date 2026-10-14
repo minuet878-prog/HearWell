@@ -10,7 +10,50 @@
     color: rgba(255, 255, 255, 1);
 }
 
-[id$="-score"] {
+/* Text colours at WCAG AA or better on white (see docs/accessibility_baseline.md). */
+:root {
+    --bs-body-color: #495057;
+    --bs-body-color-rgb: 73, 80, 87;
+    --bs-secondary-color: #495057;
+}
+
+.text-success {
+    color: #1e7b55 !important;
+}
+
+.text-warning {
+    color: #8a5a00 !important;
+}
+
+.text-danger {
+    color: #c23b1c !important;
+}
+
+.text-secondary {
+    color: #495057 !important;
+}
+
+/* Answer choices: large horizontal buttons; the whole label is clickable. */
+div.choice-group {
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+div.choice-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid #ced4da;
+    border-radius: 0.5rem;
+    font-size: 1.25rem;
+    color: #212529;
+    cursor: pointer;
+}
+
+div.choice-group input {
+    width: 1.5rem;
+    height: 1.5rem;
 }

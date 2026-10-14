@@ -2,6 +2,7 @@ import re
 from datetime import date
 from typing import ClassVar
 
+from django.contrib.staticfiles import finders
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
@@ -583,7 +584,7 @@ class HearingAidTests(TestCase):
         self.assertContains(response, self.ERROR)
         self.assertContains(
             response,
-            '<input type="radio" name="form-0-score" value="4" class="score-radio-group"'
+            '<input type="radio" name="form-0-score" value="4" class="choice-group"'
             ' id="id_form-0-score_0" checked>',
             html=True,
         )
@@ -593,8 +594,8 @@ class HearingAidTests(TestCase):
         self.assertFalse(Submission.objects.exists())
         self.assertContains(
             response,
-            '<input type="radio" name="wearing_hearing_aid" value="False" required'
-            ' id="id_wearing_hearing_aid_1" checked>',
+            '<input type="radio" name="wearing_hearing_aid" value="False" class="choice-group"'
+            ' required id="id_wearing_hearing_aid_1" checked>',
             html=True,
         )
 
@@ -996,3 +997,87 @@ class BirthYearMigrationTests(TransactionTestCase):
         new_user = self._migrate(self.after).get_model("screening", "User")
         self.assertEqual(new_user.objects.get(username="with_date").birth_year, 1955)
         self.assertIsNone(new_user.objects.get(username="without_date").birth_year)
+
+
+class AccessibilityTests(TestCase):
+    PROMPT = "這次填答時，您有沒有戴助聽器？"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        for number, category in ((1, Category.EMOTIONAL), (2, Category.SOCIAL)):
+            Question.objects.create(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{number}題",
+                question_number=number,
+                category=category,
+            )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.questionnaire.id])
+
+    def _css(self):
+        with open(finders.find("screening/styles.css"), encoding="utf-8") as f:
+            return re.sub(r"/\*.*?\*/", "", f.read(), flags=re.DOTALL)
+
+    def _rule(self, selector):
+        # Exactly one rule for the selector, so a later rule cannot silently override it.
+        bodies = [
+            body
+            for selectors, body in re.findall(r"([^{}]+)\{([^}]*)\}", self._css())
+            if selectors.strip() == selector
+        ]
+        self.assertEqual(len(bodies), 1, selector)
+        return bodies[0].lower()
+
+    def test_stylesheet_loads_after_bootstrap(self):
+        content = self.client.get(reverse("index")).content.decode()
+        self.assertLess(content.index("bootstrap.min.css"), content.index("screening/styles"))
+
+    def test_body_and_muted_text_color(self):
+        root = self._rule(":root")
+        self.assertIn("--bs-body-color: #495057", root)
+        self.assertIn("--bs-body-color-rgb: 73, 80, 87", root)
+        self.assertIn("--bs-secondary-color: #495057", root)
+
+    def test_level_and_error_text_colors(self):
+        expected = {
+            ".text-success": "#1e7b55",
+            ".text-warning": "#8a5a00",
+            ".text-danger": "#c23b1c",
+            ".text-secondary": "#495057",
+        }
+        for selector, color in expected.items():
+            with self.subTest(selector=selector):
+                self.assertIn(f"color: {color} !important", self._rule(selector))
+
+    def test_each_question_in_fieldset_with_legend(self):
+        content = self.client.get(self.url).content.decode()
+        self.assertEqual(content.count("<fieldset"), 3)
+        for legend in (self.PROMPT, "1. 第1題", "2. 第2題"):
+            with self.subTest(legend=legend):
+                self.assertRegex(content, rf"<legend[^>]*>\s*{re.escape(legend)}\s*</legend>")
+
+    def test_hearing_aid_error_linked_to_group(self):
+        data = {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 0,
+            "form-0-score": "4",
+            "form-0-question_id": str(Question.objects.get(question_number=1).id),
+        }
+        content = self.client.post(self.url, data).content.decode()
+        self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
+        self.assertRegex(
+            content, r'id="id_wearing_hearing_aid_error">\s*<p[^>]*>請選擇這次有沒有戴助聽器'
+        )
+
+    def test_choices_are_large_horizontal_buttons(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, '<div id="id_wearing_hearing_aid" class="choice-group">')
+        self.assertContains(response, '<div id="id_form-0-score" class="choice-group">')
+        self.assertIn("min-height: 3rem", self._rule("div.choice-group label"))
+        # The input sits inside its label, so the whole button is clickable.
+        self.assertRegex(response.content.decode(), r'<label for="id_form-0-score_0">\s*<input')
+        self.assertIn("display: flex", self._rule("div.choice-group"))

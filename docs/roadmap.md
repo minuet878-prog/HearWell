@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 2**（Phase 1 於 2026-10-14 完成；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 3**（Phase 2 於 2026-10-14 完成；開工前先寫 `docs/specs/phase3.md`；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -41,7 +41,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] 1-4 `my_hearing` N+1 → 計分公式只剩 `_score_expressions()` 一份，列表 annotate、單筆 aggregate
 - [x] 1-5 快照決策：題目作答過就鎖（admin），門檻將來用規則版本號，`completed_at` 等 D2（見 decisions/scoring.md）
 
-### Phase 2：產品價值（仍用 Django template）← 目前
+### Phase 2：產品價值（仍用 Django template）（完成）
 - [x] **結果頁分項說明**（取代 A3）：分項分數下方註明「僅供參考，沒有正式的解讀標準」
 - [x] **B1 助聽器配戴標記**：作答頁第一題前必填「有戴／沒戴」，結果頁與歷史頁顯示，
   舊紀錄顯示「未記錄」（`Submission.wearing_hearing_aid`，見 `docs/specs/phase2_b1_hearing_aid.md`）
@@ -55,15 +55,14 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - [x] 錯字、英文殘留、孤兒 `</li>`、作答頁題目被 `__str__` 截斷成 30 字（見 `docs/specs/phase2_copy_fixes.md`）
     - 範圍外、還沒處理：首頁只寫 HHIE-S、沒提 HHIA-S（內容正確性）；分數旁的半形冒號；
       ~~註冊頁 placeholder 拼錯 `Cofirmation`~~（改用 `UserCreationForm` 後已不存在）
-  - 無障礙基準線（字級、對比、focus、觸控尺寸），React 之前先量一次當對照
-    - 已知（2026-10-14）：Minty 的 `text-muted` 對白底只有 2.44:1，預設內文色 #888 也只有 3.54:1，
-      都沒達到 WCAG AA 的 4.5:1。結果頁的分數、建議都用 `text-muted`。`text-body-emphasis`（#000）是 21:1
-    - 已知（B1 審查）：作答頁的選項沒有用 `fieldset`／`legend` 跟題目綁在一起，錯誤訊息也沒用
-      `aria-describedby` 連到選項，螢幕閱讀器念選項時不會念題目和錯誤
-    - 已知（B1 審查）：助聽器選項是直排、分數選項是橫排（`styles.css` 的 `[id$="-score"]` 只套到分數題），
-      排版不一致，統一處理
+  - [x] 無障礙基準線：量測方法與結果見 `docs/accessibility_baseline.md`；已修內文／`text-muted` 對比、分級與錯誤文字顏色、
+    作答頁 `fieldset`／`legend`、選項統一為橫排大按鈕（見 `docs/specs/phase2_a11y_baseline.md`）
+    - 待辦（量到沒修）：主色 #78C2AD 的按鈕、連結、大標題（約 2:1）；導覽列文字 1.81:1；登入頁浮動標籤 3.33:1；
+      每頁 `<title>` 都是「HearWell」；「從這裡登入」「查看結果」觸控尺寸不足 44 px；
+      作答錯誤沒指出哪一題漏答（分數題錯誤也沒關聯到該題）；選項選取後外框不變、焦點只有小圓鈕外一圈
+    - 下次量測補上：註冊錯誤狀態、歷史頁（沒紀錄）
 
-### Phase 3：DRF 唯讀 API（AI 代工）
+### Phase 3：DRF 唯讀 API（AI 代工）← 下一步
 - `/api/` 與既有 template view 並存，不改動既有頁面。
 - 只做讀取（GET），寫入留到 Phase 5。
 - 優先做 Phase 4 趨勢圖需要的資料（使用者自己的歷次作答與分數）。

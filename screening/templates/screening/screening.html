@@ -13,18 +13,20 @@
         </p>
         <div class="card mb-3">
             <div class="card-body">
-                <p class="fw-bold fs-5">這次填答時，您有沒有戴助聽器？</p>
-                {% for error in hearing_aid_form.wearing_hearing_aid.errors %}
-                <p class="fs-5 text-danger">{{ error }}</p>
-                {% endfor %}
-                {{ hearing_aid_form.wearing_hearing_aid }}
+                <fieldset{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% endif %}>
+                    <legend class="fw-bold fs-5">這次填答時，您有沒有戴助聽器？</legend>
+                    {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}
+                    {{ hearing_aid_form.wearing_hearing_aid }}
+                </fieldset>
             </div>
         </div>
         {% for question, form in question_form %}
         <div class="card mb-3">
             <div class="card-body">
-                <p class="fw-bold fs-5">{{ question.question_number }}. {{ question.question_text }}</p>
-                {{ form.score }}
+                <fieldset>
+                    <legend class="fw-bold fs-5">{{ question.question_number }}. {{ question.question_text }}</legend>
+                    {{ form.score }}
+                </fieldset>
                 {{ form.question_id }}
             </div>
         </div>

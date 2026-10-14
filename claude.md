@@ -159,4 +159,4 @@
 
 ## 目前階段
 
-Phase 2：產品價值（仍用 Django template）。Phase 1 已完成；Phase 0 還剩 debug-toolbar 和 `check --deploy`。細節見 `docs/roadmap.md`。
+Phase 3：DRF 唯讀 API（開工前先寫 `docs/specs/phase3.md`）。Phase 1、2 已完成；Phase 0 還剩 debug-toolbar 和 `check --deploy`。細節見 `docs/roadmap.md`。

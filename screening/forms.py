@@ -50,7 +50,7 @@ class AnswerForm(forms.Form):
     score = forms.TypedChoiceField(
         choices=Score.choices,
         coerce=int,
-        widget=forms.RadioSelect(attrs={"class": "score-radio-group"}),
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
     )
     question_id = forms.ModelChoiceField(
         queryset=Question.objects.all(), widget=forms.HiddenInput()
@@ -61,7 +61,7 @@ class HearingAidForm(forms.Form):
     wearing_hearing_aid = forms.TypedChoiceField(
         choices=((True, "有戴"), (False, "沒戴")),
         coerce=lambda value: value == "True",
-        widget=forms.RadioSelect,
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={
             "required": "請選擇這次有沒有戴助聽器",
             "invalid_choice": "請選擇這次有沒有戴助聽器",
