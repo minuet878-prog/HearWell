@@ -157,4 +157,4 @@ python manage.py makemigrations --check --dry-run  # 確認沒有漏掉的 migra
 
 ## 文件
 
-- `docs/decisions.md`：設計決策、理由與踩過的坑
+- `docs/decisions/`：設計決策、理由與踩過的坑（照主題分檔，`README.md` 是索引）

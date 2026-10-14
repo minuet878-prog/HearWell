@@ -1,8 +1,8 @@
 # Roadmap
 
-還沒做、但已經想過方向的功能構想。跟 decisions.md 不一樣——這裡是「還沒開始做」
-的待辦，decisions.md 記的是「已經做了、為什麼這樣做」。等真的開始動手某一項，
-再把過程搬去 decisions.md。
+還沒做、但已經想過方向的功能構想。跟 decisions/ 不一樣——這裡是「還沒開始做」
+的待辦，decisions/ 記的是「已經做了、為什麼這樣做」。等真的開始動手某一項，
+再把過程搬去 decisions/ 對應的主題檔。
 
 **閱讀順序**：先看「開發階段」確認目前在哪個 phase，再看該 phase 底下要做的功能。
 功能不再另外排優先順序，一律以所屬 phase 為準。
@@ -22,7 +22,7 @@
    因此維持現有架構：同源部署、session cookie 驗證，不需要 CORS、不需要 token。
    未來若要上架原生 app，再於 DRF 加上 token 驗證即可，endpoint 不必重寫。
 
-架構總方向（strangler pattern、同源部署等）的決策原因記在 decisions.md。
+架構總方向（strangler pattern、同源部署等）的決策原因記在 decisions/architecture.md（待補）。
 
 ### Phase 0：恢復 linting／檢查
 - [x] ruff 排除 migrations
@@ -39,7 +39,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
     F-6 位置耦合（POST 順序被打亂會對錯題）
 - [x] 1-3 `classify()` 改成門檻表（`Questionnaire.code` ＋ `scoring.THRESHOLDS`，滿分＝最後一級上限）
 - [x] 1-4 `my_hearing` N+1 → 計分公式只剩 `_score_expressions()` 一份，列表 annotate、單筆 aggregate
-- [x] 1-5 快照決策：題目作答過就鎖（admin），門檻將來用規則版本號，`completed_at` 等 D2（見 decisions.md）
+- [x] 1-5 快照決策：題目作答過就鎖（admin），門檻將來用規則版本號，`completed_at` 等 D2（見 decisions/scoring.md）
 
 ### Phase 2：產品價值（仍用 Django template）← 目前
 - [x] **結果頁分項說明**（取代 A3）：分項分數下方註明「僅供參考，沒有正式的解讀標準」
