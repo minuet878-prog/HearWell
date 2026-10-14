@@ -51,7 +51,9 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - 註冊改用 `UserCreationForm`，順便收 `birth_date`（解鎖 A1）
     - 已知（未登入動線審查時發現）：註冊出錯重新顯示時，密碼規則提示（`password_messages`）不見了
     - 登入也可以一併改用內建 `LoginView`（會自己處理 `next`）
-  - 錯字、英文殘留、孤兒 `</li>`（有些 template 之後會被 React 取代，先修才不白改）
+  - [x] 錯字、英文殘留、孤兒 `</li>`、作答頁題目被 `__str__` 截斷成 30 字（見 `docs/specs/phase2_copy_fixes.md`）
+    - 範圍外、還沒處理：首頁只寫 HHIE-S、沒提 HHIA-S（內容正確性）；分數旁的半形冒號；
+      註冊頁 placeholder 拼錯 `Cofirmation`（畫面不顯示，改 `UserCreationForm` 時一併處理）
   - 無障礙基準線（字級、對比、focus、觸控尺寸），React 之前先量一次當對照
     - 已知（2026-10-14）：Minty 的 `text-muted` 對白底只有 2.44:1，預設內文色 #888 也只有 3.54:1，
       都沒達到 WCAG AA 的 4.5:1。結果頁的分數、建議都用 `text-muted`。`text-body-emphasis`（#000）是 21:1
