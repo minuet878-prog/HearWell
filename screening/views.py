@@ -1,6 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -21,7 +20,7 @@ from screening.scoring import (
     max_score,
 )
 
-from .models import Answer, NormGroup, Questionnaire, Submission
+from .models import NormGroup, Questionnaire, Submission
 
 
 def _safe_next(request):
@@ -145,19 +144,7 @@ def screening(request, questionnaire_id):
                 extra = {
                     "wearing_hearing_aid": hearing_aid_form.cleaned_data["wearing_hearing_aid"]
                 }
-            with transaction.atomic():
-                submission = Submission.objects.create(
-                    user=request.user, questionnaire=questionnaire, **extra
-                )
-                answers = [
-                    Answer(
-                        submission=submission,
-                        question=form.cleaned_data["question_id"],
-                        score=form.cleaned_data["score"],
-                    )
-                    for form in formset
-                ]
-                Answer.objects.bulk_create(answers)
+            submission = formset.save(request.user, questionnaire, **extra)
             return redirect("result", submission_id=submission.id)
         else:
             # Count only questions shown on the page, so the number matches the marked ones.

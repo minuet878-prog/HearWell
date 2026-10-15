@@ -2,9 +2,10 @@ from datetime import date
 
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
 
-from screening.models import Question, Score, User
+from screening.models import Answer, Question, Score, Submission, User
 from screening.scoring import IOI_HA, IOI_HA_CHOICES
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
@@ -114,6 +115,20 @@ class BaseAnswerFormSet(BaseFormSet):
             raise forms.ValidationError("重複題目")
         elif set(submitted) != set(expected):
             raise forms.ValidationError("有題目沒有作答")
+
+    def save(self, user, questionnaire, **extra):
+        # All or nothing: no submission without its answers.
+        with transaction.atomic():
+            submission = Submission.objects.create(user=user, questionnaire=questionnaire, **extra)
+            Answer.objects.bulk_create(
+                Answer(
+                    submission=submission,
+                    question=form.cleaned_data["question_id"],
+                    score=form.cleaned_data["score"],
+                )
+                for form in self
+            )
+        return submission
 
 
 AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
