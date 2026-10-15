@@ -1,7 +1,16 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters %}
+{% load custom_filters static %}
+
+{% block extra_head %}
+{% if submissions %}
+<script type="module" src="{% static 'screening/trend/trend-chart.js' %}"></script>
+{% endif %}
+{% endblock %}
 
 {% block body %}
+{% if submissions %}
+<div id="trend-chart"></div>
+{% endif %}
 {% for submission in submissions %}
 <div class="card mb-2 mt-2">
     <div class="card-body d-flex justify-content-between align-items-center">

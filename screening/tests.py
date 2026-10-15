@@ -1128,8 +1128,8 @@ class ApiFoundationTests(TestCase):
         self.assertEqual(
             response.json(),
             [
-                {"id": first.id, "code": "zz", "name": "ZZ 問卷"},
-                {"id": second.id, "code": "aa", "name": "AA 問卷"},
+                {"id": first.id, "code": "zz", "name": "ZZ 問卷", "levels": []},
+                {"id": second.id, "code": "aa", "name": "AA 問卷", "levels": []},
             ],
         )
 
@@ -1369,3 +1369,80 @@ class ApiSubmissionTests(TestCase):
         content = self.client.get("/api/schema/").content.decode()
         self.assertIn("/api/submissions/:", content)
         self.assertIn("/api/submissions/{id}/:", content)
+
+
+class TrendChartPageTests(TestCase):
+    CHART_JS = "screening/trend/trend-chart.js"
+    VITE_CONFIG = Path(__file__).resolve().parent.parent / "frontend" / "vite.config.js"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text="第1題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _make_submission(self):
+        submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
+        Answer.objects.create(submission=submission, question=self.question, score=4)
+        return submission
+
+    def test_questionnaire_levels_come_from_thresholds(self):
+        response = self.client.get("/api/questionnaires/")
+        self.assertEqual(
+            response.json()[0]["levels"],
+            [
+                {"code": "normal", "text": "無/極輕微影響", "max": 8},
+                {"code": "mild_to_moderate", "text": "輕度到中度影響", "max": 24},
+                {"code": "severe", "text": "顯著影響", "max": 40},
+            ],
+        )
+
+    def test_levels_empty_without_thresholds(self):
+        Questionnaire.objects.create(questionnaire_name="測試問卷", code="no-thresholds")
+        response = self.client.get("/api/questionnaires/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[1]["levels"], [])
+
+    def test_history_page_works_without_js(self):
+        submission = self._make_submission()
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, 'id="trend-chart"')
+        self.assertContains(response, "總分:4")
+        self.assertContains(response, reverse("result", args=[submission.id]))
+
+    def test_history_page_without_submissions_has_no_chart(self):
+        response = self.client.get(reverse("my_hearing"))
+        self.assertContains(response, "您還沒有做過篩檢紀錄")
+        self.assertNotContains(response, 'id="trend-chart"')
+        self.assertNotContains(response, self.CHART_JS)
+
+    def test_only_history_page_loads_chart_js(self):
+        submission = self._make_submission()
+        self.assertContains(self.client.get(reverse("my_hearing")), self.CHART_JS)
+        pages = [
+            reverse("index"),
+            reverse("questionnaire_list"),
+            reverse("screening", args=[self.questionnaire.id]),
+            reverse("result", args=[submission.id]),
+        ]
+        for url in pages:
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), self.CHART_JS)
+        self.client.logout()
+        for url in (reverse("login"), reverse("register")):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), self.CHART_JS)
+
+    def test_chart_js_path_matches_vite_output(self):
+        # The template and the Vite build must agree on where the bundle lives.
+        config = self.VITE_CONFIG.read_text(encoding="utf-8")
+        self.assertIn('"../screening/static/screening/trend"', config)
+        self.assertIn('"trend-chart.js"', config)

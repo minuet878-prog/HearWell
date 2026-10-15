@@ -1,20 +1,37 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from screening.models import Answer, Questionnaire, Submission
-from screening.scoring import get_advice
+from screening.scoring import THRESHOLDS, get_advice
 
 
-class QuestionnaireSerializer(serializers.ModelSerializer):
+class QuestionnaireSummarySerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="questionnaire_name")
 
     class Meta:
         model = Questionnaire
-        fields = ("id", "code", "name")
-
-
-class QuestionnaireSummarySerializer(QuestionnaireSerializer):
-    class Meta(QuestionnaireSerializer.Meta):
         fields = ("code", "name")
+
+
+class LevelBandSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    text = serializers.CharField()
+    max = serializers.IntegerField()
+
+
+class QuestionnaireSerializer(QuestionnaireSummarySerializer):
+    levels = serializers.SerializerMethodField()
+
+    class Meta(QuestionnaireSummarySerializer.Meta):
+        fields = ("id", "code", "name", "levels")
+
+    @extend_schema_field(LevelBandSerializer(many=True))
+    def get_levels(self, questionnaire):
+        # Read straight from the one threshold table so the chart's bands match classify().
+        return [
+            {"code": level, "text": text, "max": upper}
+            for upper, text, level in THRESHOLDS.get(questionnaire.code, ())
+        ]
 
 
 class ScoresSerializer(serializers.Serializer):

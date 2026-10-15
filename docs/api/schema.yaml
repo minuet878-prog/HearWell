@@ -91,6 +91,19 @@ components:
       required:
       - code
       - text
+    LevelBand:
+      type: object
+      properties:
+        code:
+          type: string
+        text:
+          type: string
+        max:
+          type: integer
+      required:
+      - code
+      - max
+      - text
     PaginatedSubmissionList:
       type: object
       required:
@@ -122,9 +135,15 @@ components:
           pattern: ^[-a-zA-Z0-9_]+$
         name:
           type: string
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LevelBand'
+          readOnly: true
       required:
       - code
       - id
+      - levels
       - name
     QuestionnaireSummary:
       type: object
