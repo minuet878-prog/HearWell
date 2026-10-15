@@ -26,7 +26,7 @@
 <p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
 {% endif %}
 <div class="d-flex flex-column flex-sm-row gap-2 my-3">
-    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄</a>
+    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
     <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 </div>
 {% include "screening/ioi_ha_source.html" with with_norms=True %}

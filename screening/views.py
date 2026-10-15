@@ -12,6 +12,8 @@ from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
 from screening.scoring import (
     IOI_HA,
     IOI_HA_CHOICES,
+    IOI_HA_ITEM_NAMES,
+    IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
     compare_to_norm,
     get_advice,
@@ -86,13 +88,17 @@ def questionnaire_list(request):
     )
 
 
-def _ioi_ha_norm(user):
-    # Latest HHIE-S answered without a hearing aid; 未記錄 (None) does not count.
-    basis = (
-        user.submissions.filter(questionnaire__code="hhie-s", wearing_hearing_aid=False)
+def _latest_hhie_s(user, wearing):
+    # wearing is True or False; 未記錄 (None) is neither, so it never matches.
+    return (
+        user.submissions.filter(questionnaire__code="hhie-s", wearing_hearing_aid=wearing)
         .order_by("-created_at", "-id")
         .first()
     )
+
+
+def _ioi_ha_norm(user):
+    basis = _latest_hhie_s(user, wearing=False)
     total = None if basis is None else basis.total_answer_score
     return {"norm_group": ioi_ha_group(total), "norm_basis": basis}
 
@@ -179,13 +185,79 @@ def screening(request, questionnaire_id):
             )
 
 
+def _aided_difference(user):
+    # Latest unaided vs latest aided HHIE-S, whichever came first; no verdict on the number.
+    unaided = _latest_hhie_s(user, wearing=False)
+    aided = _latest_hhie_s(user, wearing=True)
+    if unaided is None or aided is None:
+        return None
+    change = unaided.total_answer_score - aided.total_answer_score
+    if change > 0:
+        text = f"少了 {change} 分"
+    elif change < 0:
+        text = f"多了 {-change} 分"
+    else:
+        text = "沒有變化"  # 0 is a real result, not missing data
+    return {"unaided": unaided, "aided": aided, "text": text}
+
+
+def _item_scores(submission):
+    return {
+        answer.question.question_number: answer.score
+        for answer in submission.answers.select_related("question")
+    }
+
+
+def _ioi_ha_chart(records):
+    # records: this user's IOI-HA, newest first. Grid row 1 is score 5, row 5 is score 1.
+    latest = records[0]
+    grouped = latest.norm_group != NormGroup.UNGROUPED
+    previous = records[1] if grouped and len(records) > 1 else None
+    if previous is not None and previous.norm_group != latest.norm_group:
+        previous = None  # another group's band would mislead
+    latest_scores = _item_scores(latest)
+    previous_scores = _item_scores(previous) if previous else {}
+    columns = []
+    for number, name in IOI_HA_ITEM_NAMES.items():
+        score = latest_scores[number]
+        column = {"name": name, "latest_row": 6 - score}
+        text = f"{name}：最近一次 {score} 分"
+        if previous:
+            column["previous_row"] = 6 - previous_scores[number]
+            text += f"，上一次 {previous_scores[number]} 分"
+        if grouped:
+            lower, upper = IOI_HA_NORMS[latest.norm_group][number]
+            column["band_rows"] = f"{6 - upper} / {7 - lower}"
+            comparison = compare_to_norm(latest.norm_group, number, score)
+            text += f"，常模 {lower} 到 {upper} 分，{NORM_COMPARISON_TEXT[comparison]}"
+        column["text"] = text
+        columns.append(column)
+    return {"latest": latest, "previous": previous, "grouped": grouped, "columns": columns}
+
+
 @login_required
 def my_hearing(request):
-    submissions = request.user.submissions.select_related("questionnaire").with_scores()
+    submissions = list(request.user.submissions.select_related("questionnaire").with_scores())
+    if not submissions:
+        return render(request, "screening/my_hearing.html", {"submissions": []})
+    # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
+    questionnaires = sorted({s.questionnaire for s in submissions}, key=lambda q: q.id)
+    # Default: the newest record's questionnaire; an unknown or empty choice falls back to it.
+    current = next(
+        (q for q in questionnaires if q.code == request.GET.get("questionnaire")),
+        submissions[0].questionnaire,
+    )
+    records = [s for s in submissions if s.questionnaire_id == current.id]
     return render(
         request,
         "screening/my_hearing.html",
-        {"submissions": submissions},
+        {
+            "submissions": records,
+            "questionnaires": questionnaires,
+            "current": current,
+            "difference": _aided_difference(request.user) if current.code == "hhie-s" else None,
+            "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
+        },
     )
 
 

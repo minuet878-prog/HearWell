@@ -4,14 +4,33 @@
 {% block title %}我的紀錄｜HearWell{% endblock %}
 
 {% block extra_head %}
-{% if submissions %}
+{% if current.code == "hhie-s" %}
 <script type="module" src="{% static 'screening/trend/trend-chart.js' %}"></script>
 {% endif %}
 {% endblock %}
 
 {% block body %}
-{% if submissions %}
-<div id="trend-chart"></div>
+{% if questionnaires|length > 1 %}
+{# Each tab is its own URL, so reload and the back button keep the tab. #}
+<nav class="history-tabs" aria-label="問卷">
+    {% for questionnaire in questionnaires %}
+    <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.questionnaire_name }}</a>
+    {% endfor %}
+</nav>
+{% endif %}
+{% if difference %}
+<section class="aided-difference" aria-labelledby="difference-title">
+    <h2 id="difference-title" class="fs-4">配戴前後比較</h2>
+    <p class="mb-1">沒戴助聽器（{{ difference.unaided.created_at|date:"Y/m/d" }}）：{{ difference.unaided.total_answer_score }} 分</p>
+    <p class="mb-1">有戴助聽器（{{ difference.aided.created_at|date:"Y/m/d" }}）：{{ difference.aided.total_answer_score }} 分</p>
+    <p class="mb-0"><strong class="fs-4">{{ difference.text }}</strong>（分數越低，聽力對生活的影響越小）</p>
+</section>
+{% endif %}
+{% if ioi_ha_chart %}
+{% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
+{% elif current.code == "hhie-s" %}
+{# Only HHIE-S has a trend chart; other questionnaires list their records only. #}
+<div id="trend-chart" data-questionnaire="{{ current.code }}"></div>
 {% endif %}
 {% for submission in submissions %}
 <div class="card mb-2 mt-2">

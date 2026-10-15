@@ -33,6 +33,17 @@ IOI_HA_CHOICES = {
     7: ("變得更糟", "沒有改變", "稍微提升", "有很大程度的提升", "非常有提升"),
 }
 
+# Short column names for the norm chart on the history page.
+IOI_HA_ITEM_NAMES = {
+    1: "使用時間",
+    2: "幫助程度",
+    3: "剩餘困難",
+    4: "值得程度",
+    5: "生活影響",
+    6: "干擾他人",
+    7: "生活樂趣",
+}
+
 # Middle 50% of each item (Cox, Alexander & Beyer 2003), as (lower, upper) inclusive.
 # Groups match models.NormGroup values.
 IOI_HA_NORMS = {

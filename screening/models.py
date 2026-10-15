@@ -84,7 +84,8 @@ class NormGroup(models.TextChoices):
 
 class SubmissionQuerySet(models.QuerySet):
     def with_scores(self):
-        return self.annotate(**_score_expressions()).order_by("-created_at")
+        # id breaks ties so "newest" matches _latest_hhie_s and the API's cursor ordering.
+        return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
 
 
 class Submission(models.Model):

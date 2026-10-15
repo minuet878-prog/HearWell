@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { selectPoints, summarize } from "./trend.js";
 
-function submission(id, date, total, { code = "hhie-s", name = "HHIE-S", text = "無/極輕微影響" } = {}) {
+function submission(
+  id,
+  date,
+  total,
+  { code = "hhie-s", name = "HHIE-S", text = "無/極輕微影響", wearing = null } = {},
+) {
   return {
     id,
     created_at: `${date}T14:30:00.123456+08:00`,
     questionnaire: { code, name },
+    wearing_hearing_aid: wearing,
     scores: { total, emotional: 0, social: 0 },
     level: { code: "normal", text },
   };
@@ -15,31 +21,43 @@ function submission(id, date, total, { code = "hhie-s", name = "HHIE-S", text = 
 describe("selectPoints", () => {
   it("orders oldest to newest and keeps a score of 0", () => {
     // The API returns newest first.
-    const points = selectPoints([
-      submission(3, "2026-10-14", 0),
-      submission(2, "2026-09-01", 18),
-      submission(1, "2026-08-01", 12),
-    ]);
+    const points = selectPoints(
+      [submission(3, "2026-10-14", 0), submission(2, "2026-09-01", 18), submission(1, "2026-08-01", 12)],
+      "hhie-s",
+    );
     expect(points.map((p) => p.total)).toEqual([12, 18, 0]);
     expect(points.map((p) => p.date)).toEqual(["2026/08/01", "2026/09/01", "2026/10/14"]);
   });
 
-  it("keeps only the questionnaire of the newest submission", () => {
-    const points = selectPoints([
+  it("keeps only the questionnaire it is given, even if another is newer", () => {
+    const submissions = [
       submission(3, "2026-10-14", 10, { code: "hhia-s", name: "HHIA-S" }),
       submission(2, "2026-09-01", 20),
       submission(1, "2026-08-01", 30, { code: "hhia-s", name: "HHIA-S" }),
-    ]);
-    expect(points.map((p) => p.id)).toEqual([1, 3]);
+    ];
+    expect(selectPoints(submissions, "hhie-s").map((p) => p.id)).toEqual([2]);
+    expect(selectPoints(submissions, "hhia-s").map((p) => p.id)).toEqual([1, 3]);
+  });
+
+  it("keeps the hearing aid status from the API, including unrecorded", () => {
+    const points = selectPoints(
+      [
+        submission(3, "2026-10-14", 10, { wearing: null }),
+        submission(2, "2026-09-01", 20, { wearing: true }),
+        submission(1, "2026-08-01", 30, { wearing: false }),
+      ],
+      "hhie-s",
+    );
+    expect(points.map((p) => p.wearing)).toEqual([false, true, null]);
   });
 
   it("uses the level text from the API as is", () => {
-    const [point] = selectPoints([submission(1, "2026-10-14", 5, { text: "假的分級" })]);
+    const [point] = selectPoints([submission(1, "2026-10-14", 5, { text: "假的分級" })], "hhie-s");
     expect(point.levelText).toBe("假的分級");
   });
 
   it("returns no points for no submissions", () => {
-    expect(selectPoints([])).toEqual([]);
+    expect(selectPoints([], "hhie-s")).toEqual([]);
   });
 });
 
