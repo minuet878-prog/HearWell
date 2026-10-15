@@ -78,6 +78,10 @@ class BaseAnswerFormSet(BaseFormSet):
         **kwargs,
     ):
         self.questions = questions
+        # A questionnaire has a fixed set of questions, so no form may be left blank. Django lets
+        # "extra" forms (index >= INITIAL_FORMS) pass empty; a tampered TOTAL_FORMS then reached
+        # clean() with no question_id and returned 500.
+        kwargs["form_kwargs"] = {**kwargs.get("form_kwargs", {}), "empty_permitted": False}
         super().__init__(*args, **kwargs)
 
     def clean(self):

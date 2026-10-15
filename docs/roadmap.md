@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1 批完成，2026-10-15；下一步：作答 500 bug（小任務）→ 介面改版第 2 批 → PWA；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1 批、作答 500 bug 完成，2026-10-15；下一步：介面改版第 2 批 → PWA；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -86,7 +86,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - 導覽：首頁／開始篩檢／我的紀錄（未登入：首頁／登入／註冊）；寬螢幕上方、手機底部分頁列；320px 不需左右捲動
   - 無障礙基準線第 3 節 7 項全部處理；趨勢圖改版（摘要框、每點標分數、淡分級底色）
 - [ ] 介面改版第 2 批：逐頁動線（首頁起點、結果頁下一步、作答進度），開工前補規格
-- [ ] 小任務：作答時竄改 `form-TOTAL_FORMS` 會 500（`BaseAnswerFormSet.clean()` 的 `KeyError: 'question_id'`，既有 bug，審查發現；本人交給 AI，先找根本原因再修）
+- [x] 小任務：作答時竄改 `form-TOTAL_FORMS` 會 500（規格 `docs/specs/phase4_fix_total_forms.md`）：每張子表單都必須驗證（`empty_permitted=False`）
 - Vite build 進 staticfiles，由 whitenoise 提供，維持單一 Render 服務。
 - 只有互動需求高的頁面用 React；login／register 維持 Django template。
 - **B2 趨勢圖**：第一個 React 頁面，把多次填答的分數畫成折線圖。

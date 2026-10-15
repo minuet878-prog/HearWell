@@ -1649,3 +1649,84 @@ class RedesignLayoutTests(TestCase):
             re.findall(r"<script[^>]*>", content),
             [f'<script type="module" src="/static/{TrendChartPageTests.CHART_JS}">'],
         )
+
+
+class TamperedAnswerTests(TestCase):
+    ERROR = "表單資料有誤，請重新確認每一題的作答"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.questionnaire.id])
+
+    def _data(self, skip=()):
+        # Same management form the real page sends: every form is an initial form.
+        data = {"form-TOTAL_FORMS": 10, "form-INITIAL_FORMS": 10, "wearing_hearing_aid": "True"}
+        for i, question in enumerate(self.questions):
+            data[f"form-{i}-question_id"] = str(question.id)
+            if question.question_number not in skip:
+                data[f"form-{i}-score"] = "4"
+        return data
+
+    def _assert_rejected(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.ERROR)
+        # No "還有 N 題" summary; a cleared form may still be marked under its question.
+        self.assertNotContains(response, "題沒有回答")
+        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Answer.objects.exists())
+
+    def test_extra_empty_forms_are_rejected(self):
+        data = self._data()
+        data["form-TOTAL_FORMS"] = 12
+        self._assert_rejected(self.client.post(self.url, data))
+
+    def test_cleared_new_form_is_rejected(self):
+        data = self._data()
+        data["form-INITIAL_FORMS"] = 0
+        del data["form-4-question_id"], data["form-4-score"]
+        self._assert_rejected(self.client.post(self.url, data))
+
+    def test_fewer_forms_than_questions_still_rejected(self):
+        data = self._data()
+        data["form-TOTAL_FORMS"] = 9
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "有題目沒有作答")
+        self.assertFalse(Submission.objects.exists())
+
+    def test_question_from_another_questionnaire_rejected(self):
+        other = Questionnaire.objects.create(questionnaire_name="其他問卷", code="other")
+        foreign = Question.objects.create(
+            questionnaire=other, question_text="別的題", question_number=1, category=Category.SOCIAL
+        )
+        data = self._data()
+        data["form-9-question_id"] = str(foreign.id)
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Submission.objects.exists())
+        self.assertFalse(Answer.objects.exists())
+
+    def test_normal_answers_still_saved(self):
+        response = self.client.post(self.url, self._data())
+        submission = Submission.objects.get()
+        self.assertRedirects(response, reverse("result", args=[submission.id]))
+        self.assertEqual(submission.answers.count(), 10)
+
+    def test_unanswered_question_still_pointed_out(self):
+        content = self.client.post(self.url, self._data(skip=(3,))).content.decode()
+        self.assertIn("還有 1 題沒有回答，請看標示紅字的題目。", content)
+        self.assertFalse(Submission.objects.exists())

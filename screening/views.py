@@ -126,7 +126,11 @@ def screening(request, questionnaire_id):
             return redirect("result", submission_id=submission.id)
         else:
             # Count only questions shown on the page, so the number matches the marked ones.
-            unanswered = sum(form.has_error("score", code="required") for _, form in question_form)
+            # A form missing its question_id was tampered with: it gets the generic error instead.
+            unanswered = sum(
+                form.has_error("score", code="required") and not form.has_error("question_id")
+                for _, form in question_form
+            )
             if unanswered:
                 message = f"還有 {unanswered} 題沒有回答，請看標示紅字的題目。"
             else:
