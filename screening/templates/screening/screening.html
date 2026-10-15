@@ -11,6 +11,7 @@
         {% csrf_token %}
         {{ formset.management_form }}
         <h2 class="mt-3">{{ questionnaire.questionnaire_name }}</h2>
+        <p class="fs-5 fw-bold">共 {{ question_count }} 題{% if questionnaire.info %}，大約 {{ questionnaire.info.minutes }} 分鐘{% endif %}。</p>
         <p class="h3 text-muted">本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。請在閱讀每項問題後圈選常常、有時或從未。
         </p>
         <div class="card mb-3">
@@ -26,7 +27,7 @@
         <div class="card mb-3">
             <div class="card-body">
                 <fieldset{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
-                    <legend class="fw-bold fs-5">{{ question.question_number }}. {{ question.question_text }}</legend>
+                    <legend class="fw-bold fs-5"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
                     {% include "screening/field_messages.html" with field=form.score %}
                     {{ form.score }}
                 </fieldset>

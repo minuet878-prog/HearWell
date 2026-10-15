@@ -12,6 +12,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify, get_advice
@@ -68,7 +69,7 @@ class ClassifyViewTests(TestCase):
             response = self.client.get(reverse("result", args=[submission.id]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "無法判讀")
-        self.assertContains(response, "text-secondary")
+        self.assertContains(response, "result-banner-unknown")
         self.assertContains(response, "這次的作答結果無法判讀分級")
 
     def test_history_page_survives_unknown_submission(self):
@@ -352,18 +353,18 @@ class HistoryScorePathTests(TestCase):
         self.client.force_login(self.user)
         history = self.client.get(reverse("my_hearing"))
         result = self.client.get(reverse("result", args=[submission.id]))
-        self.assertContains(history, "總分:26")
+        self.assertContains(history, "總分：26")
         self.assertContains(history, "顯著影響")
-        self.assertContains(result, "總分: 26")
-        self.assertContains(result, "情緒分數: 20")
-        self.assertContains(result, "社交分數: 6")
+        self.assertContains(result, "總分 26 分")
+        self.assertContains(result, "情緒分數：20")
+        self.assertContains(result, "社交分數：6")
         self.assertContains(result, "顯著影響")
 
     def test_submission_without_answers_scores_zero(self):
         self._make_submission(self.user, [])
         self.client.force_login(self.user)
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, "總分:0")
+        self.assertContains(response, "總分：0")
         self.assertContains(response, "無/極輕微影響")
 
     def test_history_only_shows_own_submissions(self):
@@ -498,8 +499,8 @@ class SubscaleNoteTests(TestCase):
         response = self.client.get(reverse("result", args=[submission.id]))
         content = response.content.decode()
         self.assertIn(self.NOTE, content)
+        self.assertLess(content.index("建議"), content.index("社交分數"))
         self.assertLess(content.index("社交分數"), content.index(self.NOTE))
-        self.assertLess(content.index(self.NOTE), content.index("建議"))
 
     def test_note_shown_when_unclassifiable(self):
         submission = self._make_submission(self.hhia_s)
@@ -517,9 +518,7 @@ class SubscaleNoteTests(TestCase):
     def test_note_uses_readable_rem_size(self):
         submission = self._make_submission(self.hhie_s)
         response = self.client.get(reverse("result", args=[submission.id]))
-        self.assertContains(
-            response, f'<p class="text-body-emphasis text-center">{self.NOTE}</p>', html=True
-        )
+        self.assertContains(response, f'<p class="text-body-emphasis">{self.NOTE}</p>', html=True)
 
 
 class HearingAidTests(TestCase):
@@ -632,13 +631,13 @@ class HearingAidTests(TestCase):
         submission = self._make_submission(True)
         response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(
-            response, '<p class="text-body-emphasis text-center">助聽器：有戴</p>', html=True
+            response, '<p class="text-body-emphasis mb-1">助聽器：有戴</p>', html=True
         )
 
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
-    HINT = "首次使用請先註冊，已有帳號請登入"
+    HINT = "第一次使用請先註冊，已有帳號請直接登入。"
     PASSWORD = "Xk9#mPq2vLw"
     EXTERNAL = (
         "https://evil.example.com",
@@ -797,7 +796,9 @@ class CopyTests(TestCase):
 
     def test_question_text_is_not_truncated(self):
         self.assertGreater(len(self.LONG_QUESTION), 30)
-        self.assertContains(self.client.get(self.url), f"1. {self.LONG_QUESTION}")
+        self.assertContains(
+            self.client.get(self.url), f"第 1 題／共 1 題</span>{self.LONG_QUESTION}"
+        )
 
     def test_question_text_full_after_validation_error(self):
         data = {
@@ -808,7 +809,7 @@ class CopyTests(TestCase):
         }
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f"1. {self.LONG_QUESTION}")
+        self.assertContains(response, f"第 1 題／共 1 題</span>{self.LONG_QUESTION}")
 
     def test_intro_typo_fixed(self):
         response = self.client.get(self.url)
@@ -1058,7 +1059,12 @@ class AccessibilityTests(TestCase):
     def test_each_question_in_fieldset_with_legend(self):
         content = self.client.get(self.url).content.decode()
         self.assertEqual(content.count("<fieldset"), 3)
-        for legend in (self.PROMPT, "1. 第1題", "2. 第2題"):
+        legends = (
+            self.PROMPT,
+            '<span class="question-progress">第 1 題／共 2 題</span>第1題',
+            '<span class="question-progress">第 2 題／共 2 題</span>第2題',
+        )
+        for legend in legends:
             with self.subTest(legend=legend):
                 self.assertRegex(content, rf"<legend[^>]*>\s*{re.escape(legend)}\s*</legend>")
 
@@ -1413,7 +1419,7 @@ class TrendChartPageTests(TestCase):
         submission = self._make_submission()
         response = self.client.get(reverse("my_hearing"))
         self.assertContains(response, 'id="trend-chart"')
-        self.assertContains(response, "總分:4")
+        self.assertContains(response, "總分：4")
         self.assertContains(response, reverse("result", args=[submission.id]))
 
     def test_history_page_without_submissions_has_no_chart(self):
@@ -1730,3 +1736,245 @@ class TamperedAnswerTests(TestCase):
         content = self.client.post(self.url, self._data(skip=(3,))).content.decode()
         self.assertIn("還有 1 題沒有回答，請看標示紅字的題目。", content)
         self.assertFalse(Submission.objects.exists())
+
+
+class PageFlowTests(TestCase):
+    """Spec docs/specs/phase4_ui_flow.md, acceptance 1-14a."""
+
+    HINT = "第一次使用請先註冊，已有帳號請直接登入。"
+    HOME_ORDER = (
+        "了解聽力對您生活的影響",
+        "回答幾個日常生活情境的問題，大約 3 分鐘。",
+        "開始篩檢",
+        "回答問題，大約 3 分鐘。",
+        "馬上看到結果分級和建議。",
+        "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
+        "7–10 年",
+        "從察覺聽力問題到實際就醫，平均要拖這麼久。及早了解，才能及早處理。",
+        "本網站由執業聽力師開發，使用經過驗證的標準化量表。"
+        "結果僅供參考，不能取代聽力檢查與醫師診斷。",
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="flowtester")
+        cls.other = User.objects.create_user(username="someoneelse")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.hhie_s,
+                question_text=f"題目內容{i:02d}",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+        cls.short = Questionnaire.objects.create(questionnaire_name="短問卷", code="short")
+        Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.short,
+                question_text=f"短題{i}",
+                question_number=i,
+                category=Category.SOCIAL,
+            )
+            for i in range(1, 4)
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _main(self, response):
+        # Only the page body; the header and nav repeat some words (e.g. 開始篩檢, the username).
+        content = response.content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _assert_in_order(self, content, parts):
+        positions = [content.index(part) for part in parts]
+        self.assertEqual(positions, sorted(positions), parts)
+
+    def _submit(self, scores, questionnaire=None, user=None):
+        submission = Submission.objects.create(
+            user=user or self.user, questionnaire=questionnaire or self.hhie_s
+        )
+        # Reversed so a missing order_by on the result page shows up.
+        for question, score in reversed(list(zip(self.questions, scores, strict=False))):
+            Answer.objects.create(submission=submission, question=question, score=score)
+        return submission
+
+    # Home (1-3)
+    def test_home_order_for_anonymous(self):
+        self.client.logout()
+        main = self._main(self.client.get(reverse("index")))
+        self._assert_in_order(main, self.HOME_ORDER)
+        self._assert_in_order(main, ("開始篩檢", self.HINT, "回答問題，大約 3 分鐘。"))
+        self.assertRegex(main, rf'<a[^>]*href="{reverse("questionnaire_list")}"[^>]*>\s*開始篩檢')
+
+    def test_home_order_for_logged_in_without_hint(self):
+        main = self._main(self.client.get(reverse("index")))
+        self._assert_in_order(main, self.HOME_ORDER)
+        self.assertNotIn(self.HINT, main)
+
+    def test_home_has_no_scale_names_or_missing_features(self):
+        for logged_in in (True, False):
+            if not logged_in:
+                self.client.logout()
+            content = self.client.get(reverse("index")).content.decode()
+            for text in ("HHIE-S", "HHIA-S", "記錄日常聆聽困難", "以白話理解"):
+                with self.subTest(logged_in=logged_in, text=text):
+                    self.assertNotIn(text, content)
+
+    # Questionnaire list (4-5)
+    def test_questionnaire_list_shows_info(self):
+        main = self._main(self.client.get(reverse("questionnaire_list")))
+        self._assert_in_order(
+            main,
+            (
+                "請選擇問卷",
+                "HHIE-S 聽力障礙自我評估",
+                "適合 65 歲以上的長輩。",
+                "共 10 題，大約 3 分鐘。",
+            ),
+        )
+        self.assertRegex(
+            main, rf'<a[^>]*href="{reverse("screening", args=[self.hhie_s.id])}"[^>]*>\s*HHIE-S'
+        )
+
+    def test_question_count_is_not_hard_coded(self):
+        main = self._main(self.client.get(reverse("questionnaire_list")))
+        start = main.index("短問卷")
+        card = main[start : main.index("</p>", start)]
+        self.assertIn("共 3 題。", card)
+        self.assertNotIn("適合", card)
+        self.assertNotIn("分鐘", card)
+        page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
+        self.assertIn("共 3 題。", page)
+        self.assertNotIn("分鐘", page)
+        self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
+
+    # Answer page (6-7)
+    def _assert_progress(self, page):
+        self.assertIn("共 10 題，大約 3 分鐘。", page)
+        for n in (1, 10):
+            with self.subTest(question=n):
+                self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
+
+    def test_answer_page_shows_progress(self):
+        response = self.client.get(reverse("screening", args=[self.hhie_s.id]))
+        self._assert_progress(self._main(response))
+
+    def test_answer_page_does_not_count_questions_again(self):
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get(reverse("screening", args=[self.hhie_s.id]))
+        self.assertFalse([q for q in ctx.captured_queries if "COUNT(" in q["sql"]])
+
+    def test_progress_kept_after_unanswered_post(self):
+        data = {"form-TOTAL_FORMS": 10, "form-INITIAL_FORMS": 10, "wearing_hearing_aid": "True"}
+        for i, question in enumerate(self.questions):
+            data[f"form-{i}-question_id"] = str(question.id)
+            if i != 2:
+                data[f"form-{i}-score"] = "4"
+        response = self.client.post(reverse("screening", args=[self.hhie_s.id]), data)
+        page = self._main(response)
+        self._assert_progress(page)
+        self.assertIn("還有 1 題沒有回答，請看標示紅字的題目。", page)
+        self.assertRegex(page, r'value="4"[^>]*checked')
+        self.assertFalse(Submission.objects.exists())
+
+    # Result page (8-13a)
+    def _result(self, submission):
+        return self._main(self.client.get(reverse("result", args=[submission.id])))
+
+    def test_result_page_order(self):
+        submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
+        day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
+        main = self._result(submission)
+        self._assert_in_order(
+            main,
+            (
+                f"{day} 作答",
+                "輕度到中度影響",
+                "總分 12 分（滿分 40）",
+                "建議",
+                get_advice("mild_to_moderate"),
+                "看我的紀錄與趨勢",
+                "回首頁",
+                "分數細節",
+                "情緒分數：12",
+                "社交分數：0",
+                "助聽器：未記錄",
+                "<details",
+                "查看我的 10 題作答",
+            ),
+        )
+
+    def test_result_next_step_links(self):
+        main = self._result(self._submit([0] * 10))
+        self.assertRegex(main, rf'<a[^>]*href="{reverse("my_hearing")}"[^>]*>\s*看我的紀錄與趨勢')
+        self.assertRegex(main, rf'<a[^>]*href="{reverse("index")}"[^>]*>\s*回首頁')
+
+    def test_result_has_no_username_or_halfwidth_colon(self):
+        main = self._result(self._submit([2] * 10))
+        self.assertNotIn("flowtester", main)
+        self.assertNotRegex(main, r"(總分|情緒分數|社交分數|助聽器|建議|結果)\s*:")
+
+    def test_result_answers_collapsed_in_question_order(self):
+        main = self._result(self._submit([4, 2, 0, 4, 2, 0, 4, 2, 0, 4]))
+        details = re.search(r"<details(\s[^>]*)?>(.*?)</details>", main, re.DOTALL)
+        self.assertIsNotNone(details)
+        self.assertNotIn("open", details.group(1) or "")
+        body = details.group(2)
+        self.assertRegex(body, r"<summary[^>]*>\s*查看我的 10 題作答\s*</summary>")
+        self._assert_in_order(body, [f"題目內容{i:02d}" for i in range(1, 11)])
+        for i, answer in ((1, "常常"), (2, "有時"), (3, "從未"), (10, "常常")):
+            with self.subTest(question=i):
+                self.assertIn(f"題目內容{i:02d}——{answer}", body)
+
+    def test_result_banner_colors(self):
+        css = Path(finders.find("screening/styles.css")).read_text()
+        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        cases = (
+            ("normal", [0] * 10, self.hhie_s, "#e3f4ec", "#1e7b55"),
+            ("mild_to_moderate", [2] * 6 + [0] * 4, self.hhie_s, "#fff4d6", "#8a5a00"),
+            ("severe", [4] * 10, self.hhie_s, "#feece7", "#c23b1c"),
+            ("unknown", [2] * 10, hhia_s, None, "#495057"),
+        )
+        for level, scores, questionnaire, background, color in cases:
+            with self.subTest(level=level):
+                submission = self._submit(scores, questionnaire=questionnaire)
+                if level == "unknown":
+                    with self.assertLogs("screening.scoring", "ERROR"):
+                        main = self._result(submission)
+                else:
+                    main = self._result(submission)
+                self.assertRegex(main, rf'class="[^"]*\bresult-banner-{level}\b')
+                rule = re.search(rf"\.result-banner-{level}\s*\{{([^}}]*)\}}", css)
+                self.assertIsNotNone(rule)
+                self.assertRegex(rule.group(1), rf"(?<!-)color:\s*{color}")
+                if background:
+                    self.assertRegex(rule.group(1), rf"background-color:\s*{background}")
+
+    def test_result_zero_score(self):
+        main = self._result(self._submit([0] * 10))
+        self.assertIn("總分 0 分（滿分 40）", main)
+        self.assertIn("無/極輕微影響", main)
+
+    def test_result_without_thresholds_has_no_max(self):
+        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        submission = self._submit([2] * 10, questionnaire=hhia_s)
+        with self.assertLogs("screening.scoring", "ERROR"):
+            main = self._result(submission)
+        self.assertIn("總分 20 分", main)
+        self.assertNotIn("滿分", main)
+
+    # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
+    def test_result_of_other_user_is_404(self):
+        submission = self._submit([0] * 10, user=self.other)
+        response = self.client.get(reverse("result", args=[submission.id]))
+        self.assertEqual(response.status_code, 404)
+
+    # History page (14a)
+    def test_history_uses_fullwidth_colon(self):
+        self._submit([2] * 10)
+        content = self.client.get(reverse("my_hearing")).content.decode()
+        self.assertIn("總分：20", content)
+        self.assertNotIn("總分:", content)

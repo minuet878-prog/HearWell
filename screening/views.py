@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -8,7 +9,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
-from screening.scoring import get_advice, level_to_color
+from screening.scoring import get_advice, max_score
 
 from .models import Answer, Questionnaire, Submission
 
@@ -73,7 +74,7 @@ def questionnaire_list(request):
     return render(
         request,
         "screening/questionnaire.html",
-        {"questionnaires": Questionnaire.objects.all()},
+        {"questionnaires": Questionnaire.objects.annotate(question_count=Count("questions"))},
     )
 
 
@@ -92,6 +93,7 @@ def screening(request, questionnaire_id):
             "screening/screening.html",
             {
                 "question_form": question_form,
+                "question_count": len(questions),
                 "questionnaire": questionnaire,
                 "formset": formset,
                 "hearing_aid_form": HearingAidForm(),
@@ -141,6 +143,7 @@ def screening(request, questionnaire_id):
                 {
                     "message": message,
                     "question_form": question_form,
+                    "question_count": len(questions),
                     "questionnaire": questionnaire,
                     "formset": formset,
                     "hearing_aid_form": hearing_aid_form,
@@ -161,7 +164,7 @@ def my_hearing(request):
 @login_required
 def submission_result(request, submission_id):
     submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
-    answers = submission.answers.select_related("question").all()
+    answers = submission.answers.select_related("question").order_by("question__question_number")
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
     social = submission.social_score
@@ -175,8 +178,9 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
+            "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
-            "classified_score_color": level_to_color(classified_score["level"]),
+            "classified_score_level": classified_score["level"],
             "advice": get_advice(classified_score["level"]),
         },
     )

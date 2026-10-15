@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from screening.scoring import classify
+from screening.scoring import QUESTIONNAIRE_INFO, classify
 
 
 class User(AbstractUser):
@@ -24,6 +24,10 @@ class Questionnaire(models.Model):
 
     def __str__(self):
         return self.questionnaire_name
+
+    @property
+    def info(self):
+        return QUESTIONNAIRE_INFO.get(self.code)
 
 
 class Category(models.TextChoices):

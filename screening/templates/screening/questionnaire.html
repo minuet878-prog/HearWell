@@ -3,11 +3,13 @@
 {% block title %}開始篩檢｜HearWell{% endblock %}
 
 {% block body %}
+<h1 class="h3 mt-2">請選擇問卷</h1>
 {% for questionnaire in questionnaires %}
 <div class="card mt-3">
-    <div class="card-body fs-3">
+    <div class="card-body">
         {# stretched-link: the whole card is the touch target. #}
-        <a class="stretched-link" href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a>
+        <a class="stretched-link fs-4 fw-bold" href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}{% if questionnaire.info %} {{ questionnaire.info.subtitle }}{% endif %}</a>
+        <p class="mb-0 mt-1">{% if questionnaire.info %}{{ questionnaire.info.audience }}共 {{ questionnaire.question_count }} 題，大約 {{ questionnaire.info.minutes }} 分鐘。{% else %}共 {{ questionnaire.question_count }} 題。{% endif %}</p>
     </div>
 </div>
 {% endfor %}
