@@ -17,7 +17,7 @@
             {# Rows 1-5 are scores 5-1; the text above says the same for screen readers. #}
             <div class="ioi-grid" aria-hidden="true">
                 {% if column.band_rows %}<div class="ioi-band" style="grid-row: {{ column.band_rows }}"></div>{% endif %}
-                {% if column.previous_row %}<span class="ioi-dot ioi-dot-previous" style="grid-row: {{ column.previous_row }}"></span>{% endif %}
+                {% if column.previous_row %}<span class="ioi-diamond ioi-dot-previous" style="grid-row: {{ column.previous_row }}"></span>{% endif %}
                 <span class="ioi-dot ioi-dot-latest" style="grid-row: {{ column.latest_row }}"></span>
             </div>
             <span class="ioi-name" aria-hidden="true">{{ column.name }}</span>

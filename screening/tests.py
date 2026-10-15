@@ -2816,3 +2816,59 @@ class HistoryTabsTests(TestCase):
         chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
         self.assertEqual(chart.count('class="visually-hidden"'), 7)
         self.assertRegex(chart, r'<div[^>]*class="ioi-grid"[^>]*aria-hidden="true"')
+
+    # Review follow-ups
+    def _columns(self, chart):
+        # Item columns only; the first <li> is the score axis.
+        items = re.findall(r"<li>(.*?)</li>", chart.split('class="ioi-columns"')[1], re.DOTALL)
+        return [item for item in items if "ioi-grid" in item]
+
+    def test_chart_positions(self):
+        # Rows: score 5 is row 1, score 1 is row 5. moderately_severe Use is 4-5.
+        self._ioi_ha((2,) * 7, "moderately_severe", days_ago=5)
+        self._ioi_ha((5,) * 7, "moderately_severe", days_ago=1)
+        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        use = self._columns(chart)[0]
+        self.assertIn("使用時間", use)
+        self.assertRegex(use, r'class="ioi-band" style="grid-row: 1 / 3"')
+        self.assertRegex(use, r'class="[^"]*ioi-dot-latest[^"]*" style="grid-row: 1"')
+        self.assertRegex(use, r'class="[^"]*ioi-dot-previous[^"]*" style="grid-row: 4"')
+
+    def test_previous_point_has_another_shape(self):
+        self._ioi_ha((2,) * 7, "mild_moderate", days_ago=5)
+        self._ioi_ha((4,) * 7, "mild_moderate", days_ago=1)
+        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        previous = re.findall(r'class="([^"]*ioi-dot-previous[^"]*)"', chart)
+        latest = re.findall(r'class="([^"]*ioi-dot-latest[^"]*)"', chart)
+        self.assertEqual(len(previous), 7)
+        for classes in previous:
+            self.assertIn("ioi-diamond", classes.split())
+            self.assertNotIn("ioi-dot", classes.split())
+        for classes in latest:
+            self.assertIn("ioi-dot", classes.split())
+        self.assertIn('class="ioi-legend-previous"', chart)
+
+    def test_no_trend_chart_for_other_questionnaires(self):
+        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        question = Question.objects.create(
+            questionnaire=hhia_s, question_text="HHIA題1", question_number=1
+        )
+        self._hhie_s(10, False, days_ago=5)
+        submission = Submission.objects.create(user=self.user, questionnaire=hhia_s)
+        Answer.objects.create(submission=submission, question=question, score=4)
+        response = self.client.get(self._tab_url("hhia-s"))
+        main = self._main(response)
+        self.assertEqual(self._current_tab(self._tabs(main)), "HHIA-S")
+        self.assertIn(reverse("result", args=[submission.id]), main)
+        self.assertNotIn("trend-chart", main)
+        self.assertNotContains(response, self.CHART_JS)
+
+    def test_same_time_records_newest_id_wins(self):
+        hhie = self._hhie_s(10, False, days_ago=1)
+        older_ioi = self._ioi_ha((2,) * 7, "mild_moderate", days_ago=1)
+        newer_ioi = self._ioi_ha((4,) * 7, "mild_moderate", days_ago=1)
+        same = Submission.objects.get(pk=hhie.pk).created_at
+        Submission.objects.filter(pk__in=[older_ioi.pk, newer_ioi.pk]).update(created_at=same)
+        main = self._main(self.client.get(self.url))
+        self.assertEqual(self._current_tab(self._tabs(main)), "IOI-HA")
+        self.assertIn("使用時間：最近一次 4 分，上一次 2 分", self._chart(main))

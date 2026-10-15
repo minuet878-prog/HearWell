@@ -423,8 +423,7 @@ details summary {
 }
 
 .ioi-dot,
-.ioi-legend-latest,
-.ioi-legend-previous {
+.ioi-legend-latest {
     width: 1rem;
     height: 1rem;
     border-radius: 50%;
@@ -436,15 +435,19 @@ details summary {
     background-color: #1f4e8c;
 }
 
-.ioi-dot-previous,
+/* The previous answer is a hollow diamond, so it differs from the latest by shape, not only fill. */
+.ioi-diamond,
 .ioi-legend-previous {
+    width: 0.875rem;
+    height: 0.875rem;
     border: 0.1875rem solid #495057;
     background-color: #fff;
+    transform: rotate(45deg);
 }
 
-/* Both points on the same score sit side by side. */
+/* With a previous answer the two marks always sit apart, so equal scores stay visible. */
 .ioi-dot-previous {
-    transform: translateX(-0.5rem);
+    transform: translateX(-0.5rem) rotate(45deg);
 }
 
 .ioi-dot-previous + .ioi-dot-latest {

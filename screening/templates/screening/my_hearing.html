@@ -4,7 +4,7 @@
 {% block title %}我的紀錄｜HearWell{% endblock %}
 
 {% block extra_head %}
-{% if submissions and current.code != "ioi-ha" %}
+{% if current.code == "hhie-s" %}
 <script type="module" src="{% static 'screening/trend/trend-chart.js' %}"></script>
 {% endif %}
 {% endblock %}
@@ -28,7 +28,8 @@
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
-{% elif submissions %}
+{% elif current.code == "hhie-s" %}
+{# Only HHIE-S has a trend chart; other questionnaires list their records only. #}
 <div id="trend-chart" data-questionnaire="{{ current.code }}"></div>
 {% endif %}
 {% for submission in submissions %}
