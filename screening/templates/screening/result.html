@@ -3,31 +3,28 @@
 {% block title %}篩檢結果｜HearWell{% endblock %}
 
 {% block body %}
-<div class="submission text-muted">
-    {{ submission.user }}於{{ submission.created_at|date:"Y/m/d" }}作答
+<p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+<div class="result-banner result-banner-{{ classified_score_level }}">
+    <div>結果</div>
+    <div class="result-level">{{ classified_score_text }}</div>
+    <div class="fs-5">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
-<div class="answers">
-    {% for answer in answers %}
-    <div class="card mb-2">
-        <div class="card-body">
-            <span class="fw-bold">{{ answer.question.question_text }}</span>:<span class="text-muted">
-                {{ answer.get_score_display }}</span>
-        </div>
-    </div>
-
-    {% endfor %}
+<h2 class="h4 mt-4">建議</h2>
+<p>{{ advice }}</p>
+<div class="d-flex flex-column flex-sm-row gap-2 my-3">
+    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 </div>
-<div class="score">
-    <p class="fw-bold text-center display-3 text-{{ classified_score_color }}">結果：{{ classified_score_text }}</p>
-    <p class="fs-2 text-muted text-center">總分: {{ total_score }}</p>
-    <p class="fs-2 text-muted text-center">情緒分數: {{ emotional }}</p>
-    <p class="fs-2 text-muted text-center">社交分數: {{ social }}</p>
-    <p class="text-body-emphasis text-center">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
-    <p class="text-body-emphasis text-center">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
-    <div class="card">
-        <div class="card-body">
-            <p class="h3 text-muted">建議: {{ advice }}</p>
-        </div>
-    </div>
-</div>
+<h2 class="h5 mt-4">分數細節</h2>
+<p class="mb-1">情緒分數：{{ emotional }}　社交分數：{{ social }}</p>
+<p class="text-body-emphasis mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
+<p class="text-body-emphasis">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
+<details class="mb-3">
+    <summary>查看我的 {{ answers|length }} 題作答</summary>
+    <ol>
+        {% for answer in answers %}
+        <li>{{ answer.question.question_text }}——{{ answer.get_score_display }}</li>
+        {% endfor %}
+    </ol>
+</details>
 {% endblock %}

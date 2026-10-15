@@ -13,6 +13,18 @@ THRESHOLDS = {
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 
+# Shown on the questionnaire list and answer page.
+# Questionnaires missing here show only their name and question count.
+QUESTIONNAIRE_INFO = {
+    "hhie-s": {"subtitle": "聽力障礙自我評估", "audience": "適合 65 歲以上的長輩。", "minutes": 3},
+}
+
+
+def max_score(questionnaire_code):
+    # None hides "（滿分 Y）"; classify() already logs the missing thresholds.
+    thresholds = THRESHOLDS.get(questionnaire_code)
+    return thresholds[-1][0] if thresholds else None
+
 
 def classify(total_score, questionnaire_code):
     thresholds = THRESHOLDS.get(questionnaire_code)

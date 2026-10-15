@@ -240,3 +240,81 @@ div.choice-group label:focus-within {
 .trend-summary-score span {
     font-weight: 700;
 }
+
+/* Home: numbered steps. */
+.steps {
+    list-style: none;
+    padding: 0;
+    counter-reset: step;
+}
+
+.steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+}
+
+.steps li::before {
+    content: counter(step);
+    flex: 0 0 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background-color: #1f4e8c;
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
+.question-progress {
+    display: block;
+    font-size: 1rem;
+    color: #495057;
+}
+
+/* Result page: level banner, same colours as the trend chart bands. */
+.result-banner {
+    padding: 1rem 1.25rem;
+    border-left: 0.375rem solid currentColor;
+    border-radius: 0.5rem;
+}
+
+.result-banner > div:not(.result-level) {
+    color: #212529;
+}
+
+.result-level {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.result-banner-normal {
+    background-color: #e3f4ec;
+    color: #1e7b55;
+}
+
+.result-banner-mild_to_moderate {
+    background-color: #fff4d6;
+    color: #8a5a00;
+}
+
+.result-banner-severe {
+    background-color: #feece7;
+    color: #c23b1c;
+}
+
+.result-banner-unknown {
+    background-color: #f1f3f5;
+    color: #495057;
+}
+
+details summary {
+    min-height: 2.75rem;
+    padding: 0.5rem 0;
+    font-weight: 700;
+    color: #1f4e8c;
+}
