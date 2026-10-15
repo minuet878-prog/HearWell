@@ -1,6 +1,6 @@
 # Phase 4 規格：React 趨勢圖與 PWA
 
-- **狀態**：第 1 批完成（驗收 17 待合併部署後確認）；第 2 批完成（驗收 24–26 待合併部署後用手機確認）
+- **狀態**：已完成（第 1、2 批；人工驗收 17、24–26 於 2026-10-15 由本人確認）
 - **分支**：`feat/react-trend-chart`（第 1 批）、`feat/pwa`（第 2 批）
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-15
 
@@ -168,7 +168,7 @@ API
 無障礙與部署（人工驗收，結果記入 `docs/accessibility_baseline.md`）
 - [x] 15. 瀏覽器放大到 200%，「我的聽力」頁不需左右捲動，圖上文字跟著放大；axe-core 在該頁沒有新增問題。
 - [x] 16. 記錄「我的聽力」頁新增的 JS 體積（壓縮後）。→ 2026-10-15 實量：未壓縮 569 KB、gzip 168 KB、brotli 141 KB（含 React 與 Recharts）
-- [ ] 17. Render 部署成功，正式環境「我的聽力」頁看得到趨勢圖；現有 Django 測試全部通過。
+- [x] 17. Render 部署成功，正式環境「我的聽力」頁看得到趨勢圖；現有 Django 測試全部通過。
 
 ## 5b. 驗收條件（第 2 批）
 
@@ -181,9 +181,9 @@ API
 - [x] 23. 假設打開首頁，則最下方有「把 HearWell 加到手機主畫面」連結指向說明頁，位置在免責聲明之前；首頁其他內容不變（第 2 批改版的首頁測試全部通過）。
 
 人工驗收（本人，用自己的手機）
-- [ ] 24. Android Chrome：照說明頁步驟可以加到主畫面，圖示是 B1 耳朵、名稱是 HearWell；從圖示打開是全螢幕、狀態列深藍、先到首頁。
-- [ ] 25. iPhone Safari：照說明頁步驟可以加到主畫面（按鈕名稱和說明頁一致，不一致就改文案），圖示與名稱正確；從圖示打開是全螢幕、先到首頁。
-- [ ] 26. 全螢幕模式下，從每一頁（首頁、問卷列表、作答頁、結果頁、我的紀錄、說明頁、登入、註冊）都能只靠頁面上的按鈕或導覽列回到首頁；登入狀態在關掉再打開後仍保持。
+- [x] 24. Android Chrome：照說明頁步驟可以加到主畫面，圖示是 B1 耳朵、名稱是 HearWell；從圖示打開是全螢幕、狀態列深藍、先到首頁。
+- [x] 25. iPhone Safari：照說明頁步驟可以加到主畫面（按鈕名稱和說明頁一致，不一致就改文案），圖示與名稱正確；從圖示打開是全螢幕、先到首頁。
+- [x] 26. 全螢幕模式下，從每一頁（首頁、問卷列表、作答頁、結果頁、我的紀錄、說明頁、登入、註冊）都能只靠頁面上的按鈕或導覽列回到首頁；登入狀態在關掉再打開後仍保持。
 - [x] 27. 電腦版 Chrome 開發者工具的 Application → Manifest 沒有錯誤；說明頁 axe 沒有問題、320px 與 200% 不需左右捲動。
 - [x] 28. 現有測試全部通過（Django、前端）。
 
@@ -245,7 +245,7 @@ API
   14. 前端 `shows the API's level text, not a recomputed one`、`selectPoints` 假文字
   15. 人工驗收（本人，2026-10-15）：200% 不需左右捲動、axe-core 無新增問題、浮動框分數正確
   16. 實量記錄於本規格第 5 節
-  17. 合併部署後由本人確認
+  17. 本人於正式環境確認看得到趨勢圖（2026-10-15）
 - **規格以外的決定**：
   - 實作時發現：Django 測試原本就依賴 collectstatic（清單裡沒有的靜態檔會 500）。AI 一開始提議 `WHITENOISE_MANIFEST_STRICT = False`，實測無效（非 strict 仍要讀檔算雜湊），本人選擇改用測試專用設定。
   - Node 固定 24.21.0：jsdom 30 要求 ≥24.15，Render 預設 24.14.1 不夠；本機是 v26，主版本不同，風險低。
@@ -273,11 +273,11 @@ API
   - 22 `test_guide_page_for_anonymous_and_logged_in`（內容順序、每段 4 步、標題、沒有 `aria-current`）
   - 23 `test_home_links_to_guide_before_disclaimer`
   - 27 本人人工驗收通過（2026-10-15）；28 Django 155、前端 27 全部通過
-  - 24–26 合併部署後由本人用手機確認
+  - 24–26 本人用 Android、iPhone 實測通過（2026-10-15），iPhone 按鈕名稱與說明頁一致、不用改文案
 - **規格以外的決定**：
   - manifest 用 `.json`：whitenoise 不認得 `.webmanifest`，會用 `application/octet-stream` 送出。
   - 加 `id: "/"`：正式環境 manifest 網址每次部署帶不同雜湊，固定 `id` 讓瀏覽器一直認得是同一個 app。
-  - 加 `apple-mobile-web-app-title`、`apple-mobile-web-app-capable`（本人同意）：讓 iPhone 主畫面名字固定是 HearWell、舊版 iOS 也能全螢幕；後者在 Chrome 主控台會提示已過時，驗收 25 後再決定要不要拿掉。
+  - 加 `apple-mobile-web-app-title`、`apple-mobile-web-app-capable`（本人同意）：讓 iPhone 主畫面名字固定是 HearWell、舊版 iOS 也能全螢幕；後者在 Chrome 主控台會提示已過時，驗收 25 後決定保留（2026-10-15）。
   - 實跑 `collectstatic`（輸出到暫存資料夾）確認原始檔名有保留，manifest 裡的相對圖示路徑部署後可用。
   - 審查意見不改：`icon.svg` 會公開在網站上（是圖示原始檔，沒有風險）；iPhone 的「⋯」沒有加說明（文案已定稿）。
 - **這次用到的新概念**：PWA、Web App Manifest、`scope`／`id`、maskable 圖示、安全環境、iOS 主畫面 app 的獨立儲存、白名單測試、PNG 檔頭、service worker 快取的風險（完整內容見 `docs/interview.md`）。
