@@ -1,4 +1,6 @@
+import json
 import re
+import struct
 from datetime import date, datetime
 from io import StringIO
 from pathlib import Path
@@ -1978,3 +1980,171 @@ class PageFlowTests(TestCase):
         content = self.client.get(reverse("my_hearing")).content.decode()
         self.assertIn("總分：20", content)
         self.assertNotIn("總分:", content)
+
+
+class PwaTests(TestCase):
+    """Spec docs/specs/phase4.md batch 2, acceptance 18-23."""
+
+    PWA_DIR = Path(__file__).resolve().parent / "static" / "screening" / "pwa"
+    STATIC = "/static/screening/pwa/"
+    GUIDE_ORDER = (
+        "把 HearWell 加到手機主畫面",
+        "加到主畫面後，HearWell 會像其他 app 一樣出現在手機桌面上，"
+        "點一下就能打開，不用每次輸入網址。",
+        "iPhone（Safari）",
+        "用 Safari 打開 HearWell 網站。",
+        "點畫面下方的「分享」按鈕（一個方框，上面有向上的箭頭）。如果沒看到，先點「⋯」再點「分享」。",
+        "往下滑，點「加入主畫面」。",
+        "點右上角的「加入」。",
+        "第一次從主畫面打開時，需要再登入一次。",
+        "Android 手機（Chrome）",
+        "用 Chrome 打開 HearWell 網站。",
+        "點右上角的「⋮」（三個點）。",
+        "點「加到主畫面」或「安裝應用程式」。",
+        "再點一次「安裝」或「新增」。",
+        "從主畫面打開時，請用畫面下方的「首頁、開始篩檢、我的紀錄」切換頁面。",
+    )
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="pwatester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        cls.submission = Submission.objects.create(user=cls.user, questionnaire=cls.questionnaire)
+        Answer.objects.create(submission=cls.submission, question=question, score=2)
+
+    def _head(self, response):
+        content = response.content.decode()
+        return content[content.index("<head>") : content.index("</head>")]
+
+    def _png_size(self, path):
+        data = path.read_bytes()[:24]
+        self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n", path)
+        return struct.unpack(">II", data[16:24])
+
+    def _manifest(self):
+        return json.loads((self.PWA_DIR / "manifest.json").read_text(encoding="utf-8"))
+
+    # 18
+    def test_every_page_links_app_info(self):
+        self.client.force_login(self.user)
+        urls = [
+            reverse("index"),
+            reverse("questionnaire_list"),
+            reverse("screening", args=[self.questionnaire.id]),
+            reverse("result", args=[self.submission.id]),
+            reverse("my_hearing"),
+            reverse("add_to_home"),
+        ]
+        heads = {url: self._head(self.client.get(url)) for url in urls}
+        self.client.logout()
+        for name in ("login", "register"):
+            heads[reverse(name)] = self._head(self.client.get(reverse(name)))
+        for url, head in heads.items():
+            with self.subTest(url=url):
+                self.assertRegex(head, rf'<link rel="manifest" href="{self.STATIC}manifest\.json')
+                self.assertIn('<meta name="theme-color" content="#1f4e8c">', head)
+                self.assertRegex(
+                    head, rf'<link rel="apple-touch-icon" href="{self.STATIC}apple-touch-icon\.png'
+                )
+                self.assertIn('<meta name="apple-mobile-web-app-title" content="HearWell">', head)
+
+    # 19
+    def test_manifest_fields(self):
+        manifest = self._manifest()
+        expected = {
+            "name": "HearWell 聽力自我照護",
+            "short_name": "HearWell",
+            "id": "/",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "theme_color": "#1f4e8c",
+            "background_color": "#ffffff",
+            "lang": "zh-Hant",
+        }
+        for key, value in expected.items():
+            with self.subTest(key=key):
+                self.assertEqual(manifest.get(key), value)
+
+    def test_manifest_icons_exist_with_right_size(self):
+        icons = {
+            (icon["sizes"], icon.get("purpose", "any")): icon for icon in self._manifest()["icons"]
+        }
+        self.assertEqual(
+            set(icons), {("192x192", "any"), ("512x512", "any"), ("512x512", "maskable")}
+        )
+        for (sizes, purpose), icon in icons.items():
+            with self.subTest(sizes=sizes, purpose=purpose):
+                self.assertEqual(icon["type"], "image/png")
+                path = self.PWA_DIR / icon["src"]
+                self.assertTrue(path.is_file(), path)
+                width, height = self._png_size(path)
+                self.assertEqual(f"{width}x{height}", sizes)
+
+    # 20
+    def test_apple_touch_icon_is_180(self):
+        self.assertEqual(self._png_size(self.PWA_DIR / "apple-touch-icon.png"), (180, 180))
+
+    # 21
+    def test_pwa_folder_has_only_app_info_and_icons(self):
+        # Allow-list: a service worker added here under any name fails this test.
+        names = {path.name for path in self.PWA_DIR.iterdir()}
+        expected = {
+            "manifest.json",
+            "icon.svg",
+            "icon-192.png",
+            "icon-512.png",
+            "apple-touch-icon.png",
+        }
+        self.assertEqual(names, expected)
+        self.assertNotIn("serviceworker", self._manifest())
+
+    def test_no_service_worker_registration(self):
+        root = Path(__file__).resolve().parent.parent
+        app = root / "screening"
+        sources = [
+            *(app / "templates").rglob("*.html"),
+            # This file names "serviceWorker" itself; migrations are generated.
+            *(p for p in app.rglob("*.py") if "migrations" not in p.parts and p.name != "tests.py"),
+            *(root / "config").rglob("*.py"),
+            *(root / "frontend" / "src").rglob("*.js*"),
+            # The trend chart bundle is a build output (React), not our code.
+            *(p for p in (app / "static").rglob("*") if p.is_file() and "trend" not in p.parts),
+        ]
+        for path in sources:
+            if path.suffix in (".html", ".py", ".js", ".jsx", ".json", ".css", ".svg"):
+                with self.subTest(path=str(path.relative_to(root))):
+                    self.assertNotIn("serviceWorker", path.read_text(encoding="utf-8"))
+
+    # 22
+    def test_guide_page_for_anonymous_and_logged_in(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(self.user)
+            with self.subTest(logged_in=logged_in):
+                response = self.client.get(reverse("add_to_home"))
+                self.assertEqual(response.status_code, 200)
+                content = response.content.decode()
+                # U+FF5C FULLWIDTH VERTICAL LINE, as in the other page titles
+                self.assertIn("<title>加到主畫面\uff5cHearWell</title>", content)
+                self.assertNotIn('aria-current="page"', content)
+                main = content[content.index("<main") : content.index("</main>")]
+                positions = [main.index(part) for part in self.GUIDE_ORDER]
+                self.assertEqual(positions, sorted(positions))
+                steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
+                self.assertEqual(steps, [4, 4])
+
+    # 23
+    def test_home_links_to_guide_before_disclaimer(self):
+        content = self.client.get(reverse("index")).content.decode()
+        link = re.search(
+            rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', content
+        )
+        self.assertIsNotNone(link)
+        self.assertLess(link.start(), content.index("本網站由執業聽力師開發"))
