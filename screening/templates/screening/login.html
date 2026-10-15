@@ -1,30 +1,12 @@
 {% extends "screening/layout.html" %}
 
-{% block extra_head %}
-<style>
-    html,
-    body {
-        height: 100%;
-    }
+{% block title %}登入｜HearWell{% endblock %}
 
-    body {
-        display: flex;
-        align-items: center;
-        padding-top: 40px;
-        padding-bottom: 40px;
-        background-color: #f8f9fa;
-    }
-</style>
-{% endblock %}
-
-{% block body_class %}text-center{% endblock %}
-{% block nav %}
-{% endblock %}
 {% block body %}
-<div class="container">
+<div class="narrow-form">
     <h1 class="h3 mb-3 fw-normal">登入</h1>
     {% if next %}
-    <p class="fs-5 text-body-emphasis">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
+    <p class="text-body-emphasis">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
     {% endif %}
     {% if message %}
     <div class="mb-3 text-danger">{{message}}</div>
@@ -32,16 +14,13 @@
     <form method="post" action="{% url 'login' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="form-floating mb-2">
-            <input autofocus class="form-control" id="floatingInput" type="text" name="username"
-                placeholder="Username" required>
-            <label for="floatingInput">使用者名稱</label>
+        <div class="mb-3">
+            <label for="id_username" class="form-label">使用者名稱</label>
+            <input autofocus class="form-control" id="id_username" type="text" name="username" required>
         </div>
-
-        <div class="form-floating mb-2">
-            <input class="form-control" id="floatingPassword" type="password" name="password"
-                placeholder="Password" required>
-            <label for="floatingPassword">密碼</label>
+        <div class="mb-3">
+            <label for="id_password" class="form-label">密碼</label>
+            <input class="form-control" id="id_password" type="password" name="password" required>
         </div>
         <div class="d-flex gap-2">
             <input class="w-50 btn btn-lg btn-primary" type="submit" value="登入">

@@ -2,10 +2,10 @@
 {% if field.errors %}
 <div id="{{ field.auto_id }}_error">
     {% for error in field.errors %}
-    <p class="fs-5 text-danger mb-0">{{ error }}</p>
+    <p class="text-danger mb-0">{{ error }}</p>
     {% endfor %}
 </div>
 {% endif %}
 {% if field.help_text %}
-<div id="{{ field.auto_id }}_helptext" class="fs-5 text-body-emphasis mt-1">{{ field.help_text }}</div>
+<div id="{{ field.auto_id }}_helptext" class="text-body-emphasis mt-1">{{ field.help_text }}</div>
 {% endif %}

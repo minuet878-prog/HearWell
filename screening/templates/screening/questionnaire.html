@@ -1,10 +1,13 @@
 {% extends "screening/layout.html" %}
 
+{% block title %}開始篩檢｜HearWell{% endblock %}
+
 {% block body %}
 {% for questionnaire in questionnaires %}
 <div class="card mt-3">
     <div class="card-body fs-3">
-        <a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a>
+        {# stretched-link: the whole card is the touch target. #}
+        <a class="stretched-link" href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a>
     </div>
 </div>
 {% endfor %}

@@ -1,44 +1,26 @@
 {% extends "screening/layout.html" %}
 
-{% block extra_head %}
-<style>
-    html,
-    body {
-        height: 100%;
-    }
+{% block title %}註冊｜HearWell{% endblock %}
 
-    body {
-        display: flex;
-        align-items: center;
-        padding-top: 40px;
-        padding-bottom: 40px;
-        background-color: #f8f9fa;
-    }
-</style>
-{% endblock %}
-
-{% block body_class %}text-center{% endblock %}
-{% block nav %}
-{% endblock %}
 {% block body %}
-<div class="container">
+<div class="narrow-form">
     <h1 class="h3 mb-3 fw-normal">註冊</h1>
     <form method="post" action="{% url 'register' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
         {% for error in form.non_field_errors %}
-        <p class="fs-5 text-danger">{{ error }}</p>
+        <p class="text-danger">{{ error }}</p>
         {% endfor %}
         {% for field in form %}
         {% if field.name != "roc_birth_year" %}
-        <div class="mb-3 text-start">
+        <div class="mb-3">
             {{ field.label_tag }}
             {{ field }}
             {% include "screening/field_messages.html" %}
         </div>
         {% endif %}
         {% endfor %}
-        <div class="mb-3 text-start">
+        <div class="mb-3">
             {{ form.roc_birth_year.label_tag }}
             <div class="input-group">
                 <span class="input-group-text">民國</span>
@@ -50,6 +32,6 @@
         <input class="w-100 btn btn-lg btn-primary" type="submit" value="註冊">
     </form>
 
-    已經有帳號了嗎？ <a href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">從這裡登入</a>
+    <p class="mt-3">已經有帳號了嗎？ <a class="btn btn-link px-1 align-baseline" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">從這裡登入</a></p>
 </div>
 {% endblock %}

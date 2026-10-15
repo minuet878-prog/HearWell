@@ -18,11 +18,14 @@ export function selectPoints(submissions) {
 }
 
 export function summarize(points) {
+  // The pieces of the summary box; the wording of the change line is fixed by the spec.
   const latest = points.at(-1);
-  const head = `最近一次 ${latest.date}：${latest.total} 分，${latest.levelText}`;
-  if (points.length === 1) return `${head}。再做一次篩檢，就能看到分數的變化。`;
-  const diff = latest.total - points.at(-2).total;
-  if (diff > 0) return `${head}，比上一次增加 ${diff} 分。`;
-  if (diff < 0) return `${head}，比上一次減少 ${-diff} 分。`;
-  return `${head}，和上一次相同。`;
+  let change = "再做一次篩檢，就能看到分數的變化。";
+  if (points.length > 1) {
+    const diff = latest.total - points.at(-2).total;
+    if (diff > 0) change = `比上一次增加 ${diff} 分。`;
+    else if (diff < 0) change = `比上一次減少 ${-diff} 分。`;
+    else change = "和上一次相同。";
+  }
+  return { date: latest.date, total: latest.total, levelText: latest.levelText, change };
 }
