@@ -51,6 +51,7 @@ class AnswerForm(forms.Form):
         choices=Score.choices,
         coerce=int,
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        error_messages={"required": "這一題還沒有回答"},
     )
     question_id = forms.ModelChoiceField(
         queryset=Question.objects.all(), widget=forms.HiddenInput()

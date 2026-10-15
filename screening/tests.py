@@ -518,7 +518,7 @@ class SubscaleNoteTests(TestCase):
         submission = self._make_submission(self.hhie_s)
         response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(
-            response, f'<p class="fs-4 text-body-emphasis text-center">{self.NOTE}</p>', html=True
+            response, f'<p class="text-body-emphasis text-center">{self.NOTE}</p>', html=True
         )
 
 
@@ -632,7 +632,7 @@ class HearingAidTests(TestCase):
         submission = self._make_submission(True)
         response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(
-            response, '<p class="fs-4 text-body-emphasis text-center">助聽器：有戴</p>', html=True
+            response, '<p class="text-body-emphasis text-center">助聽器：有戴</p>', html=True
         )
 
 
@@ -746,12 +746,12 @@ class LoginNextTests(TestCase):
     def test_new_text_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.login_url),
-            f'<p class="fs-5 text-body-emphasis">{self.NOTE}</p>',
+            f'<p class="text-body-emphasis">{self.NOTE}</p>',
             html=True,
         )
         self.assertContains(
             self.client.get(reverse("index")),
-            f'<p class="fs-5 text-body-emphasis mt-2">{self.HINT}</p>',
+            f'<p class="text-body-emphasis mt-2">{self.HINT}</p>',
             html=True,
         )
 
@@ -836,7 +836,7 @@ class CopyTests(TestCase):
         self.assertNotContains(response, "Signed in")
         self.client.logout()
         response = self.client.get(reverse("index"))
-        self.assertContains(response, "尚未登入")
+        # Logged out: the header shows nothing (spec phase4_ui_redesign 4.2), still no English.
         for english in ("Signed in", "Not signed in"):
             self.assertNotContains(response, english)
 
@@ -846,7 +846,7 @@ class CopyTests(TestCase):
         response = self.client.get(reverse("my_hearing"))
         self.assertContains(
             response,
-            f'<a class="btn btn-primary mb-2 ms-2" href="{result_url}">查看結果</a>',
+            f'<a class="btn btn-primary align-self-md-center" href="{result_url}">查看結果</a>',
             html=True,
         )
         self.assertNotContains(response, "連結")
@@ -958,7 +958,7 @@ class RegisterFormTests(TestCase):
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),
-            f'<div id="id_roc_birth_year_helptext" class="fs-5 text-body-emphasis mt-1">'
+            f'<div id="id_roc_birth_year_helptext" class="text-body-emphasis mt-1">'
             f"{self.NOTE}</div>",
             html=True,
         )
@@ -966,9 +966,7 @@ class RegisterFormTests(TestCase):
     def test_password_rules_use_rem_size(self):
         response = self.client.get(self.url)
         self.assertNotContains(response, "form-text")
-        self.assertContains(
-            response, 'id="id_password1_helptext" class="fs-5 text-body-emphasis mt-1"'
-        )
+        self.assertContains(response, 'id="id_password1_helptext" class="text-body-emphasis mt-1"')
 
     def test_aria_describedby_targets_exist(self):
         response = self._post(username="", password2="Different#123", roc_birth_year="abc")
@@ -1446,3 +1444,208 @@ class TrendChartPageTests(TestCase):
         config = self.VITE_CONFIG.read_text(encoding="utf-8")
         self.assertIn('"../screening/static/screening/trend"', config)
         self.assertIn('"trend-chart.js"', config)
+
+
+class RedesignLayoutTests(TestCase):
+    NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
+    LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄")
+    LOGGED_OUT_ITEMS = ("首頁", "登入", "註冊")
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="alice_account", password="secret-pass-123")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+        cls.submission = Submission.objects.create(user=cls.user, questionnaire=cls.questionnaire)
+
+    def _nav(self, response):
+        self.assertEqual(response.status_code, 200)
+        navs = self.NAV.findall(response.content.decode())
+        self.assertEqual(len(navs), 1)
+        return navs[0]
+
+    def _nav_labels(self, nav):
+        return re.findall(r"<span[^>]*>([^<]+)</span>\s*</a>", nav)
+
+    def _logged_in_pages(self):
+        return {
+            reverse("index"): "首頁",
+            reverse("questionnaire_list"): "開始篩檢",
+            reverse("screening", args=[self.questionnaire.id]): "開始篩檢",
+            reverse("result", args=[self.submission.id]): "我的紀錄",
+            reverse("my_hearing"): "我的紀錄",
+        }
+
+    def test_logged_in_nav_and_header(self):
+        self.client.force_login(self.user)
+        for url in self._logged_in_pages():
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                nav = self._nav(response)
+                self.assertEqual(self._nav_labels(nav), list(self.LOGGED_IN_ITEMS))
+                content = response.content.decode()
+                self.assertRegex(content, r"目前登入：\s*<strong>alice_account</strong>")
+                self.assertRegex(
+                    content,
+                    rf'<form[^>]*action="{reverse("logout")}"[^>]*method="post"',
+                )
+
+    def test_logged_out_nav(self):
+        for url in (reverse("index"), reverse("login"), reverse("register")):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                nav = self._nav(response)
+                self.assertEqual(self._nav_labels(nav), list(self.LOGGED_OUT_ITEMS))
+                content = response.content.decode()
+                self.assertNotIn("目前登入", content)
+                self.assertNotIn(f'action="{reverse("logout")}"', content)
+
+    def test_current_page_marked(self):
+        self.client.force_login(self.user)
+        for url, label in self._logged_in_pages().items():
+            with self.subTest(url=url):
+                nav = self._nav(self.client.get(url))
+                self.assertEqual(nav.count('aria-current="page"'), 1)
+                self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
+        self.client.logout()
+        for name, label in (("login", "登入"), ("register", "註冊")):
+            with self.subTest(url=name):
+                nav = self._nav(self.client.get(reverse(name)))
+                self.assertEqual(nav.count('aria-current="page"'), 1)
+                self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
+
+    def test_index_shows_start_screening_when_logged_in(self):
+        self.client.force_login(self.user)
+        nav = self._nav(self.client.get(reverse("index")))
+        self.assertIn(f'href="{reverse("questionnaire_list")}"', nav)
+
+    def test_page_titles(self):
+        suffix = "\uff5cHearWell"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
+        expected = {
+            reverse("questionnaire_list"): "開始篩檢" + suffix,
+            reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
+            reverse("result", args=[self.submission.id]): "篩檢結果" + suffix,
+            reverse("my_hearing"): "我的紀錄" + suffix,
+        }
+        self.client.force_login(self.user)
+        titles = {url: self._title(url) for url in expected}
+        self.client.logout()
+        expected.update(
+            {
+                reverse("index"): "HearWell 聽力自我照護",
+                reverse("login"): "登入" + suffix,
+                reverse("register"): "註冊" + suffix,
+            }
+        )
+        for name in ("index", "login", "register"):
+            titles[reverse(name)] = self._title(reverse(name))
+        self.assertEqual(titles, expected)
+        self.assertEqual(len(set(titles.values())), len(titles))
+
+    def _title(self, url):
+        match = re.search(r"<title>\s*(.*?)\s*</title>", self.client.get(url).content.decode())
+        return match.group(1)
+
+    def test_login_uses_plain_labels(self):
+        content = self.client.get(reverse("login")).content.decode()
+        self.assertNotIn("form-floating", content)
+        self.assertRegex(content, r'<label[^>]*for="id_username"[^>]*>使用者名稱</label>')
+        self.assertRegex(content, r'<label[^>]*for="id_password"[^>]*>密碼</label>')
+        self.assertRegex(content, r'<input[^>]*id="id_username"')
+        self.assertRegex(content, r'<input[^>]*id="id_password"')
+        response = self.client.post(
+            reverse("login"), {"username": "alice_account", "password": "wrong"}
+        )
+        self.assertContains(response, "使用者名稱或密碼錯誤")
+
+    def _answer_data(self, skip=(), wearing="True"):
+        data = {"form-TOTAL_FORMS": 10, "form-INITIAL_FORMS": 0}
+        if wearing is not None:
+            data["wearing_hearing_aid"] = wearing
+        for i, question in enumerate(self.questions):
+            data[f"form-{i}-question_id"] = str(question.id)
+            if question.question_number not in skip:
+                data[f"form-{i}-score"] = "4"
+        return data
+
+    def test_unanswered_questions_are_pointed_out(self):
+        self.client.force_login(self.user)
+        url = reverse("screening", args=[self.questionnaire.id])
+        content = self.client.post(url, self._answer_data(skip=(3, 7))).content.decode()
+        self.assertIn("還有 2 題沒有回答，請看標示紅字的題目。", content)
+        self.assertEqual(content.count("這一題還沒有回答"), 2)
+        for index in (2, 6):  # question 3 and 7
+            with self.subTest(question=index + 1):
+                self.assertRegex(
+                    content, rf'<fieldset[^>]*aria-describedby="id_form-{index}-score_error"'
+                )
+                self.assertRegex(
+                    content, rf'id="id_form-{index}-score_error">\s*<p[^>]*>這一題還沒有回答'
+                )
+        self.assertEqual(content.count('aria-describedby="id_form-'), 2)
+        # Answers already chosen stay selected.
+        self.assertRegex(content, r'<input[^>]*name="form-0-score"[^>]*value="4"[^>]*checked')
+        self.assertNotIn("表單資料有誤", content)
+
+    def test_invalid_choice_is_not_counted_as_unanswered(self):
+        self.client.force_login(self.user)
+        url = reverse("screening", args=[self.questionnaire.id])
+        data = self._answer_data()
+        data["form-0-score"] = "9"
+        content = self.client.post(url, data).content.decode()
+        self.assertNotIn("沒有回答", content)
+        self.assertIn("表單資料有誤", content)
+
+    def test_unanswered_count_matches_marked_questions(self):
+        # Tampered form counts: extra forms are not on the page, so they must not be counted.
+        self.client.force_login(self.user)
+        url = reverse("screening", args=[self.questionnaire.id])
+        data = self._answer_data()
+        data["form-TOTAL_FORMS"] = data["form-INITIAL_FORMS"] = 12
+        content = self.client.post(url, data).content.decode()
+        self.assertNotIn("沒有回答", content)
+
+    def test_logout_form_has_csrf_token(self):
+        # The test client skips CSRF checks, so a missing token would only fail in production.
+        self.client.force_login(self.user)
+        content = self.client.get(reverse("index")).content.decode()
+        form = re.search(rf'<form[^>]*action="{reverse("logout")}".*?</form>', content, re.DOTALL)
+        self.assertIn('name="csrfmiddlewaretoken"', form.group(0))
+
+    def test_only_hearing_aid_missing_behaves_as_before(self):
+        self.client.force_login(self.user)
+        url = reverse("screening", args=[self.questionnaire.id])
+        content = self.client.post(url, self._answer_data(wearing=None)).content.decode()
+        self.assertNotIn("沒有回答", content)
+        self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
+
+    def test_no_scripts_except_trend_chart(self):
+        empty_user = User.objects.create_user(username="no_records")
+        pages = [reverse("index"), reverse("login"), reverse("register")]
+        for url in pages:
+            with self.subTest(url=url):
+                self.assertNotIn("<script", self.client.get(url).content.decode())
+        self.client.force_login(empty_user)
+        with self.subTest(url="my_hearing without records"):
+            self.assertNotIn("<script", self.client.get(reverse("my_hearing")).content.decode())
+        self.client.force_login(self.user)
+        for url in (
+            reverse("questionnaire_list"),
+            reverse("screening", args=[self.questionnaire.id]),
+            reverse("result", args=[self.submission.id]),
+        ):
+            with self.subTest(url=url):
+                self.assertNotIn("<script", self.client.get(url).content.decode())
+        content = self.client.get(reverse("my_hearing")).content.decode()
+        self.assertEqual(
+            re.findall(r"<script[^>]*>", content),
+            [f'<script type="module" src="/static/{TrendChartPageTests.CHART_JS}">'],
+        )

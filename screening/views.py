@@ -125,11 +125,17 @@ def screening(request, questionnaire_id):
                 Answer.objects.bulk_create(answers)
             return redirect("result", submission_id=submission.id)
         else:
+            # Count only questions shown on the page, so the number matches the marked ones.
+            unanswered = sum(form.has_error("score", code="required") for _, form in question_form)
+            if unanswered:
+                message = f"還有 {unanswered} 題沒有回答，請看標示紅字的題目。"
+            else:
+                message = formset.non_form_errors()
             return render(
                 request,
                 "screening/screening.html",
                 {
-                    "message": formset.non_form_errors(),
+                    "message": message,
                     "question_form": question_form,
                     "questionnaire": questionnaire,
                     "formset": formset,

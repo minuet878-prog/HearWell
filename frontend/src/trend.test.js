@@ -45,28 +45,26 @@ describe("selectPoints", () => {
 
 describe("summarize", () => {
   const point = (total, date = "2026/10/14", levelText = "輕度到中度影響") => ({ total, date, levelText });
+  const latest = { date: "2026/10/14", total: 18, levelText: "輕度到中度影響" };
 
   it("explains how to see a change when there is one point", () => {
-    expect(summarize([point(18)])).toBe(
-      "最近一次 2026/10/14：18 分，輕度到中度影響。再做一次篩檢，就能看到分數的變化。",
-    );
+    expect(summarize([point(18)])).toEqual({ ...latest, change: "再做一次篩檢，就能看到分數的變化。" });
   });
 
   it("reports an increase", () => {
-    expect(summarize([point(12), point(18)])).toBe(
-      "最近一次 2026/10/14：18 分，輕度到中度影響，比上一次增加 6 分。",
-    );
+    expect(summarize([point(12), point(18)])).toEqual({ ...latest, change: "比上一次增加 6 分。" });
   });
 
   it("reports a decrease down to 0", () => {
-    expect(summarize([point(12), point(18), point(0, "2026/10/14", "無/極輕微影響")])).toBe(
-      "最近一次 2026/10/14：0 分，無/極輕微影響，比上一次減少 18 分。",
-    );
+    expect(summarize([point(12), point(18), point(0, "2026/10/14", "無/極輕微影響")])).toEqual({
+      date: "2026/10/14",
+      total: 0,
+      levelText: "無/極輕微影響",
+      change: "比上一次減少 18 分。",
+    });
   });
 
   it("reports no change", () => {
-    expect(summarize([point(18), point(18)])).toBe(
-      "最近一次 2026/10/14：18 分，輕度到中度影響，和上一次相同。",
-    );
+    expect(summarize([point(18), point(18)])).toEqual({ ...latest, change: "和上一次相同。" });
   });
 });

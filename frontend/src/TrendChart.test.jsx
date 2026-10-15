@@ -32,10 +32,16 @@ function mockApi({ results, next = null, levels = LEVELS, questionnaires = null 
 
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
 
-// Pixel y of the bottom of the plot (where a score of 0 belongs).
+// Pixel y where a score of 0 belongs: the bottom of the plot area (Recharts clips lines to it).
 function plotBottom(container) {
-  const axis = container.querySelector(".recharts-yAxis .recharts-cartesian-axis-line");
-  return Math.max(Number(axis.getAttribute("y1")), Number(axis.getAttribute("y2")));
+  const plot = container.querySelector(".recharts-wrapper clipPath rect");
+  return Number(plot.getAttribute("y")) + Number(plot.getAttribute("height"));
+}
+
+function summaryLines(container) {
+  return [...container.querySelectorAll(".trend-summary p")].map((p) =>
+    p.textContent.replace(/\s+/g, " ").trim(),
+  );
 }
 
 function dotHeights(container) {
@@ -52,9 +58,12 @@ describe("TrendChart", () => {
   it("shows the summary, the title and a labelled band per level", async () => {
     mockApi({ results: [submission(2, "2026-10-14", 18), submission(1, "2026-09-01", 12)] });
     const { container } = render(<TrendChart />);
-    expect(
-      await screen.findByText("最近一次 2026/10/14：18 分，輕度到中度影響，比上一次增加 6 分。"),
-    ).toBeTruthy();
+    await screen.findByText(/最近一次/);
+    expect(summaryLines(container)).toEqual([
+      "最近一次（2026/10/14）",
+      "18 分 輕度到中度影響",
+      "比上一次增加 6 分。",
+    ]);
     const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
     expect(bands.map((b) => [b.getAttribute("y1"), b.getAttribute("y2")])).toEqual([
       ["0", "8"],
@@ -76,7 +85,8 @@ describe("TrendChart", () => {
       ],
     });
     const { container } = render(<TrendChart />);
-    expect(await screen.findByText(/0 分，無\/極輕微影響，比上一次減少 18 分。/)).toBeTruthy();
+    await screen.findByText(/最近一次/);
+    expect(summaryLines(container).slice(1)).toEqual(["0 分 無/極輕微影響", "比上一次減少 18 分。"]);
     const heights = dotHeights(container);
     expect(heights).toHaveLength(3);
     expect(heights[2]).toBe(plotBottom(container));
@@ -176,13 +186,109 @@ describe("TrendChart", () => {
   it("shows the API's level text, not a recomputed one", async () => {
     mockApi({ results: [submission(1, "2026-10-14", 18, "假的分級")] });
     render(<TrendChart />);
-    expect(await screen.findByText(/18 分，假的分級。/)).toBeTruthy();
+    expect(await screen.findByText("假的分級")).toBeTruthy();
   });
 
   it("explains when the API returns an error", async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) }));
     render(<TrendChart />);
     expect(await screen.findByText(ERROR_TEXT)).toBeTruthy();
+  });
+
+  describe("style (option A)", () => {
+    const threePoints = () =>
+      mockApi({
+        results: [
+          submission(3, "2026-10-14", 0, "無/極輕微影響"),
+          submission(2, "2026-09-01", 18),
+          submission(1, "2026-08-01", 12),
+        ],
+      });
+
+    it("draws the line in the primary colour and highlights the latest point", async () => {
+      threePoints();
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      expect(container.querySelector(".recharts-line-curve").getAttribute("stroke")).toBe("#1f4e8c");
+      const dots = [...container.querySelectorAll(".recharts-line-dots circle")];
+      const [older, latest] = [dots.slice(0, -1), dots.at(-1)];
+      expect(latest.getAttribute("fill")).toBe("#1f4e8c");
+      for (const dot of older) {
+        expect(dot.getAttribute("fill")).toBe("#fff");
+        expect(dot.getAttribute("stroke")).toBe("#1f4e8c");
+        expect(Number(dot.getAttribute("r"))).toBeLessThan(Number(latest.getAttribute("r")));
+      }
+    });
+
+    it("writes each score next to its point, including 0", async () => {
+      threePoints();
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      const labels = [...container.querySelectorAll(".trend-score")].map((t) => t.textContent);
+      expect(labels).toEqual(["12", "18", "0"]);
+    });
+
+    it("uses soft band colours, level-coloured labels and no y axis numbers", async () => {
+      threePoints();
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
+      expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#feece7"]);
+      const labelColours = LEVELS.map(
+        (level) => screen.getByText(level.text, { selector: "text, tspan" }).closest("text").getAttribute("fill"),
+      );
+      expect(labelColours).toEqual(["#1e7b55", "#8a5a00", "#c23b1c"]);
+      const ticks = [...container.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
+      expect(ticks).toEqual([]);
+    });
+
+    it("orders title, summary box and chart card, with the summary outside the card", async () => {
+      threePoints();
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      const heading = screen.getByRole("heading");
+      const summary = container.querySelector(".trend-summary");
+      const card = container.querySelector(".card");
+      expect(card.querySelector(".recharts-wrapper")).not.toBeNull();
+      expect(card.contains(summary)).toBe(false);
+      const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(follows(heading, summary)).toBe(true);
+      expect(follows(summary, card)).toBe(true);
+    });
+
+    it("keeps the dates clear of the chart", async () => {
+      threePoints();
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      const dates = [...container.querySelectorAll(".recharts-xAxis-tick-labels text")];
+      expect(dates.length).toBeGreaterThan(0);
+      for (const date of dates) {
+        expect(Number(date.getAttribute("y")) - plotBottom(container)).toBeGreaterThanOrEqual(16);
+      }
+    });
+
+    it("summary box: date, big score with level, then the change", async () => {
+      mockApi({ results: [submission(2, "2026-10-14", 12), submission(1, "2026-09-01", 28)] });
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      expect(summaryLines(container)).toEqual([
+        "最近一次（2026/10/14）",
+        "12 分 輕度到中度影響",
+        "比上一次減少 16 分。",
+      ]);
+      expect(container.querySelector(".trend-summary-score strong").textContent).toBe("12 分");
+    });
+
+    it("summary box with one submission and a score of 0", async () => {
+      mockApi({ results: [submission(1, "2026-10-14", 0, "無/極輕微影響")] });
+      const { container } = render(<TrendChart />);
+      await screen.findByText(/最近一次/);
+      expect(summaryLines(container)).toEqual([
+        "最近一次（2026/10/14）",
+        "0 分 無/極輕微影響",
+        "再做一次篩檢，就能看到分數的變化。",
+      ]);
+    });
   });
 
   it("explains when the network fails", async () => {

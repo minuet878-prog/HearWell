@@ -105,7 +105,7 @@
 
 - 用途：聽力健康自我照護工具。註冊 → 登入 → 選問卷 → 作答 → 計分 → 結果（分級＋行動建議）→ 歷史紀錄。
 - 使用者：台灣聽損患者與家屬，多為 65 歲以上，繁體中文介面。**無障礙是必需品，不是加分項。**
-- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境在 Neon，本機用 Docker）、Bootswatch Minty；部署於 Render（whitenoise、dj-database-url、`build.sh`，每次部署會 `loaddata` 問卷 fixture）。專案名 `config`，app 名 `screening`。
+- 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境在 Neon，本機用 Docker）、Bootstrap 5.3.8（CDN）＋自訂 `screening/static/screening/styles.css`（主色 #1f4e8c、基礎字級 18px）；部署於 Render（whitenoise、dj-database-url、`build.sh`，每次部署會 `loaddata` 問卷 fixture）。專案名 `config`，app 名 `screening`。
 - 資料敏感度：有健康資料（篩檢作答與分數）和個資（帳號、生日），存在 PostgreSQL。適用個資法。
 
 ### 結構

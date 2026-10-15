@@ -1,5 +1,7 @@
 {% extends "screening/layout.html" %}
 
+{% block title %}{{ questionnaire.questionnaire_name }} 作答｜HearWell{% endblock %}
+
 {% block body %}
 {% if message %}
 <div class="mb-3 text-danger">{{message}}</div>
@@ -23,8 +25,9 @@
         {% for question, form in question_form %}
         <div class="card mb-3">
             <div class="card-body">
-                <fieldset>
+                <fieldset{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
                     <legend class="fw-bold fs-5">{{ question.question_number }}. {{ question.question_text }}</legend>
+                    {% include "screening/field_messages.html" with field=form.score %}
                     {{ form.score }}
                 </fieldset>
                 {{ form.question_id }}
