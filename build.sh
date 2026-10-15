@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -o errexit
 
-# TEMPORARY: check whether Node is available in Render's Python build (Phase 4).
-node --version || echo "node: not available"
-npm --version || echo "npm: not available"
-
 pip install -r requirements.txt
+
+# Frontend bundle goes into screening/static/ before collectstatic picks it up.
+npm ci --include=dev --prefix frontend
+npm run build --prefix frontend
 
 python manage.py collectstatic --no-input
 

@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 3 完成，下一步 Phase 4**（Phase 3 於 2026-10-15 完成；下一步先寫 `docs/specs/phase4.md`；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 4 第 1 批完成**（趨勢圖，2026-10-15；規格 `docs/specs/phase4.md`；下一步第 2 批 PWA；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -75,7 +75,12 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - 計分沿用 Submission 的 QuerySet／property，由後端算好回傳，前端不重算。
 - 細節見 `docs/specs/phase3.md`。
 
-### Phase 4：React 前端 + PWA（AI 代工）← 下一步
+### Phase 4：React 前端 + PWA（AI 代工）← 目前
+- [x] 第 1 批：B2 趨勢圖（Vite＋React＋Recharts，只在「我的聽力」頁載入；問卷 API 加 `levels`；Render 上建置）
+  - 合併部署後確認：正式站看得到圖、build log 的 Node 版本是 `.node-version` 的 24.21.0（不是就代表 Python 服務沒讀這個檔）
+  - Django 測試改用 `--settings=config.test_settings`（不需先 collectstatic）
+  - JS 體積 brotli 141 KB（含 React）；若之後要壓，可考慮較小的圖表套件或自己畫 SVG
+- [ ] 第 2 批：PWA（可加到主畫面）
 - Vite build 進 staticfiles，由 whitenoise 提供，維持單一 Render 服務。
 - 只有互動需求高的頁面用 React；login／register 維持 Django template。
 - **B2 趨勢圖**：第一個 React 頁面，把多次填答的分數畫成折線圖。

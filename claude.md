@@ -133,7 +133,8 @@
 ## 常用指令
 
 - 啟動：`python manage.py runserver`（由我來啟動）
-- 測試：`python manage.py test`
+- 測試：`python manage.py test --settings=config.test_settings`（不需要先 collectstatic）
+- 前端測試：`npm test --prefix frontend`；前端建置：`npm run build --prefix frontend`
 - 檢查格式：`ruff check --fix .`
 - Migration：`python manage.py makemigrations screening` → `python manage.py migrate`
 - 部署檢查：`python manage.py check --deploy`（要在 `DEBUG=False` 下跑）
