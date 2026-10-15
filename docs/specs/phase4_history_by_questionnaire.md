@@ -1,6 +1,6 @@
 # Phase 4 規格：我的紀錄依問卷分開
 
-- **狀態**：已確認
+- **狀態**：已完成（驗收 20 待本人人工檢查）
 - **分支**：`feat/history-by-questionnaire`（從 `feat/ioi-ha` 開；PR #29 合併後改接 `main`）
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-15
 
@@ -122,8 +122,30 @@
 ## 完成後回報（由 AI 填寫）
 
 - **改了哪些檔案、為什麼**：
-- **驗收條件對應的測試**：
+  - `screening/views.py`：`my_hearing` 依 `?questionnaire=代碼` 決定分頁（無效就用最近一次作答的問卷）；`_latest_hhie_s()` 讓 IOI-HA 分組與差值共用「找最近一次沒戴／有戴」；`_aided_difference()` 算差值與文字；`_ioi_ha_chart()` 組常模圖每欄的列號與報讀文字（比較走 `compare_to_norm`）。
+  - `screening/scoring.py`：七題欄位短名稱。
+  - `screening/models.py`：`with_scores()` 排序加 `-id`（審查後，同時間建立的紀錄也有固定的「最近一次」）。
+  - 模板：`my_hearing.html`（分頁籤、差值區、只在 HHIE-S 分頁載趨勢圖）、`ioi_ha_chart.html`（新，CSS grid 常模圖）、`result_ioi_ha.html`（「看我的紀錄」連到 IOI-HA 分頁）。
+  - `screening/static/screening/styles.css`：分頁籤、差值區、圖例、常模圖。
+  - `frontend/src/`：`TrendChart` 收 `code`（由頁面的 `data-questionnaire` 給），依 `wearing_hearing_aid` 畫實心圓／空心方形／空心三角形，加圖例與提示框文字；最新一點只放大。
+- **驗收條件對應的測試**（`HistoryTabsTests`，除非另註）：
+  - 1 `test_default_tab_is_newest_ioi_ha`；2 `test_default_tab_is_newest_hhie_s`；3 `test_tab_url_shows_that_questionnaire`；4 `test_invalid_tab_falls_back_to_default`；5 `test_single_questionnaire_has_no_tabs`；6 `test_no_records`；7 `test_only_own_records`；8 `test_anonymous_redirected_to_login`
+  - 9 前端 `draws a filled circle, a hollow square and a hollow triangle`、`explains the shapes in a legend…`、`names the status in the tooltip`
+  - 10 `test_difference_uses_latest_unaided_and_aided`；11 `test_difference_ignores_order`；12 `test_difference_of_zero_is_no_change`；13 `test_difference_increase_has_no_verdict`；14 `test_no_difference_without_both`
+  - 15 `test_chart_bands_follow_latest_group`、`test_chart_positions`；16 `test_chart_overlays_previous_only_in_same_group`、`test_previous_point_has_another_shape`；17 `test_ungrouped_latest_has_no_bands`；18 `test_ioi_ha_result_links_to_ioi_ha_tab`
+  - 19 `test_current_tab_marked_for_screen_readers`、`test_chart_text_alternatives`；20 人工（未勾）；21 全部測試
+  - 另外：`test_no_trend_chart_for_other_questionnaires`、`test_same_time_records_newest_id_wins`（審查後）
+  - 結果：Django 205、前端 31 全部通過
 - **規格以外的決定**（如果有，說明原因）：
-- **這次用到的新概念**（各用一句話解釋）：
-- **面試可能追問的 2–3 題**（附答案要點）：
+  - IOI-HA 常模圖用 Django＋CSS grid，不用 React（本人同意）：不用新增 IOI-HA API、不用多載 JS，每欄直接放報讀文字。
+  - 七題短名稱：使用時間、幫助程度、剩餘困難、值得程度、生活影響、干擾他人、生活樂趣（本人同意）。常模圖加 1–5 的刻度與每列的淡線（自己預覽時發現沒有刻度看不出分數）。
+  - 前一次用空心菱形（審查後，驗收 16 要求形狀不同）。
+  - 改了既有測試 `ClassifyViewTests.test_history_page_survives_unknown_submission`：分頁後兩筆不在同一頁，改成兩個分頁各檢查一次，目的不變。
+  - 已知限制：趨勢圖只讀 API 第一頁（最新 20 筆，已排除 IOI-HA）；將來有第二份「有分級」的問卷時會互相擠，到時候要讓 API 能依問卷篩選。
+- **這次用到的新概念**（各用一句話解釋）：網址參數當分頁狀態、`data-*` 屬性把參數交給 React、`aria-current="page"` 用在分頁、`visually-hidden` 報讀文字、形狀＋填色編碼、排序的平手規則、空轉通過的測試、無頭 Chrome 最小視窗寬度。說明見 `docs/interview.md` 第一部分。
+- **面試可能追問的 2–3 題**（附答案要點）：Q51 分頁為什麼用網址而不是前端狀態；Q52 圖表的文字替代怎麼做；Q53 測試只看得到 HTML，怎麼確定圖畫對了。要點見 `docs/interview.md`。
 - **建議寫進 decisions/ 的內容**（素材即可，條目由本人撰寫；註明放哪個主題檔）：
+  - `product-ui.md`：我的紀錄改分頁籤（比較頁選 B）、每頁一個網址、預設最近一次、只有一份不顯示標籤；HHIE-S 實心／空心只代表配戴狀態，最新一點靠放大（衝突時本人選 A）。
+  - `scoring.md`：配戴前後差值＝最近一次沒戴減最近一次有戴、不管先後、不下結論、0 顯示「沒有變化」。
+  - `architecture.md`：IOI-HA 常模圖用伺服器端 HTML＋CSS grid 而不是 React（離散的 7×5 格子、不用新 API、報讀文字直接放）；React 只留給互動重的 HHIE-S 趨勢圖。
+  - `product-ui.md`（坑）：測試看不到 CSS 排版，四個字的欄名在手機上撐寬整頁，只有截圖才發現；無頭 Chrome 視窗最小 500px，要用 iframe 才是真的手機寬度。
