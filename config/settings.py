@@ -29,6 +29,10 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # HSTS starts short and grows in steps (1 hour -> 1 day -> 1 week -> 1 year, see roadmap),
+    # so a broken HTTPS setup cannot lock users out for long.
+    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:
         raise ImproperlyConfigured("正式環境缺少 SECRET_KEY 環境變數，請在部署平台設定後再啟動")
@@ -64,6 +68,20 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+# debug-toolbar is local only: it comes from requirements-dev.txt, which production never installs.
+if DEBUG:
+    try:
+        import debug_toolbar  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        INSTALLED_APPS.append("debug_toolbar")
+        MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+        INTERNAL_IPS = ["127.0.0.1"]
+
+# HSTS preload needs a domain we own; *.onrender.com is shared, so it can never be submitted.
+SILENCED_SYSTEM_CHECKS = ["security.W021"]
 
 ROOT_URLCONF = "config.urls"
 
