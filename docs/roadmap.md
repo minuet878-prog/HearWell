@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1、2 批、作答 500 bug、PWA（含手機驗收）、IOI-HA 完成並合併，2026-10-15；我的紀錄依問卷分開完成待合併；下一步：Phase 5；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1、2 批、作答 500 bug、PWA（含手機驗收）、IOI-HA、我的紀錄依問卷分開完成並合併，2026-10-15；Phase 0 檢查工具完成待合併；下一步：Phase 5）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -28,9 +28,12 @@
 - [x] ruff 排除 migrations
 - [x] ruff 擴充規則集（B / DJ / TID / RUF）
 - [x] 計分聚合測試
-- [ ] 裝 debug-toolbar
-- [ ] `check --deploy`（要在 `DEBUG=False` 下跑）
-- [ ] 鎖定 Render 的 Python 版本（`.python-version` 或環境變數），目前沒鎖
+- [x] 裝 debug-toolbar（只裝本機：`requirements-dev.txt`；規格 `docs/specs/phase0_dev_checks.md`，2026-10-15）
+- [x] `check --deploy`：每次部署在 `build.sh` 最前面跑，警告也算失敗；同時開 HSTS（1 小時、含子網域）
+- [x] 鎖定 Render 的 Python 版本：`.python-version` 3.13.15（原本 Render 自動用 3.14.3）
+- [ ] HSTS 時效逐步拉長（`config/settings.py` 的 `SECURE_HSTS_SECONDS`）：上線後觀察 1 週沒問題 → 86400（1 天）→ 再 1 週 → 604800（1 週）→ 再 1 週 → 31536000（1 年）
+- [ ] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`
+- [ ] `ALLOWED_HOSTS` 設成空字串時 `check --deploy` 抓不到（環境變數沒設好會變成 `[""]`）
 
 ### Phase 1：正確性（完成）
 Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去。
@@ -143,7 +146,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] **IOI-HA 七題版**（規格 `docs/specs/phase4_ioi_ha.md`，2026-10-15 完成）：用沒戴助聽器時的 HHIE-S 分組、逐題比常模、不算總分；
   題目逐字核對（驗收 23）與原量表授權（待決 12b）本人已於合併前確認
 - [x] **我的紀錄依問卷分開**（規格 `docs/specs/phase4_history_by_questionnaire.md`，2026-10-15 完成）：每份問卷一個分頁（各有網址）、HHIE-S 配戴前後差值與配戴狀態形狀、IOI-HA 常模圖；
-  待：本人人工驗收 20（320px、200%、axe）。已知限制：趨勢圖只讀 API 最新 20 筆
+  驗收 20 本人確認通過。已知限制：趨勢圖只讀 API 最新 20 筆
 
 **跟現有架構的關係**
 Questionnaire/Question/Answer 這套結構理論上可以重複使用（不同問卷、不同題目、

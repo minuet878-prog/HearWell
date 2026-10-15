@@ -3,6 +3,9 @@ set -o errexit
 
 pip install -r requirements.txt
 
+# Production security settings first: a warning stops the build before anything changes.
+python manage.py check --deploy --fail-level WARNING
+
 # Frontend bundle goes into screening/static/ before collectstatic picks it up.
 npm ci --include=dev --prefix frontend
 npm run build --prefix frontend

@@ -1,20 +1,26 @@
 import json
+import os
+import platform
 import re
 import struct
+import subprocess
+import sys
 from datetime import date, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import ClassVar
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.core.management import call_command
+from django.core.management.utils import get_random_secret_key
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import RestrictedError
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
-from django.urls import reverse
+from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 
 from screening import scoring
@@ -2872,3 +2878,128 @@ class HistoryTabsTests(TestCase):
         main = self._main(self.client.get(self.url))
         self.assertEqual(self._current_tab(self._tabs(main)), "IOI-HA")
         self.assertIn("使用時間：最近一次 4 分，上一次 2 分", self._chart(main))
+
+
+class DevChecksTests(SimpleTestCase):
+    """Spec docs/specs/phase0_dev_checks.md, acceptance 2-9 and the Python version."""
+
+    ROOT = Path(__file__).resolve().parent.parent
+    # Settings are computed when the module loads, so DEBUG=False is checked in a fresh process.
+    # Only settings are read; nothing touches the database.
+    DUMP = """
+import json, sys
+if sys.argv[1] == "without-toolbar":
+    sys.modules["debug_toolbar"] = None  # as if requirements-dev.txt was not installed
+import django
+django.setup()
+from django.conf import settings
+from django.core.management import call_command
+from django.test import Client
+from django.urls import Resolver404, resolve
+call_command("check")
+try:
+    resolve("/__debug__/render_panel/")
+    debug_url = True
+except Resolver404:
+    debug_url = False
+# An API URL: answers 403 without touching the database or static files.
+response = Client().get("/api/questionnaires/", secure=True, HTTP_HOST="localhost")
+print(json.dumps({
+    "debug_url": debug_url,
+    "hsts_header": response.headers.get("Strict-Transport-Security"),
+    "apps": settings.INSTALLED_APPS,
+    "middleware": settings.MIDDLEWARE,
+    "hsts_seconds": getattr(settings, "SECURE_HSTS_SECONDS", 0),
+    "hsts_subdomains": getattr(settings, "SECURE_HSTS_INCLUDE_SUBDOMAINS", False),
+    "hsts_preload": getattr(settings, "SECURE_HSTS_PRELOAD", False),
+    "silenced": settings.SILENCED_SYSTEM_CHECKS,
+}))
+"""
+
+    def _run(self, args, debug, module="config.settings"):
+        env = {
+            **os.environ,
+            "DJANGO_SETTINGS_MODULE": module,
+            "DEBUG": "True" if debug else "False",
+            # A throwaway key for this process only; never written anywhere.
+            "SECRET_KEY": get_random_secret_key(),
+        }
+        return subprocess.run(
+            [sys.executable, *args], cwd=self.ROOT, env=env, capture_output=True, text=True
+        )
+
+    def _settings(self, debug, toolbar="as-installed", module="config.settings"):
+        result = self._run(["-c", self.DUMP, toolbar], debug, module)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout.strip().splitlines()[-1])
+
+    def _uses_toolbar(self, dumped):
+        return "debug_toolbar" in dumped["apps"] or any(
+            m.startswith("debug_toolbar") for m in dumped["middleware"]
+        )
+
+    # 2, 6
+    def test_production_settings(self):
+        dumped = self._settings(debug=False)
+        self.assertFalse(self._uses_toolbar(dumped))
+        self.assertFalse(dumped["debug_url"])
+        self.assertEqual(dumped["hsts_header"], "max-age=3600; includeSubDomains")
+        self.assertEqual(dumped["hsts_seconds"], 3600)
+        self.assertIs(dumped["hsts_subdomains"], True)
+        self.assertIs(dumped["hsts_preload"], False)
+
+    # 4, 7
+    def test_debug_without_dev_packages_still_works(self):
+        dumped = self._settings(debug=True, toolbar="without-toolbar")
+        self.assertFalse(self._uses_toolbar(dumped))
+        self.assertFalse(dumped["debug_url"])
+        self.assertIsNone(dumped["hsts_header"])
+        self.assertEqual(dumped["hsts_seconds"], 0)
+
+    # 3
+    def test_tests_never_load_toolbar(self):
+        # Set DEBUG=True explicitly instead of relying on a local .env.
+        dev = self._settings(debug=True)
+        if not self._uses_toolbar(dev):
+            self.skipTest("requirements-dev.txt is not installed, nothing to leave out")
+        self.assertTrue(dev["debug_url"])
+        tests = self._settings(debug=True, module="config.test_settings")
+        self.assertFalse(self._uses_toolbar(tests))
+        self.assertFalse(tests["debug_url"])
+        self.assertNotIn("debug_toolbar", settings.INSTALLED_APPS)
+        self.assertFalse([m for m in settings.MIDDLEWARE if m.startswith("debug_toolbar")])
+        with self.assertRaises(Resolver404):
+            resolve("/__debug__/render_panel/")
+
+    # 5
+    def test_toolbar_only_in_dev_requirements(self):
+        production = (self.ROOT / "requirements.txt").read_text(encoding="utf-8")
+        dev = (self.ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+        self.assertNotIn("debug-toolbar", production.lower())
+        self.assertEqual(dev.splitlines()[0], "-r requirements.txt")
+        self.assertRegex(dev, r"(?m)^django-debug-toolbar==\d+\.\d+\.\d+$")
+
+    # 8
+    def test_deploy_check_passes_with_warnings_as_errors(self):
+        result = self._run(["manage.py", "check", "--deploy", "--fail-level", "WARNING"], False)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("no issues (1 silenced)", result.stdout)
+        self.assertEqual(self._settings(debug=False)["silenced"], ["security.W021"])
+
+    # 9
+    def test_build_runs_deploy_check_before_anything_changes(self):
+        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
+        self.assertIn("set -o errexit", lines)
+        check = lines.index("python manage.py check --deploy --fail-level WARNING")
+        for step in (
+            "npm run build --prefix frontend",
+            "python manage.py collectstatic --no-input",
+            "python manage.py migrate",
+            "python manage.py loaddata questions_fixture.json",
+        ):
+            with self.subTest(step=step):
+                self.assertLess(check, lines.index(step))
+
+    def test_production_python_matches_tests(self):
+        pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
+        self.assertEqual(pinned, platform.python_version())
