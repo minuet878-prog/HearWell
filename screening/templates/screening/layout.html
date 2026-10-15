@@ -10,6 +10,12 @@
         integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
         crossorigin="anonymous">
     <link href="{% static 'screening/styles.css' %}" rel="stylesheet">
+    {# Add to home screen (PWA): app info and icons only, no service worker. #}
+    <link rel="manifest" href="{% static 'screening/pwa/manifest.json' %}">
+    <meta name="theme-color" content="#1f4e8c">
+    <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
+    <meta name="apple-mobile-web-app-title" content="HearWell">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     {% block extra_head %}
     {% endblock %}
 </head>
