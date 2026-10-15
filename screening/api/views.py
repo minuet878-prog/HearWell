@@ -8,10 +8,12 @@ from screening.api.serializers import (
     SubmissionSerializer,
 )
 from screening.models import Answer, Questionnaire
+from screening.scoring import IOI_HA
 
 
 class QuestionnaireList(ListAPIView):
-    queryset = Questionnaire.objects.order_by("id")
+    # IOI-HA has no API yet (spec phase4_ioi_ha.md); the trend chart only needs HHIE-S.
+    queryset = Questionnaire.objects.exclude(code=IOI_HA).order_by("id")
     serializer_class = QuestionnaireSerializer
 
 
@@ -23,7 +25,12 @@ class SubmissionPagination(CursorPagination):
 
 def _own_submissions(request):
     # Same query as the my_hearing page: scoped to request.user (IDOR) and scored once.
-    return request.user.submissions.select_related("questionnaire").with_scores()
+    # IOI-HA has no total or level, so it is left out until it has its own API.
+    return (
+        request.user.submissions.exclude(questionnaire__code=IOI_HA)
+        .select_related("questionnaire")
+        .with_scores()
+    )
 
 
 class SubmissionList(ListAPIView):

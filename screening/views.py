@@ -9,9 +9,17 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
-from screening.scoring import get_advice, max_score
+from screening.scoring import (
+    IOI_HA,
+    IOI_HA_CHOICES,
+    NORM_COMPARISON_TEXT,
+    compare_to_norm,
+    get_advice,
+    ioi_ha_group,
+    max_score,
+)
 
-from .models import Answer, Questionnaire, Submission
+from .models import Answer, NormGroup, Questionnaire, Submission
 
 
 def _safe_next(request):
@@ -78,11 +86,24 @@ def questionnaire_list(request):
     )
 
 
+def _ioi_ha_norm(user):
+    # Latest HHIE-S answered without a hearing aid; 未記錄 (None) does not count.
+    basis = (
+        user.submissions.filter(questionnaire__code="hhie-s", wearing_hearing_aid=False)
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    total = None if basis is None else basis.total_answer_score
+    return {"norm_group": ioi_ha_group(total), "norm_basis": basis}
+
+
 @login_required
 @require_http_methods(["GET", "POST"])
 def screening(request, questionnaire_id):
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+        # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
+        is_ioi_ha = questionnaire.code == IOI_HA
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(
             questions=questions, initial=[{"question_id": question.id} for question in questions]
@@ -96,25 +117,31 @@ def screening(request, questionnaire_id):
                 "question_count": len(questions),
                 "questionnaire": questionnaire,
                 "formset": formset,
-                "hearing_aid_form": HearingAidForm(),
+                "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
+                "is_ioi_ha": is_ioi_ha,
             },
         )
     if request.method == "POST":
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+        is_ioi_ha = questionnaire.code == IOI_HA
         questions = questionnaire.questions.all()
         if not questions:
             return redirect("questionnaire_list")
         formset = AnswerFormSet(questions=questions, data=request.POST)
-        hearing_aid_form = HearingAidForm(data=request.POST)
+        hearing_aid_form = None if is_ioi_ha else HearingAidForm(data=request.POST)
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
         # ，所以不能用 strict=True
         question_form = list(zip(questions, formset, strict=False))
-        if formset.is_valid() and hearing_aid_form.is_valid():
+        if formset.is_valid() and (hearing_aid_form is None or hearing_aid_form.is_valid()):
+            if is_ioi_ha:
+                extra = _ioi_ha_norm(request.user)
+            else:
+                extra = {
+                    "wearing_hearing_aid": hearing_aid_form.cleaned_data["wearing_hearing_aid"]
+                }
             with transaction.atomic():
                 submission = Submission.objects.create(
-                    user=request.user,
-                    questionnaire=questionnaire,
-                    wearing_hearing_aid=hearing_aid_form.cleaned_data["wearing_hearing_aid"],
+                    user=request.user, questionnaire=questionnaire, **extra
                 )
                 answers = [
                     Answer(
@@ -147,6 +174,7 @@ def screening(request, questionnaire_id):
                     "questionnaire": questionnaire,
                     "formset": formset,
                     "hearing_aid_form": hearing_aid_form,
+                    "is_ioi_ha": is_ioi_ha,
                 },
             )
 
@@ -165,6 +193,8 @@ def my_hearing(request):
 def submission_result(request, submission_id):
     submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
     answers = submission.answers.select_related("question").order_by("question__question_number")
+    if submission.norm_group:
+        return _ioi_ha_result(request, submission, answers)
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
     social = submission.social_score
@@ -183,4 +213,27 @@ def submission_result(request, submission_id):
             "classified_score_level": classified_score["level"],
             "advice": get_advice(classified_score["level"]),
         },
+    )
+
+
+def _ioi_ha_result(request, submission, answers):
+    # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
+    grouped = submission.norm_group != NormGroup.UNGROUPED
+    items = []
+    for answer in answers:
+        number = answer.question.question_number
+        comparison = (
+            compare_to_norm(submission.norm_group, number, answer.score) if grouped else None
+        )
+        items.append(
+            {
+                "text": answer.question.question_text,
+                "label": IOI_HA_CHOICES[number][answer.score - 1],
+                "comparison": NORM_COMPARISON_TEXT.get(comparison),
+            }
+        )
+    return render(
+        request,
+        "screening/result_ioi_ha.html",
+        {"submission": submission, "items": items, "grouped": grouped},
     )

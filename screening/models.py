@@ -33,6 +33,7 @@ class Questionnaire(models.Model):
 class Category(models.TextChoices):
     EMOTIONAL = "emotional"
     SOCIAL = "social"
+    NONE = "", "無"  # IOI-HA items have no subscale
 
 
 class Question(models.Model):
@@ -41,7 +42,7 @@ class Question(models.Model):
     )
     question_text = models.TextField()
     question_number = models.IntegerField()
-    category = models.CharField(max_length=64, choices=Category.choices)
+    category = models.CharField(max_length=64, choices=Category.choices, blank=True)
 
     class Meta:
         constraints = (
@@ -75,6 +76,12 @@ def _score_expressions():
     }
 
 
+class NormGroup(models.TextChoices):
+    MILD_MODERATE = "mild_moderate", "輕度至中度"
+    MODERATELY_SEVERE = "moderately_severe", "中重度以上"
+    UNGROUPED = "ungrouped", "未分組"
+
+
 class SubmissionQuerySet(models.QuerySet):
     def with_scores(self):
         return self.annotate(**_score_expressions()).order_by("-created_at")
@@ -91,6 +98,13 @@ class Submission(models.Model):
     # None means the submission predates this question, not "not wearing".
     wearing_hearing_aid = models.BooleanField(
         null=True, choices=((True, "有戴"), (False, "沒戴"), (None, "未記錄"))
+    )
+    # IOI-HA only, fixed when submitted; "" on other questionnaires (not applicable).
+    norm_group = models.CharField(max_length=32, choices=NormGroup.choices, blank=True)
+    # The unaided HHIE-S the group came from; None when ungrouped.
+    # RESTRICT, not PROTECT: the HHIE-S cannot go alone, but a user's records can go together.
+    norm_basis = models.ForeignKey(
+        "self", on_delete=models.RESTRICT, null=True, blank=True, related_name="+"
     )
     objects = SubmissionQuerySet.as_manager()
 
@@ -127,6 +141,7 @@ class Submission(models.Model):
         return classify(self.total_answer_score, self.questionnaire.code)
 
 
+# HHIE-S answers; other questionnaires get their choices from scoring (see forms.answer_choices).
 class Score(models.IntegerChoices):
     ALWAYS = 4, "常常"
     SOMETIMES = 2, "有時"
@@ -144,7 +159,9 @@ class Answer(models.Model):
                 fields=["submission", "question"], name="unique_submission_question"
             ),
             models.CheckConstraint(
-                condition=models.Q(score__in=Score.values), name="score_must_be"
+                # 0-5 covers every questionnaire; the form checks each one's own values.
+                condition=models.Q(score__gte=0, score__lte=5),
+                name="score_must_be",
             ),
         )
 
