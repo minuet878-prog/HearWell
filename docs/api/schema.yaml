@@ -19,8 +19,97 @@ paths:
                 items:
                   $ref: '#/components/schemas/Questionnaire'
           description: ''
+  /api/submissions/:
+    get:
+      operationId: submissions_list
+      parameters:
+      - name: cursor
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      tags:
+      - submissions
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSubmissionList'
+          description: ''
+  /api/submissions/{id}/:
+    get:
+      operationId: submissions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - submissions
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetail'
+          description: ''
 components:
   schemas:
+    Answer:
+      type: object
+      properties:
+        number:
+          type: integer
+        text:
+          type: string
+        score:
+          allOf:
+          - $ref: '#/components/schemas/ScoreEnum'
+          minimum: -2147483648
+          maximum: 2147483647
+        label:
+          type: string
+      required:
+      - label
+      - number
+      - score
+      - text
+    Level:
+      type: object
+      properties:
+        code:
+          type: string
+        text:
+          type: string
+      required:
+      - code
+      - text
+    PaginatedSubmissionList:
+      type: object
+      required:
+      - results
+      properties:
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cD00ODY%3D"
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?cursor=cj0xJnA9NDg3
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
     Questionnaire:
       type: object
       properties:
@@ -37,6 +126,102 @@ components:
       - code
       - id
       - name
+    QuestionnaireSummary:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 32
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+      required:
+      - code
+      - name
+    ScoreEnum:
+      enum:
+      - 4
+      - 2
+      - 0
+      type: integer
+      description: |-
+        * `4` - 常常
+        * `2` - 有時
+        * `0` - 從未
+    Scores:
+      type: object
+      properties:
+        total:
+          type: integer
+        emotional:
+          type: integer
+        social:
+          type: integer
+      required:
+      - emotional
+      - social
+      - total
+    Submission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        questionnaire:
+          $ref: '#/components/schemas/QuestionnaireSummary'
+        wearing_hearing_aid:
+          type: boolean
+          nullable: true
+        scores:
+          $ref: '#/components/schemas/Scores'
+        level:
+          $ref: '#/components/schemas/Level'
+      required:
+      - created_at
+      - id
+      - level
+      - questionnaire
+      - scores
+      - wearing_hearing_aid
+    SubmissionDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        questionnaire:
+          $ref: '#/components/schemas/QuestionnaireSummary'
+        wearing_hearing_aid:
+          type: boolean
+          nullable: true
+        scores:
+          $ref: '#/components/schemas/Scores'
+        level:
+          $ref: '#/components/schemas/Level'
+        advice:
+          type: string
+          readOnly: true
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Answer'
+      required:
+      - advice
+      - answers
+      - created_at
+      - id
+      - level
+      - questionnaire
+      - scores
+      - wearing_hearing_aid
   securitySchemes:
     cookieAuth:
       type: apiKey

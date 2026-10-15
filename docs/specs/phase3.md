@@ -1,6 +1,6 @@
 # Phase 3 規格：DRF 唯讀 API
 
-- **狀態**：實作中（第 1 批完成，第 2 批未開始）
+- **狀態**：已完成（第 1、2 批）
 - **分支**：`feat/api-foundation`（第 1 批）、`feat/api-submissions`（第 2 批）
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-14
 
@@ -122,18 +122,18 @@
 - [x] 6. 現有 template 頁面的測試全部通過；安裝 DRF 不會改變現有頁面的訊息用詞（例如「這個欄位是必須的。」）。
 
 ### 第 2 批（`feat/api-submissions`）
-- [ ] 7. 假設 A、B 各有紀錄，當 A 呼叫歷史紀錄，則只看到自己的，依作答時間新到舊，每筆欄位與 4.2 完全相同（不多不少）。
-- [ ] 8. 假設一筆紀錄，則 API 的總分、情緒、社交分數與分級，等於結果頁顯示的值。
-- [ ] 9. 假設三筆紀錄的助聽器分別是有戴、沒戴、未記錄，則 `wearing_hearing_aid` 分別是 `true`、`false`、`null`。
-- [ ] 10. 假設一筆所有題目都答「從未」的紀錄，則分數是 `0`（不是 `null`），分級是 `normal`。
-- [ ] 11. 假設問卷沒有門檻表（無法判讀），則 `level` 是 `{"code": "unknown", "text": "無法判讀"}`，分數照常回傳，不會 500。
-- [ ] 12. 假設有 21 筆紀錄，則第一頁 20 筆、`next` 不是 null；照 `next` 取第二頁得到 1 筆、`next` 是 null；兩頁合起來沒有重複或遺漏。
-- [ ] 13. 假設沒有紀錄，則回 `{"next": null, "previous": null, "results": []}`。
-- [ ] 14. 假設 1 筆和 5 筆紀錄，則歷史紀錄的查詢次數相同。
-- [ ] 15. 假設 A 呼叫自己的單筆結果，則回 4.3 的所有欄位，`answers` 依題號排序，`advice` 與結果頁相同。
-- [ ] 16. 假設 A 呼叫 B 的單筆結果、或不存在的 id，則都回 404，回應內容相同。
-- [ ] 17. 回應裡沒有使用者帳號、email、出生年。
-- [ ] 18. schema 檔更新後包含兩個新端點；現有 template 頁面的測試全部通過。
+- [x] 7. 假設 A、B 各有紀錄，當 A 呼叫歷史紀錄，則只看到自己的，依作答時間新到舊，每筆欄位與 4.2 完全相同（不多不少）。
+- [x] 8. 假設一筆紀錄，則 API 的總分、情緒、社交分數與分級，等於結果頁顯示的值。
+- [x] 9. 假設三筆紀錄的助聽器分別是有戴、沒戴、未記錄，則 `wearing_hearing_aid` 分別是 `true`、`false`、`null`。
+- [x] 10. 假設一筆所有題目都答「從未」的紀錄，則分數是 `0`（不是 `null`），分級是 `normal`。
+- [x] 11. 假設問卷沒有門檻表（無法判讀），則 `level` 是 `{"code": "unknown", "text": "無法判讀"}`，分數照常回傳，不會 500。
+- [x] 12. 假設有 21 筆紀錄，則第一頁 20 筆、`next` 不是 null；照 `next` 取第二頁得到 1 筆、`next` 是 null；兩頁合起來沒有重複或遺漏。
+- [x] 13. 假設沒有紀錄，則回 `{"next": null, "previous": null, "results": []}`。
+- [x] 14. 假設 1 筆和 5 筆紀錄，則歷史紀錄的查詢次數相同。
+- [x] 15. 假設 A 呼叫自己的單筆結果，則回 4.3 的所有欄位，`answers` 依題號排序，`advice` 與結果頁相同。
+- [x] 16. 假設 A 呼叫 B 的單筆結果、或不存在的 id，則都回 404，回應內容相同。
+- [x] 17. 回應裡沒有使用者帳號、email、出生年。
+- [x] 18. schema 檔更新後包含兩個新端點；現有 template 頁面的測試全部通過。
 
 ## 6. 待決問題
 
@@ -177,4 +177,29 @@
 
 ### 第 2 批（`feat/api-submissions`）
 
-- （尚未開始）
+- **改了哪些檔案、為什麼**：
+  - `screening/api/serializers.py`：`SubmissionSerializer`（列表）與繼承它的 `SubmissionDetailSerializer`（多 `advice`、`answers`）；`scores`、`level` 用巢狀 serializer 直接讀 `Submission` 的分數 property 與 `classified`，不另算。
+  - `screening/api/views.py`：`SubmissionPagination`（cursor、20 筆、`-created_at, -id`，只用在這個 view）；`_own_submissions()` 共用查詢，跟 `my_hearing` 同一句，從 `request.user` 出發；`SubmissionList`、`SubmissionDetail`（`Prefetch` 依題號排序的作答）。
+  - `screening/api/urls.py`：`submissions/`、`submissions/<int:pk>/`。
+  - `docs/api/schema.yaml`：重新產生，含兩個新端點。
+  - `screening/tests.py`：`ApiSubmissionTests`（16 個）。
+- **驗收條件對應的測試**：
+  7. `test_list_only_own_newest_first_with_exact_fields`
+  8. `test_scores_match_result_page`（列表與單筆都比對結果頁 context）
+  9. `test_wearing_hearing_aid_values`
+  10. `test_all_never_scores_zero_not_null`
+  11. `test_unknown_level_still_returns_scores`
+  12. `test_cursor_pagination_has_no_gaps_or_duplicates`、`test_pagination_with_identical_created_at`（拿掉 `-id` 會失敗）
+  13. `test_empty_list`
+  14. `test_list_query_count_does_not_grow`
+  15. `test_detail_matches_result_page`（測試資料把答案倒著存，沒排序就會失敗）
+  16. `test_others_and_missing_submission_both_404_identically`
+  17. `test_responses_have_no_personal_data`
+  18. `test_schema_lists_submission_endpoints`、`test_committed_schema_is_up_to_date`、全部既有測試（106 個通過）
+  - 另補：`test_anonymous_gets_403`、`test_endpoints_are_read_only`、`test_created_at_is_taipei_time`（第 4 節共通規則）
+- **規格以外的決定**：
+  - 時間會帶微秒（例如 `…:54.677525+08:00`），仍是 ISO 8601，不另外截掉。
+  - 審查後：時間完全相同時往回翻（`previous`）可能不正確（DRF cursor 的已知限制），同一人同一微秒送兩次才會發生，接受不修；註解改成符合實際。
+- **這次用到的新概念**：cursor 分頁、排序的平手處理（tie-breaker）、巢狀 serializer 與 `source="*"`、`Prefetch` 物件、測試資料太剛好。
+- **面試可能追問的 2–3 題**：Q31、Q32、Q33。要點見 `docs/interview.md`。
+- **建議寫進 decisions/ 的內容**：見對話（由本人撰寫）。

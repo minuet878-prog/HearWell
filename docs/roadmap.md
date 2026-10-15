@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 3**（Phase 2 於 2026-10-14 完成；規格 `docs/specs/phase3.md` 已確認，第 1 批完成；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 3 完成，下一步 Phase 4**（Phase 3 於 2026-10-15 完成；下一步先寫 `docs/specs/phase4.md`；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -63,10 +63,11 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
       作答錯誤沒指出哪一題漏答（分數題錯誤也沒關聯到該題）；選項選取後外框不變、焦點只有小圓鈕外一圈
     - 下次量測補上：註冊錯誤狀態、歷史頁（沒紀錄）
 
-### Phase 3：DRF 唯讀 API（AI 代工）← 目前
+### Phase 3：DRF 唯讀 API（AI 代工）（完成）
 - [x] 第 1 批：DRF＋drf-spectacular、`/api/` 預設要登入、問卷列表、schema 檔與比對測試（驗收 1–6）
   - 坑：DRF 的 zh_Hant 翻譯會蓋掉 Django 核心翻譯（全站），用專案 `LOCALE_PATHS` 蓋回
-- [ ] 第 2 批：歷史紀錄（cursor 分頁）、單筆結果（驗收 7–18）
+- [x] 第 2 批：歷史紀錄（cursor 分頁，`-created_at, -id`）、單筆結果（驗收 7–18）
+  - 已知限制：時間完全相同的紀錄往回翻（`previous`）可能不正確，實際上不會發生，接受
 - `/api/` 與既有 template view 並存，不改動既有頁面。
 - 只做讀取（GET），寫入留到 Phase 5。
 - 優先做 Phase 4 趨勢圖需要的資料（使用者自己的歷次作答與分數）。
@@ -74,7 +75,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - 計分沿用 Submission 的 QuerySet／property，由後端算好回傳，前端不重算。
 - 細節見 `docs/specs/phase3.md`。
 
-### Phase 4：React 前端 + PWA（AI 代工）
+### Phase 4：React 前端 + PWA（AI 代工）← 下一步
 - Vite build 進 staticfiles，由 whitenoise 提供，維持單一 Render 服務。
 - 只有互動需求高的頁面用 React；login／register 維持 Django template。
 - **B2 趨勢圖**：第一個 React 頁面，把多次填答的分數畫成折線圖。
