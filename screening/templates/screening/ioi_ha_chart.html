@@ -1,0 +1,32 @@
+<section class="ioi-chart mb-4" aria-labelledby="ioi-chart-title">
+    <h2 id="ioi-chart-title" class="fs-3">{{ chart.latest.questionnaire.questionnaire_name }} 各題與常模</h2>
+    <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}）</p>
+    <p class="fw-bold">常模組別：{{ chart.latest.get_norm_group_display }}</p>
+    {% if chart.grouped %}
+    <p>灰色是常模範圍：一般助聽器使用者中，中間一半的人的分數。</p>
+    {% else %}
+    <p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>
+    {% endif %}
+    <ul class="ioi-columns">
+        <li class="ioi-axis" aria-hidden="true">
+            <div class="ioi-grid">{% for score in "54321" %}<span>{{ score }}</span>{% endfor %}</div>
+        </li>
+        {% for column in chart.columns %}
+        <li>
+            <span class="visually-hidden">{{ column.text }}</span>
+            {# Rows 1-5 are scores 5-1; the text above says the same for screen readers. #}
+            <div class="ioi-grid" aria-hidden="true">
+                {% if column.band_rows %}<div class="ioi-band" style="grid-row: {{ column.band_rows }}"></div>{% endif %}
+                {% if column.previous_row %}<span class="ioi-dot ioi-dot-previous" style="grid-row: {{ column.previous_row }}"></span>{% endif %}
+                <span class="ioi-dot ioi-dot-latest" style="grid-row: {{ column.latest_row }}"></span>
+            </div>
+            <span class="ioi-name" aria-hidden="true">{{ column.name }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    <ul class="trend-legend">
+        {% if chart.grouped %}<li><span class="ioi-legend-band"></span>常模範圍</li>{% endif %}
+        <li><span class="ioi-legend-latest"></span>最近一次</li>
+        {% if chart.previous %}<li><span class="ioi-legend-previous"></span>上一次（{{ chart.previous.created_at|date:"Y/m/d" }}）</li>{% endif %}
+    </ul>
+</section><!-- /ioi-chart -->

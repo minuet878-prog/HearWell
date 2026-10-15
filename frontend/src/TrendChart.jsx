@@ -24,6 +24,24 @@ const BAND_STYLES = {
   severe: { fill: "#feece7", label: "#c23b1c" },
 };
 const OTHER_BAND = { fill: "#e9ecef", label: TEXT_COLOR };
+// Hearing aid status (spec 4b): filled circle / hollow square / hollow triangle, in legend order.
+const STATUSES = [
+  { wearing: false, shape: "circle", text: "沒戴", legend: "沒戴助聽器" },
+  { wearing: true, shape: "square", text: "有戴", legend: "有戴助聽器" },
+  { wearing: null, shape: "triangle", text: "未記錄", legend: "未記錄" },
+];
+const statusOf = (wearing) => STATUSES.find((s) => s.wearing === wearing);
+
+// size is the half width; data-* keep the centre for tests (shapes have no cx/cy of their own).
+function Shape({ shape, x, y, size }) {
+  const common = { className: "trend-dot", stroke: PRIMARY, strokeWidth: 3, "data-cx": x, "data-cy": y, "data-size": size };
+  if (shape === "circle") return <circle {...common} cx={x} cy={y} r={size} fill={PRIMARY} />;
+  if (shape === "square") {
+    return <rect {...common} x={x - size} y={y - size} width={size * 2} height={size * 2} fill="#fff" />;
+  }
+  const points = `${x},${y - size * 1.2} ${x + size * 1.1},${y + size * 0.8} ${x - size * 1.1},${y + size * 0.8}`;
+  return <polygon {...common} points={points} fill="#fff" />;
+}
 
 async function getJson(url) {
   const response = await fetch(url, { headers: { Accept: "application/json" } });
@@ -31,7 +49,7 @@ async function getJson(url) {
   return response.json();
 }
 
-export default function TrendChart() {
+export default function TrendChart({ code }) {
   const [state, setState] = useState({ status: "loading" });
 
   useEffect(() => {
@@ -44,10 +62,10 @@ export default function TrendChart() {
   if (state.status === "loading") return null;
   if (state.status === "error") return <p className="fs-5">{ERROR_TEXT}</p>;
 
-  const points = selectPoints(state.page.results);
+  const points = selectPoints(state.page.results, code);
   if (points.length === 0) return null;
 
-  const { code, name } = state.page.results[0].questionnaire;
+  const { name } = state.page.results.find((s) => s.questionnaire.code === code).questionnaire;
   const levels = state.questionnaires.find((q) => q.code === code)?.levels ?? [];
   const top = levels.length > 0 ? levels.at(-1).max : Math.max(1, ...points.map((p) => p.total));
   // Recharts finds the tooltip's point by its x value, so x must be unique (id), not the date:
@@ -56,20 +74,11 @@ export default function TrendChart() {
   const latestIndex = points.length - 1;
   const summary = summarize(points);
 
-  const renderDot = ({ cx, cy, index }) => {
-    const latest = index === latestIndex;
-    return (
-      <circle
-        key={index}
-        cx={cx}
-        cy={cy}
-        r={latest ? 8 : 6}
-        fill={latest ? PRIMARY : "#fff"}
-        stroke={PRIMARY}
-        strokeWidth={3}
-      />
-    );
-  };
+  // The latest point is only bigger: filled vs hollow already means the hearing aid status.
+  const renderDot = ({ cx, cy, index, payload }) => (
+    <Shape key={index} shape={statusOf(payload.wearing).shape} x={cx} y={cy} size={index === latestIndex ? 9 : 6} />
+  );
+  const legend = STATUSES.filter((status) => points.some((p) => p.wearing === status.wearing));
 
   // Score above each point; below it when the point is near the top so it stays inside the chart.
   const renderScore = ({ x, y, value }) => (
@@ -133,7 +142,10 @@ export default function TrendChart() {
                 <Tooltip
                   contentStyle={{ ...FONT, borderRadius: "0.5rem" }}
                   labelFormatter={dateOf}
-                  formatter={(value, _name, item) => [`${value} 分，${item.payload.levelText}`, "總分"]}
+                  formatter={(value, _name, item) => [
+                    `${value} 分，${item.payload.levelText}，助聽器：${statusOf(item.payload.wearing).text}`,
+                    "總分",
+                  ]}
                 />
                 <Line
                   dataKey="total"
@@ -148,6 +160,16 @@ export default function TrendChart() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+          <ul className="trend-legend">
+            {legend.map((status) => (
+              <li key={status.legend}>
+                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                  <Shape shape={status.shape} x={12} y={12} size={7} />
+                </svg>
+                {status.legend}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>

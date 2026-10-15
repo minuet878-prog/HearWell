@@ -1,10 +1,8 @@
 // Pure data helpers for the trend chart. Scores and level text come from the API as is (rule 10).
 
-export function selectPoints(submissions) {
+export function selectPoints(submissions, code) {
   // submissions: one API page, newest first. Mixing questionnaires would mix level bands,
-  // so only the newest submission's questionnaire is kept.
-  if (submissions.length === 0) return [];
-  const { code } = submissions[0].questionnaire;
+  // so only the questionnaire the page asks for is kept.
   return submissions
     .filter((s) => s.questionnaire.code === code)
     .map((s) => ({
@@ -13,6 +11,8 @@ export function selectPoints(submissions) {
       date: s.created_at.slice(0, 10).replaceAll("-", "/"),
       total: s.scores.total,
       levelText: s.level.text,
+      // true / false / null (unrecorded), shown as the point's shape.
+      wearing: s.wearing_hearing_aid,
     }))
     .reverse();
 }
