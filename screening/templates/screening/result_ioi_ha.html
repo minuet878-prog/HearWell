@@ -1,0 +1,33 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
+
+{% block body %}
+<p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+<h1 class="h3">{{ submission.questionnaire.questionnaire_name }} 結果</h1>
+<p class="fs-5 fw-bold">常模組別：{{ submission.get_norm_group_display }}</p>
+{% if grouped %}
+{% with basis=submission.norm_basis %}
+<p>分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 HHIE-S，{{ basis.total_answer_score }} 分。</p>
+{% endwith %}
+<p>常模範圍是一般助聽器使用者中，中間一半的人的分數。</p>
+{% else %}
+<p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>
+{% endif %}
+<ol>
+    {% for item in items %}
+    <li class="mb-3">
+        <div>{{ item.text }}</div>
+        <div class="fw-bold">您的回答：{{ item.label }}{% if item.comparison %}（{{ item.comparison }}）{% endif %}</div>
+    </li>
+    {% endfor %}
+</ol>
+{% if grouped %}
+<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
+{% endif %}
+<div class="d-flex flex-column flex-sm-row gap-2 my-3">
+    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄</a>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
+</div>
+{% include "screening/ioi_ha_source.html" with with_norms=True %}
+{% endblock %}

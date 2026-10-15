@@ -5,6 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.forms import BaseFormSet, formset_factory
 
 from screening.models import Question, Score, User
+from screening.scoring import IOI_HA, IOI_HA_CHOICES
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -46,6 +47,12 @@ class RegisterForm(UserCreationForm):
         return user
 
 
+def answer_choices(question):
+    if question.questionnaire.code == IOI_HA:
+        return list(enumerate(IOI_HA_CHOICES[question.question_number], start=1))
+    return Score.choices
+
+
 class AnswerForm(forms.Form):
     score = forms.TypedChoiceField(
         choices=Score.choices,
@@ -56,6 +63,10 @@ class AnswerForm(forms.Form):
     question_id = forms.ModelChoiceField(
         queryset=Question.objects.all(), widget=forms.HiddenInput()
     )
+
+    def __init__(self, *args, choices=Score.choices, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["score"].choices = choices
 
 
 class HearingAidForm(forms.Form):
@@ -83,6 +94,14 @@ class BaseAnswerFormSet(BaseFormSet):
         # clean() with no question_id and returned 500.
         kwargs["form_kwargs"] = {**kwargs.get("form_kwargs", {}), "empty_permitted": False}
         super().__init__(*args, **kwargs)
+
+    def get_form_kwargs(self, index):
+        kwargs = super().get_form_kwargs(index)
+        # Forms past the real questions (tampered TOTAL_FORMS) keep the default choices;
+        # clean() rejects them anyway.
+        if index is not None and index < len(self.questions):
+            kwargs["choices"] = answer_choices(self.questions[index])
+        return kwargs
 
     def clean(self):
         if any(self.errors):

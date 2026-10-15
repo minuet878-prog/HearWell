@@ -106,5 +106,83 @@
     "question_number": 10,
     "category": "social"
   }
+},
+{
+  "model": "screening.questionnaire",
+  "pk": 2,
+  "fields": {
+    "questionnaire_name": "IOI-HA",
+    "code": "ioi-ha"
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 11,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "最近兩周內，您每天平均使用助聽器幾個小時？",
+    "question_number": 1,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 12,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "想一想在您使用現有的助聽器之前，您在什麼情況下最希望能夠聽得清楚。最近兩周內，在前述情況下，您的助聽器對您有多少幫助？",
+    "question_number": 2,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 13,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "想一想您在什麼情況下最希望能夠聽得清楚。最近兩周內，使用現有的助聽器後，在前述情況下，您仍然感到多少的聽力問題？",
+    "question_number": 3,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 14,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "綜合考慮優點和缺點，您認為現有的助聽器是否值得配戴？",
+    "question_number": 4,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 15,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "在最近兩周內，使用現有的助聽器後，您的日常生活或工作是否還受到聽力困難的影響？",
+    "question_number": 5,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 16,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "在最近兩周內，使用現有助聽器後，您認為您的聽力困難對於周遭其他人有多少干擾？",
+    "question_number": 6,
+    "category": ""
+  }
+},
+{
+  "model": "screening.question",
+  "pk": 17,
+  "fields": {
+    "questionnaire": 2,
+    "question_text": "綜合考慮各方面，現有的助聽器對您享受生活的程度有多少改變？",
+    "question_number": 7,
+    "category": ""
+  }
 }
 ]

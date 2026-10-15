@@ -17,7 +17,68 @@ UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 # Questionnaires missing here show only their name and question count.
 QUESTIONNAIRE_INFO = {
     "hhie-s": {"subtitle": "聽力障礙自我評估", "audience": "適合 65 歲以上的長輩。", "minutes": 3},
+    "ioi-ha": {"subtitle": "助聽器效益量表", "audience": "適合已配戴助聽器的人。", "minutes": 2},
 }
+
+IOI_HA = "ioi-ha"
+
+# Answer labels for scores 1-5, by item number (林克寰《助聽器選配與驗證》書頁 167).
+IOI_HA_CHOICES = {
+    1: ("沒使用", "不到一小時", "一到四小時", "四到八小時", "超過八小時"),
+    2: ("完全沒幫助", "只有一點幫助", "有中等幫助", "幫助很大", "非常有幫助"),
+    3: ("非常困難", "有很大的困難", "有中等困難", "只有一點困難", "完全沒困難"),
+    4: ("完全沒價值", "只有一點價值", "有中等價值", "有很大的價值", "非常有價值"),
+    5: ("非常有影響", "有很大的影響", "有中等影響", "只有一點影響", "完全沒影響"),
+    6: ("非常有干擾", "有很大程度的干擾", "有中等程度的干擾", "只有一點干擾", "完全沒干擾"),
+    7: ("變得更糟", "沒有改變", "稍微提升", "有很大程度的提升", "非常有提升"),
+}
+
+# Middle 50% of each item (Cox, Alexander & Beyer 2003), as (lower, upper) inclusive.
+# Groups match models.NormGroup values.
+IOI_HA_NORMS = {
+    "mild_moderate": {
+        1: (3, 5),
+        2: (3, 4),
+        3: (3, 4),
+        4: (2, 4),
+        5: (3, 4),
+        6: (3, 5),
+        7: (3, 4),
+    },
+    "moderately_severe": {
+        1: (4, 5),
+        2: (3, 4),
+        3: (2, 4),
+        4: (3, 5),
+        5: (3, 4),
+        6: (2, 4),
+        7: (3, 4),
+    },
+}
+
+# Unaided HHIE-S 0-24 vs 25-40 (林克寰《助聽器選配與驗證》表 5).
+IOI_HA_MILD_MODERATE_MAX = 24
+
+
+def ioi_ha_group(unaided_hhie_s_total):
+    # None means no unaided HHIE-S; 0 is a real score and groups as mild_moderate.
+    if unaided_hhie_s_total is None:
+        return "ungrouped"
+    if unaided_hhie_s_total <= IOI_HA_MILD_MODERATE_MAX:
+        return "mild_moderate"
+    return "moderately_severe"
+
+
+NORM_COMPARISON_TEXT = {"below": "低於常模", "within": "在範圍內", "above": "高於常模"}
+
+
+def compare_to_norm(group, item_number, score):
+    lower, upper = IOI_HA_NORMS[group][item_number]
+    if score < lower:
+        return "below"
+    if score > upper:
+        return "above"
+    return "within"
 
 
 def max_score(questionnaire_code):
