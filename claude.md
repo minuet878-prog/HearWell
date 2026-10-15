@@ -166,4 +166,4 @@
 
 ## 目前階段
 
-Phase 4：React 前端＋PWA（開工前先寫 `docs/specs/phase4.md`）。Phase 1、2、3 已完成；Phase 0 還剩 debug-toolbar 和 `check --deploy`。細節見 `docs/roadmap.md`。
+Phase 5：寫入 API ＋大型新功能。Phase 0–4 已完成；Phase 5 第 1 項「寫入 API：作答送出」已完成，下一項是 React 作答頁。細節見 `docs/roadmap.md`。

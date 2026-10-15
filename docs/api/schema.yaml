@@ -19,6 +19,26 @@ paths:
                 items:
                   $ref: '#/components/schemas/Questionnaire'
           description: ''
+  /api/questionnaires/{id}/:
+    get:
+      operationId: questionnaires_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - questionnaires
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionnaireDetail'
+          description: ''
   /api/submissions/:
     get:
       operationId: submissions_list
@@ -40,6 +60,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedSubmissionList'
           description: ''
+    post:
+      operationId: submissions_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: UUID made when answering starts; resend the same one on retry.
+        required: true
+      tags:
+      - submissions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetail'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetail'
+          description: 'Retry: the first submission'
+        '400':
+          description: Invalid answers or Idempotency-Key
+        '409':
+          description: Idempotency-Key used with different answers
   /api/submissions/{id}/:
     get:
       operationId: submissions_retrieve
@@ -81,6 +143,26 @@ components:
       - number
       - score
       - text
+    AnswerInput:
+      type: object
+      properties:
+        question:
+          type: integer
+        score:
+          type: integer
+      required:
+      - question
+      - score
+    Choice:
+      type: object
+      properties:
+        value:
+          type: integer
+        label:
+          type: string
+      required:
+      - label
+      - value
     Level:
       type: object
       properties:
@@ -123,6 +205,26 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Submission'
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+        text:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Choice'
+          readOnly: true
+      required:
+      - choices
+      - id
+      - number
+      - text
     Questionnaire:
       type: object
       properties:
@@ -145,6 +247,33 @@ components:
       - id
       - levels
       - name
+    QuestionnaireDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          maxLength: 32
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/LevelBand'
+          readOnly: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+      required:
+      - code
+      - id
+      - levels
+      - name
+      - questions
     QuestionnaireSummary:
       type: object
       properties:
@@ -205,6 +334,21 @@ components:
       - level
       - questionnaire
       - scores
+      - wearing_hearing_aid
+    SubmissionCreate:
+      type: object
+      properties:
+        questionnaire:
+          type: integer
+        wearing_hearing_aid:
+          type: boolean
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerInput'
+      required:
+      - answers
+      - questionnaire
       - wearing_hearing_aid
     SubmissionDetail:
       type: object

@@ -107,10 +107,18 @@ class Submission(models.Model):
     norm_basis = models.ForeignKey(
         "self", on_delete=models.RESTRICT, null=True, blank=True, related_name="+"
     )
+    # Sent by API clients so a retried submit returns the first record instead of a duplicate.
+    # None for web-form submissions; PostgreSQL does not compare NULLs in the unique constraint.
+    idempotency_key = models.UUIDField(null=True, blank=True, editable=False)
     objects = SubmissionQuerySet.as_manager()
 
     class Meta:
         indexes = (models.Index(fields=["user", "-created_at"], name="user_created_at_index"),)
+        constraints = (
+            models.UniqueConstraint(
+                fields=["user", "idempotency_key"], name="unique_user_idempotency_key"
+            ),
+        )
         ordering = (("-created_at"),)
 
     def __str__(self):

@@ -5,25 +5,28 @@ import re
 import struct
 import subprocess
 import sys
+import uuid
 from datetime import date, datetime, timedelta
 from io import StringIO
 from pathlib import Path
 from typing import ClassVar
+from unittest import mock
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.core.management import call_command
 from django.core.management.utils import get_random_secret_key
-from django.db import IntegrityError, connection
+from django.db import DatabaseError, IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.db.models import RestrictedError
-from django.test import SimpleTestCase, TestCase, TransactionTestCase
+from django.test import Client, SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 
 from screening import scoring
+from screening.api import views as api_views
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify, get_advice
 
@@ -568,6 +571,15 @@ class HearingAidTests(TestCase):
         )
         Answer.objects.create(submission=submission, question=self.question, score=4)
         return submission
+
+    def test_failure_midway_leaves_nothing(self):
+        # The web form and the API share formset.save(); this guards its all-or-nothing.
+        with (
+            mock.patch.object(Answer.objects, "bulk_create", side_effect=DatabaseError),
+            self.assertRaises(DatabaseError),
+        ):
+            self._post(wearing_hearing_aid="False")
+        self.assertFalse(Submission.objects.exists())
 
     def test_question_shown_before_first_question_without_default(self):
         response = self.client.get(self.url)
@@ -1235,7 +1247,13 @@ class ApiSubmissionTests(TestCase):
     def test_endpoints_are_read_only(self):
         submission = self._make_submission()
         for url in (self.LIST, self._detail_url(submission.id)):
-            for method in ("post", "put", "patch", "delete"):
+            # POST on the list is the submit endpoint (ApiSubmitTests).
+            methods = (
+                ("put", "patch", "delete")
+                if url == self.LIST
+                else ("post", "put", "patch", "delete")
+            )
+            for method in methods:
                 with self.subTest(url=url, method=method):
                     self.assertEqual(getattr(self.client, method)(url).status_code, 405)
 
@@ -3003,3 +3021,322 @@ print(json.dumps({
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())
+
+
+class ApiQuestionnaireDetailTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        # Created out of order so the response has to sort by number.
+        for number in (2, 1):
+            Question.objects.create(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{number}題的完整題目文字，超過三十個字也要完整回傳，不可以被截斷掉喔",
+                question_number=number,
+                category=Category.EMOTIONAL,
+            )
+        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _url(self, pk):
+        return f"/api/questionnaires/{pk}/"
+
+    def test_anonymous_gets_403(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self._url(self.questionnaire.pk)).status_code, 403)
+
+    def test_returns_questions_in_order_with_choices(self):
+        response = self.client.get(self._url(self.questionnaire.pk))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(set(data), {"id", "code", "name", "levels", "questions"})
+        self.assertEqual(data["code"], "hhie-s")
+        self.assertEqual(len(data["levels"]), 3)
+        self.assertEqual([q["number"] for q in data["questions"]], [1, 2])
+        first = data["questions"][0]
+        self.assertEqual(set(first), {"id", "number", "text", "choices"})
+        self.assertEqual(first["text"], Question.objects.get(question_number=1).question_text)
+        self.assertEqual(
+            first["choices"],
+            [
+                {"value": 4, "label": "常常"},
+                {"value": 2, "label": "有時"},
+                {"value": 0, "label": "從未"},
+            ],
+        )
+
+    def test_missing_or_ioi_ha_gets_404(self):
+        for pk in (self.ioi_ha.pk, 9999):
+            with self.subTest(pk=pk):
+                self.assertEqual(self.client.get(self._url(pk)).status_code, 404)
+
+
+class ApiSubmitTests(TestCase):
+    URL = "/api/submissions/"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="alice_account")
+        cls.other = User.objects.create_user(username="bob_account")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.questionnaire,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
+        cls.ioi_questions = Question.objects.bulk_create(
+            Question(questionnaire=cls.ioi_ha, question_text=f"IOI 第{i}題", question_number=i)
+            for i in range(1, 8)
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _body(self, scores=(4,) * 5 + (2,) * 5, wearing=False, questions=None, questionnaire=None):
+        questions = self.questions if questions is None else questions
+        return {
+            "questionnaire": (questionnaire or self.questionnaire).pk,
+            "wearing_hearing_aid": wearing,
+            # Reversed: the API must not depend on answer order.
+            "answers": [
+                {"question": q.pk, "score": s}
+                for q, s in reversed(list(zip(questions, scores, strict=False)))
+            ],
+        }
+
+    def _post(self, body, key="__new__", client=None):
+        headers = {}
+        if key == "__new__":
+            key = str(uuid.uuid4())
+        if key is not None:
+            headers["Idempotency-Key"] = key
+        return (client or self.client).post(
+            self.URL, json.dumps(body), content_type="application/json", headers=headers
+        )
+
+    def assertNothingSaved(self):
+        self.assertEqual(Submission.objects.count(), 0)
+        self.assertEqual(Answer.objects.count(), 0)
+
+    # 送出作答
+    def test_anonymous_gets_403(self):
+        self.client.logout()
+        self.assertEqual(self._post(self._body()).status_code, 403)
+        self.assertNothingSaved()
+
+    def test_missing_csrf_token_gets_403(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.user)
+        self.assertEqual(self._post(self._body(), client=client).status_code, 403)
+        self.assertNothingSaved()
+
+    def test_valid_submission_is_saved_and_scored(self):
+        response = self._post(self._body(wearing=True))
+        self.assertEqual(response.status_code, 201)
+        submission = Submission.objects.get()
+        self.assertEqual(submission.user, self.user)
+        self.assertIs(submission.wearing_hearing_aid, True)
+        self.assertEqual(submission.answers.count(), 10)
+        data = response.json()
+        self.assertEqual(data["id"], submission.pk)
+        self.assertEqual(data["scores"], {"total": 30, "emotional": 20, "social": 10})
+        self.assertEqual(data["level"], {"code": "severe", "text": "顯著影響"})
+        # Same numbers as the history page.
+        page = self.client.get(reverse("my_hearing")).content.decode()
+        self.assertIn("總分：30", page)
+        self.assertIn("顯著影響", page)
+
+    def test_all_zero_is_a_real_score(self):
+        response = self._post(self._body(scores=(0,) * 10))
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["scores"]["total"], 0)
+        self.assertEqual(data["level"]["code"], "normal")
+
+    def test_user_in_body_is_ignored(self):
+        body = {**self._body(), "user": self.other.pk}
+        self.assertEqual(self._post(body).status_code, 201)
+        self.assertEqual(Submission.objects.get().user, self.user)
+        self.assertFalse(self.other.submissions.exists())
+
+    def test_invalid_answers_get_400(self):
+        foreign = [*self.questions[:9], self.ioi_questions[0]]
+        cases = {
+            "missing": (
+                self._body(scores=(0,) * 9, questions=self.questions[:9]),
+                "有題目沒有作答",
+            ),
+            "duplicate": (
+                self._body(questions=[*self.questions[:9], self.questions[0]]),
+                "重複題目",
+            ),
+            "foreign": (self._body(questions=foreign), "有題目沒有作答"),
+            "bad score": (self._body(scores=(3,) + (0,) * 9), None),
+        }
+        for name, (body, message) in cases.items():
+            with self.subTest(name):
+                response = self._post(body)
+                self.assertEqual(response.status_code, 400)
+                errors = response.json()
+                self.assertEqual(set(errors), {"answers"})
+                if message:
+                    self.assertIn(message, errors["answers"])
+                self.assertNothingSaved()
+
+    def test_wearing_hearing_aid_is_required(self):
+        body = self._body()
+        # Only JSON true/false: DRF would otherwise read 1, "yes", "on", "true" as True.
+        for value in ("missing", None, "maybe", 1, 0, "yes", "on", "true"):
+            with self.subTest(value=value):
+                if value == "missing":
+                    body.pop("wearing_hearing_aid", None)
+                else:
+                    body["wearing_hearing_aid"] = value
+                response = self._post(body)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(
+                    response.json(), {"wearing_hearing_aid": ["請選擇這次有沒有戴助聽器"]}
+                )
+                self.assertNothingSaved()
+
+    def test_unknown_questionnaire_gets_400(self):
+        body = {**self._body(), "questionnaire": 9999}
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("questionnaire", response.json())
+        self.assertNothingSaved()
+
+    def test_questionnaire_without_questions_gets_400(self):
+        empty = Questionnaire.objects.create(questionnaire_name="空問卷", code="empty")
+        body = {"questionnaire": empty.pk, "wearing_hearing_aid": False, "answers": []}
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"questionnaire": ["這份問卷沒有題目"]})
+        self.assertNothingSaved()
+
+    def test_ioi_ha_gets_400(self):
+        body = self._body(scores=(3,) * 7, questions=self.ioi_questions, questionnaire=self.ioi_ha)
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("questionnaire", response.json())
+        self.assertNothingSaved()
+
+    def test_failure_midway_leaves_nothing(self):
+        with (
+            mock.patch.object(Answer.objects, "bulk_create", side_effect=DatabaseError),
+            self.assertRaises(DatabaseError),
+        ):
+            self._post(self._body())
+        self.assertNothingSaved()
+
+    def test_schema_documents_write_endpoints(self):
+        content = self.client.get("/api/schema/").content.decode()
+        self.assertIn("/api/questionnaires/{id}/:", content)
+        submissions = content.split("/api/submissions/:", 1)[1].split("/api/submissions/{id}/:")[0]
+        self.assertIn("post:", submissions)
+        self.assertIn("Idempotency-Key", submissions)
+
+    def test_detail_stays_read_only(self):
+        submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
+        for method in ("put", "patch", "delete"):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(f"{self.URL}{submission.pk}/")
+                self.assertEqual(response.status_code, 405)
+
+    # 收據編號
+    def test_same_key_same_body_returns_first(self):
+        key = str(uuid.uuid4())
+        first = self._post(self._body(), key=key)
+        second = self._post(self._body(), key=key)
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json(), first.json())
+        self.assertEqual(Submission.objects.count(), 1)
+
+    def test_same_key_different_body_gets_409(self):
+        key = str(uuid.uuid4())
+        self._post(self._body(), key=key)
+        # A valid HHIA-S body: only the questionnaire differs from the first request.
+        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        hhia_questions = Question.objects.bulk_create(
+            Question(questionnaire=hhia_s, question_text=f"HHIA 第{i}題", question_number=i)
+            for i in range(1, 11)
+        )
+        different = {
+            "scores": self._body(scores=(0,) * 10),
+            "wearing": self._body(wearing=True),
+            "questionnaire": self._body(questions=hhia_questions, questionnaire=hhia_s),
+        }
+        for name, body in different.items():
+            with self.subTest(name):
+                response = self._post(body, key=key)
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json(), {"detail": "這個收據編號已經用過"})
+                self.assertEqual(Submission.objects.count(), 1)
+                self.assertEqual(Submission.objects.get().total_answer_score, 30)
+
+    def test_missing_or_invalid_key_gets_400(self):
+        for key in (None, "", "not-a-uuid"):
+            with self.subTest(key=key):
+                response = self._post(self._body(), key=key)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json(), {"detail": "缺少或無效的收據編號"})
+                self.assertNothingSaved()
+
+    def test_key_is_scoped_to_user(self):
+        key = str(uuid.uuid4())
+        self.client.force_login(self.other)
+        self._post(self._body(scores=(0,) * 10), key=key)
+        self.client.force_login(self.user)
+        response = self._post(self._body(), key=key)
+        self.assertEqual(response.status_code, 201)
+        mine = self.user.submissions.get()
+        self.assertEqual(response.json()["id"], mine.pk)
+        self.assertEqual(response.json()["scores"]["total"], 30)
+
+    def test_concurrent_same_key_returns_first_not_500(self):
+        key = str(uuid.uuid4())
+        first = self._post(self._body(), key=key)
+        # The second request checks before the first has saved, then hits the unique constraint.
+        existing = Submission.objects.get()
+        with mock.patch.object(api_views, "_find_by_key", side_effect=[None, existing]):
+            second = self._post(self._body(), key=key)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json(), first.json())
+        self.assertEqual(Submission.objects.count(), 1)
+
+    # 回傳內容
+    def test_created_body_matches_detail_get(self):
+        response = self._post(self._body())
+        detail = self.client.get(f"{self.URL}{response.json()['id']}/")
+        self.assertEqual(response.json(), detail.json())
+
+    def test_errors_are_in_chinese_by_field(self):
+        response = self._post({"answers": "not a list"})
+        self.assertEqual(response.status_code, 400)
+        errors = response.json()
+        self.assertEqual(set(errors), {"questionnaire", "wearing_hearing_aid", "answers"})
+        for messages in errors.values():
+            for message in messages:
+                self.assertRegex(message, r"[一-鿿]")
+
+    # 兩支 API 接得起來
+    def test_questionnaire_detail_feeds_submit(self):
+        detail = self.client.get(f"/api/questionnaires/{self.questionnaire.pk}/").json()
+        body = {
+            "questionnaire": detail["id"],
+            "wearing_hearing_aid": False,
+            "answers": [
+                {"question": q["id"], "score": q["choices"][-1]["value"]}
+                for q in detail["questions"]
+            ],
+        }
+        self.assertEqual(self._post(body).status_code, 201)

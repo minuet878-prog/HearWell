@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1、2 批、作答 500 bug、PWA（含手機驗收）、IOI-HA、我的紀錄依問卷分開完成並合併，2026-10-15；Phase 0 檢查工具完成待合併；下一步：Phase 5）
+**目前進度：Phase 5 進行中**（Phase 0–4 完成並合併，2026-10-15；Phase 5 第 1 項「寫入 API：作答送出」完成待合併；下一步：React 作答頁）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -78,7 +78,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - 計分沿用 Submission 的 QuerySet／property，由後端算好回傳，前端不重算。
 - 細節見 `docs/specs/phase3.md`。
 
-### Phase 4：React 前端 + PWA（AI 代工）← 目前
+### Phase 4：React 前端 + PWA（AI 代工）（完成）
 - [x] 第 1 批：B2 趨勢圖（Vite＋React＋Recharts，只在「我的聽力」頁載入；問卷 API 加 `levels`；Render 上建置）
   - 正式站看得到圖（2026-10-15 確認）；還沒核對：build log 的 Node 版本是 `.node-version` 的 24.21.0（不是就代表 Python 服務沒讀這個檔）
   - Django 測試改用 `--settings=config.test_settings`（不需先 collectstatic）
@@ -107,7 +107,13 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - **D1 無障礙（基本要求）**：目標族群偏年長，React 頁面從一開始就要顧及
   字級、按鈕大小、對比度，不留到最後補。
 
-### Phase 5：寫入 API + 大型新功能（AI 代工）
+### Phase 5：寫入 API + 大型新功能（AI 代工）← 目前
+- [x] **寫入 API：作答送出**（規格 `docs/specs/phase5_api_submit.md`，2026-10-15）
+  - `POST /api/submissions/`：收據編號（`Idempotency-Key` header，UUID、必填）防重複，重送回 200、內容不同回 409；只收 HHIE-S／HHIA-S
+  - `GET /api/questionnaires/{id}/`：題目全文與選項（React 作答頁要用）
+  - 驗證與存檔共用網頁版的 `AnswerFormSet`（`save()` 是全有或全無）
+  - 待辦：開放 IOI-HA 寫入時，要補「答案倒序送出、每題選項不同」的測試（目前依題號排序沒有測試保護）
+  - 待辦：網頁版作答的連按兩次（F-10）還沒處理
 - **寫入 API**：作答送出等 POST 操作。
 - **React 作答頁**：依賴寫入 API，所以放在這個 phase 而不是 Phase 4。
   可一併考慮 D2 作答中途儲存。

@@ -1,6 +1,6 @@
 # Phase 0 規格：開發與上線前檢查（debug-toolbar、check --deploy）
 
-- **狀態**：已完成（驗收 1、10、11 待本人人工確認；合併前確認 Render 的 SECRET_KEY 強度與沒有設 PYTHON_VERSION）
+- **狀態**：已完成（驗收 1、10、11 本人於 2026-10-15 部署後確認）
 - **分支**：`chore/phase0-checks`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-15
 
@@ -68,7 +68,7 @@
 ## 5. 驗收條件
 
 **debug-toolbar**
-- [ ] 1. 假設 `DEBUG=True` 且裝了開發用套件，當打開任何頁面，則頁面上有 debug-toolbar。（人工，本人在本機看）
+- [x] 1. 假設 `DEBUG=True` 且裝了開發用套件，當打開任何頁面，則頁面上有 debug-toolbar。（人工，本人在本機看）
 - [x] 2. 假設 `DEBUG=False`，當打開任何頁面，則沒有 debug-toolbar，也連不到它的網址。
 - [x] 3. 假設跑測試，則不載入 debug-toolbar，現有測試全部通過。
 - [x] 4. 假設 `DEBUG=True` 但沒裝開發用套件（例如正式環境的套件清單），則網站照常啟動、不報錯。
@@ -79,10 +79,10 @@
 - [x] 7. 假設 `DEBUG=True`，則回應沒有 `Strict-Transport-Security`。
 - [x] 8. 假設 `DEBUG=False`，當跑 `check --deploy`（警告也算失敗），則 0 個問題；略過的只有 W021，設定旁有理由。
 - [x] 9. 假設部署建置時 `check --deploy` 有任何警告，則建置失敗（建置腳本裡的順序與參數）。
-- [ ] 10. （人工）合併部署後，Render build log 有 `check --deploy` 通過的紀錄；正式站回應標頭有 HSTS；網站正常。
+- [x] 10. （人工）合併部署後，Render build log 有 `check --deploy` 通過的紀錄；正式站回應標頭有 HSTS；網站正常。
 
 **Python 版本**
-- [ ] 11. （人工）合併部署後，Render build log 顯示 Python 3.13.15，網站正常。
+- [x] 11. （人工）合併部署後，Render build log 顯示 Python 3.13.15，網站正常。
 
 ## 6. 待決問題
 
