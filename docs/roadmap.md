@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1、2 批、作答 500 bug、PWA 完成，2026-10-15；PWA 待合併部署後手機驗收 24–26；下一步：IOI-HA（規格草稿在 `feat/ioi-ha`）或 Phase 5；Phase 0 還剩兩項小的，可以穿插做）
+**目前進度：Phase 4 進行中**（趨勢圖、介面改版第 1、2 批、作答 500 bug、PWA 完成並通過手機驗收，2026-10-15；下一步：IOI-HA（規格草稿在 `feat/ioi-ha`）或 Phase 5；Phase 0 還剩兩項小的，可以穿插做）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -77,13 +77,13 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ### Phase 4：React 前端 + PWA（AI 代工）← 目前
 - [x] 第 1 批：B2 趨勢圖（Vite＋React＋Recharts，只在「我的聽力」頁載入；問卷 API 加 `levels`；Render 上建置）
-  - 合併部署後確認：正式站看得到圖、build log 的 Node 版本是 `.node-version` 的 24.21.0（不是就代表 Python 服務沒讀這個檔）
+  - 正式站看得到圖（2026-10-15 確認）；還沒核對：build log 的 Node 版本是 `.node-version` 的 24.21.0（不是就代表 Python 服務沒讀這個檔）
   - Django 測試改用 `--settings=config.test_settings`（不需先 collectstatic）
   - JS 體積 brotli 141 KB（含 React）；若之後要壓，可考慮較小的圖表套件或自己畫 SVG
 - [x] 第 2 批：PWA（規格 `docs/specs/phase4.md` 第 2 批）
   - 只有 manifest＋圖示（B1 耳朵），不用 service worker、不做離線；全螢幕、先到首頁
   - 說明頁「把 HearWell 加到手機主畫面」（iPhone 提醒第一次要再登入）
-  - 合併部署後：用 Android、iPhone 實測驗收 24–26（iPhone 按鈕名稱不一致就改文案；`apple-mobile-web-app-capable` 不需要就拿掉）
+  - 手機驗收 24–26 通過（2026-10-15）：iPhone 按鈕名稱與說明頁一致；`apple-mobile-web-app-capable` 保留
 - [x] 介面改版第 1 批：共用版型（規格 `docs/specs/phase4_ui_redesign.md`）
   - 原版 Bootstrap 5.3.8＋自訂 `styles.css`：深藍主色 #1f4e8c、18px、系統字型；拿掉 Bootstrap JS
   - 導覽：首頁／開始篩檢／我的紀錄（未登入：首頁／登入／註冊）；寬螢幕上方、手機底部分頁列；320px 不需左右捲動
