@@ -1779,8 +1779,8 @@ class PageFlowTests(TestCase):
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
-        "7–10 年",
-        "從察覺聽力問題到實際就醫，平均要拖這麼久。及早了解，才能及早處理。",
+        "可達 10 年",
+        "從察覺聽力問題到尋求協助，往往拖延多年。及早了解，才能及早處理。",
         "本網站由執業聽力師開發，使用經過驗證的標準化量表。"
         "結果僅供參考，不能取代聽力檢查與醫師診斷。",
     )
@@ -1837,6 +1837,7 @@ class PageFlowTests(TestCase):
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
         self._assert_in_order(main, ("開始篩檢", self.HINT, "回答問題，大約 3 分鐘。"))
+        self.assertNotIn("7–10 年", main)
         self.assertRegex(main, rf'<a[^>]*href="{reverse("questionnaire_list")}"[^>]*>\s*開始篩檢')
 
     def test_home_order_for_logged_in_without_hint(self):

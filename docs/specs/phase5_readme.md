@@ -1,6 +1,6 @@
 # Phase 5 規格：重寫 README
 
-- **狀態**：實作中（剩驗收 7：GitHub 上看 mermaid 圖）
+- **狀態**：已完成
 - **分支**：`docs/readme-rewrite`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-15
 
@@ -48,7 +48,15 @@ README 和現在的程式碼一致：面試官看得懂這個產品解決什麼�
 - [x] 假設看功能與問卷清單，當對照 `screening/fixtures/questions_fixture.json` 與 `scoring.py`，則只列出現有的問卷（HHIE-S、IOI-HA）與已完成的功能。
 - [x] 假設看 API 段落，當對照 `screening/api/urls.py`，則 endpoint 一一對應。
 - [x] 假設搜尋 README，當找密碼、金鑰、真實姓名，則除了 `.env.example` 的本機範例值外都沒有。
-- [ ] 假設在 GitHub 預覽 README，則 mermaid ER 圖能正常顯示。
+- [x] 假設在 GitHub 預覽 README，則 mermaid ER 圖能正常顯示。（本人在 PR #33 確認，註腳也正常）
+
+### 5.1 追加：首頁數據卡片（2026-10-15，本人確認）
+
+首頁「7–10 年」卡片和 README 一樣沒有文獻支持「平均 7–10 年」，同一個 PR 一起修。舊規格 `phase4_ui_flow.md` 保留原樣當紀錄。
+- 大字改「可達 10 年」，說明改「從察覺聽力問題到尋求協助，往往拖延多年。及早了解，才能及早處理。」
+- 首頁不列出處（出處在 README）。
+
+- [x] 8. 假設未登入，當開啟首頁，則卡片依序顯示「可達 10 年」與新說明，不再出現「7–10 年」與「平均要拖這麼久」；其他首頁內容與順序不變。
 
 ## 6. 待決問題
 
@@ -60,7 +68,7 @@ README 和現在的程式碼一致：面試官看得懂這個產品解決什麼�
 ## 完成後回報（由 AI 填寫）
 
 - **改了哪些檔案、為什麼**：`README.md` 整份重寫，內容對齊目前程式碼（功能、技術、ER 圖、API、本機前端建置、`build.sh` 部署步驟）。
-- **驗收條件對應的測試**：文件任務沒有自動測試；驗收 1–6 以指令逐條比對程式碼與設定檔（fixture 題數、`settings.py`、`vite.config.js`、`build.sh`、`api/urls.py`、連結檔案是否存在、搜尋密碼字串）。
+- **驗收條件對應的測試**：文件任務沒有自動測試；驗收 1–6 以指令逐條比對程式碼與設定檔（fixture 題數、`settings.py`、`vite.config.js`、`build.sh`、`api/urls.py`、連結檔案是否存在、搜尋密碼字串）；驗收 7 本人在 GitHub 確認；驗收 8 對應 `PageFlowTests.test_home_order_for_anonymous`／`test_home_order_for_logged_in_without_hint`（`HOME_ORDER` 改新文字，並斷言不再出現「7–10 年」）。
 - **規格以外的決定**（如果有，說明原因）：拿掉舊 README 的 `ruff format .`（目前有 4 個檔案未照此格式，照跑會改到不相干的檔案）；IDOR 連結指向 `docs/specs/phase3.md`，因為 `decisions/security.md` 沒有寫到 IDOR。依本人要求改寫開頭：數據依文獻修正（三成→四成、平均 7–10 年→可達 10 年）、加「參考資料」段（GitHub 註腳語法 `[^n]`）、產品說明改寫成兩種使用者（未就醫、已戴助聽器）。原規格「不替數據找出處」由本人改為要找。
 - **這次用到的新概念**（各用一句話解釋）：
 - **面試可能追問的 2–3 題**（附答案要點）：
