@@ -1678,7 +1678,8 @@ class RedesignLayoutTests(TestCase):
         expected = {
             reverse("index"): [logout_js],
             reverse("questionnaire_list"): [logout_js],
-            reverse("screening", args=[self.questionnaire.id]): [logout_js, answer_js],
+            # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
+            reverse("screening", args=[self.questionnaire.id]): [logout_js, answer_js, "<inline>"],
             reverse("result", args=[self.submission.id]): [logout_js],
             reverse("my_hearing"): [logout_js, TrendChartPageTests.CHART_JS],
         }
@@ -4572,3 +4573,49 @@ class AudiogramComparePageTests(TestCase):
         for _ in range(20):
             self._make([*_four(_air, "right", (30,) * 4), *_four(_bone, "left", (20,) * 4)])
         self.assertEqual(queries(), few)
+
+
+class AnswerFlashTests(TestCase):
+    """Spec docs/specs/phase5_answer_flash.md, acceptance 1, 6-8 (page side)."""
+
+    CSS = Path(__file__).resolve().parent / "static" / "screening" / "styles.css"
+
+    # Borrowed without inheriting (and rerunning) its tests; unwrap so `cls` is this class.
+    setUpTestData = classmethod(ReactAnswerPageTests.setUpTestData.__func__)
+    setUp = ReactAnswerPageTests.setUp
+    _page = ReactAnswerPageTests._page
+
+    def test_loading_note_and_script_come_before_the_form(self):
+        for questionnaire in (self.hhie_s, self.hhia_s):
+            with self.subTest(code=questionnaire.code):
+                content = self._page(questionnaire).content.decode()
+                form_start = content.index('id="answer-form"')
+                status = re.search(r'<p id="answer-loading"[^>]*>', content)
+                self.assertIsNotNone(status)
+                self.assertIn('role="status"', status.group())
+                self.assertLess(status.start(), form_start)
+                inline = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
+                self.assertIsNotNone(inline)
+                self.assertLess(inline.start(), form_start)
+                self.assertIn("answer-loading", inline.group(1))
+                self.assertIn("5000", inline.group(1))
+                # Without JS the note stays empty: its text only comes from the script.
+                self.assertEqual(
+                    re.search(r'<p id="answer-loading"[^>]*>(.*?)</p>', content).group(1), ""
+                )
+
+    def test_form_is_not_hidden_in_the_html(self):
+        # Acceptance 6: only the class the script adds hides the form.
+        content = self._page(self.hhie_s).content.decode()
+        form_tag = re.search(r'<form id="answer-form"[^>]*>', content).group()
+        self.assertNotIn("hidden", form_tag)
+        self.assertNotIn("style=", form_tag)
+        self.assertNotIn("answer-loading", re.search(r"<html[^>]*>", content).group())
+        css = self.CSS.read_text(encoding="utf-8")
+        self.assertRegex(css, r"\.answer-loading #answer-form\s*\{[^}]*display:\s*none")
+        self.assertRegex(css, r"#answer-loading:empty\s*\{[^}]*display:\s*none")
+
+    def test_ioi_ha_has_no_loading_step(self):
+        content = self._page(self.ioi_ha).content.decode()
+        self.assertNotIn('id="answer-loading"', content)
+        self.assertNotIn("<script>", content)
