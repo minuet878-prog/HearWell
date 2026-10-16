@@ -4,7 +4,8 @@ from django.urls import reverse
 # Pages a signed-in user may use before agreeing to the privacy notice
 # (spec phase7_consent_privacy.md, question 4). Every other page is blocked, so a new
 # page is covered without anyone remembering to add it.
-# Downloading one's data is a right, not new processing (spec phase7_data_export.md, Q5).
+# Downloading or deleting one's data is a right, not new processing
+# (specs phase7_data_export.md Q5, phase7_account_deletion.md Q4).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -14,6 +15,7 @@ OPEN_PAGES = {
     "register",
     "logout",
     "download_my_data",
+    "delete_account",
 }
 
 

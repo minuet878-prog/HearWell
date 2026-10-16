@@ -18,7 +18,13 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare
-from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm, answer_choices
+from screening.forms import (
+    AnswerFormSet,
+    DeleteAccountForm,
+    HearingAidForm,
+    RegisterForm,
+    answer_choices,
+)
 from screening.scoring import (
     IOI_HA,
     IOI_HA_CHOICES,
@@ -407,6 +413,31 @@ def download_my_data(request):
         json.dumps(data, ensure_ascii=False, indent=2),
         content_type="application/json",
         headers={"Content-Disposition": content_disposition_header(True, filename)},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_account(request):
+    user = request.user
+    # Staff could lock everyone out of admin; they remove their staff rights first.
+    if user.is_staff or user.is_superuser:
+        status = 403 if request.method == "POST" else 200
+        return render(request, "screening/delete_account.html", {"is_admin": True}, status=status)
+    form = DeleteAccountForm(request.POST if request.method == "POST" else None, user=user)
+    if form.is_valid():
+        user.delete_with_data()
+        logout(request)
+        messages.success(request, "您的帳號和資料已經刪除。")
+        return redirect("index")
+    return render(
+        request,
+        "screening/delete_account.html",
+        {
+            "form": form,
+            "submission_count": user.submissions.count(),
+            "audiogram_count": user.audiograms.count(),
+        },
     )
 
 

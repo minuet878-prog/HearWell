@@ -2,7 +2,7 @@ from datetime import date
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.db import models
+from django.db import models, transaction
 
 from screening.audiogram import DB_MIN, interpret
 from screening.scoring import QUESTIONNAIRE_INFO, classify
@@ -29,6 +29,16 @@ class User(AbstractUser):
 
     def give_consent(self):
         Consent.objects.create(user=self, version=CONSENT_VERSION)
+
+    @transaction.atomic
+    def delete_with_data(self):
+        # Spec phase7_account_deletion.md: the account and everything of it, or nothing.
+        # Children first, because every link to the user (and Answer to Submission) is PROTECT.
+        Answer.objects.filter(submission__user=self).delete()
+        self.submissions.all().delete()  # norm_basis is RESTRICT, so linked pairs go together
+        self.audiograms.all().delete()  # points go with them (CASCADE)
+        self.consents.all().delete()
+        self.delete()
 
 
 class Consent(models.Model):

@@ -54,6 +54,21 @@ def answer_choices(question):
     return Score.choices
 
 
+class DeleteAccountForm(forms.Form):
+    # strip=False like Django's login and register forms: spaces are part of a password.
+    password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
+
+    def __init__(self, *args, user, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        if not self.user.check_password(password):
+            raise forms.ValidationError("密碼不正確")
+        return password
+
+
 class AnswerForm(forms.Form):
     score = forms.TypedChoiceField(
         choices=Score.choices,
