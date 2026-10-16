@@ -1,6 +1,6 @@
 # Phase 6 規格：端對端測試
 
-- **狀態**：已完成（驗收 4、6 待 PR 的 CI 確認）
+- **狀態**：已完成
 - **分支**：`test/e2e`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-16
 
@@ -67,9 +67,9 @@
 - [x] 1. 假設網站與資料庫都是乾淨的，當跑端對端測試，則 4.1 的六個步驟都通過。
 - [x] 2. 假設故意弄壞 React 作答頁的載入（例如拿不到題目），當跑端對端測試，則測試失敗，失敗訊息指出是哪一步。（試驗：讀題目網址改壞 → 失敗在 `step3_choose_hhie_s`，畫面出現 11 題；已還原）（證據見 [審查報告](../reviews/phase6_e2e_review.md)）
 - [x] 3. 假設故意讓送出失敗（例如寫入 API 回錯誤），當跑端對端測試，則測試失敗，不會誤判成通過。（試驗：送出網址改壞 → 失敗在 `step5_submit`，網址停在作答頁；已還原）（證據見 [審查報告](../reviews/phase6_e2e_review.md)）
-- [ ] 4. 假設測試失敗，則留下截圖；在 CI 上可以從該次執行下載。（本機已確認會留下截圖與 trace；CI 下載待 PR 上確認）
+- [x] 4. 假設測試失敗，則留下截圖；在 CI 上可以從該次執行下載。（本機已確認；CI：PR #52 暫時把預期總分改成 21 分，`e2e` 失敗在 `step5_submit`，從該次執行下載到 `failure.png`、`trace.zip`，已還原）
 - [x] 5. 假設本機照 CLAUDE.md 的指令跑，則不需要另外手動啟動伺服器，也不影響本機的開發資料庫。
-- [ ] 6. 假設開 PR，則 CI 會跑端對端測試（獨立的 `e2e` 檢查，先不列為必要），現有的 `backend`、`frontend` 檢查不受影響。（待開 PR）
+- [x] 6. 假設開 PR，則 CI 會跑端對端測試（獨立的 `e2e` 檢查，先不列為必要），現有的 `backend`、`frontend` 檢查不受影響。（PR #52：`backend`、`frontend`、`e2e` 都通過）
 - [x] 7. 假設連續跑 5 次，則 5 次結果都一樣（沒有偶發失敗）。（本機連跑 5 次全部通過）（證據見 [審查報告](../reviews/phase6_e2e_review.md)）
 
 ## 6. 待決問題
@@ -90,7 +90,7 @@
   - `requirements-dev.txt`：加 `playwright==1.64.0`（只在開發清單）。
   - `.gitignore`：`/e2e-artifacts/`。`CLAUDE.md`：常用指令加端對端測試。
   - 順手：`phase6_error_monitoring.md` 驗收 9 打勾，roadmap 同步。
-- **驗收條件對應的測試**：1、5 → `NewUserScreeningTest.test_new_user_completes_hhie_s`；2、3、7 → 試驗與重複執行（見第 5 節與審查報告）；4、6 → CI（待 PR）
+- **驗收條件對應的測試**：1、5 → `NewUserScreeningTest.test_new_user_completes_hhie_s`；2、3、7 → 試驗與重複執行（見第 5 節與審查報告）；4、6 → PR #52 的 CI
 - **規格以外的決定**（如果有，說明原因）：4.1 第 3 步的「第 1 題／共 10 題」改在第 4 步開頭檢查——React 第一頁是助聽器題，按「下一題」後才出現第 1 題（本人 2026-10-16 同意）。
 - **這次用到的新概念**（各用一句話解釋）：端對端測試、`StaticLiveServerTestCase`、Playwright、`get_by_role`、`expect` 自動重試、trace、`DJANGO_ALLOW_ASYNC_UNSAFE`、退回機制造成的假通過、`upload-artifact`、新檢查先觀察再列必要（內容見 `docs/interview.md`）
 - **面試可能追問的 2–3 題**（附答案要點）：Q96、Q97（測試）、Q98（CI 與部署），要點見 `docs/interview.md`
