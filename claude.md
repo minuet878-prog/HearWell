@@ -166,4 +166,4 @@
 
 ## 目前階段
 
-Phase 5：寫入 API ＋大型新功能。Phase 0–4 已完成；Phase 5 第 1 項「寫入 API：作答送出」已完成，下一項是 React 作答頁。細節見 `docs/roadmap.md`。
+Phase 6：穩固（技術債＋工程面）。Phase 0–5 已完成；之後是 Phase 7 個資與信任、Phase 8 分享（C3、C1）。下一項是 CI。細節見 `docs/roadmap.md`。
