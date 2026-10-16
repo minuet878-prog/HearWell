@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 
 const LIMIT = 80 * 1024;
 
-it("the answer page loads no chart library and stays under 80 KB (brotli)", async () => {
+async function entryDownload(name) {
   const root = fileURLToPath(new URL("..", import.meta.url));
   // Vitest sets NODE_ENV=test, which would bundle React's larger development build.
   const nodeEnv = process.env.NODE_ENV;
@@ -25,10 +25,19 @@ it("the answer page loads no chart library and stays under 80 KB (brotli)", asyn
     seen.add(chunk);
     chunk.imports.forEach((file) => visit(byFile[file]));
   };
-  visit(chunks.find((c) => c.isEntry && c.name === "answer"));
+  visit(chunks.find((c) => c.isEntry && c.name === name));
 
-  const modules = [...seen].flatMap((c) => c.moduleIds);
-  expect(modules.some((id) => id.includes("recharts"))).toBe(false);
-  const size = [...seen].reduce((sum, c) => sum + brotliCompressSync(c.code).length, 0);
-  expect(size).toBeLessThanOrEqual(LIMIT);
-}, 60_000);
+  return {
+    modules: [...seen].flatMap((c) => c.moduleIds),
+    size: [...seen].reduce((sum, c) => sum + brotliCompressSync(c.code).length, 0),
+  };
+}
+
+// The audiogram pages draw their own SVG; neither should pull in Recharts.
+for (const name of ["answer", "audiogram-input", "audiogram-view"]) {
+  it(`the ${name} page loads no chart library and stays under 80 KB (brotli)`, async () => {
+    const { modules, size } = await entryDownload(name);
+    expect(modules.some((id) => id.includes("recharts"))).toBe(false);
+    expect(size).toBeLessThanOrEqual(LIMIT);
+  }, 60_000);
+}

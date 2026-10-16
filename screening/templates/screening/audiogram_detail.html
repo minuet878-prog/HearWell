@@ -1,0 +1,49 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}聽力圖 {{ audiogram.tested_on|date:"Y/m/d" }}｜HearWell{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+<h1 class="h3 mt-3">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h1>
+<div id="audiogram-chart" class="audiogram-chart"></div>
+{{ chart_points|json_script:"audiogram-points" }}
+<div class="ear-results">
+    {% for ear, label, result in ears %}
+    <section class="card card-body ear-result ear-{{ ear }}" data-ear="{{ ear }}">
+        <h2 class="h4">{{ label }}</h2>
+        {% if result.pta is None %}
+        <p class="mb-0">資料不足，無法判讀</p>
+        {% else %}
+        <p class="mb-1">四頻平均：{{ result.pta|stringformat:"g" }} dB HL</p>
+        <p class="mb-1">程度：<strong>{{ result.degree }}</strong></p>
+        <p class="mb-1">類型：{% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}</p>
+        {% if result.no_response %}<p class="mb-0">含無反應的頻率，實際聽力可能更差</p>{% endif %}
+        {% endif %}
+    </section>
+    {% endfor %}
+</div>
+<p class="mt-3">這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
+<details class="mb-3">
+    <summary>標記的數值</summary>
+    <table class="table">
+        <thead><tr><th scope="col">項目</th><th scope="col">頻率</th><th scope="col">聽閾</th></tr></thead>
+        <tbody>
+            {% for point in points %}
+            <tr>
+                <td>{{ point.get_ear_display }}{{ point.get_conduction_display }}</td>
+                <td>{{ point.frequency }} Hz</td>
+                <td>{{ point.db }} dB{% if point.masked and point.no_response %}（遮蔽、無反應）{% elif point.masked %}（遮蔽）{% elif point.no_response %}（無反應）{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</details>
+<p class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-primary" href="{% url 'audiogram_list' %}">回聽力圖清單</a>
+    <a class="btn btn-outline-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張聽力圖</a>
+</p>
+{% endblock %}

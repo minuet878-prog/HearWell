@@ -1,0 +1,20 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}聽力圖｜HearWell{% endblock %}
+
+{% block body %}
+<h1 class="h3 mt-3">聽力圖</h1>
+<p><a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">新增聽力圖</a></p>
+{% for audiogram in audiograms %}
+{% with result=audiogram.interpretation %}
+<a class="card mb-2 audiogram-item" href="{% url 'audiogram_detail' audiogram.id %}">
+    <span class="card-body d-flex flex-column flex-md-row gap-2 justify-content-between">
+        <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
+        <span>右耳：{{ result.right.degree|default:"資料不足" }}　左耳：{{ result.left.degree|default:"資料不足" }}</span>
+    </span>
+</a>
+{% endwith %}
+{% empty %}
+<p>還沒有聽力圖。拿著醫院的聽力檢查報告，按上面的「新增聽力圖」把它描進來。</p>
+{% endfor %}
+{% endblock %}

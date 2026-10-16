@@ -3,6 +3,69 @@ info:
   title: HearWell API
   version: 0.1.0
 paths:
+  /api/audiograms/:
+    post:
+      operationId: audiograms_create
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: UUID made when the input page opens; resend the same one on retry.
+        required: true
+      tags:
+      - audiograms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audiogram'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audiogram'
+          description: 'Retry: the first audiogram'
+        '400':
+          description: Invalid points, date or Idempotency-Key
+        '409':
+          description: Idempotency-Key used with a different audiogram
+  /api/audiograms/{id}/:
+    get:
+      operationId: audiograms_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - audiograms
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audiogram'
+          description: ''
   /api/questionnaires/:
     get:
       operationId: questionnaires_list
@@ -153,6 +216,90 @@ components:
       required:
       - question
       - score
+    Audiogram:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        tested_on:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudiogramPoint'
+        interpretation:
+          $ref: '#/components/schemas/Interpretation'
+      required:
+      - created_at
+      - id
+      - interpretation
+      - points
+      - tested_on
+    AudiogramCreate:
+      type: object
+      properties:
+        tested_on:
+          type: string
+          format: date
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/AudiogramPointInput'
+      required:
+      - points
+      - tested_on
+    AudiogramPoint:
+      type: object
+      properties:
+        ear:
+          $ref: '#/components/schemas/EarEnum'
+        conduction:
+          $ref: '#/components/schemas/ConductionEnum'
+        frequency:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        db:
+          type: integer
+          maximum: 32767
+          minimum: -32768
+        no_response:
+          type: boolean
+        masked:
+          type: boolean
+      required:
+      - conduction
+      - db
+      - ear
+      - frequency
+    AudiogramPointInput:
+      type: object
+      properties:
+        ear:
+          $ref: '#/components/schemas/EarEnum'
+        conduction:
+          $ref: '#/components/schemas/ConductionEnum'
+        frequency:
+          type: integer
+        db:
+          type: integer
+        no_response:
+          type: boolean
+          default: false
+        masked:
+          type: boolean
+          default: false
+      required:
+      - conduction
+      - db
+      - ear
+      - frequency
     Choice:
       type: object
       properties:
@@ -163,6 +310,52 @@ components:
       required:
       - label
       - value
+    ConductionEnum:
+      enum:
+      - air
+      - bone
+      type: string
+      description: |-
+        * `air` - 氣導
+        * `bone` - 骨導
+    EarEnum:
+      enum:
+      - right
+      - left
+      type: string
+      description: |-
+        * `right` - 右耳
+        * `left` - 左耳
+    EarResult:
+      type: object
+      properties:
+        pta:
+          type: number
+          format: double
+          nullable: true
+        degree:
+          type: string
+          nullable: true
+        type:
+          type: string
+          nullable: true
+        no_response:
+          type: boolean
+      required:
+      - degree
+      - no_response
+      - pta
+      - type
+    Interpretation:
+      type: object
+      properties:
+        right:
+          $ref: '#/components/schemas/EarResult'
+        left:
+          $ref: '#/components/schemas/EarResult'
+      required:
+      - left
+      - right
     Level:
       type: object
       properties:
