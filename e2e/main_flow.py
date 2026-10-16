@@ -71,6 +71,8 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
         self.page.get_by_label("密碼確認").fill("Fake-pass-2468")
         self.main().get_by_role("button", name="註冊").click()
+        # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
+        self.main().get_by_role("button", name="我同意").click()
         expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
         expect(self.page).to_have_url(re.compile(r"/questionnaire_list$"))
 

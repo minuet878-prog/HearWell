@@ -3,6 +3,7 @@ import uuid
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.http import Http404, HttpResponseRedirect
@@ -12,6 +13,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
+from screening import models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare
 from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
@@ -76,10 +78,38 @@ def register(request):
                 form.add_error("username", form.instance.unique_error_message(User, ["username"]))
             else:
                 login(request, user)
-                return HttpResponseRedirect(next_url or reverse("index"))
+                # New accounts agree to the privacy notice before anything else.
+                if next_url:
+                    return redirect_to_login(next_url, reverse("consent"))
+                return redirect("consent")
     else:
         form = RegisterForm()
     return render(request, "screening/register.html", {"form": form, "next": next_url})
+
+
+def privacy(request):
+    return render(
+        request,
+        "screening/privacy.html",
+        {"version": models.CONSENT_VERSION, "updated_on": models.PRIVACY_UPDATED_ON},
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def consent(request):
+    next_url = _safe_next(request)
+    if request.method == "POST" and "decline" in request.POST:
+        logout(request)
+        messages.info(
+            request, "沒有同意就不能使用篩檢功能，您的帳號仍在。想使用時，登入後按「我同意」即可。"
+        )
+        return redirect("index")
+    if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():
+        request.user.give_consent()
+    if request.user.has_consented():
+        return HttpResponseRedirect(next_url or reverse("index"))
+    return render(request, "screening/consent.html", {"next": next_url})
 
 
 @login_required

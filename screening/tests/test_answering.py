@@ -8,12 +8,13 @@ from django.urls import reverse
 
 from screening import views
 from screening.forms import BaseAnswerFormSet
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.tests.helpers import consented_user
 
 
 class ScreeningViewAcceptValueTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a")
+        self.user_a = consented_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試問卷", code="hhie-s"
         )
@@ -43,7 +44,7 @@ class ScreeningViewAcceptValueTests(TestCase):
 
 class EmptyQuestionnaireSubmissionTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a")
+        self.user_a = consented_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試空submission", code="test"
         )
@@ -63,7 +64,7 @@ class EmptyQuestionnaireSubmissionTests(TestCase):
 
 class DuplicateAnswerSubmissionTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a")
+        self.user_a = consented_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試重複答案", code="test"
         )
@@ -107,7 +108,7 @@ class HearingAidTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="user")
+        cls.user = consented_user(username="user")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.question = Question.objects.create(
             questionnaire=cls.questionnaire,
@@ -229,7 +230,7 @@ class TamperedAnswerTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(
@@ -314,7 +315,7 @@ class ReactAnswerPageTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="react_answer")
+        cls.user = consented_user(username="react_answer")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
         cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
@@ -455,8 +456,8 @@ class WebDoubleSubmitTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
-        cls.other = User.objects.create_user(username="other")
+        cls.user = consented_user(username="tester")
+        cls.other = consented_user(username="other")
         cls.questionnaires = {}
         for code, count in (("hhie-s", 10), ("hhia-s", 10), ("ioi-ha", 7)):
             questionnaire = Questionnaire.objects.create(questionnaire_name=code, code=code)

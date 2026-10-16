@@ -14,7 +14,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.api import views as api_views
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.tests.helpers import consented_user
 
 
 class ApiFoundationTests(TestCase):
@@ -24,7 +25,7 @@ class ApiFoundationTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
 
     def test_anonymous_gets_403_json(self):
         response = self.client.get(self.QUESTIONNAIRES)
@@ -105,10 +106,10 @@ class ApiSubmissionTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
+        cls.user = consented_user(
             username="alice_account", email="alice@example.com", birth_year=1950
         )
-        cls.other = User.objects.create_user(username="bob_account")
+        cls.other = consented_user(username="bob_account")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(
@@ -310,7 +311,7 @@ class ApiSubmissionTests(TestCase):
 class ApiQuestionnaireDetailTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         # Created out of order so the response has to sort by number.
         for number in (2, 1):
@@ -363,8 +364,8 @@ class ApiSubmitTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="alice_account")
-        cls.other = User.objects.create_user(username="bob_account")
+        cls.user = consented_user(username="alice_account")
+        cls.other = consented_user(username="bob_account")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(

@@ -1,0 +1,73 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}隱私權說明｜HearWell{% endblock %}
+
+{% block body %}
+{% comment %}
+Spec phase7_consent_privacy.md 4.1. Every statement here must stay true: check it against the
+code and docs/specs/phase6_error_monitoring.md whenever either changes. A major change also
+raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
+{% endcomment %}
+<article class="privacy">
+    <h1 class="h3 mt-2">隱私權說明</h1>
+    <p class="text-body-secondary">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
+    <p>HearWell 會保存您的聽力篩檢結果，這些屬於法律上特別保護的「健康資料」。這一頁用白話說明我們怎麼處理您的資料。</p>
+
+    <h2 class="h4 mt-4">誰在蒐集</h2>
+    <ul>
+        <li>營運者：HearWell 開發者</li>
+        <li>聯絡信箱：<a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></li>
+    </ul>
+
+    <h2 class="h4 mt-4">為什麼蒐集</h2>
+    <ul>
+        <li>讓您做聽力篩檢問卷，算出分數和建議。</li>
+        <li>保存您的紀錄，讓您看到聽力和助聽器效果隨時間的變化。</li>
+        <li>網站出錯時找出原因、修好它。</li>
+    </ul>
+    <p>我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。</p>
+
+    <h2 class="h4 mt-4">蒐集哪些資料</h2>
+    <ul>
+        <li>帳號資料：使用者名稱、電子郵件、出生年（只有年，沒有月日）。密碼經過加密處理，連我們也看不到原本的密碼。</li>
+        <li>健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖。</li>
+        <li>同意紀錄：您哪一天同意了哪一版說明。</li>
+    </ul>
+
+    <h2 class="h4 mt-4">存放在哪裡、保存多久</h2>
+    <ul>
+        <li>網站主機：Render，位於美國俄亥俄州。</li>
+        <li>資料庫：Neon，位於美國俄亥俄州（使用 Amazon 的雲端機房）。</li>
+        <li>所以您的資料會傳到美國存放。</li>
+        <li>您的資料會保存到您刪除帳號或要求刪除為止。</li>
+        <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
+    </ul>
+
+    <h2 class="h4 mt-4">會交給誰</h2>
+    <p>我們不會把您的資料交給其他人或公司。只有下面幾個幫網站運作的服務，會經手部分資料：</p>
+    <ul>
+        <li>Render（網站主機）和 Neon（資料庫）：存放上面所有資料。Render 也會留下連線紀錄（包含 IP 位址），用來維持網站運作。</li>
+        <li>Sentry（錯誤監控，資料存放在歐盟）：網站出錯時，只送出錯誤的種類、在程式的哪個位置、網址路徑（不含「?」後面的部分）、時間，以及伺服器的技術資訊（例如程式版本）。<strong>不會</strong>送出您的名稱、電子郵件、出生年、IP 位址、密碼、作答內容或分數。</li>
+        <li>cdnjs（Cloudflare）：提供網頁的版面樣式。您的瀏覽器下載樣式時，對方會看到您的 IP 位址，但看不到您在 HearWell 填的任何資料。</li>
+    </ul>
+    <p>本站只用登入需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
+
+    <h2 class="h4 mt-4">您可以要求什麼</h2>
+    <p>依照個人資料保護法，您可以要求：</p>
+    <ul>
+        <li>查詢、閱覽您的資料，或拿到一份複本。</li>
+        <li>更正錯誤的資料。</li>
+        <li>停止處理您的資料，或刪除您的資料。</li>
+    </ul>
+    <p>請寄信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，說明您的使用者名稱和要求。查詢、閱覽、複本會在 15 天內處理；更正、停止處理、刪除會在 30 天內處理。需要延長時，我們會寫信告訴您原因。</p>
+
+    <h2 class="h4 mt-4">不提供資料會怎樣</h2>
+    <p>您可以不同意。不同意就不能使用篩檢、紀錄和聽力圖功能，但您的帳號會保留，之後想用時再同意即可。</p>
+
+    <h2 class="h4 mt-4">不是醫療診斷</h2>
+    <p>HearWell 的篩檢結果只是參考，不能取代醫師或聽力師的檢查和診斷。覺得聽力有問題，請找耳鼻喉科或聽力師。</p>
+
+    <h2 class="h4 mt-4">說明改版</h2>
+    <p>如果蒐集的資料、用途或經手的服務有改變，我們會更新這一頁，並在您下次使用時請您再看一次、再同意一次。只改錯字或排版時，只會更新上面的日期。</p>
+</article>
+{% endblock %}

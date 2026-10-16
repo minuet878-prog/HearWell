@@ -11,9 +11,10 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
 from screening.scoring import get_advice
 from screening.tests import test_answering, test_history
+from screening.tests.helpers import consented_user
 
 
 class CopyTests(TestCase):
@@ -42,7 +43,7 @@ class CopyTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.question = Question.objects.create(
             questionnaire=cls.questionnaire,
@@ -129,7 +130,7 @@ class AccessibilityTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         for number, category in ((1, Category.EMOTIONAL), (2, Category.SOCIAL)):
             Question.objects.create(
@@ -220,7 +221,7 @@ class RedesignLayoutTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="alice_account", password="secret-pass-123")
+        cls.user = consented_user(username="alice_account", password="secret-pass-123")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(
@@ -410,7 +411,7 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.LOGOUT_JS,
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
-        empty_user = User.objects.create_user(username="no_records")
+        empty_user = consented_user(username="no_records")
         for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):
                 self.assertEqual(scripts(url), [])
@@ -456,8 +457,8 @@ class PageFlowTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="flowtester")
-        cls.other = User.objects.create_user(username="someoneelse")
+        cls.user = consented_user(username="flowtester")
+        cls.other = consented_user(username="someoneelse")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(
@@ -705,7 +706,7 @@ class PwaTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="pwatester")
+        cls.user = consented_user(username="pwatester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         question = Question.objects.create(
             questionnaire=cls.questionnaire,

@@ -9,7 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import scoring
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.tests.helpers import consented_user
 
 
 class IoiHaTests(TestCase):
@@ -26,8 +27,8 @@ class IoiHaTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="ioi_user")
-        cls.other = User.objects.create_user(username="ioi_other")
+        cls.user = consented_user(username="ioi_user")
+        cls.other = consented_user(username="ioi_other")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.hhie_questions = Question.objects.bulk_create(
             Question(

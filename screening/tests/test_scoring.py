@@ -3,8 +3,9 @@ from django.test import SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
 from screening.scoring import classify
+from screening.tests.helpers import consented_user
 
 
 class ClassifyTests(SimpleTestCase):
@@ -36,7 +37,7 @@ class ClassifyTests(SimpleTestCase):
 class ClassifyViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="user")
+        cls.user = consented_user(username="user")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
 
@@ -86,7 +87,7 @@ class ClassifyViewTests(TestCase):
 class ScoringAggregateTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="user")
+        cls.user = consented_user(username="user")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷", code="test")
         questions_emo = [
             Question(
@@ -151,8 +152,8 @@ class ScoringAggregateTest(TestCase):
 class HistoryScorePathTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="user")
-        cls.other = User.objects.create_user(username="other")
+        cls.user = consented_user(username="user")
+        cls.other = consented_user(username="other")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.questions = Question.objects.bulk_create(
             Question(
@@ -222,7 +223,7 @@ class SubscaleNoteTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="user")
+        cls.user = consented_user(username="user")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
 

@@ -7,6 +7,12 @@ from django.db import models
 from screening.audiogram import DB_MIN, interpret
 from screening.scoring import QUESTIONNAIRE_INFO, classify
 
+# Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
+# or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
+# moves PRIVACY_UPDATED_ON.
+CONSENT_VERSION = 1
+PRIVACY_UPDATED_ON = date(2026, 10, 17)
+
 
 class User(AbstractUser):
     # Western calendar year; only the year is collected (data minimisation).
@@ -17,6 +23,24 @@ class User(AbstractUser):
         if self.birth_year is None:
             return None
         return date.today().year - self.birth_year
+
+    def has_consented(self):
+        return self.consents.filter(version__gte=CONSENT_VERSION).exists()
+
+    def give_consent(self):
+        Consent.objects.create(user=self, version=CONSENT_VERSION)
+
+
+class Consent(models.Model):
+    # One row per agreement; older rows stay as proof of what was agreed and when.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="consents"
+    )
+    version = models.PositiveSmallIntegerField()
+    agreed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} v{self.version} {self.agreed_at:%Y-%m-%d}"
 
 
 class Questionnaire(models.Model):
