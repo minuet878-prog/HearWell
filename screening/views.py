@@ -1,5 +1,9 @@
+import uuid
+
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
 from django.db.models import Count
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -8,6 +12,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
+from screening.api.views import _find_by_key
 from screening.audiogram import compare
 from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
 from screening.scoring import (
@@ -126,6 +131,8 @@ def screening(request, questionnaire_id):
                 "formset": formset,
                 "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
                 "is_ioi_ha": is_ioi_ha,
+                # New for every opened page: answering again later is a new submission.
+                "idempotency_key": uuid.uuid4(),
             },
         )
     if request.method == "POST":
@@ -134,6 +141,16 @@ def screening(request, questionnaire_id):
         questions = questionnaire.questions.all()
         if not questions:
             return redirect("questionnaire_list")
+        # Missing or malformed (tampered or very old page): saved as before, just not guarded.
+        try:
+            key = uuid.UUID(request.POST.get("idempotency_key", ""))
+        except ValueError:
+            key = None
+        # This page was already sent (double click, or back and resend with other answers):
+        # show that first result instead of saving again.
+        existing = key and _find_by_key(request.user, key)
+        if existing:
+            return _already_sent(request, existing)
         formset = AnswerFormSet(questions=questions, data=request.POST)
         hearing_aid_form = None if is_ioi_ha else HearingAidForm(data=request.POST)
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
@@ -146,7 +163,14 @@ def screening(request, questionnaire_id):
                 extra = {
                     "wearing_hearing_aid": hearing_aid_form.cleaned_data["wearing_hearing_aid"]
                 }
-            submission = formset.save(request.user, questionnaire, **extra)
+            try:
+                submission = formset.save(
+                    request.user, questionnaire, idempotency_key=key, **extra
+                )
+            except IntegrityError:
+                # Two clicks arrived together and the other one saved first; save() is atomic,
+                # so nothing of this one is left behind.
+                return _already_sent(request, _find_by_key(request.user, key))
             return redirect("result", submission_id=submission.id)
         else:
             # Count only questions shown on the page, so the number matches the marked ones.
@@ -170,8 +194,18 @@ def screening(request, questionnaire_id):
                     "formset": formset,
                     "hearing_aid_form": hearing_aid_form,
                     "is_ioi_ha": is_ioi_ha,
+                    # Nothing was saved, so the fixed answers go out under the same number.
+                    "idempotency_key": key,
                 },
             )
+
+
+def _already_sent(request, submission):
+    messages.info(
+        request,
+        "這份作答剛才已經送出，以下是那次的結果；要重新作答，請從「開始篩檢」進入。",
+    )
+    return redirect("result", submission_id=submission.id)
 
 
 def _aided_difference(user):

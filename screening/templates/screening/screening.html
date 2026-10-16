@@ -7,6 +7,7 @@
 {% if not is_ioi_ha %}
 <script type="module" src="{% static 'screening/frontend/answer.js' %}"></script>
 {% endif %}
+<script defer src="{% static 'screening/submit-button.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -39,6 +40,8 @@
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
         {% csrf_token %}
+        {# Receipt number for this page: sending it twice saves once (spec phase6_web_double_submit.md). #}
+        <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
         {{ formset.management_form }}
         {% if hearing_aid_form %}
         <div class="card mb-3">
@@ -65,6 +68,7 @@
         {% endfor %}
         <div class="text-center">
             <input class="btn btn-primary btn-lg" type="submit" value="送出">
+            <p id="submit-status" class="visually-hidden" role="status"></p>
         </div>
 
     </form>
