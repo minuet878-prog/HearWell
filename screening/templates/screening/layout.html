@@ -88,6 +88,9 @@
     {% endwith %}
 
     <main class="container my-4">
+        {% for message in messages %}
+        <p class="fs-5 fw-bold">{{ message }}</p>
+        {% endfor %}
         {% block body %}{% endblock %}
     </main>
 </body>

@@ -25,8 +25,9 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
 
-from screening import scoring
+from screening import scoring, views
 from screening.api import views as api_views
+from screening.forms import BaseAnswerFormSet
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify, get_advice
 
@@ -1679,7 +1680,13 @@ class RedesignLayoutTests(TestCase):
             reverse("index"): [logout_js],
             reverse("questionnaire_list"): [logout_js],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
-            reverse("screening", args=[self.questionnaire.id]): [logout_js, answer_js, "<inline>"],
+            # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
+            reverse("screening", args=[self.questionnaire.id]): [
+                logout_js,
+                answer_js,
+                "screening/submit-button.js",
+                "<inline>",
+            ],
             reverse("result", args=[self.submission.id]): [logout_js],
             reverse("my_hearing"): [logout_js, TrendChartPageTests.CHART_JS],
         }
@@ -4703,3 +4710,181 @@ class AnswerFlashTests(TestCase):
         content = self._page(self.ioi_ha).content.decode()
         self.assertNotIn('id="answer-loading"', content)
         self.assertNotIn("<script>", content)
+
+
+class WebDoubleSubmitTests(TestCase):
+    """Spec docs/specs/phase6_web_double_submit.md, acceptance 1-9."""
+
+    NOTICE = "這份作答剛才已經送出"
+    KEY = re.compile(r'name="idempotency_key" value="([0-9a-f-]{36})"')
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="tester")
+        cls.other = User.objects.create_user(username="other")
+        cls.questionnaires = {}
+        for code, count in (("hhie-s", 10), ("hhia-s", 10), ("ioi-ha", 7)):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=code, code=code)
+            Question.objects.bulk_create(
+                Question(
+                    questionnaire=questionnaire,
+                    question_text=f"{code} 第{i}題",
+                    question_number=i,
+                    category="" if code == "ioi-ha" else Category.EMOTIONAL,
+                )
+                for i in range(1, count + 1)
+            )
+            cls.questionnaires[code] = questionnaire
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _url(self, code="hhie-s"):
+        return reverse("screening", args=[self.questionnaires[code].id])
+
+    def _key(self, response):
+        return self.KEY.search(response.content.decode()).group(1)
+
+    def _open(self, code="hhie-s", client=None):
+        return self._key((client or self.client).get(self._url(code)))
+
+    def _data(self, key, code="hhie-s", score=2, skip=()):
+        questions = self.questionnaires[code].questions.order_by("question_number")
+        data = {"form-TOTAL_FORMS": len(questions), "form-INITIAL_FORMS": len(questions)}
+        if code != "ioi-ha":
+            data["wearing_hearing_aid"] = "False"
+        if key is not None:
+            data["idempotency_key"] = key
+        for i, question in enumerate(questions):
+            data[f"form-{i}-question_id"] = str(question.id)
+            if question.question_number not in skip:
+                data[f"form-{i}-score"] = str(score)
+        return data
+
+    def _post(self, data, code="hhie-s", client=None):
+        return (client or self.client).post(self._url(code), data, follow=True)
+
+    def _result_url(self, submission):
+        return reverse("result", args=[submission.id])
+
+    # 1, 6: the test client runs no JS, so the server alone stops the second save.
+    def test_same_page_twice_saves_once(self):
+        key = self._open()
+        first = self._post(self._data(key))
+        second = self._post(self._data(key))
+        submission = Submission.objects.get()
+        self.assertRedirects(first, self._result_url(submission))
+        self.assertRedirects(second, self._result_url(submission))
+        self.assertEqual(submission.answers.count(), 10)
+
+    # 2
+    def test_reopening_the_page_answers_again(self):
+        first_key, second_key = self._open(), self._open()
+        self.assertNotEqual(first_key, second_key)
+        self._post(self._data(first_key))
+        self._post(self._data(second_key))
+        self.assertEqual(Submission.objects.count(), 2)
+
+    # 3
+    def test_fixing_a_missing_answer_keeps_the_key(self):
+        key = self._open()
+        rejected = self.client.post(self._url(), self._data(key, skip=(3,)))
+        self.assertEqual(rejected.status_code, 200)
+        self.assertEqual(self._key(rejected), key)
+        self.assertFalse(Submission.objects.exists())
+        self._post(self._data(key))
+        self._post(self._data(key))
+        self.assertEqual(Submission.objects.count(), 1)
+
+    # 4: rule 8, a key is only looked up among the user's own records.
+    def test_same_key_for_two_users(self):
+        key = self._open()
+        self._post(self._data(key))
+        other_client = Client()
+        other_client.force_login(self.other)
+        response = self._post(self._data(key), client=other_client)
+        theirs = Submission.objects.get(user=self.other)
+        self.assertRedirects(response, self._result_url(theirs))
+        self.assertNotContains(response, self.NOTICE)
+        self.assertEqual(Submission.objects.filter(user=self.user).count(), 1)
+
+    # 5
+    def test_every_web_questionnaire(self):
+        for code in ("hhie-s", "hhia-s", "ioi-ha"):
+            with self.subTest(code=code):
+                key = self._open(code)
+                self._post(self._data(key, code), code)
+                self._post(self._data(key, code), code)
+                count = Submission.objects.filter(questionnaire=self.questionnaires[code]).count()
+                self.assertEqual(count, 1)
+
+    # 7, 8
+    def test_changed_answers_go_to_the_first_result(self):
+        key = self._open()
+        first = self._post(self._data(key, score=0))
+        self.assertNotContains(first, self.NOTICE)
+        second = self._post(self._data(key, score=4))
+        submission = Submission.objects.get()
+        self.assertRedirects(second, self._result_url(submission))
+        self.assertContains(second, self.NOTICE)
+        self.assertEqual(submission.total_answer_score, 0)
+        # Shown once: reloading the result page does not repeat it.
+        self.assertNotContains(self.client.get(self._result_url(submission)), self.NOTICE)
+
+    # 7: a resend from the same page is not validated again, even with an answer cleared.
+    def test_resend_with_missing_answer_goes_to_the_first_result(self):
+        key = self._open()
+        self._post(self._data(key))
+        response = self._post(self._data(key, skip=(3,)))
+        self.assertRedirects(response, self._result_url(Submission.objects.get()))
+        self.assertContains(response, self.NOTICE)
+
+    # 9
+    def test_missing_or_malformed_key_still_saves(self):
+        for key in (None, "", "not-a-uuid"):
+            with self.subTest(key=key):
+                response = self._post(self._data(key))
+                self.assertRedirects(response, self._result_url(Submission.objects.latest("id")))
+        self.assertEqual(Submission.objects.count(), 3)
+
+    # 10: the page parts submit-button.js needs, on every web questionnaire (IOI-HA has no React).
+    def test_submit_feedback_markup(self):
+        for code in ("hhie-s", "ioi-ha"):
+            with self.subTest(code=code):
+                content = self.client.get(self._url(code)).content.decode()
+                self.assertRegex(content, r'<script defer src="/static/screening/submit-button\.js')
+                self.assertIn('id="submit-status" class="visually-hidden" role="status"', content)
+                start = content.index('id="answer-form"')
+                form = content[start : content.index("</form>", start)]
+                self.assertIn('id="submit-status"', form)
+
+    # Review 1-1: only a clash with this page's own earlier save counts as "already sent";
+    # any other IntegrityError must surface, not send the user to an unrelated result.
+    def test_other_integrity_errors_are_not_hidden(self):
+        Submission.objects.create(user=self.user, questionnaire=self.questionnaires["hhie-s"])
+        for key in (None, self._open()):
+            with self.subTest(key=key):
+                with (
+                    mock.patch.object(BaseAnswerFormSet, "save", side_effect=IntegrityError),
+                    self.assertRaises(IntegrityError),
+                ):
+                    self._post(self._data(key))
+
+    # 1: two clicks arriving together; the second only finds the first at the unique constraint.
+    def test_simultaneous_clicks_save_once(self):
+        key = self._open()
+        self._post(self._data(key))
+        first = Submission.objects.get()
+        real_find = views._find_by_key
+        calls = []
+
+        def find(user, key):
+            # The first lookup misses, as if the other click had not been saved yet.
+            calls.append(key)
+            return None if len(calls) == 1 else real_find(user, key)
+
+        with mock.patch.object(views, "_find_by_key", side_effect=find):
+            response = self._post(self._data(key))
+        self.assertEqual(len(calls), 2)
+        self.assertRedirects(response, self._result_url(first))
+        self.assertEqual(Submission.objects.count(), 1)
