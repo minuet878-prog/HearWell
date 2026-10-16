@@ -1,6 +1,6 @@
 # Phase 6 規格：CI（自動檢查）
 
-- **狀態**：已確認
+- **狀態**：已完成（驗收 9 後半、11 待合併後確認）
 - **分支**：`ci/github-actions`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-16
 
@@ -65,8 +65,8 @@
 - [x] 8. 假設 `.python-version` 是 3.13.15、`.node-version` 是 24.21.0，當 CI 跑，則用的就是這兩個版本（紀錄裡看得到）。
 - [ ] 9. 假設一條分支有 push 但沒有開 PR，當 push，則 CI 不跑；開 PR 後才跑；PR 合併進 `main` 後，`main` 上也跑一次。
   - 前半（沒開 PR 不跑、開 PR 才跑）2026-10-16 確認；後半要合併後確認。
-- [ ] 10. 假設 PR 的 CI 失敗，當在 PR 頁面看合併按鈕，則不能合併（本人在 GitHub 設定分支保護後人工確認）。
-  - 2026-10-16 用 GitHub API 確認設定：`main` 的 ruleset 啟用、必須通過 `backend`、`frontend`。行為待試驗確認。
+- [x] 10. 假設 PR 的 CI 失敗，當在 PR 頁面看合併按鈕，則不能合併（本人在 GitHub 設定分支保護後人工確認）。
+  - 2026-10-16 用 GitHub API 確認設定：`main` 的 ruleset 啟用、必須通過 `backend`、`frontend`。2026-10-16 試驗 PR #42（目標 `main`、故意讓 ruff 失敗）：API 回 `BLOCKED`，本人確認合併按鈕是灰的；PR 已關閉、分支已刪。
 - [ ] 11. 假設 PR 合併進 `main`，當 Render 準備部署，則等 `main` 上的 CI 通過才部署（本人在 Render 設定後，看部署紀錄人工確認）。
 - [x] 12. 假設同一個 PR 的 CI 還在跑，當再推一個 commit，則舊的那次被取消，只有最新的跑完。
 
@@ -84,8 +84,21 @@
 ## 完成後回報（由 AI 填寫）
 
 - **改了哪些檔案、為什麼**：
-- **驗收條件對應的測試**：
-- **規格以外的決定**（如果有，說明原因）：
-- **這次用到的新概念**（各用一句話解釋）：
-- **面試可能追問的 2–3 題**（附答案要點）：
-- **建議寫進 decisions/ 的內容**（素材即可，條目由本人撰寫；註明放哪個主題檔）：
+  - `.github/workflows/ci.yml`（新增）：`backend`（PostgreSQL 18 服務容器、`ruff check`、Django 測試）與 `frontend`（前端測試、建置）兩個 job 平行跑；觸發是 PR 和 push 到 `main`；權限唯讀；PR 取消舊的、`main` 每個 commit 自成一組；前一步失敗後面照跑。
+  - `docs/reviews/phase6_ci_plan.md`、`phase6_ci_review.md`：計畫與審查。
+- **驗收條件對應的測試**：CI 不能寫進 `tests.py`，改用試驗：
+  - 1、6、8、9 前半：PR #40 的 CI 紀錄（Django 333、前端 135 通過；PostgreSQL 18.6、Python 3.13.15、Node v24.21.0；只 push 沒開 PR 時沒跑）
+  - 2–5：試驗 PR #41（一個 commit 弄壞四處，四項都紅、各自有錯誤訊息）
+  - 7：檢查設定檔
+  - 10：試驗 PR #42（目標 `main`，`BLOCKED`，本人看到按鈕灰色）
+  - 12：PR #41 連推兩次，舊的 `cancelled`
+  - 9 後半、11：合併後確認
+- **規格以外的決定**：
+  - 驗證方式從「在本分支弄壞、合併前拿掉 commit」改成「另開丟棄用分支、開 PR、做完關掉刪除」：不用改寫歷史。
+  - CI 設 `DEBUG=True`：`settings.py` 在 DEBUG 關閉時要 `SECRET_KEY` 並開 HTTPS 轉址，測試會全部 301；本機一直靠 `.env` 的 `DEBUG=True`。
+  - 官方元件寫到確切版本、挑發布滿兩週的（setup-node 用 v7.0.0，不用 10-08 的 v7.1.0）。
+  - 審查後：`main` 的 concurrency 改成每個 commit 一組（原本同組最多一個排隊，連合三次中間那次會被擠掉）。
+- **這次用到的新概念**：CI、workflow／job／step、服務容器、`!cancelled()`、concurrency group、ruleset 與必要檢查、Render「After CI Checks Pass」、Render 部署的 Build／Deploy 兩段（完整說明見 `docs/interview.md`「CI 與部署」）
+- **面試可能追問的 2–3 題**：Q72 為什麼用 PostgreSQL 18、`DEBUG` 的坑；Q73 `main` 為什麼不取消舊的；Q74 怎麼證明 CI 擋得住（要點見 `docs/interview.md`）
+- **建議寫進 decisions/ 的內容**：見對話（素材由本人撰寫）
+- **觀察到沒改**：CI 的 Django 測試會印 `UserWarning: No directory at: .../staticfiles/`（CI 沒跑 collectstatic，本機有這個資料夾）；不影響結果。

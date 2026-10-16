@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 6 開始**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；下一步：CI）
+**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；下一步：`ruff` 搬到 `requirements-dev.txt`）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -133,7 +133,10 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ### Phase 6：穩固（技術債＋工程面）← 目前
 順序依「先做的能保護後做的」：CI 先上，後面每項修正都有它把關。
-- [ ] **CI**：push／PR 時自動跑 Django 測試、`ruff`、前端測試（原功能構想總表 CI/CD）
+- [x] **CI**（規格 `docs/specs/phase6_ci.md`，2026-10-16）：GitHub Actions，PR 和合併進 `main` 時跑 Django 測試（PostgreSQL 18）、`ruff check`、前端測試與建置
+  - GitHub ruleset：`main` 必須通過 `backend`、`frontend` 才能合併；Render 改成「CI 通過後才部署」
+  - 待合併後確認：`main` 上也有跑（驗收 9 後半）、Render 等 CI 通過才部署（驗收 11）
+  - 改 job 名稱要同時改 ruleset 的必要檢查，不然 PR 會卡在「等待檢查」
 - [ ] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`（原 Phase 0）
 - [ ] `ALLOWED_HOSTS` 設成空字串時 `check --deploy` 抓不到（環境變數沒設好會變成 `[""]`）（原 Phase 0）
 - [ ] 網頁版作答連按兩次（F-10）（原 Phase 5）
