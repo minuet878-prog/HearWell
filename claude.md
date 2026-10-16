@@ -138,7 +138,7 @@
 ## 常用指令
 
 - 啟動：`python manage.py runserver`（由我來啟動）
-- 本機套件：`pip install -r requirements-dev.txt`（含 debug-toolbar；正式環境只裝 `requirements.txt`）
+- 本機套件：`pip install -r requirements-dev.txt`（含 debug-toolbar、ruff；正式環境只裝 `requirements.txt`）
 - 測試：`python manage.py test --settings=config.test_settings`（不需要先 collectstatic）
 - 前端測試：`npm test --prefix frontend`；前端建置：`npm run build --prefix frontend`
 - 檢查格式：`ruff check --fix .`

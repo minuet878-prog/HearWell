@@ -51,6 +51,21 @@ jobs:
       - name: Django tests
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: python manage.py test --settings=config.test_settings
+      # The steps above install the dev list, which includes the production one, so a package
+      # missing from requirements.txt would go unnoticed until Render. A fresh environment with
+      # the production list only runs build.sh's check, then loads the app the way Render's
+      # start command does: check --deploy alone never imports middleware such as whitenoise.
+      - name: Production dependencies
+        if: ${{ !cancelled() }}
+        env:
+          DEBUG: "False"
+        run: |
+          python -m venv /tmp/prod
+          /tmp/prod/bin/pip install -r requirements.txt
+          /tmp/prod/bin/pip list
+          export SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')"
+          /tmp/prod/bin/python manage.py check --deploy --fail-level WARNING
+          /tmp/prod/bin/gunicorn --check-config config.wsgi
 
   frontend:
     runs-on: ubuntu-latest
