@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same PR cancels the older run. On main each commit gets its own group,
+# so no run is ever cancelled or dropped: Render deploys a main commit only after its checks pass.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway database that only exists for this run.
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      # Same as the local .env: without it settings.py turns on the HTTPS redirect and every
+      # test request gets a 301. The test runner still runs the tests with DEBUG off.
+      DEBUG: "True"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - id: install
+        run: pip install -r requirements-dev.txt
+      # Later checks still run after an earlier one fails, so one run shows every problem.
+      - name: ruff
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: ruff check .
+      - name: Django tests
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: python manage.py test --settings=config.test_settings
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - id: install
+        run: npm ci --prefix frontend
+      - name: Frontend tests
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm test --prefix frontend
+      - name: Frontend build
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
+        run: npm run build --prefix frontend
