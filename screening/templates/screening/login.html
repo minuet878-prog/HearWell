@@ -9,18 +9,18 @@
     <p class="text-body-emphasis">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
     {% endif %}
     {% if form.errors %}
-    <div class="mb-3 text-danger">使用者名稱或密碼錯誤</div>
+    <div id="login_error" class="mb-3 text-danger">使用者名稱或密碼錯誤</div>
     {% endif %}
     <form method="post" action="{% url 'login' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
         <div class="mb-3">
             <label for="id_username" class="form-label">使用者名稱</label>
-            <input {% if not form.username.value %}autofocus {% endif %}class="form-control" id="id_username" type="text" name="username" value="{{ form.username.value|default:'' }}" required>
+            <input {% if not form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_username" type="text" name="username" value="{{ form.username.value|default:'' }}" required>
         </div>
         <div class="mb-3">
             <label for="id_password" class="form-label">密碼</label>
-            <input {% if form.username.value %}autofocus {% endif %}class="form-control" id="id_password" type="password" name="password" required>
+            <input {% if form.username.value %}autofocus {% endif %}{% if form.errors %}aria-invalid="true" aria-describedby="login_error" {% endif %}class="form-control" id="id_password" type="password" name="password" required>
         </div>
         <div class="d-flex gap-2">
             <input class="w-50 btn btn-lg btn-primary" type="submit" value="登入">

@@ -393,7 +393,9 @@ class RedesignLayoutTests(TestCase):
         self.client.force_login(self.user)
         url = reverse("screening", args=[self.questionnaire.id])
         content = self.client.post(url, self._answer_data(wearing=None)).content.decode()
-        self.assertNotIn("沒有回答", content)
+        # Spec phase6_a11y_remeasure.md acceptance 9: the summary now lists this question too.
+        self.assertIn("還有 1 題沒有回答", content)
+        self.assertIn('href="#question-hearing-aid">是否戴助聽器</a>', content)
         self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
 
     def test_only_expected_scripts(self):
