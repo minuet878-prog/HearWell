@@ -43,6 +43,14 @@ class PrivacyPageTests(TestCase):
             with self.subTest(section=section):
                 self.assertContains(response, section)
 
+    def test_no_placeholder_left(self):
+        # Acceptance 16: operator, contact and regions are filled in before release.
+        response = self.client.get(reverse("privacy"))
+        self.assertNotContains(response, "待補")
+        self.assertContains(response, "HearWell 開發者")
+        self.assertContains(response, 'href="mailto:hearwellweb@gmail.com"', count=2)
+        self.assertContains(response, "美國俄亥俄州", count=2)
+
     def test_it_names_what_error_monitoring_sends(self):
         response = self.client.get(reverse("privacy"))
         self.assertContains(response, "Sentry")
