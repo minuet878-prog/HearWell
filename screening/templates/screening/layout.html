@@ -63,6 +63,12 @@
                     <span>我的紀錄</span>
                 </a>
             </li>
+            <li>
+                <a href="{% url 'audiogram_list' %}"{% if page|slice:":10" == "audiogram_" %} aria-current="page"{% endif %}>
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 4v16h18M7 8l4 3 4 1 4 5"/><circle cx="7" cy="8" r="1.5"/><circle cx="15" cy="12" r="1.5"/></svg>
+                    <span>聽力圖</span>
+                </a>
+            </li>
             {% else %}
             <li>
                 <a href="{% url 'login' %}"{% if page == "login" %} aria-current="page"{% endif %}>

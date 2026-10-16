@@ -1477,7 +1477,7 @@ class TrendChartPageTests(TestCase):
 
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
-    LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄")
+    LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄", "聽力圖")
     LOGGED_OUT_ITEMS = ("首頁", "登入", "註冊")
 
     @classmethod
@@ -1511,6 +1511,8 @@ class RedesignLayoutTests(TestCase):
             reverse("screening", args=[self.questionnaire.id]): "開始篩檢",
             reverse("result", args=[self.submission.id]): "我的紀錄",
             reverse("my_hearing"): "我的紀錄",
+            reverse("audiogram_list"): "聽力圖",
+            reverse("audiogram_new"): "聽力圖",
         }
 
     def test_logged_in_nav_and_header(self):
@@ -3433,5 +3435,520 @@ class ReactAnswerPageTests(TestCase):
         config = self.VITE_CONFIG.read_text(encoding="utf-8")
         self.assertIn('"../screening/static/screening/frontend"', config)
         for entry in ('"trend-chart"', '"answer"', '"logout"'):
+            with self.subTest(entry=entry):
+                self.assertIn(entry, config)
+
+
+def _point(conduction, ear, frequency, db, no_response):
+    return {
+        "ear": ear,
+        "conduction": conduction,
+        "frequency": frequency,
+        "db": db,
+        "no_response": no_response,
+    }
+
+
+def _air(ear, frequency, db, no_response=False):
+    return _point("air", ear, frequency, db, no_response)
+
+
+def _bone(ear, frequency, db, no_response=False):
+    return _point("bone", ear, frequency, db, no_response)
+
+
+def _four(maker, ear, values):
+    return [maker(ear, f, db) for f, db in zip((500, 1000, 2000, 4000), values, strict=True)]
+
+
+class AudiogramRuleTests(SimpleTestCase):
+    """Spec docs/specs/phase5_audiogram.md 4.3, acceptance 18-27 (the rules alone)."""
+
+    def _interpret(self, points):
+        from screening.audiogram import interpret
+
+        objects = [mock.Mock(**point) for point in points]
+        return interpret(objects)
+
+    def test_pta_and_degree(self):
+        right = self._interpret(_four(_air, "right", (40, 45, 50, 55)))["right"]
+        self.assertEqual(right["pta"], 47.5)
+        self.assertEqual(right["degree"], "中度")
+
+    def test_degree_boundaries(self):
+        from screening.audiogram import degree
+
+        expected = {
+            25: "正常",
+            26.25: "輕度",
+            40: "輕度",
+            41.25: "中度",
+            55: "中度",
+            56.25: "中重度",
+            70: "中重度",
+            71.25: "重度",
+            90: "重度",
+            91.25: "極重度",
+        }
+        for value, name in expected.items():
+            with self.subTest(value=value):
+                self.assertEqual(degree(value), name)
+
+    def test_type(self):
+        cases = {(45,) * 4: "感音神經性", (20,) * 4: "傳導性", (30,) * 4: "混合性"}
+        for bone, expected in cases.items():
+            with self.subTest(bone=bone):
+                points = _four(_air, "right", (50,) * 4) + _four(_bone, "right", bone)
+                self.assertEqual(self._interpret(points)["right"]["type"], expected)
+
+    def test_type_boundaries(self):
+        from screening.audiogram import hearing_type
+
+        self.assertEqual(hearing_type(25, None), "正常")
+        self.assertEqual(hearing_type(50, 35.25), "感音神經性")  # gap 14.75
+        self.assertEqual(hearing_type(50, 35), "混合性")  # gap 15, bone > 25
+        self.assertEqual(hearing_type(40, 25), "傳導性")  # gap 15, bone 25
+
+    def test_normal_air_needs_no_bone(self):
+        right = self._interpret(_four(_air, "right", (20,) * 4))["right"]
+        self.assertEqual(right["degree"], "正常")
+        self.assertEqual(right["type"], "正常")
+
+    def test_missing_air_frequency_is_insufficient(self):
+        points = [_air("right", f, 40) for f in (500, 1000, 4000)] + _four(_air, "left", (40,) * 4)
+        result = self._interpret(points)
+        self.assertIsNone(result["right"]["pta"])
+        self.assertIsNone(result["right"]["degree"])
+        self.assertEqual(result["left"]["degree"], "輕度")
+
+    def test_incomplete_bone_leaves_type_open(self):
+        bone = [_bone("right", f, 45) for f in (500, 2000, 4000)]
+        points = _four(_air, "right", (50,) * 4) + bone
+        right = self._interpret(points)["right"]
+        self.assertEqual(right["degree"], "中度")
+        self.assertIsNone(right["type"])
+
+    def test_only_outer_frequencies_is_insufficient(self):
+        points = [_air(ear, f, 40) for ear in ("right", "left") for f in (250, 8000)]
+        result = self._interpret(points)
+        self.assertIsNone(result["right"]["pta"])
+        self.assertIsNone(result["left"]["pta"])
+
+    def test_no_response_uses_marked_value(self):
+        points = [_air("right", f, db) for f, db in ((500, 90), (1000, 100), (2000, 110))]
+        points.append(_air("right", 4000, 120, no_response=True))
+        right = self._interpret(points)["right"]
+        self.assertEqual(right["pta"], 105)
+        self.assertEqual(right["degree"], "極重度")
+        self.assertTrue(right["no_response"])
+
+    def test_bone_no_response_uses_80(self):
+        points = _four(_air, "right", (100,) * 4)
+        points += [_bone("right", f, db) for f, db in ((500, 60), (1000, 70), (2000, 75))]
+        points.append(_bone("right", 4000, 80, no_response=True))
+        right = self._interpret(points)["right"]
+        self.assertEqual(right["type"], "混合性")  # bone 71.25, gap 28.75
+        self.assertTrue(right["no_response"])
+
+    def test_bone_no_response_value_decides_type(self):
+        # Review 3-3: at an air average of 86.25 only 80 gives a gap of 15 or more.
+        points = [_air("right", f, db) for f, db in ((500, 85), (1000, 85), (2000, 85), (4000, 90))]
+        points += [_bone("right", f, db) for f, db in ((500, 60), (1000, 70), (2000, 75))]
+        points.append(_bone("right", 4000, 80, no_response=True))
+        self.assertEqual(self._interpret(points)["right"]["type"], "混合性")
+
+    def test_masked_counts_like_unmasked(self):
+        # Acceptance 39: interpretation reads values only.
+        points = [{**p, "masked": True} for p in _four(_air, "right", (40, 45, 50, 55))]
+        right = self._interpret(points)["right"]
+        self.assertEqual(right["pta"], 47.5)
+        self.assertEqual(right["degree"], "中度")
+
+    def test_no_response_outside_pta_has_no_note(self):
+        points = [*_four(_air, "right", (40,) * 4), _air("right", 8000, 120, no_response=True)]
+        self.assertFalse(self._interpret(points)["right"]["no_response"])
+
+
+class AudiogramApiTests(TestCase):
+    """Spec docs/specs/phase5_audiogram.md, acceptance 12-17 and 30 (API side)."""
+
+    URL = "/api/audiograms/"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="audiogram_api")
+        cls.other = User.objects.create_user(username="audiogram_other")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _body(self, points=None, tested_on="2026-10-01"):
+        points = _four(_air, "right", (40, 45, 50, 55)) if points is None else points
+        return {"tested_on": tested_on, "points": points}
+
+    def _post(self, body, key="__new__"):
+        headers = {"Idempotency-Key": str(uuid.uuid4()) if key == "__new__" else key}
+        return self.client.post(
+            self.URL, json.dumps(body), content_type="application/json", headers=headers
+        )
+
+    def _models(self):
+        from screening.models import Audiogram, AudiogramPoint
+
+        return Audiogram, AudiogramPoint
+
+    def assertNothingSaved(self):
+        Audiogram, AudiogramPoint = self._models()
+        self.assertEqual(Audiogram.objects.count(), 0)
+        self.assertEqual(AudiogramPoint.objects.count(), 0)
+
+    def test_create(self):
+        response = self._post(self._body())
+        self.assertEqual(response.status_code, 201)
+        Audiogram, _ = self._models()
+        audiogram = Audiogram.objects.get()
+        self.assertEqual(audiogram.user, self.user)
+        self.assertEqual(audiogram.tested_on, date(2026, 10, 1))
+        self.assertEqual(audiogram.points.count(), 4)
+        body = response.json()
+        self.assertEqual(body["id"], audiogram.id)
+        self.assertEqual(body["interpretation"]["right"]["pta"], 47.5)
+        self.assertEqual(body["interpretation"]["right"]["degree"], "中度")
+
+    def test_zero_and_minus_ten_are_kept(self):
+        points = [_air("right", 500, 0), _air("right", 1000, -10)]
+        self.assertEqual(self._post(self._body(points)).status_code, 201)
+        Audiogram, _ = self._models()
+        saved = {p.frequency: p.db for p in Audiogram.objects.get().points.all()}
+        self.assertEqual(saved, {500: 0, 1000: -10})
+
+    def test_no_response_points(self):
+        points = [
+            _air("left", 4000, 120, no_response=True),
+            _bone("left", 1000, 80, no_response=True),
+        ]
+        self.assertEqual(self._post(self._body(points)).status_code, 201)
+        Audiogram, _ = self._models()
+        self.assertTrue(all(p.no_response for p in Audiogram.objects.get().points.all()))
+
+    def test_masked(self):
+        # Acceptance 41: missing means unmasked; only true/false accepted.
+        points = [{**_air("right", 1000, 50), "masked": True}, _air("right", 2000, 50)]
+        response = self._post(self._body(points))
+        self.assertEqual(response.status_code, 201)
+        Audiogram, _ = self._models()
+        saved = {p.frequency: p.masked for p in Audiogram.objects.get().points.all()}
+        self.assertEqual(saved, {1000: True, 2000: False})
+        self.assertIn({**_air("right", 1000, 50), "masked": True}, response.json()["points"])
+        Audiogram.objects.all().delete()
+        for value in ("yes", 1, None):
+            with self.subTest(masked=value):
+                bad = [{**_air("right", 1000, 50), "masked": value}]
+                self.assertEqual(self._post(self._body(bad)).status_code, 400)
+                self.assertNothingSaved()
+
+    def test_same_key_different_masking_is_409(self):
+        key = str(uuid.uuid4())
+        self._post(self._body([_air("right", 1000, 50)]), key=key)
+        masked = [{**_air("right", 1000, 50), "masked": True}]
+        self.assertEqual(self._post(self._body(masked), key=key).status_code, 409)
+
+    def test_retry_with_same_key_returns_first(self):
+        key = str(uuid.uuid4())
+        first = self._post(self._body(), key=key)
+        second = self._post(self._body(), key=key)
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["id"], first.json()["id"])
+        Audiogram, _ = self._models()
+        self.assertEqual(Audiogram.objects.count(), 1)
+
+    def test_same_key_different_content_is_409(self):
+        key = str(uuid.uuid4())
+        self._post(self._body(), key=key)
+        response = self._post(self._body(tested_on="2026-09-01"), key=key)
+        self.assertEqual(response.status_code, 409)
+
+    def test_missing_key_is_400(self):
+        response = self._post(self._body(), key="")
+        self.assertEqual(response.status_code, 400)
+        self.assertNothingSaved()
+
+    def test_invalid_points_are_400_and_save_nothing(self):
+        invalid = {
+            "frequency not listed": [_air("right", 750, 40)],
+            "db not multiple of 5": [_air("right", 1000, 42)],
+            "air above 120": [_air("right", 1000, 125)],
+            "below -10": [_air("right", 1000, -15)],
+            "bone above 80": [_bone("right", 1000, 85)],
+            "bone at 3000": [_bone("right", 3000, 40)],
+            "bone at 8000": [_bone("right", 8000, 40)],
+            "air no response not at 120": [_air("right", 1000, 100, no_response=True)],
+            "bone no response not at 80": [_bone("right", 1000, 70, no_response=True)],
+            "duplicate point": [_air("right", 1000, 40), _air("right", 1000, 60)],
+            "bad ear": [{**_air("right", 1000, 40), "ear": "both"}],
+            "bad conduction": [{**_air("right", 1000, 40), "conduction": "bc"}],
+            "no points": [],
+        }
+        for name, points in invalid.items():
+            with self.subTest(name):
+                # A valid point alongside makes sure nothing is saved partially.
+                extra = [] if name == "no points" else [_air("left", 500, 30)]
+                response = self._post(self._body(points + extra))
+                self.assertEqual(response.status_code, 400)
+                self.assertNothingSaved()
+
+    def test_no_points_message(self):
+        response = self._post(self._body([]))
+        self.assertIn("請至少標記一個點", json.dumps(response.json(), ensure_ascii=False))
+
+    def test_date_required_and_not_future(self):
+        tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()
+        for tested_on, message in ((None, "請填寫檢查日期"), (tomorrow, "檢查日期不能是未來")):
+            with self.subTest(tested_on=tested_on):
+                response = self._post(self._body(tested_on=tested_on))
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(message, json.dumps(response.json(), ensure_ascii=False))
+                self.assertNothingSaved()
+        today = timezone.localdate().isoformat()
+        self.assertEqual(self._post(self._body(tested_on=today)).status_code, 201)
+
+    def test_detail_is_own_only(self):
+        mine = self._post(self._body()).json()["id"]
+        self.assertEqual(self.client.get(f"{self.URL}{mine}/").status_code, 200)
+        other = Client()
+        other.force_login(self.other)
+        self.assertEqual(other.get(f"{self.URL}{mine}/").status_code, 404)
+
+    def test_same_key_from_another_user_is_separate(self):
+        key = str(uuid.uuid4())
+        self._post(self._body(), key=key)
+        self.client.force_login(self.other)
+        response = self._post(self._body(), key=key)
+        self.assertEqual(response.status_code, 201)
+        Audiogram, _ = self._models()
+        self.assertEqual(Audiogram.objects.filter(user=self.other).count(), 1)
+
+    def test_anonymous_gets_403(self):
+        self.client.logout()
+        self.assertEqual(self._post(self._body()).status_code, 403)
+
+
+class AudiogramPageTests(TestCase):
+    """Spec docs/specs/phase5_audiogram.md, acceptance 12, 18-33 (pages)."""
+
+    INPUT_JS = "screening/frontend/audiogram-input.js"
+    VIEW_JS = "screening/frontend/audiogram-view.js"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="audiogram_page")
+        cls.other = User.objects.create_user(username="audiogram_page_other")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _make(self, points, tested_on=date(2026, 10, 1), user=None):
+        from screening.models import Audiogram, AudiogramPoint
+
+        audiogram = Audiogram.objects.create(user=user or self.user, tested_on=tested_on)
+        AudiogramPoint.objects.bulk_create(AudiogramPoint(audiogram=audiogram, **p) for p in points)
+        return audiogram
+
+    def _main(self, response):
+        content = response.content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _ear_card(self, response, ear):
+        main = self._main(response)
+        match = re.search(rf'<section[^>]*data-ear="{ear}"[^>]*>(.*?)</section>', main, re.DOTALL)
+        return match.group(1)
+
+    # 新增頁
+    def test_new_page_loads_react(self):
+        response = self.client.get(reverse("audiogram_new"))
+        self.assertContains(response, self.INPUT_JS)
+        self.assertContains(response, 'id="audiogram-app"')
+        self.assertContains(response, f'data-today="{timezone.localdate().isoformat()}"')
+        self.assertContains(response, "需要開啟 JavaScript")
+
+    def test_input_js_only_on_new_page(self):
+        for url in (reverse("index"), reverse("my_hearing"), reverse("audiogram_list")):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), self.INPUT_JS)
+
+    # 檢視頁
+    def test_detail_shows_interpretation(self):
+        points = _four(_air, "right", (40, 45, 50, 55)) + _four(_bone, "right", (40, 45, 50, 55))
+        audiogram = self._make(points)
+        response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
+        self.assertContains(response, "2026/10/01")
+        right = self._ear_card(response, "right")
+        self.assertIn("47.5", right)
+        self.assertIn("中度", right)
+        self.assertIn("感音神經性", right)
+        self.assertContains(response, "這是依固定規則算出的參考結果，不能取代聽力師的判讀。")
+        self.assertNotContains(response, "診斷")
+        self.assertContains(response, self.VIEW_JS)
+
+    def test_detail_insufficient_and_missing_bone(self):
+        points = [_air("right", f, 40) for f in (500, 1000, 4000)] + _four(_air, "left", (50,) * 4)
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        self.assertIn("資料不足，無法判讀", self._ear_card(response, "right"))
+        left = self._ear_card(response, "left")
+        self.assertIn("中度", left)
+        self.assertIn("需要骨導資料才能判斷", left)
+
+    def test_detail_pta_formats(self):
+        points = _four(_air, "right", (100,) * 4) + _four(_air, "left", (50,) * 4)
+        points += [_bone("right", f, db) for f, db in ((500, 60), (1000, 70), (2000, 75))]
+        points.append(_bone("right", 4000, 80, no_response=True))
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        right = self._ear_card(response, "right")
+        self.assertIn("混合性", right)
+        self.assertIn("含無反應的頻率，實際聽力可能更差", right)
+        left = self._ear_card(response, "left")
+        self.assertRegex(left, r"\b50 dB HL")
+        self.assertNotIn("50.0", left)
+        self.assertNotIn("含無反應", left)
+
+    def test_detail_air_no_response_note(self):
+        # Acceptance 25 on the page (second review 3-2).
+        points = [_air("right", f, db) for f, db in ((500, 90), (1000, 100), (2000, 110))]
+        points.append(_air("right", 4000, 120, no_response=True))
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        right = self._ear_card(response, "right")
+        self.assertIn("四頻平均：105 dB HL", right)
+        self.assertIn("極重度", right)
+        self.assertIn("含無反應的頻率，實際聽力可能更差", right)
+
+    def test_detail_table_lists_points(self):
+        points = [
+            _air("right", 1000, 0),
+            _air("right", 2000, -10),
+            _air("left", 4000, 120, no_response=True),
+        ]
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        self.assertContains(response, 'id="audiogram-points"')  # json_script for the chart
+        main = self._main(response)
+        self.assertIn("<table", main)
+        # Whole cells: "120 dB" alone would also contain "0 dB" (review 3-1).
+        self.assertIn("<td>0 dB</td>", main)
+        self.assertIn("<td>-10 dB</td>", main)
+        self.assertIn("<td>120 dB（無反應）</td>", main)
+
+    def test_detail_shows_masking(self):
+        # Acceptance 40.
+        points = [
+            {**_air("right", 1000, 50), "masked": True},
+            {**_bone("left", 1000, 80, no_response=True), "masked": True},
+        ]
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        main = self._main(response)
+        self.assertIn("<td>50 dB（遮蔽）</td>", main)
+        self.assertIn("<td>80 dB（遮蔽、無反應）</td>", main)
+        chart = json.loads(re.search(r'id="audiogram-points"[^>]*>(.*?)</script>', main).group(1))
+        self.assertTrue(all(p["masked"] for p in chart))
+
+    def test_only_outer_frequencies_render(self):
+        points = [_air(ear, f, 40) for ear in ("right", "left") for f in (250, 8000)]
+        response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("資料不足，無法判讀", self._ear_card(response, "right"))
+        self.assertIn("資料不足，無法判讀", self._ear_card(response, "left"))
+
+    # 清單
+    def test_list_newest_test_date_first(self):
+        old = self._make(_four(_air, "right", (20,) * 4), tested_on=date(2026, 1, 1))
+        new = self._make(_four(_air, "right", (50,) * 4), tested_on=date(2026, 9, 1))
+        same_day_later = self._make(_four(_air, "right", (80,) * 4), tested_on=date(2026, 9, 1))
+        main = self._main(self.client.get(reverse("audiogram_list")))
+        links = re.findall(r'href="/audiograms/(\d+)"', main)
+        self.assertEqual(links, [str(same_day_later.id), str(new.id), str(old.id)])
+        self.assertIn("2026/09/01", main)
+        self.assertIn("右耳：重度", main)
+        self.assertIn("左耳：資料不足", main)
+
+    def test_empty_list(self):
+        main = self._main(self.client.get(reverse("audiogram_list")))
+        self.assertIn("還沒有聽力圖", main)
+        self.assertIn(f'href="{reverse("audiogram_new")}"', main)
+
+    def test_list_queries_do_not_grow(self):
+        self._make(_four(_air, "right", (40,) * 4))
+        self._make(_four(_air, "left", (40,) * 4))
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(reverse("audiogram_list"))
+        for _ in range(18):
+            self._make(_four(_air, "right", (40,) * 4) + _four(_bone, "right", (40,) * 4))
+        with CaptureQueriesContext(connection) as twenty:
+            self.client.get(reverse("audiogram_list"))
+        self.assertEqual(len(twenty), len(two))
+
+    # 權限
+    def test_other_users_audiogram_is_404(self):
+        theirs = self._make(_four(_air, "right", (40,) * 4), user=self.other)
+        for name in ("audiogram_detail", "audiogram_delete"):
+            with self.subTest(name=name):
+                url = reverse(name, args=[theirs.id])
+                self.assertEqual(self.client.get(url).status_code, 404)
+                self.assertEqual(self.client.post(url).status_code, 404)
+        listing = self._main(self.client.get(reverse("audiogram_list")))
+        self.assertNotIn(f"/audiograms/{theirs.id}", listing)
+        from screening.models import Audiogram
+
+        self.assertTrue(Audiogram.objects.filter(pk=theirs.pk).exists())
+
+    def test_anonymous_redirected_to_login(self):
+        self.client.logout()
+        for url in (reverse("audiogram_list"), reverse("audiogram_new")):
+            with self.subTest(url=url):
+                self.assertRedirects(
+                    self.client.get(url),
+                    f"{reverse('login')}?next={url}",
+                    fetch_redirect_response=False,
+                )
+
+    # 刪除
+    def test_delete_asks_first_then_deletes_with_points(self):
+        from screening.models import Audiogram, AudiogramPoint
+
+        audiogram = self._make(_four(_air, "right", (40,) * 4))
+        url = reverse("audiogram_delete", args=[audiogram.id])
+        response = self.client.get(url)
+        self.assertContains(response, "確定要刪除 2026/10/01 的聽力圖嗎？")
+        self.assertTrue(Audiogram.objects.filter(pk=audiogram.pk).exists())
+        response = self.client.post(url)
+        self.assertRedirects(response, reverse("audiogram_list"))
+        self.assertFalse(Audiogram.objects.filter(pk=audiogram.pk).exists())
+        self.assertEqual(AudiogramPoint.objects.count(), 0)
+
+    def test_detail_links_to_delete(self):
+        audiogram = self._make(_four(_air, "right", (40,) * 4))
+        response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
+        self.assertContains(response, f'href="{reverse("audiogram_delete", args=[audiogram.id])}"')
+
+    # 導覽列：聽力圖是獨立的一項，不在我的紀錄的分頁籤裡
+    def test_nav_marks_every_audiogram_page(self):
+        audiogram = self._make(_four(_air, "right", (40,) * 4))
+        urls = (
+            reverse("audiogram_list"),
+            reverse("audiogram_new"),
+            reverse("audiogram_detail", args=[audiogram.id]),
+            reverse("audiogram_delete", args=[audiogram.id]),
+        )
+        for url in urls:
+            with self.subTest(url=url):
+                nav = RedesignLayoutTests.NAV.search(self.client.get(url).content.decode()).group()
+                current = re.findall(r'aria-current="page">.*?<span>([^<]+)</span>', nav, re.DOTALL)
+                self.assertEqual(current, ["聽力圖"])
+
+    def test_not_a_my_hearing_tab(self):
+        main = self._main(self.client.get(reverse("my_hearing")))
+        self.assertNotIn(reverse("audiogram_list"), main)
+
+    def test_bundle_entries_in_vite_config(self):
+        config = ReactAnswerPageTests.VITE_CONFIG.read_text(encoding="utf-8")
+        for entry in ('"audiogram-input"', '"audiogram-view"'):
             with self.subTest(entry=entry):
                 self.assertIn(entry, config)

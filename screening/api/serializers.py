@@ -1,8 +1,25 @@
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from screening.audiogram import (
+    AIR_FREQUENCIES,
+    BONE_FREQUENCIES,
+    DB_MAX,
+    DB_MIN,
+    DB_STEP,
+)
 from screening.forms import AnswerFormSet, HearingAidForm, answer_choices
-from screening.models import Answer, Question, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Audiogram,
+    AudiogramPoint,
+    Conduction,
+    Ear,
+    Question,
+    Questionnaire,
+    Submission,
+)
 from screening.scoring import IOI_HA, THRESHOLDS, get_advice
 
 
@@ -155,3 +172,77 @@ class SubmissionCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"answers": list(formset.non_form_errors())})
         attrs["formset"] = formset
         return attrs
+
+
+class AudiogramPointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AudiogramPoint
+        fields = ("ear", "conduction", "frequency", "db", "no_response", "masked")
+
+
+class EarResultSerializer(serializers.Serializer):
+    pta = serializers.FloatField(allow_null=True)
+    degree = serializers.CharField(allow_null=True)
+    type = serializers.CharField(allow_null=True)
+    no_response = serializers.BooleanField()
+
+
+class InterpretationSerializer(serializers.Serializer):
+    right = EarResultSerializer()
+    left = EarResultSerializer()
+
+
+class AudiogramSerializer(serializers.ModelSerializer):
+    points = AudiogramPointSerializer(many=True)
+    # Computed by Audiogram.interpretation(), never in the client.
+    interpretation = InterpretationSerializer()
+
+    class Meta:
+        model = Audiogram
+        fields = ("id", "tested_on", "created_at", "points", "interpretation")
+
+
+FREQUENCIES = {Conduction.AIR: AIR_FREQUENCIES, Conduction.BONE: BONE_FREQUENCIES}
+
+
+class AudiogramPointInputSerializer(serializers.Serializer):
+    ear = serializers.ChoiceField(choices=Ear.choices)
+    conduction = serializers.ChoiceField(choices=Conduction.choices)
+    frequency = serializers.IntegerField()
+    db = serializers.IntegerField()
+    no_response = StrictBooleanField(default=False)
+    masked = StrictBooleanField(default=False)
+
+    def validate(self, attrs):
+        conduction, db = attrs["conduction"], attrs["db"]
+        if attrs["frequency"] not in FREQUENCIES[conduction]:
+            raise serializers.ValidationError("這個頻率不能標記")
+        if not DB_MIN <= db <= DB_MAX[conduction] or db % DB_STEP:
+            raise serializers.ValidationError("dB 值不正確")
+        if attrs["no_response"] and db != DB_MAX[conduction]:
+            raise serializers.ValidationError("無反應的點要標在最大值")
+        return attrs
+
+
+class AudiogramCreateSerializer(serializers.Serializer):
+    DATE_REQUIRED = "請填寫檢查日期"
+
+    tested_on = serializers.DateField(
+        error_messages={"required": DATE_REQUIRED, "null": DATE_REQUIRED}
+    )
+    points = serializers.ListField(
+        child=AudiogramPointInputSerializer(),
+        allow_empty=False,
+        error_messages={"empty": "請至少標記一個點"},
+    )
+
+    def validate_tested_on(self, value):
+        if value > timezone.localdate():
+            raise serializers.ValidationError("檢查日期不能是未來")
+        return value
+
+    def validate_points(self, points):
+        keys = [(p["ear"], p["conduction"], p["frequency"]) for p in points]
+        if len(set(keys)) != len(keys):
+            raise serializers.ValidationError("同一耳、同一導程、同一頻率只能有一個點")
+        return points

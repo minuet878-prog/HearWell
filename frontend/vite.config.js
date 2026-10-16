@@ -13,6 +13,8 @@ export default defineConfig({
         "trend-chart": "src/main.jsx",
         "answer": "src/answer-main.jsx",
         "logout": "src/logout.js",
+        "audiogram-input": "src/audiogram-main.jsx",
+        "audiogram-view": "src/audiogram-view-main.jsx",
       },
       output: { entryFileNames: "[name].js" },
     },

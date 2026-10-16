@@ -4,6 +4,7 @@ from django.db.models import Count
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
@@ -20,7 +21,7 @@ from screening.scoring import (
     max_score,
 )
 
-from .models import NormGroup, Questionnaire, Submission
+from .models import Ear, NormGroup, Questionnaire, Submission
 
 
 def _safe_next(request):
@@ -296,3 +297,63 @@ def _ioi_ha_result(request, submission, answers):
         "screening/result_ioi_ha.html",
         {"submission": submission, "items": items, "grouped": grouped},
     )
+
+
+@login_required
+def audiogram_list(request):
+    return render(
+        request,
+        "screening/audiogram_list.html",
+        {"audiograms": request.user.audiograms.prefetch_related("points")},
+    )
+
+
+@login_required
+def audiogram_new(request):
+    return render(request, "screening/audiogram_new.html", {"today": timezone.localdate()})
+
+
+def _own_audiogram(request, audiogram_id):
+    return get_object_or_404(
+        request.user.audiograms.prefetch_related("points"), pk=audiogram_id
+    )
+
+
+@login_required
+def audiogram_detail(request, audiogram_id):
+    audiogram = _own_audiogram(request, audiogram_id)
+    result = audiogram.interpretation()
+    # Right ear first, air before bone, as on a clinical record.
+    points = sorted(
+        audiogram.points.all(), key=lambda p: (p.ear != Ear.RIGHT, p.conduction, p.frequency)
+    )
+    return render(
+        request,
+        "screening/audiogram_detail.html",
+        {
+            "audiogram": audiogram,
+            "ears": [(ear.value, ear.label, result[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)],
+            "points": points,
+            "chart_points": [
+                {
+                    "ear": p.ear,
+                    "conduction": p.conduction,
+                    "frequency": p.frequency,
+                    "db": p.db,
+                    "no_response": p.no_response,
+                    "masked": p.masked,
+                }
+                for p in points
+            ],
+        },
+    )
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def audiogram_delete(request, audiogram_id):
+    audiogram = _own_audiogram(request, audiogram_id)
+    if request.method == "POST":
+        audiogram.delete()
+        return redirect("audiogram_list")
+    return render(request, "screening/audiogram_delete.html", {"audiogram": audiogram})

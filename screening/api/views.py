@@ -1,21 +1,23 @@
 import uuid
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 
 from screening.api.serializers import (
+    AudiogramCreateSerializer,
+    AudiogramSerializer,
     QuestionnaireDetailSerializer,
     QuestionnaireSerializer,
     SubmissionCreateSerializer,
     SubmissionDetailSerializer,
     SubmissionSerializer,
 )
-from screening.models import Answer, Question, Questionnaire
+from screening.models import Answer, Audiogram, AudiogramPoint, Question, Questionnaire
 from screening.scoring import IOI_HA
 
 
@@ -138,3 +140,84 @@ class SubmissionDetail(RetrieveAPIView):
 
     def get_queryset(self):
         return _own_submission_details(self.request)
+
+
+def _own_audiograms(request):
+    # Scoped to request.user (IDOR); points prefetched for interpretation().
+    return request.user.audiograms.prefetch_related("points")
+
+
+def _point_set(points):
+    fields = ("ear", "conduction", "frequency", "db", "no_response", "masked")
+    return {tuple(p[field] for field in fields) for p in points}
+
+
+def _same_audiogram(audiogram, data):
+    saved = audiogram.points.values()
+    return audiogram.tested_on == data["tested_on"] and _point_set(saved) == _point_set(
+        data["points"]
+    )
+
+
+@transaction.atomic
+def _create_audiogram(user, data, key):
+    audiogram = Audiogram.objects.create(
+        user=user, tested_on=data["tested_on"], idempotency_key=key
+    )
+    AudiogramPoint.objects.bulk_create(
+        AudiogramPoint(audiogram=audiogram, **point) for point in data["points"]
+    )
+    return audiogram
+
+
+class AudiogramCreate(GenericAPIView):
+    serializer_class = AudiogramCreateSerializer
+
+    @extend_schema(
+        request=AudiogramCreateSerializer,
+        parameters=[
+            OpenApiParameter(
+                "Idempotency-Key",
+                str,
+                OpenApiParameter.HEADER,
+                required=True,
+                description="UUID made when the input page opens; resend the same one on retry.",
+            )
+        ],
+        responses={
+            201: AudiogramSerializer,
+            200: OpenApiResponse(AudiogramSerializer, "Retry: the first audiogram"),
+            400: OpenApiResponse(description="Invalid points, date or Idempotency-Key"),
+            409: OpenApiResponse(description="Idempotency-Key used with a different audiogram"),
+        },
+    )
+    def post(self, request):
+        # Same receipt-number flow as SubmissionList.post.
+        key = _parse_key(request)
+        if key is None:
+            return Response({"detail": "缺少或無效的收據編號"}, status.HTTP_400_BAD_REQUEST)
+        serializer = AudiogramCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        existing = request.user.audiograms.filter(idempotency_key=key).first()
+        created = False
+        if existing is None:
+            try:
+                existing = _create_audiogram(request.user, data, key)
+                created = True
+            except IntegrityError:
+                existing = request.user.audiograms.get(idempotency_key=key)
+        if not created and not _same_audiogram(existing, data):
+            return Response({"detail": "這個收據編號已經用過"}, status.HTTP_409_CONFLICT)
+        audiogram = _own_audiograms(request).get(pk=existing.pk)
+        return Response(
+            AudiogramSerializer(audiogram).data,
+            status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class AudiogramDetail(RetrieveAPIView):
+    serializer_class = AudiogramSerializer
+
+    def get_queryset(self):
+        return _own_audiograms(self.request)

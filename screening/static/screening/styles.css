@@ -475,3 +475,120 @@ details summary {
     /* Four-character names wrap to two lines on narrow phones. */
     overflow-wrap: anywhere;
 }
+
+/* Audiogram input and view (spec phase5_audiogram.md). */
+.audiogram-chart {
+    max-width: 32rem;
+    margin: 0 auto 0.75rem;
+}
+
+.audiogram-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+}
+
+.audiogram-symbols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.audiogram-symbol {
+    min-height: 2.75rem;
+    border: 0.125rem solid #6c757d;
+    background-color: #fff;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.audiogram-symbol.ear-right {
+    color: #c0392b;
+}
+
+.audiogram-symbol.ear-left {
+    color: #1f4e8c;
+}
+
+.audiogram-symbol[aria-pressed="true"] {
+    border-color: #1f4e8c;
+    background-color: #e8eef7;
+    box-shadow: inset 0 0 0 0.125rem #1f4e8c;
+}
+
+.audiogram-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 0.5rem;
+}
+
+.ear-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+}
+
+.ear-result.ear-right {
+    border-top: 0.375rem solid #c0392b;
+}
+
+.ear-result.ear-left {
+    border-top: 0.375rem solid #1f4e8c;
+}
+
+.audiogram-item {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Drag readout over the chart; rem so it grows with the user's font size. */
+.audiogram-plot {
+    position: relative;
+}
+
+.audiogram-magnifier {
+    position: absolute;
+    padding: 0.25rem 0.5rem;
+    border: 0.125rem solid #212529;
+    border-radius: 0.375rem;
+    background-color: #fff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* Above the finger by default; beside it near the top, on the side with more room. */
+.audiogram-magnifier[data-place="above"] {
+    transform: translate(-50%, calc(-100% - 1.5rem));
+}
+
+.audiogram-magnifier[data-place="beside"][data-side="right"] {
+    transform: translate(1.5rem, -50%);
+}
+
+.audiogram-magnifier[data-place="beside"][data-side="left"] {
+    transform: translate(calc(-100% - 1.5rem), -50%);
+}
+
+/* Masking switch: orange when on (white on #b35900 is 4.83:1), with a matching chart frame. */
+.audiogram-mask-switch {
+    border: 0.125rem solid #6c757d;
+    background-color: #fff;
+    color: #212529;
+    font-weight: 700;
+}
+
+.audiogram-mask-switch.on,
+.audiogram-mask-switch.on:hover {
+    border-color: #b35900;
+    background-color: #b35900;
+    color: #fff;
+}
+
+.audiogram-chart.masking {
+    outline: 0.25rem dashed #b35900;
+    outline-offset: 0.25rem;
+}

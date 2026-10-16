@@ -1,0 +1,13 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}刪除聽力圖｜HearWell{% endblock %}
+
+{% block body %}
+<h1 class="h3 mt-3">確定要刪除 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖嗎？</h1>
+<p>刪除後無法復原。</p>
+<form method="post" class="d-flex flex-wrap gap-2">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger btn-lg">確定刪除</button>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_detail' audiogram.id %}">取消</a>
+</form>
+{% endblock %}
