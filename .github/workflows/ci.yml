@@ -59,6 +59,8 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           DEBUG: "False"
+          # Same value as Render; production settings refuse to start without it.
+          ALLOWED_HOSTS: hearwell.onrender.com
         run: |
           python -m venv /tmp/prod
           /tmp/prod/bin/pip install -r requirements.txt

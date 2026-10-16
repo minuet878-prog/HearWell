@@ -2943,6 +2943,8 @@ print(json.dumps({
             "DEBUG": "True" if debug else "False",
             # A throwaway key for this process only; never written anywhere.
             "SECRET_KEY": get_random_secret_key(),
+            # Production settings refuse to start without it; DUMP's request uses this host.
+            "ALLOWED_HOSTS": "localhost",
         }
         return subprocess.run(
             [sys.executable, *args], cwd=self.ROOT, env=env, capture_output=True, text=True
@@ -3023,6 +3025,88 @@ print(json.dumps({
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())
+
+
+class AllowedHostsTests(SimpleTestCase):
+    """Spec docs/specs/phase6_allowed_hosts.md, acceptance 1-5 and 8-10."""
+
+    ROOT = Path(__file__).resolve().parent.parent
+    # Settings are computed when the module loads, so each case runs in a fresh process.
+    # dotenv is stubbed out: a local .env must not fill in the variable the test leaves unset.
+    LOAD = """
+import json, sys, types
+dotenv = types.ModuleType("dotenv")
+dotenv.load_dotenv = lambda *args, **kwargs: None
+sys.modules["dotenv"] = dotenv
+from django.core.exceptions import ImproperlyConfigured
+try:
+    import config.settings
+except ImproperlyConfigured as error:
+    print(json.dumps({"error": str(error)}))
+else:
+    print(json.dumps({"hosts": config.settings.ALLOWED_HOSTS}))
+"""
+
+    def _run(self, args, hosts, debug):
+        env = {
+            **os.environ,
+            "DEBUG": "True" if debug else "False",
+            # A throwaway key for this process only; never written anywhere.
+            "SECRET_KEY": get_random_secret_key(),
+        }
+        env.pop("ALLOWED_HOSTS", None)
+        if hosts is not None:
+            env["ALLOWED_HOSTS"] = hosts
+        return subprocess.run(
+            [sys.executable, *args], cwd=self.ROOT, env=env, capture_output=True, text=True
+        )
+
+    def _load(self, hosts, debug=False):
+        result = self._run(["-c", self.LOAD], hosts, debug)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout.strip().splitlines()[-1])
+
+    # 1, 2
+    def test_production_rejects_empty_values(self):
+        for value in ("", "   ", ","):
+            with self.subTest(value=value):
+                error = self._load(value)["error"]
+                self.assertIn("ALLOWED_HOSTS", error)
+                self.assertIn("是空的", error)
+
+    # 3
+    def test_spaces_around_hosts_are_removed(self):
+        loaded = self._load("hearwell.onrender.com, localhost")
+        self.assertEqual(loaded["hosts"], ["hearwell.onrender.com", "localhost"])
+
+    # 4
+    def test_empty_items_are_dropped(self):
+        self.assertEqual(self._load("a.com,,b.com,")["hosts"], ["a.com", "b.com"])
+
+    # 5
+    def test_local_default_when_unset(self):
+        self.assertEqual(self._load(None, debug=True)["hosts"], ["127.0.0.1", "localhost"])
+
+    # 8
+    def test_production_requires_the_variable(self):
+        error = self._load(None)["error"]
+        self.assertIn("ALLOWED_HOSTS", error)
+        self.assertIn("缺少", error)
+
+    # 9
+    def test_local_rejects_empty_value(self):
+        error = self._load("", debug=True)["error"]
+        self.assertIn("ALLOWED_HOSTS", error)
+        self.assertIn("是空的", error)
+
+    # 10
+    def test_render_value_passes_deploy_check(self):
+        result = self._run(
+            ["manage.py", "check", "--deploy", "--fail-level", "WARNING"],
+            "hearwell.onrender.com",
+            debug=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 class ApiQuestionnaireDetailTests(TestCase):
