@@ -1,3 +1,4 @@
+import "./does-not-exist.js"; // TRIAL: breaks the build
 import { createRoot } from "react-dom/client";
 
 import AudiogramChart from "./AudiogramChart.jsx";

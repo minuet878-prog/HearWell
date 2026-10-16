@@ -4619,3 +4619,8 @@ class AnswerFlashTests(TestCase):
         content = self._page(self.ioi_ha).content.decode()
         self.assertNotIn('id="answer-loading"', content)
         self.assertNotIn("<script>", content)
+
+
+class CiTrialTests(TestCase):
+    def test_ci_trial_must_fail(self):
+        self.assertEqual(1, 2, "TRIAL: deliberately failing Django test")
