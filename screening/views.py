@@ -54,6 +54,11 @@ def index(request):
     return render(request, "screening/index.html")
 
 
+def family_guide(request):
+    # Spec phase8_c1_family_guide.md: the same reviewed content for everyone, no user data.
+    return render(request, "screening/family_guide.html")
+
+
 class MonitoringTestError(Exception):
     """Raised on purpose so an admin can check that error monitoring reaches Sentry."""
 

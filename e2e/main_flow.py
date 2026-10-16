@@ -6,6 +6,7 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import os
 import re
+from contextlib import contextmanager
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
@@ -43,7 +44,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
 
     def test_new_user_completes_hhie_s(self):
-        try:
+        with self.saving_artifacts():
             self.step1_start_needs_login()
             self.step2_register()
             self.step3_choose_hhie_s()
@@ -51,6 +52,33 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.step5_submit()
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
+
+    def test_family_guide_without_share_sheet(self):
+        """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
+        with self.saving_artifacts():
+            self.page.add_init_script("delete Navigator.prototype.share;")
+            self.page.goto(f"{self.live_server_url}/family")
+            expect(self.page.get_by_role("button", name="傳給家人")).to_be_hidden()
+            expect(self.main().get_by_text("/family")).to_be_visible()
+
+    def test_family_guide_share_sheet(self):
+        """Acceptance 6: the button hands this page's address and title to a stubbed share sheet."""
+        with self.saving_artifacts():
+            self.page.add_init_script(
+                "navigator.share = (data) => { window.shared = data; return Promise.resolve(); };"
+            )
+            url = f"{self.live_server_url}/family"
+            self.page.goto(url)
+            self.page.get_by_role("button", name="傳給家人").click()
+            shared = self.page.evaluate("window.shared")
+            self.assertEqual(shared["url"], url)
+            self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
+
+    @contextmanager
+    def saving_artifacts(self):
+        """On failure, keep this test's screenshot and trace for debugging (CI uploads them)."""
+        try:
+            yield
         except BaseException:
             ARTIFACTS.mkdir(exist_ok=True)
             self.page.screenshot(path=ARTIFACTS / "failure.png", full_page=True)
