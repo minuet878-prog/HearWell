@@ -201,3 +201,11 @@ SPECTACULAR_SETTINGS = {
     # drf-spectacular serves the schema publicly by default.
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAuthenticated"],
 }
+
+# Error monitoring (Sentry), production only: on when the DSN is set in the environment.
+# Lowercase so it is not a Django setting; the debug page would print it.
+sentry_dsn = os.environ.get("SENTRY_DSN")
+if sentry_dsn:
+    from config import monitoring
+
+    monitoring.init(sentry_dsn)
