@@ -630,3 +630,82 @@ details summary {
 .compare-legend-left .compare-line.old {
   border-top-color: #9db5d6;
 }
+
+/* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */
+.health-report section {
+    margin-top: 1.5rem;
+}
+
+.report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 2rem;
+}
+
+.report-handwrite span {
+    display: inline-block;
+    min-width: 12rem;
+    border-bottom: 1px solid currentColor;
+}
+
+.report-summary {
+    border: 2px solid #212529;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.report-score {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* The level is written out in a box, never shown by colour alone. */
+.report-level {
+    font-weight: 700;
+    border: 2px solid currentColor;
+    border-radius: 0.25rem;
+    padding: 0 0.4rem;
+}
+
+.report-disclaimer {
+    border-top: 1px solid #6c757d;
+    padding-top: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+@media print {
+    /* Every page keeps the same margins; element margins vanish where a page breaks. */
+    @page {
+        margin: 1.5cm;
+    }
+
+    body:has(.health-report) .site-header,
+    body:has(.health-report) .site-nav,
+    body:has(.health-report) footer,
+    .health-report .no-print {
+        display: none !important;
+    }
+
+    body:has(.health-report) {
+        padding-bottom: 0;
+    }
+
+    .health-report section {
+        margin-top: 1rem;
+        break-inside: avoid;
+    }
+
+    .report-disclaimer {
+        margin-top: 0.75rem;
+    }
+
+    /* Tighter rows on paper, so the disclaimer does not end up alone on a last page. */
+    .health-report .table > :not(caption) > * > * {
+        padding: 0.2rem 0.5rem;
+    }
+
+    /* Small enough to share the first page with the summary. */
+    .health-report .audiogram-chart {
+        max-width: 10cm;
+    }
+}

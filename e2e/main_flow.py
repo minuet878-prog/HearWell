@@ -50,6 +50,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.step4_answer_and_change_one()
             self.step5_submit()
             self.step6_history()
+            self.step7_report_prints_without_site_chrome()
         except BaseException:
             ARTIFACTS.mkdir(exist_ok=True)
             self.page.screenshot(path=ARTIFACTS / "failure.png", full_page=True)
@@ -114,6 +115,22 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         # The record card only: the trend chart, drawn later by React, repeats the level text.
         card = self.main().locator(".card", has=self.page.get_by_role("link", name="查看結果"))
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
+
+    def step7_report_prints_without_site_chrome(self):
+        # Spec phase8_c3_report.md acceptance 8: only a real browser applies the print styles.
+        self.main().get_by_role("link", name="聽力報告").click()
+        expect(self.page.get_by_role("heading", name="HearWell 聽力報告")).to_be_visible()
+        nav = self.page.get_by_role("navigation", name="主要導覽")
+        print_button = self.page.get_by_role("button", name="列印或存成 PDF")
+        header = self.page.locator(".site-header")
+        footer = self.page.get_by_role("link", name="隱私權說明")
+        for part in (nav, print_button, header, footer):
+            expect(part).to_be_visible()
+        self.page.emulate_media(media="print")
+        for part in (nav, print_button, header, footer):
+            expect(part).to_be_hidden()
+        expect(self.page.get_by_role("heading", name="重點摘要")).to_be_visible()
+        self.page.emulate_media(media="screen")
 
     def question(self, number):
         """The one question on screen, checked to be the expected one."""
