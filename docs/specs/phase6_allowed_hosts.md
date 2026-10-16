@@ -1,6 +1,6 @@
 # Phase 6 規格：`ALLOWED_HOSTS` 設錯時部署要停下來
 
-- **狀態**：已確認
+- **狀態**：已完成（驗收 7 待合併部署後確認）
 - **分支**：`fix/allowed-hosts-empty`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-16
 
@@ -52,16 +52,16 @@
 
 ## 5. 驗收條件
 
-- [ ] 1. 假設正式環境 `ALLOWED_HOSTS=""`，當啟動 Django，則失敗，錯誤訊息是中文、指出 `ALLOWED_HOSTS`。
-- [ ] 2. 假設正式環境 `ALLOWED_HOSTS="   "` 或 `","`，當啟動，則跟驗收 1 一樣失敗。
-- [ ] 3. 假設 `ALLOWED_HOSTS="hearwell.onrender.com, localhost"`，當啟動，則清單是 `hearwell.onrender.com`、`localhost`（沒有前導空白）。
-- [ ] 4. 假設 `ALLOWED_HOSTS="a.com,,b.com,"`，當啟動，則清單是 `a.com`、`b.com`。
-- [ ] 5. 假設本機 `DEBUG=True` 而且沒設 `ALLOWED_HOSTS`，當啟動，則清單仍是 `127.0.0.1`、`localhost`。
-- [ ] 6. 假設這次的 PR，當 CI 跑完，則全部通過（CI 的正式環境檢查有設好 `ALLOWED_HOSTS`）。
+- [x] 1. 假設正式環境 `ALLOWED_HOSTS=""`，當啟動 Django，則失敗，錯誤訊息是中文、指出 `ALLOWED_HOSTS`。
+- [x] 2. 假設正式環境 `ALLOWED_HOSTS="   "` 或 `","`，當啟動，則跟驗收 1 一樣失敗。
+- [x] 3. 假設 `ALLOWED_HOSTS="hearwell.onrender.com, localhost"`，當啟動，則清單是 `hearwell.onrender.com`、`localhost`（沒有前導空白）。
+- [x] 4. 假設 `ALLOWED_HOSTS="a.com,,b.com,"`，當啟動，則清單是 `a.com`、`b.com`。
+- [x] 5. 假設本機 `DEBUG=True` 而且沒設 `ALLOWED_HOSTS`，當啟動，則清單仍是 `127.0.0.1`、`localhost`。
+- [x] 6. 假設這次的 PR，當 CI 跑完，則全部通過（CI 的正式環境檢查有設好 `ALLOWED_HOSTS`）。
 - [ ] 7. 假設合併後 Render 部署，當看部署紀錄，則建置成功、網站正常回應。
-- [ ] 8. 假設正式環境完全沒設 `ALLOWED_HOSTS`，當啟動，則失敗，錯誤訊息是中文、指出 `ALLOWED_HOSTS`。
-- [ ] 9. 假設本機 `DEBUG=True` 而 `ALLOWED_HOSTS=""`，當啟動，則跟驗收 1 一樣失敗。
-- [ ] 10. 假設 `ALLOWED_HOSTS="hearwell.onrender.com"`（Render 目前的值），當用正式環境設定跑 `check --deploy`，則通過。
+- [x] 8. 假設正式環境完全沒設 `ALLOWED_HOSTS`，當啟動，則失敗，錯誤訊息是中文、指出 `ALLOWED_HOSTS`。
+- [x] 9. 假設本機 `DEBUG=True` 而 `ALLOWED_HOSTS=""`，當啟動，則跟驗收 1 一樣失敗。
+- [x] 10. 假設 `ALLOWED_HOSTS="hearwell.onrender.com"`（Render 目前的值），當用正式環境設定跑 `check --deploy`，則通過。
 
 ## 6. 待決問題
 
@@ -76,8 +76,14 @@
 ## 完成後回報（由 AI 填寫）
 
 - **改了哪些檔案、為什麼**：
-- **驗收條件對應的測試**：
-- **規格以外的決定**（如果有，說明原因）：
-- **這次用到的新概念**（各用一句話解釋）：
-- **面試可能追問的 2–3 題**（附答案要點）：
-- **建議寫進 decisions/ 的內容**（素材即可，條目由本人撰寫；註明放哪個主題檔）：
+  - `config/settings.py`：讀 `ALLOWED_HOSTS` 的一行改成：沒設時正式環境報錯、本機用預設；去空白、丟空項；整理完是空的就報錯
+  - `screening/tests.py`：新增 `AllowedHostsTests`；`DevChecksTests._run` 補 `ALLOWED_HOSTS=localhost`（新規則下正式設定沒設會啟動失敗）
+  - `.github/workflows/ci.yml`：「Production dependencies」加 Render 的值；`README.md`、`.env.example`：改成正式環境必填
+  - `docs/specs/phase6_ruff_dev_only.md`：驗收 5 打勾
+- **驗收條件對應的測試**：1、2 `test_production_rejects_empty_values`；3 `test_spaces_around_hosts_are_removed`；4 `test_empty_items_are_dropped`；5 `test_local_default_when_unset`；8 `test_production_requires_the_variable`；9 `test_local_rejects_empty_value`；10 `test_render_value_passes_deploy_check`；6 PR #45 CI；7 合併部署後確認
+- **規格以外的決定**：
+  - 測試子行程把 `dotenv` 換成假模組：本機 `.env` 有 `ALLOWED_HOSTS`，不換的話「沒設」測不到
+  - 審查 3-1、5-1 不改（見 `docs/reviews/phase6_allowed_hosts_review.md`）
+- **這次用到的新概念**：`ALLOWED_HOSTS` 與 Host 標頭、W020 只看清單空不空、環境變數的三種狀態、在新行程裡測設定、換掉 `sys.modules` 裡的模組（完整說明見 `docs/interview.md`）
+- **面試可能追問的 2–3 題**：Q78 `ALLOWED_HOSTS` 是什麼、空字串為什麼抓不到；Q79 `is None` 和 `if not` 怎麼選；Q80 怎麼測模組載入時就算好的設定
+- **建議寫進 decisions/ 的內容**：見對話（素材由本人撰寫）
