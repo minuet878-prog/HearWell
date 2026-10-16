@@ -1,6 +1,6 @@
 # Phase 6 規格：`ALLOWED_HOSTS` 設錯時部署要停下來
 
-- **狀態**：已完成（驗收 7 待合併部署後確認）
+- **狀態**：已完成
 - **分支**：`fix/allowed-hosts-empty`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-16
 
@@ -58,7 +58,8 @@
 - [x] 4. 假設 `ALLOWED_HOSTS="a.com,,b.com,"`，當啟動，則清單是 `a.com`、`b.com`。
 - [x] 5. 假設本機 `DEBUG=True` 而且沒設 `ALLOWED_HOSTS`，當啟動，則清單仍是 `127.0.0.1`、`localhost`。
 - [x] 6. 假設這次的 PR，當 CI 跑完，則全部通過（CI 的正式環境檢查有設好 `ALLOWED_HOSTS`）。
-- [ ] 7. 假設合併後 Render 部署，當看部署紀錄，則建置成功、網站正常回應。
+- [x] 7. 假設合併後 Render 部署，當看部署紀錄，則建置成功、網站正常回應。
+  - 2026-10-16 PR #45 合併（`7783f2a`）後本人確認 Render 部署成功。
 - [x] 8. 假設正式環境完全沒設 `ALLOWED_HOSTS`，當啟動，則失敗，錯誤訊息是中文、指出 `ALLOWED_HOSTS`。
 - [x] 9. 假設本機 `DEBUG=True` 而 `ALLOWED_HOSTS=""`，當啟動，則跟驗收 1 一樣失敗。
 - [x] 10. 假設 `ALLOWED_HOSTS="hearwell.onrender.com"`（Render 目前的值），當用正式環境設定跑 `check --deploy`，則通過。
