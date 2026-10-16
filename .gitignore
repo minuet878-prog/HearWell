@@ -11,3 +11,4 @@ node_modules/
 /screening/static/screening/frontend/
 .claude/*
 !.claude/agents/
+/e2e-artifacts/
