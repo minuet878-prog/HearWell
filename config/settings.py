@@ -41,7 +41,21 @@ else:
         "SECRET_KEY", "django-insecure-7qd&wuoyggjpnsapj#(q_=8akk$!^h-d!!9$eumz&h4-+p(b72"
     )
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+# Unset falls back to the local hosts only in development; set-but-empty is always a mistake,
+# because every request would get a 400 while check --deploy still passes.
+allowed_hosts = os.environ.get("ALLOWED_HOSTS")
+if allowed_hosts is None:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            "正式環境缺少 ALLOWED_HOSTS 環境變數，請在部署平台設定，以逗號分隔，"
+            "例如 hearwell.onrender.com"
+        )
+    allowed_hosts = "127.0.0.1,localhost"
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts.split(",") if host.strip()]
+if not ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        "ALLOWED_HOSTS 環境變數是空的，請填入網址，以逗號分隔，例如 hearwell.onrender.com"
+    )
 
 
 # Application definition
