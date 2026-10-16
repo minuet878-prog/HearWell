@@ -103,7 +103,7 @@
 9. **分級與計分只用規則式程式碼**。LLM 只能用在自然語言輸出，不能用在分類或計算。
 10. **每個讀取分數的地方都走同一條計算路徑**（`Submission` 的計分方法），不要另寫一份聚合。API 由後端算好回傳，前端不重算。
 11. **0 是合法分數，不能當「沒資料」的哨兵值**。空的 submission 要另外處理。
-12. **不要在 shell 對正式資料庫做操作來驗證行為**，要驗證就寫進 `tests.py`。
+12. **不要在 shell 對正式資料庫做操作來驗證行為**，要驗證就寫進 `screening/tests/`。
 13. 介面字級一律用 `rem`，不用 `px`（使用者多為 65 歲以上）。
 
 ## 專案概要
@@ -115,7 +115,8 @@
 
 ### 結構
 
-- `screening/models.py` `views.py` `forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`tests.py` `admin.py` `urls.py`
+- `screening/models.py` `views.py` `forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`admin.py` `urls.py`
+- `screening/tests/` 依功能分檔（`test_scoring.py`、`test_answering.py`、`test_api.py`、`test_audiogram.py`……），只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`；跨檔借用別的測試類別要匯入整個檔案（`from screening.tests import test_pages`），直接匯入類別的話，單獨跑那一組會混進別組的測試
 - `screening/templates/screening/` 全部繼承 `layout.html`；`screening/templatetags/custom_filters.py` 有 `level_to_color`
 - `screening/fixtures/` 問卷題目；`pyproject.toml` Ruff 設定
 

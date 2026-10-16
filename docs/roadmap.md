@@ -151,6 +151,10 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] 網頁表單驗證失敗被 React 接手（審查 1-3，原 Phase 5；規格 `docs/specs/phase6_web_form_errors_stay.md`，2026-10-16）
   - 驗證沒過重新顯示的頁面不送 React（view 傳 `use_react=False`），留在網頁表單，錯誤、已選答案、收據編號都在
   - 沒處理：只漏答助聽器題時頂端沒有錯誤摘要，只有該題紅字
+- [x] 測試依功能分資料夾（規格 `docs/specs/phase6_tests_by_feature.md`，2026-10-16）
+  - `screening/tests.py`（約 5,000 行、43 個類別）拆成 `screening/tests/` 10 個檔，只搬家不改內容；356 個測試搬家前後清單相同
+  - 只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`
+  - 待 PR 確認：CI 兩個檢查通過（驗收 6）
 - [ ] 登入改用內建 `LoginView`（會自己處理 `next`）；兩個人幾乎同時用同一個名字註冊會 500
   （舊版有接 `IntegrityError`，新版沒有，機率極低）（原 Phase 2）
 - [ ] **錯誤監控**：正式環境出錯能第一時間知道，工具在規格裡決定（原功能構想總表）
