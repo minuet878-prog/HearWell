@@ -24,6 +24,17 @@
     {% endif %}
     {% if not is_ioi_ha %}
     {# React version (one question per page); it hides the form below once the questions load. #}
+    <p id="answer-loading" class="fs-5 fw-bold" role="status"></p>
+    {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
+    <script>
+        document.documentElement.classList.add("answer-loading");
+        document.getElementById("answer-loading").textContent = "題目載入中…";
+        // React not ready in 5 seconds (slow, or its file failed to load): give the form back.
+        setTimeout(function () {
+            document.documentElement.classList.remove("answer-loading");
+            document.getElementById("answer-loading").textContent = "";
+        }, 5000);
+    </script>
     <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}"></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">

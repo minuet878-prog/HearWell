@@ -22,6 +22,7 @@ export default function AnswerApp({
   userId,
   csrfToken,
   onReady,
+  onFail = () => {},
   navigate = (url) => window.location.assign(url),
 }) {
   const [questions, setQuestions] = useState(null);
@@ -60,8 +61,8 @@ export default function AnswerApp({
         else begin(newAnswers(), false);
         onReady();
       })
-      // Nothing is shown, so the Django form stays usable.
-      .catch(() => {});
+      // Nothing is shown; the entry gives the page back to the Django form.
+      .catch(() => onFail());
   }, []);
 
   useEffect(() => {

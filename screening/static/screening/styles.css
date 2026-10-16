@@ -288,6 +288,16 @@ div.choice-group label:focus-within {
     gap: 1rem;
 }
 
+/* While React loads, the Django form stays hidden (spec phase5_answer_flash.md); without JS the
+   class is never added and the empty note takes no space. */
+.answer-loading #answer-form {
+    display: none;
+}
+
+#answer-loading:empty {
+    display: none;
+}
+
 /* Result page: level banner, same colours as the trend chart bands. */
 .result-banner {
     padding: 1rem 1.25rem;
