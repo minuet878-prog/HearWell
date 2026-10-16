@@ -151,6 +151,7 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = "screening.User"
 
 LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "index"
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

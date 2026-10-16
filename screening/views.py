@@ -1,9 +1,9 @@
 import uuid
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -27,7 +27,7 @@ from screening.scoring import (
     max_score,
 )
 
-from .models import Ear, NormGroup, Questionnaire, Submission
+from .models import Ear, NormGroup, Questionnaire, Submission, User
 
 
 def _safe_next(request):
@@ -44,27 +44,6 @@ def index(request):
     return render(request, "screening/index.html")
 
 
-@require_http_methods(["GET", "POST"])
-def login_view(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
-        user = authenticate(request, username=username, password=password)
-        next_url = _safe_next(request)
-
-        if user is not None:
-            login(request, user)
-            return HttpResponseRedirect(next_url or reverse("index"))
-        else:
-            return render(
-                request,
-                "screening/login.html",
-                {"message": "使用者名稱或密碼錯誤", "next": next_url},
-            )
-    else:
-        return render(request, "screening/login.html", {"next": _safe_next(request)})
-
-
 @require_http_methods(["POST"])
 def logout_view(request):
     logout(request)
@@ -77,9 +56,17 @@ def register(request):
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            login(request, user)
-            return HttpResponseRedirect(next_url or reverse("index"))
+            try:
+                with transaction.atomic():
+                    user = form.save()
+            except IntegrityError:
+                # Someone else took this name after is_valid(); any other clash is a real error.
+                if not User.objects.filter(username=form.cleaned_data["username"]).exists():
+                    raise
+                form.add_error("username", form.instance.unique_error_message(User, ["username"]))
+            else:
+                login(request, user)
+                return HttpResponseRedirect(next_url or reverse("index"))
     else:
         form = RegisterForm()
     return render(request, "screening/register.html", {"form": form, "next": next_url})
