@@ -8,6 +8,6 @@ db.sqlite3
 /docs/vpsdeploy.md
 /docs/interview.md
 node_modules/
-/screening/static/screening/trend/
+/screening/static/screening/frontend/
 .claude/*
 !.claude/agents/

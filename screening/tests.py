@@ -1406,8 +1406,7 @@ class ApiSubmissionTests(TestCase):
 
 
 class TrendChartPageTests(TestCase):
-    CHART_JS = "screening/trend/trend-chart.js"
-    VITE_CONFIG = Path(__file__).resolve().parent.parent / "frontend" / "vite.config.js"
+    CHART_JS = "screening/frontend/trend-chart.js"
 
     @classmethod
     def setUpTestData(cls):
@@ -1474,12 +1473,6 @@ class TrendChartPageTests(TestCase):
         for url in (reverse("login"), reverse("register")):
             with self.subTest(url=url):
                 self.assertNotContains(self.client.get(url), self.CHART_JS)
-
-    def test_chart_js_path_matches_vite_output(self):
-        # The template and the Vite build must agree on where the bundle lives.
-        config = self.VITE_CONFIG.read_text(encoding="utf-8")
-        self.assertIn('"../screening/static/screening/trend"', config)
-        self.assertIn('"trend-chart.js"', config)
 
 
 class RedesignLayoutTests(TestCase):
@@ -1663,28 +1656,33 @@ class RedesignLayoutTests(TestCase):
         self.assertNotIn("沒有回答", content)
         self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
 
-    def test_no_scripts_except_trend_chart(self):
+    def test_only_expected_scripts(self):
+        # No Bootstrap JS or anything else: only the bundles each page needs.
+        def scripts(url):
+            content = self.client.get(url).content.decode()
+            return re.findall(r'<script[^>]*src="/static/([^"]+)"', content) + (
+                ["<inline>"] if re.search(r"<script(?![^>]*src=)", content) else []
+            )
+
+        logout_js, answer_js = ReactAnswerPageTests.LOGOUT_JS, ReactAnswerPageTests.ANSWER_JS
         empty_user = User.objects.create_user(username="no_records")
-        pages = [reverse("index"), reverse("login"), reverse("register")]
-        for url in pages:
+        for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):
-                self.assertNotIn("<script", self.client.get(url).content.decode())
+                self.assertEqual(scripts(url), [])
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertNotIn("<script", self.client.get(reverse("my_hearing")).content.decode())
+            self.assertEqual(scripts(reverse("my_hearing")), [logout_js])
         self.client.force_login(self.user)
-        for url in (
-            reverse("questionnaire_list"),
-            reverse("screening", args=[self.questionnaire.id]),
-            reverse("result", args=[self.submission.id]),
-        ):
+        expected = {
+            reverse("index"): [logout_js],
+            reverse("questionnaire_list"): [logout_js],
+            reverse("screening", args=[self.questionnaire.id]): [logout_js, answer_js],
+            reverse("result", args=[self.submission.id]): [logout_js],
+            reverse("my_hearing"): [logout_js, TrendChartPageTests.CHART_JS],
+        }
+        for url, bundles in expected.items():
             with self.subTest(url=url):
-                self.assertNotIn("<script", self.client.get(url).content.decode())
-        content = self.client.get(reverse("my_hearing")).content.decode()
-        self.assertEqual(
-            re.findall(r"<script[^>]*>", content),
-            [f'<script type="module" src="/static/{TrendChartPageTests.CHART_JS}">'],
-        )
+                self.assertEqual(scripts(url), bundles)
 
 
 class TamperedAnswerTests(TestCase):
@@ -2549,7 +2547,7 @@ class IoiHaFixtureTests(TestCase):
 class HistoryTabsTests(TestCase):
     """Spec docs/specs/phase4_history_by_questionnaire.md, acceptance 1-19."""
 
-    CHART_JS = "screening/trend/trend-chart.js"
+    CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"
     UNGROUPED_NOTE = "需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較"
 
@@ -3341,3 +3339,99 @@ class ApiSubmitTests(TestCase):
             ],
         }
         self.assertEqual(self._post(body).status_code, 201)
+
+
+class ReactAnswerPageTests(TestCase):
+    """Spec docs/specs/phase5_react_answer.md: Django side of the React answer page."""
+
+    ANSWER_JS = "screening/frontend/answer.js"
+    LOGOUT_JS = "screening/frontend/logout.js"
+    VITE_CONFIG = Path(__file__).resolve().parent.parent / "frontend" / "vite.config.js"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="react_answer")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
+        for questionnaire in (cls.hhie_s, cls.hhia_s, cls.ioi_ha):
+            Question.objects.create(
+                questionnaire=questionnaire,
+                question_text=f"{questionnaire.code} 第1題",
+                question_number=1,
+                category="" if questionnaire.code == "ioi-ha" else Category.EMOTIONAL,
+            )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _page(self, questionnaire):
+        return self.client.get(reverse("screening", args=[questionnaire.id]))
+
+    def test_hhie_s_and_hhia_s_load_react_with_their_data(self):
+        for questionnaire in (self.hhie_s, self.hhia_s):
+            with self.subTest(code=questionnaire.code):
+                response = self._page(questionnaire)
+                self.assertContains(response, self.ANSWER_JS)
+                self.assertContains(response, 'id="answer-app"')
+                self.assertContains(response, f'data-questionnaire-id="{questionnaire.id}"')
+                self.assertContains(response, f'data-user-id="{self.user.id}"')
+
+    def test_django_form_is_still_complete_without_js(self):
+        # Fallback when the JS does not load: the full form is rendered and posts as before.
+        response = self._page(self.hhie_s)
+        self.assertContains(response, 'id="answer-form"')
+        self.assertContains(response, 'name="wearing_hearing_aid"')
+        self.assertContains(response, "hhie-s 第1題")
+        self.assertContains(response, 'type="submit"')
+        question = self.hhie_s.questions.get()
+        response = self.client.post(
+            reverse("screening", args=[self.hhie_s.id]),
+            {
+                "form-TOTAL_FORMS": "1",
+                "form-INITIAL_FORMS": "1",
+                "form-0-question_id": str(question.id),
+                "form-0-score": "4",
+                "wearing_hearing_aid": "False",
+            },
+        )
+        submission = Submission.objects.get(user=self.user)
+        self.assertRedirects(response, reverse("result", args=[submission.id]))
+
+    def test_intro_is_outside_the_form(self):
+        # React hides the form, so the name, count and instructions must stay visible outside it.
+        content = self._page(self.hhie_s).content.decode()
+        form_start = content.index('id="answer-form"')
+        self.assertLess(content.index("<h2"), form_start)
+        self.assertLess(content.index("共 1 題"), form_start)
+        self.assertLess(content.index("本問卷的目的"), form_start)
+
+    def test_ioi_ha_stays_django_only(self):
+        response = self._page(self.ioi_ha)
+        self.assertNotContains(response, self.ANSWER_JS)
+        self.assertNotContains(response, 'id="answer-app"')
+        self.assertContains(response, 'id="answer-form"')
+
+    def test_answer_js_only_on_answer_pages(self):
+        for url in (reverse("index"), reverse("questionnaire_list"), reverse("my_hearing")):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), self.ANSWER_JS)
+
+    def test_logout_js_when_logged_in_only(self):
+        for url in (reverse("index"), reverse("questionnaire_list"), reverse("my_hearing")):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(response, self.LOGOUT_JS)
+                self.assertContains(response, 'id="logout-form"')
+        self.client.logout()
+        for url in (reverse("index"), reverse("login"), reverse("register")):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), self.LOGOUT_JS)
+
+    def test_bundle_paths_match_vite_output(self):
+        # The templates and the Vite build must agree on where the bundles live.
+        config = self.VITE_CONFIG.read_text(encoding="utf-8")
+        self.assertIn('"../screening/static/screening/frontend"', config)
+        for entry in ('"trend-chart"', '"answer"', '"logout"'):
+            with self.subTest(entry=entry):
+                self.assertIn(entry, config)

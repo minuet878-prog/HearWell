@@ -276,6 +276,18 @@ div.choice-group label:focus-within {
     color: #495057;
 }
 
+/* React answer page (one question per page): focus moves to the question on each page. */
+.answer-app legend:focus {
+    outline: 3px solid #1f4e8c;
+    outline-offset: 2px;
+}
+
+.answer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
 /* Result page: level banner, same colours as the trend chart bands. */
 .result-banner {
     padding: 1rem 1.25rem;
