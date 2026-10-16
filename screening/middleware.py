@@ -4,7 +4,17 @@ from django.urls import reverse
 # Pages a signed-in user may use before agreeing to the privacy notice
 # (spec phase7_consent_privacy.md, question 4). Every other page is blocked, so a new
 # page is covered without anyone remembering to add it.
-OPEN_PAGES = {"index", "privacy", "consent", "add_to_home", "login", "register", "logout"}
+# Downloading one's data is a right, not new processing (spec phase7_data_export.md, Q5).
+OPEN_PAGES = {
+    "index",
+    "privacy",
+    "consent",
+    "add_to_home",
+    "login",
+    "register",
+    "logout",
+    "download_my_data",
+}
 
 
 class ConsentRequiredMiddleware:

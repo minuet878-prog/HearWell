@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from django.contrib import messages
@@ -5,18 +6,19 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
-from django.db.models import Count
-from django.http import Http404, HttpResponseRedirect
+from django.db.models import Count, Prefetch
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.http import content_disposition_header, url_has_allowed_host_and_scheme
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from screening import models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare
-from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
+from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm, answer_choices
 from screening.scoring import (
     IOI_HA,
     IOI_HA_CHOICES,
@@ -29,7 +31,7 @@ from screening.scoring import (
     max_score,
 )
 
-from .models import Ear, NormGroup, Questionnaire, Submission, User
+from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
 
 
 def _safe_next(request):
@@ -321,6 +323,90 @@ def my_hearing(request):
             "difference": _aided_difference(request.user) if current.code == "hhie-s" else None,
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
         },
+    )
+
+
+def _taipei(moment):
+    return timezone.localtime(moment).isoformat()
+
+
+def _export_submission(submission):
+    # IOI-HA has no total, subscales or level (same as its result page): null, not 0.
+    not_scored = submission.questionnaire.code == IOI_HA
+    return {
+        "questionnaire": submission.questionnaire.questionnaire_name,
+        "created_at": _taipei(submission.created_at),
+        "wearing_hearing_aid": submission.get_wearing_hearing_aid_display(),
+        "answers": [
+            {
+                "number": answer.question.question_number,
+                "question": answer.question.question_text,
+                "score": answer.score,
+                # null rather than a 500: one odd old answer must not block the whole export.
+                "choice": dict(answer_choices(answer.question)).get(answer.score),
+            }
+            for answer in submission.answers.all()
+        ],
+        "total_score": None if not_scored else submission.total_answer_score,
+        "emotional_score": None if not_scored else submission.emotional_score,
+        "social_score": None if not_scored else submission.social_score,
+        "level": None if not_scored else submission.classified["text"],
+        "norm_group": submission.get_norm_group_display() or None,
+    }
+
+
+@login_required
+@require_http_methods(["GET"])
+@never_cache
+def download_my_data(request):
+    # Spec phase7_data_export.md: everything of request.user, nothing else; no ids in the URL.
+    user = request.user
+    answers = Answer.objects.select_related("question__questionnaire").order_by(
+        "question__question_number"
+    )
+    submissions = (
+        user.submissions.select_related("questionnaire")
+        .prefetch_related(Prefetch("answers", queryset=answers))
+        .with_scores()
+    )
+    points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
+    audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
+    data = {
+        "account": {
+            "username": user.username,
+            "email": user.email,
+            "birth_year": user.birth_year,
+            "date_joined": _taipei(user.date_joined),
+        },
+        "consents": [
+            {"version": consent.version, "agreed_at": _taipei(consent.agreed_at)}
+            for consent in user.consents.order_by("agreed_at", "id")
+        ],
+        "submissions": [_export_submission(submission) for submission in submissions],
+        "audiograms": [
+            {
+                "tested_on": audiogram.tested_on.isoformat(),
+                "created_at": _taipei(audiogram.created_at),
+                "points": [
+                    {
+                        "ear": point.get_ear_display(),
+                        "conduction": point.get_conduction_display(),
+                        "frequency": point.frequency,
+                        "db": point.db,
+                        "no_response": point.no_response,
+                        "masked": point.masked,
+                    }
+                    for point in audiogram.points.all()
+                ],
+            }
+            for audiogram in audiograms
+        ],
+    }
+    filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
+    return HttpResponse(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        content_type="application/json",
+        headers={"Content-Disposition": content_disposition_header(True, filename)},
     )
 
 
