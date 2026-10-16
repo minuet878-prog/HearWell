@@ -5,7 +5,8 @@ from django.urls import reverse
 # (spec phase7_consent_privacy.md, question 4). Every other page is blocked, so a new
 # page is covered without anyone remembering to add it.
 # Downloading or deleting one's data is a right, not new processing
-# (specs phase7_data_export.md Q5, phase7_account_deletion.md Q4).
+# (specs phase7_data_export.md Q5, phase7_account_deletion.md Q4). The family guide holds no
+# personal data at all (spec phase8_c1_family_guide.md).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -16,6 +17,7 @@ OPEN_PAGES = {
     "logout",
     "download_my_data",
     "delete_account",
+    "family_guide",
 }
 
 

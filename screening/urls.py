@@ -16,6 +16,7 @@ urlpatterns = [
     path("logout", views.logout_view, name="logout"),
     path("register", views.register, name="register"),
     path("privacy", views.privacy, name="privacy"),
+    path("family", views.family_guide, name="family_guide"),
     path("consent", views.consent, name="consent"),
     path("monitoring-test", views.monitoring_test, name="monitoring_test"),
     path("questionnaire_list", views.questionnaire_list, name="questionnaire_list"),
