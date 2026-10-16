@@ -169,8 +169,11 @@ def screening(request, questionnaire_id):
                 )
             except IntegrityError:
                 # Two clicks arrived together and the other one saved first; save() is atomic,
-                # so nothing of this one is left behind.
-                return _already_sent(request, _find_by_key(request.user, key))
+                # so nothing of this one is left behind. Any other clash is a real error.
+                existing = key and _find_by_key(request.user, key)
+                if not existing:
+                    raise
+                return _already_sent(request, existing)
             return redirect("result", submission_id=submission.id)
         else:
             # Count only questions shown on the page, so the number matches the marked ones.

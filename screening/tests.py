@@ -27,6 +27,7 @@ from django.utils import timezone
 
 from screening import scoring, views
 from screening.api import views as api_views
+from screening.forms import BaseAnswerFormSet
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
 from screening.scoring import classify, get_advice
 
@@ -4856,6 +4857,18 @@ class WebDoubleSubmitTests(TestCase):
                 start = content.index('id="answer-form"')
                 form = content[start : content.index("</form>", start)]
                 self.assertIn('id="submit-status"', form)
+
+    # Review 1-1: only a clash with this page's own earlier save counts as "already sent";
+    # any other IntegrityError must surface, not send the user to an unrelated result.
+    def test_other_integrity_errors_are_not_hidden(self):
+        Submission.objects.create(user=self.user, questionnaire=self.questionnaires["hhie-s"])
+        for key in (None, self._open()):
+            with self.subTest(key=key):
+                with (
+                    mock.patch.object(BaseAnswerFormSet, "save", side_effect=IntegrityError),
+                    self.assertRaises(IntegrityError),
+                ):
+                    self._post(self._data(key))
 
     # 1: two clicks arriving together; the second only finds the first at the unique constraint.
     def test_simultaneous_clicks_save_once(self):
