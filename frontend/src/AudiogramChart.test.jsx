@@ -31,3 +31,36 @@ it("draws each masked mark (acceptance 40)", () => {
   expect(mark("right-bone-1000").querySelector("text").textContent).toBe("[");
   expect(mark("left-bone-1000").querySelector("text").textContent).toBe("]");
 });
+
+// Spec docs/specs/phase5_audiogram_2.md 4.2, acceptance 22: the older test underneath, light and dashed.
+it("draws an older audiogram light and dashed under the newer one", () => {
+  const air = (frequency, db) => ({ ear: "right", conduction: "air", frequency, db, no_response: false, masked: false });
+  const bone = { ear: "right", conduction: "bone", frequency: 1000, db: 20, no_response: false, masked: false };
+  const { container } = render(
+    <AudiogramChart points={[air(500, 40), air(1000, 45), bone]} oldPoints={[air(500, 30), air(1000, 35), bone]} />,
+  );
+  const newer = container.querySelector(".audiogram-new");
+  const older = container.querySelector(".audiogram-old");
+  expect(newer.querySelector("polyline").getAttribute("stroke")).toBe("#c0392b");
+  expect(newer.querySelector("polyline").getAttribute("stroke-dasharray")).toBeNull();
+  expect(older.querySelector("polyline").getAttribute("stroke")).toBe("#e8a59d");
+  expect(older.querySelector("polyline").getAttribute("stroke-dasharray")).not.toBeNull();
+  expect(older.querySelector('[data-point="right-air-500"] circle').getAttribute("stroke")).toBe("#e8a59d");
+  expect(older.querySelector('[data-point="right-bone-1000"] text').getAttribute("fill")).toBe("#e8a59d");
+  expect(newer.querySelector('[data-point="right-bone-1000"] text').getAttribute("fill")).toBe("#c0392b");
+  // The newer one is drawn last, so it sits on top.
+  expect(older.compareDocumentPosition(newer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("the left ear's older audiogram is light blue", () => {
+  const point = { ear: "left", conduction: "air", frequency: 500, db: 30, no_response: false, masked: false };
+  const { container } = render(<AudiogramChart points={[point]} oldPoints={[point]} />);
+  expect(container.querySelector('.audiogram-old [data-point="left-air-500"] path').getAttribute("stroke")).toBe("#9db5d6");
+});
+
+it("without oldPoints nothing extra is drawn", () => {
+  const { container } = render(
+    <AudiogramChart points={[{ ear: "right", conduction: "air", frequency: 500, db: 30, no_response: false }]} />,
+  );
+  expect(container.querySelector(".audiogram-old")).toBeNull();
+});

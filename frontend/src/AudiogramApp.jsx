@@ -61,16 +61,28 @@ function ValueTable({ points, onSet, onMask }) {
   );
 }
 
-export default function AudiogramApp({ today, csrfToken, navigate = (url) => window.location.assign(url) }) {
+// With audiogramId it edits a saved audiogram (spec phase5_audiogram_2.md 4.1): it opens with the
+// saved points and date, and saving replaces the whole audiogram.
+export default function AudiogramApp({
+  today,
+  csrfToken,
+  audiogramId,
+  initialPoints = [],
+  initialTestedOn = "",
+  navigate = (url) => window.location.assign(url),
+}) {
   const [symbolKey, setSymbolKey] = useState("right-air");
   // Stays as set until switched off (spec question 18).
   const [masked, setMasked] = useState(false);
-  const [points, setPoints] = useState({});
+  const [points, setPoints] = useState(() =>
+    Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
+  );
   const [last, setLast] = useState(null);
-  const [testedOn, setTestedOn] = useState("");
+  const [testedOn, setTestedOn] = useState(initialTestedOn);
   const [errors, setErrors] = useState([]);
   const [sending, setSending] = useState(false);
-  // One receipt number per page, so a retry after a lost response cannot save twice.
+  // One receipt number per page, so a retry after a lost response cannot save twice. Editing needs
+  // none: putting the same audiogram again changes nothing.
   const key = useRef(crypto.randomUUID());
   const busy = useRef(false);
 
@@ -120,15 +132,13 @@ export default function AudiogramApp({ today, csrfToken, navigate = (url) => win
     busy.current = true;
     setSending(true);
     let response = null;
+    const editing = audiogramId != null;
+    const headers = { Accept: "application/json", "Content-Type": "application/json", "X-CSRFToken": csrfToken };
+    if (!editing) headers["Idempotency-Key"] = key.current;
     try {
-      response = await fetch("/api/audiograms/", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfToken,
-          "Idempotency-Key": key.current,
-        },
+      response = await fetch(editing ? `/api/audiograms/${audiogramId}/` : "/api/audiograms/", {
+        method: editing ? "PUT" : "POST",
+        headers,
         body: JSON.stringify({ tested_on: testedOn, points: Object.values(points) }),
       });
     } catch {
@@ -146,6 +156,8 @@ export default function AudiogramApp({ today, csrfToken, navigate = (url) => win
       setErrors(texts(body));
     } else if (response?.status === 403) {
       setErrors(["登入已經過期，請重新登入後再存檔"]);
+    } else if (response?.status === 404) {
+      setErrors(["這張聽力圖已經不存在，請到聽力圖清單查看"]);
     } else if (response?.status === 409) {
       setErrors(["這張聽力圖已經存過了，請到聽力圖清單查看"]);
     } else {

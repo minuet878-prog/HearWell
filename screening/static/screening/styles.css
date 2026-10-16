@@ -592,3 +592,31 @@ details summary {
     outline: 0.25rem dashed #b35900;
     outline-offset: 0.25rem;
 }
+
+/* Audiogram comparison (spec phase5_audiogram_2.md 4.2): legend samples match the chart's lines. */
+.compare-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.compare-line {
+  display: inline-block;
+  width: 2rem;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+  border-top: 0.15rem solid #c0392b;
+}
+
+.compare-line.old {
+  border-top: 0.15rem dashed #e8a59d;
+}
+
+.compare-legend-left .compare-line {
+  border-top-color: #1f4e8c;
+}
+
+.compare-legend-left .compare-line.old {
+  border-top-color: #9db5d6;
+}

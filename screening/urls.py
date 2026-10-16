@@ -14,7 +14,9 @@ urlpatterns = [
     path("submission/<int:submission_id>", views.submission_result, name="result"),
     path("audiograms", views.audiogram_list, name="audiogram_list"),
     path("audiograms/new", views.audiogram_new, name="audiogram_new"),
+    path("audiograms/compare", views.audiogram_compare, name="audiogram_compare"),
     path("audiograms/<int:audiogram_id>", views.audiogram_detail, name="audiogram_detail"),
+    path("audiograms/<int:audiogram_id>/edit", views.audiogram_edit, name="audiogram_edit"),
     path("audiograms/<int:audiogram_id>/delete", views.audiogram_delete, name="audiogram_delete"),
     path(
         "add_to_home",

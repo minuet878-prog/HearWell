@@ -1,0 +1,1 @@
+{% if point %}{{ point.db }} dB{% if point.masked and point.no_response %}（遮蔽、無反應）{% elif point.masked %}（遮蔽）{% elif point.no_response %}（無反應）{% endif %}{% endif %}

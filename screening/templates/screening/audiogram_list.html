@@ -4,7 +4,15 @@
 
 {% block body %}
 <h1 class="h3 mt-3">聽力圖</h1>
-<p><a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">新增聽力圖</a></p>
+<p class="d-flex flex-wrap gap-2 align-items-center">
+    <a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">新增聽力圖</a>
+    {% if audiograms|length >= 2 %}
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
+    {% else %}
+    <button type="button" class="btn btn-outline-primary btn-lg" disabled aria-describedby="compare-needs-two">比較聽力圖</button>
+    <span id="compare-needs-two">要有兩張聽力圖才能比較</span>
+    {% endif %}
+</p>
 {% for audiogram in audiograms %}
 {% with result=audiogram.interpretation %}
 <a class="card mb-2 audiogram-item" href="{% url 'audiogram_detail' audiogram.id %}">
