@@ -15,6 +15,7 @@ urlpatterns = [
     ),
     path("logout", views.logout_view, name="logout"),
     path("register", views.register, name="register"),
+    path("monitoring-test", views.monitoring_test, name="monitoring_test"),
     path("questionnaire_list", views.questionnaire_list, name="questionnaire_list"),
     path("questionnaire/<int:questionnaire_id>", views.screening, name="screening"),
     path("my_hearing", views.my_hearing, name="my_hearing"),

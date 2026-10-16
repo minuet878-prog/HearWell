@@ -44,6 +44,16 @@ def index(request):
     return render(request, "screening/index.html")
 
 
+class MonitoringTestError(Exception):
+    """Raised on purpose so an admin can check that error monitoring reaches Sentry."""
+
+
+def monitoring_test(request):
+    if not request.user.is_superuser:
+        raise Http404
+    raise MonitoringTestError
+
+
 @require_http_methods(["POST"])
 def logout_view(request):
     logout(request)
