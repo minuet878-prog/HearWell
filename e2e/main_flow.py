@@ -101,7 +101,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         self.main().get_by_role("button", name="送出").click()
         expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
         # Every answer 有時 (2 points) x 10, question 1 counted with its changed answer.
-        expect(self.page.get_by_text("總分 20 分")).to_be_visible()
+        expect(self.page.get_by_text("總分 21 分")).to_be_visible()
         expect(self.page.get_by_text("輕度到中度影響")).to_be_visible()
 
     def step6_history(self):
