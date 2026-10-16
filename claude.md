@@ -139,9 +139,10 @@
 ## 常用指令
 
 - 啟動：`python manage.py runserver`（由我來啟動）
-- 本機套件：`pip install -r requirements-dev.txt`（含 debug-toolbar、ruff；正式環境只裝 `requirements.txt`）
+- 本機套件：`pip install -r requirements-dev.txt`（含 debug-toolbar、ruff、playwright；正式環境只裝 `requirements.txt`）
 - 測試：`python manage.py test --settings=config.test_settings`（不需要先 collectstatic）
 - 前端測試：`npm test --prefix frontend`；前端建置：`npm run build --prefix frontend`
+- 端對端測試：先 `npm run build --prefix frontend`，再 `python manage.py test --settings=config.test_settings e2e.main_flow`（自己開臨時網站與 `test_` 資料庫，不用先啟動伺服器；第一次要先 `python -m playwright install chromium`；平常的「測試」指令不會跑到它；失敗時截圖與 trace 在 `e2e-artifacts/`）
 - 檢查格式：`ruff check --fix .`
 - Migration：`python manage.py makemigrations screening` → `python manage.py migrate`
 - 部署檢查：`python manage.py check --deploy`（要在 `DEBUG=False` 下跑）

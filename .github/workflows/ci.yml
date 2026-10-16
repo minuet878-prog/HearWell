@@ -86,3 +86,48 @@ jobs:
       - name: Frontend build
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: npm run build --prefix frontend
+
+  # A real browser walks the main flow against a live test server (spec phase6_e2e.md).
+  # Not a required check yet: it becomes one after a week or two without flaky failures.
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      DEBUG: "True"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version-file: .python-version
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: pip install -r requirements-dev.txt
+      # The browser loads the built bundle, the same files production serves.
+      - run: npm ci --prefix frontend
+      - run: npm run build --prefix frontend
+      - run: python -m playwright install --with-deps chromium
+      - name: End-to-end test
+        run: python manage.py test --settings=config.test_settings e2e.main_flow
+      # Screenshot and trace of the failing moment; open the trace at https://trace.playwright.dev
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ failure() }}
+        with:
+          name: e2e-failure
+          path: e2e-artifacts/
