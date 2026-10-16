@@ -16,6 +16,10 @@
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="HearWell">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    {% if user.is_authenticated %}
+    {# Clears unfinished answers kept in this browser when logging out. #}
+    <script type="module" src="{% static 'screening/frontend/logout.js' %}"></script>
+    {% endif %}
     {% block extra_head %}
     {% endblock %}
 </head>
@@ -27,7 +31,7 @@
             {% if user.is_authenticated %}
             <div class="d-flex flex-wrap align-items-center gap-3">
                 <span class="text-break">目前登入：<strong>{{ user.username }}</strong></span>
-                <form action="{% url 'logout' %}" method="post">
+                <form id="logout-form" action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
                     <button class="btn btn-outline-light" type="submit">登出</button>
                 </form>
