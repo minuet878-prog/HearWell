@@ -441,6 +441,52 @@ def delete_account(request):
     )
 
 
+REPORT_RECENT = 5  # history rows per questionnaire on the health report
+
+
+@login_required
+def health_report(request):
+    # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
+    user = request.user
+    submissions = list(user.submissions.select_related("questionnaire").with_scores())
+    by_questionnaire = {}
+    for submission in submissions:  # newest first
+        if submission.questionnaire.code != IOI_HA:
+            by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
+    sections = [
+        {
+            "questionnaire": questionnaire,
+            "latest": records[0],
+            "count": len(records),
+            "recent": records[:REPORT_RECENT],
+            "max_score": max_score(questionnaire.code),
+        }
+        for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
+    ]
+    context = {
+        "sections": sections,
+        "recent_limit": REPORT_RECENT,
+        "difference": _aided_difference(user),
+        "today": timezone.localdate(),
+    }
+    ioi_ha = next((s for s in submissions if s.questionnaire.code == IOI_HA), None)
+    if ioi_ha:
+        answers = ioi_ha.answers.select_related("question").order_by("question__question_number")
+        items, grouped = _ioi_ha_items(ioi_ha, answers)
+        context["ioi_ha"] = {
+            "submission": ioi_ha,
+            "items": items,
+            "grouped": grouped,
+            "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
+            "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
+        }
+    audiogram = user.audiograms.prefetch_related("points").first()
+    if audiogram:
+        context.update(_audiogram_context(audiogram))
+    context["has_records"] = bool(submissions or audiogram)
+    return render(request, "screening/health_report.html", context)
+
+
 @login_required
 def submission_result(request, submission_id):
     submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
@@ -468,8 +514,8 @@ def submission_result(request, submission_id):
     )
 
 
-def _ioi_ha_result(request, submission, answers):
-    # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
+def _ioi_ha_items(submission, answers):
+    # The only place IOI-HA answers meet the norms; the result page and the report both use it.
     grouped = submission.norm_group != NormGroup.UNGROUPED
     items = []
     for answer in answers:
@@ -479,11 +525,18 @@ def _ioi_ha_result(request, submission, answers):
         )
         items.append(
             {
+                "name": IOI_HA_ITEM_NAMES[number],
                 "text": answer.question.question_text,
                 "label": IOI_HA_CHOICES[number][answer.score - 1],
                 "comparison": NORM_COMPARISON_TEXT.get(comparison),
             }
         )
+    return items, grouped
+
+
+def _ioi_ha_result(request, submission, answers):
+    # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
+    items, grouped = _ioi_ha_items(submission, answers)
     return render(
         request,
         "screening/result_ioi_ha.html",
@@ -528,21 +581,22 @@ def _own_audiogram(request, audiogram_id):
 @login_required
 def audiogram_detail(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
+    return render(request, "screening/audiogram_detail.html", _audiogram_context(audiogram))
+
+
+def _audiogram_context(audiogram):
+    # Shared by the audiogram page and the health report, so both read it the same way.
     result = audiogram.interpretation()
     # Right ear first, air before bone, as on a clinical record.
     points = sorted(
         audiogram.points.all(), key=lambda p: (p.ear != Ear.RIGHT, p.conduction, p.frequency)
     )
-    return render(
-        request,
-        "screening/audiogram_detail.html",
-        {
-            "audiogram": audiogram,
-            "ears": [(ear.value, ear.label, result[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)],
-            "points": points,
-            "chart_points": _chart_points(points),
-        },
-    )
+    return {
+        "audiogram": audiogram,
+        "ears": [(ear.value, ear.label, result[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)],
+        "points": points,
+        "chart_points": _chart_points(points),
+    }
 
 
 @login_required

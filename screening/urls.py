@@ -21,6 +21,7 @@ urlpatterns = [
     path("questionnaire_list", views.questionnaire_list, name="questionnaire_list"),
     path("questionnaire/<int:questionnaire_id>", views.screening, name="screening"),
     path("my_hearing", views.my_hearing, name="my_hearing"),
+    path("report", views.health_report, name="health_report"),
     path("my_data/download", views.download_my_data, name="download_my_data"),
     path("account/delete", views.delete_account, name="delete_account"),
     path("submission/<int:submission_id>", views.submission_result, name="result"),

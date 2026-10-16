@@ -168,4 +168,4 @@
 
 ## 目前階段
 
-Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。下一步是 Phase 8 分享：C3 可分享報告，再來 C1。細節見 `docs/roadmap.md`。
+Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。Phase 8 分享：C3 聽力報告已完成，下一步是 C1 家屬版（開工前先討論）。細節見 `docs/roadmap.md`。

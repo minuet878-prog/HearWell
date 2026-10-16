@@ -50,5 +50,9 @@
 {% empty %}
 <p>您還沒有做過篩檢紀錄</p>
 {% endfor %}
+<div class="mt-4">
+    <a class="btn btn-primary btn-lg" href="{% url 'health_report' %}">聽力報告</a>
+    <p class="mt-1 mb-0">可以印出來或存成 PDF，帶去給醫師看</p>
+</div>
 <p class="mt-4 d-flex flex-wrap gap-2 align-items-center"><a class="btn btn-outline-primary" href="{% url 'download_my_data' %}">下載我的資料</a><a class="btn btn-link text-danger" href="{% url 'delete_account' %}">刪除帳號</a></p>
 {% endblock %}
