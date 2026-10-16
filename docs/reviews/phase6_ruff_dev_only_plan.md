@@ -40,3 +40,9 @@
 `requirements.txt` 不是完整的鎖定清單：`pip install` 會自動補裝每個套件需要的其他套件。
 所以就算有哪個正式套件其實需要 `click`，pip 也會自己裝回來，不會因為清單少一行就啟動失敗。
 真正的風險只有「程式直接 `import click`」，`grep` 過，沒有。
+
+## 實作中追加（2026-10-16，本人同意）
+
+驗收 8 的試驗第一次沒變紅：`whitenoise` 只出現在 `MIDDLEWARE`、`STORAGES`，`check --deploy` 不會 import 它們。
+本機重現後，在 `check --deploy` 後面加 `gunicorn --check-config config.wsgi`（照 Render 啟動指令 `gunicorn config.wsgi` 把程式載入一次），
+並加 `pip list` 讓紀錄看得到裝了什麼。重跑試驗變紅。`brotli`（只在 collectstatic 用）仍抓不到，不做。

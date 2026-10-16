@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；下一步：`ruff` 搬到 `requirements-dev.txt`）
+**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；Phase 6 第 2 項完成；下一步：`ALLOWED_HOSTS` 空字串）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -137,7 +137,10 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - GitHub ruleset：`main` 必須通過 `backend`、`frontend` 才能合併；Render 改成「CI 通過後才部署」
   - 待合併後確認：`main` 上也有跑（驗收 9 後半）、Render 等 CI 通過才部署（驗收 11）
   - 改 job 名稱要同時改 ruleset 的必要檢查，不然 PR 會卡在「等待檢查」
-- [ ] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`（原 Phase 0）
+- [x] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`（原 Phase 0；規格 `docs/specs/phase6_ruff_dev_only.md`，2026-10-16）
+  - 一起刪掉 `click`、`h11`（只有沒在用的 `uvicorn` 需要）
+  - CI 加「只裝正式清單」檢查：`check --deploy`＋`gunicorn --check-config config.wsgi`；抓不到 `brotli`（只在 collectstatic 用）
+  - 待合併部署後確認：Render 安裝清單沒有 ruff、網站正常（驗收 5）
 - [ ] `ALLOWED_HOSTS` 設成空字串時 `check --deploy` 抓不到（環境變數沒設好會變成 `[""]`）（原 Phase 0）
 - [ ] 網頁版作答連按兩次（F-10）（原 Phase 5）
 - [ ] 網頁表單送出驗證失敗時，同一頁重新顯示，但 React 會接手從頭開始，錯誤訊息和已選的答案看不到（審查 1-3，原 Phase 5）
