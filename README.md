@@ -124,7 +124,7 @@ Submission |o--o{ Submission : "norm_basis"
    npm ci --prefix frontend
    ```
 
-   `requirements-dev.txt` 包含正式環境的套件，再加上本機用的 debug-toolbar。
+   `requirements-dev.txt` 包含正式環境的套件，再加上開發用的 debug-toolbar 和 ruff。
 
 2. 啟動 PostgreSQL 容器（版本與正式環境一致，為 18）
 

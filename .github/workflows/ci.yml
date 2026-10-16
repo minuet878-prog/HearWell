@@ -51,6 +51,19 @@ jobs:
       - name: Django tests
         if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: python manage.py test --settings=config.test_settings
+      # The steps above install the dev list, which includes the production one, so a package
+      # missing from requirements.txt would go unnoticed until Render. Same check as build.sh,
+      # in a fresh environment with the production list only.
+      - name: Production dependencies
+        if: ${{ !cancelled() }}
+        env:
+          DEBUG: "False"
+        run: |
+          python -m venv /tmp/prod
+          /tmp/prod/bin/pip install -r requirements.txt
+          /tmp/prod/bin/pip list
+          SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+            /tmp/prod/bin/python manage.py check --deploy --fail-level WARNING
 
   frontend:
     runs-on: ubuntu-latest
