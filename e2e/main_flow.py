@@ -111,7 +111,9 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         nav.get_by_role("link", name="我的紀錄").click()
         expect(self.main().get_by_role("link", name="查看結果")).to_have_count(1)
         expect(self.page.get_by_text("總分：20")).to_be_visible()
-        expect(self.main().get_by_text("輕度到中度影響")).to_be_visible()
+        # The record card only: the trend chart, drawn later by React, repeats the level text.
+        card = self.main().locator(".card", has=self.page.get_by_role("link", name="查看結果"))
+        expect(card.get_by_text("輕度到中度影響")).to_be_visible()
 
     def question(self, number):
         """The one question on screen, checked to be the expected one."""
