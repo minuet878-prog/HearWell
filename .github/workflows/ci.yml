@@ -8,10 +8,10 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same PR cancels the older run; every commit on main keeps its own result,
-# because Render deploys a main commit only after its checks pass.
+# A newer push to the same PR cancels the older run. On main each commit gets its own group,
+# so no run is ever cancelled or dropped: Render deploys a main commit only after its checks pass.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
