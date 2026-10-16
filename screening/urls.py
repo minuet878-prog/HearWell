@@ -1,3 +1,4 @@
+from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.views.generic import TemplateView
 
@@ -5,7 +6,13 @@ from . import views
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("login", views.login_view, name="login"),
+    path(
+        "login",
+        auth_views.LoginView.as_view(
+            template_name="screening/login.html", http_method_names=["get", "post"]
+        ),
+        name="login",
+    ),
     path("logout", views.logout_view, name="logout"),
     path("register", views.register, name="register"),
     path("questionnaire_list", views.questionnaire_list, name="questionnaire_list"),

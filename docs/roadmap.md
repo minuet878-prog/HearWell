@@ -11,7 +11,7 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；Phase 6 第 2–5 項完成；下一步：登入改用 `LoginView`、同名註冊 500）
+**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；Phase 6 第 2–5 項完成；下一步：錯誤監控）
 
 ### 兩個已定案的方向（2026-10）
 
@@ -154,9 +154,12 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] 測試依功能分資料夾（規格 `docs/specs/phase6_tests_by_feature.md`，2026-10-16）
   - `screening/tests.py`（約 5,000 行、43 個類別）拆成 `screening/tests/` 10 個檔，只搬家不改內容；356 個測試搬家前後清單相同
   - 只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`
-  - 待 PR 確認：CI 兩個檢查通過（驗收 6）
-- [ ] 登入改用內建 `LoginView`（會自己處理 `next`）；兩個人幾乎同時用同一個名字註冊會 500
-  （舊版有接 `IntegrityError`，新版沒有，機率極低）（原 Phase 2）
+  - PR #49 CI 兩個檢查通過（驗收 6）
+- [x] 登入改用內建 `LoginView`、同時同名註冊不再 500（原 Phase 2；規格 `docs/specs/phase6_login_view.md`，2026-10-16）
+  - 畫面、文字、`next` 動線不變；改變的只有：登入失敗後使用者名稱留在欄位裡、游標移到密碼欄
+  - 只收 GET、POST（`LoginView` 繼承的 PUT 會被當成 POST，要另外限制）
+  - 註冊撞車：顯示和一般同名一樣的訊息；不是名字被用走的 `IntegrityError` 照樣丟出
+  - 已知限制：大小寫不同的名字（`Alice`／`alice`）同時註冊，資料庫只擋完全相同的名字，會建出兩個帳號（機率比同名撞車更低）
 - [ ] **錯誤監控**：正式環境出錯能第一時間知道，工具在規格裡決定（原功能構想總表）
 - [ ] **端對端測試**：模擬使用者從登入、作答到看見結果，至少一條主要動線（原功能構想總表）
 - [ ] **無障礙基準線重新量測**（原 Phase 2）：下列多數在 Phase 4 改版處理過，先量出還剩哪些，再決定要不要修

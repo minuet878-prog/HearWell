@@ -1,11 +1,13 @@
 import re
 from datetime import date
+from unittest import mock
 
-from django.db import connection
+from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
+from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
 
 
@@ -93,6 +95,7 @@ class LoginNextTests(TestCase):
 
     def test_login_without_next_goes_home(self):
         self.assertRedirects(self._login(), reverse("index"))
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
 
     def test_next_kept_after_wrong_password(self):
         response = self._login(self.target, password="wrong-password")
@@ -154,6 +157,91 @@ class LoginNextTests(TestCase):
             f'<p class="text-body-emphasis mt-2">{self.HINT}</p>',
             html=True,
         )
+
+
+class LoginViewTests(TestCase):
+    """Spec docs/specs/phase6_login_view.md, acceptance 4-8, 10 and 14."""
+
+    PASSWORD = "Xk9#mPq2vLw"
+    ERROR = "使用者名稱或密碼錯誤"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.alice = User.objects.create_user(username="alice", password=cls.PASSWORD)
+        cls.bob = User.objects.create_user(username="bob", password=cls.PASSWORD)
+
+    def setUp(self):
+        self.url = reverse("login")
+        self.target = reverse("my_hearing")
+
+    def _login(self, username, password, **extra):
+        return self.client.post(self.url, {"username": username, "password": password, **extra})
+
+    def _error_block(self, response):
+        content = response.content.decode()
+        return re.search(r'class="mb-3 text-danger">(.*?)</div>', content, re.DOTALL).group(1)
+
+    def _username_input(self, response):
+        return re.search(r'<input[^>]*name="username"[^>]*>', response.content.decode()).group()
+
+    def _logged_in_id(self):
+        return self.client.session.get("_auth_user_id")
+
+    # 4
+    def test_wrong_password_stays_on_page(self):
+        response = self._login("alice", "wrong-password", next=self.target)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.ERROR)
+        self.assertIsNone(self._logged_in_id())
+        self.assertContains(
+            response, f'<input type="hidden" name="next" value="{self.target}">', html=True
+        )
+        self.assertNotContains(response, "wrong-password")
+
+    # 5
+    def test_unknown_user_gets_the_same_message(self):
+        wrong_password = self._error_block(self._login("alice", "wrong-password"))
+        unknown_user = self._error_block(self._login("nobody", "wrong-password"))
+        self.assertEqual(wrong_password.strip(), self.ERROR)
+        self.assertEqual(unknown_user, wrong_password)
+
+    # 6
+    def test_blank_submit_is_an_error_not_500(self):
+        response = self._login("", "")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.ERROR)
+        self.assertIsNone(self._logged_in_id())
+
+    # 7
+    def test_username_kept_after_failure(self):
+        response = self._login("alice", "wrong-password")
+        self.assertIn('value="alice"', self._username_input(response))
+        self.assertNotRegex(self._username_input(self.client.get(self.url)), r'value="[^"]')
+
+    # 14
+    def test_focus_moves_to_password_after_failure(self):
+        def focused(response):
+            content = response.content.decode()
+            return re.findall(r'<input[^>]*\bautofocus\b[^>]*name="(\w+)"', content)
+
+        self.assertEqual(focused(self._login("alice", "wrong-password")), ["password"])
+        self.assertEqual(focused(self.client.get(self.url)), ["username"])
+        self.assertEqual(focused(self._login("", "wrong-password")), ["username"])
+
+    # 8
+    def test_logged_in_user_can_switch_account(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(self._login("bob", self.PASSWORD), reverse("index"))
+        self.assertEqual(int(self._logged_in_id()), self.bob.pk)
+
+    # 10
+    def test_only_get_and_post(self):
+        for method in ("put", "delete"):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(self.url)
+                self.assertEqual(response.status_code, 405)
 
 
 class RegisterFormTests(TestCase):
@@ -228,6 +316,43 @@ class RegisterFormTests(TestCase):
         self.assertEqual(User.objects.count(), 1)
         for error in response.context["form"].errors["username"]:
             self.assertContains(response, error)
+
+    # Spec docs/specs/phase6_login_view.md, acceptance 11.
+    def test_name_taken_between_check_and_save(self):
+        original_is_valid = RegisterForm.is_valid
+
+        def valid_then_taken(form):
+            # The checks pass; then someone else saves the same name before this one does.
+            valid = original_is_valid(form)
+            User.objects.create_user(username="newcomer")
+            return valid
+
+        with mock.patch.object(RegisterForm, "is_valid", valid_then_taken):
+            response = self._post(roc_birth_year="44")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(
+            response.context["form"].errors["username"], ["一個相同名稱的使用者已經存在。"]
+        )
+        self.assertContains(response, "一個相同名稱的使用者已經存在。")
+        self.assertContains(response, 'value="newcomer"')
+        self.assertContains(response, 'value="44"')
+
+    def test_other_save_clash_is_not_reported_as_name_taken(self):
+        with (
+            mock.patch.object(RegisterForm, "save", side_effect=IntegrityError("other")),
+            self.assertRaisesMessage(IntegrityError, "other"),
+        ):
+            self._post()
+
+    # Spec docs/specs/phase6_login_view.md, acceptance 12: same message as the race above.
+    def test_duplicate_username_message(self):
+        User.objects.create_user(username="newcomer")
+        response = self._post()
+        self.assertEqual(
+            response.context["form"].errors["username"], ["一個相同名稱的使用者已經存在。"]
+        )
 
     def test_required_fields(self):
         for field in ("username", "email", "password1"):
