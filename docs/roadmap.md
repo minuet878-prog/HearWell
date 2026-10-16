@@ -163,7 +163,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - [x] **錯誤監控**（原功能構想總表；規格 `docs/specs/phase6_error_monitoring.md`，2026-10-16）：Sentry 免費版、資料放歐盟，有 `SENTRY_DSN` 才啟用
   - 只送錯誤類型、出錯位置、網址路徑與方法；`logger.error` 只送樣板。不送錯誤訊息、標頭（含 `X-CSRFToken`）、查詢字串、表單、cookie、IP、使用者、變數值、麵包屑、使用統計
   - 管理員測試網址 `/monitoring-test`（其他人 404）
-  - 待本人：開 Sentry 帳號、Render 設 `SENTRY_DSN`、打開測試網址確認收到 email（驗收 9，步驟見規格 4.4）；CI 待 PR（驗收 6）
+  - 待本人：開 Sentry 帳號、Render 設 `SENTRY_DSN`、打開測試網址確認收到 email（驗收 9，步驟見規格 4.4）；PR #51 CI 通過（驗收 6）
   - 之後可以考慮：前端（React）錯誤監控，要先評估 JS 體積
 - [ ] **端對端測試**：模擬使用者從登入、作答到看見結果，至少一條主要動線（原功能構想總表）
 - [ ] **無障礙基準線重新量測**（原 Phase 2）：下列多數在 Phase 4 改版處理過，先量出還剩哪些，再決定要不要修

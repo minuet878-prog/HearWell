@@ -92,7 +92,7 @@
 - [x] 4. 假設有設定監控金鑰，當請求得到 404、403、405 或表單驗證沒過，則什麼都不送。
 - [x] 4a. （審查後追加）假設偵測得到版本號（例如有 `SENTRY_RELEASE`），當一般請求正常完成，則什麼都不送（沒有使用統計）。
 - [x] 5. 假設沒有設定監控金鑰（本機、測試、CI），當網站啟動與發生錯誤，則不啟用監控、不嘗試連線，網站與全部測試照常。
-- [ ] 6. 假設改完，當跑 `check --deploy` 與 CI，則全部通過，正式環境的安裝清單有這次需要的套件。
+- [x] 6. 假設改完，當跑 `check --deploy` 與 CI，則全部通過，正式環境的安裝清單有這次需要的套件。（PR #51：`backend`、`frontend` 通過，「Production dependencies」只裝 `requirements.txt` 有裝到 `sentry-sdk`，`check --deploy`、`gunicorn --check-config` 通過）
 - [x] 7. 假設未登入或用一般使用者登入，當打開管理員測試網址，則回 404，監控什麼都不送。
 - [x] 8. 假設用管理員登入，當打開管理員測試網址，則回 500，監控收到一筆，錯誤類型看得出是測試用，而且沒有使用者身分。
 - [ ] 9. （人工，本人）假設正式環境已設定金鑰，當本人用管理員帳號打開測試網址，則幾分鐘內收到 email，打開看得到錯誤，而且看不到第 4.2 節「不能送」的任何東西。
@@ -125,7 +125,7 @@
   - 4：`test_normal_refusals_send_nothing`
   - 4a：`test_no_usage_data_even_with_a_release`
   - 5：`MonitoringSwitchTests`（子行程，沒有／空的／有 DSN）
-  - 6：本機 `check --deploy` 已在既有測試中通過；CI 待 PR
+  - 6：本機 `check --deploy` 已在既有測試中通過；PR #51 的 CI 通過（含只裝正式清單）
   - 7、8：`test_test_page_is_404_for_everyone_but_admins`、`test_test_page_sends_a_test_error_for_admins`
   - 9：人工，本人（步驟見 4.4）
   - 每一道限制（10 道）都拿掉試過，各自有測試變紅。
