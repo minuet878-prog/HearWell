@@ -5,7 +5,8 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.tests.helpers import consented_user
 
 
 class TrendChartPageTests(TestCase):
@@ -13,7 +14,7 @@ class TrendChartPageTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester")
+        cls.user = consented_user(username="tester")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.question = Question.objects.create(
             questionnaire=cls.questionnaire,
@@ -87,8 +88,8 @@ class HistoryTabsTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tabs_user")
-        cls.other = User.objects.create_user(username="tabs_other")
+        cls.user = consented_user(username="tabs_user")
+        cls.other = consented_user(username="tabs_other")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.hhie_questions = Question.objects.bulk_create(
             Question(

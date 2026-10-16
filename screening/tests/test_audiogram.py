@@ -10,8 +10,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import User
 from screening.tests import test_answering, test_pages
+from screening.tests.helpers import consented_user
 
 
 def _point(conduction, ear, frequency, db, no_response):
@@ -151,8 +151,8 @@ class AudiogramApiTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="audiogram_api")
-        cls.other = User.objects.create_user(username="audiogram_other")
+        cls.user = consented_user(username="audiogram_api")
+        cls.other = consented_user(username="audiogram_other")
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -317,8 +317,8 @@ class AudiogramPageTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="audiogram_page")
-        cls.other = User.objects.create_user(username="audiogram_page_other")
+        cls.user = consented_user(username="audiogram_page")
+        cls.other = consented_user(username="audiogram_page_other")
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -646,8 +646,8 @@ class AudiogramEditApiTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="audiogram_edit_api")
-        cls.other = User.objects.create_user(username="audiogram_edit_other")
+        cls.user = consented_user(username="audiogram_edit_api")
+        cls.other = consented_user(username="audiogram_edit_other")
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -780,8 +780,8 @@ class AudiogramEditPageTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="audiogram_edit_page")
-        cls.other = User.objects.create_user(username="audiogram_edit_page_other")
+        cls.user = consented_user(username="audiogram_edit_page")
+        cls.other = consented_user(username="audiogram_edit_page_other")
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -891,8 +891,8 @@ class AudiogramComparePageTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="audiogram_compare")
-        cls.other = User.objects.create_user(username="audiogram_compare_other")
+        cls.user = consented_user(username="audiogram_compare")
+        cls.other = consented_user(username="audiogram_compare_other")
 
     def setUp(self):
         self.client.force_login(self.user)

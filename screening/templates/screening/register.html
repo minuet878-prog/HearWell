@@ -29,6 +29,7 @@
             </div>
             {% include "screening/field_messages.html" with field=form.roc_birth_year %}
         </div>
+        <p>註冊後，會請您閱讀並同意<a class="btn btn-link px-1 align-baseline" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
         <input class="w-100 btn btn-lg btn-primary" type="submit" value="註冊">
     </form>
 

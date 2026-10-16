@@ -3,11 +3,12 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
+from screening.tests.helpers import consented_user
 
 
 class ModelsUniqueConstraintTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a")
+        self.user_a = consented_user(username="user_a")
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試問卷", code="test"
         )
@@ -42,7 +43,7 @@ class AdminLockAnsweredTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_superuser(username="admin", password="pw")
-        cls.user = User.objects.create_user(username="user")
+        cls.user = consented_user(username="user")
         cls.answered_q = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         cls.fresh_q = Questionnaire.objects.create(questionnaire_name="新問卷", code="new")
         cls.answered = Question.objects.create(

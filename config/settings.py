@@ -79,6 +79,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "screening.middleware.ConsentRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -151,7 +152,8 @@ AUTH_PASSWORD_VALIDATORS = [
 AUTH_USER_MODEL = "screening.User"
 
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "index"
+# The consent page sends people who already agreed straight on to the home page.
+LOGIN_REDIRECT_URL = "consent"
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -189,7 +191,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # API: read-only, logged-in users only (session cookie), JSON only.
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+        "screening.api.permissions.HasConsented",
+    ],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

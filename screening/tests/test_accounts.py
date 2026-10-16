@@ -9,12 +9,13 @@ from django.urls import reverse
 
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
+from screening.tests.helpers import consented_user
 
 
 class SubmissionResultAccessTests(TestCase):
     def setUp(self):
-        self.user_a = User.objects.create_user(username="user_a")
-        self.user_b = User.objects.create_user(username="user_b")
+        self.user_a = consented_user(username="user_a")
+        self.user_b = consented_user(username="user_b")
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試問卷", code="test"
         )
@@ -51,12 +52,13 @@ class LoginNextTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(username="tester", password=cls.PASSWORD)
+        cls.user = consented_user(username="tester", password=cls.PASSWORD)
 
     def setUp(self):
         self.target = reverse("questionnaire_list")
         self.login_url = f"{reverse('login')}?next={self.target}"
         self.register_url = f"{reverse('register')}?next={self.target}"
+        self.consent_url = f"{reverse('consent')}?next={self.target}"
 
     def _login(self, next_url=None, password=None):
         data = {"username": "tester", "password": password or self.PASSWORD}
@@ -94,7 +96,11 @@ class LoginNextTests(TestCase):
         self.assertRedirects(self._login(self.target), self.target)
 
     def test_login_without_next_goes_home(self):
-        self.assertRedirects(self._login(), reverse("index"))
+        # Login goes via the consent page, which sends people who already agreed on home
+        # (spec phase7_consent_privacy.md).
+        response = self._login()
+        self.assertRedirects(response, reverse("consent"), target_status_code=302)
+        self.assertRedirects(self.client.get(response.url), reverse("index"))
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
 
     def test_next_kept_after_wrong_password(self):
@@ -110,18 +116,20 @@ class LoginNextTests(TestCase):
                 self.client.logout()
                 response = self.client.get(f"{reverse('login')}?next={bad}")
                 self.assertNotContains(response, self.NOTE)
-                self.assertRedirects(self._login(bad), reverse("index"))
+                response = self._login(bad)
+                self.assertRedirects(response, reverse("consent"), target_status_code=302)
+                self.assertRedirects(self.client.get(response.url), reverse("index"))
 
     def test_register_link_carries_next_and_register_redirects(self):
         response = self.client.get(self.login_url)
         self.assertContains(response, f'href="{self.register_url}"')
-        self.assertRedirects(self._register(self.target), self.target)
+        self.assertRedirects(self._register(self.target), self.consent_url)
 
     def test_next_kept_after_register_error(self):
         response = self._register(self.target, confirmation="Different#123")
         self.assertContains(response, "輸入的兩個密碼不一致。")
         self._assert_next_kept(response)
-        self.assertRedirects(self._register(self.target), self.target)
+        self.assertRedirects(self._register(self.target), self.consent_url)
 
     def test_login_link_on_register_page_carries_next(self):
         response = self.client.get(self.register_url)
@@ -134,7 +142,7 @@ class LoginNextTests(TestCase):
             with self.subTest(next=bad):
                 self.client.logout()
                 response = self._register(bad, username=f"newcomer{i}")
-                self.assertRedirects(response, reverse("index"))
+                self.assertRedirects(response, reverse("consent"))
 
     def test_next_is_escaped_in_html(self):
         response = self.client.get(reverse("login"), {"next": '/x"><script>alert(1)</script>'})
@@ -167,8 +175,8 @@ class LoginViewTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.alice = User.objects.create_user(username="alice", password=cls.PASSWORD)
-        cls.bob = User.objects.create_user(username="bob", password=cls.PASSWORD)
+        cls.alice = consented_user(username="alice", password=cls.PASSWORD)
+        cls.bob = consented_user(username="bob", password=cls.PASSWORD)
 
     def setUp(self):
         self.url = reverse("login")
@@ -257,7 +265,9 @@ class LoginViewTests(TestCase):
         self.client.force_login(self.alice)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertRedirects(self._login("bob", self.PASSWORD), reverse("index"))
+        response = self._login("bob", self.PASSWORD)
+        self.assertRedirects(response, reverse("consent"), target_status_code=302)
+        self.assertRedirects(self.client.get(response.url), reverse("index"))
         self.assertEqual(int(self._logged_in_id()), self.bob.pk)
 
     # 10
@@ -298,7 +308,7 @@ class RegisterFormTests(TestCase):
 
     def test_register_without_birth_year(self):
         response = self._post()
-        self.assertRedirects(response, reverse("index"))
+        self.assertRedirects(response, reverse("consent"))
         user = User.objects.get(username="newcomer")
         self.assertIsNone(user.birth_year)
         self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
@@ -335,7 +345,7 @@ class RegisterFormTests(TestCase):
         self.assertContains(response, "你的密碼必須包含至少 8 個字元。")
 
     def test_duplicate_username_rejected(self):
-        User.objects.create_user(username="newcomer")
+        consented_user(username="newcomer")
         response = self._post()
         self.assertEqual(User.objects.count(), 1)
         for error in response.context["form"].errors["username"]:
@@ -348,7 +358,7 @@ class RegisterFormTests(TestCase):
         def valid_then_taken(form):
             # The checks pass; then someone else saves the same name before this one does.
             valid = original_is_valid(form)
-            User.objects.create_user(username="newcomer")
+            consented_user(username="newcomer")
             return valid
 
         with mock.patch.object(RegisterForm, "is_valid", valid_then_taken):
@@ -372,7 +382,7 @@ class RegisterFormTests(TestCase):
 
     # Spec docs/specs/phase6_login_view.md, acceptance 12: same message as the race above.
     def test_duplicate_username_message(self):
-        User.objects.create_user(username="newcomer")
+        consented_user(username="newcomer")
         response = self._post()
         self.assertEqual(
             response.context["form"].errors["username"], ["一個相同名稱的使用者已經存在。"]

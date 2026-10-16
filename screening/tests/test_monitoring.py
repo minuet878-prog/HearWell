@@ -19,6 +19,7 @@ from sentry_sdk.transport import Transport
 from config import monitoring
 from screening import scoring
 from screening.models import Question, Questionnaire, User
+from screening.tests.helpers import consented_user
 
 FAKE_DSN = "https://public@o0.ingest.de.sentry.io/0"
 
@@ -43,10 +44,11 @@ class MonitoringTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
+        cls.user = consented_user(
             username="monitored_user", email="monitored@example.com", password=cls.PASSWORD
         )
         cls.admin = User.objects.create_superuser(username="site_admin", password=cls.PASSWORD)
+        cls.admin.give_consent()
         cls.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試問卷", code="hhie-s"
         )
