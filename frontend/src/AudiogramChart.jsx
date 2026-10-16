@@ -3,14 +3,16 @@ import { useRef, useState } from "react";
 import { AIR_FREQUENCIES, CHART, DB_MIN, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
 
 const COLORS = { right: "#c0392b", left: "#1f4e8c" };
+// The older audiogram on the compare page: the same ear's colour, lighter (spec phase5_audiogram_2.md 4.2).
+const OLD_COLORS = { right: "#e8a59d", left: "#9db5d6" };
 const GRID_DBS = Array.from({ length: 14 }, (_, i) => DB_MIN + i * 10);
 const freqLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 // Above this level there is no room over the point, so the magnifier goes beside it.
 const MAGNIFIER_ABOVE_FROM = 10;
 const percent = (value, total) => `${(value / total) * 100}%`;
 
-function Mark({ point }) {
-  const color = COLORS[point.ear];
+function Mark({ point, colors = COLORS }) {
+  const color = colors[point.ear];
   const cx = x(point.frequency);
   const cy = y(point.db);
   const isRight = point.ear === "right";
@@ -70,9 +72,34 @@ function airLines(points, ear) {
   return pieces.filter((piece) => piece.length > 1);
 }
 
+// One audiogram's lines and marks; the older one of a comparison is light and dashed.
+function Layer({ points, old = false }) {
+  const colors = old ? OLD_COLORS : COLORS;
+  return (
+    <g className={old ? "audiogram-old" : "audiogram-new"}>
+      {["right", "left"].flatMap((ear) =>
+        airLines(points, ear).map((piece) => (
+          <polyline
+            key={`${ear}-${piece[0].frequency}`}
+            className={`air-line-${ear}`}
+            points={piece.map((p) => `${x(p.frequency)},${y(p.db)}`).join(" ")}
+            fill="none"
+            stroke={colors[ear]}
+            strokeWidth="1.5"
+            strokeDasharray={old ? "6 4" : undefined}
+          />
+        )),
+      )}
+      {points.map((p) => (
+        <Mark key={pointKey(p.ear, p.conduction, p.frequency)} point={p} colors={colors} />
+      ))}
+    </g>
+  );
+}
+
 // Read-only without `symbol`; with it, press-drag-release reports onCommit(frequency, level).
-// `masked` only shapes the point drawn while dragging.
-export default function AudiogramChart({ points, symbol, masked = false, onCommit }) {
+// `masked` only shapes the point drawn while dragging. `oldPoints` (read-only) is drawn underneath.
+export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit }) {
   const svg = useRef(null);
   const dragging = useRef(null);
   const [preview, setPreview] = useState(null);
@@ -158,21 +185,8 @@ export default function AudiogramChart({ points, symbol, masked = false, onCommi
           </g>
         ))}
         <rect x={CHART.left} y={CHART.top} width={CHART.right - CHART.left} height={CHART.bottom - CHART.top} fill="none" stroke="#555" />
-        {["right", "left"].flatMap((ear) =>
-          airLines(shown, ear).map((piece) => (
-            <polyline
-              key={`${ear}-${piece[0].frequency}`}
-              className={`air-line-${ear}`}
-              points={piece.map((p) => `${x(p.frequency)},${y(p.db)}`).join(" ")}
-              fill="none"
-              stroke={COLORS[ear]}
-              strokeWidth="1.5"
-            />
-          )),
-        )}
-        {shown.map((p) => (
-          <Mark key={pointKey(p.ear, p.conduction, p.frequency)} point={p} />
-        ))}
+        {oldPoints && <Layer points={oldPoints} old />}
+        <Layer points={shown} />
       </svg>
       {/* HTML, not SVG text, so it is sized in rem and grows with the user's font size (review 1-2). */}
       {preview && (

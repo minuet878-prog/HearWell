@@ -377,3 +377,94 @@ describe("save", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 });
+
+// Spec docs/specs/phase5_audiogram_2.md 4.1.
+describe("edit", () => {
+  const SAVED = [
+    { ear: "right", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: true },
+    { ear: "right", conduction: "air", frequency: 2000, db: 120, no_response: true, masked: false },
+  ];
+  const renderEdit = () =>
+    render(
+      <AudiogramApp
+        today={TODAY}
+        csrfToken="csrf-token"
+        navigate={navigate}
+        audiogramId={7}
+        initialPoints={SAVED}
+        initialTestedOn="2026-01-10"
+      />,
+    );
+  const sent = () => JSON.parse(fetch.mock.calls[0][1].body);
+
+  it("opens with the saved points and date (acceptance 1)", () => {
+    renderEdit();
+    expect(point("right-air-1000").dataset.masked).toBe("true");
+    expect(point("right-air-1000").querySelector("polygon")).not.toBeNull();
+    expect(point("right-air-2000").dataset.noResponse).toBe("true");
+    expect(point("right-air-2000").querySelector(".no-response-arrow")).not.toBeNull();
+    expect(screen.getByLabelText("檢查日期").value).toBe("2026-01-10");
+    expect(select("右耳氣導 1000 Hz").value).toBe("40");
+    expect(maskBox("右耳氣導 1000 Hz").checked).toBe(true);
+    expect(select("右耳氣導 2000 Hz").value).toBe("nr");
+  });
+
+  it("the clear button waits for a newly marked point (spec 4.1)", () => {
+    renderEdit();
+    const clear = () => screen.getByRole("button", { name: /清除/ });
+    expect(clear().disabled).toBe(true);
+    drag(500, 20, 20);
+    expect(clear().textContent).toBe("清除 右耳氣導 500 Hz");
+  });
+
+  it("puts the whole audiogram, then opens it (acceptance 2)", async () => {
+    fetch.mockImplementationOnce(() =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 7 }) }),
+    );
+    renderEdit();
+    // Masking is off, so moving the masked point also unmasks it.
+    drag(1000, 40, 60);
+    fireEvent.change(select("右耳氣導 2000 Hz"), { target: { value: "" } });
+    setDate("2026-01-12");
+    save();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/audiograms/7"));
+    const [url, options] = fetch.mock.calls[0];
+    expect(url).toBe("/api/audiograms/7/");
+    expect(options.method).toBe("PUT");
+    expect(options.headers["X-CSRFToken"]).toBe("csrf-token");
+    expect(options.headers["Idempotency-Key"]).toBeUndefined();
+    expect(sent()).toEqual({
+      tested_on: "2026-01-12",
+      points: [{ ear: "right", conduction: "air", frequency: 1000, db: 60, no_response: false, masked: false }],
+    });
+  });
+
+  it("checks the date and points before sending (acceptance 3)", () => {
+    renderEdit();
+    setDate("2026-10-17");
+    save();
+    expect(screen.getByRole("alert").textContent).toContain("檢查日期不能是未來");
+    setDate("2026-01-10");
+    fireEvent.change(select("右耳氣導 1000 Hz"), { target: { value: "" } });
+    fireEvent.change(select("右耳氣導 2000 Hz"), { target: { value: "" } });
+    save();
+    expect(screen.getByRole("alert").textContent).toContain("請至少標記一個點");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("a double click sends once (acceptance 7)", async () => {
+    renderEdit();
+    save();
+    save();
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("says so when the audiogram is gone", async () => {
+    fetch.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) }));
+    renderEdit();
+    save();
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("這張聽力圖已經不存在"));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+});

@@ -77,3 +77,65 @@ def interpret(points):
     """
     points = list(points)
     return {ear: _interpret_ear([p for p in points if p.ear == ear]) for ear in ("right", "left")}
+
+
+def _compare_rows(new, old, frequencies):
+    rows = []
+    for frequency in frequencies:
+        n, o = new.get(frequency), old.get(frequency)
+        if n is None and o is None:
+            continue
+        # "missing": one side has no value; "no_response": a value that is only a lower bound.
+        if n is None or o is None:
+            reason = "missing"
+        elif n.no_response or o.no_response:
+            reason = "no_response"
+        else:
+            reason = None
+        diff = None if reason else n.db - o.db
+        rows.append({"frequency": frequency, "new": n, "old": o, "diff": diff, "reason": reason})
+    return rows
+
+
+def compare(new_points, old_points):
+    """Two audiograms side by side (spec docs/specs/phase5_audiogram_2.md 4.2).
+
+    The averages come from interpret(), the same path as the detail page; this only subtracts.
+    """
+    new_points, old_points = list(new_points), list(old_points)
+    new_result, old_result = interpret(new_points), interpret(old_points)
+
+    def by_frequency(points, ear, conduction):
+        return {p.frequency: p for p in points if p.ear == ear and p.conduction == conduction}
+
+    result = {}
+    for ear in ("right", "left"):
+        n, o = new_result[ear], old_result[ear]
+        both = n["pta"] is not None and o["pta"] is not None
+        # Only the air points the difference is made of; the result cards' flag can include bone.
+        pta_points = [
+            p
+            for p in new_points + old_points
+            if p.ear == ear and p.conduction == "air" and p.frequency in PTA_FREQUENCIES
+        ]
+        result[ear] = {
+            "pta": {
+                "new": n["pta"],
+                "old": o["pta"],
+                "new_degree": n["degree"],
+                "old_degree": o["degree"],
+                "diff": n["pta"] - o["pta"] if both else None,
+                "no_response": both and any(p.no_response for p in pta_points),
+            },
+            "air": _compare_rows(
+                by_frequency(new_points, ear, "air"),
+                by_frequency(old_points, ear, "air"),
+                AIR_FREQUENCIES,
+            ),
+            "bone": _compare_rows(
+                by_frequency(new_points, ear, "bone"),
+                by_frequency(old_points, ear, "bone"),
+                BONE_FREQUENCIES,
+            ),
+        }
+    return result

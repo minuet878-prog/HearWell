@@ -66,6 +66,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/Audiogram'
           description: ''
+    put:
+      operationId: audiograms_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - audiograms
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AudiogramCreate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audiogram'
+          description: ''
+        '400':
+          description: Invalid points or date; nothing changed
+        '404':
+          description: Not this user's audiogram
   /api/questionnaires/:
     get:
       operationId: questionnaires_list

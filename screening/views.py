@@ -1,13 +1,14 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
+from screening.audiogram import compare
 from screening.forms import AnswerFormSet, HearingAidForm, RegisterForm
 from screening.scoring import (
     IOI_HA,
@@ -308,6 +309,20 @@ def audiogram_list(request):
     )
 
 
+def _chart_points(points):
+    return [
+        {
+            "ear": p.ear,
+            "conduction": p.conduction,
+            "frequency": p.frequency,
+            "db": p.db,
+            "no_response": p.no_response,
+            "masked": p.masked,
+        }
+        for p in points
+    ]
+
+
 @login_required
 def audiogram_new(request):
     return render(request, "screening/audiogram_new.html", {"today": timezone.localdate()})
@@ -334,17 +349,7 @@ def audiogram_detail(request, audiogram_id):
             "audiogram": audiogram,
             "ears": [(ear.value, ear.label, result[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)],
             "points": points,
-            "chart_points": [
-                {
-                    "ear": p.ear,
-                    "conduction": p.conduction,
-                    "frequency": p.frequency,
-                    "db": p.db,
-                    "no_response": p.no_response,
-                    "masked": p.masked,
-                }
-                for p in points
-            ],
+            "chart_points": _chart_points(points),
         },
     )
 
@@ -357,3 +362,56 @@ def audiogram_delete(request, audiogram_id):
         audiogram.delete()
         return redirect("audiogram_list")
     return render(request, "screening/audiogram_delete.html", {"audiogram": audiogram})
+
+
+@login_required
+def audiogram_edit(request, audiogram_id):
+    audiogram = _own_audiogram(request, audiogram_id)
+    initial = {
+        "tested_on": audiogram.tested_on.isoformat(),
+        "points": _chart_points(audiogram.points.all()),
+    }
+    return render(
+        request,
+        "screening/audiogram_new.html",
+        {"today": timezone.localdate(), "audiogram": audiogram, "initial": initial},
+    )
+
+
+def _compare_ids(request, audiograms):
+    if "a" not in request.GET and "b" not in request.GET:
+        return [a.id for a in audiograms[:2]]
+    try:
+        return [int(request.GET["a"]), int(request.GET["b"])]
+    except (KeyError, ValueError):
+        raise Http404 from None
+
+
+@login_required
+def audiogram_compare(request):
+    audiograms = list(request.user.audiograms.all())
+    context = {"audiograms": audiograms}
+    if len(audiograms) < 2:
+        return render(request, "screening/audiogram_compare.html", context)
+    ids = _compare_ids(request, audiograms)
+    # Model ordering puts the newer one first, whichever select it was picked in (spec 4.2).
+    pair = list(request.user.audiograms.prefetch_related("points").filter(pk__in=ids))
+    if len(pair) != len(set(ids)):
+        raise Http404
+    ear = request.GET.get("ear")
+    if ear not in Ear.values:
+        ear = Ear.RIGHT
+    context.update(a=ids[0], b=ids[1], ear=ear, ears=Ear.choices)
+    if len(pair) == 2:
+        new, old = pair
+        result = compare(new.points.all(), old.points.all())[ear]
+        context.update(
+            new=new,
+            old=old,
+            ear_label=Ear(ear).label,
+            result=result,
+            sections=[("air", "氣導", result["air"]), ("bone", "骨導", result["bone"])],
+            chart_points=_chart_points(p for p in new.points.all() if p.ear == ear),
+            old_chart_points=_chart_points(p for p in old.points.all() if p.ear == ear),
+        )
+    return render(request, "screening/audiogram_compare.html", context)

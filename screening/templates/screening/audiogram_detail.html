@@ -36,7 +36,7 @@
             <tr>
                 <td>{{ point.get_ear_display }}{{ point.get_conduction_display }}</td>
                 <td>{{ point.frequency }} Hz</td>
-                <td>{{ point.db }} dB{% if point.masked and point.no_response %}（遮蔽、無反應）{% elif point.masked %}（遮蔽）{% elif point.no_response %}（無反應）{% endif %}</td>
+                <td>{% include "screening/audiogram_point_value.html" %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -44,6 +44,7 @@
 </details>
 <p class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-primary" href="{% url 'audiogram_list' %}">回聽力圖清單</a>
+    <a class="btn btn-outline-primary" href="{% url 'audiogram_edit' audiogram.id %}">修改這張聽力圖</a>
     <a class="btn btn-outline-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張聽力圖</a>
 </p>
 {% endblock %}

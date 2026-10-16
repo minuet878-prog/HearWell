@@ -216,8 +216,35 @@ class AudiogramCreate(GenericAPIView):
         )
 
 
+@transaction.atomic
+def _replace_audiogram(audiogram, data):
+    audiogram.tested_on = data["tested_on"]
+    audiogram.save(update_fields=["tested_on"])
+    audiogram.points.all().delete()
+    AudiogramPoint.objects.bulk_create(
+        AudiogramPoint(audiogram=audiogram, **point) for point in data["points"]
+    )
+
+
 class AudiogramDetail(RetrieveAPIView):
     serializer_class = AudiogramSerializer
 
     def get_queryset(self):
         return _own_audiograms(self.request)
+
+    @extend_schema(
+        request=AudiogramCreateSerializer,
+        responses={
+            200: AudiogramSerializer,
+            400: OpenApiResponse(description="Invalid points or date; nothing changed"),
+            404: OpenApiResponse(description="Not this user's audiogram"),
+        },
+    )
+    def put(self, request, pk):
+        # The whole audiogram is replaced, so sending it twice changes nothing more: no receipt
+        # number needed. Same validation as creating one.
+        audiogram = self.get_object()
+        serializer = AudiogramCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        _replace_audiogram(audiogram, serializer.validated_data)
+        return Response(AudiogramSerializer(self.get_object()).data)
