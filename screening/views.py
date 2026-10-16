@@ -131,6 +131,7 @@ def screening(request, questionnaire_id):
                 "formset": formset,
                 "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
                 "is_ioi_ha": is_ioi_ha,
+                "use_react": not is_ioi_ha,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },
@@ -197,6 +198,8 @@ def screening(request, questionnaire_id):
                     "formset": formset,
                     "hearing_aid_form": hearing_aid_form,
                     "is_ioi_ha": is_ioi_ha,
+                    # Stay on this form: React would start over and drop the errors and answers.
+                    "use_react": False,
                     # Nothing was saved, so the fixed answers go out under the same number.
                     "idempotency_key": key,
                 },

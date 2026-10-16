@@ -4888,3 +4888,84 @@ class WebDoubleSubmitTests(TestCase):
         self.assertEqual(len(calls), 2)
         self.assertRedirects(response, self._result_url(first))
         self.assertEqual(Submission.objects.count(), 1)
+
+
+class WebFormErrorsStayTests(TestCase):
+    """Spec docs/specs/phase6_web_form_errors_stay.md, acceptance 1-5."""
+
+    ANSWER_JS = ReactAnswerPageTests.ANSWER_JS
+    MISSING_ONE = "還有 1 題沒有回答"
+
+    # Borrowed without inheriting (and rerunning) its tests; unwrap so `cls` is this class.
+    setUpTestData = classmethod(WebDoubleSubmitTests.setUpTestData.__func__)
+    setUp = WebDoubleSubmitTests.setUp
+    _url = WebDoubleSubmitTests._url
+    _key = WebDoubleSubmitTests._key
+    _open = WebDoubleSubmitTests._open
+    _data = WebDoubleSubmitTests._data
+    KEY = WebDoubleSubmitTests.KEY
+
+    def _assert_stays_on_web_form(self, response):
+        content = response.content.decode()
+        self.assertNotIn(self.ANSWER_JS, content)
+        self.assertNotIn('id="answer-app"', content)
+        self.assertNotIn("answer-loading", content)
+        self.assertNotIn("<script>", content)
+        form_tag = re.search(r'<form id="answer-form"[^>]*>', content).group()
+        self.assertNotIn("hidden", form_tag)
+        self.assertNotIn("style=", form_tag)
+
+    def test_missing_answer_shows_errors_keeps_answers_and_no_react(self):
+        # Acceptance 1 and 5.
+        key = self._open()
+        response = self.client.post(self._url(), self._data(key, skip=(3,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.MISSING_ONE)
+        content = response.content.decode()
+        self.assertIn('aria-describedby="id_form-2-score_error"', content)
+        for i in range(10):
+            checked = re.search(rf'name="form-{i}-score" value="2"[^>]*checked', content)
+            with self.subTest(form=i):
+                if i == 2:
+                    self.assertIsNone(checked)
+                else:
+                    self.assertIsNotNone(checked)
+        self.assertRegex(content, r'name="wearing_hearing_aid" value="False"[^>]*checked')
+        self._assert_stays_on_web_form(response)
+
+    def test_missing_hearing_aid_answer_also_stays_on_web_form(self):
+        data = self._data(self._open())
+        del data["wearing_hearing_aid"]
+        response = self.client.post(self._url(), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'aria-describedby="id_wearing_hearing_aid_error"')
+        self._assert_stays_on_web_form(response)
+
+    def test_fixed_answers_save_once_under_the_same_key(self):
+        # Acceptance 2.
+        key = self._open()
+        failed = self.client.post(self._url(), self._data(key, skip=(3,)))
+        self.assertEqual(self._key(failed), key)
+        response = self.client.post(self._url(), self._data(key), follow=True)
+        submission = Submission.objects.get()
+        self.assertEqual(str(submission.idempotency_key), key)
+        self.assertRedirects(response, reverse("result", args=[submission.id]))
+
+    def test_opening_the_page_still_loads_react(self):
+        # Acceptance 3.
+        for code in ("hhie-s", "hhia-s"):
+            with self.subTest(code=code):
+                response = self.client.get(self._url(code))
+                self.assertContains(response, self.ANSWER_JS)
+                self.assertContains(response, 'id="answer-app"')
+                self.assertContains(response, 'id="answer-loading"')
+
+    def test_ioi_ha_failed_submit_unchanged(self):
+        # Acceptance 4.
+        key = self._open("ioi-ha")
+        response = self.client.post(self._url("ioi-ha"), self._data(key, "ioi-ha", skip=(3,)))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.MISSING_ONE)
+        self.assertEqual(self._key(response), key)
+        self._assert_stays_on_web_form(response)
+        self.assertFalse(Submission.objects.exists())

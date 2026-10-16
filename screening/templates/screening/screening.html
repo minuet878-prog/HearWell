@@ -4,7 +4,7 @@
 {% block title %}{{ questionnaire.questionnaire_name }} 作答｜HearWell{% endblock %}
 
 {% block extra_head %}
-{% if not is_ioi_ha %}
+{% if use_react %}
 <script type="module" src="{% static 'screening/frontend/answer.js' %}"></script>
 {% endif %}
 <script defer src="{% static 'screening/submit-button.js' %}"></script>
@@ -23,7 +23,7 @@
     <p class="h3 text-muted">本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。請在閱讀每項問題後圈選常常、有時或從未。
     </p>
     {% endif %}
-    {% if not is_ioi_ha %}
+    {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="fs-5 fw-bold" role="status"></p>
     {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
