@@ -64,6 +64,14 @@ class MonitoringTests(TestCase):
         self.transport = CaptureTransport()
         monitoring.init(FAKE_DSN, transport=self.transport)
         self.addCleanup(sentry_sdk.init)  # back to a client that sends nothing
+        # That client keeps recording breadcrumbs between tests; production calls init once at
+        # start-up, so nothing is recorded before it. Start each test from the same clean state.
+        for scope in (
+            sentry_sdk.get_global_scope(),
+            sentry_sdk.get_isolation_scope(),
+            sentry_sdk.get_current_scope(),
+        ):
+            scope.clear_breadcrumbs()
 
     def _send(self, method, path, data=None, user=None, csrf=True):
         """Call Django the way gunicorn does: Sentry reads the URL, headers and cookies there,
@@ -191,13 +199,15 @@ class MonitoringTests(TestCase):
 
     # 3b
     def test_logged_error_sends_only_the_template(self):
-        self.assertEqual(scoring.classify(999, "hhie-s"), scoring.UNKNOWN)
+        # Seven digits: longer than the microseconds in a timestamp, so only a leak can match.
+        self.assertEqual(scoring.classify(4242424, "hhie-s"), scoring.UNKNOWN)
         event, payload = self._only_event()
         self.assertEqual(
             event["logentry"], {"message": "Score %s out of range for questionnaire %r"}
         )
-        self.assertNotIn("999", payload)
+        self.assertNotIn("4242424", payload)
         self.assertNotIn("hhie-s", payload)
+        self.assertFalse(event.get("breadcrumbs", {}).get("values"))
 
     # 3b
     def test_logs_before_the_error_do_not_ride_along(self):
