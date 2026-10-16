@@ -228,6 +228,30 @@ class LoginViewTests(TestCase):
         self.assertEqual(focused(self.client.get(self.url)), ["username"])
         self.assertEqual(focused(self._login("", "wrong-password")), ["username"])
 
+    def test_failure_message_is_linked_to_both_fields(self):
+        # Spec phase6_a11y_remeasure.md acceptance 12.
+        def inputs(response):
+            content = response.content.decode()
+            return {
+                name: re.search(rf'<input[^>]*name="{name}"[^>]*>', content).group()
+                for name in ("username", "password")
+            }
+
+        response = self._login("alice", "wrong-password")
+        self.assertContains(
+            response,
+            f'<div id="login_error" class="mb-3 text-danger">{self.ERROR}</div>',
+            html=True,
+        )
+        for name, tag in inputs(response).items():
+            with self.subTest(name=name):
+                self.assertIn('aria-invalid="true"', tag)
+                self.assertIn('aria-describedby="login_error"', tag)
+        for name, tag in inputs(self.client.get(self.url)).items():
+            with self.subTest(name=name, page="first visit"):
+                self.assertNotIn("aria-invalid", tag)
+                self.assertNotIn("aria-describedby", tag)
+
     # 8
     def test_logged_in_user_can_switch_account(self):
         self.client.force_login(self.alice)

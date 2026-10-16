@@ -1149,3 +1149,15 @@ class AudiogramComparePageTests(TestCase):
         for _ in range(20):
             self._make([*_four(_air, "right", (30,) * 4), *_four(_bone, "left", (20,) * 4)])
         self.assertEqual(queries(), few)
+
+    def test_header_dates_can_wrap_on_narrow_screens(self):
+        # Spec phase6_a11y_remeasure.md acceptance 7: at 320 px the table must fit without
+        # page scrolling, so each date header may break after the year.
+        first, _, last = self._three()
+        main = self._main(self._get(a=first.id, b=last.id))
+        headers = re.findall(r'<tr data-row="head">(.*?)</tr>', main, re.DOTALL)
+        self.assertTrue(headers)
+        for header in headers:
+            with self.subTest(header=header):
+                self.assertIn('<th scope="col">2026/<wbr>01/10</th>', header)
+                self.assertIn('<th scope="col">2026/<wbr>09/10</th>', header)

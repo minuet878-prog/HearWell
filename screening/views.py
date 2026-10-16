@@ -174,14 +174,20 @@ def screening(request, questionnaire_id):
                 return _already_sent(request, existing)
             return redirect("result", submission_id=submission.id)
         else:
-            # Count only questions shown on the page, so the number matches the marked ones.
-            # A form missing its question_id was tampered with: it gets the generic error instead.
-            unanswered = sum(
-                form.has_error("score", code="required") and not form.has_error("question_id")
-                for _, form in question_form
-            )
+            # Only questions shown on the page, so the list matches the marked ones. A form
+            # missing its question_id was tampered with: it gets the generic error instead.
+            # Each entry links to the question's fieldset id in screening.html.
+            unanswered = [
+                (f"第 {number} 題", f"question-{number}")
+                for number, (_, form) in enumerate(question_form, start=1)
+                if form.has_error("score", code="required") and not form.has_error("question_id")
+            ]
+            if hearing_aid_form is not None and hearing_aid_form.has_error(
+                "wearing_hearing_aid", code="required"
+            ):
+                unanswered.insert(0, ("是否戴助聽器", "question-hearing-aid"))
             if unanswered:
-                message = f"還有 {unanswered} 題沒有回答，請看標示紅字的題目。"
+                message = f"還有 {len(unanswered)} 題沒有回答，請看標示紅字的題目。"
             else:
                 message = formset.non_form_errors()
             return render(
@@ -189,6 +195,7 @@ def screening(request, questionnaire_id):
                 "screening/screening.html",
                 {
                     "message": message,
+                    "unanswered": unanswered,
                     "question_form": question_form,
                     "question_count": len(questions),
                     "questionnaire": questionnaire,

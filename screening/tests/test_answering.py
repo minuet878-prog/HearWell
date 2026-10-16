@@ -704,3 +704,91 @@ class WebFormErrorsStayTests(TestCase):
         self.assertEqual(self._key(response), key)
         self._assert_stays_on_web_form(response)
         self.assertFalse(Submission.objects.exists())
+
+
+class ErrorSummaryTests(TestCase):
+    """Spec docs/specs/phase6_a11y_remeasure.md, acceptance 8-10."""
+
+    setUpTestData = classmethod(WebDoubleSubmitTests.setUpTestData.__func__)
+    setUp = WebDoubleSubmitTests.setUp
+    _url = WebDoubleSubmitTests._url
+    _key = WebDoubleSubmitTests._key
+    _open = WebDoubleSubmitTests._open
+    _data = WebDoubleSubmitTests._data
+    KEY = WebDoubleSubmitTests.KEY
+
+    SUMMARY = re.compile(r'<div id="error-summary"[^>]*>.*?</div>', re.DOTALL)
+
+    def _summary(self, data, code="hhie-s"):
+        content = self.client.post(self._url(code), data).content.decode()
+        match = self.SUMMARY.search(content)
+        self.assertIsNotNone(match, "no error summary")
+        return content, match.group()
+
+    def _links(self, summary):
+        return re.findall(r'<a [^>]*href="#([^"]+)"[^>]*>([^<]+)</a>', summary)
+
+    def _assert_targets_exist(self, content, links):
+        for target, _ in links:
+            with self.subTest(target=target):
+                # The whole question, so its text scrolls into view and is read out.
+                self.assertRegex(content, rf'<fieldset id="{re.escape(target)}" tabindex="-1"')
+
+    # 8
+    def test_missing_questions_listed_with_links(self):
+        content, summary = self._summary(self._data(self._open(), skip=(2, 5, 7)))
+        self.assertIn("還有 3 題沒有回答", summary)
+        links = self._links(summary)
+        self.assertEqual(
+            links,
+            [
+                ("question-2", "第 2 題"),
+                ("question-5", "第 5 題"),
+                ("question-7", "第 7 題"),
+            ],
+        )
+        self._assert_targets_exist(content, links)
+
+    # 9
+    def test_only_hearing_aid_missing_still_has_summary(self):
+        data = self._data(self._open())
+        del data["wearing_hearing_aid"]
+        content, summary = self._summary(data)
+        self.assertIn("還有 1 題沒有回答", summary)
+        links = self._links(summary)
+        self.assertEqual(links, [("question-hearing-aid", "是否戴助聽器")])
+        self._assert_targets_exist(content, links)
+
+    def test_hearing_aid_listed_first(self):
+        data = self._data(self._open(), skip=(3,))
+        del data["wearing_hearing_aid"]
+        _, summary = self._summary(data)
+        self.assertIn("還有 2 題沒有回答", summary)
+        self.assertEqual([text for _, text in self._links(summary)], ["是否戴助聽器", "第 3 題"])
+
+    def test_ioi_ha_has_no_hearing_aid_item(self):
+        _, summary = self._summary(self._data(self._open("ioi-ha"), "ioi-ha", skip=(4,)), "ioi-ha")
+        self.assertEqual(self._links(summary), [("question-4", "第 4 題")])
+
+    # 10
+    def test_summary_takes_focus_and_is_announced(self):
+        _, summary = self._summary(self._data(self._open(), skip=(1,)))
+        opening = re.match(r"<div[^>]*>", summary).group()
+        self.assertIn('role="alert"', opening)
+        self.assertIn('tabindex="-1"', opening)
+        self.assertRegex(opening, r"\bautofocus\b")
+
+    def test_no_summary_before_submitting(self):
+        self.assertNotIn('id="error-summary"', self.client.get(self._url()).content.decode())
+
+    def test_no_template_comment_leaks_onto_the_page(self):
+        content, _ = self._summary(self._data(self._open(), skip=(1,)))
+        self.assertNotIn("{#", content)
+        self.assertNotIn("#}", content)
+
+    def test_generic_error_list_is_not_inside_a_paragraph(self):
+        data = self._data(self._open())
+        data["form-TOTAL_FORMS"] = 12
+        content, summary = self._summary(data)
+        self.assertIn("表單資料有誤", summary)
+        self.assertNotRegex(content, r"<p[^>]*>\s*<ul")
