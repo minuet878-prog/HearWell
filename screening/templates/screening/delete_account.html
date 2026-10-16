@@ -1,0 +1,32 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}刪除帳號｜HearWell{% endblock %}
+
+{% block body %}
+<h1 class="h3 mt-3">刪除帳號</h1>
+{% if is_admin %}
+<p>管理員帳號請先在後台移除管理員權限，再回來刪除。</p>
+<a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">回我的紀錄</a>
+{% else %}
+<p>刪除後，下面這些資料會全部消失，<strong>無法復原</strong>：</p>
+<ul>
+    <li>您的帳號（使用者名稱、電子郵件、出生年）</li>
+    <li>問卷紀錄 {{ submission_count }} 筆（每一題的作答和分數）</li>
+    <li>聽力圖 {{ audiogram_count }} 張</li>
+    <li>同意紀錄</li>
+</ul>
+<p>想留一份紀錄的話，請先<a class="btn btn-link px-1 align-baseline" href="{% url 'download_my_data' %}">下載我的資料</a>。</p>
+<form id="delete-account-form" method="post" class="narrow-form">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="id_password" class="form-label">請輸入密碼確認</label>
+        <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
+        {% include "screening/field_messages.html" with field=form.password %}
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-danger btn-lg">刪除帳號</button>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">取消</a>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -39,7 +39,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
         <li>網站主機：Render，位於美國俄亥俄州。</li>
         <li>資料庫：Neon，位於美國俄亥俄州（使用 Amazon 的雲端機房）。</li>
         <li>所以您的資料會傳到美國存放。</li>
-        <li>您的資料會保存到您刪除帳號或要求刪除為止。</li>
+        <li>您的資料會保存到您刪除帳號或要求刪除為止。刪除後，備份中的資料會在 6 小時內自動清除。</li>
         <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
     </ul>
 
@@ -61,6 +61,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     </ul>
     <p>請寄信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，說明您的使用者名稱和要求。查詢、閱覽、複本會在 15 天內處理；更正、停止處理、刪除會在 30 天內處理。需要延長時，我們會寫信告訴您原因。</p>
     <p>您也可以隨時下載自己的資料：登入後到「我的紀錄」頁按「下載我的資料」，或直接按<a class="btn btn-link px-1 align-baseline" href="{% url 'download_my_data' %}">這裡下載</a>。</p>
+    <p>您也可以自己刪除帳號和全部資料：登入後到「我的紀錄」頁按「刪除帳號」，或直接按<a class="btn btn-link px-1 align-baseline" href="{% url 'delete_account' %}">這裡刪除</a>。刪除後無法復原，建議先下載自己的資料。</p>
 
     <h2 class="h4 mt-4">不提供資料會怎樣</h2>
     <p>您可以不同意。不同意就不能使用篩檢、紀錄和聽力圖功能，但您的帳號會保留，之後想用時再同意即可。</p>

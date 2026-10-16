@@ -152,7 +152,7 @@
 - `_scores_cache` 不會失效：「讀 → 改 → 再讀」會拿到舊值，測試斷言前要重新從 DB 取物件。
 - 作答過的題目、有作答紀錄的問卷 `code`，在 admin 是唯讀的；Submission／Answer 在 admin 只能看，不能新增、修改、刪除。要改題目就新增一份問卷（新 pk、新 code），不要改舊的。
 - 已上線的問卷不能加題（admin 沒擋，靠規則）：加了之後新作答的滿分會超過門檻表，變成「無法判讀」。
-- `Submission.user` 是 `PROTECT`，做過篩檢的帳號無法刪除，但個資法下使用者有權刪除自己的健康資料，之後必須處理。
+- 刪除帳號要走 `User.delete_with_data()`（交易內由下往上刪），不要直接 `user.delete()`：`Submission`、`Audiogram`、`Consent` 對 User 都是 `PROTECT`，會被擋下。
 - `build.sh` 每次部署都會 `loaddata`，而且繞過 admin 的鎖：fixture 裡已上線的題目不能改，要改就新增一份問卷。
 - 門檻（`scoring.THRESHOLDS`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
@@ -168,4 +168,4 @@
 
 ## 目前階段
 
-Phase 6：穩固（技術債＋工程面）。Phase 0–5 已完成；之後是 Phase 7 個資與信任、Phase 8 分享（C3、C1）。下一項是 CI。細節見 `docs/roadmap.md`。
+Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。下一步是 Phase 8 分享：C3 可分享報告，再來 C1。細節見 `docs/roadmap.md`。

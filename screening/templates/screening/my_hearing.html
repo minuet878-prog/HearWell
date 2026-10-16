@@ -50,5 +50,5 @@
 {% empty %}
 <p>您還沒有做過篩檢紀錄</p>
 {% endfor %}
-<p class="mt-4"><a class="btn btn-outline-primary" href="{% url 'download_my_data' %}">下載我的資料</a></p>
+<p class="mt-4 d-flex flex-wrap gap-2 align-items-center"><a class="btn btn-outline-primary" href="{% url 'download_my_data' %}">下載我的資料</a><a class="btn btn-link text-danger" href="{% url 'delete_account' %}">刪除帳號</a></p>
 {% endblock %}
