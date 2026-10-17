@@ -34,6 +34,7 @@ from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
+    classify,
     compare_to_norm,
     get_advice,
     ioi_ha_group,
@@ -53,8 +54,23 @@ def _safe_next(request):
     return ""
 
 
+# A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
+HOME_PREVIEW_SCORE = 18
+
+
 def index(request):
-    return render(request, "screening/index.html")
+    preview = classify(HOME_PREVIEW_SCORE, "hhie-s")
+    return render(
+        request,
+        "screening/index.html",
+        {
+            "preview_score": HOME_PREVIEW_SCORE,
+            "preview_level": preview["level"],
+            "preview_text": preview["text"],
+            "preview_max_score": max_score("hhie-s"),
+            "preview_advice": get_advice(preview["level"]),
+        },
+    )
 
 
 def family_guide(request):

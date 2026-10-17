@@ -3,21 +3,55 @@
 {% block title %}HearWell 聽力自我照護{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2">了解聽力對您生活的影響</h1>
-<p>聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
-<a class="btn btn-primary btn-lg w-100" href="{% url 'questionnaire_list' %}">開始篩檢</a>
-{% if not user.is_authenticated %}
-<p class="text-body-emphasis mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
-{% endif %}
-<ol class="steps mt-4" role="list">
-    <li>回答問題，大約 3 分鐘。</li>
-    <li>馬上看到結果分級和建議。</li>
-    <li>隔一段時間再做一次，在「我的紀錄」看分數的變化。</li>
+{# Layout per spec phase9_ui_refresh_4a_home.md 4.1; pictures are decorative, the words carry the meaning. #}
+<section class="home-band mt-2">
+    <svg class="home-illustration" viewBox="0 0 240 140" aria-hidden="true" focusable="false">
+        <path d="M92 104a14 14 0 0 0 22-6c3-8 12-14 17-23a32 32 0 1 0-58-19"/>
+        <path d="M106 60a11 11 0 1 1 16 9c-5 3-8 7-8 12"/>
+        <path d="M150 46c8 8 12 18 12 29s-4 21-12 29" opacity=".9"/>
+        <path d="M168 32c12 12 19 27 19 43s-7 31-19 43" opacity=".6"/>
+        <path d="M186 20c15 15 24 34 24 55s-9 40-24 55" opacity=".35"/>
+    </svg>
+    <h1 class="h3">了解聽力對您生活的影響</h1>
+    <p>聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
+    <a class="btn btn-primary btn-lg w-100" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+    {% if not user.is_authenticated %}
+    <p class="text-body-emphasis mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
+    {% endif %}
+</section>
+<ol class="step-cards" role="list">
+    <li>
+        <span class="step-number">1</span>
+        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg>
+        <span>回答問題，大約 3 分鐘。</span>
+    </li>
+    <li>
+        <span class="step-number">2</span>
+        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
+        <span>馬上看到結果分級和建議。</span>
+    </li>
+    <li>
+        <span class="step-number">3</span>
+        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+        <span>隔一段時間再做一次，在「我的紀錄」看分數的變化。</span>
+    </li>
 </ol>
-<div class="card mt-3">
-    <div class="card-body">
-        <p>很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。</p>
-        <p class="mb-0">本網站由執業聽力師開發，使用經過驗證的標準化量表。</p>
+<h2 class="h4">結果長這樣</h2>
+<figure class="result-preview">
+    <span class="preview-tag">示意圖</span>
+    <div class="result-banner result-banner-{{ preview_level }}">
+        <div class="result-level">{{ preview_text }}</div>
+        <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
     </div>
-</div>
+    <p class="mt-2 mb-2">{{ preview_advice|slice:":40" }}……</p>
+    <figcaption>實際結果依您的回答而定。</figcaption>
+</figure>
+<p>很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。</p>
+<section class="home-band home-trust">
+    <h2 class="h4">由聽力師開發</h2>
+    <ul class="mb-0">
+        <li>由在台灣執業的聽力師設計與審定內容</li>
+        <li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>
+    </ul>
+</section>
 {% endblock %}

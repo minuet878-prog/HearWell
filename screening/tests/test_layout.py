@@ -126,7 +126,7 @@ class LayoutTests(TestCase):
             with self.subTest(link=name):
                 self.assertNotIn(f'href="{reverse(name)}"', _main(content))
                 self.assertIn(f'href="{reverse(name)}"', _footer(content))
-        self.assertIn("本網站由執業聽力師開發", _main(content))
+        self.assertIn("由聽力師開發", _main(content))  # trust block, phase9_ui_refresh_4a_home.md
 
     # 6
     def test_record_cards_have_level_badges(self):

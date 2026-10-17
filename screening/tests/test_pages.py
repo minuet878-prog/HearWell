@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.scoring import get_advice
+from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_history
 from screening.tests.helpers import consented_user
 
@@ -440,16 +440,19 @@ class PageFlowTests(TestCase):
     """Spec docs/specs/phase4_ui_flow.md, acceptance 1-14a."""
 
     HINT = "第一次使用請先註冊，已有帳號請直接登入。"
-    # As changed by phase9_ui_refresh_3_structure.md 4.4.
+    # As changed by phase9_ui_refresh_3_structure.md 4.4 and phase9_ui_refresh_4a_home.md 4.1.
     HOME_ORDER = (
+        'class="home-illustration"',
         "了解聽力對您生活的影響",
         "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
         "開始篩檢",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
+        "結果長這樣",
+        "示意圖",
         "很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。",
-        "本網站由執業聽力師開發，使用經過驗證的標準化量表。",
+        "由聽力師開發",
     )
 
     @classmethod
@@ -512,12 +515,13 @@ class PageFlowTests(TestCase):
         self._assert_in_order(main, self.HOME_ORDER)
         self.assertNotIn(self.HINT, main)
 
-    def test_home_has_no_scale_names_or_missing_features(self):
+    def test_home_has_no_missing_features(self):
+        # HHIE-S is allowed since phase9_ui_refresh_4a_home.md (result preview, trust block).
         for logged_in in (True, False):
             if not logged_in:
                 self.client.logout()
             content = self.client.get(reverse("index")).content.decode()
-            for text in ("HHIE-S", "HHIA-S", "記錄日常聆聽困難", "以白話理解"):
+            for text in ("HHIA-S", "記錄日常聆聽困難", "以白話理解"):
                 with self.subTest(logged_in=logged_in, text=text):
                     self.assertNotIn(text, content)
 
@@ -852,3 +856,94 @@ class PwaTests(TestCase):
             rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', footer
         )
         self.assertIsNotNone(link)
+
+
+class HomeTests(TestCase):
+    """Spec docs/specs/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
+
+    STEPS = (
+        "回答問題，大約 3 分鐘。",
+        "馬上看到結果分級和建議。",
+        "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
+    )
+
+    def _main(self):
+        content = self.client.get(reverse("index")).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _between(self, content, start, end):
+        begin = content.index(start)
+        return content[begin : content.index(end, begin)]
+
+    # 1
+    def test_illustration_first_and_hidden(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(consented_user(username="hometester"))
+            with self.subTest(logged_in=logged_in):
+                main = self._main()
+                self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
+                self.assertLess(main.index("home-illustration"), main.index("<h1"))
+
+    # 3
+    def test_step_cards(self):
+        steps = self._between(self._main(), "step-cards", "</ol>")
+        cards = re.findall(r"<li[^>]*>(.*?)</li>", steps, re.S)
+        self.assertEqual(len(cards), 3)
+        for number, (card, text) in enumerate(zip(cards, self.STEPS, strict=True), start=1):
+            with self.subTest(step=number):
+                self.assertRegex(card, rf'class="step-number"[^>]*>{number}<')
+                self.assertRegex(card, r'class="step-icon"[^>]*aria-hidden="true"')
+                self.assertIn(text, card)
+
+    # 4
+    def test_result_preview_uses_real_scoring(self):
+        preview = self._between(self._main(), "result-preview", "</figure>")
+        classified = classify(18, "hhie-s")
+        self.assertIn("示意圖", preview)
+        self.assertIn("實際結果依您的回答而定。", preview)
+        self.assertIn(f"result-banner-{classified['level']}", preview)
+        self.assertIn(classified["text"], preview)
+        self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
+        self.assertIn(get_advice(classified["level"])[:40] + "……", preview)
+
+    # 5
+    def test_shows_no_user_data(self):
+        user = consented_user(username="homeowner_a")
+        questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        submission = Submission.objects.create(user=user, questionnaire=questionnaire)
+        for number, score in enumerate((4, 4, 4, 4, 4, 4, 4, 2, 0, 0), start=1):
+            question = Question.objects.create(
+                questionnaire=questionnaire,
+                question_text=f"題目{number}",
+                question_number=number,
+                category=Category.SOCIAL,
+            )
+            Answer.objects.create(submission=submission, question=question, score=score)
+        self.client.force_login(user)
+        main = self._main()
+        self.assertNotIn("homeowner_a", main)
+        self.assertNotIn("總分 30", main)
+        self.assertNotIn(classify(30, "hhie-s")["text"], main)
+        self.assertNotIn(timezone.localdate(submission.created_at).strftime("%Y/%m/%d"), main)
+
+    # 6
+    def test_trust_block(self):
+        main = self._main()
+        trust = self._between(main, "home-trust", "</section>")
+        self.assertRegex(trust, r"<h2[^>]*>由聽力師開發</h2>")
+        self.assertIn("<li>由在台灣執業的聽力師設計與審定內容</li>", trust)
+        self.assertIn("<li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>", trust)
+        self.assertNotIn("出處都列在說明頁", main)
+        self.assertNotIn("本網站由執業聽力師開發", main)
+
+    # 7
+    def test_band_backgrounds(self):
+        main = self._main()
+        bands = re.findall(r'<section class="home-band[^"]*">(.*?)</section>', main, re.S)
+        self.assertEqual(len(bands), 2)
+        self.assertIn("home-illustration", bands[0])
+        self.assertIn("由聽力師開發", bands[1])
+        for band in bands:
+            self.assertNotIn("step-cards", band)
+            self.assertNotIn("result-preview", band)
