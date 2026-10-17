@@ -360,8 +360,14 @@ class IoiHaTests(TestCase):
         self.assertRegex(
             main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*IOI-HA 助聽器效益量表'
         )
-        self.assertIn("適合已配戴助聽器的人。共 7 題，大約 2 分鐘。", main)
-        self.assertIn("適合 65 歲以上的長輩。共 10 題，大約 3 分鐘。", main)
+        # Count and time are tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
+        for audience, tags in (
+            ("適合已配戴助聽器的人。", ("7 題", "約 2 分鐘")),
+            ("適合 65 歲以上的長輩。", ("10 題", "約 3 分鐘")),
+        ):
+            self.assertIn(audience, main)
+            for tag in tags:
+                self.assertIn(f'<span class="card-tag">{tag}</span>', main)
 
 
 class IoiHaFixtureTests(TestCase):

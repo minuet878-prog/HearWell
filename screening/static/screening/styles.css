@@ -877,3 +877,53 @@ details summary {
 .site-account:hover {
     color: #fff;
 }
+
+/* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1). */
+.questionnaire-guide {
+    padding: 0.5rem 1rem;
+    border-left: 0.375rem solid #1f4e8c;
+    border-radius: 0.5rem;
+    background-color: #eef3fa;
+    color: #212529;
+}
+
+.questionnaire-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: #eef3fa;
+}
+
+/* The card turns the same pale blue on hover, so the circle turns white to stay visible. */
+.link-card:hover .questionnaire-icon,
+.link-card:active .questionnaire-icon {
+    background-color: #fff;
+}
+
+.questionnaire-icon svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: #1f4e8c;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.card-tag {
+    padding: 0 0.5rem;
+    border-radius: 1rem;
+    background-color: #f1f3f5;
+    color: #343a40;
+    font-weight: 600;
+}

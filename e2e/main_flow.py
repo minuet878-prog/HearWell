@@ -398,3 +398,15 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             self.assertGreater(len({round(box["y"]) for box in boxes}), 1)  # more than one row
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
+
+    # phase9_ui_refresh_4b_questionnaire_cards.md review A: the icon's circle stays visible on hover
+    def test_icon_circle_stays_visible_on_hover(self):
+        self.open(1280)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            card = self.page.locator("a.link-card").first
+            card.hover()
+            colour = "el => getComputedStyle(el).backgroundColor"
+            card_bg = card.evaluate(colour)
+            icon_bg = card.locator(".questionnaire-icon").evaluate(colour)
+            self.assertNotEqual(icon_bg, card_bg)
