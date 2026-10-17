@@ -39,7 +39,7 @@ feat(pwa): back button and pull to refresh in the home-screen app
 
 **影響範圍：** 全站版面
 - 每一頁都多載入一支小 script；JS 失敗時按鈕維持隱藏，頁面照常可用。
-- 標題列在 200% 字級、320px 寬時的排版（e2e 有守：不撐寬、上一頁跟登出不相鄰）。
+- 標題列在 200% 字級、320px 寬時的排版（e2e 有守：上一頁按鈕不超出畫面、不截斷，跟登出不相鄰）。品牌字「HearWell」在 Linux 字型下本來就會超出（`main` 就這樣），記進 roadmap 另修。
 - 作答頁的上一頁＝上一題（`pushState`），已改用 `canGoBack`，不會被帶回首頁。
 - 舊 iPhone 沒有 Navigation API 時，「切回 app 時頁面被重新載入」之後按上一頁可能沒反應（罕見，導覽列還有首頁）。
 

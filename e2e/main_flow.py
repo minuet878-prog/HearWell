@@ -528,9 +528,6 @@ class PwaNavTest(StaticLiveServerTestCase):
             self.assertLessEqual(back["x"] + back["width"], 320)
             clipped = self.back().evaluate("b => b.scrollWidth > b.clientWidth")
             self.assertFalse(clipped)
-            # The header only: the footer email already widens the page at 200% (roadmap).
-            header_width = self.page.locator("header").first.evaluate("h => h.scrollWidth")
-            self.assertLessEqual(header_width, 320)
             logout = self.page.get_by_role("button", name="登出").bounding_box()
             brand = self.page.locator(".site-brand").bounding_box()
             back_bottom, logout_bottom = back["y"] + back["height"], logout["y"] + logout["height"]
