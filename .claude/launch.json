@@ -1,0 +1,14 @@
+{
+  // Claude Desktop 預覽用的開發伺服器設定
+  // 用 8001，避免跟你自己手動開的 runserver（8000）撞埠
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hearwell",
+      "runtimeExecutable": "py313/bin/python",
+      "runtimeArgs": ["manage.py", "runserver", "8001"],
+      "port": 8001,
+      "autoPort": false
+    }
+  ]
+}
