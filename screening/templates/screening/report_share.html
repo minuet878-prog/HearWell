@@ -20,7 +20,7 @@
     {% else %}
     <p>拿到連結的人，不用登入就看得到這份報告；連結 7 天後失效，您可以隨時取消。</p>
     <details>
-        <summary class="btn btn-primary btn-lg">產生分享連結</summary>
+        <summary class="btn btn-outline-primary btn-lg">產生分享連結</summary>
         <p class="mt-3">請確認：拿到這個連結的人，不用登入就看得到您的聽力報告（不含您的使用者名稱與出生年）。</p>
         <form method="post" action="{% url 'report_share_create' %}">
             {% csrf_token %}

@@ -93,8 +93,17 @@
         {% endfor %}
         {% block body %}{% endblock %}
     </main>
-    <footer class="container mb-4">
-        <a class="btn btn-link px-0" href="{% url 'privacy' %}">隱私權說明</a>
+    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). #}
+    <footer class="site-footer">
+        <div class="container">
+            <ul class="site-footer-links">
+                <li><a href="{% url 'family_guide' %}">給家人看：怎麼跟聽損的家人溝通</a></li>
+                <li><a href="{% url 'add_to_home' %}">把 HearWell 加到手機主畫面</a></li>
+                <li><a href="{% url 'privacy' %}">隱私權說明</a></li>
+            </ul>
+            <p>結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+            <p>聯絡我們：<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+        </div>
     </footer>
 </body>
 

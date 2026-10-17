@@ -24,6 +24,23 @@ DEGREES = (
 )
 
 
+# Colour group of each degree, named like the questionnaire levels so both share one set of
+# badge colours (spec phase9_ui_refresh_1_shared.md 4.4; the owner's clinical choice).
+DEGREE_LEVELS = {
+    "正常": "normal",
+    "輕度": "mild_to_moderate",
+    "中度": "mild_to_moderate",
+    "中重度": "severe",
+    "重度": "severe",
+    "極重度": "severe",
+}
+
+
+def degree_level(name):
+    """Badge level of a degree; None (not enough data) is unknown."""
+    return DEGREE_LEVELS.get(name, "unknown")
+
+
 def pta(thresholds):
     """Four-frequency average, or None if any of the four is missing."""
     values = [thresholds.get(f) for f in PTA_FREQUENCIES]

@@ -61,6 +61,12 @@ html {
     --bs-btn-focus-shadow-rgb: 31, 78, 140;
 }
 
+/* One reading width for header, nav, content and footer (spec phase9_ui_refresh_1_shared.md
+   4.1); later than Bootstrap's per-breakpoint widths, so it wins. */
+.container {
+    max-width: 40rem;
+}
+
 /* Touch targets: at least 44 x 44 px. */
 .btn {
     min-height: 2.75rem;
@@ -172,11 +178,123 @@ html {
     .site-nav a[aria-current="page"] {
         box-shadow: inset 0 0.25rem 0 #1f4e8c;
     }
+}
 
-    /* Keep the end of the page clear of the fixed tab bar. */
-    body {
-        padding-bottom: 5rem;
+/* Site-wide footer: grey band, apart from the content without competing with it. */
+.site-footer {
+    margin-top: 3rem;
+    padding: 1.5rem 0;
+    background-color: #f1f3f5;
+    color: #343a40;
+}
+
+/* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
+@media (max-width: 47.99em) {
+    /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
+    .site-footer {
+        padding-bottom: calc(1.5rem + 5rem);
     }
+}
+
+.site-footer a {
+    color: #1f4e8c;
+    font-weight: 700;
+}
+
+.site-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+}
+
+.site-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+}
+
+.site-footer p {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+}
+
+/* Level badge: the level is always written out; colour only adds to it (same pairs as the
+   result banner, each at least 4.5:1). */
+.level-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.level-badge-normal {
+    background-color: #e3f4ec;
+    color: #1e7b55;
+}
+
+.level-badge-mild_to_moderate {
+    background-color: #fff4d6;
+    color: #8a5a00;
+}
+
+.level-badge-severe {
+    background-color: #feece7;
+    color: #c23b1c;
+}
+
+.level-badge-unknown {
+    background-color: #f1f3f5;
+    color: #495057;
+}
+
+/* Clickable card: the whole card is one link, with an arrow to say so (spec 4.5). */
+.link-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    color: inherit;
+    text-decoration: none;
+}
+
+.link-card:hover,
+.link-card:active {
+    border-color: #1f4e8c;
+    background-color: #eef3fa;
+    color: inherit;
+}
+
+.link-card:focus-visible {
+    outline: 0.25rem solid #1f4e8c;
+    outline-offset: 0.25rem;
+}
+
+.link-card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.link-card-title {
+    color: #1f4e8c;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.link-card-arrow {
+    color: #1f4e8c;
+    font-size: 2rem;
+    line-height: 1;
 }
 
 /* Login and register forms */
@@ -546,11 +664,6 @@ details summary {
 
 .ear-result.ear-left {
     border-top: 0.375rem solid #1f4e8c;
-}
-
-.audiogram-item {
-    color: inherit;
-    text-decoration: none;
 }
 
 /* Drag readout over the chart; rem so it grows with the user's font size. */

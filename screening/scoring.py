@@ -111,16 +111,6 @@ def classify(total_score, questionnaire_code):
     return UNKNOWN
 
 
-def level_to_color(level):
-    colors = {
-        "normal": "success",
-        "mild_to_moderate": "warning",
-        "severe": "danger",
-        "unknown": "secondary",
-    }
-    return colors[level]
-
-
 def get_advice(level):
     advices = {
         "normal": (

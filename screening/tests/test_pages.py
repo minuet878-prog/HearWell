@@ -107,11 +107,9 @@ class CopyTests(TestCase):
         submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
         result_url = reverse("result", args=[submission.id])
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(
-            response,
-            f'<a class="btn btn-primary align-self-md-center" href="{result_url}">查看結果</a>',
-            html=True,
-        )
+        # The whole record is one link (spec phase9_ui_refresh_1_shared.md 4.5), no button.
+        self.assertContains(response, f'<a class="link-card" href="{result_url}">')
+        self.assertNotContains(response, "查看結果")
         self.assertNotContains(response, "連結")
 
     def test_empty_history_uses_polite_you(self):
@@ -537,13 +535,15 @@ class PageFlowTests(TestCase):
             ),
         )
         self.assertRegex(
-            main, rf'<a[^>]*href="{reverse("screening", args=[self.hhie_s.id])}"[^>]*>\s*HHIE-S'
+            main,
+            rf'<a[^>]*href="{reverse("screening", args=[self.hhie_s.id])}"[^>]*>'
+            r"(\s*<[^>]+>)*\s*HHIE-S",
         )
 
     def test_question_count_is_not_hard_coded(self):
         main = self._main(self.client.get(reverse("questionnaire_list")))
         start = main.index("短問卷")
-        card = main[start : main.index("</p>", start)]
+        card = main[start : main.index("</a>", start)]
         self.assertIn("共 3 題。", card)
         self.assertNotIn("適合", card)
         self.assertNotIn("分鐘", card)
@@ -843,11 +843,11 @@ class PwaTests(TestCase):
                 steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
                 self.assertEqual(steps, [4, 4])
 
-    # 23
-    def test_home_links_to_guide_before_disclaimer(self):
+    # 23, as changed by phase9_ui_refresh_1_shared.md acceptance 5: the link moved to the footer
+    def test_home_links_to_guide_in_footer(self):
         content = self.client.get(reverse("index")).content.decode()
+        footer = content.split('<footer class="site-footer"', 1)[1]
         link = re.search(
-            rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', content
+            rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', footer
         )
         self.assertIsNotNone(link)
-        self.assertLess(link.start(), content.index("本網站由執業聽力師開發"))
