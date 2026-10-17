@@ -10,5 +10,6 @@ db.sqlite3
 node_modules/
 /screening/static/screening/frontend/
 .claude/*
-!.claude/agents/
+!.claude/settings.json
+!.claude/hooks/
 /e2e-artifacts/

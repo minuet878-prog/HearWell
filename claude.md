@@ -50,7 +50,7 @@
 2. **不擅自動我的資料**：不刪除、不覆寫、不批次修改真實資料（資料庫、資料檔、匯出檔）。需要時先說明影響，等我同意。
 3. **不碰我的服務**：不自己啟動、重啟或停掉我電腦上的伺服器和資料庫。
 4. **試驗要先講**：探索用的修改先說「這是試驗」，結束後主動還原。
-5. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.claude`、log、暫存檔一律不加。
+5. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.claude`（`settings.json` 和 `hooks/` 除外，要進版控）、log、暫存檔一律不加。
 6. 程式碼規範見 `CODING_STANDARDS.md`，實作和審查都要遵守。
 
 ## 專案概要
@@ -111,6 +111,7 @@
 - `GLOSSARY.md` — 專案用語（由 `/grill-with-docs` 維護）。
 - `CODING_STANDARDS.md` — 程式碼規範，`/code-review` 依此審查。
 - `docs/adr/` — 2026-10-18 之後的決策紀錄（ADR，一個決策一個檔）。
+- `.claude/settings.json` — 權限清單（push／開 PR 要問、force push 禁止）和 hooks（改完 `.py` 自動跑 Ruff、等回覆時跳通知）。
 - `docs/agents/` — Matt skills 的設定（issue tracker、標籤、文件位置）。
 - `docs/roadmap.md` — 各 Phase 的待辦與目前進度。
 - 歷史（2026-10-18 以前，只讀不再新增）：`docs/decisions/`（舊的決策紀錄，依主題分檔）、`docs/specs/`、`docs/reviews/`（Phase 0–10 的規格與審查）。
