@@ -6,7 +6,8 @@ from django.urls import reverse
 # page is covered without anyone remembering to add it.
 # Downloading or deleting one's data is a right, not new processing
 # (specs phase7_data_export.md Q5, phase7_account_deletion.md Q4). The family guide holds no
-# personal data at all (spec phase8_c1_family_guide.md).
+# personal data at all (spec phase8_c1_family_guide.md). A shared report is opened by family,
+# who may have an account of their own (spec phase8_c1_family_share.md).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -18,6 +19,8 @@ OPEN_PAGES = {
     "download_my_data",
     "delete_account",
     "family_guide",
+    "shared_cover",
+    "shared_report",
 }
 
 

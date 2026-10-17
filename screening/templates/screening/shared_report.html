@@ -1,0 +1,30 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}HearWell 聽力報告{% endblock %}
+
+{% block extra_head %}
+<meta name="robots" content="noindex, nofollow">
+<script defer src="{% static 'screening/print-button.js' %}"></script>
+{% if audiogram %}<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>{% endif %}
+{% endblock %}
+
+{% block body %}
+{# Spec phase8_c1_family_share.md 4.2: the owner's report without name or birth year. #}
+<article class="health-report">
+<h1 class="h3 mt-3">HearWell 聽力報告</h1>
+<p class="fw-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"n月j日" }}。</p>
+{% if not has_records %}
+<p>這份報告目前沒有紀錄。</p>
+{% else %}
+<p class="no-print">
+    <button id="print-button" type="button" class="btn btn-primary btn-lg">列印或存成 PDF</button>
+</p>
+<div class="report-meta">
+    {% if owner.age is not None %}<span>年齡：{{ owner.age }} 歲</span>{% endif %}
+    <span>產生日期：{{ today|date:"Y/m/d" }}</span>
+</div>
+{% include "screening/report_content.html" %}
+{% endif %}
+</article>
+{% endblock %}

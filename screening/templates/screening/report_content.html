@@ -1,0 +1,76 @@
+{# The report itself, shared by the owner's page and the family's copy (health_report, shared_report). #}
+<section id="report-summary" class="report-summary" aria-labelledby="summary-title">
+    <h2 id="summary-title" class="h4">重點摘要</h2>
+    <ul class="mb-0">
+        {% if audiogram %}
+        <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}</li>
+        {% endif %}
+        {% for section in sections %}{% with latest=section.latest %}
+        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
+        {% endwith %}{% endfor %}
+        {% if difference %}
+        <li>配戴前後（HHIE-S）：沒戴 {{ difference.unaided.total_answer_score }} 分、有戴 {{ difference.aided.total_answer_score }} 分，{{ difference.text }}</li>
+        {% endif %}
+        {% if ioi_ha %}
+        <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}</li>
+        {% endif %}
+    </ul>
+</section>
+
+{% if audiogram %}
+<section id="report-audiogram" aria-labelledby="audiogram-title">
+    <h2 id="audiogram-title" class="h4">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h2>
+    <div id="audiogram-chart" class="audiogram-chart"></div>
+    {{ chart_points|json_script:"audiogram-points" }}
+    <ul>
+        {% for ear, label, result in ears %}
+        <li>{{ label }}：{% if result.pta is None %}資料不足，無法判讀{% else %}四頻平均 {{ result.pta|stringformat:"g" }} dB HL，程度 <strong>{{ result.degree }}</strong>，類型 {% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}{% if result.no_response %}（含無反應的頻率，實際聽力可能更差）{% endif %}{% endif %}</li>
+        {% endfor %}
+    </ul>
+    <p>這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
+</section>
+{% endif %}
+
+{% for section in sections %}{% with latest=section.latest code=section.questionnaire.code %}
+<section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
+    <h2 id="title-{{ code }}" class="h4">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h2>
+    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
+    <p>情緒 {{ latest.emotional_score }}、社交 {{ latest.social_score }}（分項僅供參考）　助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
+    <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
+    <table class="table">
+        <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>
+        <tbody>
+            {% for record in section.recent %}
+            <tr><td>{{ record.created_at|date:"Y/m/d" }}</td><td>{{ record.total_answer_score }}</td><td>{{ record.classified.text }}</td><td>{{ record.get_wearing_hearing_aid_display }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endwith %}{% endfor %}
+
+{% if difference %}
+<section id="report-difference" aria-labelledby="difference-title">
+    <h2 id="difference-title" class="h4">配戴前後比較（HHIE-S）</h2>
+    <p class="mb-1">沒戴助聽器（{{ difference.unaided.created_at|date:"Y/m/d" }}）：{{ difference.unaided.total_answer_score }} 分</p>
+    <p class="mb-1">有戴助聽器（{{ difference.aided.created_at|date:"Y/m/d" }}）：{{ difference.aided.total_answer_score }} 分</p>
+    <p><strong>{{ difference.text }}</strong>（分數越低，聽力對生活的影響越小）</p>
+</section>
+{% endif %}
+
+{% if ioi_ha %}{% with submission=ioi_ha.submission %}
+<section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
+    <h2 id="ioi-ha-title" class="h4">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h2>
+    <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
+    {% if not ioi_ha.grouped %}<p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>{% endif %}
+    <table class="table">
+        <thead><tr><th scope="col">項目</th><th scope="col">回答</th>{% if ioi_ha.grouped %}<th scope="col">與常模比較</th>{% endif %}</tr></thead>
+        <tbody>
+            {% for item in ioi_ha.items %}
+            <tr><td>{{ item.name }}</td><td>{{ item.label }}</td>{% if ioi_ha.grouped %}<td>{{ item.comparison }}</td>{% endif %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endwith %}{% endif %}
+
+<p class="report-disclaimer">這是使用者在 HearWell 自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
