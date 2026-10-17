@@ -21,7 +21,7 @@ from screening.models import (
     Submission,
     User,
 )
-from screening.scoring import IOI_HA_CHOICES
+from screening.scoring import IOI_HA_BELOW_NORM_NOTES, IOI_HA_CHOICES
 from screening.tests.helpers import consented_user
 
 # Unaided 4x5 + 2x3 + 0x2 = 26 (顯著影響, emotional 20, social 6); aided all 2 = 20.
@@ -172,6 +172,13 @@ class HealthReportTests(TestCase):
         self.assertIn("感音神經性", audiogram)
         self.assertIn("35 dB HL", audiogram)
         self.assertIn("輕度", audiogram)
+
+    # phase9_ui_refresh_4d_ioi_ha_items.md acceptance 6a: notes stay on the result page
+    def test_ioi_ha_notes_not_in_report(self):
+        self._full_records()  # item 2 is below the norm
+        ioi = _section(self._content(), "report-ioi-ha")
+        self.assertIn("低於常模", ioi)
+        self.assertNotIn(IOI_HA_BELOW_NORM_NOTES[2], ioi)
 
     # 2
     def test_shows_nothing_of_other_users(self):

@@ -44,6 +44,25 @@ IOI_HA_ITEM_NAMES = {
     7: "生活樂趣",
 }
 
+# Shown under an item on the IOI-HA result page when it is below the norm.
+# Clinical text confirmed by the audiologist (spec phase9_ui_refresh_4d_ioi_ha_items.md 4.2).
+IOI_HA_BELOW_NORM_NOTES = {
+    1: "您每天戴助聽器的時間比多數使用者短。可能是還不習慣、戴起來不舒服，"
+    "或覺得聲音不自然。可以告訴聽力師哪些時候不想戴，請他幫忙調整。",
+    2: "在您最想聽清楚的場合，助聽器的幫助比多數使用者少。"
+    "可以記下是哪些場合聽不清楚，帶去請聽力師調整設定。",
+    3: "戴了助聽器之後，您仍然覺得困難比多數使用者多。吵雜的場合本來就比較難，"
+    "可以請聽力師檢查設定，也可以一起練習溝通的技巧。",
+    4: "您覺得助聽器值得的程度比多數使用者低。可能是效果不如預期、使用上麻煩，"
+    "或花費的考量。把您在意的地方告訴聽力師，一起看看怎麼改善。",
+    5: "戴了助聽器後，您的日常生活或工作受到的影響仍比多數使用者多。"
+    "可以說說哪些活動最困擾您，請聽力師針對這些情況調整。",
+    6: "您覺得聽力困難對身邊的人造成的干擾比多數使用者多。可以和家人聊聊他們的感受，"
+    "也可以請家人陪您一起找聽力師討論溝通的方法。",
+    7: "助聽器讓您享受生活的程度提升得比多數使用者少。"
+    "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
+}
+
 # Middle 50% of each item (Cox, Alexander & Beyer 2003), as (lower, upper) inclusive.
 # Groups match models.NormGroup values.
 IOI_HA_NORMS = {

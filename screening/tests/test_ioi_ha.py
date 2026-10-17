@@ -369,6 +369,97 @@ class IoiHaTests(TestCase):
             for tag in tags:
                 self.assertIn(f'<span class="card-tag">{tag}</span>', main)
 
+    # Spec phase9_ui_refresh_4d_ioi_ha_items.md, acceptance 1-6b.
+    # 5 is test_other_users_result_is_404; each _post() makes a new submission with its own page.
+    NOTE_SOURCE = "逐題解讀由聽力師依臨床經驗撰寫，不能取代個別諮詢。"
+
+    def _notes_on(self, scores):
+        # Notes per item on the result page, None where an item has none.
+        items = self._items(self._main(self.client.get(self._post(scores=scores).url)))
+        self.assertEqual(len(items), 7)
+        return [
+            m.group(1) if (m := re.search(r'<p class="ioi-note">(.*?)</p>', item, re.S)) else None
+            for item in items
+        ]
+
+    # 1
+    def test_notes_only_on_items_below_norm(self):
+        self._hhie_s(10, wearing=False)  # mild_moderate: 1 is below every item, 3 within
+        # Item 4 = 5 is above its norm (2-4): above gets no note either (review a).
+        scores = (1, 3, 1, 5, 3, 3, 3)
+        items = self._items(self._main(self.client.get(self._post(scores=scores).url)))
+        self.assertIn("高於常模", items[3])
+        notes = self._notes_on(scores)
+        notes_text = scoring.IOI_HA_BELOW_NORM_NOTES
+        self.assertEqual(notes, [notes_text[1], None, notes_text[3], None, None, None, None])
+
+    # 2
+    def test_each_item_gets_its_own_note(self):
+        self._hhie_s(10, wearing=False)
+        for number in range(1, 8):
+            with self.subTest(item=number):
+                scores = [3] * 7
+                scores[number - 1] = 1
+                expected = [None] * 7
+                expected[number - 1] = scoring.IOI_HA_BELOW_NORM_NOTES[number]
+                self.assertEqual(self._notes_on(scores), expected)
+
+    # 3
+    def test_no_notes_when_nothing_below_norm(self):
+        self._hhie_s(10, wearing=False)
+        main = self._main(self.client.get(self._post(scores=(3,) * 7).url))
+        self.assertNotIn("ioi-note", main)
+        for note in scoring.IOI_HA_BELOW_NORM_NOTES.values():
+            self.assertNotIn(note, main)
+
+    # 4
+    def test_no_notes_when_ungrouped(self):
+        main = self._main(self.client.get(self._post(scores=(1,) * 7).url))
+        self.assertNotIn("ioi-note", main)
+        for note in scoring.IOI_HA_BELOW_NORM_NOTES.values():
+            self.assertNotIn(note, main)
+        self.assertIn(self.UNGROUPED_NOTE, main)
+
+    # 6
+    def test_note_inside_item_after_answer(self):
+        self._hhie_s(10, wearing=False)
+        items = self._items(self._main(self.client.get(self._post(scores=(1,) + (3,) * 6).url)))
+        first = items[0]
+        self.assertLess(first.index("您的回答："), first.index(scoring.IOI_HA_BELOW_NORM_NOTES[1]))
+
+    # 6b
+    def test_note_source_only_on_ioi_ha_result(self):
+        ungrouped = self.client.get(self._post().url)
+        self.assertIn(self.NOTE_SOURCE, self._main(ungrouped))
+        hhie_s = self._hhie_s(10, wearing=False)
+        grouped = self.client.get(self._post().url)
+        self.assertIn(self.NOTE_SOURCE, self._main(grouped))
+        for page in (reverse("result", args=[hhie_s.id]), self.url):
+            with self.subTest(page=page):
+                self.assertNotIn(self.NOTE_SOURCE, self._main(self.client.get(page)))
+
+    def test_notes_are_the_confirmed_text(self):
+        # Clinical text confirmed by the audiologist (spec 4.2); change it only with their sign-off.
+        self.assertEqual(
+            scoring.IOI_HA_BELOW_NORM_NOTES,
+            {
+                1: "您每天戴助聽器的時間比多數使用者短。可能是還不習慣、戴起來不舒服，"
+                "或覺得聲音不自然。可以告訴聽力師哪些時候不想戴，請他幫忙調整。",
+                2: "在您最想聽清楚的場合，助聽器的幫助比多數使用者少。"
+                "可以記下是哪些場合聽不清楚，帶去請聽力師調整設定。",
+                3: "戴了助聽器之後，您仍然覺得困難比多數使用者多。吵雜的場合本來就比較難，"
+                "可以請聽力師檢查設定，也可以一起練習溝通的技巧。",
+                4: "您覺得助聽器值得的程度比多數使用者低。可能是效果不如預期、使用上麻煩，"
+                "或花費的考量。把您在意的地方告訴聽力師，一起看看怎麼改善。",
+                5: "戴了助聽器後，您的日常生活或工作受到的影響仍比多數使用者多。"
+                "可以說說哪些活動最困擾您，請聽力師針對這些情況調整。",
+                6: "您覺得聽力困難對身邊的人造成的干擾比多數使用者多。可以和家人聊聊他們的感受，"
+                "也可以請家人陪您一起找聽力師討論溝通的方法。",
+                7: "助聽器讓您享受生活的程度提升得比多數使用者少。"
+                "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
+            },
+        )
+
 
 class IoiHaFixtureTests(TestCase):
     def test_fixture_matches_rule_tables(self):
