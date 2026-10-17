@@ -16,6 +16,8 @@
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="HearWell">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
+    <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
     {% if user.is_authenticated %}
     {# Clears unfinished answers kept in this browser when logging out. #}
     <script type="module" src="{% static 'screening/frontend/logout.js' %}"></script>
@@ -25,9 +27,15 @@
 </head>
 
 <body>
+    <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
         <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
-            <h1 class="site-brand"><a href="{% url 'index' %}">HearWell</a></h1>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                {% if request.resolver_match.url_name != "index" %}
+                <button id="pwa-back" class="btn btn-outline-light site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
+                {% endif %}
+                <h1 class="site-brand"><a href="{% url 'index' %}">HearWell</a></h1>
+            </div>
             {% if user.is_authenticated %}
             <div class="d-flex flex-wrap align-items-center gap-3">
                 {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}

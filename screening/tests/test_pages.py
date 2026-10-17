@@ -1,6 +1,7 @@
 import json
 import re
 import struct
+from datetime import date
 from pathlib import Path
 from typing import ClassVar
 
@@ -11,7 +12,15 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Audiogram,
+    Category,
+    Question,
+    Questionnaire,
+    Submission,
+    User,
+)
 from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_history
 from screening.tests.helpers import consented_user
@@ -409,27 +418,31 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.LOGOUT_JS,
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
+        # Every page: back button and pull to refresh in the home-screen app
+        # (spec phase10_pwa_back_refresh.md).
+        pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         empty_user = consented_user(username="no_records")
         for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):
-                self.assertEqual(scripts(url), [])
+                self.assertEqual(scripts(url), [pwa_js])
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertEqual(scripts(reverse("my_hearing")), [logout_js])
+            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js])
         self.client.force_login(self.user)
         expected = {
-            reverse("index"): [logout_js],
-            reverse("questionnaire_list"): [logout_js],
+            reverse("index"): [pwa_js, logout_js],
+            reverse("questionnaire_list"): [pwa_js, logout_js],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
+                pwa_js,
                 logout_js,
                 answer_js,
                 "screening/submit-button.js",
                 "<inline>",
             ],
-            reverse("result", args=[self.submission.id]): [logout_js],
-            reverse("my_hearing"): [logout_js, test_history.TrendChartPageTests.CHART_JS],
+            reverse("result", args=[self.submission.id]): [pwa_js, logout_js],
+            reverse("my_hearing"): [pwa_js, logout_js, test_history.TrendChartPageTests.CHART_JS],
         }
         for url, bundles in expected.items():
             with self.subTest(url=url):
@@ -856,6 +869,118 @@ class PwaTests(TestCase):
             rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', footer
         )
         self.assertIsNotNone(link)
+
+
+class PwaNavTests(TestCase):
+    """Spec docs/specs/phase10_pwa_back_refresh.md, acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
+
+    BACK = re.compile(r'<button([^>]*id="pwa-back"[^>]*)>(.*?)</button>', re.DOTALL)
+    SCRIPT = "/static/screening/frontend/pwa-nav.js"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="pwanavtester")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        cls.submission = Submission.objects.create(user=cls.user, questionnaire=cls.questionnaire)
+        Answer.objects.create(submission=cls.submission, question=question, score=2)
+        cls.audiogram = Audiogram.objects.create(user=cls.user, tested_on=date(2026, 1, 1))
+        Audiogram.objects.create(user=cls.user, tested_on=date(2026, 6, 1))
+
+    def _pages(self):
+        """Every kind of page once: (logged in, url)."""
+        return [
+            (False, reverse("login")),
+            (False, reverse("register")),
+            (False, reverse("add_to_home")),
+            (True, reverse("questionnaire_list")),
+            (True, reverse("screening", args=[self.questionnaire.id])),
+            (True, reverse("result", args=[self.submission.id])),
+            (True, reverse("my_hearing")),
+            (True, reverse("audiogram_list")),
+        ]
+
+    def _get(self, logged_in, url):
+        if logged_in:
+            self.client.force_login(self.user)
+        else:
+            self.client.logout()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
+    # 3
+    def test_home_has_no_back_button(self):
+        for logged_in in (False, True):
+            with self.subTest(logged_in=logged_in):
+                self.assertNotIn('id="pwa-back"', self._get(logged_in, reverse("index")))
+
+    # 10, 11: hidden until the script finds the home-screen app; the visible text is its name.
+    def test_other_pages_have_a_hidden_back_button(self):
+        for logged_in, url in self._pages():
+            with self.subTest(url=url):
+                content = self._get(logged_in, url)
+                header = content[content.index("<header") : content.index("</header>")]
+                attrs, inner = self.BACK.search(header).groups()
+                self.assertIn('type="button"', attrs)
+                self.assertRegex(attrs, r"\shidden(\s|$)")
+                self.assertNotIn("aria-label", attrs)
+                spoken = re.sub(r'<span aria-hidden="true">.*?</span>', "", inner)
+                self.assertEqual(spoken.strip(), "上一頁")
+
+    # 9, 9b: pwa-nav.js turns pull to refresh off when <main> has any of these.
+    INPUTS = re.compile(r"<(form|input|select|textarea)[\s>]")
+
+    def _main(self, logged_in, url):
+        content = self._get(logged_in, url)
+        return content[content.index("<main") : content.index("</main>")]
+
+    # 9
+    def test_pages_with_forms_have_inputs_in_main(self):
+        pages = [
+            (True, reverse("screening", args=[self.questionnaire.id])),
+            (False, reverse("login")),
+            (False, reverse("register")),
+            (True, reverse("health_report")),  # the share form
+            (True, reverse("audiogram_compare")),
+            (True, reverse("audiogram_delete", args=[self.audiogram.id])),
+            (True, reverse("delete_account")),
+        ]
+        for logged_in, url in pages:
+            with self.subTest(url=url):
+                self.assertRegex(self._main(logged_in, url), self.INPUTS)
+
+    # 9: only a user who has not agreed yet sees the consent page.
+    def test_consent_page_has_inputs_in_main(self):
+        self.client.force_login(User.objects.create_user(username="pwa_undecided"))
+        content = self.client.get(reverse("consent")).content.decode()
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertRegex(main, self.INPUTS)
+
+    # 9: React draws the audiogram input's selects and checkboxes inside <main>.
+    def test_audiogram_input_draws_inside_main(self):
+        self.assertIn('id="audiogram-app"', self._main(True, reverse("audiogram_new")))
+
+    # 9b: the log-out form sits in the header, outside <main>.
+    def test_my_hearing_has_no_inputs_in_main(self):
+        content = self._get(True, reverse("my_hearing"))
+        self.assertIn('id="logout-form"', content)
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertNotRegex(main, self.INPUTS)
+
+    # 10
+    def test_every_page_loads_the_script_and_a_hidden_pull_hint(self):
+        for logged_in, url in [(False, reverse("index")), *self._pages()]:
+            with self.subTest(url=url):
+                content = self._get(logged_in, url)
+                self.assertIn(f'<script type="module" src="{self.SCRIPT}"></script>', content)
+                self.assertRegex(content, r'<div id="pwa-pull"[^>]*\shidden[\s>]')
+                self.assertRegex(content, r'<div id="pwa-pull"[^>]*aria-hidden="true"')
 
 
 class HomeTests(TestCase):
