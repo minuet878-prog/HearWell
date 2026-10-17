@@ -115,6 +115,20 @@
 - `docs/roadmap.md` — 各 Phase 的待辦與目前進度。
 - 歷史（2026-10-18 以前，只讀不再新增）：`docs/decisions/`（舊的決策紀錄，依主題分檔）、`docs/specs/`、`docs/reviews/`（Phase 0–10 的規格與審查）。
 
+## Agent skills
+
+### Issue tracker
+
+Issue 和規格放在 GitHub Issues（用 `gh` CLI）。見 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用預設五個標籤：needs-triage、needs-info、ready-for-agent、ready-for-human、wontfix。見 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+Single-context：根目錄一份 `GLOSSARY.md` ＋ `docs/adr/`。見 `docs/agents/domain.md`。
+
 ## 目前階段
 
 Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。Phase 8 分享完成（C3 聽力報告、C1 家屬衛教頁、C1-B 分享聽力報告給家屬）。Phase 9 前端設計重整四輪全部完成（共用版型、資料呈現的錯誤、結構調整、增加豐富度 4a–4d）。下一步從 roadmap「待定」挑。細節見 `docs/roadmap.md`。
