@@ -17,7 +17,7 @@ const FONT = { fontSize: "1rem" };
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
-// Presentation only; the bands themselves come from the API. Label on band >= 4.5:1.
+// Presentation only; the bands themselves come from the API. Label on white and on band >= 4.5:1.
 const BAND_STYLES = {
   normal: { fill: "#e3f4ec", label: "#1e7b55" },
   mild_to_moderate: { fill: "#fff4d6", label: "#8a5a00" },
@@ -151,7 +151,6 @@ export default function TrendChart({ code }) {
                       y2={bandEdge(i)}
                       fill={style.fill}
                       fillOpacity={1}
-                      label={{ value: level.text, position: "insideTopRight", fill: style.label, fontWeight: 600, ...FONT }}
                     />
                   );
                 })}
@@ -213,6 +212,21 @@ export default function TrendChart({ code }) {
               </li>
             ))}
           </ul>
+          {/* Level names under the chart, top band first, so none can cover a point (spec
+              phase9_ui_refresh_3_structure.md 4.5). */}
+          {levels.length > 0 && (
+            <ul className="trend-bands">
+              {[...levels].reverse().map((level) => {
+                const style = BAND_STYLES[level.code] ?? OTHER_BAND;
+                return (
+                  <li key={level.code}>
+                    <span className="trend-band-swatch" style={{ backgroundColor: style.fill }} aria-hidden="true" />
+                    <span style={{ color: style.label }}>{level.text}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       </div>
     </section>

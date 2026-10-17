@@ -1,0 +1,39 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}帳號設定｜HearWell{% endblock %}
+
+{% block body %}
+{# Spec phase9_ui_refresh_3_structure.md 4.1: look only; deleting comes last, set apart. #}
+<h1 class="h3 mt-3">帳號設定</h1>
+
+<section class="mt-4" aria-labelledby="account-title">
+    <h2 id="account-title" class="h4">帳號資料</h2>
+    <dl class="account-details">
+        <dt>使用者名稱</dt><dd>{{ user.username }}</dd>
+        <dt>電子郵件</dt><dd>{{ user.email|default:"未填" }}</dd>
+        <dt>出生年</dt><dd>{{ user.birth_year|default:"未填" }}</dd>
+    </dl>
+</section>
+
+<section class="mt-4" aria-labelledby="data-title">
+    <h2 id="data-title" class="h4">我的資料</h2>
+    <p>把您在 HearWell 的所有資料下載成一個檔案保存。</p>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'download_my_data' %}">下載我的資料</a>
+</section>
+
+<section class="mt-4" aria-labelledby="privacy-title">
+    <h2 id="privacy-title" class="h4">隱私權</h2>
+    {% if consent %}
+    <p>您在 {{ consent.agreed_at|date:"Y/m/d" }} 同意了目前的版本。</p>
+    {% else %}
+    <p>您還沒有同意目前的隱私權說明。<a href="{% url 'consent' %}">前往同意</a></p>
+    {% endif %}
+    <p><a href="{% url 'privacy' %}">閱讀隱私權說明</a></p>
+</section>
+
+<section class="account-danger mt-5 pt-4" aria-labelledby="delete-title">
+    <h2 id="delete-title" class="h4">刪除帳號</h2>
+    <p>刪除後，帳號和所有紀錄都會消失，無法復原。</p>
+    <a class="btn btn-link px-0 text-danger fw-bold" href="{% url 'delete_account' %}">刪除帳號</a>
+</section>
+{% endblock %}

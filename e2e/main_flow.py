@@ -377,3 +377,24 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                     # At least 1.5rem (27px) between dates; a pixel of slack for text measuring.
                     for left, right in pairwise(boxes):
                         self.assertGreaterEqual(right["x"] - (left["x"] + left["width"]), 26)
+
+    # phase9_ui_refresh_3_structure.md acceptance 11: more questionnaires wrap, nothing off screen
+    def test_many_questionnaires_wrap_on_a_phone(self):
+        for number in (4, 5, 6):
+            extra = Questionnaire.objects.create(
+                questionnaire_name=f"問卷{number}", code=f"extra-{number}"
+            )
+            Submission.objects.create(user=self.user, questionnaire=extra)
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            tabs = self.page.locator(".history-tabs a")
+            expect(tabs).to_have_count(5)
+            boxes = [tab.bounding_box() for tab in tabs.all()]
+            for box in boxes:
+                self.assertGreaterEqual(box["x"], 0)
+                self.assertLessEqual(box["x"] + box["width"], 320)
+                self.assertGreaterEqual(box["height"], 2.75 * 18 - 1)
+            self.assertGreater(len({round(box["y"]) for box in boxes}), 1)  # more than one row
+            scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+            self.assertLessEqual(scroll_width, 320)

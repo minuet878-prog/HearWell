@@ -268,7 +268,8 @@ class DownloadMyDataTests(TestCase):
             if has_records:
                 self._hhie_s(self.user, 4, 4)
             with self.subTest(has_records=has_records):
-                response = self.client.get(reverse("my_hearing"))
+                # The entry moved to account settings (spec phase9_ui_refresh_3_structure.md 4.2).
+                response = self.client.get(reverse("account_settings"))
                 self.assertContains(response, "下載我的資料")
                 self.assertContains(response, f'href="{self.url}"')
 

@@ -246,7 +246,8 @@ class DeleteAccountTests(TestCase):
             if has_records:
                 self._fill(self.user)
             with self.subTest(has_records=has_records):
-                response = self.client.get(reverse("my_hearing"))
+                # The entry moved to account settings (spec phase9_ui_refresh_3_structure.md 4.2).
+                response = self.client.get(reverse("account_settings"))
                 self.assertContains(response, "刪除帳號")
                 self.assertContains(response, f'href="{self.url}"')
 

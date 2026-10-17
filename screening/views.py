@@ -440,6 +440,17 @@ def download_my_data(request):
 
 
 @login_required
+@require_http_methods(["GET"])
+def account_settings(request):
+    # Spec phase9_ui_refresh_3_structure.md 4.1: request.user's own account, to look at only.
+    user = request.user
+    consent = (
+        user.consents.filter(version__gte=models.CONSENT_VERSION).order_by("-agreed_at").first()
+    )
+    return render(request, "screening/account.html", {"consent": consent})
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def delete_account(request):
     user = request.user

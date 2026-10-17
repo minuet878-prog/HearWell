@@ -6,7 +6,7 @@
 <h1 class="h3 mt-3">刪除帳號</h1>
 {% if is_admin %}
 <p>管理員帳號請先在後台移除管理員權限，再回來刪除。</p>
-<a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">回我的紀錄</a>
+<a class="btn btn-outline-primary btn-lg" href="{% url 'account_settings' %}">回帳號設定</a>
 {% else %}
 <p>刪除後，下面這些資料會全部消失，<strong>無法復原</strong>：</p>
 <ul>
@@ -25,7 +25,7 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         <button type="submit" class="btn btn-danger btn-lg">刪除帳號</button>
-        <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">取消</a>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'account_settings' %}">取消</a>
     </div>
 </form>
 {% endif %}
