@@ -78,7 +78,9 @@
 7. commit 之後提醒我做驗收練習：
    - 蓋起來重講：我講，你指出漏掉或講錯的地方。
    - 故意弄壞：由我自己改、自己跑測試、自己還原；你不要動檔案。結束後跑 `git status` 確認乾淨。
-8. 問我這條分支要合併回 `main`、推到遠端、還是先放著。不要自己合併或 push。
+8. 用 `pr` skill 寫 PR 說明，存成 `docs/reviews/〈規格檔名〉_pr.md`。
+9. 問我這條分支要合併回 `main`、推到遠端、還是先放著。不要自己合併或 push。
+10. 最後提醒我：要不要跑 `/retro` 復盤這次的 session。我說要，才執行。
 
 ### 遇到 bug
 1. **先給我試**：只告訴我錯誤訊息和發生在哪裡，不要給原因或修法。等我自己試 20 分鐘，或我說「交給你」。
@@ -94,7 +96,7 @@
 3. **真實個資與病人資料不進版控**，也不寫進測試、範例或 log。測試一律用假資料。
 4. **不碰我的服務**：不自己啟動、重啟或停掉我電腦上的伺服器和資料庫，需要時請我來做。
 5. **試驗要先講**：臨時、探索用的修改，先說「這是試驗」，結束後主動還原。
-6. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.claude`（`.claude/agents/` 除外：審查用的 subagent 定義要進版控）、log、暫存檔一律不加。
+6. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.claude`（`.claude/agents/` 和 `.claude/skills/` 除外：審查用的 subagent 和自訂 skill 要進版控）、log、暫存檔一律不加。
 7. 密碼、金鑰、連線字串只放 `.env`，不寫進程式碼。
 
 ### HearWell 專屬
@@ -163,6 +165,7 @@
 
 - `docs/decisions/` — 做過的決策、理由、踩過的坑，照主題分檔；`README.md` 是索引。
 - `docs/roadmap.md` — 各 Phase 的待辦與目前進度。
+- `.claude/skills/` — 自訂 skill：`pr`（寫 PR 說明）、`retro`（復盤，我輸入 `/retro` 才用）。
 - `docs/specs/` — 每個任務開工前的規格，照 `spec_template.md` 寫；狀態「已確認」才能實作。
 - `~/.claude/plans/code-review-drf-react-claude-md-mellow-sky.md` — 最新一份 code review 報告（新 session 不會自動載入）。
 
