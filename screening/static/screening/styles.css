@@ -445,6 +445,15 @@ div.choice-group label:focus-within {
     font-weight: 700;
 }
 
+/* IOI-HA result: plain-language note under an item below the norm (spec phase9_ui_refresh_4d_ioi_ha_items.md). */
+.ioi-note {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background-color: #eef3fa;
+    border-left: 0.25rem solid #1f4e8c;
+    border-radius: 0.25rem;
+}
+
 /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
 .question-progress {
     display: block;

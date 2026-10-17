@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from screening import models
 from screening.models import Category, Consent, Question, Questionnaire, ReportShare
-from screening.scoring import classify
+from screening.scoring import IOI_HA_BELOW_NORM_NOTES, classify
 from screening.tests import test_report
 from screening.tests.helpers import consented_user
 
@@ -173,6 +173,15 @@ class ReportShareTests(TestCase):
         for token in ("x" * 43, "abc", "not-a-real-code"):
             with self.subTest(token=token):
                 self._assert_invalid(token)
+
+    # phase9_ui_refresh_4d_ioi_ha_items.md acceptance 6a: the family copy has no notes either
+    def test_ioi_ha_notes_not_in_shared_report(self):
+        self._full_records()  # item 2 is below the norm
+        share = self._share()
+        self.client.logout()
+        content = self._shared(share).content.decode()
+        self.assertIn("低於常模", content)
+        self.assertNotIn(IOI_HA_BELOW_NORM_NOTES[2], content)
 
     # 8
     def test_owner_sees_open_count_and_last_open(self):

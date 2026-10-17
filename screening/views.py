@@ -30,6 +30,7 @@ from screening.forms import (
 )
 from screening.scoring import (
     IOI_HA,
+    IOI_HA_BELOW_NORM_NOTES,
     IOI_HA_CHOICES,
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
@@ -661,6 +662,7 @@ def _ioi_ha_items(submission, answers):
                 "text": answer.question.question_text,
                 "label": IOI_HA_CHOICES[number][answer.score - 1],
                 "comparison": NORM_COMPARISON_TEXT.get(comparison),
+                "note": IOI_HA_BELOW_NORM_NOTES[number] if comparison == "below" else None,
             }
         )
     return items, grouped
