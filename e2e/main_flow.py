@@ -410,3 +410,19 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             card_bg = card.evaluate(colour)
             icon_bg = card.locator(".questionnaire-icon").evaluate(colour)
             self.assertNotEqual(icon_bg, card_bg)
+
+    # phase9_ui_refresh_4c_audiogram_thumbnails.md acceptance 9: no badge split over two lines
+    def test_audiogram_cards_fit_a_phone(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms")
+            expect(self.page.locator(".audiogram-thumbnail").first).to_be_visible()
+            badges = self.page.locator("main .level-badge")
+            self.assertGreater(badges.count(), 0)
+            for badge in badges.all():
+                lines = badge.evaluate(
+                    "el => el.getClientRects().length"
+                )  # a badge broken over two lines has two boxes
+                self.assertEqual(lines, 1)
+            scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+            self.assertLessEqual(scroll_width, 320)
