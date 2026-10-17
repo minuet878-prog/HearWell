@@ -6,11 +6,12 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Prefetch
+from django.db.models import Count, F, Prefetch
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
 from django.utils.http import content_disposition_header, url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
@@ -412,6 +413,17 @@ def download_my_data(request):
             }
             for audiogram in audiograms
         ],
+        # The link code itself is left out: it would let anyone holding the file open it.
+        "report_shares": [
+            {
+                "created_at": _taipei(share.created_at),
+                "expires_at": _taipei(share.expires_at),
+                "cancelled": share.revoked_at is not None,
+                "open_count": share.open_count,
+                "last_opened_at": share.last_opened_at and _taipei(share.last_opened_at),
+            }
+            for share in user.report_shares.all()
+        ],
     }
     filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(
@@ -449,10 +461,8 @@ def delete_account(request):
 REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
 
-@login_required
-def health_report(request):
-    # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
-    user = request.user
+def _report_context(user):
+    # One builder for the owner's report and the family's copy (rule 10: same scoring path).
     submissions = list(user.submissions.select_related("questionnaire").with_scores())
     by_questionnaire = {}
     for submission in submissions:  # newest first
@@ -489,7 +499,76 @@ def health_report(request):
     if audiogram:
         context.update(_audiogram_context(audiogram))
     context["has_records"] = bool(submissions or audiogram)
+    return context
+
+
+@login_required
+def health_report(request):
+    # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
+    context = _report_context(request.user)
+    context["share"] = request.user.report_shares.active().first()
     return render(request, "screening/health_report.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def report_share_create(request):
+    # Spec phase8_c1_family_share.md: only after the explicit confirm, one live link at most.
+    user = request.user
+    has_records = user.submissions.exists() or user.audiograms.exists()
+    if "confirm" in request.POST and has_records:
+        with transaction.atomic():
+            # Lock the user's row so two quick submits cannot both find "no live link".
+            User.objects.select_for_update().get(pk=user.pk)
+            if not user.report_shares.active().exists():
+                models.ReportShare.objects.create(user=user)
+    return redirect("health_report")
+
+
+@login_required
+@require_http_methods(["POST"])
+def report_share_cancel(request, share_id):
+    share = get_object_or_404(models.ReportShare.objects.active(), pk=share_id, user=request.user)
+    share.revoked_at = timezone.now()
+    share.save(update_fields=["revoked_at"])
+    return redirect("health_report")
+
+
+def _family_page(request, template, context=None, status=200):
+    # Family pages hold health data without a login: never cached, indexed, or referred on.
+    response = render(request, template, context, status=status)
+    add_never_cache_headers(response)
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    response["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+def _live_share(request, token):
+    # Expired, cancelled, deleted with the account, or never made: the same answer for all.
+    share = models.ReportShare.objects.active().select_related("user").filter(token=token).first()
+    if share is None:
+        return None, _family_page(request, "screening/share_invalid.html", status=404)
+    return share, None
+
+
+@require_http_methods(["GET"])
+def shared_cover(request, token):
+    # What a link preview (e.g. LINE) fetches: no health data, and not counted as an open.
+    share, invalid = _live_share(request, token)
+    return invalid or _family_page(request, "screening/shared_cover.html", {"share": share})
+
+
+@require_http_methods(["GET"])
+def shared_report(request, token):
+    share, invalid = _live_share(request, token)
+    if invalid:
+        return invalid
+    models.ReportShare.objects.filter(pk=share.pk).update(
+        open_count=F("open_count") + 1, last_opened_at=timezone.now()
+    )
+    context = _report_context(share.user)
+    context.update({"share": share, "shared": True, "owner": share.user})
+    return _family_page(request, "screening/shared_report.html", context)
 
 
 @login_required

@@ -1,0 +1,10 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}連結已經失效｜HearWell{% endblock %}
+
+{% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block body %}
+<h1 class="h3 mt-3">這個連結已經失效，請向分享的家人要新的連結</h1>
+<a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
+{% endblock %}
