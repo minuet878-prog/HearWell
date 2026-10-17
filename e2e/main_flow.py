@@ -426,3 +426,26 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                 self.assertEqual(lines, 1)
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
+
+    # phase9_ui_refresh_4a_home.md acceptance 8: step cards stack on a phone
+    def test_home_step_cards_stack_on_a_phone(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
+            self.assertEqual(len(boxes), 3)
+            self.assertEqual({box["x"] for box in boxes}, {boxes[0]["x"]})
+            for upper, lower in pairwise(boxes):
+                self.assertGreaterEqual(lower["y"], upper["y"] + upper["height"])
+            scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+            self.assertLessEqual(scroll_width, 320)
+
+    # phase9_ui_refresh_4a_home.md review 1: at 200% text the step cards still fit a phone
+    def test_home_step_cards_fit_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
+            for card in self.page.locator(".step-cards > li").all():
+                box = card.bounding_box()
+                self.assertLessEqual(box["x"] + box["width"], 320)

@@ -359,24 +359,48 @@ div.choice-group label:focus-within {
     font-weight: 700;
 }
 
-/* Home: numbered steps. */
-.steps {
+/* Home (spec phase9_ui_refresh_4a_home.md): pale brand bands around the top and the trust block. */
+.home-band {
+    background-color: #eef3fa;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.home-illustration {
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+    margin: 0 auto 1rem;
+    fill: none;
+    stroke: #1f4e8c;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Three across when they fit, otherwise one per row. */
+.step-cards {
     list-style: none;
     padding: 0;
-    counter-reset: step;
-}
-
-.steps li {
-    counter-increment: step;
-    display: flex;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
     gap: 0.75rem;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
 }
 
-.steps li::before {
-    content: counter(step);
-    flex: 0 0 2.25rem;
+.step-cards li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.75rem;
+    background-color: #fff;
+}
+
+.step-number {
+    width: 2.25rem;
     height: 2.25rem;
     border-radius: 50%;
     background-color: #1f4e8c;
@@ -385,6 +409,40 @@ div.choice-group label:focus-within {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.step-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    fill: none;
+    stroke: #1f4e8c;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* A shrunken result card, clearly marked as an example. */
+.result-preview {
+    position: relative;
+    padding: 2.5rem 1rem 1rem;
+    border: 0.125rem dashed #adb5bd;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.result-preview .result-level {
+    font-size: 1.5rem;
+}
+
+.preview-tag {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    padding: 0 0.5rem;
+    border-radius: 1rem;
+    background-color: #495057;
+    color: #fff;
+    font-weight: 700;
 }
 
 /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
