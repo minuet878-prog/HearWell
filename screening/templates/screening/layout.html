@@ -30,7 +30,8 @@
             <h1 class="site-brand"><a href="{% url 'index' %}">HearWell</a></h1>
             {% if user.is_authenticated %}
             <div class="d-flex flex-wrap align-items-center gap-3">
-                <span class="text-break">目前登入：<strong>{{ user.username }}</strong></span>
+                {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
+                <a class="site-account text-break" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
                 <form id="logout-form" action="{% url 'logout' %}" method="post">
                     {% csrf_token %}
                     <button class="btn btn-outline-light" type="submit">登出</button>
@@ -100,6 +101,7 @@
                 <li><a href="{% url 'family_guide' %}">給家人看：怎麼跟聽損的家人溝通</a></li>
                 <li><a href="{% url 'add_to_home' %}">把 HearWell 加到手機主畫面</a></li>
                 <li><a href="{% url 'privacy' %}">隱私權說明</a></li>
+                {% if user.is_authenticated %}<li><a href="{% url 'account_settings' %}">帳號設定</a></li>{% endif %}
             </ul>
             <p>結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
             <p>聯絡我們：<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>

@@ -460,24 +460,25 @@ details summary {
 }
 
 /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
+/* Separate pills that wrap, so any number of questionnaires fits a phone
+   (spec phase9_ui_refresh_3_structure.md 4.3); smaller than the main navigation. */
 .history-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin: 0.5rem 0 1.5rem;
-    border-bottom: 0.125rem solid #1f4e8c;
 }
 
 .history-tabs a {
-    flex: 1;
+    display: inline-flex;
+    align-items: center;
     min-height: 2.75rem;
-    padding: 0.5rem 1rem;
+    padding: 0 1rem;
     border: 0.125rem solid #1f4e8c;
-    border-bottom: 0;
-    border-radius: 0.5rem 0.5rem 0 0;
+    border-radius: 1.5rem;
+    background-color: #fff;
     color: #1f4e8c;
-    font-size: 1.125rem;
     font-weight: 600;
-    text-align: center;
     text-decoration: none;
 }
 
@@ -511,6 +512,31 @@ details summary {
     display: flex;
     align-items: center;
     gap: 0.375rem;
+}
+
+/* Level bands named under the trend chart, in the bands' top-to-bottom order. */
+.trend-bands {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-weight: 600;
+}
+
+.trend-bands li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.trend-band-swatch {
+    flex: none;
+    width: 1.5rem;
+    height: 1rem;
+    border: 1px solid #adb5bd;
+    border-radius: 0.25rem;
 }
 
 /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
@@ -824,4 +850,30 @@ details summary {
     .health-report .audiogram-chart {
         max-width: 10cm;
     }
+}
+
+/* Account settings (spec phase9_ui_refresh_3_structure.md 4.1). */
+.account-details {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1rem;
+}
+
+.account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* Deleting the account is set apart from everything above it. */
+.account-danger {
+    border-top: 0.125rem solid #c23b1c;
+}
+
+/* The account link sits on the dark header. */
+.site-account {
+    color: #fff;
+}
+
+.site-account:hover {
+    color: #fff;
 }

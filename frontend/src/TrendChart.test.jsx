@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import TrendChart from "./TrendChart.jsx";
@@ -108,7 +108,7 @@ describe("TrendChart", () => {
     ]);
     expect(screen.getByRole("heading", { name: /HHIE-S/ })).toBeTruthy();
     for (const level of LEVELS) {
-      expect(screen.getAllByText(level.text, { selector: "text, tspan" }).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(level.text).length).toBeGreaterThan(0);
     }
   });
 
@@ -290,12 +290,25 @@ describe("TrendChart", () => {
       await screen.findByText(/最近一次/);
       const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
       expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#feece7"]);
-      const labelColours = LEVELS.map(
-        (level) => screen.getByText(level.text, { selector: "text, tspan" }).closest("text").getAttribute("fill"),
-      );
-      expect(labelColours).toEqual(["#1e7b55", "#8a5a00", "#c23b1c"]);
+      const bandLegend = within(container.querySelector(".trend-bands"));
+      const labelColours = LEVELS.map((level) => bandLegend.getByText(level.text).style.color);
+      expect(labelColours).toEqual(["rgb(30, 123, 85)", "rgb(138, 90, 0)", "rgb(194, 59, 28)"]);
       const ticks = [...container.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
       expect(ticks).toEqual([]);
+    });
+
+    it("names the levels in a legend under the chart, top band first (phase9_ui_refresh_3_structure.md 4.5)", async () => {
+      threePoints();
+      const { container } = render(<TrendChart code="hhie-s" />);
+      await screen.findByText(/最近一次/);
+      // Nothing written inside the plot, so no level name can cover a point.
+      for (const level of LEVELS) {
+        expect(container.querySelector(".recharts-wrapper").textContent).not.toContain(level.text);
+      }
+      const items = [...container.querySelectorAll(".trend-bands li")];
+      expect(items.map((li) => li.textContent.trim())).toEqual(["顯著影響", "輕度到中度影響", "無/極輕微影響"]);
+      const swatches = items.map((li) => li.querySelector(".trend-band-swatch").style.backgroundColor);
+      expect(swatches).toEqual(["rgb(254, 236, 231)", "rgb(255, 244, 214)", "rgb(227, 244, 236)"]);
     });
 
     it("orders title, summary box and chart card, with the summary outside the card", async () => {

@@ -4,7 +4,7 @@
 
 {% block body %}
 <h1 class="h3 mt-2">了解聽力對您生活的影響</h1>
-<p>回答幾個日常生活情境的問題，大約 3 分鐘。</p>
+<p>聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
 <a class="btn btn-primary btn-lg w-100" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% if not user.is_authenticated %}
 <p class="text-body-emphasis mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
@@ -16,9 +16,8 @@
 </ol>
 <div class="card mt-3">
     <div class="card-body">
-        <p class="fs-4 fw-bold text-primary mb-1">可達 10 年</p>
-        <p class="mb-0">從察覺聽力問題到尋求協助，往往拖延多年。及早了解，才能及早處理。</p>
+        <p>很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。</p>
+        <p class="mb-0">本網站由執業聽力師開發，使用經過驗證的標準化量表。</p>
     </div>
 </div>
-<p class="mt-4">本網站由執業聽力師開發，使用經過驗證的標準化量表。結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
 {% endblock %}
