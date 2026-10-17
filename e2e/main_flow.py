@@ -7,13 +7,22 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 import os
 import re
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
+from itertools import pairwise
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import expect, sync_playwright
 
-from screening.models import Answer, Audiogram, AudiogramPoint, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Audiogram,
+    AudiogramPoint,
+    NormGroup,
+    Questionnaire,
+    Submission,
+)
 from screening.tests.helpers import consented_user
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -185,6 +194,9 @@ class SharedLayoutTest(StaticLiveServerTestCase):
 
     fixtures = ("questions_fixture.json",)
     CONTENT_MAX = 40 * 18  # 40rem at the 18px base
+    AXIS_DATES = ".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    PREVIOUS_IOI = (4, 3, 2, 3, 4, 4, 2)
+    LATEST_IOI = (5, 2, 3, 4, 3, 5, 1)
 
     @classmethod
     def setUpClass(cls):
@@ -200,7 +212,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
 
     def setUp(self):
         # Fake records straight in the test database, then the session cookie in the browser.
-        user = consented_user(username="layout_e2e")
+        user = self.user = consented_user(username="layout_e2e")
         hhie_s = Questionnaire.objects.get(code="hhie-s")
         submission = Submission.objects.create(
             user=user, questionnaire=hhie_s, wearing_hearing_aid=False
@@ -215,13 +227,34 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             for ear in ("right", "left")
             for f in (500, 1000, 2000, 4000)
         )
+        ioi_ha = Questionnaire.objects.get(code="ioi-ha")
+        # An earlier answer in the same norm group first, so the chart also draws its diamonds.
+        for scores in (self.PREVIOUS_IOI, self.LATEST_IOI):
+            ioi = Submission.objects.create(
+                user=user,
+                questionnaire=ioi_ha,
+                norm_group=NormGroup.MILD_MODERATE,
+                norm_basis=submission,
+                wearing_hearing_aid=True,
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=ioi, question=question, score=score)
+                for question, score in zip(ioi_ha.questions.all(), scores, strict=True)
+            )
         self.client.force_login(user)
         self.cookie = {
             "name": settings.SESSION_COOKIE_NAME,
             "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
             "url": self.live_server_url,
         }
-        self.pages = ["/", "/my_hearing", "/audiograms", "/questionnaire_list", "/report"]
+        self.pages = [
+            "/",
+            "/my_hearing?questionnaire=hhie-s",
+            "/my_hearing?questionnaire=ioi-ha",
+            "/audiograms",
+            "/questionnaire_list",
+            "/report",
+        ]
 
     def open(self, width, height=900):
         self.context = self.browser.new_context(viewport={"width": width, "height": height})
@@ -276,3 +309,71 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             self.page.emulate_media(media="print")
             for part in parts:
                 expect(part).to_be_hidden()
+
+    # phase9_ui_refresh_2_data.md acceptance 12
+    def test_ioi_ha_numbers_points_and_lines_line_up(self):
+        self.open(1280)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=ioi-ha")
+
+            def centre(locator):
+                box = locator.bounding_box()
+                return box["y"] + box["height"] / 2
+
+            axis = self.page.locator(".ioi-axis")
+            numbers = {
+                int(span.text_content()): centre(span)
+                for span in axis.locator(".ioi-grid > span").all()
+            }
+            self.assertEqual(sorted(numbers), [1, 2, 3, 4, 5])
+            for row, score in enumerate((5, 4, 3, 2, 1), start=1):
+                line = centre(axis.locator(f'.ioi-line[style="grid-row: {row}"]'))
+                self.assertAlmostEqual(numbers[score], line, delta=1)
+            columns = self.page.locator(".ioi-columns > li:not(.ioi-axis)")
+            marks = ((".ioi-dot-latest", self.LATEST_IOI), (".ioi-dot-previous", self.PREVIOUS_IOI))
+            for mark, scores in marks:
+                for index, score in enumerate(scores):
+                    with self.subTest(mark=mark, item=index + 1):
+                        column = columns.nth(index)
+                        dot = centre(column.locator(mark))
+                        line = centre(column.locator(f'.ioi-line[style="grid-row: {6 - score}"]'))
+                        self.assertAlmostEqual(dot, numbers[score], delta=1)
+                        self.assertAlmostEqual(dot, line, delta=1)
+
+    # phase9_ui_refresh_2_data.md 4.3 and acceptance 15: dates inside the chart, never crowded
+    def test_trend_dates_stay_inside_and_apart(self):
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        taipei = ZoneInfo("Asia/Taipei")
+        for when, wearing in (
+            ((2026, 9, 1, 10, 0), False),
+            ((2026, 9, 20, 10, 0), False),
+            ((2026, 10, 1, 10, 0), True),
+            ((2026, 10, 15, 14, 30), False),
+            ((2026, 10, 15, 16, 10), True),
+        ):
+            record = Submission.objects.create(
+                user=self.user, questionnaire=hhie_s, wearing_hearing_aid=wearing
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=record, question=question, score=2)
+                for question in hhie_s.questions.all()
+            )
+            Submission.objects.filter(pk=record.pk).update(
+                created_at=datetime(*when, tzinfo=taipei)
+            )
+        for width in (320, 1280):
+            with self.subTest(width=width):
+                self.open(width)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+                    dates = self.page.locator(f"#trend-chart {self.AXIS_DATES}")
+                    expect(dates.first).to_be_visible()
+                    chart = self.page.locator("#trend-chart svg.recharts-surface").first
+                    edge = chart.bounding_box()
+                    boxes = sorted((d.bounding_box() for d in dates.all()), key=lambda b: b["x"])
+                    for box in boxes:
+                        self.assertGreaterEqual(box["x"], edge["x"])
+                        self.assertLessEqual(box["x"] + box["width"], edge["x"] + edge["width"])
+                    # At least 1.5rem (27px) between dates; a pixel of slack for text measuring.
+                    for left, right in pairwise(boxes):
+                        self.assertGreaterEqual(right["x"] - (left["x"] + left["width"]), 26)
