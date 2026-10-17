@@ -11,5 +11,4 @@ node_modules/
 /screening/static/screening/frontend/
 .claude/*
 !.claude/agents/
-!.claude/skills/
 /e2e-artifacts/
