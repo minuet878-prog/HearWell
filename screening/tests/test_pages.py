@@ -530,7 +530,9 @@ class PageFlowTests(TestCase):
                 "請選擇問卷",
                 "HHIE-S 聽力障礙自我評估",
                 "適合 65 歲以上的長輩。",
-                "共 10 題，大約 3 分鐘。",
+                # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
+                '<span class="card-tag">10 題</span>',
+                '<span class="card-tag">約 3 分鐘</span>',
             ),
         )
         self.assertRegex(
@@ -543,7 +545,7 @@ class PageFlowTests(TestCase):
         main = self._main(self.client.get(reverse("questionnaire_list")))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
-        self.assertIn("共 3 題。", card)
+        self.assertIn('<span class="card-tag">3 題</span>', card)
         self.assertNotIn("適合", card)
         self.assertNotIn("分鐘", card)
         page = self._main(self.client.get(reverse("screening", args=[self.short.id])))

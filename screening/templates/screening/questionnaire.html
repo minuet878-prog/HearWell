@@ -4,11 +4,15 @@
 
 {% block body %}
 <h1 class="h3 mt-2">請選擇問卷</h1>
+{# Spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1; wording reviewed by the owner. #}
+<p class="questionnaire-guide">第一次使用，請從 HHIE-S 開始；已經戴助聽器的人，可以再做 IOI-HA。</p>
 {% for questionnaire in questionnaires %}
 <a class="link-card mt-3" href="{% url 'screening' questionnaire.id %}">
+    {% include "screening/questionnaire_icon.html" with code=questionnaire.code %}
     <span class="link-card-body">
         <span class="link-card-title">{{ questionnaire }}{% if questionnaire.info %} {{ questionnaire.info.subtitle }}{% endif %}</span>
-        <span>{% if questionnaire.info %}{{ questionnaire.info.audience }}共 {{ questionnaire.question_count }} 題，大約 {{ questionnaire.info.minutes }} 分鐘。{% else %}共 {{ questionnaire.question_count }} 題。{% endif %}</span>
+        {% if questionnaire.info %}<span>{{ questionnaire.info.audience }}</span>{% endif %}
+        <span class="card-tags"><span class="card-tag">{{ questionnaire.question_count }} 題</span>{% if questionnaire.info %}{# A pause for screen readers between the tags. #}<span class="visually-hidden">，</span><span class="card-tag">約 {{ questionnaire.info.minutes }} 分鐘</span>{% endif %}</span>
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>

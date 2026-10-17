@@ -127,12 +127,26 @@ def consent(request):
     return render(request, "screening/consent.html", {"next": next_url})
 
 
+# Where to start (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1): HHIE-S, then IOI-HA,
+# then any other questionnaire by when it was added. A screen order, not a scoring rule.
+LIST_ORDER = ("hhie-s", IOI_HA)
+
+
+def list_order(questionnaire):
+    code = questionnaire.code
+    rank = LIST_ORDER.index(code) if code in LIST_ORDER else len(LIST_ORDER)
+    return (rank, questionnaire.pk)
+
+
 @login_required
 def questionnaire_list(request):
+    # Added order first (the database promises none), so leaving out list_order shows up.
+    questionnaires = Questionnaire.objects.annotate(question_count=Count("questions"))
+    questionnaires = questionnaires.order_by("pk")
     return render(
         request,
         "screening/questionnaire.html",
-        {"questionnaires": Questionnaire.objects.annotate(question_count=Count("questions"))},
+        {"questionnaires": sorted(questionnaires, key=list_order)},
     )
 
 
