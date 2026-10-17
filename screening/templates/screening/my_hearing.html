@@ -35,7 +35,7 @@
 {% for submission in submissions %}
 <a class="link-card" href="{% url 'result' submission.id %}">
     <span class="link-card-body">
-        <strong>{{ submission.created_at|date:"Y/m/d" }}</strong>
+        <strong>{{ submission.created_at|date:"Y/m/d" }}{% if submission.id in same_day %} {{ submission.created_at|date:"H:i" }}{% endif %}</strong>
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>

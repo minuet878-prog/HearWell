@@ -1,5 +1,6 @@
 import json
 import uuid
+from collections import Counter
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -325,11 +326,16 @@ def my_hearing(request):
         submissions[0].questionnaire,
     )
     records = [s for s in submissions if s.questionnaire_id == current.id]
+    # Records sharing a Taipei date with another of this tab show their time too
+    # (spec phase9_ui_refresh_2_data.md 4.3).
+    per_day = Counter(timezone.localdate(s.created_at) for s in records)
+    same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
     return render(
         request,
         "screening/my_hearing.html",
         {
             "submissions": records,
+            "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
             "difference": _aided_difference(request.user) if current.code == "hhie-s" else None,

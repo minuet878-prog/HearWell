@@ -528,20 +528,23 @@ details summary {
     grid-template-rows: repeat(5, 2rem);
     justify-items: center;
     align-items: center;
-    /* A faint line per score row. */
-    background: repeating-linear-gradient(#dee2e6 0 1px, transparent 1px 2rem);
-    border-bottom: 1px solid #dee2e6;
+}
+
+/* One line through the middle of each score row: real elements, so a browser can measure them. */
+.ioi-line {
+    justify-self: stretch;
+    height: 1px;
+    background-color: #ced4da;
 }
 
 .ioi-axis .ioi-grid {
-    background: none;
-    border: 0;
     color: #212529;
     font-size: 0.875rem;
 }
 
-.ioi-axis .ioi-grid > * {
-    grid-column: auto;
+/* The axis keeps its numbers on top of its lines, without lines of its own showing. */
+.ioi-axis .ioi-line {
+    visibility: hidden;
 }
 
 .ioi-grid > * {

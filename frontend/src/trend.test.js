@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { selectPoints, summarize } from "./trend.js";
+import { chartDays, selectPoints, summarize } from "./trend.js";
 
 function submission(
   id,
@@ -10,7 +10,8 @@ function submission(
 ) {
   return {
     id,
-    created_at: `${date}T14:30:00.123456+08:00`,
+    // "2026-10-15" gets 14:30; "2026-10-15T16:10" keeps its own time.
+    created_at: `${date.includes("T") ? date : `${date}T14:30`}:00.123456+08:00`,
     questionnaire: { code, name },
     wearing_hearing_aid: wearing,
     scores: { total, emotional: 0, social: 0 },
@@ -51,6 +52,38 @@ describe("selectPoints", () => {
     expect(points.map((p) => p.wearing)).toEqual([false, true, null]);
   });
 
+  it("splits each score into the series of its hearing aid status (spec 4.1)", () => {
+    const points = selectPoints(
+      [
+        submission(3, "2026-10-14", 10, { wearing: null }),
+        submission(2, "2026-09-01", 0, { wearing: true }),
+        submission(1, "2026-08-01", 30, { wearing: false }),
+      ],
+      "hhie-s",
+    );
+    expect(points.map(({ unaided, aided, unrecorded }) => [unaided, aided, unrecorded])).toEqual([
+      [30, null, null],
+      [null, 0, null],
+      [null, null, 10],
+    ]);
+  });
+
+  it("keeps the Taipei time of each record (spec 4.3)", () => {
+    const points = selectPoints(
+      [
+        submission(3, "2026-10-15T16:10", 10),
+        submission(2, "2026-10-15T09:05", 20),
+        submission(1, "2026-10-01", 30),
+      ],
+      "hhie-s",
+    );
+    expect(points.map((p) => [p.date, p.time])).toEqual([
+      ["2026/10/01", "14:30"],
+      ["2026/10/15", "09:05"],
+      ["2026/10/15", "16:10"],
+    ]);
+  });
+
   it("uses the level text from the API as is", () => {
     const [point] = selectPoints([submission(1, "2026-10-14", 5, { text: "假的分級" })], "hhie-s");
     expect(point.levelText).toBe("假的分級");
@@ -61,28 +94,100 @@ describe("selectPoints", () => {
   });
 });
 
+describe("chartDays", () => {
+  // Spec 4.1: one column per day, the latest five days, the day's last record of each status.
+  const point = (date, time, wearing, total, levelText = "輕度到中度影響") => ({
+    date,
+    time,
+    wearing,
+    total,
+    levelText,
+    unaided: wearing === false ? total : null,
+    aided: wearing === true ? total : null,
+    unrecorded: wearing === null ? total : null,
+  });
+
+  it("puts a day's records in one column (acceptance 16)", () => {
+    const days = chartDays([point("2026/10/15", "14:30", false, 20), point("2026/10/15", "16:10", true, 10)]);
+    expect(days).toHaveLength(1);
+    expect(days[0]).toMatchObject({ date: "2026/10/15", count: 2, unaided: 20, aided: 10, unrecorded: null });
+    expect(days[0]).toMatchObject({ unaidedTime: "14:30", aidedTime: "16:10", aidedLevel: "輕度到中度影響" });
+  });
+
+  it("keeps only the latest five days, oldest first (acceptance 17)", () => {
+    const points = [1, 2, 3, 4, 5, 6, 7].map((day) => point(`2026/10/0${day}`, "09:00", false, day * 2));
+    expect(chartDays(points).map((d) => d.date)).toEqual([
+      "2026/10/03",
+      "2026/10/04",
+      "2026/10/05",
+      "2026/10/06",
+      "2026/10/07",
+    ]);
+  });
+
+  it("draws only the day's last record of a status (acceptance 18)", () => {
+    const [day] = chartDays([point("2026/10/15", "09:00", false, 10), point("2026/10/15", "15:00", false, 20)]);
+    expect(day).toMatchObject({ count: 2, unaided: 20, unaidedTime: "15:00" });
+  });
+
+  it("keeps a score of 0 (not mistaken for no record)", () => {
+    const [day] = chartDays([point("2026/10/15", "09:00", true, 0)]);
+    expect(day.aided).toBe(0);
+    expect(day.unaided).toBeNull();
+  });
+});
+
 describe("summarize", () => {
-  const point = (total, date = "2026/10/14", levelText = "輕度到中度影響") => ({ total, date, levelText });
-  const latest = { date: "2026/10/14", total: 18, levelText: "輕度到中度影響" };
+  // Spec 4.2: compare only with the previous record of the same hearing aid status.
+  const point = (total, wearing, date, levelText = "輕度到中度影響") => ({ total, wearing, date, levelText });
 
-  it("explains how to see a change when there is one point", () => {
-    expect(summarize([point(18)])).toEqual({ ...latest, change: "再做一次篩檢，就能看到分數的變化。" });
+  it("names the latest status and keeps the API's score and level", () => {
+    const summary = summarize([point(0, true, "2026/10/14", "無/極輕微影響")]);
+    expect(summary).toMatchObject({ date: "2026/10/14", statusText: "有戴助聽器", total: 0, levelText: "無/極輕微影響" });
+    expect(summarize([point(5, false, "2026/10/14")]).statusText).toBe("沒戴助聽器");
+    expect(summarize([point(5, null, "2026/10/14")]).statusText).toBe("助聽器未記錄");
   });
 
-  it("reports an increase", () => {
-    expect(summarize([point(12), point(18)])).toEqual({ ...latest, change: "比上一次增加 6 分。" });
+  it("explains how to see a change when there is only one record", () => {
+    expect(summarize([point(18, false, "2026/10/14")]).change).toBe("再做一次篩檢，就能看到分數的變化。");
   });
 
-  it("reports a decrease down to 0", () => {
-    expect(summarize([point(12), point(18), point(0, "2026/10/14", "無/極輕微影響")])).toEqual({
-      date: "2026/10/14",
-      total: 0,
-      levelText: "無/極輕微影響",
-      change: "比上一次減少 18 分。",
-    });
+  it("finds the previous record of the status even before the chart's five days (acceptance 17)", () => {
+    const points = [point(14, true, "2026/09/01")];
+    for (const day of [2, 3, 4, 5, 6, 7]) points.push(point(20, false, `2026/10/0${day}`));
+    points.push(point(10, true, "2026/10/08"));
+    expect(summarize(points).change).toBe("比上一次有戴助聽器（2026/09/01）減少 4 分。");
   });
 
-  it("reports no change", () => {
-    expect(summarize([point(18), point(18)])).toEqual({ ...latest, change: "和上一次相同。" });
+  it("skips records of the other status (acceptance 5)", () => {
+    const points = [point(14, true, "2026/10/01"), point(20, false, "2026/10/15"), point(10, true, "2026/10/16")];
+    expect(summarize(points).change).toBe("比上一次有戴助聽器（2026/10/01）減少 4 分。");
+  });
+
+  it("reports an increase, down to 0, and no change", () => {
+    expect(summarize([point(12, false, "2026/09/01"), point(18, false, "2026/10/14")]).change).toBe(
+      "比上一次沒戴助聽器（2026/09/01）增加 6 分。",
+    );
+    expect(summarize([point(18, false, "2026/09/01"), point(0, false, "2026/10/14")]).change).toBe(
+      "比上一次沒戴助聽器（2026/09/01）減少 18 分。",
+    );
+    expect(summarize([point(18, true, "2026/09/01"), point(18, true, "2026/10/14")]).change).toBe(
+      "和上一次有戴助聽器（2026/09/01）相同。",
+    );
+  });
+
+  it("says it is the first of its status when only the other status came before (acceptance 6)", () => {
+    expect(summarize([point(20, false, "2026/09/01"), point(10, true, "2026/10/14")]).change).toBe(
+      "這是第一筆有戴助聽器的紀錄。",
+    );
+    expect(summarize([point(10, true, "2026/09/01"), point(20, false, "2026/10/14")]).change).toBe(
+      "這是第一筆沒戴助聽器的紀錄。",
+    );
+  });
+
+  it("does not compare an unrecorded record (acceptance 7)", () => {
+    expect(summarize([point(10, null, "2026/09/01"), point(20, null, "2026/10/14")]).change).toBe(
+      "這筆沒有記錄助聽器，不和其他紀錄比較。",
+    );
   });
 });
