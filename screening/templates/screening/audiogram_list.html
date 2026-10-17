@@ -17,9 +17,12 @@
 {% for audiogram in audiograms %}
 {% with result=audiogram.interpretation %}
 <a class="link-card" href="{% url 'audiogram_detail' audiogram.id %}">
+    {% include "screening/audiogram_thumbnail.html" %}
     <span class="link-card-body">
         <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
-        <span>右耳：{% include "screening/level_badge.html" with text=result.right.degree|default:"資料不足" level=result.right.degree|degree_level %}　左耳：{% include "screening/level_badge.html" with text=result.left.degree|default:"資料不足" level=result.left.degree|degree_level %}</span>
+        {# One ear per line, so a badge is never split (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.2). #}
+        <span class="audiogram-ear">右耳：{% include "screening/level_badge.html" with text=result.right.degree|default:"資料不足" level=result.right.degree|degree_level %}</span>
+        <span class="audiogram-ear">左耳：{% include "screening/level_badge.html" with text=result.left.degree|default:"資料不足" level=result.left.degree|degree_level %}</span>
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>

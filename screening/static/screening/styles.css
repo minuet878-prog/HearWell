@@ -927,3 +927,13 @@ details summary {
     color: #343a40;
     font-weight: 600;
 }
+
+/* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
+.audiogram-thumbnail {
+    flex: none;
+    width: 6rem;
+    height: 4.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    background-color: #fff;
+}

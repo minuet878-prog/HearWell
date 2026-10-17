@@ -20,6 +20,7 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare
+from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
     AnswerFormSet,
     DeleteAccountForm,
@@ -661,11 +662,11 @@ def _ioi_ha_result(request, submission, answers):
 
 @login_required
 def audiogram_list(request):
-    return render(
-        request,
-        "screening/audiogram_list.html",
-        {"audiograms": request.user.audiograms.prefetch_related("points")},
-    )
+    audiograms = list(request.user.audiograms.prefetch_related("points"))
+    for audiogram in audiograms:
+        # From the points already loaded with the list: no query per card.
+        audiogram.thumbnail = thumbnail(audiogram.points.all())
+    return render(request, "screening/audiogram_list.html", {"audiograms": audiograms})
 
 
 def _chart_points(points):
