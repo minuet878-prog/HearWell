@@ -1,6 +1,6 @@
 # Phase 10 規格：PWA 返回鍵與下拉重整
 
-- **狀態**：已完成（驗收 14 實機待本人確認）
+- **狀態**：已完成
 - **分支**：`feat/pwa-back-refresh`
 - **擬稿**：AI　　**確認人**：本人　　**確認日期**：2026-10-18
 
@@ -76,7 +76,7 @@
 - [x] 11. 假設使用螢幕閱讀器，當移到上一頁按鈕，則唸出「上一頁，按鈕」。
 - [x] 12. 假設字級放大到 200%、寬度 320px，則上一頁按鈕不造成左右捲動、文字不被截斷。
 - [x] 13. 假設已登入、字級 200%、寬度 320px，則「上一頁」跟「登出」不在同一行相鄰，兩個按鈕之間至少隔著「HearWell」或換行。
-- [ ] 14. （人工，iPhone 與 Android 實機）從主畫面打開，逐頁確認 2–9b、13 的行為。
+- [x] 14. （人工，iPhone 與 Android 實機）從主畫面打開，逐頁確認 2–9b、13 的行為。（本人實機通過，2026-10-18）
 
 ## 6. 待決問題
 
@@ -105,7 +105,7 @@
   - 9、9b：Vitest（規則）＋ Django `test_pages_with_forms_have_inputs_in_main`、`test_consent_page_has_inputs_in_main`、`test_audiogram_input_draws_inside_main`、`test_my_hearing_has_no_inputs_in_main`（真實頁面）
   - 10、11：Django `test_other_pages_have_a_hidden_back_button`、`test_every_page_loads_the_script_and_a_hidden_pull_hint`
   - 12、13：e2e `test_back_button_fits_a_phone_at_double_text_size`
-  - 14：人工
+  - 14：人工，本人實機通過（2026-10-18）
 - **規格以外的決定**：
   - 上一頁判斷改用 Navigation API（審查 bug 1、2，本人選 A）：原本 0.5 秒計時器會在作答頁退回上一題、或伺服器慢時誤跳首頁。
   - 兩指觸控、畫面放大時不啟動下拉（審查 bug 3）。

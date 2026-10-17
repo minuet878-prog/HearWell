@@ -237,7 +237,7 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
   - 上一頁：藍色標題列左側的外框按鈕，首頁沒有；判斷用 `navigation.canGoBack`，舊 iPhone 用 `history.length`，不能退就回首頁（審查後拿掉 0.5 秒計時器，本人選 A）
   - 下拉重整：頁頂、單指、沒放大、頁面內容沒有表單欄位才作用；標題列的登出不算
   - 沒做：重新整理按鈕、左右滑動手勢、service worker
-  - 驗收 14 實機（iPhone、Android）待本人確認；舊 iPhone 沒有 Navigation API 時，「切回 app 時頁面被重新載入」後按上一頁可能沒反應（罕見，可按導覽列首頁）
+  - 驗收 14 實機（iPhone、Android）本人通過；舊 iPhone 沒有 Navigation API 時，「切回 app 時頁面被重新載入」後按上一頁可能沒反應（罕見，可按導覽列首頁）
 
 ### Phase 10 之後
 不預先排。從下面的「待定」和「功能構想總表」挑。
