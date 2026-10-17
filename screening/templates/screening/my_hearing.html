@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters static %}
+{% load static %}
 
 {% block title %}我的紀錄｜HearWell{% endblock %}
 
@@ -33,27 +33,25 @@
 <div id="trend-chart" data-questionnaire="{{ current.code }}"></div>
 {% endif %}
 {% for submission in submissions %}
-<div class="card mb-2 mt-2">
-    {# Stacked on phones, one row from md up. #}
-    <div class="card-body d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
+<a class="link-card" href="{% url 'result' submission.id %}">
+    <span class="link-card-body">
+        <strong>{{ submission.created_at|date:"Y/m/d" }}</strong>
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
-        <span class="text-muted">{{ submission.created_at|date:"Y/m/d" }} {{ submission.questionnaire.questionnaire_name }}</span><span class="text-body-emphasis">常模組別：{{ submission.get_norm_group_display }}</span>
+        <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
         {% else %}
-        <span class="text-muted">{{ submission.created_at|date:"Y/m/d" }} 總分：{{ submission.total_answer_score }}
-            </span><span class="text-body-emphasis">助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>{% with classified=submission.classified %}<span class="text-{{ classified.level|level_to_color }}">
-            {{ classified.text }}</span>{% endwith %}
-        {% endif %}<a class="btn btn-primary align-self-md-center"
-            href="{% url 'result' submission.id %}">查看結果</a>
-    </div>
-</div>
+        <span>總分：{{ submission.total_answer_score }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
+        {% with classified=submission.classified %}<span>{% include "screening/level_badge.html" with text=classified.text level=classified.level %}</span>{% endwith %}
+        {% endif %}
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
 {% empty %}
 <p>您還沒有做過篩檢紀錄</p>
 {% endfor %}
 <div class="mt-4">
-    <a class="btn btn-primary btn-lg" href="{% url 'health_report' %}">聽力報告</a>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">聽力報告</a>
     <p class="mt-1 mb-0">可以印出來或存成 PDF，帶去給醫師看</p>
 </div>
-<p class="mt-3 mb-0"><a class="btn btn-link px-0" href="{% url 'family_guide' %}">給家人看：怎麼跟聽損的家人溝通</a></p>
 <p class="mt-4 d-flex flex-wrap gap-2 align-items-center"><a class="btn btn-outline-primary" href="{% url 'download_my_data' %}">下載我的資料</a><a class="btn btn-link text-danger" href="{% url 'delete_account' %}">刪除帳號</a></p>
 {% endblock %}

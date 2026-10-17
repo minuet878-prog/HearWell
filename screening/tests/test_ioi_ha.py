@@ -305,7 +305,7 @@ class IoiHaTests(TestCase):
         self._post()
         with self.assertNoLogs("screening.scoring", level="ERROR"):
             main = self._main(self.client.get(reverse("my_hearing")))
-        cards = main.split('class="card ')[1:]
+        cards = main.split('class="link-card"')[1:]
         ioi_cards = [card for card in cards if "IOI-HA" in card]
         self.assertEqual(len(ioi_cards), 2)
         self.assertIn("輕度至中度", ioi_cards[0])
@@ -357,7 +357,9 @@ class IoiHaTests(TestCase):
         response = self.client.get(reverse("questionnaire_list"))
         self.assertContains(response, "<title>選擇問卷\uff5cHearWell</title>")
         main = self._main(response)
-        self.assertRegex(main, rf'<a[^>]*href="{self.url}"[^>]*>\s*IOI-HA 助聽器效益量表')
+        self.assertRegex(
+            main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*IOI-HA 助聽器效益量表'
+        )
         self.assertIn("適合已配戴助聽器的人。共 7 題，大約 2 分鐘。", main)
         self.assertIn("適合 65 歲以上的長輩。共 10 題，大約 3 分鐘。", main)
 

@@ -1,4 +1,5 @@
 {% extends "screening/layout.html" %}
+{% load custom_filters %}
 
 {% block title %}聽力圖｜HearWell{% endblock %}
 
@@ -15,11 +16,12 @@
 </p>
 {% for audiogram in audiograms %}
 {% with result=audiogram.interpretation %}
-<a class="card mb-2 audiogram-item" href="{% url 'audiogram_detail' audiogram.id %}">
-    <span class="card-body d-flex flex-column flex-md-row gap-2 justify-content-between">
+<a class="link-card" href="{% url 'audiogram_detail' audiogram.id %}">
+    <span class="link-card-body">
         <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
-        <span>右耳：{{ result.right.degree|default:"資料不足" }}　左耳：{{ result.left.degree|default:"資料不足" }}</span>
+        <span>右耳：{% include "screening/level_badge.html" with text=result.right.degree|default:"資料不足" level=result.right.degree|degree_level %}　左耳：{% include "screening/level_badge.html" with text=result.left.degree|default:"資料不足" level=result.left.degree|degree_level %}</span>
     </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>
 {% endwith %}
 {% empty %}

@@ -7,10 +7,14 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 import os
 import re
 from contextlib import contextmanager
+from datetime import date
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from playwright.sync_api import expect, sync_playwright
+
+from screening.models import Answer, Audiogram, AudiogramPoint, Questionnaire, Submission
+from screening.tests.helpers import consented_user
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
 # The Django docs' fix for Playwright; this module is only imported by the e2e run.
@@ -138,10 +142,11 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
         nav.get_by_role("link", name="我的紀錄").click()
-        expect(self.main().get_by_role("link", name="查看結果")).to_have_count(1)
-        expect(self.page.get_by_text("總分：20")).to_be_visible()
+        # Each record is one card link (spec phase9_ui_refresh_1_shared.md 4.5).
+        card = self.main().locator("a.link-card")
+        expect(card).to_have_count(1)
+        expect(card).to_contain_text("總分：20")
         # The record card only: the trend chart, drawn later by React, repeats the level text.
-        card = self.main().locator(".card", has=self.page.get_by_role("link", name="查看結果"))
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
 
     def step7_report_prints_without_site_chrome(self):
@@ -173,3 +178,101 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
 
     def next(self):
         self.main().get_by_role("button", name="下一題").click()
+
+
+class SharedLayoutTest(StaticLiveServerTestCase):
+    """Spec phase9_ui_refresh_1_shared.md acceptance 1, 2 and 11: only a browser lays pages out."""
+
+    fixtures = ("questions_fixture.json",)
+    CONTENT_MAX = 40 * 18  # 40rem at the 18px base
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # Fake records straight in the test database, then the session cookie in the browser.
+        user = consented_user(username="layout_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+        self.pages = ["/", "/my_hearing", "/audiograms", "/questionnaire_list", "/report"]
+
+    def open(self, width, height=900):
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    saving_artifacts = NewUserScreeningTest.saving_artifacts
+
+    # 1
+    def test_wide_screen_content_is_centred_and_narrow(self):
+        self.open(1920)
+        with self.saving_artifacts():
+            for path in self.pages:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    main = self.page.locator("main").bounding_box()
+                    self.assertLessEqual(main["width"], self.CONTENT_MAX)
+                    self.assertAlmostEqual(main["x"], (1920 - main["width"]) / 2, delta=1)
+                    for band in (".site-header", ".site-footer"):
+                        self.assertEqual(self.page.locator(band).bounding_box()["width"], 1920)
+
+    # 2
+    def test_phone_width_needs_no_sideways_scrolling(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            for path in self.pages:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("networkidle")
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 320)
+                    # Spec 4.3: at the very bottom the footer's last line clears the tab bar.
+                    self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    last = self.page.locator(".site-footer p").last.bounding_box()
+                    tab_bar = self.page.locator(".site-nav").bounding_box()
+                    self.assertLessEqual(last["y"] + last["height"], tab_bar["y"])
+
+    # 11
+    def test_report_print_hides_footer_nav_and_sharing(self):
+        self.open(1280)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            parts = [
+                self.page.locator(".site-footer"),
+                self.page.get_by_role("navigation", name="主要導覽"),
+                self.page.locator("#report-share"),
+            ]
+            for part in parts:
+                expect(part).to_be_visible()
+            self.page.emulate_media(media="print")
+            for part in parts:
+                expect(part).to_be_hidden()

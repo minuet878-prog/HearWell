@@ -117,7 +117,7 @@
 
 - `screening/models.py` `views.py` `forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`admin.py` `urls.py`
 - `screening/tests/` 依功能分檔（`test_scoring.py`、`test_answering.py`、`test_api.py`、`test_audiogram.py`……），只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`；跨檔借用別的測試類別要匯入整個檔案（`from screening.tests import test_pages`），直接匯入類別的話，單獨跑那一組會混進別組的測試
-- `screening/templates/screening/` 全部繼承 `layout.html`；`screening/templatetags/custom_filters.py` 有 `level_to_color`
+- `screening/templates/screening/` 全部繼承 `layout.html`；`screening/templatetags/custom_filters.py` 有 `degree_level`（聽力圖程度 → 標籤顏色，對應表在 `audiogram.DEGREE_LEVELS`）；分級標籤共用 `level_badge.html`
 - `screening/fixtures/` 問卷題目；`pyproject.toml` Ruff 設定
 
 ### 資料模型
@@ -168,4 +168,4 @@
 
 ## 目前階段
 
-Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。Phase 8 分享完成：C3 聽力報告、C1 家屬衛教頁、C1-B 分享聽力報告給家屬（驗收 24 待部署後用手機做）。Phase 8 之後不預排，從 roadmap「待定」與「功能構想總表」挑。細節見 `docs/roadmap.md`。
+Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。Phase 8 分享完成（C3 聽力報告、C1 家屬衛教頁、C1-B 分享聽力報告給家屬）。Phase 9 前端設計重整分四輪：第 1 輪全站共用版型完成，下一步第 2 輪資料呈現的錯誤。細節見 `docs/roadmap.md`。

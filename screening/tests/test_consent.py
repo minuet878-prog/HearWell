@@ -48,7 +48,9 @@ class PrivacyPageTests(TestCase):
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "待補")
         self.assertContains(response, "HearWell 開發者")
-        self.assertContains(response, 'href="mailto:hearwellweb@gmail.com"', count=2)
+        # In the notice itself; the site footer adds one more on every page.
+        notice = response.content.decode().split('<footer class="site-footer"')[0]
+        self.assertEqual(notice.count('href="mailto:hearwellweb@gmail.com"'), 2)
         self.assertContains(response, "美國俄亥俄州", count=2)
 
     def test_it_names_what_error_monitoring_sends(self):

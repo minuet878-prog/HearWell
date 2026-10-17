@@ -363,13 +363,16 @@ class AudiogramPageTests(TestCase):
         self.assertIn("中度", right)
         self.assertIn("感音神經性", right)
         self.assertContains(response, "這是依固定規則算出的參考結果，不能取代聽力師的判讀。")
-        self.assertNotContains(response, "診斷")
+        # The page content makes no diagnosis; the footer's disclaimer says it is not one.
+        self.assertNotIn("診斷", self._main(response))
         self.assertContains(response, self.VIEW_JS)
 
     def test_detail_insufficient_and_missing_bone(self):
         points = [_air("right", f, 40) for f in (500, 1000, 4000)] + _four(_air, "left", (50,) * 4)
         response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
-        self.assertIn("資料不足，無法判讀", self._ear_card(response, "right"))
+        self.assertIn(
+            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "right")
+        )
         left = self._ear_card(response, "left")
         self.assertIn("中度", left)
         self.assertIn("需要骨導資料才能判斷", left)
@@ -429,8 +432,12 @@ class AudiogramPageTests(TestCase):
         points = [_air(ear, f, 40) for ear in ("right", "left") for f in (250, 8000)]
         response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("資料不足，無法判讀", self._ear_card(response, "right"))
-        self.assertIn("資料不足，無法判讀", self._ear_card(response, "left"))
+        self.assertIn(
+            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "right")
+        )
+        self.assertIn(
+            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "left")
+        )
 
     # 清單
     def test_list_newest_test_date_first(self):
@@ -441,8 +448,8 @@ class AudiogramPageTests(TestCase):
         links = re.findall(r'href="/audiograms/(\d+)"', main)
         self.assertEqual(links, [str(same_day_later.id), str(new.id), str(old.id)])
         self.assertIn("2026/09/01", main)
-        self.assertIn("右耳：重度", main)
-        self.assertIn("左耳：資料不足", main)
+        self.assertRegex(main, r"右耳：\s*<span[^>]*>重度</span>")
+        self.assertRegex(main, r"左耳：\s*<span[^>]*>資料不足</span>")
 
     def test_empty_list(self):
         main = self._main(self.client.get(reverse("audiogram_list")))
