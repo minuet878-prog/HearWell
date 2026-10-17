@@ -449,3 +449,92 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             for card in self.page.locator(".step-cards > li").all():
                 box = card.bounding_box()
                 self.assertLessEqual(box["x"] + box["width"], 320)
+
+
+class PwaNavTest(StaticLiveServerTestCase):
+    """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
+
+    # Pretends to be the iPhone home-screen app; Chromium cannot emulate display-mode.
+    STANDALONE = "Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true });"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    saving_artifacts = NewUserScreeningTest.saving_artifacts
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="pwa_nav_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, standalone=True, width=412, height=900):
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        if standalone:
+            self.context.add_init_script(self.STANDALONE)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def back(self):
+        return self.page.get_by_role("button", name="上一頁")
+
+    # 1
+    def test_browser_tab_shows_no_back_button(self):
+        self.open(standalone=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.wait_for_load_state("networkidle")
+            expect(self.page.locator("#pwa-back")).to_be_hidden()
+
+    # 2, 3, 4
+    def test_back_button_returns_to_the_previous_page(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.page.wait_for_load_state("networkidle")
+            expect(self.page.locator("#pwa-back")).to_have_count(0)
+            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="開始篩檢"
+            ).click()
+            expect(self.back()).to_be_visible()
+            box = self.back().bounding_box()
+            self.assertGreaterEqual(box["width"], 44)
+            self.assertGreaterEqual(box["height"], 44)
+            self.back().click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+
+    # 12, 13
+    def test_back_button_fits_a_phone_at_double_text_size(self):
+        self.open(width=320, height=640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing")
+            self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
+            expect(self.back()).to_be_visible()
+            back = self.back().bounding_box()
+            self.assertGreaterEqual(back["x"], 0)
+            self.assertLessEqual(back["x"] + back["width"], 320)
+            clipped = self.back().evaluate("b => b.scrollWidth > b.clientWidth")
+            self.assertFalse(clipped)
+            # The header only: the footer email already widens the page at 200% (roadmap).
+            header_width = self.page.locator("header").first.evaluate("h => h.scrollWidth")
+            self.assertLessEqual(header_width, 320)
+            logout = self.page.get_by_role("button", name="登出").bounding_box()
+            brand = self.page.locator(".site-brand").bounding_box()
+            back_bottom, logout_bottom = back["y"] + back["height"], logout["y"] + logout["height"]
+            same_line = logout["y"] < back_bottom and back["y"] < logout_bottom
+            if same_line:
+                self.assertGreaterEqual(brand["x"], back["x"] + back["width"])
+                self.assertLessEqual(brand["x"] + brand["width"], logout["x"])

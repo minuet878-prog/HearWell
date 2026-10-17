@@ -231,7 +231,15 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
   - [x] **4d IOI-HA 逐題解讀**（2026-10-18，分支 `feat/ui-ioi-ha-items`，規格 `docs/specs/phase9_ui_refresh_4d_ioi_ha_items.md`）：結果頁「低於常模」的題目，在回答下方加一段白話解讀（7 段，AI 擬稿、本人修改確認，存在 `scoring.IOI_HA_BELOW_NORM_NOTES`）；在範圍內、高於常模、未分組不顯示；出處區加「逐題解讀由聽力師依臨床經驗撰寫，不能取代個別諮詢。」；聽力報告與家屬分享版不放（本人決定，之後可再評估）
   - 注意：檢討文件建議的「有戴助聽器 → IOI-HA；沒有 → HHIE-S」引導不正確（HHIE-S／HHIA-S 依年齡；IOI-HA 是已配戴者的效益），做選問卷引導時要重寫
 
-### Phase 9 之後
+### Phase 10：PWA 使用體驗
+- [x] **返回鍵與下拉重整**（2026-10-18，分支 `feat/pwa-back-refresh`，規格 `docs/specs/phase10_pwa_back_refresh.md`）
+  - 只在從主畫面打開（全螢幕）時出現；一般瀏覽器分頁本來就有，不重複放
+  - 上一頁：藍色標題列左側的外框按鈕，首頁沒有；判斷用 `navigation.canGoBack`，舊 iPhone 用 `history.length`，不能退就回首頁（審查後拿掉 0.5 秒計時器，本人選 A）
+  - 下拉重整：頁頂、單指、沒放大、頁面內容沒有表單欄位才作用；標題列的登出不算
+  - 沒做：重新整理按鈕、左右滑動手勢、service worker
+  - 驗收 14 實機（iPhone、Android）待本人確認；舊 iPhone 沒有 Navigation API 時，「切回 app 時頁面被重新載入」後按上一頁可能沒反應（罕見，可按導覽列首頁）
+
+### Phase 10 之後
 不預先排。從下面的「待定」和「功能構想總表」挑。
 
 ---

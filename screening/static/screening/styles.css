@@ -95,6 +95,28 @@ html {
     text-decoration: none;
 }
 
+/* Home-screen app only (spec phase10_pwa_back_refresh.md): pwa-nav.js reveals both. */
+.site-back {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.pwa-pull {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1040;
+    padding: 0.5rem 1rem;
+    background-color: #e7eef8;
+    color: #1f4e8c;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+}
+
 /* Navigation: one list; top bar on wide screens, fixed bottom tab bar on phones. */
 .site-nav {
     background-color: #fff;

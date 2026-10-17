@@ -13,6 +13,7 @@ export default defineConfig({
         "trend-chart": "src/main.jsx",
         "answer": "src/answer-main.jsx",
         "logout": "src/logout.js",
+        "pwa-nav": "src/pwa-nav-main.js",
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
       },
