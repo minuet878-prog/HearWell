@@ -1,0 +1,2 @@
+# Claude Code 建立 worktree 時，自動複製這些被 gitignore 的檔案過去
+.env
