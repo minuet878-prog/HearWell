@@ -872,7 +872,9 @@ class PwaTests(TestCase):
 
 
 class PwaNavTests(TestCase):
-    """Spec docs/specs/phase-10/phase10_pwa_back_refresh.md, acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
+    """Spec docs/specs/phase-10/phase10_pwa_back_refresh.md.
+
+    Acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
 
     BACK = re.compile(r'<button([^>]*id="pwa-back"[^>]*)>(.*?)</button>', re.DOTALL)
     SCRIPT = "/static/screening/frontend/pwa-nav.js"

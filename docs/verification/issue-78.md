@@ -34,7 +34,7 @@
 - 真實 Chromium：React 鍵盤操作／焦點、完全關閉 JavaScript 作答，2 項通過。
 - 完整 Django 測試：571 項通過（PostgreSQL，50.734 秒）。
 - 本次 Python 修改 Ruff 檢查通過；`git diff --check` 通過。模型欄位未變，不需新 migration。
-- 全專案 Ruff 仍有 6 個先前文件整理造成的註解行寬問題：`audiogram_thumbnail.py` 及 `test_data_display.py`、`test_family_guide.py`、`test_layout.py`、`test_monitoring.py`、`test_pages.py` 各一處。本次不順手修改。
+- PR #85 補驗：文件路徑變長造成的 6 處註解行寬問題已以換行修正，完整 `ruff check .` 通過；不改執行邏輯。
 - Standards 審查：0 項；Spec 審查：0 項。兩位審查代理分別檢查 `git diff 1b3a311...8770022`，未執行資料庫測試。
 - 舊測試以 HHIA-S 代表未知問卷的案例已改用測試專用 `unconfigured`，保留未知分級的回歸保護。
 - 第一輪全套與瀏覽器測試曾因共用同一個 test_ 資料庫互相干擾，該輪結果作廢；後續改為依序執行。

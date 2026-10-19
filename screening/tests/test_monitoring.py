@@ -36,7 +36,9 @@ class CaptureTransport(Transport):
 
 
 class MonitoringTests(TestCase):
-    """Spec docs/specs/phase-06/phase6_error_monitoring.md, acceptance 1-4, 3a, 3b, 4a, 4b, 7 and 8."""
+    """Spec docs/specs/phase-06/phase6_error_monitoring.md.
+
+    Acceptance 1-4, 3a, 3b, 4a, 4b, 7 and 8."""
 
     PASSWORD = "Xk9#mPq2vLw"
     CSRF = "csrfsecretcsrfsecretcsrfsecret12"  # 32 letters and digits, like Django's own
