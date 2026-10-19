@@ -115,6 +115,96 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
         expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
 
+    def test_ssq12_scale_draft_and_average(self):
+        """#79: range input, N/A, zero and draft restoration in a real browser."""
+        call_command("seed_ssq12", verbosity=0)
+        with self.saving_artifacts():
+            self.step1_start_needs_login()
+            self.step2_register()
+            self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+            self.answer("沒戴")
+            self.next()
+            expect(self.main().get_by_text("未作答", exact=True)).to_be_visible()
+            expect(self.main().get_by_role("button", name="下一題")).to_be_disabled()
+            self.main().get_by_role("group").get_by_label("不適用", exact=True).check()
+            self.next()
+            slider = self.main().get_by_role("slider")
+            slider.press("Home")
+            expect(self.main().get_by_text("0 分", exact=True)).to_be_visible()
+            self.page.reload()
+            self.main().get_by_role("button", name="接著答").click()
+            expect(self.main().get_by_text("0 分", exact=True)).to_be_visible()
+            self.main().get_by_role("button", name="上一題").click()
+            expect(
+                self.main().get_by_role("group").get_by_label("不適用", exact=True)
+            ).to_be_checked()
+            # Replace the explicit N/A with 6, then all items 6 except the last (9).
+            for number in range(1, 13):
+                if number in (9, 11, 12):
+                    label = {9: "0：混亂", 11: "0：不清晰", 12: "0：非常專心"}[number]
+                    expect(self.main().get_by_text(label, exact=True)).to_be_visible()
+                slider = self.main().get_by_role("slider")
+                slider.press("Home")
+                for _ in range(9 if number == 12 else 6):
+                    slider.press("ArrowRight")
+                if number < 12:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.main().get_by_text("整體平均：6.3／10", exact=True)).to_be_visible()
+            expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
+            self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
+            self.main().get_by_role("link", name="看我的紀錄", exact=True).click()
+            expect(self.main().locator("a.link-card")).to_contain_text("整體平均：6.3")
+            expect(self.main().locator("#trend-chart")).to_have_count(0)
+
+    def test_ssq12_without_javascript_keeps_explicit_na(self):
+        call_command("seed_ssq12", verbosity=0)
+        self.context.close()
+        self.context = self.browser.new_context(java_script_enabled=False)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        self.step1_start_needs_login()
+        self.step2_register()
+        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
+            "沒戴", exact=True
+        ).check()
+        for number in range(1, 13):
+            self.page.locator(f"#question-{number}").get_by_role(
+                "radio", name="不適用" if number == 1 else "0", exact=True
+            ).check()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.main().get_by_text("未計算：包含不適用題目", exact=True)).to_be_visible()
+
+    def test_age_confirmation_and_purpose_links_without_javascript(self):
+        """#80: server-rendered selection preserves browser back and scales at 320px."""
+        call_command("seed_hhia_s", verbosity=0)
+        call_command("seed_ssq12", verbosity=0)
+        self.context.close()
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 800}
+        )
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        self.step1_start_needs_login()
+        self.step2_register()
+        age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
+        age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
+        self.page.keyboard.press("Space")
+        self.main().get_by_role("button", name="看適合我的問卷").click()
+        expect(
+            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
+        ).to_be_visible()
+        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        expect(self.page.get_by_role("heading", name="SSQ12-TW", exact=True)).to_be_visible()
+        self.page.go_back()
+        expect(
+            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
+        ).to_be_visible()
+        self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
+        self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+        self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
+
     def test_family_guide_without_share_sheet(self):
         """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
         with self.saving_artifacts():

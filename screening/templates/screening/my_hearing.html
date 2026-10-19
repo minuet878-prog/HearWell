@@ -39,6 +39,9 @@
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
+        {% elif submission.questionnaire.code == "ssq12-tw" %}
+        <span>{% if submission.ssq_average is not None %}整體平均：{{ submission.ssq_average }}／10{% else %}{{ submission.ssq_unavailable_reason }}{% endif %}</span>
+        <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% else %}
         <span>總分：{{ submission.total_answer_score }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% with classified=submission.classified %}<span>{% include "screening/level_badge.html" with text=classified.text level=classified.level %}</span>{% endwith %}

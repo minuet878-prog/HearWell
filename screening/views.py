@@ -22,6 +22,7 @@ from screening.api.views import _find_by_key
 from screening.audiogram import compare
 from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
+    AgeGroupForm,
     AnswerFormSet,
     DeleteAccountForm,
     HearingAidForm,
@@ -41,6 +42,7 @@ from screening.scoring import (
     ioi_ha_group,
     max_score,
 )
+from screening.ssq12 import CODE as SSQ12
 
 from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
 
@@ -158,13 +160,33 @@ def list_order(questionnaire):
 
 @login_required
 def questionnaire_list(request):
-    # Added order first (the database promises none), so leaving out list_order shows up.
-    questionnaires = Questionnaire.objects.annotate(question_count=Count("questions"))
-    questionnaires = questionnaires.order_by("pk")
+    questionnaires = list(
+        Questionnaire.objects.annotate(question_count=Count("questions")).order_by("pk")
+    )
+    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+    age = request.user.age
+    age_form = None
+    code = None
+    if age is None or age == 65:
+        age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
+        if age_form.is_valid():
+            code = "hhia-s" if age_form.cleaned_data["age_group"] == "adult" else "hhie-s"
+            age_form = None
+    else:
+        code = "hhia-s" if age < 65 else "hhie-s"
+    recommended = by_code.get(code)
     return render(
         request,
         "screening/questionnaire.html",
-        {"questionnaires": sorted(questionnaires, key=list_order)},
+        {
+            "questionnaires": sorted(
+                questionnaires, key=lambda q: (q != recommended, *list_order(q))
+            ),
+            "recommended": recommended,
+            "age_form": age_form,
+            "ssq12": by_code.get(SSQ12),
+            "ioi_ha_questionnaire": by_code.get(IOI_HA),
+        },
     )
 
 
@@ -382,8 +404,8 @@ def _taipei(moment):
 
 def _export_submission(submission):
     # IOI-HA has no total, subscales or level (same as its result page): null, not 0.
-    not_scored = submission.questionnaire.code == IOI_HA
-    return {
+    not_scored = submission.questionnaire.code in (IOI_HA, SSQ12)
+    data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
         "wearing_hearing_aid": submission.get_wearing_hearing_aid_display(),
@@ -403,6 +425,16 @@ def _export_submission(submission):
         "level": None if not_scored else submission.classified["text"],
         "norm_group": submission.get_norm_group_display() or None,
     }
+
+    if submission.questionnaire.code == SSQ12:
+        data["average_score"] = (
+            str(submission.ssq_average) if submission.ssq_average is not None else None
+        )
+        data["average_unavailable_reason"] = submission.ssq_unavailable_reason
+        for answer in data["answers"]:
+            if answer["score"] is None:
+                answer["choice"] = "不適用"
+    return data
 
 
 @login_required
@@ -515,7 +547,7 @@ def _report_context(user):
     submissions = list(user.submissions.select_related("questionnaire").with_scores())
     by_questionnaire = {}
     for submission in submissions:  # newest first
-        if submission.questionnaire.code != IOI_HA:
+        if submission.questionnaire.code not in (IOI_HA, SSQ12):
             by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
     sections = [
         {
@@ -626,6 +658,10 @@ def submission_result(request, submission_id):
     answers = submission.answers.select_related("question__questionnaire").order_by(
         "question__question_number"
     )
+    if submission.questionnaire.code == SSQ12:
+        return render(
+            request, "screening/ssq12_result.html", {"submission": submission, "answers": answers}
+        )
     if submission.norm_group:
         return _ioi_ha_result(request, submission, answers)
     total_score = submission.total_answer_score
@@ -645,6 +681,11 @@ def submission_result(request, submission_id):
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "optional_ssq12": (
+                Questionnaire.objects.filter(code=SSQ12).first()
+                if submission.questionnaire.code in ("hhie-s", "hhia-s")
+                and submission.wearing_hearing_aid is False else None
+            ),
         },
     )
 

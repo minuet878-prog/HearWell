@@ -7,6 +7,7 @@ from django.forms import BaseFormSet, formset_factory
 
 from screening.models import Answer, Question, Score, Submission, User
 from screening.scoring import HHIA_S_CHOICES, IOI_HA, IOI_HA_CHOICES
+from screening.ssq12 import CODE as SSQ12
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -49,6 +50,8 @@ class RegisterForm(UserCreationForm):
 
 
 def answer_choices(question):
+    if question.questionnaire.code == SSQ12:
+        return [(value, str(value)) for value in range(11)] + [("na", "不適用")]
     if question.questionnaire.code == "hhia-s":
         return HHIA_S_CHOICES
     if question.questionnaire.code == IOI_HA:
@@ -85,6 +88,7 @@ class AnswerForm(forms.Form):
     def __init__(self, *args, choices=Score.choices, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["score"].choices = choices
+        self.fields["score"].coerce = lambda value: None if value == "na" else int(value)
 
 
 class HearingAidForm(forms.Form):
@@ -149,3 +153,12 @@ class BaseAnswerFormSet(BaseFormSet):
 
 
 AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
+
+
+class AgeGroupForm(forms.Form):
+    age_group = forms.ChoiceField(
+        label="您目前的實際年齡？",
+        choices=(("adult", "18–64 歲"), ("older", "65 歲以上")),
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        error_messages={"required": "請選擇您的年齡區間"},
+    )

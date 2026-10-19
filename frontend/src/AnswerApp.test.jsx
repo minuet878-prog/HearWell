@@ -21,11 +21,11 @@ const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
 
 // POSTs answer from `posts` in order: {status, body}, or an Error for a network failure.
-function mockApi(posts = [{ status: 201, body: { id: 99 } }]) {
+function mockApi(posts = [{ status: 201, body: { id: 99 } }], questionnaire = QUESTIONNAIRE) {
   const queue = [...posts];
   globalThis.fetch = vi.fn((url, options = {}) => {
     if (!options.method || options.method === "GET") {
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(QUESTIONNAIRE) });
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(questionnaire) });
     }
     const next = queue.shift();
     if (next instanceof Error) return Promise.reject(next);
@@ -486,5 +486,58 @@ describe("history after a reload (review F1)", () => {
     await waitFor(() => expect(history.state).toEqual({ answerStep: 0 }));
     expect(legend()).toMatch(/有沒有戴助聽器/);
     expect(await backToList()).toBe(1);
+  });
+});
+
+
+describe("SSQ12-TW", () => {
+  const ssq = {
+    ...QUESTIONNAIRE, code: "ssq12-tw", name: "SSQ12-TW",
+    questions: QUESTIONS.map((q) => ({ ...q,
+      choices: [...Array.from({ length: 11 }, (_, value) => ({ value, label: String(value) })), { value: null, label: "不適用" }],
+      scale: { min_label: "完全不行", max_label: "輕鬆做到" },
+    })),
+  };
+
+  it("does not answer by default and preserves explicit N/A and zero in drafts", async () => {
+    mockApi(undefined, ssq);
+    await renderApp();
+    choose("沒戴");
+    next();
+    expect(screen.getByText("未作答")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    fireEvent.pointerUp(screen.getByRole("slider"));
+    expect(screen.getByText("5 分")).toBeTruthy();
+    choose("不適用");
+    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
+    next();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
+    expect(screen.getByText("0 分")).toBeTruthy();
+    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    expect(saved.answers[11]).toBe(null);
+    expect(saved.answers[12]).toBe(0);
+    cleanup();
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(screen.getByText("0 分")).toBeTruthy();
+  });
+
+  it("increments by one and sends explicit N/A without treating it as missing", async () => {
+    mockApi(undefined, ssq);
+    await renderApp();
+    choose("有戴");
+    next();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "6" } });
+    fireEvent.click(screen.getByRole("button", { name: "增加 1 分" }));
+    expect(screen.getByText("7 分")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "減少 1 分" }));
+    expect(screen.getByText("6 分")).toBeTruthy();
+    for (let i = 0; i < QUESTIONS.length; i++) {
+      choose("不適用");
+      if (i < QUESTIONS.length - 1) next();
+    }
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/submission/99"));
+    expect(postBody().answers.every((a) => a.score === null)).toBe(true);
   });
 });

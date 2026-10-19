@@ -1,5 +1,6 @@
 import secrets
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -8,6 +9,7 @@ from django.utils import timezone
 
 from screening.audiogram import DB_MIN, interpret
 from screening.scoring import HHIA_S_CHOICES, QUESTIONNAIRE_INFO, classify
+from screening.ssq12 import CODE as SSQ12
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -139,6 +141,8 @@ class Question(models.Model):
 def _score_expressions():
     # The only definition of score sums: aggregate() for one submission, annotate() for lists.
     return {
+        "answer_count": models.Count("answers"),
+        "numeric_count": models.Count("answers__score"),
         "score_total": models.Sum("answers__score", default=0),
         "score_emotional": models.Sum(
             "answers__score",
@@ -223,7 +227,28 @@ class Submission(models.Model):
         return self._calculate_scores()["score_social"]
 
     @property
+    def ssq_average(self):
+        if self.questionnaire.code != SSQ12:
+            return None
+        scores = self._calculate_scores()
+        if scores["numeric_count"] != 12 or scores["answer_count"] != 12:
+            return None
+        return (Decimal(scores["score_total"]) / 12).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+
+    @property
+    def ssq_unavailable_reason(self):
+        if self.questionnaire.code != SSQ12 or self.ssq_average is not None:
+            return None
+        if self._calculate_scores()["numeric_count"] == 0:
+            return "未計算：沒有可用數值回答"
+        return "未計算：包含不適用題目"
+
+    @property
     def classified(self):
+        if self.questionnaire.code == SSQ12:
+            return None
         return classify(self.total_answer_score, self.questionnaire.code)
 
 
@@ -237,7 +262,7 @@ class Score(models.IntegerChoices):
 class Answer(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="answers")
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
-    score = models.IntegerField(choices=Score.choices)
+    score = models.IntegerField(choices=Score.choices, null=True, blank=True)
 
     class Meta:
         constraints = (
@@ -245,8 +270,8 @@ class Answer(models.Model):
                 fields=["submission", "question"], name="unique_submission_question"
             ),
             models.CheckConstraint(
-                # 0-5 covers every questionnaire; the form checks each one's own values.
-                condition=models.Q(score__gte=0, score__lte=5),
+                # Each questionnaire's exact values and explicit N/A are checked by its form.
+                condition=models.Q(score__isnull=True) | models.Q(score__gte=0, score__lte=10),
                 name="score_must_be",
             ),
         )
@@ -255,6 +280,8 @@ class Answer(models.Model):
         return f"{self.question}: {self.score}"
 
     def get_answer_display(self):
+        if self.question.questionnaire.code == SSQ12:
+            return "不適用" if self.score is None else str(self.score)
         if self.question.questionnaire.code == "hhia-s":
             return dict(HHIA_S_CHOICES).get(self.score, str(self.score))
         return self.get_score_display()

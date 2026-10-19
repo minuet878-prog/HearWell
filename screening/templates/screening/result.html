@@ -15,6 +15,10 @@
     <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
     <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 </div>
+{% if optional_ssq12 %}
+<p>您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
+<a class="btn btn-outline-primary btn-lg" href="{% url 'screening' optional_ssq12.pk %}">了解日常聆聽能力（SSQ12-TW）</a>
+{% endif %}
 <h2 class="h5 mt-4">分數細節</h2>
 <p class="mb-1">情緒分數：{{ emotional }}　社交分數：{{ social }}</p>
 <p class="text-body-emphasis mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>

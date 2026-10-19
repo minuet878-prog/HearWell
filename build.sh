@@ -18,3 +18,5 @@ python manage.py loaddata questions_fixture.json
 
 # Add the reviewed adult version without assigning ids that could overwrite old questions.
 python manage.py seed_hhia_s
+
+python manage.py seed_ssq12

@@ -230,16 +230,17 @@ components:
         text:
           type: string
         score:
-          allOf:
-          - $ref: '#/components/schemas/ScoreEnum'
+          nullable: true
           minimum: -2147483648
           maximum: 2147483647
+          oneOf:
+          - $ref: '#/components/schemas/ScoreEnum'
+          - $ref: '#/components/schemas/NullEnum'
         label:
           type: string
       required:
       - label
       - number
-      - score
       - text
     AnswerInput:
       type: object
@@ -248,6 +249,7 @@ components:
           type: integer
         score:
           type: integer
+          nullable: true
       required:
       - question
       - score
@@ -340,6 +342,7 @@ components:
       properties:
         value:
           type: integer
+          nullable: true
         label:
           type: string
       required:
@@ -414,6 +417,9 @@ components:
       - code
       - max
       - text
+    NullEnum:
+      enum:
+      - null
     PaginatedSubmissionList:
       type: object
       required:
@@ -448,10 +454,16 @@ components:
           items:
             $ref: '#/components/schemas/Choice'
           readOnly: true
+        scale:
+          allOf:
+          - $ref: '#/components/schemas/Scale'
+          nullable: true
+          readOnly: true
       required:
       - choices
       - id
       - number
+      - scale
       - text
     Questionnaire:
       type: object
@@ -514,6 +526,16 @@ components:
       required:
       - code
       - name
+    Scale:
+      type: object
+      properties:
+        min_label:
+          type: string
+        max_label:
+          type: string
+      required:
+      - max_label
+      - min_label
     ScoreEnum:
       enum:
       - 4
@@ -553,9 +575,21 @@ components:
           type: boolean
           nullable: true
         scores:
-          $ref: '#/components/schemas/Scores'
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
         level:
-          $ref: '#/components/schemas/Level'
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          nullable: true
+        average_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+        average_unavailable_reason:
+          type: string
+          nullable: true
       required:
       - created_at
       - id
@@ -594,11 +628,24 @@ components:
           type: boolean
           nullable: true
         scores:
-          $ref: '#/components/schemas/Scores'
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
         level:
-          $ref: '#/components/schemas/Level'
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          nullable: true
+        average_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+        average_unavailable_reason:
+          type: string
+          nullable: true
         advice:
           type: string
+          nullable: true
           readOnly: true
         answers:
           type: array
