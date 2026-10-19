@@ -2,7 +2,7 @@
 
 日期：2026-10-19。規格：[#79](https://github.com/minuet878-prog/HearWell/issues/79)、[#80](https://github.com/minuet878-prog/HearWell/issues/80)。基準：已合併 #85 的 `4a4c358`。
 
-狀態：功能、審查修正及完整測試完成；等待本人人工驗收。未 push、未開 PR、未合併 main，未對真實資料庫執行 migration 或初始化。
+狀態：功能、審查修正、完整測試與本人人工驗收完成（2026-10-19）。本人已授權同一分支推送並開 PR，尚未合併 main；代理未對真實資料庫執行 migration 或初始化。
 
 ## 交付範圍
 
@@ -28,7 +28,7 @@
 
 ## 驗收對照
 
-以下勾選代表自動驗證有證據；本人操作確認仍待完成。
+以下勾選代表自動驗證有證據；本人已於 2026-10-19 明確回覆「驗收了 一樣開pr在同個分支」，確認驗收完成。
 
 | 票 | 自動驗證完成 | 主要證據 |
 |---|---|---|
@@ -78,3 +78,8 @@ npm run build --prefix frontend
 ## 面試筆記（不進版控）
 
 新增概念：三態作答、十進位四捨五入、OpenAPI 契約。題號 Q148（三態作答）、Q149（四捨五入）、Q150（API 契約），開發紀錄為 `docs/interview/development/planning/79-80-ssq12-guidance.md`。
+
+
+## 人工驗收結論（2026-10-19）
+
+本人確認 #79、#80 驗收完成，兩票結案，並授權沿用 `codex/adult-questionnaire-design` 推送及開 PR；此授權不包含合併 main。
