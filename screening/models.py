@@ -7,7 +7,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from screening.audiogram import DB_MIN, interpret
-from screening.scoring import QUESTIONNAIRE_INFO, classify
+from screening.scoring import HHIA_S_CHOICES, QUESTIONNAIRE_INFO, classify
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -253,6 +253,11 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"{self.question}: {self.score}"
+
+    def get_answer_display(self):
+        if self.question.questionnaire.code == "hhia-s":
+            return dict(HHIA_S_CHOICES).get(self.score, str(self.score))
+        return self.get_score_display()
 
 
 class Audiogram(models.Model):

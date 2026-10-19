@@ -6,7 +6,7 @@ from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
 
 from screening.models import Answer, Question, Score, Submission, User
-from screening.scoring import IOI_HA, IOI_HA_CHOICES
+from screening.scoring import HHIA_S_CHOICES, IOI_HA, IOI_HA_CHOICES
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -49,6 +49,8 @@ class RegisterForm(UserCreationForm):
 
 
 def answer_choices(question):
+    if question.questionnaire.code == "hhia-s":
+        return HHIA_S_CHOICES
     if question.questionnaire.code == IOI_HA:
         return list(enumerate(IOI_HA_CHOICES[question.question_number], start=1))
     return Score.choices

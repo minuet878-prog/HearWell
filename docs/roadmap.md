@@ -267,7 +267,7 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 ## 待定：新增其他中文版問卷（IOI-HA / APHAB / COSI、耳鳴相關量表）
 
-**2026-10-19 進度**：成人問卷第一批為 HHIA-S＋SSQ12-TW，計分、分級、年齡推薦及每份問卷各保留一組比較的方向已確認；第二批 APHAB＋SADL，COSI 後續再做。規格見 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。已依本人確認的拆法建立子議題 [#77–#84](https://github.com/minuet878-prog/HearWell/issues/76)，依賴與內容見 [拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。目前前置為 [#77 來源與使用條件定稿](https://github.com/minuet878-prog/HearWell/issues/77)，其餘依原生阻擋關係等待解鎖；未開始正式問卷實作。
+**2026-10-19 進度**：成人問卷第一批為 HHIA-S＋SSQ12-TW，計分、分級、年齡推薦及每份問卷各保留一組比較的方向已確認；第二批 APHAB＋SADL，COSI 後續再做。規格見 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。已依本人確認的拆法建立子議題 [#77–#84](https://github.com/minuet878-prog/HearWell/issues/76)，依賴與內容見 [拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。[#77 來源與使用條件定稿](https://github.com/minuet878-prog/HearWell/issues/77) 已依本人審定結案；[#78 HHIA-S 作答與結果](https://github.com/minuet878-prog/HearWell/issues/78) 已實作，待完成驗證與人工驗收；尚未開始 #79 SSQ12-TW，後續仍依原生阻擋關係推進。
 
 **構想**
 除了 HHIE-S，未來想加入助聽器相關的標準化量表（IOI-HA、APHAB、COSI）跟耳鳴

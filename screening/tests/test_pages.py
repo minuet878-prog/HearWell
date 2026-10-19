@@ -650,12 +650,12 @@ class PageFlowTests(TestCase):
 
     def test_result_banner_colors(self):
         css = Path(finders.find("screening/styles.css")).read_text()
-        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")
         cases = (
             ("normal", [0] * 10, self.hhie_s, "#e3f4ec", "#1e7b55"),
             ("mild_to_moderate", [2] * 6 + [0] * 4, self.hhie_s, "#fff4d6", "#8a5a00"),
             ("severe", [4] * 10, self.hhie_s, "#feece7", "#c23b1c"),
-            ("unknown", [2] * 10, hhia_s, None, "#495057"),
+            ("unknown", [2] * 10, unknown, None, "#495057"),
         )
         for level, scores, questionnaire, background, color in cases:
             with self.subTest(level=level):
@@ -678,8 +678,8 @@ class PageFlowTests(TestCase):
         self.assertIn("無/極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
-        hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
-        submission = self._submit([2] * 10, questionnaire=hhia_s)
+        unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")
+        submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
         self.assertIn("總分 20 分", main)

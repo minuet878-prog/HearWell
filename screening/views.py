@@ -623,7 +623,9 @@ def shared_report(request, token):
 @login_required
 def submission_result(request, submission_id):
     submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
-    answers = submission.answers.select_related("question").order_by("question__question_number")
+    answers = submission.answers.select_related("question__questionnaire").order_by(
+        "question__question_number"
+    )
     if submission.norm_group:
         return _ioi_ha_result(request, submission, answers)
     total_score = submission.total_answer_score
@@ -642,7 +644,7 @@ def submission_result(request, submission_id):
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
-            "advice": get_advice(classified_score["level"]),
+            "advice": get_advice(classified_score["level"], submission.questionnaire.code),
         },
     )
 

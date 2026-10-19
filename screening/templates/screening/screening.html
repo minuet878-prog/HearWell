@@ -35,6 +35,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     <p class="fs-5 fw-bold">共 {{ question_count }} 題{% if questionnaire.info %}，大約 {{ questionnaire.info.minutes }} 分鐘{% endif %}。</p>
     {% if is_ioi_ha %}
     <p class="h3 text-muted">本量表適合已配戴助聽器的人，用來了解助聽器對您的幫助。請依照最近兩週戴著現有助聽器的經驗，每題選一個最符合的答案。</p>
+    {% elif questionnaire.code == "hhia-s" %}
+    <p>{{ questionnaire.info.audience }}</p>
+    <p>請依照您最近一段期間的實際生活經驗，每題選「會」、「有時」或「不會」，每一題都要回答。選擇「沒戴」時，請依沒有配戴助聽器的生活經驗作答；選擇「有戴」時，請依目前這副助聽器的生活經驗作答。</p>
+    <p class="text-body-emphasis">題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁。原量表：Newman、Weinstein、Jacobson 與 Hug（1990），Ear and Hearing, 11, 430–433。題目保留原文用詞。</p>
     {% else %}
     <p class="h3 text-muted">本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。請在閱讀每項問題後圈選常常、有時或從未。
     </p>

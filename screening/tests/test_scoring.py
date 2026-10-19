@@ -29,7 +29,7 @@ class ClassifyTests(SimpleTestCase):
 
     def test_questionnaire_without_thresholds_is_unknown(self):
         with self.assertLogs("screening.scoring", "ERROR"):
-            result = classify(10, "hhia-s")
+            result = classify(10, "unconfigured")
         self.assertEqual(result["level"], "unknown")
         self.assertEqual(result["text"], "無法判讀")
 
@@ -39,7 +39,9 @@ class ClassifyViewTests(TestCase):
     def setUpTestData(cls):
         cls.user = consented_user(username="user")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        cls.unknown = Questionnaire.objects.create(
+            questionnaire_name="未設定門檻問卷", code="unconfigured"
+        )
 
     def _make_submission(self, questionnaire, score):
         question = Question.objects.create(
@@ -53,7 +55,7 @@ class ClassifyViewTests(TestCase):
         return submission
 
     def test_result_page_shows_unknown_for_questionnaire_without_thresholds(self):
-        submission = self._make_submission(self.hhia_s, score=4)
+        submission = self._make_submission(self.unknown, score=4)
         self.client.force_login(self.user)
         with self.assertLogs("screening.scoring", "ERROR"):
             response = self.client.get(reverse("result", args=[submission.id]))
@@ -64,11 +66,11 @@ class ClassifyViewTests(TestCase):
 
     def test_history_page_survives_unknown_submission(self):
         self._make_submission(self.hhie_s, score=4)
-        self._make_submission(self.hhia_s, score=4)
+        self._make_submission(self.unknown, score=4)
         self.client.force_login(self.user)
         # One tab per questionnaire (phase4_history_by_questionnaire.md): each tab must survive.
         with self.assertLogs("screening.scoring", "ERROR") as logs:
-            response = self.client.get(reverse("my_hearing") + "?questionnaire=hhia-s")
+            response = self.client.get(reverse("my_hearing") + "?questionnaire=unconfigured")
         self.assertEqual(len(logs.output), 1)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "無法判讀")
@@ -225,7 +227,9 @@ class SubscaleNoteTests(TestCase):
     def setUpTestData(cls):
         cls.user = consented_user(username="user")
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        cls.unknown = Questionnaire.objects.create(
+            questionnaire_name="未設定門檻問卷", code="unconfigured"
+        )
 
     def _make_submission(self, questionnaire):
         question = Question.objects.create(
@@ -250,7 +254,7 @@ class SubscaleNoteTests(TestCase):
         self.assertLess(content.index("社交分數"), content.index(self.NOTE))
 
     def test_note_shown_when_unclassifiable(self):
-        submission = self._make_submission(self.hhia_s)
+        submission = self._make_submission(self.unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(response, "無法判讀")

@@ -51,7 +51,9 @@ def _own_submissions(request):
 
 
 def _own_submission_details(request):
-    answers = Answer.objects.select_related("question").order_by("question__question_number")
+    answers = Answer.objects.select_related("question__questionnaire").order_by(
+        "question__question_number"
+    )
     return _own_submissions(request).prefetch_related(Prefetch("answers", queryset=answers))
 
 
