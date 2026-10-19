@@ -1,4 +1,4 @@
-// Audiogram input rules (spec docs/specs/phase5_audiogram.md 4.1). The same limits are
+// Audiogram input rules (spec docs/specs/phase-05/phase5_audiogram.md 4.1). The same limits are
 // checked again by the API; interpretation is the server's job and never done here.
 
 export const AIR_FREQUENCIES = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];

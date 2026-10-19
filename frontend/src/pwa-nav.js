@@ -1,5 +1,5 @@
 // The home-screen app has no browser toolbar: no back button on an iPhone, no pull to
-// refresh on either phone (spec docs/specs/phase10_pwa_back_refresh.md).
+// refresh on either phone (spec docs/specs/phase-10/phase10_pwa_back_refresh.md).
 export const PULL_THRESHOLD = 80;
 const HOME = "/";
 

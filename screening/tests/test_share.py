@@ -24,7 +24,7 @@ def _taipei(moment):
 
 
 class ReportShareTests(TestCase):
-    """Spec docs/specs/phase8_c1_family_share.md, acceptance 1-23 (24 is manual)."""
+    """Spec docs/specs/phase-08/phase8_c1_family_share.md, acceptance 1-23 (24 is manual)."""
 
     # Same fake records as the report tests, so both pages are compared on equal data.
     _hhie_s = test_report.HealthReportTests._hhie_s

@@ -14,7 +14,7 @@ IOI_DIRECTION = "7 題都是分數越高，代表助聽器的效益越好。"
 
 
 class DataDisplayTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_2_data.md, acceptance 9 and 13 (Django-drawn parts)."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_2_data.md, acceptance 9 and 13 (Django-drawn parts)."""
 
     _hhie_s = test_report.HealthReportTests._hhie_s
     _ioi_ha = test_report.HealthReportTests._ioi_ha

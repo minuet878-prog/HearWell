@@ -37,7 +37,7 @@ def _four(maker, ear, values):
 
 
 class AudiogramRuleTests(SimpleTestCase):
-    """Spec docs/specs/phase5_audiogram.md 4.3, acceptance 18-27 (the rules alone)."""
+    """Spec docs/specs/phase-05/phase5_audiogram.md 4.3, acceptance 18-27 (the rules alone)."""
 
     def _interpret(self, points):
         from screening.audiogram import interpret
@@ -145,7 +145,7 @@ class AudiogramRuleTests(SimpleTestCase):
 
 
 class AudiogramApiTests(TestCase):
-    """Spec docs/specs/phase5_audiogram.md, acceptance 12-17 and 30 (API side)."""
+    """Spec docs/specs/phase-05/phase5_audiogram.md, acceptance 12-17 and 30 (API side)."""
 
     URL = "/api/audiograms/"
 
@@ -310,7 +310,7 @@ class AudiogramApiTests(TestCase):
 
 
 class AudiogramPageTests(TestCase):
-    """Spec docs/specs/phase5_audiogram.md, acceptance 12, 18-33 (pages)."""
+    """Spec docs/specs/phase-05/phase5_audiogram.md, acceptance 12, 18-33 (pages)."""
 
     INPUT_JS = "screening/frontend/audiogram-input.js"
     VIEW_JS = "screening/frontend/audiogram-view.js"
@@ -543,7 +543,7 @@ def _masked(point):
 
 
 class AudiogramCompareRuleTests(SimpleTestCase):
-    """Spec docs/specs/phase5_audiogram_2.md 4.2, acceptance 13-17 (the rules alone)."""
+    """Spec docs/specs/phase-05/phase5_audiogram_2.md 4.2, acceptance 13-17 (the rules alone)."""
 
     def _compare(self, new, old):
         from screening.audiogram import compare
@@ -649,7 +649,7 @@ class AudiogramCompareRuleTests(SimpleTestCase):
 
 
 class AudiogramEditApiTests(TestCase):
-    """Spec docs/specs/phase5_audiogram_2.md 4.1, acceptance 2-4, 6, 7 (API side)."""
+    """Spec docs/specs/phase-05/phase5_audiogram_2.md 4.1, acceptance 2-4, 6, 7 (API side)."""
 
     @classmethod
     def setUpTestData(cls):
@@ -781,7 +781,7 @@ class AudiogramEditApiTests(TestCase):
 
 
 class AudiogramEditPageTests(TestCase):
-    """Spec docs/specs/phase5_audiogram_2.md 4.1, acceptance 1, 2, 4, 5, 8 (pages)."""
+    """Spec docs/specs/phase-05/phase5_audiogram_2.md 4.1, acceptance 1, 2, 4, 5, 8 (pages)."""
 
     INPUT_JS = AudiogramPageTests.INPUT_JS
 
@@ -890,7 +890,7 @@ class AudiogramEditPageTests(TestCase):
 
 
 class AudiogramComparePageTests(TestCase):
-    """Spec docs/specs/phase5_audiogram_2.md 4.2, acceptance 9-22 (page)."""
+    """Spec docs/specs/phase-05/phase5_audiogram_2.md 4.2, acceptance 9-22 (page)."""
 
     @property
     def URL(self):

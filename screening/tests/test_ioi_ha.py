@@ -14,7 +14,7 @@ from screening.tests.helpers import consented_user
 
 
 class IoiHaTests(TestCase):
-    """Spec docs/specs/phase4_ioi_ha.md, acceptance 1-22."""
+    """Spec docs/specs/phase-04/phase4_ioi_ha.md, acceptance 1-22."""
 
     INTRO = "本量表適合已配戴助聽器的人"
     HEARING_AID_PROMPT = "這次填答時，您有沒有戴助聽器？"

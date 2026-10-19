@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PULL_THRESHOLD, setUpPwaNav } from "./pwa-nav.js";
 
-// Spec docs/specs/phase10_pwa_back_refresh.md. A stand-in window so tests can see
+// Spec docs/specs/phase-10/phase10_pwa_back_refresh.md. A stand-in window so tests can see
 // back(), assign() and reload() calls, which jsdom cannot perform.
 function fakeWindow({
   iphone = true,

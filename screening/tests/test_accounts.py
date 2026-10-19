@@ -168,7 +168,7 @@ class LoginNextTests(TestCase):
 
 
 class LoginViewTests(TestCase):
-    """Spec docs/specs/phase6_login_view.md, acceptance 4-8, 10 and 14."""
+    """Spec docs/specs/phase-06/phase6_login_view.md, acceptance 4-8, 10 and 14."""
 
     PASSWORD = "Xk9#mPq2vLw"
     ERROR = "使用者名稱或密碼錯誤"
@@ -351,7 +351,7 @@ class RegisterFormTests(TestCase):
         for error in response.context["form"].errors["username"]:
             self.assertContains(response, error)
 
-    # Spec docs/specs/phase6_login_view.md, acceptance 11.
+    # Spec docs/specs/phase-06/phase6_login_view.md, acceptance 11.
     def test_name_taken_between_check_and_save(self):
         original_is_valid = RegisterForm.is_valid
 
@@ -380,7 +380,7 @@ class RegisterFormTests(TestCase):
         ):
             self._post()
 
-    # Spec docs/specs/phase6_login_view.md, acceptance 12: same message as the race above.
+    # Spec docs/specs/phase-06/phase6_login_view.md, acceptance 12: same message as the race above.
     def test_duplicate_username_message(self):
         consented_user(username="newcomer")
         response = self._post()

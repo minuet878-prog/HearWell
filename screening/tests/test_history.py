@@ -80,7 +80,7 @@ class TrendChartPageTests(TestCase):
 
 
 class HistoryTabsTests(TestCase):
-    """Spec docs/specs/phase4_history_by_questionnaire.md, acceptance 1-19."""
+    """Spec docs/specs/phase-04/phase4_history_by_questionnaire.md, acceptance 1-19."""
 
     CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"

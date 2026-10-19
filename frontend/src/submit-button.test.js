@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Spec docs/specs/phase6_web_double_submit.md 4.2, acceptance 10-12: the web answer form's
+// Spec docs/specs/phase-06/phase6_web_double_submit.md 4.2, acceptance 10-12: the web answer form's
 // submit button. A plain static file (not a Vite entry), so the test runs it as the page does.
 const SCRIPT = resolve(process.cwd(), "../screening/static/screening/submit-button.js");
 

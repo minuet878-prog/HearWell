@@ -1,6 +1,6 @@
 """Small air-conduction drawing of an audiogram for the list page.
 
-Spec docs/specs/phase9_ui_refresh_4c_audiogram_thumbnails.md. Only screen coordinates live here;
+Spec docs/specs/phase-09/phase9_ui_refresh_4c_audiogram_thumbnails.md. Only screen coordinates live here;
 what the points mean is in screening.audiogram (rule 9), whose ranges this reuses.
 """
 

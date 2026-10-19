@@ -25,16 +25,16 @@
 | 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` |
 | 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認 |
 | 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險） |
-| 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview.md`（見下方） |
+| 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview/`（見下方） |
 | 8 復盤 | `/retro` | 選用，我輸入才做 |
 
 - 小改動（改字、改樣式）可以跳過 1–3，直接說清楚要改什麼，再走 4–7。
 - 涉及畫面或計算的需求，先用一兩句話複述你理解的內容；畫面有多種做法時，先做比較頁讓我選。
 
-### 收尾：更新 `docs/interview.md`
+### 收尾：更新面試筆記
 
-- 第二部分「開發紀錄」新增這次的章節：「這次要做什麼」（一句話＋issue 連結）、「改了什麼」（問題、做法、動到的檔案）、「面試題」（只列題號和主題）。
-- 第一部分「主題」：新概念加進對應主題的名詞表；面試題 2–3 題，每題留「我的回答」空白，要點用 `<details>` 折疊。題號全檔接續。沒有合適的主題就新增。更新開頭目錄。
+- 更新面試筆記時，先讀 `docs/interview/README.md` 的維護方式；新概念與面試題寫入對應主題，開發紀錄依 Phase 新增，題號全資料夾接續並更新索引。
+- `docs/interview.md` 保留為導覽入口，內容以 `docs/interview/` 為準；兩者均維持不進版控。
 - 回報時附上新概念和面試題，讓我挑不熟的深入問。
 
 ### 遇到 bug
@@ -117,13 +117,14 @@
 
 ## 參考文件
 
+- `docs/README.md` — 查找專案文件時的分類入口，連到規劃、無障礙、API、部署及歷史索引。
 - `GLOSSARY.md` — 專案用語（由 `/grill-with-docs` 維護）。
 - `CODING_STANDARDS.md` — 程式碼規範，`/code-review` 依此審查。
 - `docs/adr/` — 2026-10-18 之後的決策紀錄（ADR，一個決策一個檔）。
 - `.claude/settings.json` — 權限清單（push／開 PR 要問、force push 禁止）和 hooks（改完 `.py` 自動跑 Ruff、等回覆時跳通知）。
 - `docs/agents/` — Matt skills 的設定（issue tracker、標籤、文件位置）。
 - `docs/roadmap.md` — 各 Phase 的待辦與目前進度。
-- 歷史（2026-10-18 以前，只讀不再新增）：`docs/decisions/`（舊的決策紀錄，依主題分檔）、`docs/specs/`、`docs/reviews/`（Phase 0–10 的規格與審查）。
+- 歷史（2026-10-18 以前，只讀不再新增）：`docs/decisions/`（舊的決策紀錄，依主題分檔）；查找 Phase 0–10 規格或審查時，先讀 `docs/specs/README.md` 或 `docs/reviews/README.md`，依 Phase 索引進入原文件。
 
 ## Agent skills
 

@@ -1,6 +1,6 @@
 // Web answer form: once "送出" is pressed it says so and cannot be pressed again, because many
 // people press twice when nothing seems to happen. The server already refuses a second save
-// (spec docs/specs/phase6_web_double_submit.md), so giving the button back is always safe.
+// (spec docs/specs/phase-06/phase6_web_double_submit.md), so giving the button back is always safe.
 (function () {
   const form = document.getElementById("answer-form");
   const button = form && form.querySelector('[type="submit"]');

@@ -1,4 +1,4 @@
-"""Rule-based audiogram interpretation (spec docs/specs/phase5_audiogram.md 4.3).
+"""Rule-based audiogram interpretation (spec docs/specs/phase-05/phase5_audiogram.md 4.3).
 
 Ported from the standalone audiogram tool; no Django code here.
 """
@@ -115,7 +115,7 @@ def _compare_rows(new, old, frequencies):
 
 
 def compare(new_points, old_points):
-    """Two audiograms side by side (spec docs/specs/phase5_audiogram_2.md 4.2).
+    """Two audiograms side by side (spec docs/specs/phase-05/phase5_audiogram_2.md 4.2).
 
     The averages come from interpret(), the same path as the detail page; this only subtracts.
     """

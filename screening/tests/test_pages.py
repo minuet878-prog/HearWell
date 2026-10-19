@@ -450,7 +450,7 @@ class RedesignLayoutTests(TestCase):
 
 
 class PageFlowTests(TestCase):
-    """Spec docs/specs/phase4_ui_flow.md, acceptance 1-14a."""
+    """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
     HINT = "第一次使用請先註冊，已有帳號請直接登入。"
     # As changed by phase9_ui_refresh_3_structure.md 4.4 and phase9_ui_refresh_4a_home.md 4.1.
@@ -700,7 +700,7 @@ class PageFlowTests(TestCase):
 
 
 class PwaTests(TestCase):
-    """Spec docs/specs/phase4.md batch 2, acceptance 18-23."""
+    """Spec docs/specs/phase-04/phase4.md batch 2, acceptance 18-23."""
 
     PWA_DIR = Path(__file__).resolve().parent.parent / "static" / "screening" / "pwa"
     STATIC = "/static/screening/pwa/"
@@ -872,7 +872,7 @@ class PwaTests(TestCase):
 
 
 class PwaNavTests(TestCase):
-    """Spec docs/specs/phase10_pwa_back_refresh.md, acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
+    """Spec docs/specs/phase-10/phase10_pwa_back_refresh.md, acceptance 3, 10 and 11 (rest: Vitest, e2e)."""
 
     BACK = re.compile(r'<button([^>]*id="pwa-back"[^>]*)>(.*?)</button>', re.DOTALL)
     SCRIPT = "/static/screening/frontend/pwa-nav.js"
@@ -984,7 +984,7 @@ class PwaNavTests(TestCase):
 
 
 class HomeTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
 
     STEPS = (
         "回答問題，大約 3 分鐘。",

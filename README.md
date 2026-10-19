@@ -23,11 +23,11 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 
 ## 設計重點
 
-- **無障礙優先（accessibility）**：字級一律用 `rem`、基礎字級 18px，觸控目標至少 44 × 44 px。用 axe-core 依 WCAG AA 量測基準線、逐項修正，見 [`docs/accessibility_baseline.md`](docs/accessibility_baseline.md)。
+- **無障礙優先（accessibility）**：字級一律用 `rem`、基礎字級 18px，觸控目標至少 44 × 44 px。用 axe-core 依 WCAG AA 量測基準線、逐項修正，見 [`docs/accessibility/accessibility_baseline.md`](docs/accessibility/accessibility_baseline.md)。
 - **計分只用規則式程式碼（rule-based）**：分級門檻寫成門檻表（`scoring.THRESHOLDS`），不用 LLM 做分類或計算。總分不存在資料表裡，每次都從作答即時計算，網頁和 API 都走 `Submission` 的同一條計算路徑。見 [`docs/decisions/scoring.md`](docs/decisions/scoring.md)。
-- **防止越權存取（IDOR）**：網頁和 API 的每個查詢都限定在登入者自己的資料；查別人的單筆紀錄回 404，和「不存在」無法分辨，有測試保護。見 [`docs/specs/phase3.md`](docs/specs/phase3.md)。
+- **防止越權存取（IDOR）**：網頁和 API 的每個查詢都限定在登入者自己的資料；查別人的單筆紀錄回 404，和「不存在」無法分辨，有測試保護。見 [`docs/specs/phase-03/phase3.md`](docs/specs/phase-03/phase3.md)。
 - **漸進式改架構（Strangler pattern）**：Django template 頁面與 `/api/` 並存、共用 model 與業務邏輯，只有互動重的頁面改用 React，`main` 任何時候都是完整可用的產品。前端和後端同源部署，沿用 session cookie 登入，不需要 JWT 或 CORS。
-- **冪等寫入（idempotency）**：送出作答的 API 要求帶 `Idempotency-Key`，網路重試不會存成兩筆；同一個 key 送不同內容會回 409。見 [`docs/specs/phase5_api_submit.md`](docs/specs/phase5_api_submit.md)。
+- **冪等寫入（idempotency）**：送出作答的 API 要求帶 `Idempotency-Key`，網路重試不會存成兩筆；同一個 key 送不同內容會回 409。見 [`docs/specs/phase-05/phase5_api_submit.md`](docs/specs/phase-05/phase5_api_submit.md)。
 
 ## 技術
 
@@ -214,10 +214,12 @@ python manage.py check --deploy                        # 部署前安全檢查�
 
 ## 文件
 
+- [文件總覽](docs/README.md)：按規劃、無障礙、API、部署與歷史紀錄查找
 - [`docs/roadmap.md`](docs/roadmap.md)：各階段進度與待辦
 - [`docs/decisions/`](docs/decisions/README.md)：做過的決策、理由與踩過的坑，依主題分檔
-- [`docs/specs/`](docs/specs/)：每個任務開工前的規格與驗收條件
-- [`docs/accessibility_baseline.md`](docs/accessibility_baseline.md)：無障礙量測方法與結果
+- [歷史規格索引](docs/specs/README.md)：依 Phase 分類的規格與驗收條件
+- [歷史審查索引](docs/reviews/README.md)：依 Phase 查找計畫審查、實作審查與對應規格
+- [`docs/accessibility/accessibility_baseline.md`](docs/accessibility/accessibility_baseline.md)：無障礙量測方法與結果
 
 ## 參考資料
 

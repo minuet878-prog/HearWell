@@ -45,7 +45,7 @@ DISCLAIMER = "這些是一般性的建議，不能取代醫師或聽力師的診
 
 
 class FamilyGuideTests(TestCase):
-    """Spec docs/specs/phase8_c1_family_guide.md, acceptance 1-7 (8 is the content review)."""
+    """Spec docs/specs/phase-08/phase8_c1_family_guide.md, acceptance 1-7 (8 is the content review)."""
 
     def setUp(self):
         self.url = reverse("family_guide")

@@ -14,7 +14,7 @@ TAGS = re.compile(r'<span class="card-tag">([^<]*)</span>')
 
 
 class QuestionnaireCardTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_4b_questionnaire_cards.md, acceptance 1-5."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_4b_questionnaire_cards.md, acceptance 1-5."""
 
     @classmethod
     def setUpTestData(cls):

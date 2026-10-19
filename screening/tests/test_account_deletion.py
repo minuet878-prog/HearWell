@@ -25,7 +25,7 @@ STAFF_MESSAGE = "管理員帳號請先在後台移除管理員權限"
 
 
 class DeleteAccountTests(TestCase):
-    """Spec docs/specs/phase7_account_deletion.md, acceptance 1-16."""
+    """Spec docs/specs/phase-07/phase7_account_deletion.md, acceptance 1-16."""
 
     @classmethod
     def setUpTestData(cls):

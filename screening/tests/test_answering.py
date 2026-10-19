@@ -307,7 +307,7 @@ class TamperedAnswerTests(TestCase):
 
 
 class ReactAnswerPageTests(TestCase):
-    """Spec docs/specs/phase5_react_answer.md: Django side of the React answer page."""
+    """Spec docs/specs/phase-05/phase5_react_answer.md: Django side of the React answer page."""
 
     ANSWER_JS = "screening/frontend/answer.js"
     LOGOUT_JS = "screening/frontend/logout.js"
@@ -403,7 +403,7 @@ class ReactAnswerPageTests(TestCase):
 
 
 class AnswerFlashTests(TestCase):
-    """Spec docs/specs/phase5_answer_flash.md, acceptance 1, 6-8 (page side)."""
+    """Spec docs/specs/phase-05/phase5_answer_flash.md, acceptance 1, 6-8 (page side)."""
 
     CSS = Path(__file__).resolve().parent.parent / "static" / "screening" / "styles.css"
 
@@ -449,7 +449,7 @@ class AnswerFlashTests(TestCase):
 
 
 class WebDoubleSubmitTests(TestCase):
-    """Spec docs/specs/phase6_web_double_submit.md, acceptance 1-9."""
+    """Spec docs/specs/phase-06/phase6_web_double_submit.md, acceptance 1-9."""
 
     NOTICE = "這份作答剛才已經送出"
     KEY = re.compile(r'name="idempotency_key" value="([0-9a-f-]{36})"')
@@ -627,7 +627,7 @@ class WebDoubleSubmitTests(TestCase):
 
 
 class WebFormErrorsStayTests(TestCase):
-    """Spec docs/specs/phase6_web_form_errors_stay.md, acceptance 1-5."""
+    """Spec docs/specs/phase-06/phase6_web_form_errors_stay.md, acceptance 1-5."""
 
     ANSWER_JS = ReactAnswerPageTests.ANSWER_JS
     MISSING_ONE = "還有 1 題沒有回答"
@@ -708,7 +708,7 @@ class WebFormErrorsStayTests(TestCase):
 
 
 class ErrorSummaryTests(TestCase):
-    """Spec docs/specs/phase6_a11y_remeasure.md, acceptance 8-10."""
+    """Spec docs/specs/phase-06/phase6_a11y_remeasure.md, acceptance 8-10."""
 
     setUpTestData = classmethod(WebDoubleSubmitTests.setUpTestData.__func__)
     setUp = WebDoubleSubmitTests.setUp

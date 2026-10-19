@@ -22,7 +22,7 @@ def _xy(text):
 
 
 class ThumbnailDrawingTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_4c_audiogram_thumbnails.md, acceptance 2-5."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_4c_audiogram_thumbnails.md, acceptance 2-5."""
 
     # 2
     def test_right_ear_goes_down_as_hearing_gets_worse(self):

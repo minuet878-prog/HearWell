@@ -6,7 +6,9 @@ db.sqlite3
 .vscode/
 /staticfiles/
 /docs/vpsdeploy.md
+/docs/deployment/vpsdeploy.md
 /docs/interview.md
+/docs/interview/
 node_modules/
 /screening/static/screening/frontend/
 .claude/*
