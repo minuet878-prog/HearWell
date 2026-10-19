@@ -195,3 +195,15 @@ class Ssq12Tests(TestCase):
             list(self.questionnaire.questions.values_list("pk", "question_text")), before
         )
         self.assertEqual(self.questionnaire.questions.count(), 12)
+
+    def test_schema_documents_nullable_numeric_answers_and_optional_scale(self):
+        import yaml
+
+        self.start()
+        schema = yaml.safe_load(self.client.get("/api/schema/").content)
+        components = schema["components"]["schemas"]
+        score = components["Answer"]["properties"]["score"]
+        self.assertEqual(score.get("type"), "integer")
+        self.assertTrue(score["nullable"])
+        self.assertEqual(score["maximum"], 10)
+        self.assertNotIn("scale", components["Question"]["required"])

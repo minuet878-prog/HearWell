@@ -87,7 +87,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
                     <legend class="fw-bold fs-5"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
                     {% include "screening/field_messages.html" with field=form.score %}
                     {% if questionnaire.code == "ssq12-tw" %}
-                    <p>{% if question.question_number == 9 %}0：混亂；10：分開{% elif question.question_number == 11 %}0：不清晰；10：清晰{% elif question.question_number == 12 %}0：非常專心；10：輕鬆做到{% else %}0：完全不行；10：輕鬆做到{% endif %}</p>
+                    <p>0：{{ question.scale.min_label }}；10：{{ question.scale.max_label }}</p>
                     {% endif %}
                     {{ form.score }}
                 </fieldset>

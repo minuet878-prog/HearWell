@@ -10,6 +10,7 @@ from django.utils import timezone
 from screening.audiogram import DB_MIN, interpret
 from screening.scoring import HHIA_S_CHOICES, QUESTIONNAIRE_INFO, classify
 from screening.ssq12 import CODE as SSQ12
+from screening.ssq12 import scale_labels
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -136,6 +137,13 @@ class Question(models.Model):
 
     def __str__(self):
         return f"{self.question_number}: {self.question_text[:30]}"
+
+    @property
+    def scale(self):
+        if self.questionnaire.code != SSQ12:
+            return None
+        lower, upper = scale_labels(self.question_number)
+        return {"min_label": lower, "max_label": upper}
 
 
 def _score_expressions():

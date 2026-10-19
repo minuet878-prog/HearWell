@@ -358,7 +358,7 @@ class IoiHaTests(TestCase):
         self.assertContains(response, "<title>選擇問卷\uff5cHearWell</title>")
         main = self._main(response)
         self.assertRegex(
-            main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*IOI-HA 助聽器效益量表'
+            main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*助聽器使用成效（IOI-HA）'
         )
         # Count and time are tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
         for audience, tags in (

@@ -230,17 +230,16 @@ components:
         text:
           type: string
         score:
+          type: integer
+          maximum: 10
+          minimum: 0
           nullable: true
-          minimum: -2147483648
-          maximum: 2147483647
-          oneOf:
-          - $ref: '#/components/schemas/ScoreEnum'
-          - $ref: '#/components/schemas/NullEnum'
         label:
           type: string
       required:
       - label
       - number
+      - score
       - text
     AnswerInput:
       type: object
@@ -417,9 +416,6 @@ components:
       - code
       - max
       - text
-    NullEnum:
-      enum:
-      - null
     PaginatedSubmissionList:
       type: object
       required:
@@ -458,12 +454,10 @@ components:
           allOf:
           - $ref: '#/components/schemas/Scale'
           nullable: true
-          readOnly: true
       required:
       - choices
       - id
       - number
-      - scale
       - text
     Questionnaire:
       type: object
@@ -536,16 +530,6 @@ components:
       required:
       - max_label
       - min_label
-    ScoreEnum:
-      enum:
-      - 4
-      - 2
-      - 0
-      type: integer
-      description: |-
-        * `4` - 常常
-        * `2` - 有時
-        * `0` - 從未
     Scores:
       type: object
       properties:

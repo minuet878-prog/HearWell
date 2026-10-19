@@ -22,7 +22,6 @@ from screening.models import (
 )
 from screening.scoring import IOI_HA, THRESHOLDS, get_advice
 from screening.ssq12 import CODE as SSQ12
-from screening.ssq12 import scale_labels
 
 
 class QuestionnaireSummarySerializer(serializers.ModelSerializer):
@@ -65,14 +64,7 @@ class ScaleSerializer(serializers.Serializer):
 
 
 class QuestionSerializer(serializers.ModelSerializer):
-    scale = serializers.SerializerMethodField(required=False)
-
-    @extend_schema_field(ScaleSerializer(allow_null=True))
-    def get_scale(self, question):
-        if question.questionnaire.code != SSQ12:
-            return None
-        lower, upper = scale_labels(question.question_number)
-        return {"min_label": lower, "max_label": upper}
+    scale = ScaleSerializer(required=False, allow_null=True)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -152,6 +144,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
+    score = serializers.IntegerField(min_value=0, max_value=10, allow_null=True)
     number = serializers.IntegerField(source="question.question_number")
     text = serializers.CharField(source="question.question_text")
     label = serializers.CharField(source="get_answer_display")
