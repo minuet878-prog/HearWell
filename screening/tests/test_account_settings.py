@@ -13,7 +13,7 @@ ACCOUNT_LINK = re.compile(r'<a[^>]*href="/account"[^>]*>')
 
 
 class AccountSettingsTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_3_structure.md, acceptance 1-10 and 12."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_3_structure.md, acceptance 1-10 and 12."""
 
     _hhie_s = test_report.HealthReportTests._hhie_s
     _ioi_ha = test_report.HealthReportTests._ioi_ha

@@ -28,7 +28,7 @@
 - [x] ruff 排除 migrations
 - [x] ruff 擴充規則集（B / DJ / TID / RUF）
 - [x] 計分聚合測試
-- [x] 裝 debug-toolbar（只裝本機：`requirements-dev.txt`；規格 `docs/specs/phase0_dev_checks.md`，2026-10-15）
+- [x] 裝 debug-toolbar（只裝本機：`requirements-dev.txt`；規格 `docs/specs/phase-00/phase0_dev_checks.md`，2026-10-15）
 - [x] `check --deploy`：每次部署在 `build.sh` 最前面跑，警告也算失敗；同時開 HSTS（1 小時、含子網域）
 - [x] 鎖定 Render 的 Python 版本：`.python-version` 3.13.15（原本 Render 自動用 3.14.3）
 - 沒做完的三項（HSTS 拉長、`ruff` 搬家、`ALLOWED_HOSTS` 空字串）→ Phase 6
@@ -46,18 +46,18 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 ### Phase 2：產品價值（仍用 Django template）（完成）
 - [x] **結果頁分項說明**（取代 A3）：分項分數下方註明「僅供參考，沒有正式的解讀標準」
 - [x] **B1 助聽器配戴標記**：作答頁第一題前必填「有戴／沒戴」，結果頁與歷史頁顯示，
-  舊紀錄顯示「未記錄」（`Submission.wearing_hearing_aid`，見 `docs/specs/phase2_b1_hearing_aid.md`）
+  舊紀錄顯示「未記錄」（`Submission.wearing_hearing_aid`，見 `docs/specs/phase-02/phase2_b1_hearing_aid.md`）
 - 以下從 code review 報告補回，不做的話寫一句原因再刪：
   - [x] 未登入動線：登入／註冊後回到 `?next=`（只接受本站網址），登入頁說明、首頁提示
-    （見 `docs/specs/phase2_login_next.md`）
-  - [x] 註冊改用 `UserCreationForm`，選填民國出生年（存西元 `birth_year`，取代 `birth_date`；見 `docs/specs/phase2_register_form.md`）
+    （見 `docs/specs/phase-02/phase2_login_next.md`）
+  - [x] 註冊改用 `UserCreationForm`，選填民國出生年（存西元 `birth_year`，取代 `birth_date`；見 `docs/specs/phase-02/phase2_register_form.md`）
     - `LoginView`、同名註冊 500 → Phase 6
     - 還沒做：Django 內建訊息（密碼規則、欄位說明）用「你」，跟站內「您」不一致；要改得覆寫驗證器或翻譯檔
-  - [x] 錯字、英文殘留、孤兒 `</li>`、作答頁題目被 `__str__` 截斷成 30 字（見 `docs/specs/phase2_copy_fixes.md`）
+  - [x] 錯字、英文殘留、孤兒 `</li>`、作答頁題目被 `__str__` 截斷成 30 字（見 `docs/specs/phase-02/phase2_copy_fixes.md`）
     - 範圍外、還沒處理：首頁只寫 HHIE-S、沒提 HHIA-S（內容正確性）；分數旁的半形冒號；
       ~~註冊頁 placeholder 拼錯 `Cofirmation`~~（改用 `UserCreationForm` 後已不存在）
-  - [x] 無障礙基準線：量測方法與結果見 `docs/accessibility_baseline.md`；已修內文／`text-muted` 對比、分級與錯誤文字顏色、
-    作答頁 `fieldset`／`legend`、選項統一為橫排大按鈕（見 `docs/specs/phase2_a11y_baseline.md`）
+  - [x] 無障礙基準線：量測方法與結果見 `docs/accessibility/accessibility_baseline.md`；已修內文／`text-muted` 對比、分級與錯誤文字顏色、
+    作答頁 `fieldset`／`legend`、選項統一為橫排大按鈕（見 `docs/specs/phase-02/phase2_a11y_baseline.md`）
     - 量到沒修的項目、下次量測要補的狀態 → Phase 6 重新量測
 
 ### Phase 3：DRF 唯讀 API（AI 代工）（完成）
@@ -70,27 +70,27 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 - 優先做 Phase 4 趨勢圖需要的資料（使用者自己的歷次作答與分數）。
 - 權限原則：未登入不可呼叫；只能取得自己的資料（防 IDOR）。
 - 計分沿用 Submission 的 QuerySet／property，由後端算好回傳，前端不重算。
-- 細節見 `docs/specs/phase3.md`。
+- 細節見 `docs/specs/phase-03/phase3.md`。
 
 ### Phase 4：React 前端 + PWA（AI 代工）（完成）
 - [x] 第 1 批：B2 趨勢圖（Vite＋React＋Recharts，只在「我的聽力」頁載入；問卷 API 加 `levels`；Render 上建置）
   - 正式站看得到圖（2026-10-15 確認）；還沒核對：build log 的 Node 版本是 `.node-version` 的 24.21.0（不是就代表 Python 服務沒讀這個檔）
   - Django 測試改用 `--settings=config.test_settings`（不需先 collectstatic）
   - JS 體積 brotli 141 KB（含 React）；若之後要壓，可考慮較小的圖表套件或自己畫 SVG
-- [x] 第 2 批：PWA（規格 `docs/specs/phase4.md` 第 2 批）
+- [x] 第 2 批：PWA（規格 `docs/specs/phase-04/phase4.md` 第 2 批）
   - 只有 manifest＋圖示（B1 耳朵），不用 service worker、不做離線；全螢幕、先到首頁
   - 說明頁「把 HearWell 加到手機主畫面」（iPhone 提醒第一次要再登入）
   - 手機驗收 24–26 通過（2026-10-15）：iPhone 按鈕名稱與說明頁一致；`apple-mobile-web-app-capable` 保留
-- [x] 介面改版第 1 批：共用版型（規格 `docs/specs/phase4_ui_redesign.md`）
+- [x] 介面改版第 1 批：共用版型（規格 `docs/specs/phase-04/phase4_ui_redesign.md`）
   - 原版 Bootstrap 5.3.8＋自訂 `styles.css`：深藍主色 #1f4e8c、18px、系統字型；拿掉 Bootstrap JS
   - 導覽：首頁／開始篩檢／我的紀錄（未登入：首頁／登入／註冊）；寬螢幕上方、手機底部分頁列；320px 不需左右捲動
   - 無障礙基準線第 3 節 7 項全部處理；趨勢圖改版（摘要框、每點標分數、淡分級底色）
-- [x] 介面改版第 2 批：逐頁動線（規格 `docs/specs/phase4_ui_flow.md`）
+- [x] 介面改版第 2 批：逐頁動線（規格 `docs/specs/phase-04/phase4_ui_flow.md`）
   - 首頁：開始篩檢在最上面、三步驟、免責聲明，文案只寫真的有的功能、不寫量表名稱
   - 選問卷頁：適合對象、題數、時間（`scoring.QUESTIONNAIRE_INFO`，依問卷代碼；為 IOI-HA 預留）
   - 作答頁：「第 n 題／共 N 題」；結果頁：分級色塊在上、下一步按鈕、作答明細收合
   - 審查留下的觀察：結果頁的分級文字不是標題（`<h…>`），axe 沒標出，暫不改
-- [x] 小任務：作答時竄改 `form-TOTAL_FORMS` 會 500（規格 `docs/specs/phase4_fix_total_forms.md`）：每張子表單都必須驗證（`empty_permitted=False`）
+- [x] 小任務：作答時竄改 `form-TOTAL_FORMS` 會 500（規格 `docs/specs/phase-04/phase4_fix_total_forms.md`）：每張子表單都必須驗證（`empty_permitted=False`）
 - Vite build 進 staticfiles，由 whitenoise 提供，維持單一 Render 服務。
 - 只有互動需求高的頁面用 React；login／register 維持 Django template。
 - **B2 趨勢圖**：第一個 React 頁面，把多次填答的分數畫成折線圖。
@@ -102,29 +102,29 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   字級、按鈕大小、對比度，不留到最後補。
 
 ### Phase 5：寫入 API + 第一批大功能（AI 代工）（完成）
-- [x] **寫入 API：作答送出**（規格 `docs/specs/phase5_api_submit.md`，2026-10-15）
+- [x] **寫入 API：作答送出**（規格 `docs/specs/phase-05/phase5_api_submit.md`，2026-10-15）
   - `POST /api/submissions/`：收據編號（`Idempotency-Key` header，UUID、必填）防重複，重送回 200、內容不同回 409；只收 HHIE-S／HHIA-S
   - `GET /api/questionnaires/{id}/`：題目全文與選項（React 作答頁要用）
   - 驗證與存檔共用網頁版的 `AnswerFormSet`（`save()` 是全有或全無）
   - 待辦：開放 IOI-HA 寫入時，要補「答案倒序送出、每題選項不同」的測試（目前依題號排序沒有測試保護）
   - 網頁版作答連按兩次（F-10）→ Phase 6
-- [x] **README 重寫**（規格 `docs/specs/phase5_readme.md`，2026-10-15）：內容對齊目前程式碼；開頭數據改依文獻（四成、可達 10 年），出處列在最下面「參考資料」
-- [x] **React 作答頁＋D2 作答中途儲存**（規格 `docs/specs/phase5_react_answer.md`，2026-10-16）
+- [x] **README 重寫**（規格 `docs/specs/phase-05/phase5_readme.md`，2026-10-15）：內容對齊目前程式碼；開頭數據改依文獻（四成、可達 10 年），出處列在最下面「參考資料」
+- [x] **React 作答頁＋D2 作答中途儲存**（規格 `docs/specs/phase-05/phase5_react_answer.md`，2026-10-16）
   - HHIE-S／HHIA-S 一題一頁，同一個網址：Django 表單是 JS 失敗時的備用，拿到題目才換成 React 版；IOI-HA 維持網頁版
   - 上一頁＝上一題（`history.pushState`，重新整理後沿用已存在的紀錄）；送出走寫入 API，帶收據編號
   - 中途儲存存在瀏覽器 `localStorage`：綁帳號、7 天、別的帳號打開或登出就刪，收據編號一起保存
   - 建置輸出改到 `static/screening/frontend/`（三個進入點：趨勢圖、作答頁、登出）；作答頁 brotli 約 61 KB
   - 不改（審查 F6、F9）：送出失敗後按上一題，錯誤訊息會留在前一題；CSRF token 過期也顯示「登入已經過期」
   - 之後可以考慮：存在伺服器的中途儲存（換裝置接著答）；React 版 IOI-HA（API 要先開放 IOI-HA 寫入）
-  - 修正（規格 `docs/specs/phase5_answer_flash.md`，2026-10-16）：載入時不再先閃過全部題目。表單前的 inline script 先藏表單、顯示「題目載入中…」；React 拿到題目才接手，失敗或 5 秒內沒接手就放回網頁表單（之後才拿到題目也不接手）
+  - 修正（規格 `docs/specs/phase-05/phase5_answer_flash.md`，2026-10-16）：載入時不再先閃過全部題目。表單前的 inline script 先藏表單、顯示「題目載入中…」；React 拿到題目才接手，失敗或 5 秒內沒接手就放回網頁表單（之後才拿到題目也不接手）
   - 網頁表單驗證失敗後被 React 接手（審查 1-3）→ Phase 6
-- [x] **聽力圖輸入 第 1 批**（規格 `docs/specs/phase5_audiogram.md`，2026-10-16）
+- [x] **聽力圖輸入 第 1 批**（規格 `docs/specs/phase-05/phase5_audiogram.md`，2026-10-16）
   - 新增：選符號（左右耳 × 氣導／骨導）後在圖上按住拖曳，放大鏡顯示數值；拖過下緣＝無反應（氣導 120、骨導只到 80）；遮蔽開關（ASHA △ □ [ ]）；再點一下刪除＋清除鈕；可收合的數值表給鍵盤與螢幕閱讀器
   - 檢視：每耳四頻平均、程度、類型（規則沿用 `~/audiogram_tool`，後端算），含無反應時加註；清單依檢查日期新到舊；另頁確認後刪除
   - 入口是導覽列最後一項「聽力圖」（不放「我的紀錄」的分頁籤）
   - 手機人工驗收（驗收 11）已通過（2026-10-16）
   - 已知：Mac 觸控板＋Chrome 偶爾在放開前就放掉指標鎖定，已改成用最後顯示的值結束拖曳；為什麼會先放掉還沒查明
-- [x] **聽力圖輸入 第 2 批：修改、比較**（規格 `docs/specs/phase5_audiogram_2.md`，2026-10-16）
+- [x] **聽力圖輸入 第 2 批：修改、比較**（規格 `docs/specs/phase-05/phase5_audiogram_2.md`，2026-10-16）
   - 修改：檢視頁「修改這張聽力圖」→ 沿用新增頁的編輯器、帶入原本的點和日期；`PUT /api/audiograms/{id}/` 整張取代（全有或全無、不需要收據編號）
   - 比較：清單頁「比較聽力圖」（少於兩張不能按）；兩個下拉選單、預設最新兩張、新舊依檢查日期；一次一耳，舊的用同耳色淡色虛線；對照表逐頻率列差值（新 − 舊），一邊沒值寫「—」、有無反應寫「無法比較」；不標色、不寫「變差」
   - 不改（審查 2）：修改頁拖曳原本有遮蔽的點，會變成目前開關的遮蔽狀態（第 1 批的輸入規則）
@@ -133,44 +133,44 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ### Phase 6：穩固（技術債＋工程面）← 目前
 順序依「先做的能保護後做的」：CI 先上，後面每項修正都有它把關。
-- [x] **CI**（規格 `docs/specs/phase6_ci.md`，2026-10-16）：GitHub Actions，PR 和合併進 `main` 時跑 Django 測試（PostgreSQL 18）、`ruff check`、前端測試與建置
+- [x] **CI**（規格 `docs/specs/phase-06/phase6_ci.md`，2026-10-16）：GitHub Actions，PR 和合併進 `main` 時跑 Django 測試（PostgreSQL 18）、`ruff check`、前端測試與建置
   - GitHub ruleset：`main` 必須通過 `backend`、`frontend` 才能合併；Render 改成「CI 通過後才部署」
   - 待合併後確認：`main` 上也有跑（驗收 9 後半）、Render 等 CI 通過才部署（驗收 11）
   - 改 job 名稱要同時改 ruleset 的必要檢查，不然 PR 會卡在「等待檢查」
-- [x] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`（原 Phase 0；規格 `docs/specs/phase6_ruff_dev_only.md`，2026-10-16）
+- [x] `ruff` 從正式環境的 `requirements.txt` 移到 `requirements-dev.txt`（原 Phase 0；規格 `docs/specs/phase-06/phase6_ruff_dev_only.md`，2026-10-16）
   - 一起刪掉 `click`、`h11`（只有沒在用的 `uvicorn` 需要）
   - CI 加「只裝正式清單」檢查：`check --deploy`＋`gunicorn --check-config config.wsgi`；抓不到 `brotli`（只在 collectstatic 用）
   - 待合併部署後確認：Render 安裝清單沒有 ruff、網站正常（驗收 5）
-- [x] `ALLOWED_HOSTS` 設成空字串時 `check --deploy` 抓不到（原 Phase 0；規格 `docs/specs/phase6_allowed_hosts.md`，2026-10-16）
+- [x] `ALLOWED_HOSTS` 設成空字串時 `check --deploy` 抓不到（原 Phase 0；規格 `docs/specs/phase-06/phase6_allowed_hosts.md`，2026-10-16）
   - 正式環境沒設也會報錯（原本安靜用本機預設）；空的一律報錯；去空白、丟空項
   - Render 部署成功，本人確認（驗收 7）
-- [x] 網頁版作答連按兩次（F-10）（原 Phase 5；規格 `docs/specs/phase6_web_double_submit.md`，2026-10-16）
+- [x] 網頁版作答連按兩次（F-10）（原 Phase 5；規格 `docs/specs/phase-06/phase6_web_double_submit.md`，2026-10-16）
   - 沿用 `Submission.idempotency_key`：每張作答頁一個收據編號，同頁重送（不論答案）轉到第一筆＋一次性說明；沒 JS 也有效
   - 「送出中…」按鈕回饋（`submit-button.js`），10 秒或按上一頁回來時恢復
   - 本人手機確認通過（驗收 13）
-- [x] 網頁表單驗證失敗被 React 接手（審查 1-3，原 Phase 5；規格 `docs/specs/phase6_web_form_errors_stay.md`，2026-10-16）
+- [x] 網頁表單驗證失敗被 React 接手（審查 1-3，原 Phase 5；規格 `docs/specs/phase-06/phase6_web_form_errors_stay.md`，2026-10-16）
   - 驗證沒過重新顯示的頁面不送 React（view 傳 `use_react=False`），留在網頁表單，錯誤、已選答案、收據編號都在
   - 沒處理：只漏答助聽器題時頂端沒有錯誤摘要，只有該題紅字
-- [x] 測試依功能分資料夾（規格 `docs/specs/phase6_tests_by_feature.md`，2026-10-16）
+- [x] 測試依功能分資料夾（規格 `docs/specs/phase-06/phase6_tests_by_feature.md`，2026-10-16）
   - `screening/tests.py`（約 5,000 行、43 個類別）拆成 `screening/tests/` 10 個檔，只搬家不改內容；356 個測試搬家前後清單相同
   - 只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`
   - PR #49 CI 兩個檢查通過（驗收 6）
-- [x] 登入改用內建 `LoginView`、同時同名註冊不再 500（原 Phase 2；規格 `docs/specs/phase6_login_view.md`，2026-10-16）
+- [x] 登入改用內建 `LoginView`、同時同名註冊不再 500（原 Phase 2；規格 `docs/specs/phase-06/phase6_login_view.md`，2026-10-16）
   - 畫面、文字、`next` 動線不變；改變的只有：登入失敗後使用者名稱留在欄位裡、游標移到密碼欄
   - 只收 GET、POST（`LoginView` 繼承的 PUT 會被當成 POST，要另外限制）
   - 註冊撞車：顯示和一般同名一樣的訊息；不是名字被用走的 `IntegrityError` 照樣丟出
   - 已知限制：大小寫不同的名字（`Alice`／`alice`）同時註冊，資料庫只擋完全相同的名字，會建出兩個帳號（機率比同名撞車更低）
-- [x] **錯誤監控**（原功能構想總表；規格 `docs/specs/phase6_error_monitoring.md`，2026-10-16）：Sentry 免費版、資料放歐盟，有 `SENTRY_DSN` 才啟用
+- [x] **錯誤監控**（原功能構想總表；規格 `docs/specs/phase-06/phase6_error_monitoring.md`，2026-10-16）：Sentry 免費版、資料放歐盟，有 `SENTRY_DSN` 才啟用
   - 只送錯誤類型、出錯位置、網址路徑與方法；`logger.error` 只送樣板。不送錯誤訊息、標頭（含 `X-CSRFToken`）、查詢字串、表單、cookie、IP、使用者、變數值、麵包屑、使用統計
   - 管理員測試網址 `/monitoring-test`（其他人 404）
   - 正式站已設 `SENTRY_DSN`，測試網址收得到 email（驗收 9，本人 2026-10-16 確認）；PR #51 CI 通過（驗收 6）
   - 之後可以考慮：前端（React）錯誤監控，要先評估 JS 體積
-- [x] **端對端測試**（原功能構想總表；規格 `docs/specs/phase6_e2e.md`，2026-10-16）：Playwright（Python）＋`StaticLiveServerTestCase`，Chromium 手機大小，一條主要動線（註冊 → HHIE-S → 結果 → 我的紀錄）
+- [x] **端對端測試**（原功能構想總表；規格 `docs/specs/phase-06/phase6_e2e.md`，2026-10-16）：Playwright（Python）＋`StaticLiveServerTestCase`，Chromium 手機大小，一條主要動線（註冊 → HHIE-S → 結果 → 我的紀錄）
   - CI 獨立檢查 `e2e`，先不列為必要；**觀察一兩週（到 2026-10-30 左右）沒有偶發失敗，再加進 ruleset 的必要檢查**
   - PR #52：CI 的 `e2e` 通過；故意失敗一次確認截圖與 trace 可下載
   - 之後可以加：聽力圖、IOI-HA、JS 關閉時的表單、WebKit／桌機大小
-- [x] **無障礙基準線重新量測**（原 Phase 2；規格 `docs/specs/phase6_a11y_remeasure.md`，2026-10-16）
-  - 2026-10-16 量完（報告 `docs/accessibility_baseline.md` 第 5 節）：25 個頁面狀態 axe 違規全部 0；Phase 2 列的 7 項中 6 項確認已修、1 項部分已修
+- [x] **無障礙基準線重新量測**（原 Phase 2；規格 `docs/specs/phase-06/phase6_a11y_remeasure.md`，2026-10-16）
+  - 2026-10-16 量完（報告 `docs/accessibility/accessibility_baseline.md` 第 5 節）：25 個頁面狀態 axe 違規全部 0；Phase 2 列的 7 項中 6 項確認已修、1 項部分已修
   - 新量到 11 項待辦（報告 5.4），最重的：聽力圖比較頁表格 320 px 撐寬整頁、舊聽力圖淡色 1.82:1、作答頁錯誤焦點與摘要、登入失敗訊息沒關聯欄位
   - 本人挑 1、3、4、5，同日修完並重量（報告 5.5）：比較頁 320 px 不捲動、作答錯誤摘要列出題目連結並取得焦點、登入失敗訊息關聯兩欄；其餘 7 項留在報告 5.4
 - 時間型，不佔順序：HSTS 時效逐步拉長（`config/settings.py` 的 `SECURE_HSTS_SECONDS`）：
@@ -178,14 +178,14 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
 
 ### Phase 7：個資與信任
 Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，先有同意、匯出、刪除。
-- [x] **同意書與隱私權說明頁**：處理健康資料前取得明確同意（2026-10-17，分支 `feat/consent-privacy`，規格 `docs/specs/phase7_consent_privacy.md`）
+- [x] **同意書與隱私權說明頁**：處理健康資料前取得明確同意（2026-10-17，分支 `feat/consent-privacy`，規格 `docs/specs/phase-07/phase7_consent_privacy.md`）
   - 上線閘門（驗收 16）已處理：營運者、信箱、地區（美國俄亥俄州）已填，測試防止【待補】再出現
-  - 要寫出錯誤監控用到的第三方服務（Sentry，資料放歐盟；只送錯誤類型、位置、網址路徑，不送個資與作答，見 `docs/specs/phase6_error_monitoring.md`）
-- [x] **資料匯出**：使用者下載自己的全部紀錄，跟刪除權是一組（2026-10-17，分支 `feat/data-export`，規格 `docs/specs/phase7_data_export.md`）
+  - 要寫出錯誤監控用到的第三方服務（Sentry，資料放歐盟；只送錯誤類型、位置、網址路徑，不送個資與作答，見 `docs/specs/phase-06/phase6_error_monitoring.md`）
+- [x] **資料匯出**：使用者下載自己的全部紀錄，跟刪除權是一組（2026-10-17，分支 `feat/data-export`，規格 `docs/specs/phase-07/phase7_data_export.md`）
   - 「我的紀錄」頁按鈕＋隱私權說明頁連結 → 一個 JSON 檔（帳號、同意、問卷每題與分數、聽力圖每個點）；未同意新版說明的人也能下載
   - 沒做：易讀報告（Phase 8 C3）、API；隱私權說明頁仍寫「寄信要求複本」，自助下載是多一個管道
   - 順手修：e2e「我的紀錄」斷言的偶發失敗（React 趨勢圖重複分級文字）。e2e 列必要檢查的觀察期（約 10-30）從這次修正後重新算
-- [x] **帳號與資料刪除**（2026-10-17，分支 `feat/account-deletion`，規格 `docs/specs/phase7_account_deletion.md`）
+- [x] **帳號與資料刪除**（2026-10-17，分支 `feat/account-deletion`，規格 `docs/specs/phase-07/phase7_account_deletion.md`）
   - 真的刪除、不匿名化；再輸入一次密碼；帳號、問卷與答案、聽力圖、同意紀錄一次刪光（交易），登出，其他裝置也失效；裝置上的作答暫存一起清
   - 未同意新版說明的人也能刪；管理員帳號不能自己刪（先移除管理員權限）
   - 說明頁：可以自己刪除；備份（Neon History window）6 小時內清除。改 History window 要同步改說明頁
@@ -193,46 +193,46 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 ### Phase 8：分享
 需要 Phase 7 的同意機制。
-- [x] **C3 聽力報告**（2026-10-17，分支 `feat/c3-report`，規格 `docs/specs/phase8_c3_report.md`）：列印友善的網頁，瀏覽器印出或存成 PDF
+- [x] **C3 聽力報告**（2026-10-17，分支 `feat/c3-report`，規格 `docs/specs/phase-08/phase8_c3_report.md`）：列印友善的網頁，瀏覽器印出或存成 PDF
   - 版面 C：重點摘要框 → 聽力圖（畫圖）→ HHIE-S／HHIA-S（最近一次＋最近 5 次）→ 配戴前後 → IOI-HA → 免責聲明；入口在「我的紀錄」
   - 只呈現網站已有的分數、分級、判讀，不加新判讀；假資料印出來是 A4 兩頁
   - 沒做：分享連結（留給 C1）、伺服器產生 PDF
   - 之後可以考慮：健康資料頁面全站加 `never_cache`（共用電腦登出後按上一頁仍看得到快取；目前報告、我的紀錄、結果頁都沒加，審查 4）
 - **C1 家屬版**：2026-10-17 討論後決定做 B（家屬看得到結果）＋ C（給家屬的溝通與陪伴內容），不做家屬問卷、家屬協助作答
-  - [x] **C：給家人的溝通與陪伴頁**（2026-10-17，分支 `feat/c1-family-guide`，規格 `docs/specs/phase8_c1_family_guide.md`）：`/family` 不用登入，三段內容（說話方法、陪伴配戴助聽器、什麼時候要馬上就醫）由 AI 擬稿、本人審定，出處逐一查證；「傳給家人」按鈕用手機分享
+  - [x] **C：給家人的溝通與陪伴頁**（2026-10-17，分支 `feat/c1-family-guide`，規格 `docs/specs/phase-08/phase8_c1_family_guide.md`）：`/family` 不用登入，三段內容（說話方法、陪伴配戴助聽器、什麼時候要馬上就醫）由 AI 擬稿、本人審定，出處逐一查證；「傳給家人」按鈕用手機分享
     - 改文字要經本人審，測試逐字比對出處；之後可以加「看懂篩檢結果」「照顧者也要照顧自己」
-  - [x] **B：分享聽力報告給家屬**（2026-10-17，分支 `feat/c1-family-share`，規格 `docs/specs/phase8_c1_family_share.md`）：報告頁上方產生分享連結（確認後才產生、一次一個、7 天、可取消、看得到開啟次數）；家人先到封面（擋 LINE 預覽）再看報告，不顯示名稱與出生年；匯出含分享紀錄
+  - [x] **B：分享聽力報告給家屬**（2026-10-17，分支 `feat/c1-family-share`，規格 `docs/specs/phase-08/phase8_c1_family_share.md`）：報告頁上方產生分享連結（確認後才產生、一次一個、7 天、可取消、看得到開啟次數）；家人先到封面（擋 LINE 預覽）再看報告，不顯示名稱與出生年；匯出含分享紀錄
     - 驗收 24 手機 LINE 實測通過（2026-10-17）
     - 沒做：多個連結、記錄是給誰、自訂期限；本人自己打開也算一次（審查 1-2，照規格）
 
 ### Phase 9：前端設計重整（完成）
 來源：本人的「HearWell 前端設計檢討」（2026-10-17）。每個元素分量差不多、沒有分組，看起來散。分四輪、一輪一份規格：
-- [x] **第 1 輪：全站共用的版型**（2026-10-17，分支 `feat/ui-shared-layout`，規格 `docs/specs/phase9_ui_refresh_1_shared.md`）
+- [x] **第 1 輪：全站共用的版型**（2026-10-17，分支 `feat/ui-shared-layout`，規格 `docs/specs/phase-09/phase9_ui_refresh_1_shared.md`）
   - 內容最大寬度 40rem；間距只用 Bootstrap 原有的值；全站淺灰頁尾（給家人看、加到主畫面、隱私權說明、免責聲明、聯絡信箱）
   - 程度標籤：問卷分級三色；聽力圖程度正常綠、輕度與中度黃褐、中重度以上紅、資料不足灰（本人臨床判斷，對應表在 `audiogram.DEGREE_LEVELS`）
   - 可點擊卡片統一（整張可點＋「›」）：選擇問卷、我的紀錄、聽力圖列表；每頁一顆實心按鈕
   - 首頁的「給家人看」「加到主畫面」移到頁尾（本人實作後追加）；首頁免責聲明那段留到第 3、4 輪
   - 之後可以清：`styles.css` 的 `.text-success／warning／danger` 覆寫可能已沒人用（審查 2-2）
-- [x] **第 2 輪：資料呈現的錯誤**（2026-10-17，分支 `feat/ui-data-display`，規格 `docs/specs/phase9_ui_refresh_2_data.md`）
+- [x] **第 2 輪：資料呈現的錯誤**（2026-10-17，分支 `feat/ui-data-display`，規格 `docs/specs/phase-09/phase9_ui_refresh_2_data.md`）
   - HHIE-S 趨勢圖：沒戴實線、有戴虛線、未記錄只畫點，不跨狀態連線；摘要框只跟同一種狀態的上一次比
   - 橫軸以天為單位、最多最近五天，同一天的紀錄在同一條直線上（同天同狀態只畫最後一筆）；提示框、紀錄卡片加時間（橫軸只寫日期）；日期間至少 27px；以上是本人驗收時追加分級底色邊界畫在 9、25（HHIE-S 總分是偶數，「最高分＋1」；別份問卷要畫趨勢圖時改請後端給 `min`）
   - IOI-HA：格線改成元素、畫在每列正中間（e2e 量得到）；加「7 題都是分數越高，代表助聽器的效益越好」
   - 沒做：摘要框同日比較時加時間（審查 1-2，符合規格）；常模灰框蓋住框內格線（改之前就這樣）
-- [x] **第 3 輪：結構調整**（2026-10-17，分支 `feat/ui-structure`，規格 `docs/specs/phase9_ui_refresh_3_structure.md`）
+- [x] **第 3 輪：結構調整**（2026-10-17，分支 `feat/ui-structure`，規格 `docs/specs/phase-09/phase9_ui_refresh_3_structure.md`）
   - 帳號設定頁（只看不改）：入口在頁首名稱與頁尾；下載資料、刪除帳號從「我的紀錄」搬過來；同意閘門放行；隱私權說明頁改寫位置
   - 問卷切換改成分開的小膠囊、自動換行（本人提醒問卷會變多）
   - 首頁：副標改講為什麼；「可達 10 年」改成不帶數字的一句話（沒有出處）；首頁的免責半句拿掉（頁尾有）
   - 趨勢圖分級文字改到圖下方的圖例（左上角在手機只有一筆時會壓到點、圖外右側會讓圖太窄，審查後本人決定）
   - 沒做：修改帳號資料；「前往同意」同意後回帳號設定（審查 4）；頁首深藍底上的鍵盤焦點框顏色（審查 6，原本就這樣）
 - **第 4 輪：增加豐富度**：本人決定拆四份
-  - [x] **4a 首頁**（2026-10-18，分支 `feat/ui-home-richness`，規格 `docs/specs/phase9_ui_refresh_4a_home.md`）：淡藍底插圖區（耳朵聲波 SVG）、三張步驟卡片＋圖示（寬螢幕橫排、窄螢幕直排）、「結果長這樣」示意圖（HHIE-S 假分數 18 分，分級與建議取自 `classify`／`get_advice`）、淡藍底信任區塊（不具名，本人決定）；審查後修 200% 字級時卡片撐出畫面（`minmax(min(12rem, 100%), 1fr)`）
-  - [x] **4b 問卷卡片與選擇引導**（2026-10-17，分支 `feat/ui-questionnaire-cards`，規格 `docs/specs/phase9_ui_refresh_4b_questionnaire_cards.md`）：引導「第一次使用，請從 HHIE-S 開始；已經戴助聽器的人，可以再做 IOI-HA。」（本人審定）；卡片圖示（耳朵／助聽器／夾板，inline SVG）；題數、時間標籤；順序固定 HHIE-S、IOI-HA、其他照建立先後（原本資料庫沒指定順序）
-  - [x] **4c 聽力圖縮圖**（2026-10-17，分支 `feat/ui-audiogram-thumbnails`，規格 `docs/specs/phase9_ui_refresh_4c_audiogram_thumbnails.md`）：列表卡片左側 6×4.5rem 的氣導縮圖（右紅左藍，本人確認），伺服器畫 SVG（`screening/audiogram_thumbnail.py`），連線規則同大圖；右耳左耳各一行（手機上標籤與「右耳：」分兩行，本人可接受）
-  - [x] **4d IOI-HA 逐題解讀**（2026-10-18，分支 `feat/ui-ioi-ha-items`，規格 `docs/specs/phase9_ui_refresh_4d_ioi_ha_items.md`）：結果頁「低於常模」的題目，在回答下方加一段白話解讀（7 段，AI 擬稿、本人修改確認，存在 `scoring.IOI_HA_BELOW_NORM_NOTES`）；在範圍內、高於常模、未分組不顯示；出處區加「逐題解讀由聽力師依臨床經驗撰寫，不能取代個別諮詢。」；聽力報告與家屬分享版不放（本人決定，之後可再評估）
+  - [x] **4a 首頁**（2026-10-18，分支 `feat/ui-home-richness`，規格 `docs/specs/phase-09/phase9_ui_refresh_4a_home.md`）：淡藍底插圖區（耳朵聲波 SVG）、三張步驟卡片＋圖示（寬螢幕橫排、窄螢幕直排）、「結果長這樣」示意圖（HHIE-S 假分數 18 分，分級與建議取自 `classify`／`get_advice`）、淡藍底信任區塊（不具名，本人決定）；審查後修 200% 字級時卡片撐出畫面（`minmax(min(12rem, 100%), 1fr)`）
+  - [x] **4b 問卷卡片與選擇引導**（2026-10-17，分支 `feat/ui-questionnaire-cards`，規格 `docs/specs/phase-09/phase9_ui_refresh_4b_questionnaire_cards.md`）：引導「第一次使用，請從 HHIE-S 開始；已經戴助聽器的人，可以再做 IOI-HA。」（本人審定）；卡片圖示（耳朵／助聽器／夾板，inline SVG）；題數、時間標籤；順序固定 HHIE-S、IOI-HA、其他照建立先後（原本資料庫沒指定順序）
+  - [x] **4c 聽力圖縮圖**（2026-10-17，分支 `feat/ui-audiogram-thumbnails`，規格 `docs/specs/phase-09/phase9_ui_refresh_4c_audiogram_thumbnails.md`）：列表卡片左側 6×4.5rem 的氣導縮圖（右紅左藍，本人確認），伺服器畫 SVG（`screening/audiogram_thumbnail.py`），連線規則同大圖；右耳左耳各一行（手機上標籤與「右耳：」分兩行，本人可接受）
+  - [x] **4d IOI-HA 逐題解讀**（2026-10-18，分支 `feat/ui-ioi-ha-items`，規格 `docs/specs/phase-09/phase9_ui_refresh_4d_ioi_ha_items.md`）：結果頁「低於常模」的題目，在回答下方加一段白話解讀（7 段，AI 擬稿、本人修改確認，存在 `scoring.IOI_HA_BELOW_NORM_NOTES`）；在範圍內、高於常模、未分組不顯示；出處區加「逐題解讀由聽力師依臨床經驗撰寫，不能取代個別諮詢。」；聽力報告與家屬分享版不放（本人決定，之後可再評估）
   - 注意：檢討文件建議的「有戴助聽器 → IOI-HA；沒有 → HHIE-S」引導不正確（HHIE-S／HHIA-S 依年齡；IOI-HA 是已配戴者的效益），做選問卷引導時要重寫
 
 ### Phase 10：PWA 使用體驗
-- [x] **返回鍵與下拉重整**（2026-10-18，分支 `feat/pwa-back-refresh`，規格 `docs/specs/phase10_pwa_back_refresh.md`）
+- [x] **返回鍵與下拉重整**（2026-10-18，分支 `feat/pwa-back-refresh`，規格 `docs/specs/phase-10/phase10_pwa_back_refresh.md`）
   - 只在從主畫面打開（全螢幕）時出現；一般瀏覽器分頁本來就有，不重複放
   - 上一頁：藍色標題列左側的外框按鈕，首頁沒有；判斷用 `navigation.canGoBack`，舊 iPhone 用 `history.length`，不能退就回首頁（審查後拿掉 0.5 秒計時器，本人選 A）
   - 下拉重整：頁頂、單指、沒放大、頁面內容沒有表單欄位才作用；標題列的登出不算
@@ -267,13 +267,15 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 ## 待定：新增其他中文版問卷（IOI-HA / APHAB / COSI、耳鳴相關量表）
 
+**2026-10-19 進度**：成人問卷第一批為 HHIA-S＋SSQ12-TW，計分、分級、年齡推薦及每份問卷各保留一組比較的方向已確認；第二批 APHAB＋SADL，COSI 後續再做。規格見 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。已依本人確認的拆法建立子議題 [#77–#84](https://github.com/minuet878-prog/HearWell/issues/76)，依賴與內容見 [拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。[#77 來源與使用條件定稿](https://github.com/minuet878-prog/HearWell/issues/77) 已依本人審定結案；[#78 HHIA-S 作答與結果](https://github.com/minuet878-prog/HearWell/issues/78) 已實作並通過 Django 571 項、前端 180 項與兩項 HHIA-S 瀏覽器測試，兩軸審查無發現，2026-10-19 本人人工驗收完成並結案；年齡推薦依本人指示留至 #80（[驗證紀錄](verification/issue-78.md)）；尚未開始 #79 SSQ12-TW，後續仍依原生阻擋關係推進。
+
 **構想**
 除了 HHIE-S，未來想加入助聽器相關的標準化量表（IOI-HA、APHAB、COSI）跟耳鳴
 相關問卷。
 
-- [x] **IOI-HA 七題版**（規格 `docs/specs/phase4_ioi_ha.md`，2026-10-15 完成）：用沒戴助聽器時的 HHIE-S 分組、逐題比常模、不算總分；
+- [x] **IOI-HA 七題版**（規格 `docs/specs/phase-04/phase4_ioi_ha.md`，2026-10-15 完成）：用沒戴助聽器時的 HHIE-S 分組、逐題比常模、不算總分；
   題目逐字核對（驗收 23）與原量表授權（待決 12b）本人已於合併前確認
-- [x] **我的紀錄依問卷分開**（規格 `docs/specs/phase4_history_by_questionnaire.md`，2026-10-15 完成）：每份問卷一個分頁（各有網址）、HHIE-S 配戴前後差值與配戴狀態形狀、IOI-HA 常模圖；
+- [x] **我的紀錄依問卷分開**（規格 `docs/specs/phase-04/phase4_history_by_questionnaire.md`，2026-10-15 完成）：每份問卷一個分頁（各有網址）、HHIE-S 配戴前後差值與配戴狀態形狀、IOI-HA 常模圖；
   驗收 20 本人確認通過。已知限制：趨勢圖只讀 API 最新 20 筆
 
 **跟現有架構的關係**
@@ -339,7 +341,7 @@ AI API 是按使用量（token）計費的持續性成本，跟目前「免費�
 
 ## 聽力圖輸入（Phase 5）
 
-**狀態**：第 1 批、第 2 批完成（2026-10-16，規格 `docs/specs/phase5_audiogram.md`、`phase5_audiogram_2.md`）。趨勢折線圖、三張以上比較還沒做。下面是最初的構想，保留當紀錄。
+**狀態**：第 1 批、第 2 批完成（2026-10-16，規格 `docs/specs/phase-05/phase5_audiogram.md`、`phase5_audiogram_2.md`）。趨勢折線圖、三張以上比較還沒做。下面是最初的構想，保留當紀錄。
 
 **構想**
 病人照著手上的聽力檢查報告，用點選的方式在網頁上重現聽力圖（不是填數字表單，
@@ -412,6 +414,10 @@ C1、D2、React 作答頁）不在這裡重複；2026-10-16 排進 Phase 6／7 �
 - **上架原生 app**（大）：需要加上 token 驗證（見「兩個已定案的方向」第 2 點）。
 
 ### 工程面（使用者看不到，但對作品集有分量）
+
+- [x] **面試筆記分類整理**（2026-10-19）：本機筆記改為 `docs/interview/`，按主題與開發 Phase 拆檔，保留題號索引與原 `docs/interview.md` 入口；延續不進版控。
+- [x] **歷史規格與審查整理**（2026-10-19）：44 份規格（含模板）與 51 份審查依 Phase 歸檔，新增[規格索引](specs/README.md)與[審查索引](reviews/README.md)，修正文件及註解引用；原內容與結論保留。
+- [x] **其餘文件分類與總覽**（2026-10-19）：新增[文件入口](README.md)，成人問卷研究歸入 `planning/adult-assessment/`、量測紀錄歸入 `accessibility/`、私有部署筆記歸入 `deployment/`；補齊既有目錄索引，更新引用並保留私有筆記忽略設定。
 - CI、錯誤監控、端對端測試 → Phase 6
 - **分數快取或改存欄位**（中）：目前每次即時計算；使用者大量增加時的優化，要先想清楚
   快取何時失效（`_scores_cache` 已經有不會失效的坑）。

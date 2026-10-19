@@ -38,7 +38,7 @@ def _section(content, section_id):
 
 
 class HealthReportTests(TestCase):
-    """Spec docs/specs/phase8_c3_report.md, acceptance 1-16."""
+    """Spec docs/specs/phase-08/phase8_c3_report.md, acceptance 1-16."""
 
     @classmethod
     def setUpTestData(cls):

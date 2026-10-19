@@ -23,7 +23,7 @@
     <summary>查看我的 {{ answers|length }} 題作答</summary>
     <ol>
         {% for answer in answers %}
-        <li>{{ answer.question.question_text }}——{{ answer.get_score_display }}</li>
+        <li>{{ answer.question.question_text }}——{{ answer.get_answer_display }}</li>
         {% endfor %}
     </ol>
 </details>

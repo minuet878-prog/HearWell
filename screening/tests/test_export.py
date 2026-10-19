@@ -37,7 +37,7 @@ def _all_keys(data):
 
 
 class DownloadMyDataTests(TestCase):
-    """Spec docs/specs/phase7_data_export.md, acceptance 1-16."""
+    """Spec docs/specs/phase-07/phase7_data_export.md, acceptance 1-16."""
 
     @classmethod
     def setUpTestData(cls):

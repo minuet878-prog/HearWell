@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- HearWell app icon (B1). The PNGs here are exported from this file; see docs/specs/phase4.md. -->
+  <!-- HearWell app icon (B1). The PNGs here are exported from this file; see docs/specs/phase-04/phase4.md. -->
   <rect width="512" height="512" fill="#1f4e8c"/>
   <g transform="translate(-44 -12)" fill="none" stroke="#fff" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
     <path d="M200 222 C 200 152 250 112 302 112 C 362 112 402 158 402 216 C 402 266 372 292 348 316 C 324 340 316 362 306 386 C 296 412 272 426 248 420 C 226 414 216 396 220 376"/>

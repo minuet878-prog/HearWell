@@ -12,7 +12,7 @@ from django.urls import Resolver404, resolve
 
 
 class DevChecksTests(SimpleTestCase):
-    """Spec docs/specs/phase0_dev_checks.md, acceptance 2-9 and the Python version."""
+    """Spec docs/specs/phase-00/phase0_dev_checks.md, acceptance 2-9 and the Python version."""
 
     ROOT = Path(__file__).resolve().parent.parent.parent
     # Settings are computed when the module loads, so DEBUG=False is checked in a fresh process.
@@ -139,7 +139,7 @@ print(json.dumps({
 
 
 class AllowedHostsTests(SimpleTestCase):
-    """Spec docs/specs/phase6_allowed_hosts.md, acceptance 1-5 and 8-10."""
+    """Spec docs/specs/phase-06/phase6_allowed_hosts.md, acceptance 1-5 and 8-10."""
 
     ROOT = Path(__file__).resolve().parent.parent.parent
     # Settings are computed when the module loads, so each case runs in a fresh process.

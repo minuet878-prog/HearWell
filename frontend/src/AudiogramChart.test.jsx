@@ -32,7 +32,7 @@ it("draws each masked mark (acceptance 40)", () => {
   expect(mark("left-bone-1000").querySelector("text").textContent).toBe("]");
 });
 
-// Spec docs/specs/phase5_audiogram_2.md 4.2, acceptance 22: the older test underneath, light and dashed.
+// Spec docs/specs/phase-05/phase5_audiogram_2.md 4.2, acceptance 22: the older test underneath, light and dashed.
 it("draws an older audiogram light and dashed under the newer one", () => {
   const air = (frequency, db) => ({ ear: "right", conduction: "air", frequency, db, no_response: false, masked: false });
   const bone = { ear: "right", conduction: "bone", frequency: 1000, db: 20, no_response: false, masked: false };

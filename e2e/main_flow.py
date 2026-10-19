@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
+from django.core.management import call_command
 from playwright.sync_api import expect, sync_playwright
 
 from screening.models import (
@@ -65,6 +66,54 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.step5_submit()
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
+
+    def test_adult_completes_hhia_s_with_keyboard(self):
+        """Issue #78: real React flow, original labels, focus and saved results."""
+        call_command("seed_hhia_s", verbosity=0)
+        with self.saving_artifacts():
+            self.step1_start_needs_login()
+            self.step2_register()
+            self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, 11):
+                group = self.question(number)
+                expect(group.locator("legend")).to_be_focused()
+                radio = group.get_by_role("radio", name="有時", exact=True)
+                radio.focus()
+                radio.press("Space")
+                expect(radio).to_be_checked()
+                if number < 10:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page.get_by_text("總分 20 分")).to_be_visible()
+            expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
+            expect(self.page.get_by_text("不能判定聽損程度", exact=False)).to_be_visible()
+            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="我的紀錄"
+            ).click()
+            expect(self.main().locator("a.link-card")).to_contain_text("總分：20")
+
+    def test_adult_completes_hhia_s_without_javascript(self):
+        """Issue #78: the actual HTML fallback works when scripts never run."""
+        call_command("seed_hhia_s", verbosity=0)
+        self.context.close()
+        self.context = self.browser.new_context(java_script_enabled=False)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        self.step1_start_needs_login()
+        self.step2_register()
+        self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
+        self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
+            "沒戴", exact=True
+        ).check()
+        for number in range(1, 11):
+            self.page.locator(f"#question-{number}").get_by_role(
+                "radio", name="有時", exact=True
+            ).check()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.page.get_by_text("總分 20 分")).to_be_visible()
+        expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
 
     def test_family_guide_without_share_sheet(self):
         """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""

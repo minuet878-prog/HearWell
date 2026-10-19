@@ -378,7 +378,7 @@ describe("save", () => {
   });
 });
 
-// Spec docs/specs/phase5_audiogram_2.md 4.1.
+// Spec docs/specs/phase-05/phase5_audiogram_2.md 4.1.
 describe("edit", () => {
   const SAVED = [
     { ear: "right", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: true },

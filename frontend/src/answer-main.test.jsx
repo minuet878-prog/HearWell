@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { act, cleanup, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Spec docs/specs/phase5_answer_flash.md: the page hides the Django form before it is drawn,
+// Spec docs/specs/phase-05/phase5_answer_flash.md: the page hides the Django form before it is drawn,
 // and the React entry hands the page back to the form when it cannot take over.
 
 // Tests run from frontend/ (npm test --prefix frontend); jsdom gives import.meta.url a non-file scheme.

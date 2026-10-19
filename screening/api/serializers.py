@@ -105,7 +105,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
 class AnswerSerializer(serializers.ModelSerializer):
     number = serializers.IntegerField(source="question.question_number")
     text = serializers.CharField(source="question.question_text")
-    label = serializers.CharField(source="get_score_display")
+    label = serializers.CharField(source="get_answer_display")
 
     class Meta:
         model = Answer
@@ -120,7 +120,7 @@ class SubmissionDetailSerializer(SubmissionSerializer):
         fields = (*SubmissionSerializer.Meta.fields, "advice", "answers")
 
     def get_advice(self, submission) -> str:
-        return get_advice(submission.classified["level"])
+        return get_advice(submission.classified["level"], submission.questionnaire.code)
 
 
 WEARING_MESSAGE = HearingAidForm.base_fields["wearing_hearing_aid"].error_messages["required"]

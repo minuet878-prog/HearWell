@@ -4,6 +4,11 @@ logger = logging.getLogger(__name__)
 
 # Each tuple is (upper bound inclusive, text, level); the last upper bound is the max score.
 THRESHOLDS = {
+    "hhia-s": (
+        (8, "無／極輕微影響", "normal"),
+        (24, "輕至中度影響", "mild_to_moderate"),
+        (40, "顯著影響", "severe"),
+    ),
     "hhie-s": (
         (8, "無/極輕微影響", "normal"),
         (24, "輕度到中度影響", "mild_to_moderate"),
@@ -17,8 +22,15 @@ UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 # Questionnaires missing here show only their name and question count.
 QUESTIONNAIRE_INFO = {
     "hhie-s": {"subtitle": "聽力障礙自我評估", "audience": "適合 65 歲以上的長輩。", "minutes": 3},
+    "hhia-s": {
+        "subtitle": "聽力障礙自我評估",
+        "audience": "適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
+        "minutes": 3,
+    },
     "ioi-ha": {"subtitle": "助聽器效益量表", "audience": "適合已配戴助聽器的人。", "minutes": 2},
 }
+
+HHIA_S_CHOICES = ((4, "會"), (2, "有時"), (0, "不會"))
 
 IOI_HA = "ioi-ha"
 
@@ -130,7 +142,28 @@ def classify(total_score, questionnaire_code):
     return UNKNOWN
 
 
-def get_advice(level):
+HHIA_S_EXPLANATION = (
+    "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
+)
+HHIA_S_ADVICE = {
+    "normal": "您這次回報的生活影響較少。若仍有聽不清楚的困擾，建議安排聽力評估。",
+    "mild_to_moderate": (
+        "您回報聽力困擾已影響部分日常生活。建議安排聽力評估，"
+        "並帶這份結果與聽力師或耳鼻喉科醫師討論。"
+    ),
+    "severe": (
+        "您回報聽力困擾對生活有顯著影響。建議儘早安排聽力評估，"
+        "與聽力師或耳鼻喉科醫師討論適合您的協助方式。"
+    ),
+}
+
+
+def get_advice(level, questionnaire_code="hhie-s"):
+    if questionnaire_code == "hhia-s" and level in HHIA_S_ADVICE:
+        return (
+            f"{HHIA_S_ADVICE[level]} {HHIA_S_EXPLANATION} "
+            "已配戴助聽器者，可帶結果回原聽力照護單位討論。"
+        )
     advices = {
         "normal": (
             "您的聽覺自覺障礙程度為無或是僅有輕微障礙，聽力的部分並未明顯影響"

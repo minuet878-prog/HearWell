@@ -42,7 +42,9 @@ def _cards(content):
 
 
 class LayoutTests(TestCase):
-    """Spec docs/specs/phase9_ui_refresh_1_shared.md, acceptance 3-10 (1, 2, 11 are e2e)."""
+    """Spec docs/specs/phase-09/phase9_ui_refresh_1_shared.md.
+
+    Acceptance 3-10 (1, 2, 11 are e2e)."""
 
     _hhie_s = test_report.HealthReportTests._hhie_s
     _ioi_ha = test_report.HealthReportTests._ioi_ha
