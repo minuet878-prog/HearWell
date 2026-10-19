@@ -267,6 +267,7 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 ## 待定：新增其他中文版問卷（IOI-HA / APHAB / COSI、耳鳴相關量表）
 
+**2026-10-19 進度**：成人問卷第一批為 HHIA-S＋SSQ12-TW，計分、分級、年齡推薦及每份問卷各保留一組比較的方向已確認；第二批 APHAB＋SADL，COSI 後續再做。規格見 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。已依本人確認的拆法建立子議題 [#77–#84](https://github.com/minuet878-prog/HearWell/issues/76)，依賴與內容見 [拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。目前前置為 [#77 來源與使用條件定稿](https://github.com/minuet878-prog/HearWell/issues/77)，其餘依原生阻擋關係等待解鎖；未開始正式問卷實作。
 
 **構想**
 除了 HHIE-S，未來想加入助聽器相關的標準化量表（IOI-HA、APHAB、COSI）跟耳鳴
@@ -416,7 +417,7 @@ C1、D2、React 作答頁）不在這裡重複；2026-10-16 排進 Phase 6／7 �
 
 - [x] **面試筆記分類整理**（2026-10-19）：本機筆記改為 `docs/interview/`，按主題與開發 Phase 拆檔，保留題號索引與原 `docs/interview.md` 入口；延續不進版控。
 - [x] **歷史規格與審查整理**（2026-10-19）：44 份規格（含模板）與 51 份審查依 Phase 歸檔，新增[規格索引](specs/README.md)與[審查索引](reviews/README.md)，修正文件及註解引用；原內容與結論保留。
-- [x] **其餘文件分類與總覽**（2026-10-19）：新增[文件入口](README.md)，量測紀錄歸入 `accessibility/`、私有部署筆記歸入 `deployment/`；補齊既有目錄索引，更新引用並保留私有筆記忽略設定。
+- [x] **其餘文件分類與總覽**（2026-10-19）：新增[文件入口](README.md)，成人問卷研究歸入 `planning/adult-assessment/`、量測紀錄歸入 `accessibility/`、私有部署筆記歸入 `deployment/`；補齊既有目錄索引，更新引用並保留私有筆記忽略設定。
 - CI、錯誤監控、端對端測試 → Phase 6
 - **分數快取或改存欄位**（中）：目前每次即時計算；使用者大量增加時的優化，要先想清楚
   快取何時失效（`_scores_cache` 已經有不會失效的坑）。
