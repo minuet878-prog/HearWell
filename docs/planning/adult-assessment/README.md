@@ -1,0 +1,11 @@
+# 成人問卷第一批
+
+[回功能規劃](../README.md) · [文件首頁](../../README.md)
+
+依序閱讀：
+
+1. [需求訪談與問卷來源比較](questionnaire-comparison.md)：導入批次、已確認範圍、來源限制與原型驗收紀錄。
+2. [SSQ12 計分審定](ssq12-scoring-proposal.md)：平均、不適用、比較差值、精度與網站填答說明。
+3. [拆票紀錄](ticket-plan-adult-assessment.md)：已發布的八張子議題及阻擋關係。
+
+正式規格：[Adult assessment workflow: HHIA-S and SSQ12-TW #76](https://github.com/minuet878-prog/HearWell/issues/76)。[#77](https://github.com/minuet878-prog/HearWell/issues/77) 已依本人審定結案，[#78 HHIA-S 作答與結果](https://github.com/minuet878-prog/HearWell/issues/78) 已完成實作及人工驗收；下一張為 #79 SSQ12-TW。年齡推薦留至 #80。來源查核事實與本人審定見 [#77 紀錄](source-review-77.md)，#78 證據見[驗證紀錄](../../verification/issue-78.md)。
