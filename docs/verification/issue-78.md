@@ -2,7 +2,7 @@
 
 日期：2026-10-19。規格：[Add the HHIA-S answering and results flow #78](https://github.com/minuet878-prog/HearWell/issues/78)。分支：`codex/adult-questionnaire-design`。
 
-狀態：程式、自動測試與兩軸審查完成，等待本人實際操作驗收。未 push、未開 PR、未合併 main；#78 不因程式完成而結案。
+狀態：程式、自動測試、兩軸審查與本人實際操作驗收完成（2026-10-19）。本人明確回覆「已驗收完成」，#78 結案；未 push、未開 PR、未合併 main。
 
 ## 改了什麼
 
@@ -15,7 +15,7 @@
 
 ## 驗收條件對照
 
-以下為自動驗證對照；本人實際操作仍待確認。
+以下為自動驗證對照；本人已於 2026-10-19 確認人工驗收完成。
 
 | #78 條件 | 證據 |
 |---|---|
@@ -65,3 +65,8 @@ python manage.py seed_hhia_s
 - Q147：為何兩組資料庫測試同時執行會互相干擾？
 
 紀錄：`docs/interview/development/planning/78-hhia-s.md`。
+
+
+## 人工驗收結論（2026-10-19）
+
+本人已確認無 JavaScript 作答測試正常，並明確回覆「已驗收完成」，接受 #78 交付。已知目錄固定推薦 HHIE-S 的年齡引導問題，依本人指示留至 #80 一併處理，不列為 #78 未完成項目。此驗收不授權 push、開 PR 或合併 main。
