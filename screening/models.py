@@ -191,7 +191,7 @@ class SubmissionQuerySet(models.QuerySet):
         )
 
     def with_scores(self):
-        # id breaks ties so "newest" matches _latest_hhie_s and the API's cursor ordering.
+        # id breaks ties so "newest" is consistent with the API's cursor ordering.
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
 
 

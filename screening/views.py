@@ -192,15 +192,6 @@ def questionnaire_list(request):
     )
 
 
-def _latest_hhie_s(user, wearing):
-    # wearing is True or False; 未記錄 (None) is neither, so it never matches.
-    return (
-        user.submissions.filter(questionnaire__code="hhie-s", wearing_hearing_aid=wearing)
-        .order_by("-created_at", "-id")
-        .first()
-    )
-
-
 def _ioi_ha_norm(user, token=None):
     records = (
         user.submissions.valid_hhi()

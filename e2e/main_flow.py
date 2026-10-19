@@ -423,13 +423,14 @@ class SharedLayoutTest(StaticLiveServerTestCase):
         self.page = self.context.new_page()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/comparisons/{questionnaire.pk}")
-            self.page.add_style_tag(content="html { font-size: 200%; }")
+            self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
             first = self.page.get_by_label("未配戴紀錄", exact=True)
             first.focus()
-            first.press("ArrowDown")
+            # Headless Chromium supports select type-ahead but ignores arrow selection.
+            first.press(str(unaided.created_at.year)[0])
             self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
-            first.select_option(str(unaided.pk))
+            expect(first).to_have_value(str(unaided.pk))
             self.page.get_by_role("button", name="查看比較", exact=True).click()
             expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
             expect(self.page.get_by_text("-20 分。分數越低", exact=False)).to_be_visible()

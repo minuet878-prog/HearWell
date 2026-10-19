@@ -94,6 +94,10 @@ class HhiComparisonTests(TestCase):
         other_questionnaire = Questionnaire.objects.create(
             code="hhie-s", questionnaire_name="HHIE-S"
         )
+        Question.objects.bulk_create(
+            Question(questionnaire=other_questionnaire, question_text=f"題{n}", question_number=n)
+            for n in range(1, 11)
+        )
         different = self.record(True, questionnaire=other_questionnaire)
         for bad in (first, stranger, unknown, incomplete, different):
             with self.subTest(record=bad.pk):
@@ -114,7 +118,13 @@ class HhiComparisonTests(TestCase):
         first = self.record(False, 4)
         second = self.record(True, 2)
         self.client.post(self.url, {"unaided": first.pk, "aided": second.pk, "action": "save"})
-        stranger = self.record(False, user=self.other)
+        stranger = self.record(False, 0, user=self.other)
+        stranger_aided = self.record(True, 0, user=self.other)
+        self.client.force_login(self.other)
+        self.client.post(
+            self.url, {"unaided": stranger.pk, "aided": stranger_aided.pk, "action": "save"}
+        )
+        self.client.force_login(self.user)
         payload = self.client.get("/my_data/download").json()
         comparisons = payload["report_comparisons"]
         self.assertEqual(len(comparisons), 1)
@@ -125,3 +135,4 @@ class HhiComparisonTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Submission.objects.filter(user_id=self.user.pk).exists())
         self.assertTrue(Submission.objects.filter(pk=stranger.pk).exists())
+        self.assertTrue(self.other.report_comparisons.exists())
