@@ -117,6 +117,10 @@ class HealthReportTests(TestCase):
     def _full_records(self):
         unaided = self._hhie_s(self.user, UNAIDED, wearing=False, days_ago=30)
         aided = self._hhie_s(self.user, AIDED, wearing=True, days_ago=2)
+        self.client.post(
+            f"/comparisons/{self.hhie_s.pk}",
+            {"unaided": unaided.pk, "aided": aided.pk, "action": "save"},
+        )
         self._ioi_ha(self.user, basis=unaided)
         # Right 45 dB HL 中度 感音神經性 (bone 40); left 35 dB HL 輕度, no bone.
         self._audiogram(

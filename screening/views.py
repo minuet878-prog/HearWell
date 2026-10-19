@@ -6,9 +6,10 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
+from django.core import signing
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Prefetch
-from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -26,6 +27,7 @@ from screening.forms import (
     AnswerFormSet,
     DeleteAccountForm,
     HearingAidForm,
+    HhiComparisonForm,
     RegisterForm,
     answer_choices,
 )
@@ -199,10 +201,30 @@ def _latest_hhie_s(user, wearing):
     )
 
 
-def _ioi_ha_norm(user):
-    basis = _latest_hhie_s(user, wearing=False)
+def _ioi_ha_norm(user, token=None):
+    records = (
+        user.submissions.valid_hhi()
+        .filter(wearing_hearing_aid=False)
+        .select_related("questionnaire")
+    )
+    if token is None:
+        basis = records.first()
+    else:
+        data = signing.loads(token, salt="screening.ioi-norm")
+        if data["user"] != user.pk:
+            raise signing.BadSignature("Wrong norm owner")
+        basis = records.filter(pk=data["basis"]).first() if data["basis"] else None
+        if data["basis"] and basis is None:
+            raise signing.BadSignature("Unavailable norm basis")
     total = None if basis is None else basis.total_answer_score
     return {"norm_group": ioi_ha_group(total), "norm_basis": basis}
+
+
+def _norm_token(user, norm):
+    return signing.dumps(
+        {"user": user.pk, "basis": norm["norm_basis"].pk if norm["norm_basis"] else None},
+        salt="screening.ioi-norm",
+    )
 
 
 @login_required
@@ -212,6 +234,7 @@ def screening(request, questionnaire_id):
         questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
+        norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(
             questions=questions, initial=[{"question_id": question.id} for question in questions]
@@ -227,6 +250,8 @@ def screening(request, questionnaire_id):
                 "formset": formset,
                 "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
                 "is_ioi_ha": is_ioi_ha,
+                "ioi_norm": norm,
+                "norm_token": _norm_token(request.user, norm) if norm else None,
                 "use_react": not is_ioi_ha,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
@@ -248,6 +273,14 @@ def screening(request, questionnaire_id):
         existing = key and _find_by_key(request.user, key)
         if existing:
             return _already_sent(request, existing)
+        try:
+            norm = (
+                _ioi_ha_norm(request.user, request.POST.get("norm_token") or None)
+                if is_ioi_ha
+                else None
+            )
+        except signing.BadSignature:
+            return HttpResponseBadRequest("常模依據無法確認，請重新開啟問卷。")
         formset = AnswerFormSet(questions=questions, data=request.POST)
         hearing_aid_form = None if is_ioi_ha else HearingAidForm(data=request.POST)
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
@@ -255,15 +288,13 @@ def screening(request, questionnaire_id):
         question_form = list(zip(questions, formset, strict=False))
         if formset.is_valid() and (hearing_aid_form is None or hearing_aid_form.is_valid()):
             if is_ioi_ha:
-                extra = _ioi_ha_norm(request.user)
+                extra = norm
             else:
                 extra = {
                     "wearing_hearing_aid": hearing_aid_form.cleaned_data["wearing_hearing_aid"]
                 }
             try:
-                submission = formset.save(
-                    request.user, questionnaire, idempotency_key=key, **extra
-                )
+                submission = formset.save(request.user, questionnaire, idempotency_key=key, **extra)
             except IntegrityError:
                 # Two clicks arrived together and the other one saved first; save() is atomic,
                 # so nothing of this one is left behind. Any other clash is a real error.
@@ -301,6 +332,8 @@ def screening(request, questionnaire_id):
                     "formset": formset,
                     "hearing_aid_form": hearing_aid_form,
                     "is_ioi_ha": is_ioi_ha,
+                    "ioi_norm": norm,
+                    "norm_token": _norm_token(request.user, norm) if norm else None,
                     # Stay on this form: React would start over and drop the errors and answers.
                     "use_react": False,
                     # Nothing was saved, so the fixed answers go out under the same number.
@@ -318,19 +351,75 @@ def _already_sent(request, submission):
 
 
 def _aided_difference(user):
-    # Latest unaided vs latest aided HHIE-S, whichever came first; no verdict on the number.
-    unaided = _latest_hhie_s(user, wearing=False)
-    aided = _latest_hhie_s(user, wearing=True)
-    if unaided is None or aided is None:
+    # The old HHIE report section now reads the user's saved pair; never auto-pairs latest rows.
+    comparison = (
+        user.report_comparisons.filter(questionnaire__code="hhie-s")
+        .select_related("unaided", "aided")
+        .first()
+    )
+    if comparison is None:
         return None
-    change = unaided.total_answer_score - aided.total_answer_score
-    if change > 0:
-        text = f"少了 {change} 分"
-    elif change < 0:
-        text = f"多了 {-change} 分"
-    else:
-        text = "沒有變化"  # 0 is a real result, not missing data
-    return {"unaided": unaided, "aided": aided, "text": text}
+    return {
+        "unaided": comparison.unaided,
+        "aided": comparison.aided,
+        "text": comparison.difference_text,
+    }
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+@never_cache
+def hhi_comparison(request, questionnaire_id):
+    questionnaire = get_object_or_404(
+        Questionnaire, pk=questionnaire_id, code__in=("hhie-s", "hhia-s")
+    )
+    saved = (
+        request.user.report_comparisons.filter(questionnaire=questionnaire)
+        .select_related("unaided", "aided")
+        .first()
+    )
+    if request.method == "POST" and request.POST.get("action") == "remove":
+        if saved:
+            saved.delete()
+        messages.success(request, "已移除報告保留組合，原始作答保持不變。")
+        return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
+    data = (
+        request.POST
+        if request.method == "POST"
+        else (
+            request.GET
+            if any(key in request.GET for key in ("unaided", "aided", "action"))
+            else None
+        )
+    )
+    form = HhiComparisonForm(
+        data=data,
+        user=request.user,
+        questionnaire=questionnaire,
+        initial={"unaided": saved.unaided_id, "aided": saved.aided_id} if saved else None,
+    )
+    preview = saved if data is None else None
+    if form.is_bound and form.is_valid():
+        preview = models.ReportComparison(
+            user=request.user, questionnaire=questionnaire, **form.cleaned_data
+        )
+        if request.method == "POST":
+            request.user.report_comparisons.update_or_create(
+                questionnaire=questionnaire, defaults=form.cleaned_data
+            )
+            messages.success(request, "已保留這組比較，新增作答不會自動換組。")
+            return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
+    return render(
+        request,
+        "screening/hhi_comparison.html",
+        {
+            "questionnaire": questionnaire,
+            "form": form,
+            "saved": saved,
+            "preview": preview,
+        },
+        status=400 if request.method == "POST" else 200,
+    )
 
 
 def _item_scores(submission):
@@ -392,7 +481,9 @@ def my_hearing(request):
             "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
-            "difference": _aided_difference(request.user) if current.code == "hhie-s" else None,
+            "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
+            .select_related("unaided", "aided")
+            .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
         },
     )
@@ -465,6 +556,19 @@ def download_my_data(request):
             for consent in user.consents.order_by("agreed_at", "id")
         ],
         "submissions": [_export_submission(submission) for submission in submissions],
+        "report_comparisons": [
+            {
+                "questionnaire": comparison.questionnaire.questionnaire_name,
+                "unaided": _export_submission(comparison.unaided),
+                "aided": _export_submission(comparison.aided),
+            }
+            for comparison in user.report_comparisons.select_related("questionnaire")
+            .prefetch_related(
+                Prefetch("unaided", queryset=submissions),
+                Prefetch("aided", queryset=submissions),
+            )
+            .order_by("questionnaire_id")
+        ],
         "audiograms": [
             {
                 "tested_on": audiogram.tested_on.isoformat(),

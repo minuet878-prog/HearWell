@@ -39,6 +39,7 @@ class User(AbstractUser):
     def delete_with_data(self):
         # Spec phase7_account_deletion.md: the account and everything of it, or nothing.
         # Children first, because every link to the user (and Answer to Submission) is PROTECT.
+        self.report_comparisons.all().delete()
         Answer.objects.filter(submission__user=self).delete()
         self.submissions.all().delete()  # norm_basis is RESTRICT, so linked pairs go together
         self.audiograms.all().delete()  # points go with them (CASCADE)
@@ -172,6 +173,23 @@ class NormGroup(models.TextChoices):
 
 
 class SubmissionQuerySet(models.QuerySet):
+    def valid_hhi(self):
+        return (
+            self.filter(questionnaire__code__in=("hhie-s", "hhia-s"))
+            .with_scores()
+            .annotate(
+                valid_hhi_count=models.Count(
+                    "answers",
+                    filter=models.Q(
+                        answers__score__in=(0, 2, 4),
+                        answers__question__questionnaire=models.F("questionnaire"),
+                        answers__question__question_number__range=(1, 10),
+                    ),
+                )
+            )
+            .filter(answer_count=10, valid_hhi_count=10)
+        )
+
     def with_scores(self):
         # id breaks ties so "newest" matches _latest_hhie_s and the API's cursor ordering.
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
@@ -191,8 +209,8 @@ class Submission(models.Model):
     )
     # IOI-HA only, fixed when submitted; "" on other questionnaires (not applicable).
     norm_group = models.CharField(max_length=32, choices=NormGroup.choices, blank=True)
-    # The unaided HHIE-S the group came from; None when ungrouped.
-    # RESTRICT, not PROTECT: the HHIE-S cannot go alone, but a user's records can go together.
+    # The unaided HHIA-S / HHIE-S the group came from; None when ungrouped.
+    # RESTRICT: the basis cannot go alone, but a user's records can go together.
     norm_basis = models.ForeignKey(
         "self", on_delete=models.RESTRICT, null=True, blank=True, related_name="+"
     )
@@ -293,6 +311,36 @@ class Answer(models.Model):
         if self.question.questionnaire.code == "hhia-s":
             return dict(HHIA_S_CHOICES).get(self.score, str(self.score))
         return self.get_score_display()
+
+
+class ReportComparison(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="report_comparisons"
+    )
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.PROTECT)
+    unaided = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="+")
+    aided = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=("user", "questionnaire"), name="one_report_comparison"),
+        )
+
+    def __str__(self):
+        return f"{self.user_id} comparison for {self.questionnaire_id}"
+
+    @property
+    def difference(self):
+        return self.aided.total_answer_score - self.unaided.total_answer_score
+
+    @property
+    def difference_text(self):
+        change = self.difference
+        if change < 0:
+            return f"少了 {-change} 分"
+        if change > 0:
+            return f"多了 {change} 分"
+        return "沒有變化"
 
 
 class Audiogram(models.Model):

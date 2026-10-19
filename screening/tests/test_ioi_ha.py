@@ -22,7 +22,7 @@ class IoiHaTests(TestCase):
     NORM_SOURCE = "常模：Cox、Alexander、Beyer（2003）"
     NORM_NOTE = "常模範圍是一般助聽器使用者中，中間一半的人的分數"
     ADVICE = "如有多項低於常模，可以帶這份結果跟您的聽力師討論"
-    UNGROUPED_NOTE = "需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較"
+    UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
     COMPARISONS = ("低於常模", "在範圍內", "高於常模")
 
     @classmethod

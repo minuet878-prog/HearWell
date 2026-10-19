@@ -9,7 +9,7 @@
         <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
         {% if difference %}
-        <li>配戴前後（HHIE-S）：沒戴 {{ difference.unaided.total_answer_score }} 分、有戴 {{ difference.aided.total_answer_score }} 分，{{ difference.text }}</li>
+        <li>報告保留比較（HHIE-S）：沒戴 {{ difference.unaided.total_answer_score }} 分、有戴 {{ difference.aided.total_answer_score }} 分，{{ difference.text }}</li>
         {% endif %}
         {% if ioi_ha %}
         <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}</li>
@@ -50,7 +50,7 @@
 
 {% if difference %}
 <section id="report-difference" aria-labelledby="difference-title">
-    <h2 id="difference-title" class="h4">配戴前後比較（HHIE-S）</h2>
+    <h2 id="difference-title" class="h4">配戴狀態比較（HHIE-S，報告保留組合）</h2>
     <p class="mb-1">沒戴助聽器（{{ difference.unaided.created_at|date:"Y/m/d" }}）：{{ difference.unaided.total_answer_score }} 分</p>
     <p class="mb-1">有戴助聽器（{{ difference.aided.created_at|date:"Y/m/d" }}）：{{ difference.aided.total_answer_score }} 分</p>
     <p><strong>{{ difference.text }}</strong>（分數越低，聽力對生活的影響越小）</p>
@@ -61,7 +61,7 @@
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h2 id="ioi-ha-title" class="h4">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h2>
     <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
-    {% if not ioi_ha.grouped %}<p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>{% endif %}
+    {% if not ioi_ha.grouped %}<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>{% endif %}
     <table class="table">
         <thead><tr><th scope="col">項目</th><th scope="col">回答</th>{% if ioi_ha.grouped %}<th scope="col">與常模比較</th>{% endif %}</tr></thead>
         <tbody>

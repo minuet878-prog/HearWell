@@ -4,6 +4,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
+from django.utils import timezone
 
 from screening.models import Answer, Question, Score, Submission, User
 from screening.scoring import HHIA_S_CHOICES, IOI_HA, IOI_HA_CHOICES
@@ -162,3 +163,33 @@ class AgeGroupForm(forms.Form):
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={"required": "請選擇您的年齡區間"},
     )
+
+
+class ComparisonRecordField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        when = timezone.localtime(obj.created_at).strftime("%Y/%m/%d %H:%M")
+        return (
+            f"{when}，{obj.get_wearing_hearing_aid_display()}，"
+            f"{obj.total_answer_score} 分（紀錄 {obj.pk}）"
+        )
+
+
+class HhiComparisonForm(forms.Form):
+    unaided = ComparisonRecordField(
+        label="未配戴紀錄",
+        queryset=Submission.objects.none(),
+        empty_label="請選擇未配戴紀錄",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    aided = ComparisonRecordField(
+        label="配戴紀錄",
+        queryset=Submission.objects.none(),
+        empty_label="請選擇配戴紀錄",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, user, questionnaire, **kwargs):
+        super().__init__(*args, **kwargs)
+        records = user.submissions.filter(questionnaire=questionnaire).valid_hhi()
+        self.fields["unaided"].queryset = records.filter(wearing_hearing_aid=False)
+        self.fields["aided"].queryset = records.filter(wearing_hearing_aid=True)

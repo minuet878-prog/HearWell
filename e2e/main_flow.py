@@ -404,6 +404,68 @@ class SharedLayoutTest(StaticLiveServerTestCase):
 
     saving_artifacts = NewUserScreeningTest.saving_artifacts
 
+    def test_hhi_comparison_keyboard_errors_and_narrow_layout_without_js(self):
+        """#82: explicit preview/save/remove works with keyboard and no scripts."""
+        questionnaire = Questionnaire.objects.get(code="hhie-s")
+        unaided = self.user.submissions.get(questionnaire=questionnaire)
+        aided = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=aided, question=q, score=0) for q in questionnaire.questions.all()
+        )
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/comparisons/{questionnaire.pk}")
+            self.page.add_style_tag(content="html { font-size: 200%; }")
+            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+            first = self.page.get_by_label("未配戴紀錄", exact=True)
+            first.focus()
+            first.press("ArrowDown")
+            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
+            first.select_option(str(unaided.pk))
+            self.page.get_by_role("button", name="查看比較", exact=True).click()
+            expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
+            expect(self.page.get_by_text("-20 分。分數越低", exact=False)).to_be_visible()
+            self.page.get_by_role("button", name="保留到報告", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
+            # Submit a stale/foreign id through the actual form to check server-side errors.
+            self.page.locator('input[name="aided"]').evaluate("el => el.value = '999999'")
+            self.page.get_by_role("button", name="更換報告保留組合").click()
+            expect(self.page.locator("#comparison-errors")).to_be_focused()
+            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
+            self.page.get_by_role("button", name="移除報告保留組合").click()
+            expect(self.page.get_by_text("尚未保留比較組合。", exact=True)).to_be_visible()
+
+    def test_ioi_discloses_hhia_basis_before_saving(self):
+        """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
+        call_command("seed_hhia_s", verbosity=0)
+        questionnaire = Questionnaire.objects.get(code="hhia-s")
+        basis = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=basis, question=q, score=4) for q in questionnaire.questions.all()
+        )
+        self.open(320)
+        ioi = Questionnaire.objects.get(code="ioi-ha")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{ioi.pk}")
+            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("HHIA-S")
+            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("40 分")
+            for n in range(1, 8):
+                self.page.locator(f"#question-{n}").get_by_role("radio").first.check()
+            self.page.get_by_role("button", name="送出", exact=True).click()
+            expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("HHIA-S")
+            expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("40 分")
+
     # 1
     def test_wide_screen_content_is_centred_and_narrow(self):
         self.open(1920)

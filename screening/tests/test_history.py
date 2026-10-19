@@ -84,7 +84,7 @@ class HistoryTabsTests(TestCase):
 
     CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"
-    UNGROUPED_NOTE = "需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較"
+    UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
 
     @classmethod
     def setUpTestData(cls):
@@ -248,55 +248,51 @@ class HistoryTabsTests(TestCase):
             None if match is None else re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", match.group(1)))
         )
 
-    def test_difference_uses_latest_unaided_and_aided(self):
-        self._hhie_s(30, False, days_ago=30)
+    def _retain(self, unaided, aided):
+        response = self.client.post(
+            f"/comparisons/{self.hhie_s.pk}",
+            {"unaided": unaided.pk, "aided": aided.pk, "action": "save"},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_difference_uses_selected_pair_instead_of_latest(self):
         unaided = self._hhie_s(28, False, days_ago=20)
         aided = self._hhie_s(12, True, days_ago=10)
-        self._hhie_s(40, None, days_ago=1)
+        self._retain(unaided, aided)
+        self._hhie_s(40, False, days_ago=1)
+        self._hhie_s(40, True, days_ago=1)
         text = self._difference(self._main(self.client.get(self.url)))
-        self.assertIn("配戴前後比較", text)
-        self.assertIn(f"沒戴助聽器（{self._date(unaided)}）：28 分", text)
-        self.assertIn(f"有戴助聽器（{self._date(aided)}）：12 分", text)
+        self.assertIn("配戴狀態比較", text)
+        self.assertIn(f"未配戴 {self._date(unaided)}，28 分", text)
+        self.assertIn(f"配戴 {self._date(aided)}，12 分", text)
         self.assertIn("少了 16 分", text)
-        self.assertIn(self.NOTE, text)
+        self.assertIn("不一定是開始使用助聽器前後", text)
 
     def test_difference_ignores_order(self):
-        self._hhie_s(12, True, days_ago=10)
-        self._hhie_s(28, False, days_ago=1)
+        aided = self._hhie_s(12, True, days_ago=10)
+        unaided = self._hhie_s(28, False, days_ago=1)
+        self._retain(unaided, aided)
         self.assertIn("少了 16 分", self._difference(self._main(self.client.get(self.url))))
 
     def test_difference_of_zero_is_no_change(self):
-        self._hhie_s(20, False, days_ago=2)
-        self._hhie_s(20, True, days_ago=1)
+        self._retain(self._hhie_s(20, False, days_ago=2), self._hhie_s(20, True, days_ago=1))
         text = self._difference(self._main(self.client.get(self.url)))
         self.assertIn("沒有變化", text)
-        self.assertIn(self.NOTE, text)
 
     def test_difference_increase_has_no_verdict(self):
-        self._hhie_s(10, False, days_ago=2)
-        self._hhie_s(16, True, days_ago=1)
+        self._retain(self._hhie_s(10, False, days_ago=2), self._hhie_s(16, True, days_ago=1))
         text = self._difference(self._main(self.client.get(self.url)))
         self.assertIn("多了 6 分", text)
         for word in ("改善", "變差", "有效", "無效", "建議"):
             self.assertNotIn(word, text)
 
-    def test_no_difference_without_both(self):
-        cases = {
-            "unaided only": (False,),
-            "aided only": (True,),
-            "unrecorded only": (None,),
-            "unrecorded and unaided": (None, False),
-            "unrecorded and aided": (None, True),
-        }
-        for name, statuses in cases.items():
-            with self.subTest(case=name):
-                Answer.objects.all().delete()
-                Submission.objects.all().delete()
-                for days_ago, wearing in enumerate(statuses, start=1):
-                    self._hhie_s(10, wearing, days_ago=days_ago)
-                main = self._main(self.client.get(self.url))
-                self.assertIsNone(self._difference(main))
-                self.assertNotIn("配戴前後比較", main)
+    def test_no_automatic_difference_even_with_both_statuses(self):
+        self._hhie_s(28, False, days_ago=2)
+        self._hhie_s(12, True, days_ago=1)
+        main = self._main(self.client.get(self.url))
+        self.assertIn("尚未保留比較組合", main)
+        self.assertNotIn("少了 16 分", main)
+        self.assertNotContains(self.client.get("/report"), 'id="report-difference"')
 
     # IOI-HA chart (15-18)
     def _chart(self, main):
