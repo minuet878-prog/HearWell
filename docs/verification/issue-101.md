@@ -1,6 +1,6 @@
 # #101：結果與計分改從問卷定義讀
 
-日期：2026-10-20。規格：[#101](https://github.com/minuet878-prog/HearWell/issues/101)（母規格 [#99](https://github.com/minuet878-prog/HearWell/issues/99)，決策見 ADR 0005）。基準：`refactor/questionnaire-definitions`（#105，[PR #106](https://github.com/minuet878-prog/HearWell/pull/106) 尚未合併）；功能分支：`refactor/questionnaire-results`。
+日期：2026-10-20。規格：[#101](https://github.com/minuet878-prog/HearWell/issues/101)（母規格 [#99](https://github.com/minuet878-prog/HearWell/issues/99)，決策見 ADR 0005）。基準：`eeca169`（#105 的 [PR #106](https://github.com/minuet878-prog/HearWell/pull/106) 合併後的 `main`）；功能分支：`refactor/questionnaire-results`。改接到新 `main` 後重跑：Django 624、端對端 26、前端 182 項全部通過。
 
 狀態：2026-10-20 本人人工驗收通過（回覆「#101 驗收 ok」）。沒有動真實資料，也沒有 migration。
 
