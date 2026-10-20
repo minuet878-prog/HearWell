@@ -16,9 +16,7 @@
 {% if preview %}
 <section aria-labelledby="preview-title" class="card card-body mt-4">
     <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
-    <p>未配戴：{{ preview.unaided.created_at|date:"Y/m/d H:i" }}，{{ preview.unaided.total_answer_score }} 分。</p>
-    <p>配戴：{{ preview.aided.created_at|date:"Y/m/d H:i" }}，{{ preview.aided.total_answer_score }} 分。</p>
-    <p>差值（配戴 − 未配戴）：{{ preview.difference|stringformat:"+d" }} 分。分數越低，生活影響越少；差值不能單獨判定助聽器效益。</p>
+    {% include "screening/comparison_content.html" with comparison=preview %}
     <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
         {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">
         <button class="btn btn-primary btn-lg" name="action" value="save">{% if saved %}更換報告保留組合{% else %}保留到報告{% endif %}</button>
@@ -28,8 +26,7 @@
 <section aria-labelledby="saved-title" class="mt-4">
     <h2 id="saved-title" class="h4">報告保留組合</h2>
     {% if saved %}
-    <p>未配戴：{{ saved.unaided.created_at|date:"Y/m/d H:i" }}，{{ saved.unaided.total_answer_score }} 分。</p>
-    <p>配戴：{{ saved.aided.created_at|date:"Y/m/d H:i" }}，{{ saved.aided.total_answer_score }} 分。</p>
+    {% include "screening/comparison_content.html" with comparison=saved %}
     <p>這是您保留的組合；新增紀錄不會自動更換。各問卷分開保留，移除不會刪除作答。</p>
     <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-lg" name="action" value="remove">移除報告保留組合</button></form>
     {% else %}<p>尚未保留比較組合。</p>{% endif %}

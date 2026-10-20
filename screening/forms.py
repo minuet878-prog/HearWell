@@ -167,11 +167,16 @@ class AgeGroupForm(forms.Form):
 
 class ComparisonRecordField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
+        if obj.questionnaire.code == SSQ12:
+            result = (
+                f"平均 {obj.ssq_average} 分"
+                if obj.ssq_average is not None
+                else obj.ssq_unavailable_reason
+            )
+        else:
+            result = f"{obj.total_answer_score} 分"
         when = timezone.localtime(obj.created_at).strftime("%Y/%m/%d %H:%M")
-        return (
-            f"{when}，{obj.get_wearing_hearing_aid_display()}，"
-            f"{obj.total_answer_score} 分（紀錄 {obj.pk}）"
-        )
+        return f"{when}，{obj.get_wearing_hearing_aid_display()}，{result}（紀錄 {obj.pk}）"
 
 
 class HhiComparisonForm(forms.Form):
@@ -190,6 +195,10 @@ class HhiComparisonForm(forms.Form):
 
     def __init__(self, *args, user, questionnaire, **kwargs):
         super().__init__(*args, **kwargs)
-        records = user.submissions.filter(questionnaire=questionnaire).valid_hhi()
+        records = user.submissions.filter(questionnaire=questionnaire)
+        if questionnaire.code == SSQ12:
+            records = records.with_scores().filter(answer_count=12)
+        else:
+            records = records.valid_hhi()
         self.fields["unaided"].queryset = records.filter(wearing_hearing_aid=False)
         self.fields["aided"].queryset = records.filter(wearing_hearing_aid=True)

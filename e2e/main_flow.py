@@ -156,6 +156,49 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.main().get_by_role("link", name="看我的紀錄", exact=True).click()
             expect(self.main().locator("a.link-card")).to_contain_text("整體平均：6.3")
             expect(self.main().locator("#trend-chart")).to_have_count(0)
+            # #83/#84: keep a comparison and follow it through owner/family/print.
+            unaided = Submission.objects.get(questionnaire__code="ssq12-tw")
+            aided = Submission.objects.create(
+                user=unaided.user, questionnaire=unaided.questionnaire, wearing_hearing_aid=True
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=aided, question=q, score=8)
+                for q in unaided.questionnaire.questions.all()
+            )
+            self.main().get_by_role("link", name="選擇或管理比較", exact=False).click()
+            self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(unaided.pk))
+            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
+            self.main().get_by_role("button", name="查看比較", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.main().get_by_text("+1.8 分", exact=False)).to_be_visible()
+            self.main().get_by_role("button", name="保留到報告", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+            self.page.goto(f"{self.live_server_url}/report")
+            expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
+            self.page.set_viewport_size({"width": 320, "height": 800})
+            self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+            self.assertFalse(
+                self.page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+            )
+            self.page.screenshot(path="/tmp/hearwell-adult-report-320.png", full_page=True)
+            self.page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+            self.page.emulate_media(media="print")
+            expect(self.page.locator("#report-ssq12 .report-answers ol")).to_be_visible()
+            self.page.emulate_media(media="screen")
+            self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
+            self.main().get_by_text("產生分享連結", exact=True).click()
+            self.main().get_by_role("button", name="確認產生", exact=True).click()
+            share = unaided.user.report_shares.get()
+            with self.browser.new_context() as family_context:
+                family_page = family_context.new_page()
+                family_page.goto(f"{self.live_server_url}/shared/{share.token}/report")
+                expect(family_page.locator("#report-comparison-ssq12-tw")).to_contain_text(
+                    "+1.8 分"
+                )
+                expect(
+                    family_page.get_by_role("link", name="更換或移除", exact=False)
+                ).to_have_count(0)
 
     def test_ssq12_without_javascript_keeps_explicit_na(self):
         call_command("seed_ssq12", verbosity=0)

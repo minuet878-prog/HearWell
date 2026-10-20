@@ -330,12 +330,30 @@ class ReportComparison(models.Model):
         return f"{self.user_id} comparison for {self.questionnaire_id}"
 
     @property
+    def item_pairs(self):
+        aided = {a.question_id: a for a in self.aided.answers.all()}
+        return [
+            {"question": a.question, "unaided": a, "aided": aided[a.question_id]}
+            for a in sorted(self.unaided.answers.all(), key=lambda a: a.question.question_number)
+        ]
+
+    @property
     def difference(self):
+        if self.questionnaire.code == SSQ12:
+            if self.unaided.ssq_average is None or self.aided.ssq_average is None:
+                return None
+            return (
+                Decimal(self.aided.total_answer_score - self.unaided.total_answer_score) / 12
+            ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
         return self.aided.total_answer_score - self.unaided.total_answer_score
 
     @property
     def difference_text(self):
         change = self.difference
+        if self.questionnaire.code == SSQ12:
+            if change is None:
+                return "未計算整體差值：包含不適用題目或缺少完整回答"
+            return f"{change:+.1f} 分"
         if change < 0:
             return f"少了 {-change} 分"
         if change > 0:

@@ -1058,3 +1058,18 @@ details summary {
         margin-left: auto;
     }
 }
+
+.comparison-items,
+.report-answers {
+    overflow-wrap: anywhere;
+}
+
+@media print {
+    .health-report .report-answers > ol {
+        display: block !important;
+    }
+
+    .health-report .report-answers::details-content {
+        content-visibility: visible;
+    }
+}

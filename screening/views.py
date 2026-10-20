@@ -341,28 +341,12 @@ def _already_sent(request, submission):
     return redirect("result", submission_id=submission.id)
 
 
-def _aided_difference(user):
-    # The old HHIE report section now reads the user's saved pair; never auto-pairs latest rows.
-    comparison = (
-        user.report_comparisons.filter(questionnaire__code="hhie-s")
-        .select_related("unaided", "aided")
-        .first()
-    )
-    if comparison is None:
-        return None
-    return {
-        "unaided": comparison.unaided,
-        "aided": comparison.aided,
-        "text": comparison.difference_text,
-    }
-
-
 @login_required
 @require_http_methods(["GET", "POST"])
 @never_cache
 def hhi_comparison(request, questionnaire_id):
     questionnaire = get_object_or_404(
-        Questionnaire, pk=questionnaire_id, code__in=("hhie-s", "hhia-s")
+        Questionnaire, pk=questionnaire_id, code__in=("hhie-s", "hhia-s", SSQ12)
     )
     saved = (
         request.user.report_comparisons.filter(questionnaire=questionnaire)
@@ -651,13 +635,24 @@ def _report_context(user):
             "count": len(records),
             "recent": records[:REPORT_RECENT],
             "max_score": max_score(questionnaire.code),
+            "advice": get_advice(records[0].classified["level"], questionnaire.code),
         }
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
+    comparisons = list(
+        user.report_comparisons.select_related(
+            "questionnaire", "unaided__questionnaire", "aided__questionnaire"
+        )
+        .prefetch_related("unaided__answers__question", "aided__answers__question")
+        .order_by("questionnaire_id")
+    )
+    ssq_records = [s for s in submissions if s.questionnaire.code == SSQ12]
     context = {
+        "comparisons": comparisons,
+        "ssq_latest": ssq_records[0] if ssq_records else None,
+        "ssq_recent": ssq_records[:REPORT_RECENT],
         "sections": sections,
         "recent_limit": REPORT_RECENT,
-        "difference": _aided_difference(user),
         "today": timezone.localdate(),
     }
     ioi_ha = next((s for s in submissions if s.questionnaire.code == IOI_HA), None)
