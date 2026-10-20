@@ -13,7 +13,13 @@ import {
 import { chartDays, selectPoints, summarize } from "./trend.js";
 
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
-const FONT = { fontSize: "1rem" };
+// Dates are plain digits/slashes, not CJK text, so they stay on the system font stack (not
+// Noto Sans TC from #108): its wider glyphs shifted the SVG tick-label math enough to overflow
+// the chart edge by a couple of px (minTickGap / preserveStartEnd assume the old metrics).
+const FONT = {
+  fontSize: "1rem",
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+};
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
