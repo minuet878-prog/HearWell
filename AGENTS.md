@@ -123,11 +123,11 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 ## 已知陷阱
 
 - `_scores_cache` 不會失效：「讀 → 改 → 再讀」會拿到舊值，測試斷言前要重新從 DB 取物件。
-- 作答過的題目、有作答紀錄的問卷 `code`，在 admin 是唯讀的；Submission／Answer 在 admin 只能看，不能新增、修改、刪除。要改題目就新增一份問卷（新 pk、新 code），不要改舊的。
-- 已上線的問卷不能加題（admin 沒擋，靠規則）：加了之後新作答的滿分會超過門檻表，變成「無法判讀」。
+- 問卷、題目、Submission／Answer 在 admin 都只能看，不能新增、修改、刪除；問卷內容由問卷定義（`screening/questionnaires/`）決定。要改題目就新增一個問卷定義（新 code），不要改舊的。
+- 已上線的問卷不能加題：`seed_questionnaires` 只建立不存在的問卷，改定義檔的 `questions` 不會動到已上線的版本；從 shell 或 fixture 硬加的話，新作答的滿分會超過門檻表，變成「無法判讀」。要加題就新增一個問卷定義（新 code）。
 - 刪除帳號要走 `User.delete_with_data()`（交易內由下往上刪），不要直接 `user.delete()`：`Submission`、`Audiogram`、`Consent` 對 User 都是 `PROTECT`，會被擋下。
-- `build.sh` 每次部署都會 `loaddata`，而且繞過 admin 的鎖：fixture 裡已上線的題目不能改，要改就新增一份問卷。
-- 門檻（`scoring.THRESHOLDS`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
+- `build.sh` 每次部署都會 `loaddata`（HHIE-S、IOI-HA），直接照 fixture 寫進資料庫：fixture 裡已上線的題目不能改，要改就新增一個問卷定義（新 code）。
+- 門檻（問卷定義的 `thresholds`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
 - worktree 裡沒有 `py313/`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`。

@@ -13,8 +13,8 @@ from screening.tests.helpers import consented_user
 class HhiaSTests(TestCase):
     def test_catalog_has_an_independent_ten_question_version(self):
         original = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        call_command("seed_hhia_s", stdout=StringIO())
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         user = consented_user(username="adult")
         self.client.force_login(user)
         response = self.client.get(reverse("questionnaire_list"))
@@ -41,7 +41,7 @@ class HhiaSTests(TestCase):
         )
 
     def _start(self):
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.questionnaire = Questionnaire.objects.get(code="hhia-s")
         self.questions = list(self.questionnaire.questions.all())
         self.user = consented_user(username="adult", password="TestingPass123!")
@@ -182,7 +182,7 @@ class HhiaSTests(TestCase):
         self.assertEqual(api["scores"]["total"], 20)
         self.assertEqual(len(api["answers"]), 10)
         questions = list(self.questionnaire.questions.values_list("pk", "question_text"))
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.assertEqual(
             list(self.questionnaire.questions.values_list("pk", "question_text")), questions
         )

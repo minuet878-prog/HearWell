@@ -47,8 +47,8 @@ def _outline(response):
 
 class ReportPartsTests(TestCase):
     def setUp(self):
-        call_command("seed_hhia_s", stdout=StringIO())
-        call_command("seed_ssq12", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.hhia = Questionnaire.objects.get(code="hhia-s")
         self.ssq = Questionnaire.objects.get(code="ssq12-tw")
         self.hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
