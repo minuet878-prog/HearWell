@@ -649,6 +649,7 @@ class PageFlowTests(TestCase):
     def test_result_banner_colors(self):
         css = Path(finders.find("screening/styles.css")).read_text()
         unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")
+        self.enterContext(register(fake_definition("unconfigured")))
         cases = (
             ("normal", [0] * 10, self.hhie_s, "#e3f4ec", "#1e7b55"),
             ("mild_to_moderate", [2] * 6 + [0] * 4, self.hhie_s, "#fff4d6", "#8a5a00"),
@@ -677,6 +678,7 @@ class PageFlowTests(TestCase):
 
     def test_result_without_thresholds_has_no_max(self):
         unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")
+        self.enterContext(register(fake_definition("unconfigured")))
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)

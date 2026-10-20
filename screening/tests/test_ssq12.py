@@ -51,6 +51,10 @@ class Ssq12Tests(TestCase):
                 self.assertContains(page, f"整體平均：{expected}")
                 self.assertNotContains(page, "情緒分數")
                 self.assertNotContains(page, "總分")
+                history = self.client.get(reverse("my_hearing"), {"questionnaire": "ssq12-tw"})
+                self.assertContains(history, f"整體平均：{expected}／10")
+                exported = self.client.get(reverse("download_my_data")).json()["submissions"][0]
+                self.assertEqual(exported["average_score"], expected)
 
     def test_not_applicable_is_not_zero_in_api_history_and_export(self):
         self.start()

@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
 from screening.scoring import classify
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class ClassifyTests(SimpleTestCase):
@@ -42,6 +42,9 @@ class ClassifyViewTests(TestCase):
         cls.unknown = Questionnaire.objects.create(
             questionnaire_name="未設定門檻問卷", code="unconfigured"
         )
+
+    def setUp(self):
+        self.enterContext(register(fake_definition("unconfigured")))
 
     def _make_submission(self, questionnaire, score):
         question = Question.objects.create(
@@ -244,6 +247,7 @@ class SubscaleNoteTests(TestCase):
 
     def setUp(self):
         self.client.force_login(self.user)
+        self.enterContext(register(fake_definition("unconfigured")))
 
     def test_result_page_shows_note_below_subscales(self):
         submission = self._make_submission(self.hhie_s)

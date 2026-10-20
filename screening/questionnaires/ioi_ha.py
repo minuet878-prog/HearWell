@@ -1,4 +1,4 @@
-from screening.questionnaires.definition import Definition
+from screening.questionnaires.definition import NORM, Definition
 
 CODE = "ioi-ha"
 
@@ -10,4 +10,5 @@ DEFINITION = Definition(
     icon="aid",
     list_rank=1,
     intro_template="screening/questionnaires/ioi_ha_intro.html",
+    result=NORM,
 )

@@ -8,7 +8,8 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 
 from screening.models import Answer, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.questionnaires.definition import AVERAGE
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class SsqComparisonTests(TestCase):
@@ -62,6 +63,7 @@ class SsqComparisonTests(TestCase):
         version = Questionnaire.objects.create(
             code="ssq12-test-version", questionnaire_name="假版本"
         )
+        self.enterContext(register(fake_definition("ssq12-test-version", result=AVERAGE)))
         Question.objects.bulk_create(
             Question(questionnaire=version, question_text=f"另一版本{n}", question_number=n)
             for n in range(1, 13)

@@ -22,7 +22,7 @@
 ## 資料完整性
 
 10. FK 一律 `on_delete=PROTECT`；刪除帳號走 `User.delete_with_data()`。
-11. 已上線的問卷題目、fixture、`scoring.THRESHOLDS` 不能直接改：要改題目就新增一份問卷，要改門檻先做規則版本號。
+11. 已上線的問卷題目、fixture、問卷定義的門檻（`thresholds`）不能直接改：要改題目就新增一份問卷，要改門檻先做規則版本號。
 
 ## 測試
 

@@ -1,4 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+# How a questionnaire's result is worked out and shown.
+LEVEL = "level"  # total score graded by thresholds, with advice (HHIE-S, HHIA-S)
+AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
+NORM = "norm"  # each item against the norms, no total (IOI-HA)
 
 
 @dataclass(frozen=True)
@@ -12,3 +17,13 @@ class Definition:
     # the order the questionnaires were added. A screen order, not a scoring rule.
     list_rank: int
     intro_template: str  # shown above the questions on the answer page
+    result: str  # LEVEL, AVERAGE or NORM
+    # LEVEL only. Each tuple is (upper bound inclusive, text, level); the last upper bound is
+    # the max score. Published numbers never change: a new rule needs a rule version first.
+    thresholds: tuple = ()
+    advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
+    trend_chart: bool = False  # the history page draws a score trend chart
+
+    @property
+    def averaged(self):  # for templates, which cannot see the constants above
+        return self.result == AVERAGE

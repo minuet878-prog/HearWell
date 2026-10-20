@@ -7,7 +7,7 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from screening.models import Answer, NormGroup, Question, Questionnaire, Submission
-from screening.scoring import HHIA_S_EXPLANATION
+from screening.questionnaires.hhia_s import EXPLANATION as HHIA_S_EXPLANATION
 from screening.tests.helpers import consented_user
 
 PARTS = {

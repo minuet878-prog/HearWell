@@ -1,7 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Category, Question, Questionnaire
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.questionnaires.definition import LEVEL
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
 
@@ -161,3 +162,86 @@ class RealDefinitionsTests(TestCase):
                 self.assertIn(f"共 1 題，大約 {minutes} 分鐘。", content)
                 for sentence in sentences:
                     self.assertIn(sentence, content)
+
+
+class ResultFromDefinitionTests(TestCase):
+    """Issue #101: a graded questionnaire's result comes from its definition."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="definitions_d")
+        cls.fake = Questionnaire.objects.create(questionnaire_name="假分級", code="fake-level")
+        questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.fake,
+                question_text=f"假題{i}",
+                question_number=i,
+                category=Category.SOCIAL,
+            )
+            for i in range(1, 4)
+        )
+        cls.submission = Submission.objects.create(
+            user=cls.user, questionnaire=cls.fake, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=cls.submission, question=question, score=2) for question in questions
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.enterContext(
+            register(
+                fake_definition(
+                    "fake-level",
+                    result=LEVEL,
+                    thresholds=((5, "假的低分級", "normal"), (12, "假的高分級", "severe")),
+                    advice={"severe": "假的高分建議"},
+                )
+            )
+        )
+
+    def test_result_page_grades_with_its_thresholds_and_advice(self):
+        response = self.client.get(reverse("result", args=[self.submission.pk]))
+        self.assertContains(response, "總分 6 分（滿分 12）")
+        self.assertContains(response, "假的高分級")
+        self.assertContains(response, "假的高分建議")
+
+    def test_api_reads_its_levels(self):
+        detail = self.client.get(reverse("api:questionnaire", args=[self.fake.pk])).json()
+        self.assertEqual(
+            detail["levels"],
+            [
+                {"code": "normal", "text": "假的低分級", "max": 5},
+                {"code": "severe", "text": "假的高分級", "max": 12},
+            ],
+        )
+        record = self.client.get(reverse("api:submission", args=[self.submission.pk])).json()
+        self.assertEqual(record["level"], {"code": "severe", "text": "假的高分級"})
+        self.assertEqual(record["advice"], "假的高分建議")
+
+
+class UndefinedResultTests(TestCase):
+    """Issue #101 (deferred from #105): records of an undefined questionnaire are not shown."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="definitions_e")
+        undefined = Questionnaire.objects.create(questionnaire_name="無定義", code="undefined")
+        cls.submission = Submission.objects.create(user=cls.user, questionnaire=undefined)
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_result_page_is_404(self):
+        response = self.client.get(reverse("result", args=[self.submission.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_history_report_and_export_skip_it(self):
+        self.assertContains(self.client.get(reverse("my_hearing")), "您還沒有做過篩檢紀錄")
+        self.assertNotContains(self.client.get(reverse("health_report")), "無定義")
+        self.assertEqual(self.client.get(reverse("download_my_data")).json()["submissions"], [])
+
+    def test_api_records_skip_it(self):
+        self.assertEqual(self.client.get(reverse("api:submissions")).json()["results"], [])
+        detail = reverse("api:submission", args=[self.submission.pk])
+        self.assertEqual(self.client.get(detail).status_code, 404)

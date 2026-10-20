@@ -68,9 +68,7 @@ class DuplicateAnswerSubmissionTests(TestCase):
         self.questionnaire = Questionnaire.objects.create(
             questionnaire_name="測試重複答案", code="test"
         )
-        patcher = register(fake_definition("test"))
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.enterContext(register(fake_definition("test")))
         self.question_1 = Question.objects.create(
             questionnaire=self.questionnaire,
             question_text="第一題",

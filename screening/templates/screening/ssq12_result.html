@@ -10,6 +10,6 @@
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">選擇或管理配戴狀態比較</a></p>
 <h2 class="h4">逐題回答</h2>
 <ol>{% for answer in answers %}<li class="mb-3">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
-<a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire=ssq12-tw">看我的紀錄</a>
+<a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'questionnaire_list' %}">選擇問卷</a>
 {% endblock %}

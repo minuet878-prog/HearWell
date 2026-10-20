@@ -32,6 +32,7 @@ from screening.forms import (
     answer_choices,
 )
 from screening.questionnaires import hhia_s, hhie_s
+from screening.questionnaires.definition import AVERAGE, LEVEL, NORM
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import (
@@ -65,7 +66,7 @@ HOME_PREVIEW_SCORE = 18
 
 
 def index(request):
-    preview = classify(HOME_PREVIEW_SCORE, "hhie-s")
+    preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
     return render(
         request,
         "screening/index.html",
@@ -73,7 +74,7 @@ def index(request):
             "preview_score": HOME_PREVIEW_SCORE,
             "preview_level": preview["level"],
             "preview_text": preview["text"],
-            "preview_max_score": max_score("hhie-s"),
+            "preview_max_score": max_score(hhie_s.CODE),
             "preview_advice": get_advice(preview["level"]),
         },
     )
@@ -427,7 +428,9 @@ def _ioi_ha_chart(records):
 
 @login_required
 def my_hearing(request):
-    submissions = list(request.user.submissions.select_related("questionnaire").with_scores())
+    submissions = list(
+        request.user.submissions.defined().select_related("questionnaire").with_scores()
+    )
     if not submissions:
         return render(request, "screening/my_hearing.html", {"submissions": []})
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
@@ -463,8 +466,10 @@ def _taipei(moment):
 
 
 def _export_submission(submission):
-    # IOI-HA has no total, subscales or level (same as its result page): null, not 0.
-    not_scored = submission.questionnaire.code in (IOI_HA, SSQ12)
+    # Only graded questionnaires have a total, subscales and level (same as their result
+    # pages); the others export null, not 0.
+    result = submission.questionnaire.definition.result
+    not_scored = result != LEVEL
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
@@ -486,7 +491,7 @@ def _export_submission(submission):
         "norm_group": submission.get_norm_group_display() or None,
     }
 
-    if submission.questionnaire.code == SSQ12:
+    if result == AVERAGE:
         data["average_score"] = (
             str(submission.ssq_average) if submission.ssq_average is not None else None
         )
@@ -507,7 +512,8 @@ def download_my_data(request):
         "question__question_number"
     )
     submissions = (
-        user.submissions.select_related("questionnaire")
+        user.submissions.defined()
+        .select_related("questionnaire")
         .prefetch_related(Prefetch("answers", queryset=answers))
         .with_scores()
     )
@@ -617,10 +623,10 @@ REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
 def _report_context(user):
     # One builder for the owner's report and the family's copy (rule 10: same scoring path).
-    submissions = list(user.submissions.select_related("questionnaire").with_scores())
+    submissions = list(user.submissions.defined().select_related("questionnaire").with_scores())
     by_questionnaire = {}
     for submission in submissions:  # newest first
-        if submission.questionnaire.code not in (IOI_HA, SSQ12):
+        if submission.questionnaire.definition.result == LEVEL:
             by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
     comparisons = list(
         user.report_comparisons.select_related(
@@ -643,7 +649,7 @@ def _report_context(user):
         }
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
-    ssq_records = [s for s in submissions if s.questionnaire.code == SSQ12]
+    ssq_records = [s for s in submissions if s.questionnaire.definition.result == AVERAGE]
     context = {
         "comparisons": comparisons,
         "ssq_comparison": next(
@@ -655,7 +661,7 @@ def _report_context(user):
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),
     }
-    ioi_ha = next((s for s in submissions if s.questionnaire.code == IOI_HA), None)
+    ioi_ha = next((s for s in submissions if s.questionnaire.definition.result == NORM), None)
     if ioi_ha:
         answers = ioi_ha.answers.select_related("question").order_by("question__question_number")
         items, grouped = _ioi_ha_items(ioi_ha, answers)
@@ -744,15 +750,18 @@ def shared_report(request, token):
 
 @login_required
 def submission_result(request, submission_id):
-    submission = get_object_or_404(Submission, pk=submission_id, user=request.user)
+    submission = get_object_or_404(
+        Submission.objects.defined(), pk=submission_id, user=request.user
+    )
     answers = submission.answers.select_related("question__questionnaire").order_by(
         "question__question_number"
     )
-    if submission.questionnaire.code == SSQ12:
+    result = submission.questionnaire.definition.result
+    if result == AVERAGE:
         return render(
             request, "screening/ssq12_result.html", {"submission": submission, "answers": answers}
         )
-    if submission.norm_group:
+    if result == NORM:
         return _ioi_ha_result(request, submission, answers)
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
@@ -773,7 +782,7 @@ def submission_result(request, submission_id):
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
-                if submission.questionnaire.code in ("hhie-s", "hhia-s")
+                if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
                 and submission.wearing_hearing_aid is False else None
             ),
         },

@@ -53,7 +53,8 @@ def _own_submissions(request):
     # Same query as the my_hearing page: scoped to request.user (IDOR) and scored once.
     # IOI-HA has no total or level, so it is left out until it has its own API.
     return (
-        request.user.submissions.exclude(questionnaire__code=IOI_HA)
+        request.user.submissions.defined()
+        .exclude(questionnaire__code=IOI_HA)
         .select_related("questionnaire")
         .with_scores()
     )
