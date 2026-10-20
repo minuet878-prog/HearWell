@@ -28,6 +28,18 @@ class HhiaSTests(TestCase):
             "聽力問題會讓你看電影或戲劇表演時感到困難嗎？",
         )
 
+    def test_api_level_bands_use_adult_texts(self):
+        self._start()
+        response = self.client.get(f"/api/questionnaires/{self.questionnaire.pk}/")
+        self.assertEqual(
+            response.json()["levels"],
+            [
+                {"code": "normal", "text": "無／極輕微影響", "max": 8},
+                {"code": "mild_to_moderate", "text": "輕至中度影響", "max": 24},
+                {"code": "severe", "text": "顯著影響", "max": 40},
+            ],
+        )
+
     def _start(self):
         call_command("seed_hhia_s", stdout=StringIO())
         self.questionnaire = Questionnaire.objects.get(code="hhia-s")

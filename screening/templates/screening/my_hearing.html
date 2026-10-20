@@ -47,7 +47,7 @@
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
-        {% elif submission.questionnaire.definition.result == "average" %}
+        {% elif submission.questionnaire.definition.averaged %}
         <span>{% if submission.ssq_average is not None %}整體平均：{{ submission.ssq_average }}／10{% else %}{{ submission.ssq_unavailable_reason }}{% endif %}</span>
         <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% else %}

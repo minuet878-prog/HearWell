@@ -428,7 +428,9 @@ def _ioi_ha_chart(records):
 
 @login_required
 def my_hearing(request):
-    submissions = list(request.user.submissions.select_related("questionnaire").with_scores())
+    submissions = list(
+        request.user.submissions.defined().select_related("questionnaire").with_scores()
+    )
     if not submissions:
         return render(request, "screening/my_hearing.html", {"submissions": []})
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
@@ -510,7 +512,8 @@ def download_my_data(request):
         "question__question_number"
     )
     submissions = (
-        user.submissions.select_related("questionnaire")
+        user.submissions.defined()
+        .select_related("questionnaire")
         .prefetch_related(Prefetch("answers", queryset=answers))
         .with_scores()
     )
@@ -620,7 +623,7 @@ REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
 def _report_context(user):
     # One builder for the owner's report and the family's copy (rule 10: same scoring path).
-    submissions = list(user.submissions.select_related("questionnaire").with_scores())
+    submissions = list(user.submissions.defined().select_related("questionnaire").with_scores())
     by_questionnaire = {}
     for submission in submissions:  # newest first
         if submission.questionnaire.definition.result == LEVEL:

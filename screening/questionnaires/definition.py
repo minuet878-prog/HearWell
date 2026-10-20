@@ -23,3 +23,7 @@ class Definition:
     thresholds: tuple = ()
     advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
     trend_chart: bool = False  # the history page draws a score trend chart
+
+    @property
+    def averaged(self):  # for templates, which cannot see the constants above
+        return self.result == AVERAGE

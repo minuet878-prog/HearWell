@@ -236,6 +236,11 @@ class UndefinedResultTests(TestCase):
         response = self.client.get(reverse("result", args=[self.submission.pk]))
         self.assertEqual(response.status_code, 404)
 
+    def test_history_report_and_export_skip_it(self):
+        self.assertContains(self.client.get(reverse("my_hearing")), "您還沒有做過篩檢紀錄")
+        self.assertNotContains(self.client.get(reverse("health_report")), "無定義")
+        self.assertEqual(self.client.get(reverse("download_my_data")).json()["submissions"], [])
+
     def test_api_records_skip_it(self):
         self.assertEqual(self.client.get(reverse("api:submissions")).json()["results"], [])
         detail = reverse("api:submission", args=[self.submission.pk])

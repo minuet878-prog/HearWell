@@ -24,7 +24,7 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
 # The Django docs' fix for Playwright; this module is only imported by the e2e run.
@@ -724,6 +724,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
 
     # phase9_ui_refresh_3_structure.md acceptance 11: more questionnaires wrap, nothing off screen
     def test_many_questionnaires_wrap_on_a_phone(self):
+        self.enterContext(register(*(fake_definition(f"extra-{n}") for n in (4, 5, 6))))
         for number in (4, 5, 6):
             extra = Questionnaire.objects.create(
                 questionnaire_name=f"問卷{number}", code=f"extra-{number}"
