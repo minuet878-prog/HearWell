@@ -22,14 +22,26 @@
 | 1 拷問需求 | `/grill-with-docs` | 一次問一題直到沒有模糊處，順手更新 `GLOSSARY.md` 和 `docs/adr/` |
 | 2 寫規格 | `/to-spec` | 寫成 GitHub issue，驗收條件用 Given / When / Then |
 | 3 拆票 | `/to-tickets` | 拆成 tracer-bullet tickets，標明誰擋住誰 |
-| 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` |
+| 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |
+| 4b 交叉審查 | `/code-review`（換另一個代理跑） | 合併前一定要做，見下方 |
 | 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認 |
 | 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險） |
 | 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview/`（見下方） |
 | 8 復盤 | `/retro` | 選用，我輸入才做 |
 
-- 小改動（改字、改樣式）可以跳過 1–3，直接說清楚要改什麼，再走 4–7。
+- 小改動（改字、改樣式）可以跳過 1–3 和 4b，直接說清楚要改什麼，再走 4–7。
 - 涉及畫面或計算的需求，先用一兩句話複述你理解的內容；畫面有多種做法時，先做比較頁讓我選。
+
+### 交叉審查（合併前）
+
+- 原因：代理審自己寫的程式容易漏看。#84 自審 0 項，合併後換另一個代理審，才找出 #90 的三個問題。
+- 誰審：實作和審查不能是同一個代理。Codex 實作的由 Claude Code 審，Claude Code 實作的由 Codex 審。
+- 時機：自審修完之後、寫驗證紀錄（`docs/verification/`）和我實際驗收之前。實作的代理做到這裡先停，告訴我分支名稱、規格 issue 編號，以及要貼給另一個代理的指令。
+- 怎麼審：
+  - 用 Matt 的 `/code-review`，基準點 `main`。Claude Code 裡要打 `/mattpocock-skills:code-review`：直接打 `/code-review` 會叫到 Claude Code 內建、只抓 bug 的另一種審查（第 4 步自審也一樣）。
+  - 審查者只看 diff、規格 issue 和 `CODING_STANDARDS.md`，不看實作的對話和自審結果。
+  - Spec 軸要逐條列出每個驗收條件由哪個測試的哪個斷言證明（`檔案:行號`）；找不到斷言，或斷言沒有真的驗證那一條，就算一項發現。
+- 結果：審查結果用繁體中文留言到規格 issue（留言前先問我）。實作的代理照留言修完，再請審查的代理只複核修過的項目，直到沒有「要修」才進第 5 步。
 
 ### 收尾：更新面試筆記
 
