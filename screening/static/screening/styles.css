@@ -948,6 +948,11 @@ details summary {
         break-inside: avoid;
     }
 
+    /* A part holds several sections; only the sections inside it stay whole. */
+    .health-report .report-part {
+        break-inside: auto;
+    }
+
     .report-disclaimer {
         margin-top: 0.75rem;
     }
