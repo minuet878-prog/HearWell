@@ -21,7 +21,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 | 步驟 | 指令 | 說明 |
 |---|---|---|
 | 0 開工 | — | 讀 `docs/roadmap.md` 和 `gh issue list`，三行以內報告：做到哪、還欠什麼、這次打算做什麼 |
-| 1 拷問需求 | `/grill-with-docs` | 一次問一題直到沒有模糊處，順手更新 `GLOSSARY.md` 和 `docs/adr/` |
+| 1 拷問需求 | `/grill-with-docs` | 一次問一題直到沒有模糊處，給我全部的選擇/建議/代價並順手更新 `GLOSSARY.md` 和 `docs/adr/` |
 | 2 寫規格 | `/to-spec` | 寫成 GitHub issue，驗收條件用 Given / When / Then |
 | 3 拆票 | `/to-tickets` | 拆成 tracer-bullet tickets，標明誰擋住誰 |
 | 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |

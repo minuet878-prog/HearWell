@@ -13,7 +13,13 @@ import {
 import { chartDays, selectPoints, summarize } from "./trend.js";
 
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
-const FONT = { fontSize: "1rem" };
+// Dates are plain digits/slashes, not CJK text, so they stay on the system font stack (not
+// Noto Sans TC from #108): its wider glyphs shifted the SVG tick-label math enough to overflow
+// the chart edge by a couple of px (minTickGap / preserveStartEnd assume the old metrics).
+const FONT = {
+  fontSize: "1rem",
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+};
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
@@ -52,6 +58,12 @@ function Shape({ shape, x, y, size, status }) {
   return <polygon {...common} points={points} fill="#fff" />;
 }
 
+// Recharts measures each date once and keeps the width, so measure in Noto Sans TC (layout.html):
+// with the fallback font's width the first date sticks out of the chart. At most 3 s, then draw.
+function fontsReady() {
+  return Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 3000))]);
+}
+
 async function getJson(url) {
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
@@ -63,7 +75,7 @@ export default function TrendChart({ code }) {
 
   useEffect(() => {
     // Only the first page: the latest 20 submissions.
-    Promise.all([getJson("/api/submissions/"), getJson("/api/questionnaires/")])
+    Promise.all([getJson("/api/submissions/"), getJson("/api/questionnaires/"), fontsReady()])
       .then(([page, questionnaires]) => setState({ status: "ready", page, questionnaires }))
       .catch(() => setState({ status: "error" }));
   }, []);
