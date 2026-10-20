@@ -28,17 +28,42 @@
     "ask": [
       "Bash(git push*)",
       "Bash(gh pr create*)",
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+      "Bash(python manage.py migrate*)",
+      "Bash(py313/bin/python manage.py migrate*)",
+      "Bash(python manage.py shell*)",
+      "Bash(py313/bin/python manage.py shell*)"
     ],
     "deny": [
       "Bash(git push --force*)",
       "Bash(git push -f*)",
       "Bash(git push * --force*)",
       "Bash(git push * -f*)",
-      "Read(./.env)"
+      "Read(./.env)",
+      "Bash(python manage.py runserver*)",
+      "Bash(py313/bin/python manage.py runserver*)",
+      "Bash(python manage.py flush*)",
+      "Bash(py313/bin/python manage.py flush*)",
+      "Bash(python manage.py loaddata*)",
+      "Bash(py313/bin/python manage.py loaddata*)",
+      "Bash(python manage.py dbshell*)",
+      "Bash(py313/bin/python manage.py dbshell*)",
+      "Bash(docker *)",
+      "Bash(brew services *)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/main-commit-ask.py"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
