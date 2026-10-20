@@ -1,10 +1,2 @@
-{% if comparison.questionnaire.code == "ssq12-tw" %}
-<p>未配戴：{{ comparison.unaided.created_at|date:"Y/m/d H:i" }}，{% if comparison.unaided.ssq_average is not None %}平均 {{ comparison.unaided.ssq_average }} 分{% else %}{{ comparison.unaided.ssq_unavailable_reason }}{% endif %}。</p>
-<p>配戴：{{ comparison.aided.created_at|date:"Y/m/d H:i" }}，{% if comparison.aided.ssq_average is not None %}平均 {{ comparison.aided.ssq_average }} 分{% else %}{{ comparison.aided.ssq_unavailable_reason }}{% endif %}。</p>
-<p>差值（配戴 − 未配戴）：{{ comparison.difference_text }}。分數越高，回報的聆聽能力越好；不能單憑差值判定助聽器效益。</p>
-<ol class="comparison-items">{% for item in comparison.item_pairs %}<li class="mb-3">{{ item.question.question_text }}<br>未配戴：<strong>{{ item.unaided.get_answer_display }}</strong>；配戴：<strong>{{ item.aided.get_answer_display }}</strong></li>{% endfor %}</ol>
-{% else %}
-<p>未配戴：{{ comparison.unaided.created_at|date:"Y/m/d H:i" }}，{{ comparison.unaided.total_answer_score }} 分，{{ comparison.unaided.classified.text }}。</p>
-<p>配戴：{{ comparison.aided.created_at|date:"Y/m/d H:i" }}，{{ comparison.aided.total_answer_score }} 分，{{ comparison.aided.classified.text }}。</p>
-<p>差值（配戴 − 未配戴）：{{ comparison.difference|stringformat:"+d" }} 分，{{ comparison.difference_text }}。分數越低，生活影響越少；差值不能單獨判定助聽器效益。</p>
-{% endif %}
+{# Each kind of comparison has its own fragment (screening/questionnaires/comparison.py). #}
+{% include comparison.questionnaire.definition.comparison.template %}
