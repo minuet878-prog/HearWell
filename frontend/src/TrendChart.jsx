@@ -52,6 +52,12 @@ function Shape({ shape, x, y, size, status }) {
   return <polygon {...common} points={points} fill="#fff" />;
 }
 
+// Recharts measures each date once and keeps the width, so measure in Noto Sans TC (layout.html):
+// with the fallback font's width the first date sticks out of the chart. At most 3 s, then draw.
+function fontsReady() {
+  return Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 3000))]);
+}
+
 async function getJson(url) {
   const response = await fetch(url, { headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`${url} returned ${response.status}`);
@@ -63,7 +69,7 @@ export default function TrendChart({ code }) {
 
   useEffect(() => {
     // Only the first page: the latest 20 submissions.
-    Promise.all([getJson("/api/submissions/"), getJson("/api/questionnaires/")])
+    Promise.all([getJson("/api/submissions/"), getJson("/api/questionnaires/"), fontsReady()])
       .then(([page, questionnaires]) => setState({ status: "ready", page, questionnaires }))
       .catch(() => setState({ status: "error" }));
   }, []);
