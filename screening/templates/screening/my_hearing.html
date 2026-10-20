@@ -22,8 +22,13 @@
 <section class="aided-difference" aria-labelledby="difference-title">
     <h2 id="difference-title" class="fs-4">配戴狀態比較</h2>
     {% if saved_comparison %}
+    {% if current.code == "ssq12-tw" %}
     <p>報告保留組合：這是您選定的兩筆，不一定是開始使用助聽器前後的前測與後測。</p>
     {% include "screening/comparison_content.html" with comparison=saved_comparison %}
+    {% else %}
+    <p>報告保留組合：未配戴 {{ saved_comparison.unaided.created_at|date:"Y/m/d" }}，{{ saved_comparison.unaided.total_answer_score }} 分；配戴 {{ saved_comparison.aided.created_at|date:"Y/m/d" }}，{{ saved_comparison.aided.total_answer_score }} 分。</p>
+    <p>分數越低，聽力對生活的影響越小。{{ saved_comparison.difference_text }}。這是您選定的兩筆，不一定是開始使用助聽器前後的前測與後測。</p>
+    {% endif %}
     {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
     <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">選擇或管理比較（{{ current }}）</a>
 </section>

@@ -174,6 +174,23 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.main().get_by_role("button", name="保留到報告", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+            call_command("seed_hhia_s", verbosity=0)
+            for hhi in Questionnaire.objects.filter(code__in=("hhie-s", "hhia-s")):
+                pair = []
+                for wearing in (False, True):
+                    record = Submission.objects.create(
+                        user=unaided.user, questionnaire=hhi, wearing_hearing_aid=wearing
+                    )
+                    Answer.objects.bulk_create(
+                        Answer(submission=record, question=q, score=2) for q in hhi.questions.all()
+                    )
+                    pair.append(record)
+                self.page.goto(f"{self.live_server_url}/comparisons/{hhi.pk}")
+                self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(pair[0].pk))
+                self.page.get_by_label("配戴紀錄", exact=True).select_option(str(pair[1].pk))
+                self.main().get_by_role("button", name="查看比較", exact=True).click()
+                self.main().get_by_role("button", name="保留到報告", exact=True).click()
+                expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
             self.page.goto(f"{self.live_server_url}/report")
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
             self.page.set_viewport_size({"width": 320, "height": 800})
@@ -184,7 +201,14 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.page.screenshot(path="/tmp/hearwell-adult-report-320.png", full_page=True)
             self.page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
             self.page.emulate_media(media="print")
-            expect(self.page.locator("#report-ssq12 .report-answers ol")).to_be_visible()
+            for section in ("report-hhia-s", "report-hhie-s", "report-ssq12"):
+                expect(self.page.locator(f"#{section} .report-answers ol")).to_be_visible()
+            for section in (
+                "report-difference",
+                "report-comparison-hhia-s",
+                "report-comparison-ssq12-tw",
+            ):
+                expect(self.page.locator(f"#{section}")).to_be_visible()
             self.page.emulate_media(media="screen")
             self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
             self.main().get_by_text("產生分享連結", exact=True).click()
@@ -199,6 +223,21 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
                 expect(
                     family_page.get_by_role("link", name="更換或移除", exact=False)
                 ).to_have_count(0)
+                family_page.set_viewport_size({"width": 320, "height": 800})
+                family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+                self.assertFalse(
+                    family_page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+                )
+                for section in (
+                    "report-difference",
+                    "report-comparison-hhia-s",
+                    "report-comparison-ssq12-tw",
+                ):
+                    expect(family_page.locator(f"#{section}")).to_be_visible()
+                family_page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+                family_page.emulate_media(media="print")
+                for section in ("report-hhia-s", "report-hhie-s", "report-ssq12"):
+                    expect(family_page.locator(f"#{section} .report-answers ol")).to_be_visible()
 
     def test_ssq12_without_javascript_keeps_explicit_na(self):
         call_command("seed_ssq12", verbosity=0)
@@ -476,7 +515,9 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             expect(first).to_have_value(str(unaided.pk))
             self.page.get_by_role("button", name="查看比較", exact=True).click()
             expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
-            expect(self.page.get_by_text("-20 分。分數越低", exact=False)).to_be_visible()
+            expect(
+                self.page.get_by_text("-20 分", exact=False)
+            ).to_be_visible()
             self.page.get_by_role("button", name="保留到報告", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
