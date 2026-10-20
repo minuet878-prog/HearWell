@@ -30,6 +30,8 @@ class RegisterForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "form-control")
+        if not self.is_bound:
+            self.fields["username"].widget.attrs.pop("autofocus", None)
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]

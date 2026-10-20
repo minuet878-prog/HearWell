@@ -3,11 +3,12 @@
 {% block title %}篩檢結果｜HearWell{% endblock %}
 
 {% block body %}
+<h1 class="h3 mt-2">篩檢結果</h1>
 <p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
 <div class="result-banner result-banner-{{ classified_score_level }}">
     <div>結果</div>
-    <div class="result-level">{{ classified_score_text }}</div>
-    <div class="fs-5">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
+    <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
+    <div id="result-score" class="fs-5">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
 <h2 class="h4 mt-4">建議</h2>
 <p>{{ advice }}</p>

@@ -367,7 +367,7 @@ class ReactAnswerPageTests(TestCase):
         # React hides the form, so the name, count and instructions must stay visible outside it.
         content = self._page(self.hhie_s).content.decode()
         form_start = content.index('id="answer-form"')
-        self.assertLess(content.index("<h2"), form_start)
+        self.assertLess(content.index("<h1"), form_start)
         self.assertLess(content.index("共 1 題"), form_start)
         self.assertLess(content.index("本問卷的目的"), form_start)
 
