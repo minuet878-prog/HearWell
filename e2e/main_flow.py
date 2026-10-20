@@ -7,7 +7,7 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 import os
 import re
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from itertools import pairwise
 from zoneinfo import ZoneInfo
 
@@ -488,6 +488,61 @@ class SharedLayoutTest(StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
 
     saving_artifacts = NewUserScreeningTest.saving_artifacts
+
+    def test_result_level_is_exposed_as_a_heading(self):
+        self.open(390)
+        record = self.user.submissions.get(questionnaire__code="hhie-s")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            expect(self.page.get_by_role("heading", level=1)).to_have_count(1)
+            level = self.page.get_by_role("heading", level=2, name="輕度到中度影響", exact=True)
+            expect(level).to_be_visible()
+            expect(level).to_have_attribute("aria-describedby", "result-score")
+            expect(self.page.locator("#result-score")).to_contain_text("總分 20 分")
+
+    def test_history_exposes_older_records_outside_the_chart_summary(self):
+        self.open(390)
+        questionnaire = Questionnaire.objects.get(code="hhie-s")
+        expected = [(datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y/%m/%d"), 20)]
+        for days_ago, score in ((2, 4), (5, 0)):
+            record = Submission.objects.create(
+                user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=record, question=q, score=score)
+                for q in questionnaire.questions.all()
+            )
+            when = datetime.now(ZoneInfo("Asia/Taipei")) - timedelta(days=days_ago)
+            Submission.objects.filter(pk=record.pk).update(created_at=when)
+            expected.append((when.strftime("%Y/%m/%d"), score * 10))
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+            for date_text, score in expected:
+                accessible_date = date_text.replace("/", r"\/")
+                accessible_name = re.compile(rf"{accessible_date}.*總分：{score}")
+                expect(self.page.get_by_role("link", name=accessible_name)).to_have_count(1)
+
+    def test_skip_link_moves_keyboard_focus_on_public_and_signed_in_pages(self):
+        self.open(320)
+        with self.saving_artifacts():
+            for path in self.pages:
+                self.page.goto(f"{self.live_server_url}{path}")
+                skip = self.page.get_by_role("link", name="跳到主要內容", exact=True)
+                self.page.keyboard.press("Tab")
+                expect(skip).to_be_focused()
+                expect(skip).to_be_visible()
+                self.page.keyboard.press("Enter")
+                expect(self.page.get_by_role("main")).to_be_focused()
+            with self.browser.new_context(viewport={"width": 320, "height": 800}) as anonymous:
+                page = anonymous.new_page()
+                for path in ("/", "/login", "/register", "/privacy", "/family"):
+                    with self.subTest(path=path):
+                        page.goto(f"{self.live_server_url}{path}")
+                        page.keyboard.press("Tab")
+                        expect(page.get_by_role("link", name="跳到主要內容")).to_be_focused()
+                        page.keyboard.press("Enter")
+                        expect(page.get_by_role("main")).to_be_focused()
 
     def test_hhi_comparison_keyboard_errors_and_narrow_layout_without_js(self):
         """#82: explicit preview/save/remove works with keyboard and no scripts."""
