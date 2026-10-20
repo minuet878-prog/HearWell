@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
+from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import HHIA_S_CHOICES, classify
 from screening.ssq12 import scale_labels
@@ -182,6 +183,10 @@ class NormGroup(models.TextChoices):
 
 
 class SubmissionQuerySet(models.QuerySet):
+    def defined(self):
+        # Records of a questionnaire without a definition are not shown (ADR 0005).
+        return self.filter(questionnaire__code__in=questionnaires.DEFINITIONS)
+
     def valid_hhi(self):
         return (
             self.filter(questionnaire__code__in=("hhie-s", "hhia-s"))
@@ -263,7 +268,7 @@ class Submission(models.Model):
 
     @property
     def ssq_average(self):
-        if self.questionnaire.code != SSQ12:
+        if self.questionnaire.definition.result != AVERAGE:
             return None
         scores = self._calculate_scores()
         if scores["numeric_count"] != 12 or scores["answer_count"] != 12:
@@ -274,7 +279,7 @@ class Submission(models.Model):
 
     @property
     def ssq_unavailable_reason(self):
-        if self.questionnaire.code != SSQ12 or self.ssq_average is not None:
+        if self.questionnaire.definition.result != AVERAGE or self.ssq_average is not None:
             return None
         if self._calculate_scores()["numeric_count"] == 0:
             return "未計算：沒有可用數值回答"
@@ -282,7 +287,7 @@ class Submission(models.Model):
 
     @property
     def classified(self):
-        if self.questionnaire.code == SSQ12:
+        if self.questionnaire.definition.result != LEVEL:
             return None
         return classify(self.total_answer_score, self.questionnaire.code)
 

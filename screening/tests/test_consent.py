@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from screening import models
 from screening.models import Audiogram, Consent, Questionnaire, Submission, User
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 PASSWORD = "Xk9#mPq2vLw"
 
@@ -185,6 +185,9 @@ class GateTests(TestCase):
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="測試問卷", code="test")
         cls.submission = Submission.objects.create(user=cls.user, questionnaire=cls.questionnaire)
         cls.audiogram = Audiogram.objects.create(user=cls.user, tested_on=date(2026, 1, 1))
+
+    def setUp(self):
+        self.enterContext(register(fake_definition("test")))
 
     def _health_urls(self):
         return (

@@ -1,4 +1,4 @@
-from screening.questionnaires.definition import Definition
+from screening.questionnaires.definition import AVERAGE, Definition
 
 CODE = "ssq12-tw"
 
@@ -10,4 +10,5 @@ DEFINITION = Definition(
     icon="clipboard",
     list_rank=2,
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
+    result=AVERAGE,
 )

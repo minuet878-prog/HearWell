@@ -211,6 +211,7 @@ class ApiSubmissionTests(TestCase):
         no_thresholds = Questionnaire.objects.create(
             questionnaire_name="測試問卷", code="no-thresholds"
         )
+        self.enterContext(register(fake_definition("no-thresholds")))
         submission = self._make_submission(questionnaire=no_thresholds, scores=[4] * 10)
         for url in (self.LIST, self._detail_url(submission.id)):
             with self.subTest(url=url), self.assertLogs("screening.scoring", "ERROR"):

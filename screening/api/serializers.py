@@ -20,9 +20,10 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
+from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
-from screening.scoring import THRESHOLDS, get_advice
+from screening.scoring import get_advice
 
 
 class QuestionnaireSummarySerializer(serializers.ModelSerializer):
@@ -47,10 +48,10 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
 
     @extend_schema_field(LevelBandSerializer(many=True))
     def get_levels(self, questionnaire):
-        # Read straight from the one threshold table so the chart's bands match classify().
+        # Read straight from the definition's thresholds so the chart's bands match classify().
         return [
             {"code": level, "text": text, "max": upper}
-            for upper, text, level in THRESHOLDS.get(questionnaire.code, ())
+            for upper, text, level in questionnaire.definition.thresholds
         ]
 
 
@@ -136,7 +137,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if instance.questionnaire.code == SSQ12:
+        if instance.questionnaire.definition.result == AVERAGE:
             data["scores"] = None
         else:
             data.pop("average_score")
@@ -163,7 +164,7 @@ class SubmissionDetailSerializer(SubmissionSerializer):
         fields = (*SubmissionSerializer.Meta.fields, "advice", "answers")
 
     def get_advice(self, submission) -> str | None:
-        if submission.questionnaire.code == SSQ12:
+        if submission.questionnaire.definition.result != LEVEL:
             return None
         return get_advice(submission.classified["level"], submission.questionnaire.code)
 

@@ -39,9 +39,7 @@ class QuestionnaireCardTests(TestCase):
 
     def setUp(self):
         self.client.force_login(consented_user(username="cards_a"))
-        patcher = register(fake_definition("fake-later"), fake_definition("fake-last"))
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.enterContext(register(fake_definition("fake-later"), fake_definition("fake-last")))
 
     def _main(self):
         content = self.client.get(reverse("questionnaire_list")).content.decode()

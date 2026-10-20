@@ -4,7 +4,7 @@
 {% block title %}我的紀錄｜HearWell{% endblock %}
 
 {% block extra_head %}
-{% if current.code == "hhie-s" %}
+{% if current.definition.trend_chart %}
 <script type="module" src="{% static 'screening/frontend/trend-chart.js' %}"></script>
 {% endif %}
 {% endblock %}
@@ -36,7 +36,7 @@
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
-{% elif current.code == "hhie-s" %}
+{% elif current.definition.trend_chart %}
 {# Only HHIE-S has a trend chart; other questionnaires list their records only. #}
 <div id="trend-chart" data-questionnaire="{{ current.code }}"></div>
 {% endif %}
@@ -47,7 +47,7 @@
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
-        {% elif submission.questionnaire.code == "ssq12-tw" %}
+        {% elif submission.questionnaire.definition.result == "average" %}
         <span>{% if submission.ssq_average is not None %}整體平均：{{ submission.ssq_average }}／10{% else %}{{ submission.ssq_unavailable_reason }}{% endif %}</span>
         <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% else %}
