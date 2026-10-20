@@ -50,8 +50,6 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 `User` 繼承 Django 的 `AbstractUser`。外鍵都是 `PROTECT`（有作答紀錄的資料不能被連帶刪除），例外是 `norm_basis`（`RESTRICT`）和聽力圖的點（跟著聽力圖刪）；刪除帳號一律走 `User.delete_with_data()`，在一個交易裡由下往上刪。
 總分不存欄位，由 `Submission` 用一次 `aggregate` 即時算出總分與分項。
 
-下圖只畫問卷相關的資料表；另外還有 `Audiogram`／`AudiogramPoint`（聽力圖與每個點）、`Consent`（同意紀錄）、`ReportShare`（報告分享連結）、`ReportComparison`（每份問卷一組戴／不戴比較），都只連到 `User`。
-
 ```mermaid
 erDiagram
 User {
@@ -79,7 +77,7 @@ Submission {
     timestamp created_at
     bool wearing_hearing_aid "有戴、沒戴、未記錄"
     string norm_group "IOI-HA 專用"
-    int norm_basis FK "IOI-HA 分組依據的 HHIE-S"
+    int norm_basis FK "IOI-HA 分組依據的 HHIE-S／HHIA-S"
     uuid idempotency_key "API 防重複送出"
 }
 
@@ -90,12 +88,64 @@ Answer {
     int score "SSQ12-TW 的不適用存成空值"
 }
 
+ReportComparison {
+    int id PK
+    int user FK
+    int questionnaire FK "每人每份問卷一組"
+    int unaided FK "沒戴的那次"
+    int aided FK "有戴的那次"
+}
+
+Audiogram {
+    int id PK
+    int user FK
+    date tested_on
+    timestamp created_at
+    uuid idempotency_key "API 防重複送出"
+}
+
+AudiogramPoint {
+    int id PK
+    int audiogram FK "CASCADE"
+    string ear "right、left"
+    string conduction "air、bone"
+    int frequency
+    int db
+    bool no_response
+    bool masked "只影響畫法"
+}
+
+Consent {
+    int id PK
+    int user FK
+    int version "隱私權說明版本"
+    timestamp agreed_at
+}
+
+ReportShare {
+    int id PK
+    int user FK
+    string token
+    timestamp created_at
+    timestamp expires_at "7 天"
+    timestamp revoked_at "取消時間"
+    int open_count
+    timestamp last_opened_at
+}
+
 User ||--o{ Submission : "填寫"
 Questionnaire ||--o{ Question : "包含"
 Questionnaire ||--o{ Submission : "作答"
 Submission ||--o{ Answer : "紀錄"
 Question ||--o{ Answer : "對應"
 Submission |o--o{ Submission : "norm_basis"
+User ||--o{ ReportComparison : "選擇"
+Questionnaire ||--o{ ReportComparison : "比較"
+Submission ||--o{ ReportComparison : "unaided、aided"
+User ||--o{ Audiogram : "輸入"
+Audiogram ||--o{ AudiogramPoint : "包含"
+User ||--o{ Consent : "同意"
+User ||--o{ ReportShare : "分享"
 ```
 
 ## API
