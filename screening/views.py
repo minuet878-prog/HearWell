@@ -628,6 +628,15 @@ def _report_context(user):
     for submission in submissions:  # newest first
         if submission.questionnaire.code not in (IOI_HA, SSQ12):
             by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
+    comparisons = list(
+        user.report_comparisons.select_related(
+            "questionnaire", "unaided__questionnaire", "aided__questionnaire"
+        )
+        .prefetch_related("unaided__answers__question", "aided__answers__question")
+        .order_by("questionnaire_id")
+    )
+    # #90: each saved comparison is shown with its own questionnaire's part.
+    comparison_for = {comparison.questionnaire_id: comparison for comparison in comparisons}
     sections = [
         {
             "questionnaire": questionnaire,
@@ -636,19 +645,16 @@ def _report_context(user):
             "recent": records[:REPORT_RECENT],
             "max_score": max_score(questionnaire.code),
             "advice": get_advice(records[0].classified["level"], questionnaire.code),
+            "comparison": comparison_for.get(questionnaire.id),
         }
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
-    comparisons = list(
-        user.report_comparisons.select_related(
-            "questionnaire", "unaided__questionnaire", "aided__questionnaire"
-        )
-        .prefetch_related("unaided__answers__question", "aided__answers__question")
-        .order_by("questionnaire_id")
-    )
     ssq_records = [s for s in submissions if s.questionnaire.code == SSQ12]
     context = {
         "comparisons": comparisons,
+        "ssq_comparison": next(
+            (c for c in comparisons if c.questionnaire.code == SSQ12), None
+        ),
         "ssq_latest": ssq_records[0] if ssq_records else None,
         "ssq_recent": ssq_records[:REPORT_RECENT],
         "sections": sections,

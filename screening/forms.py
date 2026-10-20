@@ -197,7 +197,9 @@ class HhiComparisonForm(forms.Form):
 
     def __init__(self, *args, user, questionnaire, **kwargs):
         super().__init__(*args, **kwargs)
-        records = user.submissions.filter(questionnaire=questionnaire)
+        records = user.submissions.filter(questionnaire=questionnaire).select_related(
+            "questionnaire"
+        )
         if questionnaire.code == SSQ12:
             records = records.with_scores().filter(answer_count=12)
         else:
