@@ -82,3 +82,82 @@ class UndefinedQuestionnaireTests(TestCase):
         self.assertEqual([q["code"] for q in response.json()], ["hhie-s"])
         detail = reverse("api:questionnaire", args=[self.undefined.pk])
         self.assertEqual(self.client.get(detail).status_code, 404)
+
+
+PUBLISHED = {
+    # code: (card audience, minutes, icon, sentences from the answer page intro)
+    "hhie-s": (
+        "適合 65 歲以上的長輩。",
+        3,
+        "ear",
+        ("適合 65 歲以上的長輩；若您持續使用原問卷追蹤", "本問卷的目的在幫助您了解自己的聽力"),
+    ),
+    "ioi-ha": (
+        "適合已配戴助聽器的人。",
+        2,
+        "aid",
+        ("目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄", "請依照最近兩週戴著現有助聽器的經驗"),
+    ),
+    "hhia-s": (
+        "適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
+        3,
+        "clipboard",
+        ("適合 18–64 歲成人", "題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁"),
+    ),
+    "ssq12-tw": (
+        "了解您目前生活中的聆聽能力。",
+        5,
+        "clipboard",
+        ("十二題都有分數才計算整體平均", "來源：婦聯聽覺健康基金會 SSQ12-TW"),
+    ),
+}
+
+
+class RealDefinitionsTests(TestCase):
+    """Issue #105: the four published questionnaires read the same after the move."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.questionnaires = {}
+        # Added in the published order, so the two rank-2 questionnaires keep HHIA-S first.
+        for code in ("hhie-s", "ioi-ha", "hhia-s", "ssq12-tw"):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=code.upper(), code=code)
+            Question.objects.create(
+                questionnaire=questionnaire,
+                question_text=f"{code} 題目",
+                question_number=1,
+                category=Category.SOCIAL,
+            )
+            cls.questionnaires[code] = questionnaire
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="definitions_c"))
+
+    def test_catalog_cards(self):
+        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        main = content[content.index("<main") : content.index("</main>")]
+        cards = test_layout._cards(main)
+        hrefs = [
+            f'href="{reverse("screening", args=[self.questionnaires[code].pk])}"'
+            # No birth year, so nothing is recommended ahead of the list order.
+            for code in ("hhie-s", "ioi-ha", "hhia-s", "ssq12-tw")
+        ]
+        self.assertEqual(
+            [next(i for i, c in enumerate(cards) if h in c) for h in hrefs], [0, 1, 2, 3]
+        )
+        for code, (audience, minutes, icon, _) in PUBLISHED.items():
+            with self.subTest(code=code):
+                href = f'href="{reverse("screening", args=[self.questionnaires[code].pk])}"'
+                card = next(c for c in cards if href in c)
+                self.assertIn(f'data-icon="{icon}"', card)
+                self.assertIn(audience, test_layout._text(card))
+                self.assertIn(f"約 {minutes} 分鐘", test_layout._text(card))
+
+    def test_answer_page_intro(self):
+        for code, (_, minutes, _, sentences) in PUBLISHED.items():
+            with self.subTest(code=code):
+                url = reverse("screening", args=[self.questionnaires[code].pk])
+                content = self.client.get(url).content.decode()
+                self.assertIn(f"共 1 題，大約 {minutes} 分鐘。", content)
+                for sentence in sentences:
+                    self.assertIn(sentence, content)

@@ -9,8 +9,8 @@ from django.utils import timezone
 
 from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
+from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import HHIA_S_CHOICES, classify
-from screening.ssq12 import CODE as SSQ12
 from screening.ssq12 import scale_labels
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,

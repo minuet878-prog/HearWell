@@ -15,7 +15,6 @@ def fake_definition(code, **overrides):
     fields = {
         "code": code,
         "topic": "假主題",
-        "subtitle": "假副標",
         "audience": "適合測試的人。",
         "minutes": 4,
         "icon": "clipboard",
@@ -26,5 +25,5 @@ def fake_definition(code, **overrides):
 
 
 def register(*definitions):
-    """Adds questionnaire definitions for one test, the only step a new questionnaire needs."""
+    """Registers fake questionnaire definitions for the length of one test."""
     return patch.dict(questionnaires.DEFINITIONS, {d.code: d for d in definitions})

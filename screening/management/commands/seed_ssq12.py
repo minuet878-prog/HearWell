@@ -2,7 +2,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from screening.models import Question, Questionnaire
-from screening.ssq12 import CODE, QUESTIONS
+from screening.questionnaires.ssq12_tw import CODE
+from screening.ssq12 import QUESTIONS
 
 
 class Command(BaseCommand):

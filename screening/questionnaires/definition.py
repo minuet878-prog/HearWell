@@ -5,7 +5,6 @@ from dataclasses import dataclass
 class Definition:
     code: str
     topic: str  # the catalog card reads 「topic（name）」
-    subtitle: str
     audience: str
     minutes: int
     icon: str  # "ear", "aid" or "clipboard" (questionnaire_icon.html)

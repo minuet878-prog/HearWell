@@ -33,6 +33,7 @@ from screening.forms import (
 )
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import (
     IOI_HA_BELOW_NORM_NOTES,
     IOI_HA_CHOICES,
@@ -45,7 +46,6 @@ from screening.scoring import (
     ioi_ha_group,
     max_score,
 )
-from screening.ssq12 import CODE as SSQ12
 
 from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
 
