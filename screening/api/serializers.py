@@ -20,7 +20,8 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.scoring import IOI_HA, THRESHOLDS, get_advice
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.scoring import THRESHOLDS, get_advice
 from screening.ssq12 import CODE as SSQ12
 
 

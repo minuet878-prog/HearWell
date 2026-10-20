@@ -1,6 +1,7 @@
 """Reviewed SSQ12-TW item text and scale anchors (#79), Wang 2023."""
 
-CODE = "ssq12-tw"
+from screening.questionnaires.ssq12_tw import CODE  # noqa: F401  re-exported
+
 QUESTIONS = (
     "您在開著電視的房間裡與人說話。在沒有降低電視音量的情況下，您能跟上對方說話的內容嗎？",
     "您和大約五個人在忙碌的餐廳裡，您可以看到同行的每個人。這樣的情況下，您能跟上大家對話的內容嗎?",

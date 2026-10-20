@@ -18,26 +18,7 @@ THRESHOLDS = {
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 
-# Shown on the questionnaire list and answer page.
-# Questionnaires missing here show only their name and question count.
-QUESTIONNAIRE_INFO = {
-    "ssq12-tw": {
-        "subtitle": "日常聆聽能力",
-        "audience": "了解您目前生活中的聆聽能力。",
-        "minutes": 5,
-    },
-    "hhie-s": {"subtitle": "聽力障礙自我評估", "audience": "適合 65 歲以上的長輩。", "minutes": 3},
-    "hhia-s": {
-        "subtitle": "聽力障礙自我評估",
-        "audience": "適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
-        "minutes": 3,
-    },
-    "ioi-ha": {"subtitle": "助聽器效益量表", "audience": "適合已配戴助聽器的人。", "minutes": 2},
-}
-
 HHIA_S_CHOICES = ((4, "會"), (2, "有時"), (0, "不會"))
-
-IOI_HA = "ioi-ha"
 
 # Answer labels for scores 1-5, by item number (林克寰《助聽器選配與驗證》書頁 167).
 IOI_HA_CHOICES = {

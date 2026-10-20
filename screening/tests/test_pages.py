@@ -23,7 +23,7 @@ from screening.models import (
 )
 from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_history
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class CopyTests(TestCase):
@@ -559,15 +559,13 @@ class PageFlowTests(TestCase):
         )
 
     def test_question_count_is_not_hard_coded(self):
-        main = self._main(self.client.get(reverse("questionnaire_list")))
+        with register(fake_definition("short")):
+            main = self._main(self.client.get(reverse("questionnaire_list")))
+            page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
         self.assertIn('<span class="card-tag">3 題</span>', card)
-        self.assertNotIn("適合", card)
-        self.assertNotIn("分鐘", card)
-        page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
-        self.assertIn("共 3 題。", page)
-        self.assertNotIn("分鐘", page)
+        self.assertIn("共 3 題，", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)

@@ -31,8 +31,9 @@ from screening.forms import (
     RegisterForm,
     answer_choices,
 )
+from screening.questionnaires import hhia_s, hhie_s
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import (
-    IOI_HA,
     IOI_HA_BELOW_NORM_NOTES,
     IOI_HA_CHOICES,
     IOI_HA_ITEM_NAMES,
@@ -149,21 +150,14 @@ def consent(request):
     return render(request, "screening/consent.html", {"next": next_url})
 
 
-# Where to start (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1): HHIE-S, then IOI-HA,
-# then any other questionnaire by when it was added. A screen order, not a scoring rule.
-LIST_ORDER = ("hhie-s", IOI_HA)
-
-
 def list_order(questionnaire):
-    code = questionnaire.code
-    rank = LIST_ORDER.index(code) if code in LIST_ORDER else len(LIST_ORDER)
-    return (rank, questionnaire.pk)
+    return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
 @login_required
 def questionnaire_list(request):
     questionnaires = list(
-        Questionnaire.objects.annotate(question_count=Count("questions")).order_by("pk")
+        Questionnaire.objects.defined().annotate(question_count=Count("questions")).order_by("pk")
     )
     by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
     age = request.user.age
@@ -172,10 +166,10 @@ def questionnaire_list(request):
     if age is None or age == 65:
         age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
         if age_form.is_valid():
-            code = "hhia-s" if age_form.cleaned_data["age_group"] == "adult" else "hhie-s"
+            code = hhia_s.CODE if age_form.cleaned_data["age_group"] == "adult" else hhie_s.CODE
             age_form = None
     else:
-        code = "hhia-s" if age < 65 else "hhie-s"
+        code = hhia_s.CODE if age < 65 else hhie_s.CODE
     recommended = by_code.get(code)
     return render(
         request,
@@ -222,7 +216,7 @@ def _norm_token(user, norm):
 @require_http_methods(["GET", "POST"])
 def screening(request, questionnaire_id):
     if request.method == "GET":
-        questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+        questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
         norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
@@ -249,7 +243,7 @@ def screening(request, questionnaire_id):
             },
         )
     if request.method == "POST":
-        questionnaire = get_object_or_404(Questionnaire, pk=questionnaire_id)
+        questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
         is_ioi_ha = questionnaire.code == IOI_HA
         questions = questionnaire.questions.all()
         if not questions:
