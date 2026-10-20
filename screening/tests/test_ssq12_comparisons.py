@@ -3,7 +3,9 @@
 from io import StringIO
 
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from screening.models import Answer, Question, Questionnaire, Submission
 from screening.tests.helpers import consented_user
@@ -148,3 +150,15 @@ class SsqComparisonTests(TestCase):
         self.client.post("/account/delete", {"password": "Test-pass-12345"})
         self.assertFalse(Submission.objects.filter(user_id=self.user.pk).exists())
         self.assertTrue(Submission.objects.filter(pk=foreign.pk).exists())
+
+    def test_query_count_does_not_grow_with_records(self):
+        self.record(False, [4] * 12)
+        self.record(True, [6] * 12)
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(self.url)
+        for _ in range(5):
+            self.record(False, [4] * 12)
+            self.record(True, [6] * 12)
+        with CaptureQueriesContext(connection) as many:
+            self.client.get(self.url)
+        self.assertEqual(len(many), len(few))
