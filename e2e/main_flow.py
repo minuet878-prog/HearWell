@@ -195,6 +195,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
             self.page.set_viewport_size({"width": 320, "height": 800})
             self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+            self.page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
             self.assertFalse(
                 self.page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
             )
@@ -225,6 +226,8 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
                 ).to_have_count(0)
                 family_page.set_viewport_size({"width": 320, "height": 800})
                 family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+                # Wider glyphs reproduce the table's minimum-width overflow across platforms.
+                family_page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
                 self.assertFalse(
                     family_page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
                 )

@@ -893,6 +893,12 @@ details summary {
     font-weight: 700;
 }
 
+/* Fit report columns to the available width, including larger fallback fonts. */
+.health-report .table {
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
 /* The level is written out in a box, never shown by colour alone. */
 .report-level {
     font-weight: 700;
