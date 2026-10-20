@@ -22,7 +22,6 @@ from screening.models import (
 )
 from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import get_advice
 
 
@@ -70,7 +69,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if instance.questionnaire.code != SSQ12:
+        if instance.scale is None:
             data.pop("scale")
         return data
 
@@ -187,9 +186,7 @@ class AnswerInputSerializer(serializers.Serializer):
 
 class SubmissionCreateSerializer(serializers.Serializer):
     # IOI-HA needs norm grouping and has no API yet (spec phase5_api_submit.md).
-    questionnaire = serializers.PrimaryKeyRelatedField(
-        queryset=Questionnaire.objects.exclude(code=IOI_HA)
-    )
+    questionnaire = serializers.PrimaryKeyRelatedField(queryset=Questionnaire.objects.none())
     wearing_hearing_aid = StrictBooleanField(
         error_messages={
             "required": WEARING_MESSAGE,
@@ -199,16 +196,26 @@ class SubmissionCreateSerializer(serializers.Serializer):
     )
     answers = serializers.ListField(child=AnswerInputSerializer())
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Built per request so defined() reads the definitions then, not at import.
+        self.fields["questionnaire"].queryset = Questionnaire.objects.defined().exclude(code=IOI_HA)
+
     def validate(self, attrs):
-        if attrs["questionnaire"].code == SSQ12:
-            for answer in self.initial_data.get("answers", []):
-                value = answer.get("score")
-                if value is not None and type(value) is not int:
-                    raise serializers.ValidationError({"answers": "請選擇 0–10 整數或不適用"})
         # The rules live in the answer formset, shared with the web form; this only feeds it.
         questions = list(attrs["questionnaire"].questions.all())
         if not questions:
             raise serializers.ValidationError({"questionnaire": "這份問卷沒有題目"})
+        # Questions that list 「不適用」 take an empty score as that answer; there, an answer
+        # must be exactly an integer or empty.
+        not_applicable = {
+            question.id for question in questions if "na" in dict(answer_choices(question))
+        }
+        if not_applicable:
+            for answer in self.initial_data.get("answers", []):
+                value = answer.get("score")
+                if value is not None and type(value) is not int:
+                    raise serializers.ValidationError({"answers": "請選擇 0–10 整數或不適用"})
         # The formset pairs form i with question i for choices, so send answers in question order.
         position = {question.id: index for index, question in enumerate(questions)}
         answers = sorted(
@@ -219,7 +226,7 @@ class SubmissionCreateSerializer(serializers.Serializer):
             data[f"form-{index}-question_id"] = answer["question"]
             data[f"form-{index}-score"] = (
                 "na"
-                if attrs["questionnaire"].code == SSQ12 and answer["score"] is None
+                if answer["question"] in not_applicable and answer["score"] is None
                 else answer["score"]
             )
         formset = AnswerFormSet(questions=questions, data=data)

@@ -72,7 +72,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
                 <fieldset id="question-{{ forloop.counter }}" tabindex="-1"{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
                     <legend class="fw-bold fs-5"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
                     {% include "screening/field_messages.html" with field=form.score %}
-                    {% if questionnaire.code == "ssq12-tw" %}
+                    {% if question.scale %}
                     <p>0：{{ question.scale.min_label }}；10：{{ question.scale.max_label }}</p>
                     {% endif %}
                     {{ form.score }}

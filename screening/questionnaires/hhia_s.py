@@ -3,6 +3,13 @@ from screening.questionnaires.definition import LEVEL, Definition
 
 CODE = "hhia-s"
 
+CHOICES = ((4, "會"), (2, "有時"), (0, "不會"))
+
+
+def choices(number):
+    return CHOICES
+
+
 # 林克寰《助聽器選配與驗證》書內 p.165 (PDF p.166), reviewed for issue #78.
 # A published version is immutable: later wording changes need a new code.
 QUESTIONS = (
@@ -24,9 +31,7 @@ THRESHOLDS = (
     (40, "顯著影響", "severe"),
 )
 
-EXPLANATION = (
-    "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
-)
+EXPLANATION = "這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。"
 _LEVEL_ADVICE = {
     "normal": "您這次回報的生活影響較少。若仍有聽不清楚的困擾，建議安排聽力評估。",
     "mild_to_moderate": (
@@ -54,6 +59,7 @@ DEFINITION = Definition(
     list_rank=2,
     intro_template="screening/questionnaires/hhia_s_intro.html",
     result=LEVEL,
+    choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),

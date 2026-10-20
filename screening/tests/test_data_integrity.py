@@ -110,6 +110,13 @@ class AdminViewOnlyTests(TestCase):
                 self.assertEqual(saved.questionnaire_name, questionnaire.questionnaire_name)
         self.assertEqual(Questionnaire.objects.count(), 2)
 
+    def test_answer_detail_shows_the_number(self):
+        # Issue #100: the score field no longer carries HHIE-S labels.
+        answer = Answer.objects.get(question=self.answered)
+        response = self.client.get(reverse("admin:screening_answer_change", args=[answer.pk]))
+        self.assertContains(response, '<div class="readonly">4</div>', html=True)
+        self.assertNotContains(response, "常常")
+
     def test_submission_and_answer_are_view_only(self):
         submission = Submission.objects.get(questionnaire=self.answered_q)
         answer = Answer.objects.get(submission=submission)

@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -9,7 +11,7 @@ from screening.models import (
     ReportComparison,
     Submission,
 )
-from screening.questionnaires.definition import LEVEL
+from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
 
@@ -260,3 +262,113 @@ class UndefinedResultTests(TestCase):
         self.assertEqual(self.client.get(reverse("api:submissions")).json()["results"], [])
         detail = reverse("api:submission", args=[self.submission.pk])
         self.assertEqual(self.client.get(detail).status_code, 404)
+
+
+def _fake_choices(number):
+    return ((1, f"假的{number}低"), (3, f"假的{number}高"), ("na", "假的不適用"))
+
+
+class AnsweringFromDefinitionTests(TestCase):
+    """Issue #100: choices, labels, scale and N/A come from the definition."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="definitions_f")
+        cls.fake = Questionnaire.objects.create(questionnaire_name="假作答", code="fake-answer")
+        cls.questions = Question.objects.bulk_create(
+            Question(questionnaire=cls.fake, question_text=f"假題{i}", question_number=i)
+            for i in range(1, 3)
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.enterContext(
+            register(
+                fake_definition(
+                    "fake-answer",
+                    result=AVERAGE,
+                    choices=_fake_choices,
+                    scale=lambda number: (f"假的{number}最少", f"假的{number}最多"),
+                )
+            )
+        )
+
+    def test_answer_page_and_api_offer_its_choices_and_scale(self):
+        page = self.client.get(reverse("screening", args=[self.fake.pk]))
+        self.assertContains(page, "假的2高")
+        self.assertContains(page, "0：假的2最少；10：假的2最多")
+        detail = self.client.get(reverse("api:questionnaire", args=[self.fake.pk])).json()
+        second = detail["questions"][1]
+        self.assertEqual(
+            second["choices"],
+            [
+                {"value": 1, "label": "假的2低"},
+                {"value": 3, "label": "假的2高"},
+                {"value": None, "label": "假的不適用"},
+            ],
+        )
+        self.assertEqual(second["scale"], {"min_label": "假的2最少", "max_label": "假的2最多"})
+
+    def test_web_form_saves_not_applicable_and_shows_its_labels(self):
+        data = {
+            "form-TOTAL_FORMS": 2,
+            "form-INITIAL_FORMS": 0,
+            "form-0-question_id": str(self.questions[0].pk),
+            "form-0-score": "na",
+            "form-1-question_id": str(self.questions[1].pk),
+            "form-1-score": "3",
+            "wearing_hearing_aid": "False",
+        }
+        response = self.client.post(reverse("screening", args=[self.fake.pk]), data)
+        submission = Submission.objects.get()
+        self.assertRedirects(response, reverse("result", args=[submission.pk]))
+        self.assertEqual(
+            [a.score for a in submission.answers.order_by("question__question_number")],
+            [None, 3],
+        )
+        result = self.client.get(reverse("result", args=[submission.pk]))
+        self.assertContains(result, "假的不適用")
+        self.assertContains(result, "假的2高")
+
+    def test_api_saves_not_applicable(self):
+        body = {
+            "questionnaire": self.fake.pk,
+            "wearing_hearing_aid": True,
+            "answers": [
+                {"question": self.questions[0].pk, "score": None},
+                {"question": self.questions[1].pk, "score": 1},
+            ],
+        }
+        response = self.client.post(
+            reverse("api:submissions"),
+            body,
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        labels = [answer["label"] for answer in response.json()["answers"]]
+        self.assertEqual(labels, ["假的不適用", "假的2低"])
+
+
+class UndefinedAnsweringApiTests(TestCase):
+    """Issue #100 (deferred from #105): the API refuses a questionnaire without a definition."""
+
+    def test_api_answer_is_rejected(self):
+        self.client.force_login(consented_user(username="definitions_g"))
+        undefined = Questionnaire.objects.create(questionnaire_name="無定義", code="undefined")
+        question = Question.objects.create(
+            questionnaire=undefined, question_text="無定義題", question_number=1
+        )
+        response = self.client.post(
+            reverse("api:submissions"),
+            {
+                "questionnaire": undefined.pk,
+                "wearing_hearing_aid": False,
+                "answers": [{"question": question.pk, "score": 4}],
+            },
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("questionnaire", response.json())
+        self.assertFalse(Submission.objects.exists())

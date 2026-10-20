@@ -11,9 +11,7 @@ from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL
-from screening.questionnaires.ssq12_tw import CODE as SSQ12
-from screening.scoring import HHIA_S_CHOICES, classify
-from screening.ssq12 import scale_labels
+from screening.scoring import classify
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -152,9 +150,10 @@ class Question(models.Model):
 
     @property
     def scale(self):
-        if self.questionnaire.code != SSQ12:
+        scale = self.questionnaire.definition.scale
+        if scale is None:
             return None
-        lower, upper = scale_labels(self.question_number)
+        lower, upper = scale(self.question_number)
         return {"min_label": lower, "max_label": upper}
 
 
@@ -297,17 +296,11 @@ class Submission(models.Model):
         return classify(self.total_answer_score, self.questionnaire.code)
 
 
-# HHIE-S answers; other questionnaires get their choices from scoring (see forms.answer_choices).
-class Score(models.IntegerChoices):
-    ALWAYS = 4, "常常"
-    SOMETIMES = 2, "有時"
-    NEVER = 0, "從未"
-
-
 class Answer(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="answers")
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
-    score = models.IntegerField(choices=Score.choices, null=True, blank=True)
+    # Labels come from the questionnaire's definition (get_answer_display); empty is 「不適用」.
+    score = models.IntegerField(null=True, blank=True)
 
     class Meta:
         constraints = (
@@ -325,11 +318,9 @@ class Answer(models.Model):
         return f"{self.question}: {self.score}"
 
     def get_answer_display(self):
-        if self.question.questionnaire.code == SSQ12:
-            return "不適用" if self.score is None else str(self.score)
-        if self.question.questionnaire.code == "hhia-s":
-            return dict(HHIA_S_CHOICES).get(self.score, str(self.score))
-        return self.get_score_display()
+        question = self.question
+        labels = dict(question.questionnaire.definition.choices(question.question_number))
+        return labels.get("na" if self.score is None else self.score, str(self.score))
 
 
 class ReportComparison(models.Model):

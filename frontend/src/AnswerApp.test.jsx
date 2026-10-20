@@ -522,6 +522,20 @@ describe("SSQ12-TW", () => {
     expect(screen.getByText("0 分")).toBeTruthy();
   });
 
+  it("keeps N/A in drafts for any questionnaire whose choices offer it (#100)", async () => {
+    mockApi(undefined, { ...ssq, code: "another-questionnaire" });
+    await renderApp();
+    choose("沒戴");
+    next();
+    choose("不適用");
+    next();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
+    cleanup();
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(screen.getByText("0 分")).toBeTruthy();
+  });
+
   it("increments by one and sends explicit N/A without treating it as missing", async () => {
     mockApi(undefined, ssq);
     await renderApp();
