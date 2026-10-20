@@ -340,9 +340,9 @@ def _already_sent(request, submission):
 @require_http_methods(["GET", "POST"])
 @never_cache
 def hhi_comparison(request, questionnaire_id):
-    questionnaire = get_object_or_404(
-        Questionnaire, pk=questionnaire_id, code__in=("hhie-s", "hhia-s", SSQ12)
-    )
+    questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
+    if questionnaire.definition.comparison is None:
+        raise Http404
     saved = (
         request.user.report_comparisons.filter(questionnaire=questionnaire)
         .select_related("unaided", "aided")
@@ -653,7 +653,7 @@ def _report_context(user):
     context = {
         "comparisons": comparisons,
         "ssq_comparison": next(
-            (c for c in comparisons if c.questionnaire.code == SSQ12), None
+            (c for c in comparisons if c.questionnaire.definition.result == AVERAGE), None
         ),
         "ssq_latest": ssq_records[0] if ssq_records else None,
         "ssq_recent": ssq_records[:REPORT_RECENT],

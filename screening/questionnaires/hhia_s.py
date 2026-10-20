@@ -1,3 +1,4 @@
+from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import LEVEL, Definition
 
 CODE = "hhia-s"
@@ -38,4 +39,5 @@ DEFINITION = Definition(
     result=LEVEL,
     thresholds=THRESHOLDS,
     advice=ADVICE,
+    comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

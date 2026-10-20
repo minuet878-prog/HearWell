@@ -1,3 +1,4 @@
+from screening.questionnaires.comparison import AverageComparison
 from screening.questionnaires.definition import AVERAGE, Definition
 
 CODE = "ssq12-tw"
@@ -11,4 +12,5 @@ DEFINITION = Definition(
     list_rank=2,
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
     result=AVERAGE,
+    comparison=AverageComparison(anchor=f"report-comparison-{CODE}"),
 )
