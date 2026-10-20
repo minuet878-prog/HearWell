@@ -3,7 +3,9 @@
 from io import StringIO
 
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 
 from screening.models import Answer, Question, Questionnaire, Submission
 from screening.tests.helpers import consented_user
@@ -136,3 +138,15 @@ class HhiComparisonTests(TestCase):
         self.assertFalse(Submission.objects.filter(user_id=self.user.pk).exists())
         self.assertTrue(Submission.objects.filter(pk=stranger.pk).exists())
         self.assertTrue(self.other.report_comparisons.exists())
+
+    def test_query_count_does_not_grow_with_records(self):
+        self.record(False)
+        self.record(True)
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(self.url)
+        for _ in range(5):
+            self.record(False)
+            self.record(True)
+        with CaptureQueriesContext(connection) as many:
+            self.client.get(self.url)
+        self.assertEqual(len(many), len(few))
