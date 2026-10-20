@@ -2,7 +2,7 @@
 
 日期：2026-10-20。規格：[#83](https://github.com/minuet878-prog/HearWell/issues/83)、[#84](https://github.com/minuet878-prog/HearWell/issues/84)。基準：`cbdc26e`；功能分支：`codex/adult-questionnaire-design`。
 
-狀態：功能實作與審查完成，待本人人工驗收。使用者已於本輪確認 #81／#82 人工驗收通過，兩票已結案。#83／#84 保持開啟等待人工驗收。已依本人 /pr 指令納入同分支 [PR #86](https://github.com/minuet878-prog/HearWell/pull/86)，尚未合併；未操作真實資料或本機常駐服務；不需新增 migration。
+狀態：2026-10-20 本人人工驗收通過，#83／#84 與母規格 #76 完工結案。#81／#82 亦已驗收結案。[PR #86](https://github.com/minuet878-prog/HearWell/pull/86) 已於本日 08:27（台灣時間）合併；最新 CI backend／frontend／e2e 全數通過。未操作真實資料或本機常駐服務；本次報告整合不需新增 migration。
 
 ## 行為
 
@@ -51,9 +51,11 @@
 - 本人確認後修正來源：僅 `.health-report .table` 設定固定表格配置及 `overflow-wrap: anywhere`；欄位受可用寬度限制，日期及文字可換行，不裁切、不隱藏內容。
 - 原端對端流程加入本人與家屬的較寬字型，仍檢查三組比較、放大、窄畫面與列印逐題內容。單項回歸先失敗（11.129 秒），修正後通過（10.232 秒）。
 - Standards／Spec 複核均 0 項發現；最終完整瀏覽器 23 項通過（38.144 秒），完整 Ruff 與 `git diff --check` 通過。此次只修改 CSS 與回歸測試，沿用既有後端 598 項及前端 182 項的驗證；不需 migration 或重建前端 bundle。
-- 修正尚未推送，須確認後更新 PR #86；未將本機通過視為 GitHub CI 已通過。
+- 修正已依本人同意推送；[CI run 39347238400](https://github.com/minuet878-prog/HearWell/actions/runs/39347238400) 的 backend／frontend／e2e 全數通過，PR #86 已合併。
 
 ## 人工驗收
+
+2026-10-20 本人回覆「驗收ok」，以下操作範圍確認通過。
 
 1. 由本人操作既有開發伺服器，以假資料的 SSQ12 未配戴／配戴兩筆紀錄開比較：確認十二題與不適用，完整平均差值方向正確。
 2. HHIA-S、HHIE-S、SSQ12 各保留一組；更換或移除 SSQ12，確認其他兩組與原始作答不變。新增作答不更換保留組合。
