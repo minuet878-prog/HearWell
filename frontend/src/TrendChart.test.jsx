@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import TrendChart from "./TrendChart.jsx";
 
@@ -83,9 +84,18 @@ function dotHeights(container) {
   return dots(container).map((d) => Number(d.dataset.cy));
 }
 
+// jsdom has no document.fonts; the chart waits for its ready promise.
+function mockFonts(ready = Promise.resolve()) {
+  Object.defineProperty(document, "fonts", { value: { ready }, configurable: true });
+}
+
+beforeEach(() => mockFonts());
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
+  delete document.fonts;
 });
 
 describe("TrendChart", () => {
@@ -530,6 +540,31 @@ describe("TrendChart", () => {
       render(<TrendChart code="hhie-s" />);
       expect(await screen.findByText("分數越低，聽力對生活的影響越小。")).toBeTruthy();
     });
+  });
+
+  // Recharts measures each date once and keeps the width: measured in the fallback font, the
+  // first date sticks out of the chart once Noto Sans TC arrives.
+  it("waits for the web font before drawing the dates", async () => {
+    let fontsLoaded;
+    mockFonts(new Promise((resolve) => (fontsLoaded = resolve)));
+    mockApi({ results: [submission(2, "2026-10-14", 18), submission(1, "2026-09-01", 12)] });
+    const { container } = render(<TrendChart code="hhie-s" />);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    await act(() => Promise.resolve());
+    expect(dateTicks(container)).toEqual([]);
+    await act(() => fontsLoaded());
+    expect(dateTicks(container)).toEqual(["2026/09/01", "2026/10/14"]);
+  });
+
+  it("draws anyway after 3 seconds if the web font never arrives", async () => {
+    vi.useFakeTimers();
+    mockFonts(new Promise(() => {}));
+    mockApi({ results: [submission(2, "2026-10-14", 18), submission(1, "2026-09-01", 12)] });
+    const { container } = render(<TrendChart code="hhie-s" />);
+    await act(() => vi.advanceTimersByTimeAsync(2999));
+    expect(dateTicks(container)).toEqual([]);
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(dateTicks(container)).toEqual(["2026/09/01", "2026/10/14"]);
   });
 
   it("explains when the network fails", async () => {
