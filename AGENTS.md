@@ -95,7 +95,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 
 ### 資料模型
 
-- `User`（AbstractUser ＋ `birth_date`，允許 null ＋ `age` property）；引用時用 `settings.AUTH_USER_MODEL`
+- `User`（AbstractUser ＋ `birth_year`，允許 null ＋ `age` property）；引用時用 `settings.AUTH_USER_MODEL`
 - `Questionnaire` → `Question` → `Answer` ← `Submission` ← `User`，所有 FK 皆為 `PROTECT`
 - 量表：HHIE-S（65 歲以上）、HHIA-S（65 歲以下），共用同一組資料表，靠 `questionnaire` 區分
 - 每題答案存一列，總分不存欄位、每次即時計算：`Submission._calculate_scores()` 用一次 `aggregate`（`Sum(..., filter=Q(...), default=0)`）取總分與 E／S 分項，存在 `_scores_cache`
