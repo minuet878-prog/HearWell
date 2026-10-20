@@ -114,29 +114,33 @@ class ReportPartsTests(TestCase):
             life = [
                 s for s, parents in outline.parents.items() if parents == ("report-life-impact",)
             ]
-            self.assertEqual(
-                life,
-                ["report-hhia-s", "report-comparison-hhia-s", "report-hhie-s", "report-difference"],
-            )
+            for questionnaire, comparison in (
+                ("report-hhie-s", "report-difference"),
+                ("report-hhia-s", "report-comparison-hhia-s"),
+            ):
+                self.assertEqual(life[life.index(questionnaire) + 1], comparison)
 
     def test_parts_are_level_two_and_their_contents_level_three(self):
         basis = self.save_pair(self.hhie)
         self.save_pair(self.ssq)
         self.record(self.ioi, score=3, norm_group=NormGroup.MILD_MODERATE, norm_basis=basis)
-        outline = _outline(self.client.get("/report"))
-        self.assertEqual([level for level, _ in outline.headings].count(1), 1)
-        part_titles = {sections[0] for _, sections in outline.headings if len(sections) == 1}
-        self.assertLessEqual(set(PARTS), part_titles)
-        for level, sections in outline.headings:
-            if sections and sections[0] in PARTS:
-                self.assertEqual(level, 2 if len(sections) == 1 else 3, sections)
+        owner = self.client.get("/report")
+        for response in (owner, self.family_report()):
+            outline = _outline(response)
+            self.assertEqual([level for level, _ in outline.headings].count(1), 1)
+            part_titles = {sections[0] for _, sections in outline.headings if len(sections) == 1}
+            self.assertLessEqual(set(PARTS), part_titles)
+            for level, sections in outline.headings:
+                if sections and sections[0] in PARTS:
+                    self.assertEqual(level, 2 if len(sections) == 1 else 3, sections)
 
     def test_parts_without_records_are_left_out(self):
         self.record(self.hhie, wearing=False)
-        page = self.client.get("/report")
-        self.assertContains(page, 'id="report-life-impact"')
-        for part in ("report-listening", "report-hearing-aid-outcome"):
-            self.assertNotContains(page, f'id="{part}"')
+        owner = self.client.get("/report")
+        for page in (owner, self.family_report()):
+            self.assertContains(page, 'id="report-life-impact"')
+            for part in ("report-listening", "report-hearing-aid-outcome"):
+                self.assertNotContains(page, f'id="{part}"')
 
     def test_hhia_s_note_appears_once(self):
         self.record(self.hhia, wearing=False)

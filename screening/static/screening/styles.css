@@ -953,6 +953,10 @@ details summary {
         break-inside: auto;
     }
 
+    .health-report .report-part > h2 {
+        break-after: avoid;
+    }
+
     .report-disclaimer {
         margin-top: 0.75rem;
     }
