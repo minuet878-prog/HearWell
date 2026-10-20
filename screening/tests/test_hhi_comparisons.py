@@ -13,7 +13,7 @@ from screening.tests.helpers import consented_user
 
 class HhiComparisonTests(TestCase):
     def setUp(self):
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.questionnaire = Questionnaire.objects.get(code="hhia-s")
         self.user = consented_user(username="compare_user", password="Test-pass-12345")
         self.other = consented_user(username="compare_other")

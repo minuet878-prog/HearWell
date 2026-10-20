@@ -16,27 +16,6 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
-@admin.register(Questionnaire)
-class QuestionnaireAdmin(admin.ModelAdmin):
-    def get_readonly_fields(self, request, obj=None):
-        # code picks the scoring thresholds; changing it would rewrite past classifications
-        if obj is not None and obj.submissions.exists():
-            return ("code",)
-        return ()
-
-
-@admin.register(Question)
-class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("question_number", "category", "questionnaire", "question_text")
-    ordering = ("question_number",)
-
-    def get_readonly_fields(self, request, obj=None):
-        # Answered questions are immutable; publish a new questionnaire instead
-        if obj is not None and obj.answers.exists():
-            return ("questionnaire", "question_text", "question_number", "category")
-        return ()
-
-
 class ViewOnlyAdmin(admin.ModelAdmin):
     # Screening records are health history; admins may look but not rewrite them
     def has_add_permission(self, request):
@@ -47,6 +26,17 @@ class ViewOnlyAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+# Questionnaires and questions come from their definitions (ADR 0005); a new wording is a new
+# definition with a new code, never an admin edit.
+admin.site.register(Questionnaire, ViewOnlyAdmin)
+
+
+@admin.register(Question)
+class QuestionAdmin(ViewOnlyAdmin):
+    list_display = ("question_number", "category", "questionnaire", "question_text")
+    ordering = ("question_number",)
 
 
 admin.site.register(Answer, ViewOnlyAdmin)

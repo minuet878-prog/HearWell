@@ -133,6 +133,15 @@ print(json.dumps({
             with self.subTest(step=step):
                 self.assertLess(check, lines.index(step))
 
+    def test_build_seeds_questionnaires_after_the_fixture(self):
+        # Issue #103: one generic seed after loaddata, so fixed fixture ids are taken first.
+        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
+        seed = lines.index("python manage.py seed_questionnaires")
+        self.assertLess(lines.index("python manage.py loaddata questions_fixture.json"), seed)
+        script = "\n".join(lines)
+        self.assertNotIn("seed_hhia_s", script)
+        self.assertNotIn("seed_ssq12", script)
+
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())

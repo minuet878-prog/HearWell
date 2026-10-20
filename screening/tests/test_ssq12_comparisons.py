@@ -14,7 +14,7 @@ from screening.tests.helpers import consented_user, fake_definition, register
 
 class SsqComparisonTests(TestCase):
     def setUp(self):
-        call_command("seed_ssq12", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
         self.user = consented_user(username="ssq_compare", password="Test-pass-12345")
         self.other = consented_user(username="ssq_other")
@@ -111,7 +111,7 @@ class SsqComparisonTests(TestCase):
         self.assertEqual(self.client.get(f"/shared/{share.token}/report").status_code, 404)
 
     def test_three_pairs_remain_independent_and_account_deletion_cleans_ssq(self):
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
         Question.objects.bulk_create(
             Question(questionnaire=hhie, question_text=f"假題{n}", question_number=n)

@@ -69,7 +69,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
 
     def test_adult_completes_hhia_s_with_keyboard(self):
         """Issue #78: real React flow, original labels, focus and saved results."""
-        call_command("seed_hhia_s", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
             self.step1_start_needs_login()
             self.step2_register()
@@ -96,7 +96,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
 
     def test_adult_completes_hhia_s_without_javascript(self):
         """Issue #78: the actual HTML fallback works when scripts never run."""
-        call_command("seed_hhia_s", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         self.context.close()
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
@@ -117,7 +117,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
 
     def test_ssq12_scale_draft_and_average(self):
         """#79: range input, N/A, zero and draft restoration in a real browser."""
-        call_command("seed_ssq12", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
             self.step1_start_needs_login()
             self.step2_register()
@@ -174,7 +174,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.main().get_by_role("button", name="保留到報告", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
-            call_command("seed_hhia_s", verbosity=0)
+            call_command("seed_questionnaires", verbosity=0)
             for hhi in Questionnaire.objects.filter(code__in=("hhie-s", "hhia-s")):
                 pair = []
                 for wearing in (False, True):
@@ -243,7 +243,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
                     expect(family_page.locator(f"#{section} .report-answers ol")).to_be_visible()
 
     def test_ssq12_without_javascript_keeps_explicit_na(self):
-        call_command("seed_ssq12", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         self.context.close()
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
@@ -263,8 +263,8 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
 
     def test_age_confirmation_and_purpose_links_without_javascript(self):
         """#80: server-rendered selection preserves browser back and scales at 320px."""
-        call_command("seed_hhia_s", verbosity=0)
-        call_command("seed_ssq12", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         self.context.close()
         self.context = self.browser.new_context(
             java_script_enabled=False, viewport={"width": 320, "height": 800}
@@ -589,7 +589,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
 
     def test_ioi_discloses_hhia_basis_before_saving(self):
         """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
-        call_command("seed_hhia_s", verbosity=0)
+        call_command("seed_questionnaires", verbosity=0)
         questionnaire = Questionnaire.objects.get(code="hhia-s")
         basis = Submission.objects.create(
             user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
