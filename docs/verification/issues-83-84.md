@@ -2,7 +2,7 @@
 
 日期：2026-10-20。規格：[#83](https://github.com/minuet878-prog/HearWell/issues/83)、[#84](https://github.com/minuet878-prog/HearWell/issues/84)。基準：`cbdc26e`；功能分支：`codex/adult-questionnaire-design`。
 
-狀態：功能實作與審查完成，待本人人工驗收。使用者已於本輪確認 #81／#82 人工驗收通過，兩票已結案。#83／#84 保持開啟等待人工驗收。未推送、未更新 PR、未操作真實資料或本機常駐服務；不需新增 migration。
+狀態：功能實作與審查完成，待本人人工驗收。使用者已於本輪確認 #81／#82 人工驗收通過，兩票已結案。#83／#84 保持開啟等待人工驗收。已依本人 /pr 指令納入同分支 [PR #86](https://github.com/minuet878-prog/HearWell/pull/86)，尚未合併；未操作真實資料或本機常駐服務；不需新增 migration。
 
 ## 行為
 
