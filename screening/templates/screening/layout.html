@@ -9,6 +9,11 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
         crossorigin="anonymous">
+    {# Chinese-friendly body font; CDN down or blocked falls back to the system font in styles.css. #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link href="{% static 'screening/styles.css' %}" rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
     <link rel="manifest" href="{% static 'screening/pwa/manifest.json' %}">
