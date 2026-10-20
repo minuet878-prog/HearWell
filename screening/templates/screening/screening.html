@@ -32,27 +32,8 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 {% endif %}
 <div>
     <h1 class="h2 mt-3">{{ questionnaire.questionnaire_name }}</h1>
-    <p class="fs-5 fw-bold">共 {{ question_count }} 題{% if questionnaire.info %}，大約 {{ questionnaire.info.minutes }} 分鐘{% endif %}。</p>
-    {% if is_ioi_ha %}
-    {% if ioi_norm.norm_basis %}
-    <p class="fw-bold">本次常模依據：{{ ioi_norm.norm_basis.questionnaire }}，{{ ioi_norm.norm_basis.created_at|date:"Y/m/d" }} 未配戴紀錄，{{ ioi_norm.norm_basis.total_answer_score }} 分。</p>
-    {% else %}<p>目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄；仍可填答，但本次不與常模比較。</p>{% endif %}
-    <p>這是常模比較的分組，不代表聽損程度。</p>
-    <p class="h3 text-muted">本量表適合已配戴助聽器的人，用來了解助聽器對您的幫助。請依照最近兩週戴著現有助聽器的經驗，每題選一個最符合的答案。</p>
-    {% elif questionnaire.code == "ssq12-tw" %}
-    <p>請依您目前實際生活經驗作答。選「沒戴」時，依您目前不戴助聽器時的實際經驗；選「有戴」時，依您目前戴著助聽器的經驗；經驗不足可以先不填，不必兩種狀態都完成。</p>
-    <p>每題選 0–10 的整數或「不適用」。一般題目完全不行選 0，輕鬆做到選 10；請留意各題自己的尺規說明。未操作不算回答。</p>
-    <p>十二題都有分數才計算整體平均；含不適用仍可保存逐題回答。這是網站審定規則，未宣稱與原紙本電子施測等效或已完成高齡驗證。</p>
-    <p>來源：婦聯聽覺健康基金會 SSQ12-TW；王映婷（2023），「語音、空間、聽覺品質量表」中文化之信效度研究，doi:10.6834/csmu202300112。</p>
-    {% elif questionnaire.code == "hhia-s" %}
-    <p>{{ questionnaire.info.audience }}</p>
-    <p>請依照您最近一段期間的實際生活經驗，每題選「會」、「有時」或「不會」，每一題都要回答。選擇「沒戴」時，請依沒有配戴助聽器的生活經驗作答；選擇「有戴」時，請依目前這副助聽器的生活經驗作答。</p>
-    <p class="text-body-emphasis">題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁。原量表：Newman、Weinstein、Jacobson 與 Hug（1990），Ear and Hearing, 11, 430–433。題目保留原文用詞。</p>
-    {% else %}
-    {% if questionnaire.code == "hhie-s" %}<p>適合 65 歲以上的長輩；若您持續使用原問卷追蹤，也可以繼續填寫。</p>{% endif %}
-    <p class="h3 text-muted">本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。請在閱讀每項問題後圈選常常、有時或從未。
-    </p>
-    {% endif %}
+    <p class="fs-5 fw-bold">共 {{ question_count }} 題，大約 {{ questionnaire.definition.minutes }} 分鐘。</p>
+    {% include questionnaire.definition.intro_template %}
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="fs-5 fw-bold" role="status"></p>

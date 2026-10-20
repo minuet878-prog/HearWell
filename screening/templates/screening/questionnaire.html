@@ -32,12 +32,12 @@
 <h2 class="h4">自行選擇問卷</h2>
 {% for questionnaire in questionnaires %}
 <a class="link-card mt-3 questionnaire-card" href="{% url 'screening' questionnaire.id %}">
-    {% include "screening/questionnaire_icon.html" with code=questionnaire.code %}
+    {% include "screening/questionnaire_icon.html" with icon=questionnaire.definition.icon %}
     <span class="link-card-body">
-        <span class="link-card-title">{% if questionnaire.code == "hhie-s" or questionnaire.code == "hhia-s" %}聽力對生活的影響（{{ questionnaire }}）{% elif questionnaire.code == "ioi-ha" %}助聽器使用成效（{{ questionnaire }}）{% elif questionnaire.code == "ssq12-tw" %}日常聆聽能力（{{ questionnaire }}）{% else %}{{ questionnaire }}{% endif %}</span>
+        <span class="link-card-title">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</span>
         {% if questionnaire == recommended %}<span class="fw-bold">依您的年齡推薦</span>{% endif %}
-        {% if questionnaire.info %}<span>{{ questionnaire.info.audience }}</span>{% endif %}
-        <span class="card-tags"><span class="card-tag">{{ questionnaire.question_count }} 題</span>{% if questionnaire.info %}{# A pause for screen readers between the tags. #}<span class="visually-hidden">，</span><span class="card-tag">約 {{ questionnaire.info.minutes }} 分鐘</span>{% endif %}</span>
+        <span>{{ questionnaire.definition.audience }}</span>
+        <span class="card-tags"><span class="card-tag">{{ questionnaire.question_count }} 題</span>{# A pause for screen readers between the tags. #}<span class="visually-hidden">，</span><span class="card-tag">約 {{ questionnaire.definition.minutes }} 分鐘</span></span>
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>

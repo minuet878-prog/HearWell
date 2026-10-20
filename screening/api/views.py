@@ -18,20 +18,29 @@ from screening.api.serializers import (
     SubmissionSerializer,
 )
 from screening.models import Answer, Audiogram, AudiogramPoint, Question, Questionnaire
-from screening.scoring import IOI_HA
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 
 class QuestionnaireList(ListAPIView):
-    # IOI-HA has no API yet (spec phase4_ioi_ha.md); the trend chart only needs HHIE-S.
-    queryset = Questionnaire.objects.exclude(code=IOI_HA).order_by("id")
     serializer_class = QuestionnaireSerializer
+
+    def get_queryset(self):
+        # IOI-HA has no API yet (spec phase4_ioi_ha.md); the trend chart only needs HHIE-S.
+        # Built per request: defined() reads the definitions then, not at import.
+        return Questionnaire.objects.defined().exclude(code=IOI_HA).order_by("id")
 
 
 class QuestionnaireDetail(RetrieveAPIView):
-    queryset = Questionnaire.objects.exclude(code=IOI_HA).prefetch_related(
-        Prefetch("questions", queryset=Question.objects.select_related("questionnaire"))
-    )
     serializer_class = QuestionnaireDetailSerializer
+
+    def get_queryset(self):
+        return (
+            Questionnaire.objects.defined()
+            .exclude(code=IOI_HA)
+            .prefetch_related(
+                Prefetch("questions", queryset=Question.objects.select_related("questionnaire"))
+            )
+        )
 
 
 class SubmissionPagination(CursorPagination):

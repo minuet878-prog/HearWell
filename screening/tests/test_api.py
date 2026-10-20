@@ -15,7 +15,7 @@ from django.urls import reverse
 
 from screening.api import views as api_views
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class ApiFoundationTests(TestCase):
@@ -54,7 +54,8 @@ class ApiFoundationTests(TestCase):
         first = Questionnaire.objects.create(questionnaire_name="ZZ 問卷", code="zz")
         second = Questionnaire.objects.create(questionnaire_name="AA 問卷", code="aa")
         self.client.force_login(self.user)
-        response = self.client.get(self.QUESTIONNAIRES)
+        with register(fake_definition("zz"), fake_definition("aa")):
+            response = self.client.get(self.QUESTIONNAIRES)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.json(),

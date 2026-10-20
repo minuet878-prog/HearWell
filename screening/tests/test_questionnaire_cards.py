@@ -5,7 +5,7 @@ from django.urls import reverse
 
 from screening.models import Category, Question, Questionnaire
 from screening.tests import test_layout
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 from screening.views import list_order
 
 GUIDE = "確認年齡，推薦適合您的問卷"
@@ -39,6 +39,9 @@ class QuestionnaireCardTests(TestCase):
 
     def setUp(self):
         self.client.force_login(consented_user(username="cards_a"))
+        patcher = register(fake_definition("fake-later"), fake_definition("fake-last"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def _main(self):
         content = self.client.get(reverse("questionnaire_list")).content.decode()
@@ -68,10 +71,7 @@ class QuestionnaireCardTests(TestCase):
         self.assertEqual(TAGS.findall(hhie), ["10 題", "約 3 分鐘"])
         self.assertIn("適合 65 歲以上的長輩。", test_layout._text(hhie))
         self.assertEqual(TAGS.findall(self._card(self.ioi_ha)), ["7 題", "約 2 分鐘"])
-        other = self._card(self.other)
-        self.assertEqual(TAGS.findall(other), ["3 題"])
-        self.assertNotIn("適合", test_layout._text(other))
-        self.assertNotIn("分鐘", test_layout._text(other))
+        self.assertEqual(TAGS.findall(self._card(self.other)), ["3 題", "約 4 分鐘"])
 
     # 4 (review B): a screen reader pauses between the tags; the comma is not shown
     def test_tags_read_apart(self):

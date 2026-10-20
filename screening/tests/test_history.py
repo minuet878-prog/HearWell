@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class TrendChartPageTests(TestCase):
@@ -44,7 +44,8 @@ class TrendChartPageTests(TestCase):
 
     def test_levels_empty_without_thresholds(self):
         Questionnaire.objects.create(questionnaire_name="測試問卷", code="no-thresholds")
-        response = self.client.get("/api/questionnaires/")
+        with register(fake_definition("no-thresholds")):
+            response = self.client.get("/api/questionnaires/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[1]["levels"], [])
 

@@ -7,9 +7,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models, transaction
 from django.utils import timezone
 
+from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
-from screening.scoring import HHIA_S_CHOICES, QUESTIONNAIRE_INFO, classify
-from screening.ssq12 import CODE as SSQ12
+from screening.questionnaires.ssq12_tw import CODE as SSQ12
+from screening.scoring import HHIA_S_CHOICES, classify
 from screening.ssq12 import scale_labels
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
@@ -99,16 +100,24 @@ class ReportShare(models.Model):
         return f"{self.user} share {self.created_at:%Y-%m-%d}"
 
 
+class QuestionnaireQuerySet(models.QuerySet):
+    def defined(self):
+        # Only questionnaires with a definition are offered (ADR 0005).
+        return self.filter(code__in=questionnaires.DEFINITIONS)
+
+
 class Questionnaire(models.Model):
     questionnaire_name = models.CharField(max_length=64, unique=True)
     code = models.SlugField(max_length=32, unique=True)
+
+    objects = QuestionnaireQuerySet.as_manager()
 
     def __str__(self):
         return self.questionnaire_name
 
     @property
-    def info(self):
-        return QUESTIONNAIRE_INFO.get(self.code)
+    def definition(self):
+        return questionnaires.get(self.code)
 
 
 class Category(models.TextChoices):

@@ -7,8 +7,9 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
 from screening.models import Answer, Question, Score, Submission, User
-from screening.scoring import HHIA_S_CHOICES, IOI_HA, IOI_HA_CHOICES
-from screening.ssq12 import CODE as SSQ12
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.ssq12_tw import CODE as SSQ12
+from screening.scoring import HHIA_S_CHOICES, IOI_HA_CHOICES
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 

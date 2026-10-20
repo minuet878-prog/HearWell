@@ -20,8 +20,9 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.scoring import IOI_HA, THRESHOLDS, get_advice
-from screening.ssq12 import CODE as SSQ12
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.ssq12_tw import CODE as SSQ12
+from screening.scoring import THRESHOLDS, get_advice
 
 
 class QuestionnaireSummarySerializer(serializers.ModelSerializer):
