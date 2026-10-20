@@ -1,5 +1,8 @@
+import re
 import uuid
+from io import StringIO
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -371,4 +374,60 @@ class UndefinedAnsweringApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("questionnaire", response.json())
+        self.assertFalse(Submission.objects.exists())
+
+
+class PublishedAnsweringTests(TestCase):
+    """Issue #100: the published questionnaires answer as before the move."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.ssq = Questionnaire.objects.get(code="ssq12-tw")
+        cls.hhie = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhie_question = Question.objects.create(
+            questionnaire=cls.hhie, question_text="HHIE 題", question_number=1
+        )
+        cls.user = consented_user(username="definitions_h")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_answer_pages_show_the_same_choices_and_scale_labels(self):
+        ssq = self.client.get(reverse("screening", args=[self.ssq.pk]))
+        for labels in (
+            "0：完全不行；10：輕鬆做到",
+            "0：混亂；10：分開",
+            "0：不清晰；10：清晰",
+            "0：非常專心；10：輕鬆做到",
+        ):
+            self.assertContains(ssq, labels)
+        hhie = self.client.get(reverse("screening", args=[self.hhie.pk])).content.decode()
+        self.assertEqual(
+            re.findall(r'value="(\d)"[^>]*>\s*([^<\s]+)', hhie)[:3],
+            [("4", "常常"), ("2", "有時"), ("0", "從未")],
+        )
+        self.assertNotIn("不適用", hhie)
+
+    def test_not_applicable_is_refused_without_that_choice(self):
+        data = {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 0,
+            "form-0-question_id": str(self.hhie_question.pk),
+            "form-0-score": "na",
+            "wearing_hearing_aid": "False",
+        }
+        page = self.client.post(reverse("screening", args=[self.hhie.pk]), data)
+        self.assertEqual(page.status_code, 200)
+        response = self.client.post(
+            reverse("api:submissions"),
+            {
+                "questionnaire": self.hhie.pk,
+                "wearing_hearing_aid": False,
+                "answers": [{"question": self.hhie_question.pk, "score": None}],
+            },
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+        )
+        self.assertEqual(response.status_code, 400)
         self.assertFalse(Submission.objects.exists())

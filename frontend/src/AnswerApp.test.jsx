@@ -307,6 +307,13 @@ describe("submitting", () => {
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 
+  it("discards a draft with an empty answer when no choice offers N/A (#100)", async () => {
+    const answers = Object.fromEntries(QUESTIONS.map((q) => [q.id, q.number === 3 ? null : 4]));
+    saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers, step: 10, savedAt: Date.now() });
+    await renderApp();
+    expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+  });
+
   it("does not send with a missing answer and goes to the first missing question", async () => {
     // Only reachable through a broken saved draft: question 3 has no answer.
     const answers = Object.fromEntries(QUESTIONS.filter((q) => q.number !== 3).map((q) => [q.id, 4]));
