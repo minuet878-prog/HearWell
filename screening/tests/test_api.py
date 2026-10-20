@@ -503,6 +503,7 @@ class ApiSubmitTests(TestCase):
 
     def test_questionnaire_without_questions_gets_400(self):
         empty = Questionnaire.objects.create(questionnaire_name="空問卷", code="empty")
+        self.enterContext(register(fake_definition("empty")))
         body = {"questionnaire": empty.pk, "wearing_hearing_aid": False, "answers": []}
         response = self._post(body)
         self.assertEqual(response.status_code, 400)

@@ -6,10 +6,7 @@ from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 
-from screening.models import Answer, Question, Score, Submission, User
-from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.questionnaires.ssq12_tw import CODE as SSQ12
-from screening.scoring import HHIA_S_CHOICES, IOI_HA_CHOICES
+from screening.models import Answer, Question, Submission, User
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -54,13 +51,7 @@ class RegisterForm(UserCreationForm):
 
 
 def answer_choices(question):
-    if question.questionnaire.code == SSQ12:
-        return [(value, str(value)) for value in range(11)] + [("na", "不適用")]
-    if question.questionnaire.code == "hhia-s":
-        return HHIA_S_CHOICES
-    if question.questionnaire.code == IOI_HA:
-        return list(enumerate(IOI_HA_CHOICES[question.question_number], start=1))
-    return Score.choices
+    return question.questionnaire.definition.choices(question.question_number)
 
 
 class DeleteAccountForm(forms.Form):
@@ -80,7 +71,6 @@ class DeleteAccountForm(forms.Form):
 
 class AnswerForm(forms.Form):
     score = forms.TypedChoiceField(
-        choices=Score.choices,
         coerce=int,
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={"required": "這一題還沒有回答"},
@@ -89,7 +79,7 @@ class AnswerForm(forms.Form):
         queryset=Question.objects.all(), widget=forms.HiddenInput()
     )
 
-    def __init__(self, *args, choices=Score.choices, **kwargs):
+    def __init__(self, *args, choices=(), **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["score"].choices = choices
         self.fields["score"].coerce = lambda value: None if value == "na" else int(value)
@@ -123,8 +113,7 @@ class BaseAnswerFormSet(BaseFormSet):
 
     def get_form_kwargs(self, index):
         kwargs = super().get_form_kwargs(index)
-        # Forms past the real questions (tampered TOTAL_FORMS) keep the default choices;
-        # clean() rejects them anyway.
+        # Forms past the real questions (tampered TOTAL_FORMS) get no choices, so they fail.
         if index is not None and index < len(self.questions):
             kwargs["choices"] = answer_choices(self.questions[index])
         return kwargs

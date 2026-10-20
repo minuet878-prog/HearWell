@@ -55,7 +55,7 @@ export default function AnswerApp({
         return response.json();
       })
       .then((data) => {
-        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.code === "ssq12-tw" });
+        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
         setQuestions(data.questions);
         if (draft) setSaved(draft);
         else begin(newAnswers(), false);

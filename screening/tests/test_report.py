@@ -21,7 +21,8 @@ from screening.models import (
     Submission,
     User,
 )
-from screening.scoring import IOI_HA_BELOW_NORM_NOTES, IOI_HA_CHOICES
+from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
+from screening.scoring import IOI_HA_BELOW_NORM_NOTES
 from screening.tests.helpers import consented_user
 
 # Unaided 4x5 + 2x3 + 0x2 = 26 (顯著影響, emotional 20, social 6); aided all 2 = 20.

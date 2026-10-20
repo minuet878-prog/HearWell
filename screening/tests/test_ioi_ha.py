@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from screening import scoring
 from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.questionnaires import ioi_ha
 from screening.tests.helpers import consented_user
 
 
@@ -96,7 +97,7 @@ class IoiHaTests(TestCase):
                 for value in range(1, 6):
                     self.assertIn(f'name="form-{i}-score" value="{value}"', main)
                 self.assertNotIn(f'name="form-{i}-score" value="0"', main)
-        for label in scoring.IOI_HA_CHOICES[1]:
+        for label in ioi_ha.ITEM_CHOICES[1]:
             self.assertIn(label, main)
         self.assertNotIn("checked", main)
         self.assertNotIn("常常", main)
@@ -111,7 +112,7 @@ class IoiHaTests(TestCase):
         fieldsets = re.findall(r"<fieldset.*?</fieldset>", main, re.DOTALL)
         for number, fieldset in enumerate(fieldsets, start=1):
             with self.subTest(item=number):
-                for label in scoring.IOI_HA_CHOICES[number]:
+                for label in ioi_ha.ITEM_CHOICES[number]:
                     self.assertIn(label, fieldset)
 
     def test_missing_answer_not_saved_and_answers_kept(self):
@@ -235,7 +236,7 @@ class IoiHaTests(TestCase):
         self.assertIn("高於常模", items[1])
         self.assertIn("低於常模", items[3])
         self.assertIn("在範圍內", items[4])
-        self.assertIn(scoring.IOI_HA_CHOICES[4][0], items[3])
+        self.assertIn(ioi_ha.ITEM_CHOICES[4][0], items[3])
 
     def test_grouped_result_page(self):
         when = datetime(2026, 10, 1, 4, 0, tzinfo=ZoneInfo("UTC"))
@@ -469,8 +470,8 @@ class IoiHaFixtureTests(TestCase):
         numbers = [question.question_number for question in questions]
         self.assertEqual(numbers, list(range(1, 8)))
         self.assertEqual({question.category for question in questions}, {""})
-        self.assertEqual(set(scoring.IOI_HA_CHOICES), set(numbers))
-        for labels in scoring.IOI_HA_CHOICES.values():
+        self.assertEqual(set(ioi_ha.ITEM_CHOICES), set(numbers))
+        for labels in ioi_ha.ITEM_CHOICES.values():
             self.assertEqual(len(labels), 5)
         for group in ("mild_moderate", "moderately_severe"):
             norms = scoring.IOI_HA_NORMS[group]

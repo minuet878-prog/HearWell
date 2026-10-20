@@ -3,6 +3,13 @@ from screening.questionnaires.definition import LEVEL, Definition
 
 CODE = "hhia-s"
 
+CHOICES = ((4, "會"), (2, "有時"), (0, "不會"))
+
+
+def choices(number):
+    return CHOICES
+
+
 # 林克寰《助聽器選配與驗證》書內 p.165 (PDF p.166), reviewed for issue #78.
 # A published version is immutable: later wording changes need a new code.
 QUESTIONS = (
@@ -54,6 +61,7 @@ DEFINITION = Definition(
     list_rank=2,
     intro_template="screening/questionnaires/hhia_s_intro.html",
     result=LEVEL,
+    choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),

@@ -34,10 +34,10 @@ from screening.forms import (
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import (
     IOI_HA_BELOW_NORM_NOTES,
-    IOI_HA_CHOICES,
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,

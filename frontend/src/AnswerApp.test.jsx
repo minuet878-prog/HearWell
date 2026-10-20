@@ -307,6 +307,13 @@ describe("submitting", () => {
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 
+  it("discards a draft with an empty answer when no choice offers N/A (#100)", async () => {
+    const answers = Object.fromEntries(QUESTIONS.map((q) => [q.id, q.number === 3 ? null : 4]));
+    saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers, step: 10, savedAt: Date.now() });
+    await renderApp();
+    expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+  });
+
   it("does not send with a missing answer and goes to the first missing question", async () => {
     // Only reachable through a broken saved draft: question 3 has no answer.
     const answers = Object.fromEntries(QUESTIONS.filter((q) => q.number !== 3).map((q) => [q.id, 4]));
@@ -516,6 +523,20 @@ describe("SSQ12-TW", () => {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY));
     expect(saved.answers[11]).toBe(null);
     expect(saved.answers[12]).toBe(0);
+    cleanup();
+    await renderApp();
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(screen.getByText("0 分")).toBeTruthy();
+  });
+
+  it("keeps N/A in drafts for any questionnaire whose choices offer it (#100)", async () => {
+    mockApi(undefined, { ...ssq, code: "another-questionnaire" });
+    await renderApp();
+    choose("沒戴");
+    next();
+    choose("不適用");
+    next();
+    fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
     cleanup();
     await renderApp();
     fireEvent.click(screen.getByRole("button", { name: "接著答" }));

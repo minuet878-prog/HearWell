@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from screening.questionnaires.comparison import AverageComparison, TotalComparison
@@ -20,6 +21,9 @@ class Definition:
     list_rank: int
     intro_template: str  # shown above the questions on the answer page
     result: str  # LEVEL, AVERAGE or NORM
+    # Item n's answer choices as (value, label). The value "na" is an explicit 「不適用」,
+    # saved as an empty score; only questionnaires that list it accept it.
+    choices: Callable[[int], list]
     # seed_questionnaires creates the questionnaire from these when its code is missing;
     # empty for questionnaires loaded from the fixture (HHIE-S, IOI-HA).
     name: str = ""  # questionnaire_name
@@ -29,6 +33,7 @@ class Definition:
     thresholds: tuple = ()
     advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
     trend_chart: bool = False  # the history page draws a score trend chart
+    scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.
     comparison: TotalComparison | AverageComparison | None = None
 

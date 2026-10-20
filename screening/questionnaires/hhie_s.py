@@ -3,6 +3,13 @@ from screening.questionnaires.definition import LEVEL, Definition
 
 CODE = "hhie-s"
 
+CHOICES = ((4, "常常"), (2, "有時"), (0, "從未"))
+
+
+def choices(number):
+    return CHOICES
+
+
 THRESHOLDS = (
     (8, "無/極輕微影響", "normal"),
     (24, "輕度到中度影響", "mild_to_moderate"),
@@ -40,6 +47,7 @@ DEFINITION = Definition(
     list_rank=0,
     intro_template="screening/questionnaires/hhie_s_intro.html",
     result=LEVEL,
+    choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
     trend_chart=True,

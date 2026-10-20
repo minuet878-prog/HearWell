@@ -20,7 +20,8 @@ from screening.models import (
     Submission,
     User,
 )
-from screening.scoring import IOI_HA_CHOICES, classify
+from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
+from screening.scoring import classify
 from screening.tests.helpers import consented_user
 
 FORBIDDEN_KEYS = {"id", "password", "is_staff", "is_superuser", "last_login", "idempotency_key"}

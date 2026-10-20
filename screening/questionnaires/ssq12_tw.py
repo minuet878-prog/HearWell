@@ -3,6 +3,18 @@ from screening.questionnaires.definition import AVERAGE, Definition
 
 CODE = "ssq12-tw"
 
+
+def choices(number):
+    return [(value, str(value)) for value in range(11)] + [("na", "不適用")]
+
+
+# Scale anchors reviewed in #79 (Wang 2023).
+def scale(number):
+    return {9: ("混亂", "分開"), 11: ("不清晰", "清晰"), 12: ("非常專心", "輕鬆做到")}.get(
+        number, ("完全不行", "輕鬆做到")
+    )
+
+
 # Reviewed SSQ12-TW item text (#79), Wang 2023.
 QUESTIONS = (
     "您在開著電視的房間裡與人說話。在沒有降低電視音量的情況下，您能跟上對方說話的內容嗎？",
@@ -30,5 +42,7 @@ DEFINITION = Definition(
     list_rank=2,
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
     result=AVERAGE,
+    choices=choices,
+    scale=scale,
     comparison=AverageComparison(anchor=f"report-comparison-{CODE}"),
 )
