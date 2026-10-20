@@ -1,4 +1,6 @@
-# HearWell — Codex 工作指引（代工模式）
+# HearWell — 代理工作指引（代工模式）
+
+Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）。改規則只改這裡。
 
 ## 分工
 
@@ -8,7 +10,7 @@
 
 ## 溝通
 
-- 回覆一律用**繁體中文**；程式碼、commit message、PR 標題、變數命名用英文。GitHub issue 和 PR 內文用繁體中文。
+- 回覆一律用**繁體中文**；程式碼、commit message、issue 標題、PR 標題、變數命名用英文。GitHub issue 和 PR 內文用繁體中文。
 - 遇到技術名詞，先用一句話解釋再繼續。
 - 派出去的 subagent 也要用繁體中文回報（規則不會自動傳給它們，要寫進交辦指示）。
 - 需要我做決定時，列出選項、代價和你的建議。
@@ -24,10 +26,10 @@
 | 3 拆票 | `/to-tickets` | 拆成 tracer-bullet tickets，標明誰擋住誰 |
 | 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |
 | 4b 交叉審查 | `/code-review`（換另一個代理跑） | 合併前一定要做，見下方 |
-| 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認 |
-| 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險） |
+| 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認；驗收結果寫進 `docs/verification/`，跟程式放在同一個 PR |
+| 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險）；我驗收通過才合併，不在合併後另開 PR 補記驗收 |
 | 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview/`（見下方） |
-| 8 復盤 | `/retro` | 選用，我輸入才做 |
+| 8 復盤 | `/retro` | 每個母規格結案後跑一次；其他時候我輸入才做 |
 
 - 小改動（改字、改樣式）可以跳過 1–3 和 4b，直接說清楚要改什麼，再走 4–7。
 - 涉及畫面或計算的需求，先用一兩句話複述你理解的內容；畫面有多種做法時，先做比較頁讓我選。
@@ -43,11 +45,14 @@
   - Spec 軸要逐條列出每個驗收條件由哪個測試的哪個斷言證明（`檔案:行號`）；找不到斷言，或斷言沒有真的驗證那一條，就算一項發現。
 - 結果：審查結果用繁體中文留言到規格 issue（留言前先問我）。實作的代理照留言修完，再請審查的代理只複核修過的項目，直到沒有「要修」才進第 5 步。
 
-### 收尾：更新面試筆記
+### 收尾
 
-- 更新面試筆記時，先讀 `docs/interview/README.md` 的維護方式；新概念與面試題寫入對應主題，開發紀錄依 Phase 新增，題號全資料夾接續並更新索引。
-- `docs/interview.md` 保留為導覽入口，內容以 `docs/interview/` 為準；兩者均維持不進版控。
-- 回報時附上新概念和面試題，讓我挑不熟的深入問。
+- 這次有沒有以後很難回頭、或會想推翻的決策（計分、分級、資料保存方式、架構）？有就在 `docs/adr/` 新增一份 ADR（一個決策一個檔，寫情況、決定、原因、代價）。
+- 結案的 issue 拿掉 `needs-triage`、`needs-info` 標籤。
+- 面試筆記：
+  - 先讀 `docs/interview/README.md` 的維護方式；新概念與面試題寫入對應主題，開發紀錄依 Phase 新增，題號全資料夾接續並更新索引。
+  - `docs/interview.md` 保留為導覽入口，內容以 `docs/interview/` 為準；兩者均維持不進版控。
+  - 回報時附上新概念和面試題，讓我挑不熟的深入問。
 
 ### 遇到 bug
 不准猜、不准「改改看」。先找出根本原因並告訴我，確認後才修，修在源頭，同一個原因造成的其他地方一併檢查。
@@ -69,9 +74,9 @@
    - **push、開 PR、合併回 `main` 都要先問我。** `/implement-spec` 要開 draft PR 時也一樣。
    - commit 作者用我的 git 設定；沒有設定時先問我。
 2. **不擅自動我的資料**：不刪除、不覆寫、不批次修改真實資料（資料庫、資料檔、匯出檔）。需要時先說明影響，等我同意。
-3. **不碰我的服務**：不自己啟動、重啟或停掉我電腦上的伺服器和資料庫。例外：Codex Desktop 預覽用的開發伺服器（`.Codex/launch.json`，埠 8001）可以自己啟動和停止；資料庫還是由我來開。
+3. **不碰我的服務**：不自己啟動、重啟或停掉我電腦上的伺服器和資料庫。例外：Claude Desktop 預覽用的開發伺服器（`.claude/launch.json`，埠 8001）可以自己啟動和停止；資料庫還是由我來開。
 4. **試驗要先講**：探索用的修改先說「這是試驗」，結束後主動還原。
-5. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.Codex`（`settings.json` 和 `hooks/` 除外，要進版控）、log、暫存檔一律不加。
+5. **垃圾不進版控**：虛擬環境、`node_modules`、`.env`、`.claude`（`settings.json`、`hooks/`、`launch.json` 除外，要進版控）、log、暫存檔一律不加。
 6. 程式碼規範見 `CODING_STANDARDS.md`，實作和審查都要遵守。
 
 ## 專案概要
@@ -125,15 +130,16 @@
 - 門檻（`scoring.THRESHOLDS`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
-- macOS 檔名不分大小寫：git 追蹤的是小寫 `AGENTS.md`，clone 到 Linux 會讀不到 `AGENTS.md`。
+- worktree 裡沒有 `py313/`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`。
 
 ## 參考文件
 
 - `docs/README.md` — 查找專案文件時的分類入口，連到規劃、無障礙、API、部署及歷史索引。
 - `GLOSSARY.md` — 專案用語（由 `/grill-with-docs` 維護）。
-- `CODING_STANDARDS.md` — 程式碼規範，`/code-review` 依此審查。
+- `CODING_STANDARDS.md` — 程式碼規範，`/code-review` 依此審查；能自動抓的規則在 `screening/tests/test_standards.py`。
 - `docs/adr/` — 2026-10-18 之後的決策紀錄（ADR，一個決策一個檔）。
-- `.Codex/settings.json` — 權限清單（push／開 PR 要問、force push 禁止）和 hooks（改完 `.py` 自動跑 Ruff、等回覆時跳通知）。
+- `.claude/settings.json` — Claude Code 的權限清單（push／開 PR 要問、force push 與啟動伺服器禁止）和 hooks（改完 `.py` 自動跑 Ruff、在 `main` 上 commit 要確認、等回覆時跳通知）。
+- `.codex/hooks.json` — Codex 的 hook（改完 `.py` 自動跑 Ruff，和 Claude Code 共用同一支腳本）。
 - `docs/agents/` — Matt skills 的設定（issue tracker、標籤、文件位置）。
 - `docs/roadmap.md` — 各 Phase 的待辦與目前進度。
 - 歷史（2026-10-18 以前，只讀不再新增）：`docs/decisions/`（舊的決策紀錄，依主題分檔）；查找 Phase 0–10 規格或審查時，先讀 `docs/specs/README.md` 或 `docs/reviews/README.md`，依 Phase 索引進入原文件。
@@ -154,4 +160,4 @@ Single-context：根目錄一份 `GLOSSARY.md` ＋ `docs/adr/`。見 `docs/agent
 
 ## 目前階段
 
-Phase 0–7 已完成（Phase 6 只剩時間型的 HSTS 拉長、e2e 列為必要檢查）。Phase 8 分享完成（C3 聽力報告、C1 家屬衛教頁、C1-B 分享聽力報告給家屬）。Phase 9 前端設計重整四輪全部完成（共用版型、資料呈現的錯誤、結構調整、增加豐富度 4a–4d）。下一步從 roadmap「待定」挑。細節見 `docs/roadmap.md`。
+見 `docs/roadmap.md` 開頭的「目前進度」，這裡不另外記，避免兩處不同步。
