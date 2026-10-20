@@ -6,6 +6,8 @@
 |---|---|
 | 目前進度、下一步與待定構想 | [Roadmap](roadmap.md) |
 | 成人問卷需求、來源、計分審定與拆票 | [功能規劃](planning/README.md) |
+| 2026-10-18 之後的決策與理由（ADR） | [`adr/`](adr/) |
+| 每張票的測試、審查與本人驗收紀錄 | [`verification/`](verification/) |
 | 無障礙量測、已修問題與後續待辦 | [無障礙](accessibility/README.md) |
 | API 格式 | [API 文件](api/README.md) |
 | 部署操作筆記 | [部署參考](deployment/README.md) |
@@ -20,4 +22,5 @@
 - `planning/`：規劃與來源核對的補充資料；正式驗收條件及工作票仍以對應 GitHub issue 為準。
 - `specs/`、`reviews/`、`decisions/`：歷史參考，查找時從各自索引進入；新工作不沿用舊規格檔流程。
 - 新決策依[領域文件設定](agents/domain.md)記錄於 `docs/adr/`；有實際決策時才新增。
+- `verification/`：驗收紀錄跟程式放在同一個 PR，本人驗收通過才合併。
 - `interview.md` 保留為本機面試筆記的舊入口，內容已移至分類資料夾。

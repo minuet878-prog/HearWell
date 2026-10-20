@@ -1,8 +1,7 @@
 # Roadmap
 
-還沒做、但已經想過方向的功能構想。跟 decisions/ 不一樣——這裡是「還沒開始做」
-的待辦，decisions/ 記的是「已經做了、為什麼這樣做」。等真的開始動手某一項，
-再把過程搬去 decisions/ 對應的主題檔。
+還沒做、但已經想過方向的功能構想，以及各 Phase 的進度。跟 `docs/adr/` 不一樣——
+這裡是待辦與進度，ADR 記的是「決定了什麼、為什麼這樣決定」。
 
 **閱讀順序**：先看「開發階段」確認目前在哪個 phase，再看該 phase 底下要做的功能。
 功能不再另外排優先順序，一律以所屬 phase 為準。
@@ -11,7 +10,13 @@
 
 ## 開發階段（Phase）
 
-**目前進度：Phase 6 進行中**（Phase 0–5 完成並合併，2026-10-16；2026-10-16 重新規劃：Phase 6 穩固 → Phase 7 個資 → Phase 8 分享；Phase 6 CI 完成（2026-10-16）；Phase 6 第 2–5 項、錯誤監控、端對端測試、無障礙重新量測完成；Phase 6 只剩時間型的 HSTS；Phase 7 同意書與隱私權說明頁完成（2026-10-17）；資料匯出完成（2026-10-17）；帳號與資料刪除完成（2026-10-17），Phase 7 完成；Phase 8 C3 聽力報告完成（2026-10-17）；C1 家屬版拆成 C（家屬衛教頁，2026-10-17 完成）與 B（分享聽力報告給家屬，2026-10-17 完成），Phase 8 完成；Phase 9 前端設計重整（依本人的設計檢討分四輪）第 1–3 輪（共用版型、資料呈現的錯誤、結構調整）完成（2026-10-17）；第 4 輪拆四份（4a 首頁、4b 問卷卡片、4c 聽力圖縮圖、4d IOI-HA 逐題解讀）完成，Phase 9 完成（2026-10-18））
+**目前進度**（2026-10-20）
+
+- 剛完成：成人問卷第一批（#76–#84）與報告修正（#90）、無障礙修正（#70–#74）、AI 工作流程調整（見「工程面」）。
+- 下一步：從「待定」挑；成人問卷第二批（APHAB＋SADL）還沒開規格。
+- 等時間：HSTS 拉長（2026-10-22 起）、e2e 列為必要檢查（2026-10-30 左右）。
+
+各 Phase 的完成日期見下方各段。
 
 ### 兩個已定案的方向（2026-10）
 
@@ -131,7 +136,7 @@ Phase 3 的前置條件：API 化會把這裡的 500 和 N+1 直接暴露出去�
   - 之後可以考慮：四頻平均的趨勢折線圖、三張以上比較
 - C1 家屬版 → Phase 8
 
-### Phase 6：穩固（技術債＋工程面）← 目前
+### Phase 6：穩固（技術債＋工程面）
 順序依「先做的能保護後做的」：CI 先上，後面每項修正都有它把關。
 - [x] **CI**（規格 `docs/specs/phase-06/phase6_ci.md`，2026-10-16）：GitHub Actions，PR 和合併進 `main` 時跑 Django 測試（PostgreSQL 18）、`ruff check`、前端測試與建置
   - GitHub ruleset：`main` 必須通過 `backend`、`frontend` 才能合併；Render 改成「CI 通過後才部署」
@@ -245,6 +250,13 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 - #74 已查證，2026-10-20 本人人工驗收通過並結案：歷史清單對輔助科技提供全部日期／分數；23 筆頁面與三筆瀏覽器測試確認，不新增重複清單或改動圖表。
 - PR #88 已合併，backend／frontend／e2e 全數通過；測試、審查與人工驗收結果見[驗證紀錄](verification/issues-70-74.md)。
 
+### 成人問卷第一批（#76–#84、#90，2026-10-20）
+
+- 範圍：HHIA-S、SSQ12-TW、依年齡與目的推薦問卷、IOI-HA 常模依據固定、三份問卷各自保留一組報告比較、本人／家屬／列印報告整合。規格 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，拆票與依賴見[拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。
+- #77–#84 全數完成，2026-10-19～20 本人人工驗收通過，PR #85、#86 已合併；各票證據見 `verification/`（issue-78、issues-79-80、issues-81-82、issues-83-84）。
+- 合併後的交叉審查找到三個問題，開 [#90](https://github.com/minuet878-prog/HearWell/issues/90) 修正（報告三區分組、HHIA-S 說明重複、比較選單 N+1 查詢），PR #91 已合併。
+- 這次的決策記在 ADR 0001–0004。
+
 ### Phase 10 之後
 不預先排。從下面的「待定」和「功能構想總表」挑。
 
@@ -273,9 +285,7 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 ## 待定：新增其他中文版問卷（IOI-HA / APHAB / COSI、耳鳴相關量表）
 
-**2026-10-20 進度**：成人問卷第一批為 HHIA-S＋SSQ12-TW，計分、分級、年齡推薦及每份問卷各保留一組比較的方向已確認；第二批 APHAB＋SADL，COSI 後續再做。規格見 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。已依本人確認的拆法建立子議題 [#77–#84](https://github.com/minuet878-prog/HearWell/issues/76)，依賴與內容見 [拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。[#77 來源與使用條件定稿](https://github.com/minuet878-prog/HearWell/issues/77) 已依本人審定結案；[#78 HHIA-S 作答與結果](https://github.com/minuet878-prog/HearWell/issues/78) 已實作並通過 Django 571 項、前端 180 項與兩項 HHIA-S 瀏覽器測試，兩軸審查無發現，2026-10-19 本人人工驗收完成並結案；年齡推薦依本人指示留至 #80（[驗證紀錄](verification/issue-78.md)）；[#79 SSQ12-TW](https://github.com/minuet878-prog/HearWell/issues/79) 與 [#80 年齡及用途推薦](https://github.com/minuet878-prog/HearWell/issues/80) 已實作並通過 Django 584 項、前端 182 項、瀏覽器 21 項與完整 Ruff，審查補修已完成，2026-10-19 本人人工驗收完成並結案（[驗證紀錄](verification/issues-79-80.md)）；[#81 常模固定依據](https://github.com/minuet878-prog/HearWell/issues/81) 與 [#82 HHI 手選比較](https://github.com/minuet878-prog/HearWell/issues/82) 已實作，2026-10-20 本人人工驗收通過（[驗證紀錄](verification/issues-81-82.md)）；[#83 SSQ12 比較](https://github.com/minuet878-prog/HearWell/issues/83) 與 [#84 成人報告整合](https://github.com/minuet878-prog/HearWell/issues/84) 已實作，2026-10-20 本人人工驗收通過；PR #86 已合併，#77–#84 全數完成，母規格 #76 結案（[驗證紀錄](verification/issues-83-84.md)）。
-
-2026-10-20 CI 後續：已重現並修復報告表格在較寬字型下的窄畫面溢出，本人／家屬同步補回歸；已推送且 backend／frontend／e2e 全數通過，PR #86 已合併，見[修復紀錄](verification/issues-83-84.md#ci-後續修復報告表格溢出2026-10-20)。
+**進度**：第一批（HHIA-S＋SSQ12-TW）已完成，見上方「成人問卷第一批」；第二批 APHAB＋SADL，COSI 後續再做。訪談與來源紀錄見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
 
 **構想**
 除了 HHIE-S，未來想加入助聽器相關的標準化量表（IOI-HA、APHAB、COSI）跟耳鳴
@@ -426,6 +436,7 @@ C1、D2、React 作答頁）不在這裡重複；2026-10-16 排進 Phase 6／7 �
 - [x] **面試筆記分類整理**（2026-10-19）：本機筆記改為 `docs/interview/`，按主題與開發 Phase 拆檔，保留題號索引與原 `docs/interview.md` 入口；延續不進版控。
 - [x] **歷史規格與審查整理**（2026-10-19）：44 份規格（含模板）與 51 份審查依 Phase 歸檔，新增[規格索引](specs/README.md)與[審查索引](reviews/README.md)，修正文件及註解引用；原內容與結論保留。
 - [x] **其餘文件分類與總覽**（2026-10-19）：新增[文件入口](README.md)，成人問卷研究歸入 `planning/adult-assessment/`、量測紀錄歸入 `accessibility/`、私有部署筆記歸入 `deployment/`；補齊既有目錄索引，更新引用並保留私有筆記忽略設定。
+- [x] **AI 工作流程調整**（2026-10-20）：合併前跨代理交叉審查；`AGENTS.md` 改為 Claude Code 與 Codex 共用的唯一指引（`CLAUDE.md` 匯入）；權限補洞與「在 main 上 commit 要確認」的 hook；Ruff hook 支援 worktree 與 Codex；`CODING_STANDARDS.md` 的部分規則改成自動檢查（`test_standards.py`）；補 ADR 0001–0004。
 - CI、錯誤監控、端對端測試 → Phase 6
 - **分數快取或改存欄位**（中）：目前每次即時計算；使用者大量增加時的優化，要先想清楚
   快取何時失效（`_scores_cache` 已經有不會失效的坑）。
