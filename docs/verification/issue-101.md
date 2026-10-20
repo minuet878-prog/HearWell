@@ -2,7 +2,7 @@
 
 日期：2026-10-20。規格：[#101](https://github.com/minuet878-prog/HearWell/issues/101)（母規格 [#99](https://github.com/minuet878-prog/HearWell/issues/99)，決策見 ADR 0005）。基準：`refactor/questionnaire-definitions`（#105，[PR #106](https://github.com/minuet878-prog/HearWell/pull/106) 尚未合併）；功能分支：`refactor/questionnaire-results`。
 
-狀態：自動驗證完成，等本人人工驗收。沒有動真實資料，也沒有 migration。
+狀態：2026-10-20 本人人工驗收通過（回覆「#101 驗收 ok」）。沒有動真實資料，也沒有 migration。
 
 ## 行為
 
@@ -45,9 +45,9 @@
 - 自審（Matt `/code-review`）：Standards 5 項（1 項硬性違規，就是沒有定義的紀錄讓三頁變成 500 錯誤，依本人決定改成不列出；模板裡的 `"average"` 字串改用 `averaged` 屬性；其餘不修）。Spec 4 項（同一個 500 錯誤；補了 3 個斷言；「模板由類型決定」寫在上方「行為」說明；自動檢查由 #104 負責）。門檻與建議文字經審查代理逐字比對，跟搬家前一致。
 - 交叉審查：本人 2026-10-20 決定這個 session 跳過。
 
-## 人工驗收（請本人操作）
+## 人工驗收
 
-用本機開發伺服器和既有的測試帳號：
+2026-10-20 本人回覆「#101 驗收 ok」，以下操作範圍確認通過。用本機開發伺服器和既有的測試帳號：
 
 1. 打開一筆 HHIE-S、一筆 HHIA-S 的結果頁：總分、滿分、分級文字與顏色、行動建議跟 `main` 一樣。
 2. 打開一筆 SSQ12 的結果頁，再到「我的紀錄」切到 SSQ12 分頁：整體平均或「未計算」的原因不變。
