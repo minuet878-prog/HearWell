@@ -30,7 +30,7 @@ class AccessibilityPageTests(TestCase):
         return record
 
     def test_hhi_result_level_is_a_heading_with_its_score_description(self):
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         for questionnaire in Questionnaire.objects.filter(code__in=("hhie-s", "hhia-s")):
             with self.subTest(code=questionnaire.code):
                 record = self.record(questionnaire)

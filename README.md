@@ -214,8 +214,7 @@ User ||--o{ ReportShare : "分享"
    npm run build --prefix frontend
    python manage.py migrate
    python manage.py loaddata questions_fixture.json
-   python manage.py seed_hhia_s
-   python manage.py seed_ssq12
+   python manage.py seed_questionnaires
    python manage.py createsuperuser
    ```
 
@@ -272,9 +271,9 @@ python manage.py check --deploy                        # 部署前安全檢查�
 4. `collectstatic`
 5. `migrate`
 6. `loaddata questions_fixture.json`：載入 HHIE-S、IOI-HA 題目
-7. `seed_hhia_s`、`seed_ssq12`：載入 HHIA-S、SSQ12-TW 題目（不指定 id，不會蓋掉舊題目）
+7. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW 題目（不指定 id，不會蓋掉舊題目）
 
-因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一份問卷。
+因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一個問卷定義（新 code）。
 
 ## 文件
 

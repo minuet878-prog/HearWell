@@ -16,7 +16,5 @@ python manage.py migrate
 
 python manage.py loaddata questions_fixture.json
 
-# Add the reviewed adult version without assigning ids that could overwrite old questions.
-python manage.py seed_hhia_s
-
-python manage.py seed_ssq12
+# Add questionnaires defined in code without assigning ids that could overwrite old questions.
+python manage.py seed_questionnaires

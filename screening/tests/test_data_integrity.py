@@ -39,7 +39,7 @@ class ModelsUniqueConstraintTests(TestCase):
             Answer.objects.create(submission=self.submission, question=self.question, score=0)
 
 
-class AdminLockAnsweredTests(TestCase):
+class AdminViewOnlyTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.admin = User.objects.create_superuser(username="admin", password="pw")
@@ -64,49 +64,51 @@ class AdminLockAnsweredTests(TestCase):
     def setUp(self):
         self.client.force_login(self.admin)
 
-    def _post_question(self, question):
-        url = reverse("admin:screening_question_change", args=[question.pk])
-        return self.client.post(
-            url,
-            {
-                "questionnaire": self.fresh_q.pk,
-                "question_text": "改過的題目",
-                "question_number": 2,
-                "category": Category.SOCIAL,
-            },
-        )
+    def _assert_view_only(self, model, obj, data):
+        changelist = reverse(f"admin:screening_{model}_changelist")
+        change = reverse(f"admin:screening_{model}_change", args=[obj.pk])
+        self.assertEqual(self.client.get(changelist).status_code, 200)
+        self.assertEqual(self.client.get(change).status_code, 200)
+        add = reverse(f"admin:screening_{model}_add")
+        self.assertEqual(self.client.get(add).status_code, 403)
+        self.assertEqual(self.client.post(add, data).status_code, 403)
+        self.assertEqual(self.client.post(change, data).status_code, 403)
+        delete = reverse(f"admin:screening_{model}_delete", args=[obj.pk])
+        self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
 
-    def _post_questionnaire(self, questionnaire):
-        url = reverse("admin:screening_questionnaire_change", args=[questionnaire.pk])
-        return self.client.post(
-            url, {"questionnaire_name": f"{questionnaire.questionnaire_name}改", "code": "changed"}
-        )
+    def test_questions_are_view_only_answered_or_not(self):
+        # Issue #103: questions come from questionnaire definitions, never from the admin.
+        for question in (self.answered, self.fresh):
+            with self.subTest(question=question.questionnaire.code):
+                self._assert_view_only(
+                    "question",
+                    question,
+                    {
+                        "questionnaire": self.fresh_q.pk,
+                        "question_text": "改過的題目",
+                        "question_number": 2,
+                        "category": Category.SOCIAL,
+                    },
+                )
+                saved = Question.objects.get(pk=question.pk)
+                self.assertEqual(saved.question_text, "原本的題目")
+                self.assertEqual(saved.category, Category.EMOTIONAL)
+                self.assertEqual(saved.question_number, 1)
+                self.assertEqual(saved.questionnaire_id, question.questionnaire_id)
+        self.assertEqual(Question.objects.count(), 2)
 
-    def test_answered_question_is_read_only(self):
-        response = self._post_question(self.answered)
-        self.assertRedirects(response, reverse("admin:screening_question_changelist"))
-        question = Question.objects.get(pk=self.answered.pk)
-        self.assertEqual(question.question_text, "原本的題目")
-        self.assertEqual(question.category, Category.EMOTIONAL)
-        self.assertEqual(question.question_number, 1)
-        self.assertEqual(question.questionnaire_id, self.answered_q.pk)
-
-    def test_unanswered_question_is_editable(self):
-        self._post_question(self.fresh)
-        question = Question.objects.get(pk=self.fresh.pk)
-        self.assertEqual(question.question_text, "改過的題目")
-        self.assertEqual(question.category, Category.SOCIAL)
-
-    def test_questionnaire_code_locked_after_submissions(self):
-        self._post_questionnaire(self.answered_q)
-        questionnaire = Questionnaire.objects.get(pk=self.answered_q.pk)
-        self.assertEqual(questionnaire.code, "hhie-s")
-        self.assertEqual(questionnaire.questionnaire_name, "HHIE-S改")
-
-    def test_questionnaire_code_editable_without_submissions(self):
-        self._post_questionnaire(self.fresh_q)
-        questionnaire = Questionnaire.objects.get(pk=self.fresh_q.pk)
-        self.assertEqual(questionnaire.code, "changed")
+    def test_questionnaires_are_view_only_answered_or_not(self):
+        for questionnaire in (self.answered_q, self.fresh_q):
+            with self.subTest(questionnaire=questionnaire.code):
+                self._assert_view_only(
+                    "questionnaire",
+                    questionnaire,
+                    {"questionnaire_name": "改過的問卷", "code": "changed"},
+                )
+                saved = Questionnaire.objects.get(pk=questionnaire.pk)
+                self.assertEqual(saved.code, questionnaire.code)
+                self.assertEqual(saved.questionnaire_name, questionnaire.questionnaire_name)
+        self.assertEqual(Questionnaire.objects.count(), 2)
 
     def test_submission_and_answer_are_view_only(self):
         submission = Submission.objects.get(questionnaire=self.answered_q)

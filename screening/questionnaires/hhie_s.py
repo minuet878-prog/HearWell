@@ -1,3 +1,4 @@
+from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import LEVEL, Definition
 
 CODE = "hhie-s"
@@ -42,4 +43,6 @@ DEFINITION = Definition(
     thresholds=THRESHOLDS,
     advice=ADVICE,
     trend_chart=True,
+    # The report anchor it had before other questionnaires could be compared.
+    comparison=TotalComparison(anchor="report-difference"),
 )

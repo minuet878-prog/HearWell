@@ -1,7 +1,14 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Category,
+    Question,
+    Questionnaire,
+    ReportComparison,
+    Submission,
+)
 from screening.questionnaires.definition import LEVEL
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
@@ -228,6 +235,10 @@ class UndefinedResultTests(TestCase):
         cls.user = consented_user(username="definitions_e")
         undefined = Questionnaire.objects.create(questionnaire_name="無定義", code="undefined")
         cls.submission = Submission.objects.create(user=cls.user, questionnaire=undefined)
+        aided = Submission.objects.create(user=cls.user, questionnaire=undefined)
+        ReportComparison.objects.create(
+            user=cls.user, questionnaire=undefined, unaided=cls.submission, aided=aided
+        )
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -238,8 +249,12 @@ class UndefinedResultTests(TestCase):
 
     def test_history_report_and_export_skip_it(self):
         self.assertContains(self.client.get(reverse("my_hearing")), "您還沒有做過篩檢紀錄")
-        self.assertNotContains(self.client.get(reverse("health_report")), "無定義")
-        self.assertEqual(self.client.get(reverse("download_my_data")).json()["submissions"], [])
+        report = self.client.get(reverse("health_report"))
+        self.assertEqual(report.status_code, 200)
+        self.assertNotContains(report, "無定義")
+        exported = self.client.get(reverse("download_my_data")).json()
+        self.assertEqual(exported["submissions"], [])
+        self.assertEqual(exported["report_comparisons"], [])
 
     def test_api_records_skip_it(self):
         self.assertEqual(self.client.get(reverse("api:submissions")).json()["results"], [])

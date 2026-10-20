@@ -19,8 +19,7 @@ class RecommendationTests(TestCase):
             questionnaire=cls.hhie, question_number=1, question_text="假題目", category="emotional"
         )
         cls.ioi = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
-        call_command("seed_hhia_s", stdout=StringIO())
-        call_command("seed_ssq12", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         cls.hhia = Questionnaire.objects.get(code="hhia-s")
         cls.ssq = Questionnaire.objects.get(code="ssq12-tw")
 

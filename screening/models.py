@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
+from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import HHIA_S_CHOICES, classify
@@ -188,9 +189,13 @@ class SubmissionQuerySet(models.QuerySet):
         return self.filter(questionnaire__code__in=questionnaires.DEFINITIONS)
 
     def valid_hhi(self):
+        # Basis for the IOI-HA norm group: a complete HHIA-S or HHIE-S.
+        return self.filter(questionnaire__code__in=(hhie_s.CODE, hhia_s.CODE)).complete_hhi()
+
+    def complete_hhi(self):
+        # All 10 items answered with an HHI choice.
         return (
-            self.filter(questionnaire__code__in=("hhie-s", "hhia-s"))
-            .with_scores()
+            self.with_scores()
             .annotate(
                 valid_hhi_count=models.Count(
                     "answers",
@@ -353,26 +358,15 @@ class ReportComparison(models.Model):
 
     @property
     def difference(self):
-        if self.questionnaire.code == SSQ12:
-            if self.unaided.ssq_average is None or self.aided.ssq_average is None:
-                return None
-            return (
-                Decimal(self.aided.total_answer_score - self.unaided.total_answer_score) / 12
-            ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
-        return self.aided.total_answer_score - self.unaided.total_answer_score
+        return self.questionnaire.definition.comparison.difference(self.unaided, self.aided)
 
     @property
     def difference_text(self):
-        change = self.difference
-        if self.questionnaire.code == SSQ12:
-            if change is None:
-                return "未計算整體差值：包含不適用題目或缺少完整回答"
-            return f"{change:+.1f} 分"
-        if change < 0:
-            return f"少了 {-change} 分"
-        if change > 0:
-            return f"多了 {change} 分"
-        return "沒有變化"
+        return self.questionnaire.definition.comparison.difference_text(self.unaided, self.aided)
+
+    @property
+    def summary(self):  # one line of the report summary
+        return self.questionnaire.definition.comparison.summary(self.unaided, self.aided)
 
 
 class Audiogram(models.Model):
