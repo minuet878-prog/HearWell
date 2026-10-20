@@ -233,7 +233,8 @@ class LoginViewTests(TestCase):
             return re.findall(r'<input[^>]*\bautofocus\b[^>]*name="(\w+)"', content)
 
         self.assertEqual(focused(self._login("alice", "wrong-password")), ["password"])
-        self.assertEqual(focused(self.client.get(self.url)), ["username"])
+        # #73: normal entry leaves the first Tab available for the skip link.
+        self.assertEqual(focused(self.client.get(self.url)), [])
         self.assertEqual(focused(self._login("", "wrong-password")), ["username"])
 
     def test_failure_message_is_linked_to_both_fields(self):
