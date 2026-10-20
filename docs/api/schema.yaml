@@ -230,10 +230,10 @@ components:
         text:
           type: string
         score:
-          allOf:
-          - $ref: '#/components/schemas/ScoreEnum'
-          minimum: -2147483648
-          maximum: 2147483647
+          type: integer
+          maximum: 10
+          minimum: 0
+          nullable: true
         label:
           type: string
       required:
@@ -248,6 +248,7 @@ components:
           type: integer
         score:
           type: integer
+          nullable: true
       required:
       - question
       - score
@@ -340,6 +341,7 @@ components:
       properties:
         value:
           type: integer
+          nullable: true
         label:
           type: string
       required:
@@ -448,6 +450,10 @@ components:
           items:
             $ref: '#/components/schemas/Choice'
           readOnly: true
+        scale:
+          allOf:
+          - $ref: '#/components/schemas/Scale'
+          nullable: true
       required:
       - choices
       - id
@@ -514,16 +520,16 @@ components:
       required:
       - code
       - name
-    ScoreEnum:
-      enum:
-      - 4
-      - 2
-      - 0
-      type: integer
-      description: |-
-        * `4` - 常常
-        * `2` - 有時
-        * `0` - 從未
+    Scale:
+      type: object
+      properties:
+        min_label:
+          type: string
+        max_label:
+          type: string
+      required:
+      - max_label
+      - min_label
     Scores:
       type: object
       properties:
@@ -553,9 +559,21 @@ components:
           type: boolean
           nullable: true
         scores:
-          $ref: '#/components/schemas/Scores'
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
         level:
-          $ref: '#/components/schemas/Level'
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          nullable: true
+        average_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+        average_unavailable_reason:
+          type: string
+          nullable: true
       required:
       - created_at
       - id
@@ -594,11 +612,24 @@ components:
           type: boolean
           nullable: true
         scores:
-          $ref: '#/components/schemas/Scores'
+          allOf:
+          - $ref: '#/components/schemas/Scores'
+          nullable: true
         level:
-          $ref: '#/components/schemas/Level'
+          allOf:
+          - $ref: '#/components/schemas/Level'
+          nullable: true
+        average_score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,2}(?:\.\d{0,1})?$
+          nullable: true
+        average_unavailable_reason:
+          type: string
+          nullable: true
         advice:
           type: string
+          nullable: true
           readOnly: true
         answers:
           type: array

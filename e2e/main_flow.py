@@ -115,6 +115,181 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
         expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
 
+    def test_ssq12_scale_draft_and_average(self):
+        """#79: range input, N/A, zero and draft restoration in a real browser."""
+        call_command("seed_ssq12", verbosity=0)
+        with self.saving_artifacts():
+            self.step1_start_needs_login()
+            self.step2_register()
+            self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+            self.answer("沒戴")
+            self.next()
+            expect(self.main().get_by_text("未作答", exact=True)).to_be_visible()
+            expect(self.main().get_by_role("button", name="下一題")).to_be_disabled()
+            self.main().get_by_role("group").get_by_label("不適用", exact=True).check()
+            self.next()
+            slider = self.main().get_by_role("slider")
+            slider.press("Home")
+            expect(self.main().get_by_text("0 分", exact=True)).to_be_visible()
+            self.page.reload()
+            self.main().get_by_role("button", name="接著答").click()
+            expect(self.main().get_by_text("0 分", exact=True)).to_be_visible()
+            self.main().get_by_role("button", name="上一題").click()
+            expect(
+                self.main().get_by_role("group").get_by_label("不適用", exact=True)
+            ).to_be_checked()
+            # Replace the explicit N/A with 6, then all items 6 except the last (9).
+            for number in range(1, 13):
+                if number in (9, 11, 12):
+                    label = {9: "0：混亂", 11: "0：不清晰", 12: "0：非常專心"}[number]
+                    expect(self.main().get_by_text(label, exact=True)).to_be_visible()
+                slider = self.main().get_by_role("slider")
+                slider.press("Home")
+                for _ in range(9 if number == 12 else 6):
+                    slider.press("ArrowRight")
+                if number < 12:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.main().get_by_text("整體平均：6.3／10", exact=True)).to_be_visible()
+            expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
+            self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
+            self.main().get_by_role("link", name="看我的紀錄", exact=True).click()
+            expect(self.main().locator("a.link-card")).to_contain_text("整體平均：6.3")
+            expect(self.main().locator("#trend-chart")).to_have_count(0)
+            # #83/#84: keep a comparison and follow it through owner/family/print.
+            unaided = Submission.objects.get(questionnaire__code="ssq12-tw")
+            aided = Submission.objects.create(
+                user=unaided.user, questionnaire=unaided.questionnaire, wearing_hearing_aid=True
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=aided, question=q, score=8)
+                for q in unaided.questionnaire.questions.all()
+            )
+            self.main().get_by_role("link", name="選擇或管理比較", exact=False).click()
+            self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(unaided.pk))
+            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
+            self.main().get_by_role("button", name="查看比較", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.main().get_by_text("+1.8 分", exact=False)).to_be_visible()
+            self.main().get_by_role("button", name="保留到報告", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+            call_command("seed_hhia_s", verbosity=0)
+            for hhi in Questionnaire.objects.filter(code__in=("hhie-s", "hhia-s")):
+                pair = []
+                for wearing in (False, True):
+                    record = Submission.objects.create(
+                        user=unaided.user, questionnaire=hhi, wearing_hearing_aid=wearing
+                    )
+                    Answer.objects.bulk_create(
+                        Answer(submission=record, question=q, score=2) for q in hhi.questions.all()
+                    )
+                    pair.append(record)
+                self.page.goto(f"{self.live_server_url}/comparisons/{hhi.pk}")
+                self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(pair[0].pk))
+                self.page.get_by_label("配戴紀錄", exact=True).select_option(str(pair[1].pk))
+                self.main().get_by_role("button", name="查看比較", exact=True).click()
+                self.main().get_by_role("button", name="保留到報告", exact=True).click()
+                expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+            self.page.goto(f"{self.live_server_url}/report")
+            expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
+            self.page.set_viewport_size({"width": 320, "height": 800})
+            self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+            self.page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
+            self.assertFalse(
+                self.page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+            )
+            self.page.screenshot(path="/tmp/hearwell-adult-report-320.png", full_page=True)
+            self.page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+            self.page.emulate_media(media="print")
+            for section in ("report-hhia-s", "report-hhie-s", "report-ssq12"):
+                expect(self.page.locator(f"#{section} .report-answers ol")).to_be_visible()
+            for section in (
+                "report-difference",
+                "report-comparison-hhia-s",
+                "report-comparison-ssq12-tw",
+            ):
+                expect(self.page.locator(f"#{section}")).to_be_visible()
+            self.page.emulate_media(media="screen")
+            self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
+            self.main().get_by_text("產生分享連結", exact=True).click()
+            self.main().get_by_role("button", name="確認產生", exact=True).click()
+            share = unaided.user.report_shares.get()
+            with self.browser.new_context() as family_context:
+                family_page = family_context.new_page()
+                family_page.goto(f"{self.live_server_url}/shared/{share.token}/report")
+                expect(family_page.locator("#report-comparison-ssq12-tw")).to_contain_text(
+                    "+1.8 分"
+                )
+                expect(
+                    family_page.get_by_role("link", name="更換或移除", exact=False)
+                ).to_have_count(0)
+                family_page.set_viewport_size({"width": 320, "height": 800})
+                family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
+                # Wider glyphs reproduce the table's minimum-width overflow across platforms.
+                family_page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
+                self.assertFalse(
+                    family_page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
+                )
+                for section in (
+                    "report-difference",
+                    "report-comparison-hhia-s",
+                    "report-comparison-ssq12-tw",
+                ):
+                    expect(family_page.locator(f"#{section}")).to_be_visible()
+                family_page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+                family_page.emulate_media(media="print")
+                for section in ("report-hhia-s", "report-hhie-s", "report-ssq12"):
+                    expect(family_page.locator(f"#{section} .report-answers ol")).to_be_visible()
+
+    def test_ssq12_without_javascript_keeps_explicit_na(self):
+        call_command("seed_ssq12", verbosity=0)
+        self.context.close()
+        self.context = self.browser.new_context(java_script_enabled=False)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        self.step1_start_needs_login()
+        self.step2_register()
+        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
+            "沒戴", exact=True
+        ).check()
+        for number in range(1, 13):
+            self.page.locator(f"#question-{number}").get_by_role(
+                "radio", name="不適用" if number == 1 else "0", exact=True
+            ).check()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.main().get_by_text("未計算：包含不適用題目", exact=True)).to_be_visible()
+
+    def test_age_confirmation_and_purpose_links_without_javascript(self):
+        """#80: server-rendered selection preserves browser back and scales at 320px."""
+        call_command("seed_hhia_s", verbosity=0)
+        call_command("seed_ssq12", verbosity=0)
+        self.context.close()
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 800}
+        )
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        self.step1_start_needs_login()
+        self.step2_register()
+        age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
+        age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
+        self.page.keyboard.press("Space")
+        self.main().get_by_role("button", name="看適合我的問卷").click()
+        expect(
+            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
+        ).to_be_visible()
+        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        expect(self.page.get_by_role("heading", name="SSQ12-TW", exact=True)).to_be_visible()
+        self.page.go_back()
+        expect(
+            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
+        ).to_be_visible()
+        self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
+        self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+        self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
+
     def test_family_guide_without_share_sheet(self):
         """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
         with self.saving_artifacts():
@@ -313,6 +488,71 @@ class SharedLayoutTest(StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
 
     saving_artifacts = NewUserScreeningTest.saving_artifacts
+
+    def test_hhi_comparison_keyboard_errors_and_narrow_layout_without_js(self):
+        """#82: explicit preview/save/remove works with keyboard and no scripts."""
+        questionnaire = Questionnaire.objects.get(code="hhie-s")
+        unaided = self.user.submissions.get(questionnaire=questionnaire)
+        aided = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=aided, question=q, score=0) for q in questionnaire.questions.all()
+        )
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/comparisons/{questionnaire.pk}")
+            self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
+            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+            first = self.page.get_by_label("未配戴紀錄", exact=True)
+            first.focus()
+            # Headless Chromium supports select type-ahead but ignores arrow selection.
+            first.press(str(unaided.created_at.year)[0])
+            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
+            expect(first).to_have_value(str(unaided.pk))
+            self.page.get_by_role("button", name="查看比較", exact=True).click()
+            expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
+            expect(
+                self.page.get_by_text("-20 分", exact=False)
+            ).to_be_visible()
+            self.page.get_by_role("button", name="保留到報告", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
+            # Submit a stale/foreign id through the actual form to check server-side errors.
+            self.page.locator('input[name="aided"]').evaluate("el => el.value = '999999'")
+            self.page.get_by_role("button", name="更換報告保留組合").click()
+            expect(self.page.locator("#comparison-errors")).to_be_focused()
+            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
+            self.page.get_by_role("button", name="移除報告保留組合").click()
+            expect(self.page.get_by_text("尚未保留比較組合。", exact=True)).to_be_visible()
+
+    def test_ioi_discloses_hhia_basis_before_saving(self):
+        """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
+        call_command("seed_hhia_s", verbosity=0)
+        questionnaire = Questionnaire.objects.get(code="hhia-s")
+        basis = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=basis, question=q, score=4) for q in questionnaire.questions.all()
+        )
+        self.open(320)
+        ioi = Questionnaire.objects.get(code="ioi-ha")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{ioi.pk}")
+            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("HHIA-S")
+            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("40 分")
+            for n in range(1, 8):
+                self.page.locator(f"#question-{n}").get_by_role("radio").first.check()
+            self.page.get_by_role("button", name="送出", exact=True).click()
+            expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("HHIA-S")
+            expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("40 分")
 
     # 1
     def test_wide_screen_content_is_centred_and_narrow(self):

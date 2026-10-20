@@ -8,7 +8,7 @@ from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 from screening.views import list_order
 
-GUIDE = "第一次使用，請從 HHIE-S 開始；已經戴助聽器的人，可以再做 IOI-HA。"
+GUIDE = "確認年齡，推薦適合您的問卷"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')
 TAGS = re.compile(r'<span class="card-tag">([^<]*)</span>')
 
@@ -87,7 +87,7 @@ class QuestionnaireCardTests(TestCase):
         card = self._card(self.hhie_s)
         self.assertEqual(card.count("<a"), 1)
         text = test_layout._text(card)
-        for part in ("HHIE-S 聽力障礙自我評估", "適合 65 歲以上的長輩。", "10 題", "約 3 分鐘"):
+        for part in ("聽力對生活的影響（HHIE-S）", "適合 65 歲以上的長輩。", "10 題", "約 3 分鐘"):
             self.assertIn(part, text)
 
     # 5

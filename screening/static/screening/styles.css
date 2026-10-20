@@ -187,10 +187,12 @@ html {
     }
 
     .site-nav li {
+        min-width: 0;
         flex: 1;
     }
 
     .site-nav a {
+        min-width: 0;
         flex-direction: column;
         gap: 0.125rem;
         padding: 0.375rem 0.25rem;
@@ -219,6 +221,7 @@ html {
 }
 
 .site-footer a {
+    overflow-wrap: anywhere;
     color: #1f4e8c;
     font-weight: 700;
 }
@@ -890,6 +893,12 @@ details summary {
     font-weight: 700;
 }
 
+/* Fit report columns to the available width, including larger fallback fonts. */
+.health-report .table {
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+}
+
 /* The level is written out in a box, never shown by colour alone. */
 .report-level {
     font-weight: 700;
@@ -1025,4 +1034,48 @@ details summary {
     border: 1px solid #ced4da;
     border-radius: 0.25rem;
     background-color: #fff;
+}
+
+
+/* SSQ12 score input follows the reviewed range-and-buttons prototype. */
+.ssq-scale input[type="range"] {
+    width: 100%;
+    min-height: 2.75rem;
+    accent-color: #1f4e8c;
+}
+.ssq-scale > label:last-child {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 2.75rem;
+}
+
+
+/* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
+@media (max-width: 35em) {
+    .questionnaire-card {
+        flex-wrap: wrap;
+    }
+    .questionnaire-card .link-card-body {
+        flex: 1 0 100%;
+        order: 1;
+    }
+    .questionnaire-card .link-card-arrow {
+        margin-left: auto;
+    }
+}
+
+.comparison-items,
+.report-answers {
+    overflow-wrap: anywhere;
+}
+
+@media print {
+    .health-report .report-answers > ol {
+        display: block !important;
+    }
+
+    .health-report .report-answers::details-content {
+        content-visibility: visible;
+    }
 }

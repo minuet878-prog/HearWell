@@ -18,12 +18,19 @@
     {% endfor %}
 </nav>
 {% endif %}
-{% if difference %}
+{% if current.code == "hhie-s" or current.code == "hhia-s" or current.code == "ssq12-tw" %}
 <section class="aided-difference" aria-labelledby="difference-title">
-    <h2 id="difference-title" class="fs-4">配戴前後比較</h2>
-    <p class="mb-1">沒戴助聽器（{{ difference.unaided.created_at|date:"Y/m/d" }}）：{{ difference.unaided.total_answer_score }} 分</p>
-    <p class="mb-1">有戴助聽器（{{ difference.aided.created_at|date:"Y/m/d" }}）：{{ difference.aided.total_answer_score }} 分</p>
-    <p class="mb-0"><strong class="fs-4">{{ difference.text }}</strong>（分數越低，聽力對生活的影響越小）</p>
+    <h2 id="difference-title" class="fs-4">配戴狀態比較</h2>
+    {% if saved_comparison %}
+    {% if current.code == "ssq12-tw" %}
+    <p>報告保留組合：這是您選定的兩筆，不一定是開始使用助聽器前後的前測與後測。</p>
+    {% include "screening/comparison_content.html" with comparison=saved_comparison %}
+    {% else %}
+    <p>報告保留組合：未配戴 {{ saved_comparison.unaided.created_at|date:"Y/m/d" }}，{{ saved_comparison.unaided.total_answer_score }} 分；配戴 {{ saved_comparison.aided.created_at|date:"Y/m/d" }}，{{ saved_comparison.aided.total_answer_score }} 分。</p>
+    <p>分數越低，聽力對生活的影響越小。{{ saved_comparison.difference_text }}。這是您選定的兩筆，不一定是開始使用助聽器前後的前測與後測。</p>
+    {% endif %}
+    {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">選擇或管理比較（{{ current }}）</a>
 </section>
 {% endif %}
 {% if ioi_ha_chart %}
@@ -39,6 +46,9 @@
         {% if submission.norm_group %}
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
+        {% elif submission.questionnaire.code == "ssq12-tw" %}
+        <span>{% if submission.ssq_average is not None %}整體平均：{{ submission.ssq_average }}／10{% else %}{{ submission.ssq_unavailable_reason }}{% endif %}</span>
+        <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% else %}
         <span>總分：{{ submission.total_answer_score }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% with classified=submission.classified %}<span>{% include "screening/level_badge.html" with text=classified.text level=classified.level %}</span>{% endwith %}

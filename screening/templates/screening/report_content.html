@@ -8,9 +8,8 @@
         {% for section in sections %}{% with latest=section.latest %}
         <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
-        {% if difference %}
-        <li>配戴前後（HHIE-S）：沒戴 {{ difference.unaided.total_answer_score }} 分、有戴 {{ difference.aided.total_answer_score }} 分，{{ difference.text }}</li>
-        {% endif %}
+        {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
+        {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{% if comparison.questionnaire.code != "ssq12-tw" %}沒戴 {{ comparison.unaided.total_answer_score }} 分、有戴 {{ comparison.aided.total_answer_score }} 分，{% endif %}{{ comparison.difference_text }}</li>{% endfor %}
         {% if ioi_ha %}
         <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}</li>
         {% endif %}
@@ -31,11 +30,15 @@
 </section>
 {% endif %}
 
+{% if sections %}<h2 class="h4">生活影響</h2>{% endif %}
 {% for section in sections %}{% with latest=section.latest code=section.questionnaire.code %}
 <section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
     <h2 id="title-{{ code }}" class="h4">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h2>
     <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
     <p>情緒 {{ latest.emotional_score }}、社交 {{ latest.social_score }}（分項僅供參考）　助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
+    <p>{{ section.advice }}</p>
+    {% if code == "hhia-s" %}<p>這份問卷反映您感受到的生活影響，不能判定聽損程度，也不能單憑分數決定是否需要助聽器。</p>{% endif %}
+    <details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
     <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
     <table class="table">
         <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>
@@ -48,20 +51,31 @@
 </section>
 {% endwith %}{% endfor %}
 
-{% if difference %}
-<section id="report-difference" aria-labelledby="difference-title">
-    <h2 id="difference-title" class="h4">配戴前後比較（HHIE-S）</h2>
-    <p class="mb-1">沒戴助聽器（{{ difference.unaided.created_at|date:"Y/m/d" }}）：{{ difference.unaided.total_answer_score }} 分</p>
-    <p class="mb-1">有戴助聽器（{{ difference.aided.created_at|date:"Y/m/d" }}）：{{ difference.aided.total_answer_score }} 分</p>
-    <p><strong>{{ difference.text }}</strong>（分數越低，聽力對生活的影響越小）</p>
+{% if ssq_latest %}
+<section id="report-ssq12" aria-labelledby="ssq-title">
+<h2 id="ssq-title" class="h4">日常聆聽能力（SSQ12-TW）</h2>
+<p>最近一次 {{ ssq_latest.created_at|date:"Y/m/d H:i" }}，助聽器：{{ ssq_latest.get_wearing_hearing_aid_display }}。</p>
+<p>{% if ssq_latest.ssq_average is not None %}整體平均：{{ ssq_latest.ssq_average }}／10{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</p>
+<p>分數越高，代表您回報的聆聽能力越好；不代表聽損程度或助聽器效益合格與否。</p>
+<details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
+<p>最近 {{ ssq_recent|length }} 次紀錄：</p>
+<ul>{% for record in ssq_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：{% if record.ssq_average is not None %}平均 {{ record.ssq_average }} 分{% else %}{{ record.ssq_unavailable_reason }}{% endif %}</li>{% endfor %}</ul>
 </section>
 {% endif %}
+{% for comparison in comparisons %}
+<section id="{% if comparison.questionnaire.code == 'hhie-s' %}report-difference{% else %}report-comparison-{{ comparison.questionnaire.code }}{% endif %}" aria-labelledby="comparison-{{ comparison.questionnaire_id }}">
+<h2 id="comparison-{{ comparison.questionnaire_id }}" class="h4">配戴狀態比較（{{ comparison.questionnaire }}，報告保留組合）</h2>
+<p>這是您選定的兩筆，新增作答不會自動換組；不一定是開始使用助聽器前後的前測與後測。</p>
+{% include "screening/comparison_content.html" %}
+</section>
+{% endfor %}
 
 {% if ioi_ha %}{% with submission=ioi_ha.submission %}
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
-    <h2 id="ioi-ha-title" class="h4">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h2>
+    <h2 id="ioi-ha-title" class="h4">助聽器使用成效：IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h2>
+    {% if submission.norm_basis %}<p>完成時固定依據：{{ submission.norm_basis.questionnaire }}，{{ submission.norm_basis.created_at|date:"Y/m/d H:i" }}，{{ submission.norm_basis.total_answer_score }} 分（未配戴）。</p>{% endif %}
     <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
-    {% if not ioi_ha.grouped %}<p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>{% endif %}
+    {% if not ioi_ha.grouped %}<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>{% endif %}
     <table class="table">
         <thead><tr><th scope="col">項目</th><th scope="col">回答</th>{% if ioi_ha.grouped %}<th scope="col">與常模比較</th>{% endif %}</tr></thead>
         <tbody>

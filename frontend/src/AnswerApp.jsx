@@ -55,7 +55,7 @@ export default function AnswerApp({
         return response.json();
       })
       .then((data) => {
-        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id) });
+        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.code === "ssq12-tw" });
         setQuestions(data.questions);
         if (draft) setSaved(draft);
         else begin(newAnswers(), false);
@@ -122,7 +122,7 @@ export default function AnswerApp({
   const isHearingAid = step === 0;
   const question = isHearingAid ? HEARING_AID : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
-  const answered = current !== null && current !== undefined;
+  const answered = current !== undefined && (!isHearingAid || current !== null);
   const isLast = step === questions.length;
   const isSending = status.type === "sending";
 
@@ -201,7 +201,25 @@ export default function AnswerApp({
           {!isHearingAid && <span className="question-progress">第 {step} 題／共 {questions.length} 題</span>}
           {question.text}
         </legend>
-        <div className="choice-group">
+        {!isHearingAid && question.scale ? (
+          <div className="ssq-scale">
+            <p className="fs-3 fw-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
+            <label className="form-label" htmlFor={`ssq-score-${step}`}>選擇分數（0–10）</label>
+            <input
+              id={`ssq-score-${step}`} type="range" min="0" max="10" step="1"
+              value={current ?? 5}
+              aria-valuetext={current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}
+              onChange={(event) => choose(Number(event.target.value))}
+              onPointerUp={(event) => choose(Number(event.currentTarget.value))}
+            />
+            <div className="d-flex justify-content-between gap-2 mb-3"><span>0：{question.scale.min_label}</span><span>10：{question.scale.max_label}</span></div>
+            <div className="d-flex flex-wrap gap-2 mb-3">
+              <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 0} onClick={() => choose(Math.max(0, (current ?? 5) - 1))}>減少 1 分</button>
+              <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 10} onClick={() => choose(Math.min(10, (current ?? 5) + 1))}>增加 1 分</button>
+            </div>
+            <label><input type="radio" name={`answer-step-${step}`} checked={current === null} onChange={() => choose(null)} /> 不適用</label>
+          </div>
+        ) : <div className="choice-group">
           {question.choices.map((choice) => (
             <label key={String(choice.value)}>
               <input
@@ -213,7 +231,7 @@ export default function AnswerApp({
               {choice.label}
             </label>
           ))}
-        </div>
+        </div>}
       </fieldset>
 
       {status.type === "error" && <p className="fs-5 fw-bold text-danger" role="alert">{status.message}</p>}

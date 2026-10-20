@@ -21,6 +21,11 @@ UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 # Shown on the questionnaire list and answer page.
 # Questionnaires missing here show only their name and question count.
 QUESTIONNAIRE_INFO = {
+    "ssq12-tw": {
+        "subtitle": "日常聆聽能力",
+        "audience": "了解您目前生活中的聆聽能力。",
+        "minutes": 5,
+    },
     "hhie-s": {"subtitle": "聽力障礙自我評估", "audience": "適合 65 歲以上的長輩。", "minutes": 3},
     "hhia-s": {
         "subtitle": "聽力障礙自我評估",

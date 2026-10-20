@@ -1,0 +1,35 @@
+{% extends "screening/layout.html" %}
+{% block title %}配戴狀態比較｜HearWell{% endblock %}
+{% block body %}
+<h1 class="h3">配戴狀態比較（{{ questionnaire }}）</h1>
+<p>請選同一問卷版本的一筆未配戴與一筆配戴紀錄。這是配戴狀態比較，不一定是開始使用助聽器前後的前測與後測。</p>
+{% if form.errors %}
+<div id="comparison-errors" class="text-danger mb-3" role="alert" tabindex="-1" autofocus>
+    <p>請重新確認選擇的兩筆紀錄。</p>
+    {% for field in form %}{% if field.errors %}<p><a href="#{{ field.id_for_label }}">{{ field.label }}</a>：{{ field.errors }}</p>{% endif %}{% endfor %}
+</div>
+{% endif %}
+<form method="get" action="{% url 'hhi_comparison' questionnaire.pk %}">
+    {% for field in form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>{% endfor %}
+    <button class="btn btn-primary btn-lg" name="action" value="preview">查看比較</button>
+</form>
+{% if preview %}
+<section aria-labelledby="preview-title" class="card card-body mt-4">
+    <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
+    {% include "screening/comparison_content.html" with comparison=preview %}
+    <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
+        {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">
+        <button class="btn btn-primary btn-lg" name="action" value="save">{% if saved %}更換報告保留組合{% else %}保留到報告{% endif %}</button>
+    </form>
+</section>
+{% endif %}
+<section aria-labelledby="saved-title" class="mt-4">
+    <h2 id="saved-title" class="h4">報告保留組合</h2>
+    {% if saved %}
+    {% include "screening/comparison_content.html" with comparison=saved %}
+    <p>這是您保留的組合；新增紀錄不會自動更換。各問卷分開保留，移除不會刪除作答。</p>
+    <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-lg" name="action" value="remove">移除報告保留組合</button></form>
+    {% else %}<p>尚未保留比較組合。</p>{% endif %}
+</section>
+<p class="mt-4"><a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">回我的紀錄</a></p>
+{% endblock %}

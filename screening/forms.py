@@ -4,9 +4,11 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
+from django.utils import timezone
 
 from screening.models import Answer, Question, Score, Submission, User
 from screening.scoring import HHIA_S_CHOICES, IOI_HA, IOI_HA_CHOICES
+from screening.ssq12 import CODE as SSQ12
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -49,6 +51,8 @@ class RegisterForm(UserCreationForm):
 
 
 def answer_choices(question):
+    if question.questionnaire.code == SSQ12:
+        return [(value, str(value)) for value in range(11)] + [("na", "不適用")]
     if question.questionnaire.code == "hhia-s":
         return HHIA_S_CHOICES
     if question.questionnaire.code == IOI_HA:
@@ -85,6 +89,7 @@ class AnswerForm(forms.Form):
     def __init__(self, *args, choices=Score.choices, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["score"].choices = choices
+        self.fields["score"].coerce = lambda value: None if value == "na" else int(value)
 
 
 class HearingAidForm(forms.Form):
@@ -149,3 +154,51 @@ class BaseAnswerFormSet(BaseFormSet):
 
 
 AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
+
+
+class AgeGroupForm(forms.Form):
+    age_group = forms.ChoiceField(
+        label="您目前的實際年齡？",
+        choices=(("adult", "18–64 歲"), ("older", "65 歲以上")),
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        error_messages={"required": "請選擇您的年齡區間"},
+    )
+
+
+class ComparisonRecordField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        if obj.questionnaire.code == SSQ12:
+            result = (
+                f"平均 {obj.ssq_average} 分"
+                if obj.ssq_average is not None
+                else obj.ssq_unavailable_reason
+            )
+        else:
+            result = f"{obj.total_answer_score} 分"
+        when = timezone.localtime(obj.created_at).strftime("%Y/%m/%d %H:%M")
+        return f"{when}，{obj.get_wearing_hearing_aid_display()}，{result}（紀錄 {obj.pk}）"
+
+
+class HhiComparisonForm(forms.Form):
+    unaided = ComparisonRecordField(
+        label="未配戴紀錄",
+        queryset=Submission.objects.none(),
+        empty_label="請選擇未配戴紀錄",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    aided = ComparisonRecordField(
+        label="配戴紀錄",
+        queryset=Submission.objects.none(),
+        empty_label="請選擇配戴紀錄",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, user, questionnaire, **kwargs):
+        super().__init__(*args, **kwargs)
+        records = user.submissions.filter(questionnaire=questionnaire)
+        if questionnaire.code == SSQ12:
+            records = records.with_scores().filter(answer_count=12)
+        else:
+            records = records.valid_hhi()
+        self.fields["unaided"].queryset = records.filter(wearing_hearing_aid=False)
+        self.fields["aided"].queryset = records.filter(wearing_hearing_aid=True)

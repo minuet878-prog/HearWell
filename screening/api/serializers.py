@@ -21,6 +21,7 @@ from screening.models import (
     Submission,
 )
 from screening.scoring import IOI_HA, THRESHOLDS, get_advice
+from screening.ssq12 import CODE as SSQ12
 
 
 class QuestionnaireSummarySerializer(serializers.ModelSerializer):
@@ -53,23 +54,39 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
 
 
 class ChoiceSerializer(serializers.Serializer):
-    value = serializers.IntegerField()
+    value = serializers.IntegerField(allow_null=True)
     label = serializers.CharField()
 
 
+class ScaleSerializer(serializers.Serializer):
+    min_label = serializers.CharField()
+    max_label = serializers.CharField()
+
+
 class QuestionSerializer(serializers.ModelSerializer):
+    scale = ScaleSerializer(required=False, allow_null=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.questionnaire.code != SSQ12:
+            data.pop("scale")
+        return data
+
     number = serializers.IntegerField(source="question_number")
     text = serializers.CharField(source="question_text")
     choices = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
-        fields = ("id", "number", "text", "choices")
+        fields = ("id", "number", "text", "choices", "scale")
 
     @extend_schema_field(ChoiceSerializer(many=True))
     def get_choices(self, question):
         # Same choices the answer form accepts.
-        return [{"value": value, "label": label} for value, label in answer_choices(question)]
+        return [
+            {"value": None if value == "na" else value, "label": label}
+            for value, label in answer_choices(question)
+        ]
 
 
 class QuestionnaireDetailSerializer(QuestionnaireSerializer):
@@ -91,18 +108,43 @@ class LevelSerializer(serializers.Serializer):
 
 
 class SubmissionSerializer(serializers.ModelSerializer):
+    average_score = serializers.DecimalField(
+        source="ssq_average", max_digits=3, decimal_places=1, allow_null=True, required=False
+    )
+    average_unavailable_reason = serializers.CharField(
+        source="ssq_unavailable_reason", allow_null=True, required=False
+    )
     questionnaire = QuestionnaireSummarySerializer()
     wearing_hearing_aid = serializers.BooleanField(allow_null=True)
     # Scores and level come from Submission's single scoring path, never recomputed here.
-    scores = ScoresSerializer(source="*")
-    level = LevelSerializer(source="classified")
+    scores = ScoresSerializer(source="*", allow_null=True)
+    level = LevelSerializer(source="classified", allow_null=True)
 
     class Meta:
         model = Submission
-        fields = ("id", "created_at", "questionnaire", "wearing_hearing_aid", "scores", "level")
+        fields = (
+            "id",
+            "created_at",
+            "questionnaire",
+            "wearing_hearing_aid",
+            "scores",
+            "level",
+            "average_score",
+            "average_unavailable_reason",
+        )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.questionnaire.code == SSQ12:
+            data["scores"] = None
+        else:
+            data.pop("average_score")
+            data.pop("average_unavailable_reason")
+        return data
 
 
 class AnswerSerializer(serializers.ModelSerializer):
+    score = serializers.IntegerField(min_value=0, max_value=10, allow_null=True)
     number = serializers.IntegerField(source="question.question_number")
     text = serializers.CharField(source="question.question_text")
     label = serializers.CharField(source="get_answer_display")
@@ -119,7 +161,9 @@ class SubmissionDetailSerializer(SubmissionSerializer):
     class Meta(SubmissionSerializer.Meta):
         fields = (*SubmissionSerializer.Meta.fields, "advice", "answers")
 
-    def get_advice(self, submission) -> str:
+    def get_advice(self, submission) -> str | None:
+        if submission.questionnaire.code == SSQ12:
+            return None
         return get_advice(submission.classified["level"], submission.questionnaire.code)
 
 
@@ -136,7 +180,7 @@ class StrictBooleanField(serializers.BooleanField):
 
 class AnswerInputSerializer(serializers.Serializer):
     question = serializers.IntegerField()
-    score = serializers.IntegerField()
+    score = serializers.IntegerField(allow_null=True)
 
 
 class SubmissionCreateSerializer(serializers.Serializer):
@@ -154,6 +198,11 @@ class SubmissionCreateSerializer(serializers.Serializer):
     answers = serializers.ListField(child=AnswerInputSerializer())
 
     def validate(self, attrs):
+        if attrs["questionnaire"].code == SSQ12:
+            for answer in self.initial_data.get("answers", []):
+                value = answer.get("score")
+                if value is not None and type(value) is not int:
+                    raise serializers.ValidationError({"answers": "請選擇 0–10 整數或不適用"})
         # The rules live in the answer formset, shared with the web form; this only feeds it.
         questions = list(attrs["questionnaire"].questions.all())
         if not questions:
@@ -166,7 +215,11 @@ class SubmissionCreateSerializer(serializers.Serializer):
         data = {"form-TOTAL_FORMS": len(answers), "form-INITIAL_FORMS": 0}
         for index, answer in enumerate(answers):
             data[f"form-{index}-question_id"] = answer["question"]
-            data[f"form-{index}-score"] = answer["score"]
+            data[f"form-{index}-score"] = (
+                "na"
+                if attrs["questionnaire"].code == SSQ12 and answer["score"] is None
+                else answer["score"]
+            )
         formset = AnswerFormSet(questions=questions, data=data)
         if not formset.is_valid():
             raise serializers.ValidationError({"answers": list(formset.non_form_errors())})

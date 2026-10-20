@@ -1,5 +1,6 @@
 import secrets
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -8,6 +9,8 @@ from django.utils import timezone
 
 from screening.audiogram import DB_MIN, interpret
 from screening.scoring import HHIA_S_CHOICES, QUESTIONNAIRE_INFO, classify
+from screening.ssq12 import CODE as SSQ12
+from screening.ssq12 import scale_labels
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -36,6 +39,7 @@ class User(AbstractUser):
     def delete_with_data(self):
         # Spec phase7_account_deletion.md: the account and everything of it, or nothing.
         # Children first, because every link to the user (and Answer to Submission) is PROTECT.
+        self.report_comparisons.all().delete()
         Answer.objects.filter(submission__user=self).delete()
         self.submissions.all().delete()  # norm_basis is RESTRICT, so linked pairs go together
         self.audiograms.all().delete()  # points go with them (CASCADE)
@@ -135,10 +139,19 @@ class Question(models.Model):
     def __str__(self):
         return f"{self.question_number}: {self.question_text[:30]}"
 
+    @property
+    def scale(self):
+        if self.questionnaire.code != SSQ12:
+            return None
+        lower, upper = scale_labels(self.question_number)
+        return {"min_label": lower, "max_label": upper}
+
 
 def _score_expressions():
     # The only definition of score sums: aggregate() for one submission, annotate() for lists.
     return {
+        "answer_count": models.Count("answers"),
+        "numeric_count": models.Count("answers__score"),
         "score_total": models.Sum("answers__score", default=0),
         "score_emotional": models.Sum(
             "answers__score",
@@ -160,8 +173,25 @@ class NormGroup(models.TextChoices):
 
 
 class SubmissionQuerySet(models.QuerySet):
+    def valid_hhi(self):
+        return (
+            self.filter(questionnaire__code__in=("hhie-s", "hhia-s"))
+            .with_scores()
+            .annotate(
+                valid_hhi_count=models.Count(
+                    "answers",
+                    filter=models.Q(
+                        answers__score__in=(0, 2, 4),
+                        answers__question__questionnaire=models.F("questionnaire"),
+                        answers__question__question_number__range=(1, 10),
+                    ),
+                )
+            )
+            .filter(answer_count=10, valid_hhi_count=10)
+        )
+
     def with_scores(self):
-        # id breaks ties so "newest" matches _latest_hhie_s and the API's cursor ordering.
+        # id breaks ties so "newest" is consistent with the API's cursor ordering.
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
 
 
@@ -179,8 +209,8 @@ class Submission(models.Model):
     )
     # IOI-HA only, fixed when submitted; "" on other questionnaires (not applicable).
     norm_group = models.CharField(max_length=32, choices=NormGroup.choices, blank=True)
-    # The unaided HHIE-S the group came from; None when ungrouped.
-    # RESTRICT, not PROTECT: the HHIE-S cannot go alone, but a user's records can go together.
+    # The unaided HHIA-S / HHIE-S the group came from; None when ungrouped.
+    # RESTRICT: the basis cannot go alone, but a user's records can go together.
     norm_basis = models.ForeignKey(
         "self", on_delete=models.RESTRICT, null=True, blank=True, related_name="+"
     )
@@ -223,7 +253,28 @@ class Submission(models.Model):
         return self._calculate_scores()["score_social"]
 
     @property
+    def ssq_average(self):
+        if self.questionnaire.code != SSQ12:
+            return None
+        scores = self._calculate_scores()
+        if scores["numeric_count"] != 12 or scores["answer_count"] != 12:
+            return None
+        return (Decimal(scores["score_total"]) / 12).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+
+    @property
+    def ssq_unavailable_reason(self):
+        if self.questionnaire.code != SSQ12 or self.ssq_average is not None:
+            return None
+        if self._calculate_scores()["numeric_count"] == 0:
+            return "未計算：沒有可用數值回答"
+        return "未計算：包含不適用題目"
+
+    @property
     def classified(self):
+        if self.questionnaire.code == SSQ12:
+            return None
         return classify(self.total_answer_score, self.questionnaire.code)
 
 
@@ -237,7 +288,7 @@ class Score(models.IntegerChoices):
 class Answer(models.Model):
     submission = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="answers")
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
-    score = models.IntegerField(choices=Score.choices)
+    score = models.IntegerField(choices=Score.choices, null=True, blank=True)
 
     class Meta:
         constraints = (
@@ -245,8 +296,8 @@ class Answer(models.Model):
                 fields=["submission", "question"], name="unique_submission_question"
             ),
             models.CheckConstraint(
-                # 0-5 covers every questionnaire; the form checks each one's own values.
-                condition=models.Q(score__gte=0, score__lte=5),
+                # Each questionnaire's exact values and explicit N/A are checked by its form.
+                condition=models.Q(score__isnull=True) | models.Q(score__gte=0, score__lte=10),
                 name="score_must_be",
             ),
         )
@@ -255,9 +306,59 @@ class Answer(models.Model):
         return f"{self.question}: {self.score}"
 
     def get_answer_display(self):
+        if self.question.questionnaire.code == SSQ12:
+            return "不適用" if self.score is None else str(self.score)
         if self.question.questionnaire.code == "hhia-s":
             return dict(HHIA_S_CHOICES).get(self.score, str(self.score))
         return self.get_score_display()
+
+
+class ReportComparison(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="report_comparisons"
+    )
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.PROTECT)
+    unaided = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="+")
+    aided = models.ForeignKey(Submission, on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=("user", "questionnaire"), name="one_report_comparison"),
+        )
+
+    def __str__(self):
+        return f"{self.user_id} comparison for {self.questionnaire_id}"
+
+    @property
+    def item_pairs(self):
+        aided = {a.question_id: a for a in self.aided.answers.all()}
+        return [
+            {"question": a.question, "unaided": a, "aided": aided[a.question_id]}
+            for a in sorted(self.unaided.answers.all(), key=lambda a: a.question.question_number)
+        ]
+
+    @property
+    def difference(self):
+        if self.questionnaire.code == SSQ12:
+            if self.unaided.ssq_average is None or self.aided.ssq_average is None:
+                return None
+            return (
+                Decimal(self.aided.total_answer_score - self.unaided.total_answer_score) / 12
+            ).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        return self.aided.total_answer_score - self.unaided.total_answer_score
+
+    @property
+    def difference_text(self):
+        change = self.difference
+        if self.questionnaire.code == SSQ12:
+            if change is None:
+                return "未計算整體差值：包含不適用題目或缺少完整回答"
+            return f"{change:+.1f} 分"
+        if change < 0:
+            return f"少了 {-change} 分"
+        if change > 0:
+            return f"多了 {change} 分"
+        return "沒有變化"
 
 
 class Audiogram(models.Model):

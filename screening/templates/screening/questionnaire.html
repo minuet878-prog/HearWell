@@ -4,13 +4,38 @@
 
 {% block body %}
 <h1 class="h3 mt-2">請選擇問卷</h1>
-{# Spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1; wording reviewed by the owner. #}
-<p class="questionnaire-guide">第一次使用，請從 HHIE-S 開始；已經戴助聽器的人，可以再做 IOI-HA。</p>
+{% if age_form %}
+<section id="age-confirm" aria-labelledby="age-title" class="card card-body mb-3">
+    <h2 id="age-title" class="h4">確認年齡，推薦適合您的問卷</h2>
+    <p>請確認您目前的實際年齡，讓我們推薦生活影響問卷；也可以直接自行選擇。</p>
+    <form method="get" action="{% url 'questionnaire_list' %}">
+        <fieldset>
+            <legend class="fs-5">{{ age_form.age_group.label }}</legend>
+            {% include "screening/field_messages.html" with field=age_form.age_group %}
+            {{ age_form.age_group }}
+        </fieldset>
+        <button type="submit" class="btn btn-primary btn-lg mt-2">看適合我的問卷</button>
+    </form>
+</section>
+{% endif %}
+{% if recommended %}
+<p class="questionnaire-guide">依您的年齡，建議先了解聽力對生活的影響（{{ recommended }}）；也可以自行選擇其他問卷。</p>
+{% endif %}
+<section aria-labelledby="purpose-title" class="mb-4">
+    <h2 id="purpose-title" class="h4">已經配戴助聽器？您想了解什麼？</h2>
+    <div class="d-flex flex-column align-items-start gap-2">
+        {% if ioi_ha_questionnaire %}<a class="btn btn-outline-primary btn-lg" href="{% url 'screening' ioi_ha_questionnaire.pk %}">了解助聽器的幫助</a>{% endif %}
+        {% if ssq12 %}<a class="btn btn-outline-primary btn-lg" href="{% url 'screening' ssq12.pk %}">了解目前聆聽能力</a>{% endif %}
+        {% if recommended %}<a class="btn btn-outline-primary btn-lg" href="{% url 'screening' recommended.pk %}">了解聽力對生活的影響</a>{% elif age_form %}<a class="btn btn-outline-primary btn-lg" href="#age-confirm">了解聽力對生活的影響：先確認年齡</a>{% endif %}
+    </div>
+</section>
+<h2 class="h4">自行選擇問卷</h2>
 {% for questionnaire in questionnaires %}
-<a class="link-card mt-3" href="{% url 'screening' questionnaire.id %}">
+<a class="link-card mt-3 questionnaire-card" href="{% url 'screening' questionnaire.id %}">
     {% include "screening/questionnaire_icon.html" with code=questionnaire.code %}
     <span class="link-card-body">
-        <span class="link-card-title">{{ questionnaire }}{% if questionnaire.info %} {{ questionnaire.info.subtitle }}{% endif %}</span>
+        <span class="link-card-title">{% if questionnaire.code == "hhie-s" or questionnaire.code == "hhia-s" %}聽力對生活的影響（{{ questionnaire }}）{% elif questionnaire.code == "ioi-ha" %}助聽器使用成效（{{ questionnaire }}）{% elif questionnaire.code == "ssq12-tw" %}日常聆聽能力（{{ questionnaire }}）{% else %}{{ questionnaire }}{% endif %}</span>
+        {% if questionnaire == recommended %}<span class="fw-bold">依您的年齡推薦</span>{% endif %}
         {% if questionnaire.info %}<span>{{ questionnaire.info.audience }}</span>{% endif %}
         <span class="card-tags"><span class="card-tag">{{ questionnaire.question_count }} 題</span>{% if questionnaire.info %}{# A pause for screen readers between the tags. #}<span class="visually-hidden">，</span><span class="card-tag">約 {{ questionnaire.info.minutes }} 分鐘</span>{% endif %}</span>
     </span>

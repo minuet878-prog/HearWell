@@ -6,13 +6,14 @@
 <p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
 <h1 class="h3">{{ submission.questionnaire.questionnaire_name }} 結果</h1>
 <p class="fs-5 fw-bold">常模組別：{{ submission.get_norm_group_display }}</p>
+<p>這是常模比較的分組，不代表聽損程度。</p>
 {% if grouped %}
 {% with basis=submission.norm_basis %}
-<p>分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 HHIE-S，{{ basis.total_answer_score }} 分。</p>
+<p>分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.total_answer_score }} 分。</p>
 {% endwith %}
 <p>常模範圍是一般助聽器使用者中，中間一半的人的分數。</p>
 {% else %}
-<p>需要一筆沒戴助聽器時填的 HHIE-S，才能跟常模比較。</p>
+<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
 {% endif %}
 <ol>
     {% for item in items %}

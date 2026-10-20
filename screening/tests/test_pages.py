@@ -545,7 +545,7 @@ class PageFlowTests(TestCase):
             main,
             (
                 "請選擇問卷",
-                "HHIE-S 聽力障礙自我評估",
+                "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
                 # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
                 '<span class="card-tag">10 題</span>',
@@ -555,7 +555,7 @@ class PageFlowTests(TestCase):
         self.assertRegex(
             main,
             rf'<a[^>]*href="{reverse("screening", args=[self.hhie_s.id])}"[^>]*>'
-            r"(\s*<[^>]+>)*\s*HHIE-S",
+            r"(\s*<[^>]+>)*\s*聽力對生活的影響（HHIE-S）",
         )
 
     def test_question_count_is_not_hard_coded(self):
