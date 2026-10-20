@@ -13,7 +13,7 @@ from screening.tests.helpers import consented_user
 
 class Ssq12Tests(TestCase):
     def start(self):
-        call_command("seed_ssq12", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
         self.questions = list(self.questionnaire.questions.all())
         self.user = consented_user(username="ssq_user", password="Test-pass-12345")
@@ -197,7 +197,7 @@ class Ssq12Tests(TestCase):
         self.start()
         before = list(self.questionnaire.questions.values_list("pk", "question_text"))
         self.post([6] * 12)
-        call_command("seed_ssq12", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.assertEqual(
             list(self.questionnaire.questions.values_list("pk", "question_text")), before
         )

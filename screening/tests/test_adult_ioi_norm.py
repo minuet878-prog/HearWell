@@ -18,7 +18,7 @@ class AdultIoiNormTests(TestCase):
     def setUp(self):
         self.client.force_login(self.user)
         self.url = reverse("screening", args=[self.ioi_ha.pk])
-        call_command("seed_hhia_s", stdout=StringIO())
+        call_command("seed_questionnaires", stdout=StringIO())
         self.hhia = Questionnaire.objects.get(code="hhia-s")
 
     def hhia_record(self, total=24, user=None, wearing=False):
