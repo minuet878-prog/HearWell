@@ -20,7 +20,6 @@ class RecommendationTests(TestCase):
         )
         cls.ioi = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
         call_command("seed_questionnaires", stdout=StringIO())
-        call_command("seed_questionnaires", stdout=StringIO())
         cls.hhia = Questionnaire.objects.get(code="hhia-s")
         cls.ssq = Questionnaire.objects.get(code="ssq12-tw")
 

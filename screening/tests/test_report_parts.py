@@ -8,6 +8,7 @@ from django.test import TestCase
 
 from screening.models import Answer, NormGroup, Question, Questionnaire, Submission
 from screening.questionnaires.hhia_s import EXPLANATION as HHIA_S_EXPLANATION
+from screening.tests import test_report
 from screening.tests.helpers import consented_user
 
 PARTS = {
@@ -48,7 +49,6 @@ def _outline(response):
 class ReportPartsTests(TestCase):
     def setUp(self):
         call_command("seed_questionnaires", stdout=StringIO())
-        call_command("seed_questionnaires", stdout=StringIO())
         self.hhia = Questionnaire.objects.get(code="hhia-s")
         self.ssq = Questionnaire.objects.get(code="ssq12-tw")
         self.hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
@@ -88,6 +88,34 @@ class ReportPartsTests(TestCase):
         share = self.user.report_shares.get()
         self.client.logout()
         return self.client.get(f"/shared/{share.token}/report")
+
+    def test_comparison_texts_on_owner_and_family_reports(self):
+        # Issue #102: the moved comparison parts read as before, with a real difference.
+        for questionnaire, unaided, aided in (
+            (self.hhie, 4, 2),
+            (self.hhia, 2, 0),
+            (self.ssq, 4, 6),
+        ):
+            first = self.record(questionnaire, wearing=False, score=unaided)
+            second = self.record(questionnaire, wearing=True, score=aided)
+            self.client.post(
+                f"/comparisons/{questionnaire.pk}",
+                {"unaided": first.pk, "aided": second.pk, "action": "save"},
+            )
+        ssq_item = self.ssq.questions.get(question_number=1).question_text
+        for response in (self.client.get("/report"), self.family_report()):
+            content = response.content.decode()
+            for section, sentence in (
+                ("report-difference", "差值（配戴 \u2212 未配戴）：-20 分，少了 20 分。"),
+                ("report-comparison-hhia-s", "差值（配戴 \u2212 未配戴）：-20 分，少了 20 分。"),
+                ("report-comparison-ssq12-tw", "差值（配戴 \u2212 未配戴）：+2.0 分。"),
+            ):
+                with self.subTest(section=section):
+                    self.assertIn(sentence, test_report._section(content, section))
+            self.assertIn(
+                f"{ssq_item}<br>未配戴：<strong>4</strong>；配戴：<strong>6</strong>",
+                test_report._section(content, "report-comparison-ssq12-tw"),
+            )
 
     def test_each_result_and_its_comparison_sit_in_their_part(self):
         basis = self.save_pair(self.hhie)

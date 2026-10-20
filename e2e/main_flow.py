@@ -264,7 +264,6 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
     def test_age_confirmation_and_purpose_links_without_javascript(self):
         """#80: server-rendered selection preserves browser back and scales at 320px."""
         call_command("seed_questionnaires", verbosity=0)
-        call_command("seed_questionnaires", verbosity=0)
         self.context.close()
         self.context = self.browser.new_context(
             java_script_enabled=False, viewport={"width": 320, "height": 800}

@@ -273,7 +273,7 @@ python manage.py check --deploy                        # 部署前安全檢查�
 6. `loaddata questions_fixture.json`：載入 HHIE-S、IOI-HA 題目
 7. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW 題目（不指定 id，不會蓋掉舊題目）
 
-因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一份問卷。
+因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一個問卷定義（新 code）。
 
 ## 文件
 

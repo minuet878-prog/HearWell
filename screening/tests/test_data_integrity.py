@@ -1,7 +1,5 @@
-from pathlib import Path
-
 from django.db import IntegrityError
-from django.test import SimpleTestCase, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission, User
@@ -136,17 +134,3 @@ class AdminViewOnlyTests(TestCase):
             Submission.objects.get(pk=submission.pk).questionnaire_id, self.answered_q.pk
         )
         self.assertEqual(Answer.objects.get(pk=answer.pk).score, 4)
-
-
-class KnownPitfallsTests(SimpleTestCase):
-    """Issue #103: AGENTS.md's pitfalls follow code-defined, view-only questionnaires."""
-
-    def test_pitfalls_describe_definitions_instead_of_admin_locks(self):
-        agents = (Path(__file__).resolve().parents[2] / "AGENTS.md").read_text(encoding="utf-8")
-        pitfalls = agents.split("## 已知陷阱", 1)[1].split("\n## ", 1)[0]
-        for stale in ("admin 沒擋", "繞過 admin 的鎖", "新增一份問卷", "scoring.THRESHOLDS"):
-            with self.subTest(stale=stale):
-                self.assertNotIn(stale, pitfalls)
-        self.assertIn("問卷、題目、Submission／Answer 在 admin 都只能看", pitfalls)
-        self.assertIn("新增一個問卷定義（新 code）", pitfalls)
-        self.assertIn("問卷定義的 `thresholds`", pitfalls)

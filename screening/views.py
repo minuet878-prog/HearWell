@@ -537,7 +537,10 @@ def download_my_data(request):
                 "unaided": _export_submission(comparison.unaided),
                 "aided": _export_submission(comparison.aided),
             }
-            for comparison in user.report_comparisons.select_related("questionnaire")
+            for comparison in user.report_comparisons.filter(
+                questionnaire__in=Questionnaire.objects.defined()
+            )
+            .select_related("questionnaire")
             .prefetch_related(
                 Prefetch("unaided", queryset=submissions),
                 Prefetch("aided", queryset=submissions),
@@ -629,9 +632,8 @@ def _report_context(user):
         if submission.questionnaire.definition.result == LEVEL:
             by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
     comparisons = list(
-        user.report_comparisons.select_related(
-            "questionnaire", "unaided__questionnaire", "aided__questionnaire"
-        )
+        user.report_comparisons.filter(questionnaire__in=Questionnaire.objects.defined())
+        .select_related("questionnaire", "unaided__questionnaire", "aided__questionnaire")
         .prefetch_related("unaided__answers__question", "aided__answers__question")
         .order_by("questionnaire_id")
     )
