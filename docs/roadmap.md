@@ -254,7 +254,13 @@ Phase 8 分享、臨床端檢視的前置條件：資料要給別人看之前，
 
 - 範圍：HHIA-S、SSQ12-TW、依年齡與目的推薦問卷、IOI-HA 常模依據固定、三份問卷各自保留一組報告比較、本人／家屬／列印報告整合。規格 [#76](https://github.com/minuet878-prog/HearWell/issues/76)，拆票與依賴見[拆票紀錄](planning/adult-assessment/ticket-plan-adult-assessment.md)。
 - #77–#84 全數完成，2026-10-19～20 本人人工驗收通過，PR #85、#86 已合併；各票證據見 `verification/`（issue-78、issues-79-80、issues-81-82、issues-83-84）。
-- 合併後的交叉審查找到三個問題，開 [#90](https://github.com/minuet878-prog/HearWell/issues/90) 修正（報告三區分組、HHIA-S 說明重複、比較選單 N+1 查詢），PR #91 已合併。
+- Claude Code 審 Codex 做的 PR #85–#89，找到三個問題開成 #90，PR #91 已合併：
+  - 報告分成生活影響／日常聆聽能力／助聽器使用成效三區，比較放在自己的問卷下方
+  - HHIA-S 說明不再重複出現兩次
+  - 比較頁選單修 N+1
+- PR #93 已合併：SSQ12 作答說明拿掉「回想」（#76 第 7 條）；規範第 18 條加「量表題目照原文」的例外（HHIA-S 的「你」）。
+- 本人決定保留：HHIE-S 報告區塊的行動建議與逐題回答（各問卷版面一致）。
+- 做第二批問卷（APHAB／SADL）之前先整理：依問卷代碼的判斷散在 `forms.py`、`models.py`、`api/serializers.py`、`views.py` 與模板約 30 處，加一份問卷要改 8 個以上檔案。
 - 這次的決策記在 ADR 0001–0004。
 
 ### Phase 10 之後
