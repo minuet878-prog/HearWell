@@ -895,25 +895,36 @@ class PwaNavTest(StaticLiveServerTestCase):
     def on_same_line(a, b):
         return a["y"] < b["y"] + b["height"] and b["y"] < a["y"] + a["height"]
 
+    LONG_NAME = "family_shared_phone_account_for_grandma_and_grandpa_lin"
+
     def test_logout_shares_the_first_header_line_on_phones(self):
         """Logout stays beside the brand however long the name is; the name gets its own line."""
-        username = "family_shared_phone_account"
-        self.sign_in_as(username)
+        self.sign_in_as(self.LONG_NAME)
         for width, standalone in ((360, True), (390, True), (390, False)):
             with self.subTest(width=width, standalone=standalone):
                 self.open(standalone=standalone, width=width)
                 with self.saving_artifacts():
-                    brand, logout, account = self.header_boxes(username)
+                    brand, logout, account = self.header_boxes(self.LONG_NAME)
+                    if standalone:
+                        expect(self.back()).to_be_visible()
                     self.assertTrue(self.on_same_line(brand, logout))
                     self.assertLessEqual(logout["x"] + logout["width"], width)
+                    self.assertGreaterEqual(logout["width"], 44)
+                    self.assertGreaterEqual(logout["height"], 44)
                     self.assertGreaterEqual(account["y"], logout["y"] + logout["height"])
+                    # Screen readers and Tab still reach the name before logout.
+                    name_first = self.page.evaluate(
+                        "document.querySelector('.site-account').compareDocumentPosition("
+                        "document.getElementById('logout-form')) & Node.DOCUMENT_POSITION_FOLLOWING"
+                    )
+                    self.assertTrue(name_first)
 
     def test_header_is_one_line_on_wide_screens(self):
-        username = "family_shared_phone_account"
-        self.sign_in_as(username)
-        self.open(standalone=False, width=1024)
+        """Just past the 48em breakpoint, a long name wraps in its own space beside logout."""
+        self.sign_in_as(self.LONG_NAME)
+        self.open(standalone=False, width=800)
         with self.saving_artifacts():
-            brand, logout, account = self.header_boxes(username)
+            brand, logout, account = self.header_boxes(self.LONG_NAME)
             self.assertTrue(self.on_same_line(brand, logout))
             self.assertTrue(self.on_same_line(account, logout))
             self.assertLessEqual(account["x"] + account["width"], logout["x"])

@@ -117,12 +117,14 @@ html {
     flex-basis: 100%;
 }
 
+/* Wide screens: one line. A zero basis makes the name take the space left and wrap inside it;
+   sized by its full text, a long name would drop to a new line with logout. */
 @media (min-width: 48em) {
     .site-header-bar .site-account {
         order: 0;
-        flex-basis: auto;
+        flex: 1 1 0;
         min-width: 0;
-        margin-left: auto;
+        text-align: end;
     }
 }
 
