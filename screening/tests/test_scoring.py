@@ -273,4 +273,4 @@ class SubscaleNoteTests(TestCase):
     def test_note_uses_readable_rem_size(self):
         submission = self._make_submission(self.hhie_s)
         response = self.client.get(reverse("result", args=[submission.id]))
-        self.assertContains(response, f'<p class="text-body-emphasis">{self.NOTE}</p>', html=True)
+        self.assertContains(response, f'<p class="text-black">{self.NOTE}</p>', html=True)

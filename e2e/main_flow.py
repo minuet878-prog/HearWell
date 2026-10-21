@@ -1110,12 +1110,13 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
 
     def test_heading_classes_and_muted_text_look_as_before(self):
         # #124: Bootstrap's .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
-        # line height 1.2 and a .5rem bottom margin; its .text-muted was the body text colour.
+        # line height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body
+        # text colour.
         self.open(javascript=False)
         with self.saving_artifacts():
             for path, selector in (
                 ("/questionnaire_list", "h1.h3"),
-                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-muted"),
+                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-body"),
             ):
                 with self.subTest(selector=selector):
                     self.page.goto(f"{self.live_server_url}{path}")

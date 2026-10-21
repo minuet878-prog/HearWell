@@ -8,11 +8,11 @@
 <div class="result-banner result-banner-{{ classified_score_level }}">
     <div>結果</div>
     <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
-    <div id="result-score" class="fs-5">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
+    <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
-<h2 class="h4 mt-4">建議</h2>
+<h2 class="h4 mt-6">建議</h2>
 <p>{{ advice }}</p>
-<div class="d-flex flex-column flex-sm-row gap-2 my-3">
+<div class="flex flex-col min-[576px]:flex-row gap-2 my-4">
     <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
     <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 </div>
@@ -23,11 +23,11 @@
 {% if submission.questionnaire.definition.comparison %}
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">選擇或管理配戴狀態比較</a></p>
 {% endif %}
-<h2 class="h5 mt-4">分數細節</h2>
+<h2 class="h5 mt-6">分數細節</h2>
 <p class="mb-1">情緒分數：{{ emotional }}　社交分數：{{ social }}</p>
-<p class="text-body-emphasis mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
-<p class="text-body-emphasis">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
-<details class="mb-3">
+<p class="text-black mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
+<p class="text-black">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
+<details class="mb-4">
     <summary>查看我的 {{ answers|length }} 題作答</summary>
     <ol>
         {% for answer in answers %}

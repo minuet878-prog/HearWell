@@ -222,7 +222,7 @@ class HearingAidTests(TestCase):
         submission = self._make_submission(True)
         response = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(
-            response, '<p class="text-body-emphasis mb-1">助聽器：有戴</p>', html=True
+            response, '<p class="text-black mb-1">助聽器：有戴</p>', html=True
         )
 
 

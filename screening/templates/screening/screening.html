@@ -17,10 +17,10 @@ Focus lands here on load and screen readers announce it. Links jump to the quest
 fieldset (tabindex -1), so the question text is in view and read out, not just its options.
 The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 {% endcomment %}
-<div id="error-summary" class="mb-3 text-danger" role="alert" tabindex="-1" autofocus>
+<div id="error-summary" class="mb-4 text-danger" role="alert" tabindex="-1" autofocus>
     {% if unanswered %}
     <p class="mb-2">{{message}}</p>
-    <ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">
+    <ul class="list-unstyled flex flex-wrap gap-2 mb-0">
         {% for label, target in unanswered %}
         <li><a class="btn btn-outline-primary" href="#{{ target }}">{{ label }}</a></li>
         {% endfor %}
@@ -31,12 +31,12 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 </div>
 {% endif %}
 <div>
-    <h1 class="h2 mt-3">{{ questionnaire.questionnaire_name }}</h1>
-    <p class="fs-5 fw-bold">共 {{ question_count }} 題，大約 {{ questionnaire.definition.minutes }} 分鐘。</p>
+    <h1 class="h2 mt-4">{{ questionnaire.questionnaire_name }}</h1>
+    <p class="text-xl/normal font-bold">共 {{ question_count }} 題，大約 {{ questionnaire.definition.minutes }} 分鐘。</p>
     {% include questionnaire.definition.intro_template %}
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
-    <p id="answer-loading" class="fs-5 fw-bold" role="status"></p>
+    <p id="answer-loading" class="text-xl/normal font-bold" role="status"></p>
     {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
     <script>
         document.documentElement.classList.add("answer-loading");
@@ -56,10 +56,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         {% if is_ioi_ha %}<input type="hidden" name="norm_token" value="{{ norm_token }}">{% endif %}
         {{ formset.management_form }}
         {% if hearing_aid_form %}
-        <div class="card mb-3">
+        <div class="card mb-4">
             <div class="card-body">
                 <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% endif %}>
-                    <legend class="fw-bold fs-5">這次填答時，您有沒有戴助聽器？</legend>
+                    <legend class="font-bold text-xl/normal">這次填答時，您有沒有戴助聽器？</legend>
                     {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}
                     {{ hearing_aid_form.wearing_hearing_aid }}
                 </fieldset>
@@ -67,10 +67,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         </div>
         {% endif %}
         {% for question, form in question_form %}
-        <div class="card mb-3">
+        <div class="card mb-4">
             <div class="card-body">
                 <fieldset id="question-{{ forloop.counter }}" tabindex="-1"{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
-                    <legend class="fw-bold fs-5"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
+                    <legend class="font-bold text-xl/normal"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
                     {% include "screening/field_messages.html" with field=form.score %}
                     {% if question.scale %}
                     <p>0：{{ question.scale.min_label }}；10：{{ question.scale.max_label }}</p>
