@@ -10,6 +10,8 @@ from django.core.management.utils import get_random_secret_key
 from django.test import SimpleTestCase
 from django.urls import Resolver404, resolve
 
+from config.test_settings import worktree_test_database
+
 
 class DevChecksTests(SimpleTestCase):
     """Spec docs/specs/phase-00/phase0_dev_checks.md, acceptance 2-9 and the Python version."""
@@ -227,3 +229,14 @@ else:
             debug=False,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+class WorktreeTestDatabaseTests(SimpleTestCase):
+    """Retro #99: tests in a worktree use their own test database beside the main folder."""
+
+    def test_worktree_gets_its_own_name(self):
+        base_dir = Path("/home/me/HearWell/.claude/worktrees/q100")
+        self.assertEqual(worktree_test_database(base_dir, "hearwell"), "test_hearwell_q100")
+
+    def test_main_folder_keeps_the_default(self):
+        self.assertIsNone(worktree_test_database(Path("/home/me/HearWell"), "hearwell"))
