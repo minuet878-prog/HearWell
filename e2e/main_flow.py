@@ -1004,7 +1004,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "--color-primary-active": "#122f55",
             "--color-body": "#495057",
             "--color-heading": "#212529",
-            "--color-muted": "#343a40",
+            "--color-footer": "#343a40",
             "--color-normal": "#1e7b55",
             "--color-normal-bg": "#e3f4ec",
             "--color-mild": "#8a5a00",
@@ -1056,6 +1056,24 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 self.assertEqual(token, literal)
         self.assertEqual(self.style(self.page.locator("html"), "fontSize"), "18px")
         self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
+
+    def test_heading_classes_and_muted_text_look_as_before(self):
+        # #124: Bootstrap's .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
+        # line height 1.2 and a .5rem bottom margin; its .text-muted was the body text colour.
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            for path, selector in (
+                ("/questionnaire_list", "h1.h3"),
+                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-muted"),
+            ):
+                with self.subTest(selector=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    element = self.page.locator(selector)
+                    self.assertEqual(self.style(element, "fontSize"), "29.544px")
+                    self.assertEqual(self.style(element, "fontWeight"), "500")
+                    self.assertEqual(self.style(element, "lineHeight"), "35.4528px")
+                    self.assertEqual(self.style(element, "marginBottom"), "9px")
+                    self.assertEqual(self.style(element, "color"), self.TEXT)
 
     def test_text_primary_and_error_colours(self):
         self.open(signed_in=False)

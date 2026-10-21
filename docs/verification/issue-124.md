@@ -19,6 +19,7 @@
 | `npm run build --prefix frontend` | 產生 `site.css`，無 `site.js` |
 | Ruff、`git diff --check` | 通過 |
 | 主題數值、skip link 焦點、手機放大字級返回鍵、手機登出排列、桌機長帳號頁首 | 5 個瀏覽器測試通過 |
+| `StyleInBrowserTest`（#123 的瀏覽器樣式檢查＋本票新增兩個） | 7 個中 6 個通過；`test_text_primary_and_error_colours` 預期失敗，見下方「已知的預期失敗」 |
 | CSS brotli | `site.css` 3,395 ＋ `styles.css` 5,489 ＝ **8,884 bytes**，上限 28,459 bytes |
 
 字級檢查新增掃描 `frontend/src/*.css`。Django 頁面測試涵蓋公用、帳號、同意、問卷、結果、紀錄、聽力圖、報告與分享頁（含失效連結），檢查載入 `site.css` 且沒有 Bootstrap 引用。
@@ -40,6 +41,22 @@
 
 注意：原始 272 張裁切比對沒有變成全通過；本票的畫面一致證據來自上述隔離區域對照。整頁版面一致仍由 #131 驗收。
 
+## 審查後修正（Claude Code 審查，2026-10-21）
+
+Claude Code 審查這張票的三個 commit 後，本人同意修正以下三項：
+
+1. **token 名稱撞到 Bootstrap class**：頁尾文字色原本叫 `--color-muted`，Tailwind 會因此產生 `.text-muted`（#343a40）。但 HHIE-S、IOI-HA 的問卷說明文字本來就用 `text-muted`，遷移前是本文色 #495057，會被悄悄改成較深的顏色。已改名為 `--color-footer`，建置出來的 CSS 不再有 `.text-muted`。
+2. **基礎層缺 `.h1`–`.h6`**：15 個模板用 `class="h3"` 這類 Bootstrap 標題 class（頁面主標題、問卷說明文字），#125–#130 都沒有涵蓋。已在基礎層和 `h1`–`h6` 一起定義，數值照 Bootstrap Reboot。
+3. **roadmap 先不改**：原本在 roadmap 加了一行「#124 尚待本人驗收」。這條分支開在 #134（roadmap 更新）合併之前，在這裡改 roadmap，之後併入 `main` 會和 #134 衝突；roadmap 照流程留到收尾再更新，所以拿掉這一行。（審查時一度誤判為刪掉 #118 等內容，實際是比對基準 `main` 已經往前，不是這次的修改。）
+
+新增測試 `e2e.main_flow.StyleInBrowserTest.test_heading_classes_and_muted_text_look_as_before`（`e2e/main_flow.py:1060`）：修正前失敗（`h1.h3` 是 40.11px、`p.h3.text-muted` 是 18px），修正後通過。檢查問卷目錄的 `h1.h3` 和 HHIE-S 說明的 `p.h3.text-muted`：1024px 寬時字級 29.544px（`calc(1.3rem + .6vw)`）、字重 500、行高 35.4528px、下方間距 9px、文字色 #495057，都是遷移前 Bootstrap 的數值。
+
+這兩項只動到主要內容區，不影響頁首、導覽、頁尾，所以沒有重拍共用區域截圖。
+
+### 已知的預期失敗
+
+`e2e.main_flow.StyleInBrowserTest.test_text_primary_and_error_colours`：登入按鈕（`btn-primary`）的底色量到透明，不是主色。`btn-primary` 照分票由 #125 定義，#125 的驗收條件就是這個測試通過；本票不修。
+
 ## 自審
 
 依 code-review 技能，以 main 為基準，Standards 與 Spec 分別審查。發現完整 CSS 體積、主題數值與 skip link 外觀證據三項缺口並補齊；Standards 複核 0 項要修，Spec 複核含最終零差異報告也確認原三項均修復，0 項待修。
@@ -55,6 +72,7 @@
 | Tab／Enter 與聚焦外觀 | 既有 `e2e/main_flow.py` skip link測試；附錄腳本每個頁面 `to_be_focused`／`to_be_visible`，加 90 張聚焦圖 |
 | CSS 上限 | `frontend/src/bundle.test.js:59` 新舊 CSS 合計 |
 | 數值不改 | `e2e/main_flow.py:997` 的32項 token對照與根字級／寬度斷言 |
+| 標題 class 與說明文字 | `e2e/main_flow.py:1060` 的字級、字重、行高、間距、文字色 |
 
 聚焦截圖比較元素邊界內的文字、padding、border、背景；元素外側的瀏覽器焦點框不在裁切範圍，該外框規則未修改，本次不宣稱另外量到它。
 

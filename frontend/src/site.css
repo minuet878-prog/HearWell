@@ -12,7 +12,7 @@
   --color-primary-active: #122f55;
   --color-body: #495057;
   --color-heading: #212529;
-  --color-muted: #343a40;
+  --color-footer: #343a40;
   --color-normal: #1e7b55;
   --color-normal-bg: #e3f4ec;
   --color-mild: #8a5a00;
@@ -63,23 +63,23 @@
     :root { scroll-behavior: smooth; }
   }
   hr { margin: 1rem 0; color: inherit; border: 0; border-top: 1px solid; opacity: 0.25; }
-  h1, h2, h3, h4, h5, h6 {
+  h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
     margin: 0 0 0.5rem;
     font-weight: 500;
     line-height: 1.2;
     color: inherit;
   }
-  h1 { font-size: calc(1.375rem + 1.5vw); }
-  h2 { font-size: calc(1.325rem + 0.9vw); }
-  h3 { font-size: calc(1.3rem + 0.6vw); }
-  h4 { font-size: calc(1.275rem + 0.3vw); }
-  h5 { font-size: 1.25rem; }
-  h6 { font-size: 1rem; }
+  h1, .h1 { font-size: calc(1.375rem + 1.5vw); }
+  h2, .h2 { font-size: calc(1.325rem + 0.9vw); }
+  h3, .h3 { font-size: calc(1.3rem + 0.6vw); }
+  h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
+  h5, .h5 { font-size: 1.25rem; }
+  h6, .h6 { font-size: 1rem; }
   @media (min-width: 1200px) {
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 2rem; }
-    h3 { font-size: 1.75rem; }
-    h4 { font-size: 1.5rem; }
+    h1, .h1 { font-size: 2.5rem; }
+    h2, .h2 { font-size: 2rem; }
+    h3, .h3 { font-size: 1.75rem; }
+    h4, .h4 { font-size: 1.5rem; }
   }
   p { margin: 0 0 1rem; }
   ol, ul { padding-left: 2rem; }
