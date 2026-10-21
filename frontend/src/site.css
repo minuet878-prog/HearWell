@@ -1016,13 +1016,13 @@
     stroke-linejoin: round;
   }
 
-  /* Three across when they fit, otherwise one per row. */
+  /* Four steps: two across when they fit (never 3 + 1), otherwise one per row. */
   .step-cards {
     list-style: none;
     padding: 0;
     margin-bottom: 1.5rem;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
     gap: 0.75rem;
   }
 
