@@ -38,7 +38,32 @@ ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
 
 
-class NewUserScreeningTest(StaticLiveServerTestCase):
+class SavesFailureArtifacts:
+    """On failure, keep the screenshot and trace of that moment for debugging (CI uploads them)."""
+
+    saved_context = None
+
+    @contextmanager
+    def saving_artifacts(self):
+        try:
+            yield
+        except BaseException:
+            # Nested blocks see the same failure again; a context's trace can only stop once.
+            if self.saved_context is not self.context:
+                self.saved_context = self.context
+                ARTIFACTS.mkdir(exist_ok=True)
+                self.page.screenshot(path=ARTIFACTS / "failure.png", full_page=True)
+                self.context.tracing.stop(path=ARTIFACTS / "trace.zip")
+            raise
+
+    @contextmanager
+    def subTest(self, *args, **params):
+        # unittest records a failing subtest and carries on, so no outer block ever sees it.
+        with super().subTest(*args, **params), self.saving_artifacts():
+            yield
+
+
+class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec 4.1: one method per step, so a failure's traceback names the step."""
 
     fixtures = ("questions_fixture.json",)
@@ -314,17 +339,6 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
             self.assertEqual(shared["url"], url)
             self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
 
-    @contextmanager
-    def saving_artifacts(self):
-        """On failure, keep this test's screenshot and trace for debugging (CI uploads them)."""
-        try:
-            yield
-        except BaseException:
-            ARTIFACTS.mkdir(exist_ok=True)
-            self.page.screenshot(path=ARTIFACTS / "failure.png", full_page=True)
-            self.context.tracing.stop(path=ARTIFACTS / "trace.zip")
-            raise
-
     def main(self):
         return self.page.get_by_role("main")
 
@@ -416,7 +430,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         self.main().get_by_role("button", name="下一題").click()
 
 
-class SharedLayoutTest(StaticLiveServerTestCase):
+class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase9_ui_refresh_1_shared.md acceptance 1, 2 and 11: only a browser lays pages out."""
 
     fixtures = ("questions_fixture.json",)
@@ -489,8 +503,6 @@ class SharedLayoutTest(StaticLiveServerTestCase):
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
-
-    saving_artifacts = NewUserScreeningTest.saving_artifacts
 
     def test_result_level_is_exposed_as_a_heading(self):
         self.open(390)
@@ -864,7 +876,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
-class PwaNavTest(StaticLiveServerTestCase):
+class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
 
     # Pretends to be the iPhone home-screen app; Chromium cannot emulate display-mode.
@@ -881,8 +893,6 @@ class PwaNavTest(StaticLiveServerTestCase):
         cls.browser.close()
         cls.playwright.stop()
         super().tearDownClass()
-
-    saving_artifacts = NewUserScreeningTest.saving_artifacts
 
     def setUp(self):
         self.client.force_login(consented_user(username="pwa_nav_e2e"))
@@ -1001,7 +1011,7 @@ class PwaNavTest(StaticLiveServerTestCase):
             self.assertLessEqual(account["x"] + account["width"], logout["x"])
 
 
-class StyleInBrowserTest(StaticLiveServerTestCase):
+class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """#123: style rules measured as the browser computes them, whatever produced the CSS."""
 
     fixtures = ("questions_fixture.json",)
@@ -1027,8 +1037,6 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         cls.browser.close()
         cls.playwright.stop()
         super().tearDownClass()
-
-    saving_artifacts = NewUserScreeningTest.saving_artifacts
 
     def setUp(self):
         self.user = consented_user(username="style_e2e")
