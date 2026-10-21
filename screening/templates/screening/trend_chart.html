@@ -1,0 +1,48 @@
+{# The trend chart's text is on the page from the start; React draws only inside #trend-plot, #}
+{# a box of fixed height, so the record cards below do not move when the chart arrives. #}
+<div id="trend-chart">
+<section aria-labelledby="trend-title" class="mb-6">
+    <h2 id="trend-title" class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ questionnaire.questionnaire_name }} 總分變化</h2>
+    <p>分數越低，聽力對生活的影響越小。</p>
+    <div class="trend-summary mb-4">
+        <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}，{{ chart.status }}）</p>
+        <p class="trend-summary-score mb-1"><strong>{{ chart.latest.total_answer_score }} 分</strong> <span>{{ chart.latest.classified.text }}</span></p>
+        <p class="mb-0">{{ chart.change }}</p>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            {# The summary box above and the cards list carry the same information as text. #}
+            <div id="trend-plot" class="h-[20rem]" data-questionnaire="{{ questionnaire.code }}" aria-hidden="true">
+                {# Shown until React draws; TrendChart.jsx shows the same text while it loads. #}
+                <p class="trend-plot-message">趨勢圖載入中…</p>
+            </div>
+            {# Same shapes as the chart's points: filled circle, hollow square, hollow triangle. #}
+            <ul class="trend-legend">
+                {% for shape in chart.legend %}
+                <li>
+                    <svg width="48" height="24" viewBox="0 0 48 24" aria-hidden="true">
+                        {% if shape == "unaided" %}
+                        <line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3"></line>
+                        <circle stroke="#1f4e8c" stroke-width="3" cx="38" cy="12" r="7" fill="#1f4e8c"></circle>
+                        {% elif shape == "aided" %}
+                        <line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3" stroke-dasharray="8 6"></line>
+                        <rect stroke="#1f4e8c" stroke-width="3" x="31" y="5" width="14" height="14" fill="#fff"></rect>
+                        {% else %}
+                        <polygon stroke="#1f4e8c" stroke-width="3" points="38,3.6 45.7,17.6 30.3,17.6" fill="#fff"></polygon>
+                        {% endif %}
+                    </svg>
+                    {% if shape == "unaided" %}沒戴助聽器{% elif shape == "aided" %}有戴助聽器{% else %}未記錄{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% if chart.levels %}
+            <ul class="trend-bands">
+                {% for level in chart.levels %}
+                <li class="trend-band-{{ level.code }}"><span class="trend-band-swatch" aria-hidden="true"></span><span>{{ level.text }}</span></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+</section>
+</div>

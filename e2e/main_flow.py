@@ -383,7 +383,7 @@ class NewUserScreeningTest(StaticLiveServerTestCase):
         card = self.main().locator("a.link-card")
         expect(card).to_have_count(1)
         expect(card).to_contain_text("總分：20")
-        # The record card only: the trend chart, drawn later by React, repeats the level text.
+        # The record card only: the trend summary above it repeats the level text.
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
 
     def step7_report_prints_without_site_chrome(self):
@@ -527,14 +527,19 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                 accessible_name = re.compile(rf"{accessible_date}.*總分：{score}")
                 expect(self.page.get_by_role("link", name=accessible_name)).to_have_count(1)
 
+    def hold(self, url):
+        """Requests to url wait in the returned list until the test lets them through."""
+        held = []
+        self.page.route(url, lambda route: held.append(route))
+        return held
+
     # The trend chart draws after its data arrives; the record cards below must not move then.
     def test_trend_chart_does_not_push_the_records_down(self):
         for width, large_text in ((320, False), (390, False), (1280, False), (390, True)):
             with self.subTest(width=width, large_text=large_text):
                 self.open(width)
                 # Hold the records' API answer, so the page is measured before the chart draws.
-                held = []
-                self.page.route("**/api/submissions/", lambda route, held=held: held.append(route))
+                held = self.hold("**/api/submissions/")
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
                     if large_text:
@@ -2186,11 +2191,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         return locator
 
     def first_card(self, path):
-        """The page's first clickable card, once nothing above it will still move."""
+        """The page's first clickable card."""
         self.page.goto(f"{self.live_server_url}{path}")
-        # My hearing's trend chart draws after its data arrives and pushes the cards down.
-        if self.page.locator("#trend-chart").count():
-            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+        # No wait for my hearing's trend chart: its box keeps its height, so the cards stay put.
         card = self.page.locator("a.link-card").first
         card.scroll_into_view_if_needed()
         return card
