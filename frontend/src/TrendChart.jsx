@@ -23,11 +23,11 @@ const FONT = {
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
-// Presentation only; the bands themselves come from the API. Label on white and on band >= 4.5:1.
+// Presentation only; the bands themselves come from the API. Label on white and on band >= 7:1 (#149).
 const BAND_STYLES = {
-  normal: { fill: "#e3f4ec", label: "#1e7b55" },
-  mild_to_moderate: { fill: "#fff4d6", label: "#8a5a00" },
-  severe: { fill: "#feece7", label: "#c23b1c" },
+  normal: { fill: "#e3f4ec", label: "#14573c" },
+  mild_to_moderate: { fill: "#fff4d6", label: "#704800" },
+  severe: { fill: "#feece7", label: "#8f2a12" },
 };
 const OTHER_BAND = { fill: "#e9ecef", label: TEXT_COLOR };
 // Hearing aid status (spec 4b): filled circle / hollow square / hollow triangle, in legend order.

@@ -2,6 +2,7 @@ import re
 from datetime import date
 from unittest import mock
 
+from django.contrib.auth import password_validation
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase
@@ -9,7 +10,7 @@ from django.urls import reverse
 
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, step_bar
 
 
 class SubmissionResultAccessTests(TestCase):
@@ -281,7 +282,8 @@ class LoginViewTests(TestCase):
 
 class RegisterFormTests(TestCase):
     PASSWORD = "Xk9#mPq2vLw"
-    NOTE = "選填。用來推薦適合您年齡的問卷，不會公開。"
+    # Issue #151: says what filling it in saves the user.
+    NOTE = "選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。"
 
     def setUp(self):
         self.url = reverse("register")
@@ -305,7 +307,7 @@ class RegisterFormTests(TestCase):
             self.assertContains(response, f'name="{name}"')
         self.assertContains(response, "民國")
         self.assertContains(response, self.NOTE)
-        self.assertContains(response, "<li>你的密碼必須包含至少 8 個字元。</li>", html=True)
+        self.assertContains(response, "<li>至少 8 個字</li>", html=True)
 
     def test_register_without_birth_year(self):
         response = self._post()
@@ -343,7 +345,7 @@ class RegisterFormTests(TestCase):
         self.assertContains(response, 'value="newcomer@example.com"')
         self.assertContains(response, 'value="44"')
         self.assertNotContains(response, self.PASSWORD)
-        self.assertContains(response, "你的密碼必須包含至少 8 個字元。")
+        self.assertContains(response, "<li>至少 8 個字</li>", html=True)
 
     def test_duplicate_username_rejected(self):
         consented_user(username="newcomer")
@@ -430,6 +432,85 @@ class RegisterFormTests(TestCase):
             for target in ids.split():
                 with self.subTest(target=target):
                     self.assertIn(f'id="{target}"', content)
+
+
+class RegisterPageGuidanceTests(TestCase):
+    """Issue #151: the register page tells new users where they are and how to set a password."""
+
+    PASSWORD = "Xk9#mPq2vLw"
+
+    def setUp(self):
+        self.target = reverse("questionnaire_list")
+        self.url = f"{reverse('register')}?next={self.target}"
+
+    def _main(self, response):
+        content = response.content.decode()
+        return content.split('id="main-content"', 1)[1].split("</main>", 1)[0]
+
+    def test_login_link_is_at_the_top_and_keeps_next(self):
+        main = self._main(self.client.get(self.url))
+        login_url = f"{reverse('login')}?next={self.target}"
+        link = re.search(r"<a [^>]*>[^<]*</a>", main)
+        self.assertIsNotNone(link)
+        self.assertIn(f'href="{login_url}"', link.group())
+        self.assertIn("已經有帳號？登入", link.group())
+        self.assertLess(link.start(), main.index("<h1"))
+        self.assertEqual(main.count(f'href="{login_url}"'), 1)
+
+    def test_step_one_of_two_with_progress_bar(self):
+        response = self.client.get(self.url)
+        self.assertIn("第 1 步／共 2 步：建立帳號", self._main(response))
+        self.assertEqual(step_bar(response), (1, 2))
+
+    def test_password_rules_are_plain_and_django_text_is_gone(self):
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            '<div id="id_password1_helptext" class="text-black mt-1">設定密碼時，請您注意：<ul>'
+            "<li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li>"
+            "<li>不要用太常見的密碼</li></ul></div>",
+            html=True,
+        )
+        for text in (
+            *password_validation.password_validators_help_texts(),
+            "輸入與之前相同的密碼以進行驗證。",
+        ):
+            with self.subTest(text=text):
+                self.assertNotContains(response, text)
+
+    def test_show_password_buttons_wait_for_javascript(self):
+        # The script reveals the buttons; the toggling itself is covered end to end (#155).
+        response = self.client.get(self.url)
+        content = response.content.decode()
+        self.assertIn("screening/password-toggle.js", content)
+        buttons = re.findall(r"<button[^>]*>顯示</button>", content)
+        self.assertEqual(len(buttons), 2)
+        for button, field in zip(buttons, ("password1", "password2"), strict=True):
+            with self.subTest(field=field):
+                self.assertIn('type="button"', button)
+                self.assertIn(f'aria-controls="id_{field}"', button)
+                self.assertRegex(button, r"\shidden[\s>]")
+
+    def test_each_password_rule_is_still_checked(self):
+        # The help text changed, the validators did not: each rule still blocks the account.
+        for password in ("Xk9#mPq", "4829175036", "qwertyuiop", "hearwellsenior1"):
+            with self.subTest(password=password):
+                response = self.client.post(
+                    self.url,
+                    {
+                        "username": "hearwellsenior",
+                        "email": "senior@example.com",
+                        "password1": password,
+                        "password2": password,
+                        "next": self.target,
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(User.objects.exists())
+                errors = response.context["form"].errors["password2"]
+                self.assertTrue(errors)
+                for error in errors:
+                    self.assertContains(response, error)
 
 
 class BirthYearMigrationTests(TransactionTestCase):

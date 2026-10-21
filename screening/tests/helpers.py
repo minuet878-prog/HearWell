@@ -1,3 +1,4 @@
+import re
 from unittest.mock import patch
 
 from screening import models, questionnaires
@@ -30,3 +31,13 @@ def fake_definition(code, **overrides):
 def register(*definitions):
     """Registers fake questionnaire definitions for the length of one test."""
     return patch.dict(questionnaires.DEFINITIONS, {d.code: d for d in definitions})
+
+
+def step_bar(response):
+    """(done, total) segments of the step progress bar on a page, or None without one."""
+    content = response.content.decode()
+    bar = re.search(r'<div class="step-progress-bar" aria-hidden="true">(.*?)</div>', content, re.S)
+    if bar is None:
+        return None
+    segments = re.findall(r'<span class="step-progress-segment( is-done)?"></span>', bar.group(1))
+    return segments.count(" is-done"), len(segments)
