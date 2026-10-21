@@ -186,7 +186,7 @@
     cursor: pointer;
     user-select: none;
     border: 1px solid var(--btn-border-color);
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-pill);
     background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
@@ -314,6 +314,36 @@
     background-color: var(--btn-disabled-bg);
     border-color: var(--btn-disabled-border-color);
     opacity: 0.65;
+  }
+
+  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a pale
+     glow on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only,
+     never movement (ADR 0006). The keyboard ring stays next to the button and the glow goes
+     outside it, so focus always shows and the two never look alike (#139). */
+  .btn-primary {
+    --btn-glow: rgba(58, 107, 176, 0.35);
+    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-origin: border-box;
+    border-color: transparent;
+  }
+  .btn-primary:hover, .btn-primary:focus-visible { border-color: transparent; }
+  .btn-primary:hover { box-shadow: 0 0 0 0.3rem var(--btn-glow); }
+  .btn-primary:active {
+    background-image: linear-gradient(#173b6a, #2f5c9c);
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .btn-primary:focus-visible:hover {
+    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0 0.55rem var(--btn-glow);
+  }
+  .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-primary:disabled, fieldset:disabled .btn-primary {
+    color: #4d5f78;
+    background-image: none;
+    background-color: #fff;
+    border-color: #8da2bf;
+    box-shadow: inset 0 0 0 1px #8da2bf;
+    opacity: 1;
   }
 
   .form-label { margin-bottom: 0.5rem; }

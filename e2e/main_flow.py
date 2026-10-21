@@ -25,6 +25,7 @@ from screening.models import (
     NormGroup,
     Question,
     Questionnaire,
+    ReportShare,
     Submission,
     User,
 )
@@ -1177,10 +1178,11 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         return audiogram
 
     def test_buttons_keep_their_colours_size_and_focus_ring(self):
-        # #125: The pre-migration values with the site's overrides, on the 18px root.
+        # #125: The pre-migration values with the site's overrides, on the 18px root; since #139
+        # every button is a pill, and the primary button's gradient covers its border.
         audiogram = self.audiogram(date(2026, 9, 28))
-        large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"}
-        regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "9px"}
+        large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "999px"}
+        regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "999px"}
         clear = "rgba(0, 0, 0, 0)"
         white = "rgb(255, 255, 255)"
         cases = (
@@ -1194,7 +1196,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     **large,
                     "backgroundColor": self.PRIMARY,
                     "color": white,
-                    "borderTopColor": self.PRIMARY,
+                    "borderTopColor": clear,
                 },
                 "rgba(31, 78, 140, 0.5)",
             ),
@@ -1297,11 +1299,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                         )
 
     def test_button_hover_and_press_colours(self):
-        # The two variants whose hover and press colours the site set itself.
-        cases = (
-            ("button", "登入", "rgb(23, 59, 106)", "rgb(18, 47, 85)"),
-            ("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),
-        )
+        # The outline variant whose hover and press colours the site set itself; the primary
+        # button's states are in test_primary_button_states_follow_choice_c (#139).
+        cases = (("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),)
         self.open(signed_in=False)
         with self.saving_artifacts():
             for role, name, hover, pressed in cases:
@@ -1927,3 +1927,130 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             expect(self.page.locator(".site-wave span")).to_have_count(28)
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+
+    # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
+    # button is a pill and only changes colour.
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(47, 92, 156))"
+    GLOW = "rgba(58, 107, 176, 0.35) 0px 0px 0px 5.4px"
+    FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
+
+    @staticmethod
+    def lowest_contrast(text, background):
+        """Lowest WCAG ratio of a text colour against every colour in a background value."""
+
+        def luminance(rgb):
+            channels = [c / 255 for c in rgb]
+            linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+        def colours(value):
+            return [tuple(map(int, m)) for m in re.findall(r"rgb\((\d+), (\d+), (\d+)\)", value)]
+
+        light = luminance(colours(text)[0])
+        ratios = []
+        for colour in colours(background):
+            pair = sorted((light, luminance(colour)), reverse=True)
+            ratios.append((pair[0] + 0.05) / (pair[1] + 0.05))
+        return min(ratios)
+
+    def test_primary_button_states_follow_choice_c(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            button = self.page.get_by_role("main").get_by_role("button", name="登入")
+            self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(button, "color"), self.WHITE)
+            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 4.5)
+            button.hover()
+            self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(button, "boxShadow"), self.GLOW)
+            self.page.mouse.down()
+            self.assertEqual(self.style(button, "backgroundImage"), self.PRESSED_GRADIENT)
+            self.assertEqual(self.style(button, "boxShadow"), "none")
+            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.PRESSED_GRADIENT), 4.5)
+            self.page.mouse.up()
+            self.page.mouse.move(0, 0)
+            button.evaluate("el => { el.disabled = true; }")
+            disabled = self.styles(
+                button, "backgroundImage", "backgroundColor", "color", "borderTopColor", "opacity"
+            )
+            self.assertEqual(
+                disabled,
+                {
+                    "backgroundImage": "none",
+                    "backgroundColor": self.WHITE,
+                    "color": "rgb(77, 95, 120)",
+                    "borderTopColor": "rgb(141, 162, 191)",
+                    "opacity": "1",
+                },
+            )
+            self.assertGreaterEqual(self.lowest_contrast(disabled["color"], self.WHITE), 4.5)
+
+    def test_buttons_are_pills_and_only_change_colour(self):
+        audiogram = self.audiogram(date(2026, 9, 28))
+        cases = (
+            (False, "/login", "button", "登入"),
+            (False, "/login", "link", "註冊"),
+            (True, "/", "button", "登出"),
+            (True, f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖"),
+            (True, "/account/delete", "button", "刪除帳號"),
+        )
+        with self.saving_artifacts():
+            for signed_in, path, role, name in cases:
+                with self.subTest(button=name):
+                    self.open(signed_in=signed_in)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    area = self.page if name == "登出" else self.page.get_by_role("main")
+                    button = area.get_by_role(role, name=name, exact=True)
+                    self.assertEqual(self.style(button, "borderTopLeftRadius"), "999px")
+                    button.scroll_into_view_if_needed()
+                    before = button.bounding_box()
+                    button.hover()
+                    self.assertEqual(button.bounding_box(), before)
+                    self.page.mouse.down()
+                    self.assertEqual(button.bounding_box(), before)
+                    self.assertEqual(self.style(button, "transform"), "none")
+                    # Let go elsewhere, so logout and delete are never actually clicked.
+                    self.page.mouse.move(0, 0)
+                    self.page.mouse.up()
+
+    def test_delete_buttons_stay_red(self):
+        audiogram = self.audiogram(date(2026, 9, 28))
+        self.submission(self.hhie_s, [2] * 10)
+        ReportShare.objects.create(user=self.user, token="red-button-share")
+        red = "rgb(220, 53, 69)"
+        cases = (
+            ("/account/delete", "button", "刪除帳號", "backgroundColor"),
+            (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", "backgroundColor"),
+            (f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖", "color"),
+            ("/report", "button", "取消分享", "color"),
+        )
+        self.open()
+        with self.saving_artifacts():
+            for path, role, name, prop in cases:
+                with self.subTest(button=name):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    button = self.page.get_by_role(role, name=name, exact=True)
+                    self.assertEqual(self.style(button, prop), red)
+                    self.assertEqual(self.style(button, "borderTopColor"), red)
+
+    def test_keyboard_focus_ring_stays_beside_the_glow(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            button = self.page.get_by_role("main").get_by_role("button", name="登入")
+            button.focus()
+            self.assertTrue(button.evaluate("el => el.matches(':focus-visible')"))
+            self.assertEqual(self.style(button, "boxShadow"), self.FOCUS_RING)
+            self.assertNotEqual(self.FOCUS_RING, self.GLOW)
+            # Hovered as well: the ring stays next to the button, the glow goes outside it.
+            button.hover()
+            self.assertEqual(
+                self.style(button, "boxShadow"),
+                f"{self.FOCUS_RING}, rgba(58, 107, 176, 0.35) 0px 0px 0px 9.9px",
+            )
+            # Pressed from the keyboard: no glow, the ring stays.
+            self.page.keyboard.down("Space")
+            self.assertTrue(button.evaluate("el => el.matches(':active')"))
+            self.assertEqual(self.style(button, "boxShadow"), self.FOCUS_RING)
