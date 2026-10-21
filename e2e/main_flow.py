@@ -527,6 +527,26 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                 accessible_name = re.compile(rf"{accessible_date}.*總分：{score}")
                 expect(self.page.get_by_role("link", name=accessible_name)).to_have_count(1)
 
+    # The trend chart draws after its data arrives; the record cards below must not move then.
+    def test_trend_chart_does_not_push_the_records_down(self):
+        for width, large_text in ((320, False), (390, False), (1280, False), (390, True)):
+            with self.subTest(width=width, large_text=large_text):
+                self.open(width)
+                # Hold the records' API answer, so the page is measured before the chart draws.
+                held = []
+                self.page.route("**/api/submissions/", lambda route, held=held: held.append(route))
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+                    if large_text:
+                        self.page.add_style_tag(content="html { font-size: 225% !important; }")
+                    card = self.page.locator("a.link-card").first
+                    before = card.bounding_box()["y"]
+                    while not held:
+                        self.page.wait_for_timeout(10)
+                    held[0].continue_()
+                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                    self.assertAlmostEqual(card.bounding_box()["y"], before, delta=1)
+
     def test_skip_link_moves_keyboard_focus_on_public_and_signed_in_pages(self):
         self.open(320)
         with self.saving_artifacts():
