@@ -504,8 +504,13 @@ class HistoryTabsTests(TestCase):
     def test_trend_summary_first_of_its_status(self):
         # Acceptance 6: only the other status came before.
         self._hhie_s(12, False, days_ago=5)
-        self._hhie_s(10, True, days_ago=1)
+        self._hhie_s(10, True, days_ago=3)
         self.assertEqual(self._summary(self._trend())[2], "這是第一筆有戴助聽器的紀錄。")
+        # And the other way round, for another user.
+        self._hhie_s(10, True, days_ago=3, user=self.other)
+        self._hhie_s(20, False, days_ago=1, user=self.other)
+        self.client.force_login(self.other)
+        self.assertEqual(self._summary(self._trend())[2], "這是第一筆沒戴助聽器的紀錄。")
 
     def test_trend_summary_does_not_compare_an_unrecorded_record(self):
         # Acceptance 7.
@@ -554,11 +559,12 @@ class HistoryTabsTests(TestCase):
         order = ["<h2", self.NOTE, 'class="trend-summary', 'class="card"', 'id="trend-plot"']
         positions = [trend.index(part) for part in order]
         self.assertEqual(positions, sorted(positions))
-        # React draws only inside the box; it says it is loading until then.
+        # React draws only inside the box; it says it is loading until then. Screen readers skip
+        # that line, as they skip the chart; the box itself is not hidden, so they hear errors.
         plot = re.search(r'<div id="trend-plot"([^>]*)>(.*?)</div>', trend, re.DOTALL)
         self.assertIn('data-questionnaire="hhie-s"', plot.group(1))
-        self.assertIn('aria-hidden="true"', plot.group(1))
-        self.assertIn("趨勢圖載入中…", plot.group(2))
+        self.assertNotIn("aria-hidden", plot.group(1))
+        self.assertRegex(plot.group(2), r'<p[^>]*aria-hidden="true"[^>]*>趨勢圖載入中…</p>')
 
     def test_trend_chart_card_hidden_without_javascript(self):
         # The summary stays; the chart box would only say it is loading, forever.

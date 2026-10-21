@@ -84,8 +84,15 @@ export default function TrendChart({ code }) {
   }, []);
 
   // Rendered into the chart's box (#trend-plot), which keeps its height whatever is in it.
-  if (state.status === "loading") return <p className="trend-plot-message">{LOADING_TEXT}</p>;
-  if (state.status === "error") return <p className="trend-plot-message">{ERROR_TEXT}</p>;
+  // Screen readers skip the loading text and the chart, but hear when the chart cannot show.
+  if (state.status === "loading") {
+    return (
+      <p className="trend-plot-message" aria-hidden="true">
+        {LOADING_TEXT}
+      </p>
+    );
+  }
+  if (state.status === "error") return <p className="trend-plot-message text-xl/normal">{ERROR_TEXT}</p>;
 
   const points = selectPoints(state.page.results, code);
   if (points.length === 0) return null;
@@ -134,61 +141,64 @@ export default function TrendChart({ code }) {
       </text>
     );
 
+  // The summary box above the chart and the cards list carry the same information as text.
   return (
-    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 320 }}>
-      <LineChart data={days} margin={{ top: 24, right: 16, bottom: 8, left: 16 }} accessibilityLayer={false}>
-        {levels.map((level, i) => (
-          <ReferenceArea
-            key={level.code}
-            y1={i === 0 ? 0 : bandEdge(i - 1)}
-            y2={bandEdge(i)}
-            fill={BAND_FILLS[level.code] ?? OTHER_BAND_FILL}
-            fillOpacity={1}
+    <div className="h-full" aria-hidden="true">
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 320 }}>
+        <LineChart data={days} margin={{ top: 24, right: 16, bottom: 8, left: 16 }} accessibilityLayer={false}>
+          {levels.map((level, i) => (
+            <ReferenceArea
+              key={level.code}
+              y1={i === 0 ? 0 : bandEdge(i - 1)}
+              y2={bandEdge(i)}
+              fill={BAND_FILLS[level.code] ?? OTHER_BAND_FILL}
+              fillOpacity={1}
+            />
+          ))}
+          <XAxis
+            // One column per day (spec 4.1), so the date is unique and is the label itself.
+            dataKey="date"
+            interval="preserveStartEnd"
+            // At least 1.5rem (27px at the 18px base) between dates (spec 4.3).
+            minTickGap={27}
+            // Space between the plot and the dates; the axis is taller so they are not cut off.
+            tickMargin={12}
+            height={44}
+            tick={{ fill: MUTED_COLOR, ...FONT }}
+            axisLine={false}
+            tickLine={false}
           />
-        ))}
-        <XAxis
-          // One column per day (spec 4.1), so the date is unique and is the label itself.
-          dataKey="date"
-          interval="preserveStartEnd"
-          // At least 1.5rem (27px at the 18px base) between dates (spec 4.3).
-          minTickGap={27}
-          // Space between the plot and the dates; the axis is taller so they are not cut off.
-          tickMargin={12}
-          height={44}
-          tick={{ fill: MUTED_COLOR, ...FONT }}
-          axisLine={false}
-          tickLine={false}
-        />
-        {/* No numbers: each point shows its score and the bands show the levels. */}
-        <YAxis hide domain={[0, top]} />
-        <Tooltip
-          contentStyle={{ ...FONT, borderRadius: "0.5rem" }}
-          formatter={(value, _name, item) => {
-            const key = item.dataKey;
-            const status = STATUSES.find((s) => s.key === key);
-            // On a day with several records, each one names its time (spec 4.3).
-            const time = item.payload.count > 1 ? `（${item.payload[`${key}Time`]}）` : "";
-            return [`${value} 分，${item.payload[`${key}Level`]}，助聽器：${status.text}${time}`, "總分"];
-          }}
-        />
-        {STATUSES.map((status) => (
-          <Line
-            key={status.key}
-            className={`trend-line-${status.key}`}
-            dataKey={status.key}
-            stroke={status.line ? PRIMARY : "none"}
-            strokeWidth={3}
-            {...status.line}
-            // Skip the other statuses' records, so the line joins this status's points.
-            connectNulls
-            dot={renderDot(status)}
-            activeDot={false}
-            isAnimationActive={false}
-          >
-            <LabelList dataKey={status.key} content={renderScore} />
-          </Line>
-        ))}
-      </LineChart>
-    </ResponsiveContainer>
+          {/* No numbers: each point shows its score and the bands show the levels. */}
+          <YAxis hide domain={[0, top]} />
+          <Tooltip
+            contentStyle={{ ...FONT, borderRadius: "0.5rem" }}
+            formatter={(value, _name, item) => {
+              const key = item.dataKey;
+              const status = STATUSES.find((s) => s.key === key);
+              // On a day with several records, each one names its time (spec 4.3).
+              const time = item.payload.count > 1 ? `（${item.payload[`${key}Time`]}）` : "";
+              return [`${value} 分，${item.payload[`${key}Level`]}，助聽器：${status.text}${time}`, "總分"];
+            }}
+          />
+          {STATUSES.map((status) => (
+            <Line
+              key={status.key}
+              className={`trend-line-${status.key}`}
+              dataKey={status.key}
+              stroke={status.line ? PRIMARY : "none"}
+              strokeWidth={3}
+              {...status.line}
+              // Skip the other statuses' records, so the line joins this status's points.
+              connectNulls
+              dot={renderDot(status)}
+              activeDot={false}
+              isAnimationActive={false}
+            >
+              <LabelList dataKey={status.key} content={renderScore} />
+            </Line>
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

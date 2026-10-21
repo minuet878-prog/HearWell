@@ -427,8 +427,12 @@ def _ioi_ha_chart(records):
 
 
 TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
-# Legend order and the template's shape for each status (spec 4b).
-TREND_LEGEND = ((False, "unaided"), (True, "aided"), (None, "unrecorded"))
+# Legend order, the template's shape for each status (spec 4b) and its name.
+TREND_LEGEND = (
+    (False, "unaided", "沒戴助聽器"),
+    (True, "aided", "有戴助聽器"),
+    (None, "unrecorded", "未記錄"),
+)
 
 
 def _trend_chart(records):
@@ -459,7 +463,11 @@ def _trend_chart(records):
         "latest": latest,
         "status": status,
         "change": change,
-        "legend": [shape for value, shape in TREND_LEGEND if value in statuses],
+        "legend": [
+            {"shape": shape, "text": text}
+            for value, shape, text in TREND_LEGEND
+            if value in statuses
+        ],
         # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
         "levels": [
             {"code": level, "text": text}

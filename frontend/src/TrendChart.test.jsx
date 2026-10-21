@@ -103,7 +103,18 @@ describe("TrendChart", () => {
   it("says it is loading until the data arrives", async () => {
     globalThis.fetch = vi.fn(() => new Promise(() => {}));
     const { container } = render(<TrendChart code="hhie-s" />);
-    expect(container.querySelector(".trend-plot-message").textContent).toBe(LOADING_TEXT);
+    const message = container.querySelector(".trend-plot-message");
+    expect(message.textContent).toBe(LOADING_TEXT);
+    // Screen readers skip it, as they skip the chart: the summary box says the same in text.
+    expect(message.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("hides the chart from screen readers", async () => {
+    mockApi({ results: [submission(1, "2026-10-14", 18)] });
+    const { container } = render(<TrendChart code="hhie-s" />);
+    await chartDrawn(container);
+    expect(container.querySelector(".recharts-wrapper").closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(container.querySelector(".trend-plot-message")).toBeNull();
   });
 
   it("draws a band per level", async () => {
@@ -236,10 +247,11 @@ describe("TrendChart", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("explains when the API returns an error", async () => {
+  it("explains when the API returns an error, also to screen readers", async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) }));
     render(<TrendChart code="hhie-s" />);
-    expect(await screen.findByText(ERROR_TEXT)).toBeTruthy();
+    const message = await screen.findByText(ERROR_TEXT);
+    expect(message.closest("[aria-hidden]")).toBeNull();
   });
 
   describe("style (option A)", () => {
