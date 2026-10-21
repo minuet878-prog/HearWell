@@ -41,7 +41,8 @@ class LoginRequiredTests(TestCase):
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
-    HINT = "第一次使用請先註冊，已有帳號請直接登入。"
+    # Spec #148 (ticket #150): the home page's small hint became this button.
+    LOGIN_BUTTON = "我已經有帳號，登入"
     PASSWORD = "Xk9#mPq2vLw"
     EXTERNAL = (
         "https://evil.example.com",
@@ -82,8 +83,9 @@ class LoginNextTests(TestCase):
             response, f'<input type="hidden" name="next" value="{self.target}">', html=True
         )
 
-    def test_cta_leads_to_login_with_note(self):
-        self.assertContains(self.client.get(reverse("index")), f'href="{self.target}"')
+    def test_cta_leads_to_register_and_list_still_needs_login(self):
+        # Spec #148 (ticket #150): the home CTA registers first; the list still asks to log in.
+        self.assertContains(self.client.get(reverse("index")), f'href="{self.register_url}"')
         response = self.client.get(self.target, follow=True)
         self.assertRedirects(response, self.login_url)
         self.assertContains(response, self.NOTE)
@@ -149,20 +151,15 @@ class LoginNextTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertContains(response, "&lt;script&gt;")
 
-    def test_home_hint_only_for_anonymous(self):
-        self.assertContains(self.client.get(reverse("index")), self.HINT)
+    def test_home_login_button_only_for_anonymous(self):
+        self.assertContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
         self.client.force_login(self.user)
-        self.assertNotContains(self.client.get(reverse("index")), self.HINT)
+        self.assertNotContains(self.client.get(reverse("index")), self.LOGIN_BUTTON)
 
     def test_new_text_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.login_url),
             f'<p class="text-black">{self.NOTE}</p>',
-            html=True,
-        )
-        self.assertContains(
-            self.client.get(reverse("index")),
-            f'<p class="text-black mt-2">{self.HINT}</p>',
             html=True,
         )
 

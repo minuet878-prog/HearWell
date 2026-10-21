@@ -93,7 +93,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_new_user_completes_hhie_s(self):
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
             self.step3_choose_hhie_s()
             self.step4_answer_and_change_one()
@@ -105,7 +105,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         """Issue #78: real React flow, original labels, focus and saved results."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
             self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
             self.answer("沒戴")
@@ -135,7 +135,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
         self.step2_register()
         self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
         self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
@@ -153,7 +153,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         """#79: range input, N/A, zero and draft restoration in a real browser."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
             self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
             self.answer("沒戴")
@@ -282,7 +282,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
         self.step2_register()
         self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
         self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
@@ -304,7 +304,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         )
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
         self.step2_register()
         age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
         age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
@@ -347,13 +347,13 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def main(self):
         return self.page.get_by_role("main")
 
-    def step1_start_needs_login(self):
+    def step1_start_goes_to_register(self):
+        # Spec #148 (ticket #150): first-time visitors register straight away.
         self.page.goto(self.live_server_url)
         self.main().get_by_role("link", name="開始篩檢").click()
-        expect(self.page.get_by_text("登入後會帶您回到剛剛的頁面")).to_be_visible()
+        expect(self.page).to_have_url(re.compile(r"/register\?next=/questionnaire_list$"))
 
     def step2_register(self):
-        self.main().get_by_role("link", name="註冊").click()
         self.page.get_by_label("使用者名稱").fill("e2e_user")
         self.page.get_by_label("電子郵件").fill("e2e_user@example.com")
         self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
@@ -817,12 +817,24 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
-            self.assertEqual(len(boxes), 3)
+            # Spec #148 (ticket #150) adds the account step.
+            self.assertEqual(len(boxes), 4)
             self.assertEqual({box["x"] for box in boxes}, {boxes[0]["x"]})
             for upper, lower in pairwise(boxes):
                 self.assertGreaterEqual(lower["y"], upper["y"] + upper["height"])
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
+
+    # Spec #148 (ticket #150): four steps sit two by two on a wide screen, never three and one.
+    def test_home_step_cards_two_by_two_on_a_wide_screen(self):
+        self.open(1280)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
+            self.assertEqual(len(boxes), 4)
+            self.assertEqual(boxes[0]["y"], boxes[1]["y"])
+            self.assertEqual(boxes[2]["y"], boxes[3]["y"])
+            self.assertGreater(boxes[2]["y"], boxes[0]["y"])
 
     # phase9_ui_refresh_4a_home.md review 1: at 200% text the step cards still fit a phone
     def test_home_step_cards_fit_a_phone_at_double_text_size(self):

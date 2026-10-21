@@ -14,24 +14,33 @@
     </svg>
     <h1 class="h3 text-center">了解聽力對您生活的影響</h1>
     <p class="text-center">聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
-    <a class="btn btn-primary btn-lg w-full" href="{% url 'questionnaire_list' %}">開始篩檢</a>
-    {% if not user.is_authenticated %}
-    <p class="text-black mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
+    {% url 'questionnaire_list' as list_url %}
+    {% if user.is_authenticated %}
+    <a class="btn btn-primary btn-lg w-full" href="{{ list_url }}">開始篩檢</a>
+    {% else %}
+    {# Spec #148: first-time visitors register first, then come back to choose a questionnaire. #}
+    <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
+    <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'login' %}">我已經有帳號，登入</a>
     {% endif %}
 </section>
 <ol class="step-cards" role="list">
     <li>
         <span class="step-number">1</span>
+        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span>建立帳號，大約 1 分鐘。</span>
+    </li>
+    <li>
+        <span class="step-number">2</span>
         <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg>
         <span>回答問題，大約 3 分鐘。</span>
     </li>
     <li>
-        <span class="step-number">2</span>
+        <span class="step-number">3</span>
         <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
         <span>馬上看到結果分級和建議。</span>
     </li>
     <li>
-        <span class="step-number">3</span>
+        <span class="step-number">4</span>
         <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
         <span>隔一段時間再做一次，在「我的紀錄」看分數的變化。</span>
     </li>
