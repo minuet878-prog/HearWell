@@ -10,14 +10,18 @@ Build the frontend first, then capture into a folder of your choice (e2e-artifac
 SHOTS_GROUPS limits the run to some groups, comma separated (default: all of them):
 public, answering, history, report, and chrome (only the header, navigation and footer of
 every page, plus the home-screen app header). Compare two captures with e2e/compare_shots.py.
+Each capture also writes styles.json: the font family and root font size every page asks for,
+since the screenshots themselves cannot show a lost web font.
 
 The site's clock and the browser's clock are both fixed, and Google Fonts is blocked (the
 system font stands in), so two captures of the same commit match. Font loading itself is
 therefore not compared. Capture the baseline on main and the new set on your branch.
 """
 
+import json
 import os
 import re
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest import mock
@@ -30,6 +34,7 @@ from django.test import Client
 from django.urls import reverse
 from playwright.sync_api import sync_playwright
 
+from e2e import main_flow
 from screening.models import (
     Answer,
     Audiogram,
@@ -62,13 +67,11 @@ class Shot:
         self.who, self.javascript, self.media = who, javascript, media
 
     def filename(self, width, part=None):
-        flags = "".join(
-            (
-                f"--{self.who}",
-                "" if self.javascript else "--nojs",
-                "--print" * (self.media == "print"),
-            )
-        )
+        flags = f"--{self.who}"
+        if not self.javascript:
+            flags += "--nojs"
+        if self.media == "print":
+            flags += "--print"
         prefix = f"chrome--{part}" if part else self.group
         return f"{prefix}--{self.name}{flags}--{width}.png"
 
@@ -168,7 +171,6 @@ class Screenshots(StaticLiveServerTestCase):
             )
             for n in range(1, 11)
         )
-        self.enterContext(register(fake_definition("unconfigured")))
         records["unknown"] = self.answered("unconfigured", [2] * 10, 3)
         ReportComparison.objects.create(
             user=self.user,
@@ -177,20 +179,24 @@ class Screenshots(StaticLiveServerTestCase):
             aided=records["hhie-s-aided"],
         )
         ReportShare.objects.create(user=self.user, token="screenshots-fixed-token")
-        for tested_on, db in ((date(2026, 9, 1), 45), (date(2026, 6, 1), 35)):
-            audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
+        for key, tested_on, db in (
+            ("audiogram-newer", date(2026, 9, 1), 45),
+            ("audiogram-older", date(2026, 6, 1), 35),
+        ):
+            records[key] = Audiogram.objects.create(user=self.user, tested_on=tested_on)
             AudiogramPoint.objects.bulk_create(
-                AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+                AudiogramPoint(
+                    audiogram=records[key], ear=ear, conduction="air", frequency=f, db=db
+                )
                 for ear in ("right", "left")
                 for f in (250, 500, 1000, 2000, 4000, 8000)
             )
-            records[f"audiogram-{tested_on:%m}"] = audiogram
         return records
 
     def shots(self):
         r = self.records
         hhie_s = r["hhie-s-severe"].questionnaire
-        audiogram = r["audiogram-09"]
+        audiogram = r["audiogram-newer"]
         share = reverse("shared_cover", args=["screenshots-fixed-token"])
         shots = []
         for name, url in (
@@ -254,9 +260,7 @@ class Screenshots(StaticLiveServerTestCase):
         if self.cookies[shot.who]:
             context.add_cookies([self.cookies[shot.who]])
         if standalone:
-            context.add_init_script(
-                "Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true });"
-            )
+            context.add_init_script(main_flow.PwaNavTest.STANDALONE)
         page = context.new_page()
         page.clock.set_fixed_time(NOW)
         page.emulate_media(media=shot.media)
@@ -284,22 +288,34 @@ class Screenshots(StaticLiveServerTestCase):
 
     def test_capture(self):
         taken = 0
+        styles = {}
+        chrome = "chrome" in self.groups
         for shot in self.shots():
             page_wanted = shot.group in self.groups
-            if not page_wanted and "chrome" not in self.groups:
+            if not (page_wanted or chrome):
                 continue
-            for width in WIDTHS:
-                context, page = self.open(shot, width)
-                if page_wanted:
-                    self.capture(page, shot.filename(width))
-                    taken += 1
-                if "chrome" in self.groups and shot.media == "screen":
-                    for part, found in self.chrome(page).items():
-                        if found.count():
-                            self.capture(page, shot.filename(width, part), found)
-                            taken += 1
-                context.close()
-        if "chrome" in self.groups:
+            # Registered only here, so the fake questionnaire shows up on no other page.
+            unknown = shot.name == "result-unknown"
+            with register(fake_definition("unconfigured")) if unknown else nullcontext():
+                for width in WIDTHS:
+                    context, page = self.open(shot, width)
+                    styles[shot.filename(width)] = page.evaluate(
+                        "({ font: getComputedStyle(document.body).fontFamily,"
+                        " rootSize: getComputedStyle(document.documentElement).fontSize })"
+                    )
+                    if page_wanted:
+                        self.capture(page, shot.filename(width))
+                        taken += 1
+                    if chrome and shot.media == "screen":
+                        for part, found in self.chrome(page).items():
+                            if found.count():
+                                self.capture(page, shot.filename(width, part), found)
+                                taken += 1
+                    context.close()
+        (self.out / "styles.json").write_text(
+            json.dumps(styles, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
+        )
+        if chrome:
             app = Shot("chrome", "questionnaire-list-app", reverse("questionnaire_list"))
             for width in WIDTHS:
                 context, page = self.open(app, width, standalone=True)
