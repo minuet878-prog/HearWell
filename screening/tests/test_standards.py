@@ -9,6 +9,8 @@ from django.conf import settings
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 
+from screening import questionnaires
+
 BASE_DIR = Path(settings.BASE_DIR)
 
 
@@ -50,6 +52,50 @@ class FontSizeUnitTests(SimpleTestCase):
                 if self.PX_FONT_SIZE.search(line):
                     found.append(f"{path.relative_to(BASE_DIR)}:{lineno}")
         self.assertEqual(found, [], "use rem for font-size")
+
+
+def questionnaire_code_lines(text, codes):
+    """Line numbers where a code stands alone, not inside a longer id like report-ioi-ha."""
+    pattern = re.compile(rf"(?<![\w-])(?:{'|'.join(map(re.escape, codes))})(?![\w-])")
+    return [n for n, line in enumerate(text.splitlines(), start=1) if pattern.search(line)]
+
+
+class QuestionnaireCodeTests(SimpleTestCase):
+    """Only questionnaire definitions name a questionnaire code (issue #104, ADR 0005)."""
+
+    SKIPPED = (
+        "screening/tests",
+        "screening/migrations",
+        "screening/fixtures",
+        "screening/questionnaires",
+        "screening/static/screening/frontend",  # the gitignored build of frontend/src
+    )
+    SUFFIXES = (".py", ".html", ".js", ".jsx", ".css")
+
+    def _sources(self):
+        for path in sorted((BASE_DIR / "screening").rglob("*")):
+            if path.suffix in self.SUFFIXES and not any(
+                path.is_relative_to(BASE_DIR / folder) for folder in self.SKIPPED
+            ):
+                yield path
+        for path in sorted((BASE_DIR / "frontend" / "src").rglob("*")):
+            if path.suffix in self.SUFFIXES and ".test." not in path.name:
+                yield path
+
+    def test_codes_appear_only_in_definitions(self):
+        sources = list(self._sources())
+        for scanned in ("screening/views.py", "frontend/src/AnswerApp.jsx"):
+            self.assertIn(BASE_DIR / scanned, sources)
+        found = [
+            f"{path.relative_to(BASE_DIR)}:{n}"
+            for path in sources
+            for n in questionnaire_code_lines(path.read_text(), questionnaires.DEFINITIONS)
+        ]
+        self.assertEqual(found, [], "ask the questionnaire definition instead of its code")
+
+    def test_a_hard_coded_code_is_caught(self):
+        source = 'id="report-ioi-ha"\nif questionnaire.code == "ssq12-tw":\n'
+        self.assertEqual(questionnaire_code_lines(source, questionnaires.DEFINITIONS), [2])
 
 
 class MigrationsUpToDateTests(TestCase):
