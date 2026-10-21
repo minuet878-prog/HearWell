@@ -2054,3 +2054,70 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.keyboard.down("Space")
             self.assertTrue(button.evaluate("el => el.matches(':active')"))
             self.assertEqual(self.style(button, "boxShadow"), self.FOCUS_RING)
+
+    # #140 (2a): the gradient marks where you are, and the questionnaire icons.
+    def test_current_place_and_icons_use_the_gradient(self):
+        # Two questionnaires answered, so my hearing shows its tabs.
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7)
+        self.open()  # 1024 wide: the top navigation bar
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            current = nav.locator('a[aria-current="page"]')
+            others = nav.locator("a:not([aria-current])")
+            self.assertGreater(others.count(), 0)
+            for element in (current, self.page.locator('.history-tabs a[aria-current="page"]')):
+                self.assertEqual(self.style(element, "backgroundImage"), self.GRADIENT)
+                self.assertEqual(self.style(element, "color"), self.WHITE)
+                self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 4.5)
+            # Shape as well as colour: only the current page is a pill.
+            self.assertEqual(self.style(current, "borderTopLeftRadius"), "999px")
+            self.assertEqual(self.style(current, "boxShadow"), "none")
+            for other in others.all():
+                self.assertEqual(self.style(other, "backgroundImage"), "none")
+
+            self.page.goto(f"{self.live_server_url}/")
+            number = self.page.locator(".step-number").first
+            self.assertEqual(self.style(number, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(number, "color"), self.WHITE)
+
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            icon = self.page.locator(".questionnaire-icon").first
+            self.assertEqual(self.style(icon, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(icon.locator("svg"), "stroke"), self.WHITE)
+            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 3)
+
+    def test_phone_tab_bar_puts_the_current_icon_in_a_pill(self):
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            current = nav.locator('a[aria-current="page"]')
+            self.assertEqual(self.style(current, "boxShadow"), "none")  # no line along the top
+            self.assertEqual(self.style(current.locator("svg"), "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(current.locator("svg"), "stroke"), self.WHITE)
+            self.assertEqual(
+                self.styles(current.locator("span"), "color", "fontWeight"),
+                {"color": self.PRIMARY, "fontWeight": "700"},
+            )
+            self.assertGreaterEqual(min(self.size(current)), 44)
+            for other in nav.locator("a:not([aria-current])").all():
+                self.assertEqual(self.style(other.locator("svg"), "backgroundImage"), "none")
+
+    def test_navigation_items_only_change_colour(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            item = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="我的紀錄"
+            )
+            before = (item.bounding_box(), self.style(item, "color"))
+            item.hover()
+            self.assertEqual(item.bounding_box(), before[0])
+            self.assertNotEqual(self.style(item, "color"), before[1])
+            self.page.mouse.down()
+            self.assertEqual(item.bounding_box(), before[0])
+            self.assertEqual(self.style(item, "transform"), "none")
+            self.page.mouse.move(0, 0)
+            self.page.mouse.up()

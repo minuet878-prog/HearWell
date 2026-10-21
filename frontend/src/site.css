@@ -700,6 +700,8 @@
     text-decoration: none;
   }
 
+  /* Hover and press change colour only, never position (ADR 0006, #140). */
+  .site-nav a:hover,
   .site-nav a[aria-current="page"] {
     color: var(--color-primary);
   }
@@ -724,8 +726,11 @@
       gap: 0.5rem;
     }
 
+    /* The current page is a gradient pill: shape as well as colour (#140). */
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 -0.25rem 0 var(--color-primary);
+      border-radius: var(--radius-pill);
+      background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+      color: #fff;
     }
   }
 
@@ -757,8 +762,21 @@
       font-size: 0.875rem;
     }
 
+    /* Every icon gets the same pill room, so the current one can fill it without the bar
+       shifting; the current icon turns white in a gradient pill, its label bold blue (#140). */
+    .site-nav svg {
+      box-sizing: content-box;
+      padding: 0.125rem 0.75rem;
+      border-radius: var(--radius-pill);
+    }
+
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 0.25rem 0 var(--color-primary);
+      font-weight: 700;
+    }
+
+    .site-nav a[aria-current="page"] svg {
+      background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+      stroke: #fff;
     }
   }
 
@@ -990,6 +1008,7 @@
     height: 2.25rem;
     border-radius: 50%;
     background-color: var(--color-primary);
+    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
     color: #fff;
     font-weight: 700;
     display: flex;
@@ -1137,7 +1156,10 @@
   }
 
   .history-tabs a[aria-current="page"] {
+    border-color: transparent;
     background-color: var(--color-primary);
+    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-origin: border-box;
     color: #fff;
   }
 
@@ -1585,20 +1607,16 @@
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-primary);
+    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
   }
 
-  /* The card turns the same pale blue on hover, so the circle turns white to stay visible. */
-  .link-card:hover .questionnaire-icon,
-  .link-card:active .questionnaire-icon {
-    background-color: #fff;
-  }
-
+  /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
   .questionnaire-icon svg {
     width: 1.75rem;
     height: 1.75rem;
     fill: none;
-    stroke: var(--color-primary);
+    stroke: #fff;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
