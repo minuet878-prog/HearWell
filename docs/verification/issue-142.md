@@ -49,11 +49,11 @@
 | 4. 新分頁第一頁聲波播、約 4 秒停；同分頁下一頁不播；沒有無限循環 | `:1889` `test_header_wave_plays_on_a_tabs_first_page_only` |
 | 5. 關掉 JavaScript 時聲波播並在約 4 秒內停 | `:1907` `test_header_wave_plays_on_every_page_without_javascript` |
 | 6. 減少動態效果：沒有動畫或位移，只變色 | `:1915` `test_reduced_motion_keeps_the_header_still`（全頁 0 個動畫）；`:2252` `test_reduced_motion_cards_only_change_colour`（卡片滑過、按下不位移、陰影不變、只變色） |
-| 7. 主要按鈕、導覽目前頁、步驟編號、問卷分頁目前頁、問卷圖示是漸層；白字 ≥ 4.5、白色圖示 ≥ 3 | `:1950` `test_primary_button_states_follow_choice_c`（四種狀態）、`:2067` `test_current_place_and_icons_use_the_gradient` |
+| 7. 主要按鈕、導覽目前頁、步驟編號、問卷分頁目前頁、問卷圖示是漸層；白字 ≥ 4.5、白色圖示 ≥ 3 | `:1950` `test_primary_button_states_follow_choice_c`（四種狀態）、`:2067` `test_current_place_and_icons_use_the_gradient`（步驟編號只斷言漸層與白字，沒另算對比；顏色和導覽目前頁相同，最低 5.37:1） |
 | 8. 手機分頁列：目前頁圖示在漸層膠囊、藍色粗體、沒有上緣線、觸控 ≥ 44px | `:2102` `test_phone_tab_bar_puts_the_current_icon_in_a_pill` |
 | 9. 滑鼠滑過可點的卡片浮起、陰影加深、邊框藍、漣漪；不能點的框沒有變化 | `:2165` `test_clickable_cards_lift_on_hover`、`:2283` `test_boxes_that_cannot_be_clicked_stay_still` |
 | 10. 觸控按下卡片下沉、放開恢復，不殘留滑過樣子 | `:2202` `test_pressed_cards_sink_on_a_touch_screen`（Chromium 模擬；iPhone Safari 的按下效果見 [`issue-141.md`](issue-141.md) 的已知風險） |
-| 11. 按鈕、導覽項目、作答選項只變色不位移；鍵盤焦點落在卡片不位移、看得到焦點框 | `:1990` `test_buttons_are_pills_and_only_change_colour`、`:2119` `test_navigation_items_only_change_colour`、`:2136` `test_answer_choices_never_move`（這次補）、`:2309` `test_keyboard_focus_keeps_cards_still_with_a_ring`；按鈕焦點框和光暈分得出：`:2040` |
+| 11. 按鈕、導覽項目、作答選項只變色不位移；鍵盤焦點落在卡片不位移、看得到焦點框 | 不位移：`:1990` `test_buttons_are_pills_and_only_change_colour`（按鈕）、`:2119` `test_navigation_items_only_change_colour`（導覽）、`:2136` `test_answer_choices_never_move`（作答選項，這次補）。變色：按鈕 `:1310` `test_button_hover_and_press_colours`、`:1950`；導覽 `:2119`。作答選項滑過時沒有變色（見下方「待本人決定」）。鍵盤焦點：`:2309` `test_keyboard_focus_keeps_cards_still_with_a_ring`；按鈕焦點框和光暈分得出：`:2040` |
 | 12. 大區塊 1.5rem、中元件 0.75rem、按鈕膠囊；圖表、縮圖、分級徽章不變 | `:1787` `test_three_radius_levels`、`:1990`（膠囊） |
 | 13. 圖表與徽章裁切和改版前逐像素相同；結果橫幅、趨勢圖色帶、遮蔽開關顏色不變；新增裝飾色是藍色系 | 裁切：**5 張偏差，本人在 #137 已接受**（上一節）。顏色：`:1571` `test_result_banner_colours`、`:1602` `test_level_badge_colours`、`:1842` `test_masking_switch_keeps_its_orange`、`frontend/src/TrendChart.test.jsx` 的色帶斷言。裝飾色：逐一核對 2a 在 `site.css` 新加的顏色值，只有藍色系（漸層、按下的漸層、停用的灰藍、光暈與漣漪）、白色，以及規格指定的米白底、頁尾、暖色邊框與陰影，沒有新的綠、橘、紅（人工核對，沒有自動測試） |
 | 14. 四顆刪除類按鈕維持紅色 | `:2020` `test_delete_buttons_stay_red` |
@@ -71,6 +71,23 @@
 | 前端 | 190 個通過 |
 | e2e `e2e.main_flow` | 66 個通過 |
 | `ruff check .`、`ruff format --check .` | 通過 |
+
+## 自審
+
+`/mattpocock-skills:code-review`，基準 `a2cfc7a`。
+
+- 規範軸：沒有硬性違規。
+  - 已修：`CODING_STANDARDS.md` 第 23 條補上 ADR 0007 的例外（聽力圖右耳紅、遮蔽開關橘）；第 22 條補上「滑過效果只在有滑鼠的裝置」「不做進場動畫」；這份紀錄補上自審段落。
+  - 不改：「滑過、按下、比位置」在按鈕、導覽、作答選項三個測試裡重複。三個測試各自檢查的東西不同（顏色、膠囊、變色），抽成共用函式反而難讀。
+- 規格軸：19 條引用的行號都對得上，截圖數字和對比數字重算相同。
+  - 已修：無障礙基準原本寫「這些組合都由 e2e 守住」，實際上 e2e 只量米白頁面那一欄和頁尾文字，改成如實寫明；roadmap 原本寫 #136–#143 都已驗收，改成 #142 等本人檢視。
+  - 待本人決定：作答選項滑過時要不要變色（下一節）。
+
+## 待本人決定
+
+- 第 11 條寫「按鈕、導覽項目、作答選項：滑過或按下只有顏色變化」。作答選項目前滑過完全沒有變化，按下（選取）才變藍。
+  - 加滑過變色：滑過時邊框變藍，和導覽項目（#140）一致，有滑鼠的人知道可以點。
+  - 不加：維持現狀，把「只變色」解讀成「有變化的話只能是顏色」；選取時本來就會變藍。
 
 不需交叉審查：2a 只改樣式、模板外觀、文件與測試，沒碰計分、分級、門檻、資料 migration 或權限。
 

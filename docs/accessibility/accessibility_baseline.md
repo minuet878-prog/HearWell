@@ -159,7 +159,7 @@ r.violations.map(v => ({ id: v.id, n: v.nodes.length,
 | 2026-10-15 | 介面改版第 1 批（深藍主色、18px、底部分頁列、第 3 節 7 項） | 本人人工驗收：第 1.2 節各頁面狀態 axe-core color-contrast 0；320px 與 200% 不需左右捲動；按鈕、連結、導覽、選項 ≥ 44px；選項選取／焦點整框外框；趨勢圖 320px 日期不重疊 |
 | 2026-10-16 | 第二次量測（Phase 6，含 Phase 5 新頁面；見第 5 節） | 25 個頁面狀態 axe 違規全部 0；第 3 節 7 項中 6 項確認已修、1 項部分已修；新量到 11 項待辦（5.4），最重的是比較頁表格在 320 px 撐寬整頁、舊聽力圖淡色 1.82:1、作答錯誤焦點與摘要、登入失敗訊息沒關聯欄位；同日修掉其中 1、3、4、5（5.5） |
 | 2026-10-20 | 設計系統更新第 1 階段（#108）：全站字體換成 Noto Sans TC（Google Fonts CDN），`.link-card`、`.home-band`、`.btn`、`.trend-summary`、`.questionnaire-guide`、`.account-details` 的圓角／陰影／間距微調 | 主色、文字對比色、觸控目標最小尺寸（44×44px）皆未變動，所以沒有重新量 axe 對比；改字體的原因是 Noto Sans TC 筆畫較粗、中文辨識度較好，CDN 連不上時 fallback 回系統字型，不影響操作；本人人工驗收各頁字體與圓角/陰影有套用、排版沒有跑掉 |
-| 2026-10-22 | 設計系統第 2a 階段（#120）：米白底 #faf7f2、白色卡片、淺暖色頁尾 #f3ede3，主要按鈕與目前頁改成藍色漸層 | 文字色沒換，只換底色；新的對比見第 6 節，最低是米白底上的正常綠 4.89:1。這些組合由 e2e 用瀏覽器實際算出的顏色守住（`StyleInBrowserTest`），沒有重跑 axe |
+| 2026-10-22 | 設計系統第 2a 階段（#120）：米白底 #faf7f2、白色卡片、淺暖色頁尾 #f3ede3，主要按鈕與目前頁改成藍色漸層 | 文字色沒換，只換底色；新的對比見第 6 節，最低是米白底上的正常綠 4.89:1。米白底上的文字色與頁尾文字由 e2e 用瀏覽器實際算出的顏色守住（`StyleInBrowserTest`），沒有重跑 axe |
 
 ---
 
@@ -263,7 +263,11 @@ r.violations.map(v => ({ id: v.id, n: v.nodes.length,
 
 ## 6. 第 2a 階段新底色的對比（2026-10-22）
 
-#120 換了底色和漸層，文字色不變。數字照 WCAG 公式計算；e2e 用瀏覽器實際算出的顏色檢查同樣的組合（`e2e/main_flow.py` 的 `test_text_on_the_warm_page_keeps_its_contrast`、`test_primary_button_states_follow_choice_c`、`test_current_place_and_icons_use_the_gradient`）。
+#120 換了底色和漸層，文字色不變。數字都照 WCAG 公式計算；哪些另外有 e2e 用瀏覽器實際算出的顏色檢查（`e2e/main_flow.py`）：
+
+- 米白頁面那一欄、頁尾文字：`test_text_on_the_warm_page_keeps_its_contrast`。
+- 漸層上的白字與白色圖示（主要按鈕四種狀態、導覽目前頁、問卷分頁目前頁、問卷圖示）：`test_primary_button_states_follow_choice_c`、`test_current_place_and_icons_use_the_gradient`。
+- 白色卡片那一欄和第 2.3 節的數字相同（白底沒變），沒有另外的 e2e；頁尾連結、卡片滑過與按下底色上的主色字只有計算。
 
 | 文字 | 米白頁面 #faf7f2 | 白色卡片 #ffffff |
 |---|---|---|
