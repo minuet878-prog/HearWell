@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +22,8 @@ const QUESTIONNAIRE = { id: 1, code: "hhie-s", name: "HHIE-S", levels: [], quest
 const USER_ID = 7;
 const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
+const MINUTES = 3;
+const INTRO = "<p>本問卷的目的在幫助您了解自己的聽力。</p><p>請圈選常常、有時或從未。</p>";
 
 // POSTs answer from `posts` in order: {status, body}, or an Error for a network failure.
 function mockApi(posts = [{ status: 201, body: { id: 99 } }], questionnaire = QUESTIONNAIRE) {
@@ -46,7 +51,10 @@ let onReady;
 
 async function renderApp() {
   render(
-    <AnswerApp questionnaireId={1} userId={USER_ID} csrfToken="csrf-token" onReady={onReady} navigate={navigate} />,
+    <AnswerApp
+      questionnaireId={1} userId={USER_ID} csrfToken="csrf-token" minutes={MINUTES} introHtml={INTRO}
+      onReady={onReady} navigate={navigate}
+    />,
   );
   await waitFor(() => expect(onReady).toHaveBeenCalled());
 }
@@ -96,7 +104,7 @@ describe("pages", () => {
     choose("沒戴");
     next();
     QUESTIONS.forEach((question, i) => {
-      expect(legend()).toBe(`第 ${i + 1} 題／共 10 題${question.text}`);
+      expect(legend()).toMatch(new RegExp(`^第 ${i + 1} 題／共 10 題・還剩大約 \\d 分鐘${question.text}$`));
       expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["常常", "有時", "從未"]);
       choose("有時");
       if (i < QUESTIONS.length - 1) next();
@@ -120,6 +128,125 @@ describe("pages", () => {
     await renderApp();
     answerAll("常常");
     expect(document.body.textContent).not.toMatch(/分數|總分|分項/);
+  });
+});
+
+describe("progress (#153)", () => {
+  // Segments of the bar above the question; answered ones carry the done class.
+  const segments = () => [...document.querySelectorAll(".answer-progress > span")];
+  const done = () => segments().filter((s) => s.classList.contains("answer-progress-done"));
+  const progressText = () => document.querySelector(".question-progress").textContent;
+
+  async function answerUpTo(number) {
+    await renderApp();
+    choose("沒戴");
+    next();
+    for (let n = 1; n <= number; n++) {
+      choose("有時");
+      if (n < number) next();
+    }
+  }
+
+  it("on question 3 of 10 shows 10 segments, 3 answered, and the minutes left", async () => {
+    await answerUpTo(3);
+    expect(segments()).toHaveLength(10);
+    expect(done()).toHaveLength(3);
+    // 3 minutes × 8 of 10 questions left (this one included) = 2.4, rounded to 2.
+    expect(progressText()).toBe("第 3 題／共 10 題・還剩大約 2 分鐘");
+  });
+
+  it("counts the whole time on question 1 and at least 1 minute on the last", async () => {
+    await answerUpTo(1);
+    expect(progressText()).toBe("第 1 題／共 10 題・還剩大約 3 分鐘");
+    for (let n = 2; n <= 10; n++) {
+      next();
+      choose("有時");
+    }
+    // 3 × 1 / 10 = 0.3 would round to 0.
+    expect(progressText()).toBe("第 10 題／共 10 題・還剩大約 1 分鐘");
+    expect(done()).toHaveLength(10);
+  });
+
+  it("does not count the hearing aid question", async () => {
+    await renderApp();
+    expect(document.querySelector(".question-progress")).toBeNull();
+    expect(segments()).toHaveLength(0);
+    choose("有戴");
+    next();
+    expect(progressText()).toMatch(/^第 1 題／共 10 題/);
+    expect(done()).toHaveLength(0);
+  });
+
+  it("only recolours on the next question: the same segments stay, nothing moves (ADR 0006)", async () => {
+    await answerUpTo(2);
+    const before = segments();
+    next();
+    choose("有時");
+    expect(segments()).toEqual(before);
+    segments().forEach((segment, i) => expect(segment).toBe(before[i]));
+    expect(done()).toEqual(before.slice(0, 3));
+    expect(segments().every((s) => !s.hasAttribute("style"))).toBe(true);
+  });
+
+  it("styles the bar with colour only: answered blue, no transition, animation or transform", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...css.matchAll(/([^{}]*\.answer-progress[^{}]*)\{([^}]*)\}/g)];
+    expect(rules.map(([, selector]) => selector.trim())).toEqual([
+      ".answer-progress",
+      ".answer-progress > span",
+      ".answer-progress > .answer-progress-done",
+    ]);
+    expect(rules.at(-1)[2]).toMatch(/background-color:\s*var\(--color-primary\)/);
+    rules.forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
+  });
+});
+
+describe("questionnaire intro (#153)", () => {
+  const introText = () => screen.queryByText("本問卷的目的在幫助您了解自己的聽力。");
+  const toggle = () => screen.queryByRole("button", { name: "這份問卷在問什麼？" });
+
+  it("shows the intro in full on the hearing aid question", async () => {
+    await renderApp();
+    expect(introText()).not.toBeNull();
+    expect(screen.getByText("請圈選常常、有時或從未。")).not.toBeNull();
+    expect(toggle()).toBeNull();
+  });
+
+  it("folds it from question 1 on, and 這份問卷在問什麼？ opens it", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    expect(introText()).toBeNull();
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(toggle());
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(introText()).not.toBeNull();
+    expect(document.getElementById(toggle().getAttribute("aria-controls")).contains(introText())).toBe(true);
+    fireEvent.click(toggle());
+    expect(introText()).toBeNull();
+  });
+
+  it("shows it in full again back on the hearing aid question", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    history.back();
+    await waitFor(() => expect(legend()).toMatch(/有沒有戴助聽器/));
+    expect(introText()).not.toBeNull();
+    expect(toggle()).toBeNull();
+  });
+});
+
+describe("autosave note (#153)", () => {
+  // Drafts live in this browser's storage only (draft.js), so the note says so.
+  const NOTE = "答案會自動存在這個瀏覽器裡，中途離開也沒關係，下次用同一個瀏覽器打開，會問您要不要接著答。";
+
+  it("tells the user on opening the page, and on every question", async () => {
+    await renderApp();
+    expect(screen.getByText(NOTE)).not.toBeNull();
+    choose("沒戴");
+    next();
+    expect(screen.getByText(NOTE)).not.toBeNull();
   });
 });
 

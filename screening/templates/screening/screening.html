@@ -33,7 +33,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 <div>
     <h1 class="h2 mt-4">{{ questionnaire.questionnaire_name }}</h1>
     <p class="text-xl/normal font-bold">共 {{ question_count }} 題，大約 {{ questionnaire.definition.minutes }} 分鐘。</p>
+    {# React reads the intro from here and shows it per step (#153); without JS it just stays. #}
+    <div id="answer-intro">
     {% include questionnaire.definition.intro_template %}
+    </div>
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="text-xl/normal font-bold" role="status"></p>
@@ -47,7 +50,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
             document.getElementById("answer-loading").textContent = "";
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}"></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
         {% csrf_token %}

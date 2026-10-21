@@ -7,6 +7,8 @@ import AnswerApp from "./AnswerApp.jsx";
 // failed or slow load leaves a working form (spec docs/specs/phase-05/phase5_answer_flash.md).
 const container = document.getElementById("answer-app");
 const fallback = document.getElementById("answer-form");
+// The questionnaire's intro: React shows it per step (#153), so the page's copy goes once React is in.
+const intro = document.getElementById("answer-intro");
 const note = document.getElementById("answer-loading");
 const page = document.documentElement.classList;
 
@@ -22,6 +24,8 @@ if (container && fallback) {
       questionnaireId={Number(container.dataset.questionnaireId)}
       userId={Number(container.dataset.userId)}
       csrfToken={fallback.querySelector("[name=csrfmiddlewaretoken]").value}
+      minutes={Number(container.dataset.minutes)}
+      introHtml={intro.innerHTML}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {
@@ -29,6 +33,7 @@ if (container && fallback) {
           return;
         }
         fallback.hidden = true;
+        intro.hidden = true;
         showForm();
       }}
       onFail={showForm}

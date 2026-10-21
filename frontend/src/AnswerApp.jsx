@@ -21,6 +21,8 @@ export default function AnswerApp({
   questionnaireId,
   userId,
   csrfToken,
+  minutes,
+  introHtml,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -29,6 +31,7 @@ export default function AnswerApp({
   const [saved, setSaved] = useState(null);
   const [form, setForm] = useState(null);
   const [status, setStatus] = useState({ type: "idle" });
+  const [introOpen, setIntroOpen] = useState(false);
   const moved = useRef(false);
   // Set once the answers were accepted (or already were, 409): nothing may save them again.
   const finished = useRef(false);
@@ -125,6 +128,8 @@ export default function AnswerApp({
   const answered = current !== undefined && (!isHearingAid || current !== null);
   const isLast = step === questions.length;
   const isSending = status.type === "sending";
+  // The questionnaire's minutes shared out over this question and the ones after it, at least 1.
+  const minutesLeft = Math.max(1, Math.round((minutes * (questions.length - step + 1)) / questions.length));
 
   function choose(value) {
     setStatus({ type: "idle" });
@@ -195,10 +200,39 @@ export default function AnswerApp({
 
   return (
     <div className="answer-app">
+      {/* The page's own intro (the definition's intro_template), in full only before question 1. */}
+      {isHearingAid ? (
+        <div dangerouslySetInnerHTML={{ __html: introHtml }} />
+      ) : (
+        <div className="mb-4">
+          <button
+            type="button"
+            className="btn btn-link btn-lg px-0"
+            aria-expanded={introOpen}
+            aria-controls="answer-intro-text"
+            onClick={() => setIntroOpen((open) => !open)}
+          >
+            這份問卷在問什麼？
+          </button>
+          <div id="answer-intro-text">{introOpen && <div dangerouslySetInnerHTML={{ __html: introHtml }} />}</div>
+        </div>
+      )}
+      {/* Same as draft.js: kept in this browser's storage only. */}
+      <p>答案會自動存在這個瀏覽器裡，中途離開也沒關係，下次用同一個瀏覽器打開，會問您要不要接著答。</p>
       {/* The legend must be the fieldset's first child to name the radio group. */}
       <fieldset className="card card-body mb-4" disabled={isSending}>
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
-          {!isHearingAid && <span className="question-progress">第 {step} 題／共 {questions.length} 題</span>}
+          {!isHearingAid && (
+            <>
+              {/* One segment per question; only the colour changes (ADR 0006). The text says it all. */}
+              <span className="answer-progress" aria-hidden="true">
+                {questions.map((q) => (
+                  <span key={q.id} className={form.answers[q.id] === undefined ? undefined : "answer-progress-done"} />
+                ))}
+              </span>
+              <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
+            </>
+          )}
           {question.text}
         </legend>
         {!isHearingAid && question.scale ? (
