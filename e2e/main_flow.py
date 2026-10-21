@@ -401,7 +401,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         card = self.main().locator("a.link-card")
         expect(card).to_have_count(1)
         expect(card).to_contain_text("總分：20")
-        # The record card only: the trend chart, drawn later by React, repeats the level text.
+        # The record card only: the trend summary above it repeats the level text.
         expect(card.get_by_text("輕度到中度影響")).to_be_visible()
 
     def step7_report_prints_without_site_chrome(self):
@@ -542,6 +542,41 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 accessible_date = date_text.replace("/", r"\/")
                 accessible_name = re.compile(rf"{accessible_date}.*總分：{score}")
                 expect(self.page.get_by_role("link", name=accessible_name)).to_have_count(1)
+
+    def hold(self, url):
+        """Requests to url wait in the returned list until release() lets them through."""
+        held = []
+        self.page.route(url, lambda route: held.append(route))
+        return held
+
+    def release(self, held):
+        for _ in range(100):  # 5 seconds for the request to arrive
+            if held:
+                held[0].continue_()
+                return
+            self.page.wait_for_timeout(50)
+        self.fail("The held request never came")
+
+    # The trend chart draws after its data arrives; the record cards below must not move then.
+    def test_trend_chart_does_not_push_the_records_down(self):
+        sizes = ((320, False), (390, False), (1280, False), (320, True), (390, True))
+        for width, large_text in sizes:
+            with self.subTest(width=width, large_text=large_text):
+                self.open(width)
+                # Hold the records' API answer, so the page is measured before the chart draws.
+                held = self.hold("**/api/submissions/")
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+                    if large_text:
+                        self.page.add_style_tag(content="html { font-size: 225% !important; }")
+                    card = self.page.locator("a.link-card").first
+                    before = card.bounding_box()["y"]
+                    loading = self.page.get_by_text("趨勢圖載入中…")
+                    expect(loading).to_be_visible()
+                    self.release(held)
+                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                    expect(loading).to_have_count(0)
+                    self.assertAlmostEqual(card.bounding_box()["y"], before, delta=1)
 
     def test_skip_link_moves_keyboard_focus_on_public_and_signed_in_pages(self):
         self.open(320)
@@ -1610,6 +1645,28 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(banner, "color"), colour)
                     self.assertEqual(self.style(banner, "backgroundColor"), background)
 
+    # The trend chart's level names, written by Django, keep their band colours.
+    def test_trend_level_names_keep_their_colours(self):
+        self.submission(self.hhie_s, (2,) * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            for level, _, background, colour in self.BANNERS[:3]:
+                with self.subTest(level=level):
+                    item = self.page.locator(f".trend-band-{level}")
+                    swatch = item.locator(".trend-band-swatch")
+                    self.assertEqual(self.style(item.locator("span").last, "color"), colour)
+                    self.assertEqual(self.style(swatch, "backgroundColor"), background)
+
+    # Without JavaScript the trend summary stays and the chart card, which would stay empty, hides.
+    def test_trend_summary_shows_without_javascript(self):
+        self.submission(self.hhie_s, (2,) * 10)
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            expect(self.page.locator(".trend-summary")).to_be_visible()
+            expect(self.page.locator("#trend-chart .card")).to_be_hidden()
+
     # #126: the badge's class is built from the level code, as the banner's is.
     def test_level_badge_colours(self):
         for _, scores, _, _ in self.BANNERS[:3]:
@@ -2180,11 +2237,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         return locator
 
     def first_card(self, path):
-        """The page's first clickable card, once nothing above it will still move."""
+        """The page's first clickable card."""
         self.page.goto(f"{self.live_server_url}{path}")
-        # My hearing's trend chart draws after its data arrives and pushes the cards down.
-        if self.page.locator("#trend-chart").count():
-            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+        # No wait for my hearing's trend chart: its box keeps its height, so the cards stay put.
         card = self.page.locator("a.link-card").first
         card.scroll_into_view_if_needed()
         return card

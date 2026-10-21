@@ -426,6 +426,56 @@ def _ioi_ha_chart(records):
     return {"latest": latest, "previous": previous, "grouped": grouped, "columns": columns}
 
 
+TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
+# Legend order, the template's shape for each status (spec 4b) and its name.
+TREND_LEGEND = (
+    (False, "unaided", "沒戴助聽器"),
+    (True, "aided", "有戴助聽器"),
+    (None, "unrecorded", "未記錄"),
+)
+
+
+def _trend_chart(records):
+    # records: this user's HHIE-S, newest first. React draws only the chart itself, so the
+    # text around it is on the page from the start and nothing below moves when it arrives.
+    # The wording is fixed by spec phase9_ui_refresh_2_data.md 4.2.
+    latest = records[0]
+    wearing = latest.wearing_hearing_aid
+    status = TREND_STATUS_TEXT[wearing]
+    previous = next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
+    if len(records) == 1:
+        change = "再做一次篩檢，就能看到分數的變化。"
+    elif wearing is None:
+        change = "這筆沒有記錄助聽器，不和其他紀錄比較。"
+    elif previous is None:
+        change = f"這是第一筆{status}的紀錄。"
+    else:
+        diff = latest.total_answer_score - previous.total_answer_score
+        since = f"上一次{status}（{timezone.localdate(previous.created_at):%Y/%m/%d}）"
+        if diff > 0:
+            change = f"比{since}增加 {diff} 分。"
+        elif diff < 0:
+            change = f"比{since}減少 {-diff} 分。"
+        else:
+            change = f"和{since}相同。"
+    statuses = {r.wearing_hearing_aid for r in records}
+    return {
+        "latest": latest,
+        "status": status,
+        "change": change,
+        "legend": [
+            {"shape": shape, "text": text}
+            for value, shape, text in TREND_LEGEND
+            if value in statuses
+        ],
+        # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
+        "levels": [
+            {"code": level, "text": text}
+            for _, text, level in reversed(latest.questionnaire.definition.thresholds)
+        ],
+    }
+
+
 @login_required
 def my_hearing(request):
     submissions = list(
@@ -457,6 +507,7 @@ def my_hearing(request):
             .select_related("unaided", "aided")
             .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
+            "trend_chart": _trend_chart(records) if current.definition.trend_chart else None,
         },
     )
 

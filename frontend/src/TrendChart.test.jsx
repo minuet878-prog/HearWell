@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,6 +39,7 @@ function mockApi({ results, next = null, levels = LEVELS, questionnaires = null 
   );
 }
 
+const LOADING_TEXT = "趨勢圖載入中…";
 const ERROR_TEXT = "趨勢圖暫時無法顯示，下方的紀錄不受影響。";
 
 // Pixel y where a score of 0 belongs: the bottom of the plot area (Recharts clips lines to it).
@@ -47,10 +48,9 @@ function plotBottom(container) {
   return Number(plot.getAttribute("y")) + Number(plot.getAttribute("height"));
 }
 
-function summaryLines(container) {
-  return [...container.querySelectorAll(".trend-summary p")].map((p) =>
-    p.textContent.replace(/\s+/g, " ").trim(),
-  );
+// The title, summary box and legends are drawn by Django (trend_chart.html); this draws the chart.
+async function chartDrawn(container) {
+  await vi.waitFor(() => expect(container.querySelector(".recharts-wrapper")).not.toBeNull());
 }
 
 // Every point is drawn as a .trend-dot shape (circle, square or triangle) carrying its centre.
@@ -100,15 +100,27 @@ afterEach(() => {
 
 describe("TrendChart", () => {
   // jsdom has no ResizeObserver, so ResponsiveContainer keeps its initialDimension and draws the chart.
-  it("shows the summary, the title and a labelled band per level", async () => {
+  it("says it is loading until the data arrives", async () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {}));
+    const { container } = render(<TrendChart code="hhie-s" />);
+    const message = container.querySelector(".trend-plot-message");
+    expect(message.textContent).toBe(LOADING_TEXT);
+    // Screen readers skip it, as they skip the chart: the summary box says the same in text.
+    expect(message.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("hides the chart from screen readers", async () => {
+    mockApi({ results: [submission(1, "2026-10-14", 18)] });
+    const { container } = render(<TrendChart code="hhie-s" />);
+    await chartDrawn(container);
+    expect(container.querySelector(".recharts-wrapper").closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(container.querySelector(".trend-plot-message")).toBeNull();
+  });
+
+  it("draws a band per level", async () => {
     mockApi({ results: [submission(2, "2026-10-14", 18), submission(1, "2026-09-01", 12)] });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
-    expect(summaryLines(container)).toEqual([
-      "最近一次（2026/10/14，沒戴助聽器）",
-      "18 分 輕度到中度影響",
-      "比上一次沒戴助聽器（2026/09/01）增加 6 分。",
-    ]);
+    await chartDrawn(container);
     const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
     expect(bands.map((b) => [b.getAttribute("y1"), b.getAttribute("y2")])).toEqual([
       // Spec 4.4: halfway between levels, as HHIE-S totals are even.
@@ -116,10 +128,6 @@ describe("TrendChart", () => {
       ["9", "25"],
       ["25", "40"],
     ]);
-    expect(screen.getByRole("heading", { name: /HHIE-S/ })).toBeTruthy();
-    for (const level of LEVELS) {
-      expect(screen.getAllByText(level.text).length).toBeGreaterThan(0);
-    }
   });
 
   it("draws a point for every submission, including a score of 0", async () => {
@@ -131,11 +139,7 @@ describe("TrendChart", () => {
       ],
     });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
-    expect(summaryLines(container).slice(1)).toEqual([
-      "0 分 無/極輕微影響",
-      "比上一次沒戴助聽器（2026/09/01）減少 18 分。",
-    ]);
+    await chartDrawn(container);
     const heights = dotHeights(container);
     expect(heights).toHaveLength(3);
     expect(heights[2]).toBe(plotBottom(container));
@@ -144,7 +148,7 @@ describe("TrendChart", () => {
   it("draws scores of 0 at the bottom even without levels", async () => {
     mockApi({ results: [submission(2, "2026-10-14", 0), submission(1, "2026-09-01", 0)], levels: [] });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/相同。/);
+    await chartDrawn(container);
     const bottom = plotBottom(container);
     expect(dotHeights(container)).toEqual([bottom, bottom]);
   });
@@ -163,8 +167,7 @@ describe("TrendChart", () => {
       ],
     });
     const { container } = render(<TrendChart code="hhia-s" />);
-    await screen.findByText(/最近一次/);
-    expect(screen.getByRole("heading").textContent).toBe("HHIA-S 總分變化");
+    await chartDrawn(container);
     expect(dotHeights(container)).toHaveLength(2);
     expect(container.querySelector(".recharts-reference-area")).toBeNull();
   });
@@ -180,7 +183,7 @@ describe("TrendChart", () => {
       ],
     });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
+    await chartDrawn(container);
     expect(dateTicks(container)).toEqual(["2026/08/01", "2026/10/14"]);
     // The day's last unaided record (12) is drawn, not the earlier 40; the aided 28 shares its column.
     const unaided = dots(container).filter((d) => d.dataset.status === "unaided");
@@ -216,7 +219,7 @@ describe("TrendChart", () => {
       results: [7, 6, 5, 4, 3, 2, 1].map((day) => submission(day, `2026-10-0${day}`, day * 2)),
     });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
+    await chartDrawn(container);
     expect(dateTicks(container)).toEqual(["2026/10/03", "2026/10/04", "2026/10/05", "2026/10/06", "2026/10/07"]);
     expect(dots(container)).toHaveLength(5);
   });
@@ -224,43 +227,31 @@ describe("TrendChart", () => {
   it("draws no bands when the questionnaire has no levels", async () => {
     mockApi({ results: [submission(1, "2026-10-14", 18)], levels: [] });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
+    await chartDrawn(container);
     expect(container.querySelector(".recharts-line")).not.toBeNull();
     expect(container.querySelector(".recharts-reference-area")).toBeNull();
-  });
-
-  it("shows one point and how to see a change", async () => {
-    mockApi({ results: [submission(1, "2026-10-14", 18)] });
-    render(<TrendChart code="hhie-s" />);
-    expect(await screen.findByText(/再做一次篩檢，就能看到分數的變化。/)).toBeTruthy();
   });
 
   it("renders nothing without submissions", async () => {
     mockApi({ results: [] });
     const { container } = render(<TrendChart code="hhie-s" />);
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    await Promise.resolve();
-    expect(container.textContent).toBe("");
+    await vi.waitFor(() => expect(container.textContent).toBe(""));
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("only uses the first page (latest 20)", async () => {
     const results = Array.from({ length: 20 }, (_, i) => submission(20 - i, "2026-10-14", 10));
     mockApi({ results, next: "/api/submissions/?cursor=abc" });
-    render(<TrendChart code="hhie-s" />);
-    await screen.findByText(/最近一次/);
+    const { container } = render(<TrendChart code="hhie-s" />);
+    await chartDrawn(container);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("shows the API's level text, not a recomputed one", async () => {
-    mockApi({ results: [submission(1, "2026-10-14", 18, "假的分級")] });
-    render(<TrendChart code="hhie-s" />);
-    expect(await screen.findByText("假的分級")).toBeTruthy();
-  });
-
-  it("explains when the API returns an error", async () => {
+  it("explains when the API returns an error, also to screen readers", async () => {
     globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) }));
     render(<TrendChart code="hhie-s" />);
-    expect(await screen.findByText(ERROR_TEXT)).toBeTruthy();
+    const message = await screen.findByText(ERROR_TEXT);
+    expect(message.closest("[aria-hidden]")).toBeNull();
   });
 
   describe("style (option A)", () => {
@@ -276,7 +267,7 @@ describe("TrendChart", () => {
     it("draws the line in the primary colour and makes the latest point bigger", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       expect(container.querySelector(".recharts-line-curve").getAttribute("stroke")).toBe("#1f4e8c");
       const all = dots(container);
       expect(all).toHaveLength(3);
@@ -289,56 +280,35 @@ describe("TrendChart", () => {
     it("writes each score next to its point, including 0", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const labels = [...container.querySelectorAll(".trend-score")].map((t) => t.textContent);
       expect(labels).toEqual(["12", "18", "0"]);
     });
 
-    it("uses soft band colours, level-coloured labels and no y axis numbers", async () => {
+    it("uses soft band colours and no y axis numbers", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
       expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#feece7"]);
-      const bandLegend = within(container.querySelector(".trend-bands"));
-      const labelColours = LEVELS.map((level) => bandLegend.getByText(level.text).style.color);
-      expect(labelColours).toEqual(["rgb(30, 123, 85)", "rgb(138, 90, 0)", "rgb(194, 59, 28)"]);
       const ticks = [...container.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
       expect(ticks).toEqual([]);
     });
 
-    it("names the levels in a legend under the chart, top band first (phase9_ui_refresh_3_structure.md 4.5)", async () => {
+    it("writes no level name inside the plot (phase9_ui_refresh_3_structure.md 4.5)", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       // Nothing written inside the plot, so no level name can cover a point.
       for (const level of LEVELS) {
         expect(container.querySelector(".recharts-wrapper").textContent).not.toContain(level.text);
       }
-      const items = [...container.querySelectorAll(".trend-bands li")];
-      expect(items.map((li) => li.textContent.trim())).toEqual(["顯著影響", "輕度到中度影響", "無/極輕微影響"]);
-      const swatches = items.map((li) => li.querySelector(".trend-band-swatch").style.backgroundColor);
-      expect(swatches).toEqual(["rgb(254, 236, 231)", "rgb(255, 244, 214)", "rgb(227, 244, 236)"]);
-    });
-
-    it("orders title, summary box and chart card, with the summary outside the card", async () => {
-      threePoints();
-      const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      const heading = screen.getByRole("heading");
-      const summary = container.querySelector(".trend-summary");
-      const card = container.querySelector(".card");
-      expect(card.querySelector(".recharts-wrapper")).not.toBeNull();
-      expect(card.contains(summary)).toBe(false);
-      const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(follows(heading, summary)).toBe(true);
-      expect(follows(summary, card)).toBe(true);
     });
 
     it("keeps the dates clear of the chart", async () => {
       threePoints();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const dates = [...container.querySelectorAll(".recharts-xAxis-tick-labels text")];
       expect(dates.length).toBeGreaterThan(0);
       for (const date of dates) {
@@ -346,28 +316,6 @@ describe("TrendChart", () => {
       }
     });
 
-    it("summary box: date, big score with level, then the change", async () => {
-      mockApi({ results: [submission(2, "2026-10-14", 12), submission(1, "2026-09-01", 28)] });
-      const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      expect(summaryLines(container)).toEqual([
-        "最近一次（2026/10/14，沒戴助聽器）",
-        "12 分 輕度到中度影響",
-        "比上一次沒戴助聽器（2026/09/01）減少 16 分。",
-      ]);
-      expect(container.querySelector(".trend-summary-score strong").textContent).toBe("12 分");
-    });
-
-    it("summary box with one submission and a score of 0", async () => {
-      mockApi({ results: [submission(1, "2026-10-14", 0, "無/極輕微影響")] });
-      const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      expect(summaryLines(container)).toEqual([
-        "最近一次（2026/10/14，沒戴助聽器）",
-        "0 分 無/極輕微影響",
-        "再做一次篩檢，就能看到分數的變化。",
-      ]);
-    });
   });
 
   describe("hearing aid status (spec 4b)", () => {
@@ -383,7 +331,7 @@ describe("TrendChart", () => {
     it("draws a filled circle, a hollow square and a hollow triangle", async () => {
       mixed();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const [unaided, aided, unrecorded] = dots(container);
       expect(unaided.tagName).toBe("circle");
       expect(unaided.getAttribute("fill")).toBe("#1f4e8c");
@@ -394,24 +342,10 @@ describe("TrendChart", () => {
       for (const dot of [aided, unrecorded]) expect(dot.getAttribute("stroke")).toBe("#1f4e8c");
     });
 
-    it("explains the shapes in a legend, only for statuses that appear", async () => {
-      mixed();
-      const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      const legend = [...container.querySelectorAll(".trend-legend li")].map((li) => li.textContent.trim());
-      expect(legend).toEqual(["沒戴助聽器", "有戴助聽器", "未記錄"]);
-      cleanup();
-      mockApi({ results: [submission(1, "2026-10-14", 10)] });
-      const again = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      const only = [...again.container.querySelectorAll(".trend-legend li")].map((li) => li.textContent.trim());
-      expect(only).toEqual(["沒戴助聽器"]);
-    });
-
     it("names the status in the tooltip", async () => {
       mixed();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const expected = ["沒戴", "有戴", "未記錄"];
       expect(dots(container)).toHaveLength(3);
       for (const [i, dot] of dots(container).entries()) {
@@ -442,7 +376,7 @@ describe("TrendChart", () => {
     it("joins only points of the same status (acceptance 1)", async () => {
       fiveRecords();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const unaided = lineParts(container, "unaided");
       const aided = lineParts(container, "aided");
       expect(unaided.points).toHaveLength(3);
@@ -459,7 +393,7 @@ describe("TrendChart", () => {
     it("draws aided dashed with hollow squares, unaided solid with filled circles (acceptance 2)", async () => {
       fiveRecords();
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const unaided = lineParts(container, "unaided").curve;
       const aided = lineParts(container, "aided").curve;
       expect(unaided.getAttribute("stroke-dasharray")).toBeNull();
@@ -468,10 +402,6 @@ describe("TrendChart", () => {
         [...container.querySelectorAll(`.trend-dot[data-status="${status}"]`)].map((d) => d.tagName);
       expect(shapes("unaided")).toEqual(["circle", "circle", "circle"]);
       expect(shapes("aided")).toEqual(["rect", "rect"]);
-      const legend = [...container.querySelectorAll(".trend-legend li")];
-      expect(legend.map((li) => li.textContent.trim())).toEqual(["沒戴助聽器", "有戴助聽器"]);
-      expect(legend[0].querySelector("line").getAttribute("stroke-dasharray")).toBeNull();
-      expect(legend[1].querySelector("line").getAttribute("stroke-dasharray")).toBeTruthy();
     });
 
     it("does not join unrecorded points (acceptance 3)", async () => {
@@ -483,7 +413,7 @@ describe("TrendChart", () => {
         ],
       });
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const unrecorded = lineParts(container, "unrecorded");
       expect(unrecorded.points).toHaveLength(2);
       expect(unrecorded.curve.getAttribute("stroke")).toBe("none");
@@ -494,25 +424,12 @@ describe("TrendChart", () => {
     it("draws one solid line when every record is unaided (acceptance 4)", async () => {
       mockApi({ results: [submission(2, "2026-10-14", 12), submission(1, "2026-09-01", 16)] });
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const drawn = [...container.querySelectorAll(".recharts-line-curve")].filter(
         (c) => c.getAttribute("stroke") !== "none" && vertices(c).length > 0,
       );
       expect(drawn).toHaveLength(1);
       expect(drawn[0].closest(".trend-line-unaided")).not.toBeNull();
-      const legend = [...container.querySelectorAll(".trend-legend li")].map((li) => li.textContent.trim());
-      expect(legend).toEqual(["沒戴助聽器"]);
-    });
-
-    it("compares the summary with the same status only (acceptance 5)", async () => {
-      fiveRecords();
-      const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
-      expect(summaryLines(container)).toEqual([
-        "最近一次（2026/10/15，有戴助聽器）",
-        "10 分 輕度到中度影響",
-        "比上一次有戴助聽器（2026/10/01）減少 4 分。",
-      ]);
     });
 
     it("puts each score inside its own level band (acceptance 10)", async () => {
@@ -520,7 +437,7 @@ describe("TrendChart", () => {
         results: [26, 24, 10, 8].map((total, i) => submission(4 - i, `2026-10-0${4 - i}`, total)),
       });
       const { container } = render(<TrendChart code="hhie-s" />);
-      await screen.findByText(/最近一次/);
+      await chartDrawn(container);
       const bands = [...container.querySelectorAll(".recharts-reference-area-rect")].map((b) => ({
         top: Number(b.getAttribute("y")),
         bottom: Number(b.getAttribute("y")) + Number(b.getAttribute("height")),
@@ -533,12 +450,6 @@ describe("TrendChart", () => {
       expect(inside(ten, mild)).toBe(true);
       expect(inside(twentyFour, mild)).toBe(true);
       expect(inside(twentySix, severe)).toBe(true);
-    });
-
-    it("says which way is better under the title (acceptance 13)", async () => {
-      fiveRecords();
-      render(<TrendChart code="hhie-s" />);
-      expect(await screen.findByText("分數越低，聽力對生活的影響越小。")).toBeTruthy();
     });
   });
 

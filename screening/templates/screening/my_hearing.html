@@ -6,6 +6,8 @@
 {% block extra_head %}
 {% if current.definition.trend_chart %}
 <script type="module" src="{% static 'screening/frontend/trend-chart.js' %}"></script>
+{# Without JavaScript the chart never draws: keep its text, hide the box that would stay empty. #}
+<noscript><style>#trend-chart .card { display: none; }</style></noscript>
 {% endif %}
 {% endblock %}
 
@@ -30,9 +32,9 @@
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
-{% elif current.definition.trend_chart %}
+{% elif trend_chart %}
 {# Only HHIE-S has a trend chart; other questionnaires list their records only. #}
-<div id="trend-chart" data-questionnaire="{{ current.code }}"></div>
+{% include "screening/trend_chart.html" with chart=trend_chart questionnaire=current %}
 {% endif %}
 {% for submission in submissions %}
 <a class="link-card" href="{% url 'result' submission.id %}">
