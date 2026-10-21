@@ -271,18 +271,12 @@
     --btn-disabled-border-color: transparent;
     text-decoration: underline;
   }
-  .btn:hover {
+  .btn:hover, .btn:focus-visible {
     color: var(--btn-hover-color);
     background-color: var(--btn-hover-bg);
     border-color: var(--btn-hover-border-color);
   }
-  .btn:focus-visible {
-    color: var(--btn-hover-color);
-    background-color: var(--btn-hover-bg);
-    border-color: var(--btn-hover-border-color);
-    outline: 0;
-    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring);
-  }
+  .btn:focus-visible { outline: 0; box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
   .btn-link:focus-visible { color: var(--btn-color); }
   .btn-link:hover { color: var(--btn-hover-color); }
   .btn:active {

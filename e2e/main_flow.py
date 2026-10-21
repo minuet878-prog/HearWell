@@ -1214,17 +1214,25 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                             self.style(button, "boxShadow"), f"{ring} 0px 0px 0px 4.5px"
                         )
 
-    def test_primary_button_hover_and_press_colours(self):
+    def test_button_hover_and_press_colours(self):
+        # The two variants whose hover and press colours the site set itself.
+        cases = (
+            ("button", "登入", "rgb(23, 59, 106)", "rgb(18, 47, 85)"),
+            ("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),
+        )
         self.open(signed_in=False)
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/login")
-            button = self.page.get_by_role("button", name="登入")
-            button.hover()
-            self.assertEqual(self.style(button, "backgroundColor"), "rgb(23, 59, 106)")
-            self.page.mouse.down()
-            self.assertEqual(self.style(button, "backgroundColor"), "rgb(18, 47, 85)")
-            self.assertEqual(self.style(button, "borderTopColor"), "rgb(18, 47, 85)")
-            self.page.mouse.up()
+            for role, name, hover, pressed in cases:
+                with self.subTest(button=name):
+                    self.page.goto(f"{self.live_server_url}/login")
+                    button = self.page.get_by_role("main").get_by_role(role, name=name)
+                    button.hover()
+                    self.assertEqual(self.style(button, "backgroundColor"), hover)
+                    self.assertEqual(self.style(button, "color"), "rgb(255, 255, 255)")
+                    self.page.mouse.down()
+                    self.assertEqual(self.style(button, "backgroundColor"), pressed)
+                    self.assertEqual(self.style(button, "borderTopColor"), pressed)
+                    self.page.mouse.up()
 
     def test_form_fields_keep_their_size_and_focus_ring(self):
         # #125: form fields keep their pre-migration size (owner's decision, 2026-10-21):
@@ -1308,6 +1316,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 {"minHeight": "27px", "paddingLeft": "27px"},
             )
             select.select_option("20")
+            mask.focus()
+            self.assertEqual(self.style(mask, "borderTopColor"), "rgb(134, 183, 254)")
+            self.assertEqual(self.style(mask, "boxShadow"), bootstrap_ring)
             mask.check()
             self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
             date_field = self.page.get_by_label("檢查日期")

@@ -14,7 +14,7 @@
 
 - 主題已有的數值直接引用：主色與 hover／active 色、本文色、`--color-border-subtle`、`--radius-button`、`--spacing-touch`、`--color-focus-ring`、`--shadow-input-focus`。
 - 新增四個主題數值，給多個元件共用、網站從沒覆寫過的 Bootstrap 預設：`--radius-field`（0.375rem，欄位、卡片、提示框）、`--radius-field-lg`（0.5rem）、`--color-field-focus`（#86b7fe）、`--shadow-field-focus`。名稱已確認不會和模板裡的 class 撞名（ADR 0009）。
-- 只出現在單一元件裡的 Bootstrap 預設（例如 `btn-danger` 的紅、`alert-warning` 的黃）直接寫在那個元件裡。
+- 其餘 Bootstrap 預設色（按鈕各變體的紅、灰、淺色，勾選框的藍，提示框的黃與紅）直接寫在元件裡，沒有另外取 token：這些值只屬於該元件家族，第 2a 階段改外觀時會整組換掉；而且 `--color-danger`、`--color-secondary` 這類直覺的名字會生出 `.text-danger` 等和模板撞名的 class（ADR 0009）。`btn-outline-secondary` 的 #6c757d 剛好和 `--color-input-border` 同值，但用途不同，沒有共用。
 
 ### 刻意照舊、看起來像 Bootstrap 藍的地方
 
@@ -37,7 +37,7 @@
 
 | 版本 | 結果 |
 |---|---|
-| 遷移前 `c229719`（Bootstrap） | 新增 5 個瀏覽器測試＋`test_text_primary_and_error_colours`，6 個全部通過 |
+| 遷移前 `c229719`（Bootstrap） | 新增 5 個瀏覽器測試＋`test_text_primary_and_error_colours`，6 個全部通過（自審後補的斷言也在參考版重跑通過） |
 | 母分支 `28d3790`（本票之前） | 同一組 6 個中 6 個失敗（11 項子測試，只有「登出」按鈕本來就定義過所以通過） |
 | 本分支 | 6 個全部通過 |
 
@@ -60,15 +60,15 @@
 | 條件 | 證明的測試與斷言 |
 |---|---|
 | 1. 列出的 class 用到的都有定義、沒用到的沒搬 | `frontend/src/components.test.js:41`（用到的都有定義）、`:46`（`btn`／`form-`／`input-group`／`card`／`table`／`alert`／`visually-hidden`／`list-` 開頭的定義都要有地方用到） |
-| 2. #123 的顏色檢查（主要按鈕、文字色）通過 | `e2e/main_flow.py:1452` `test_text_primary_and_error_colours`（#124 記錄的預期失敗，現在通過） |
+| 2. #123 的顏色檢查（主要按鈕、文字色）通過 | `e2e/main_flow.py:1472`（登入按鈕底色是主色）、`:1478`（錯誤文字色），`test_text_primary_and_error_colours`（#124 記錄的預期失敗，現在通過） |
 | 3a. 按鈕觸控區至少 44×44 | `e2e/main_flow.py:1209`，涵蓋 7 種按鈕（primary、outline-primary、outline-light、danger、link、outline-danger、停用的 outline-secondary） |
-| 3b. 焦點外框和遷移前一樣 | 按鈕：`e2e/main_flow.py:1214`（每種按鈕的光暈顏色與 4.5px 寬，並確認是 `:focus-visible`）；輸入框：`:1256`；下拉選單：`:1302` |
-| 3c. 表單元件尺寸和遷移前相同（本人決定） | 輸入框 42.5px `:1241`、輸入框群組三段等高與接縫、下拉選單 42.5px、勾選框 18×18 `:1304` 與標籤 27px、日期欄位與大號下拉選單 ≥ 44px（`test_form_fields_keep_their_size_and_focus_ring`，`:1229`） |
-| 4a. 只給螢幕閱讀器的文字畫面上看不到 | `e2e/main_flow.py:1437`（1×1、絕對定位、裁切） |
-| 4b. 螢幕閱讀器讀得到 | `e2e/main_flow.py:1450`（問卷卡片連結的名稱含隱藏的「，」） |
-| 4c. `visually-hidden-focusable` 取得焦點時看得到 | `e2e/main_flow.py:1425`（未聚焦 1×1）、`:1430`（Tab 聚焦後大於 44×44、不再裁切） |
+| 3b. 焦點外框和遷移前一樣 | 按鈕：`e2e/main_flow.py:1214`（每種按鈕的光暈顏色與 4.5px 寬，並確認是 `:focus-visible`）；輸入框：`:1263`–`:1264`；下拉選單：`:1310`；勾選框：`:1321` |
+| 3c. 表單元件尺寸和遷移前相同（本人決定） | 輸入框 42.5px `:1249`、輸入框群組三段等高與接縫、下拉選單 42.5px `:1305`、勾選框 18×18 `:1312` 與標籤 27px、日期欄位與大號下拉選單 ≥ 44px（`test_form_fields_keep_their_size_and_focus_ring`，`:1237`） |
+| 4a. 只給螢幕閱讀器的文字畫面上看不到 | `e2e/main_flow.py:1448`（1×1、絕對定位、裁切） |
+| 4b. 螢幕閱讀器讀得到 | `e2e/main_flow.py:1461`（問卷卡片連結的名稱含隱藏的「，」） |
+| 4c. `visually-hidden-focusable` 取得焦點時看得到 | `e2e/main_flow.py:1436`（未聚焦 1×1）、`:1441`（Tab 聚焦後大於 44×44、不再裁切） |
 
-另外 `test_primary_button_hover_and_press_colours`（`:1217`）量主要按鈕滑過與按下的顏色；`test_cards_tables_alerts_and_lists_look_as_before`（`:1333`）量卡片、表格、兩種提示框、無樣式清單。
+另外 `test_button_hover_and_press_colours`（`:1217`）量網站自己覆寫過的兩種按鈕（`btn-primary`、`btn-outline-primary`）滑過與按下的顏色；`test_cards_tables_alerts_and_lists_look_as_before`（`:1344`）量卡片、表格、兩種提示框、無樣式清單。
 
 ## 已知的既有失敗（不是本票造成）
 
@@ -78,7 +78,24 @@
 
 ## 自審
 
-（待填）
+依 code-review 技能，以母分支 `feat/tailwind-migration` 為基準，Standards 與 Spec 分別由兩個子代理審查（只看 diff、規格與規範）。
+
+- Standards：0 項硬性違規；5 項可考慮。
+- Spec：27 個 class 和 Bootstrap 原檔加舊覆寫逐條比過，數值一致、無範圍蔓延；1 項要修、3 項可考慮。
+
+處理：
+
+| 發現 | 處理 |
+|---|---|
+| 要修：勾選框的焦點外框沒有斷言 | 已補（`:1321`），參考版與本分支都通過 |
+| 規格寫按鈕「含 hover、active…」，只量了主要按鈕 | 已補 `btn-outline-primary`（網站覆寫過的另一種）的滑過與按下；其他變體的狀態照 Bootstrap 原值，交給 #131 截圖比對 |
+| `.btn:hover` 與 `.btn:focus-visible` 重複三行 | 已合併 |
+| 驗證紀錄行號指到函式開頭、「只出現在單一元件」說法不精確 | 已修正 |
+| 十六進位色沒抽成 token | 不改，理由見上方「數值放哪裡」；請本人確認 |
+| `--radius-field` 也用在卡片、提示框 | 不改；token 旁的註解已寫明共用範圍 |
+| `components.test.js` 的清單和前綴正則重複；清單外的 Bootstrap class 不會被抓 | 不改：本票範圍就是清單裡的 class；改成「前綴相符就要有定義」會把 `card-tag` 等 #126 才搬的自訂 class 誤判。HTML 的 `<table>` 標籤也算「有用到」，`.table` 本來就有用，影響不大 |
+| e2e 裡「登出」的特例、大號按鈕期望值重複 | 不改，只有一處特例，抽常數得不到什麼 |
+| 舊 `styles.css` 不在 CSS 圖層裡，會蓋過元件層 | 留給 #126：目前沒有互相衝突的規則，#126 搬舊規則時要留意 |
 
 不需交叉審查：沒有修改計分、分級、門檻、資料 migration 或權限。
 
