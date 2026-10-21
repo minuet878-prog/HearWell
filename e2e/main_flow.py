@@ -828,16 +828,19 @@ class SharedLayoutTest(StaticLiveServerTestCase):
                     self.page.add_style_tag(content="html { font-size: 225% !important; }")
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 320)
-                    visible = self.page.locator("main .btn:visible").all()
-                    buttons = [button.bounding_box() for button in visible]
-                    for a, b in combinations(buttons, 2):
+                    controls = self.page.locator(
+                        "main :is(.btn, .form-control, .input-group-text):visible"
+                    ).all()
+                    boxes = [control.bounding_box() for control in controls]
+                    # 1px: an input group's parts share their border on purpose.
+                    for a, b in combinations(boxes, 2):
                         apart = (
-                            a["x"] + a["width"] <= b["x"] + 0.5
-                            or b["x"] + b["width"] <= a["x"] + 0.5
-                            or a["y"] + a["height"] <= b["y"] + 0.5
-                            or b["y"] + b["height"] <= a["y"] + 0.5
+                            a["x"] + a["width"] <= b["x"] + 1
+                            or b["x"] + b["width"] <= a["x"] + 1
+                            or a["y"] + a["height"] <= b["y"] + 1
+                            or b["y"] + b["height"] <= a["y"] + 1
                         )
-                        self.assertTrue(apart, f"buttons overlap: {a} {b}")
+                        self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
 class PwaNavTest(StaticLiveServerTestCase):
