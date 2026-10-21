@@ -939,12 +939,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     TEXT = "rgb(73, 80, 87)"
     PRIMARY = "rgb(31, 78, 140)"
     ERROR = "rgb(194, 59, 28)"
-    # (level, scores, background, text colour); "unknown" keeps only its colour checked.
+    # (level, scores, background, text colour)
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
         ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
         ("severe", (4,) * 10, "rgb(254, 236, 231)", ERROR),
-        ("unknown", (2,) * 10, None, TEXT),
+        ("unknown", (2,) * 10, "rgb(241, 243, 245)", TEXT),
     )
 
     @classmethod
@@ -1505,8 +1505,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     banner = self.page.locator(f".result-banner-{level}")
                     expect(banner).to_be_visible()
                     self.assertEqual(self.style(banner, "color"), colour)
-                    if background:
-                        self.assertEqual(self.style(banner, "backgroundColor"), background)
+                    self.assertEqual(self.style(banner, "backgroundColor"), background)
 
     # #126: the badge's class is built from the level code, as the banner's is.
     def test_level_badge_colours(self):
@@ -1520,7 +1519,6 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 if level == "unknown":
                     # An audiogram with no points has no degree on either ear.
                     self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
-                    background = "rgb(241, 243, 245)"
                 with self.subTest(level=level):
                     badge = self.page.locator(f".level-badge-{level}").first
                     expect(badge).to_be_visible()
