@@ -81,7 +81,7 @@ export default function TrendChart({ code }) {
   }, []);
 
   if (state.status === "loading") return null;
-  if (state.status === "error") return <p className="fs-5">{ERROR_TEXT}</p>;
+  if (state.status === "error") return <p className="text-xl/normal">{ERROR_TEXT}</p>;
 
   const points = selectPoints(state.page.results, code);
   if (points.length === 0) return null;
@@ -134,12 +134,12 @@ export default function TrendChart({ code }) {
     );
 
   return (
-    <section aria-labelledby="trend-title" className="mb-4">
-      <h2 id="trend-title" className="fs-3">
+    <section aria-labelledby="trend-title" className="mb-6">
+      <h2 id="trend-title" className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">
         {name} 總分變化
       </h2>
       <p>分數越低，聽力對生活的影響越小。</p>
-      <div className="trend-summary mb-3">
+      <div className="trend-summary mb-4">
         <p className="mb-1">
           最近一次（{summary.date}，{summary.statusText}）
         </p>

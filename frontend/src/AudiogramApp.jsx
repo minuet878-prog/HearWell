@@ -18,11 +18,11 @@ function levelOptions(conduction) {
 // in sync with the chart.
 function ValueTable({ points, onSet, onMask }) {
   return (
-    <details className="audiogram-table mb-3">
+    <details className="audiogram-table mb-4">
       <summary>用數值輸入（鍵盤或螢幕閱讀器）</summary>
       {SYMBOLS.map((symbol) => (
         <fieldset key={symbol.key} className="mt-2">
-          <legend className="fs-5 fw-bold">{symbol.label}</legend>
+          <legend className="text-xl/normal font-bold">{symbol.label}</legend>
           <div className="audiogram-table-grid">
             {frequenciesFor(symbol.conduction).map((frequency) => {
               const point = points[pointKey(symbol.ear, symbol.conduction, frequency)];
@@ -185,7 +185,7 @@ export default function AudiogramApp({
       </div>
       <button
         type="button"
-        className={`btn btn-lg w-100 mb-2 audiogram-mask-switch${masked ? " on" : ""}`}
+        className={`btn btn-lg w-full mb-2 audiogram-mask-switch${masked ? " on" : ""}`}
         aria-pressed={masked}
         onClick={() => setMasked(!masked)}
       >
@@ -196,12 +196,12 @@ export default function AudiogramApp({
         <AudiogramChart points={Object.values(points)} symbol={symbol} masked={masked} onCommit={(f, level) => commit(symbol, f, level)} />
       </div>
       <p className="mb-2">再點一下同一個點可以刪除</p>
-      <button type="button" className="btn btn-outline-secondary btn-lg w-100 mb-3" disabled={!lastPoint} onClick={clearLast}>
+      <button type="button" className="btn btn-outline-secondary btn-lg w-full mb-4" disabled={!lastPoint} onClick={clearLast}>
         {lastPoint ? `清除 ${lastLabel}` : "清除剛標的點"}
       </button>
       <ValueTable points={points} onSet={setFromTable} onMask={maskFromTable} />
-      <div className="mb-3">
-        <label htmlFor="tested-on" className="form-label fs-5 fw-bold">檢查日期</label>
+      <div className="mb-4">
+        <label htmlFor="tested-on" className="form-label text-xl/normal font-bold">檢查日期</label>
         <input id="tested-on" type="date" className="form-control form-control-lg" max={today} value={testedOn} onChange={(e) => setTestedOn(e.target.value)} />
       </div>
       {errors.length > 0 && (
@@ -211,7 +211,7 @@ export default function AudiogramApp({
           ))}
         </div>
       )}
-      <button type="button" className="btn btn-primary btn-lg w-100" disabled={sending} onClick={save}>
+      <button type="button" className="btn btn-primary btn-lg w-full" disabled={sending} onClick={save}>
         存檔
       </button>
     </div>

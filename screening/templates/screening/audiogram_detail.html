@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-3">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h1>
+<h1 class="h3 mt-4">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h1>
 <div id="audiogram-chart" class="audiogram-chart"></div>
 {{ chart_points|json_script:"audiogram-points" }}
 <div class="ear-results">
@@ -26,8 +26,8 @@
     </section>
     {% endfor %}
 </div>
-<p class="mt-3">這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
-<details class="mb-3">
+<p class="mt-4">這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
+<details class="mb-4">
     <summary>標記的數值</summary>
     <table class="table">
         <thead><tr><th scope="col">項目</th><th scope="col">頻率</th><th scope="col">聽閾</th></tr></thead>
@@ -42,7 +42,7 @@
         </tbody>
     </table>
 </details>
-<p class="d-flex flex-wrap gap-2">
+<p class="flex flex-wrap gap-2">
     <a class="btn btn-outline-primary" href="{% url 'audiogram_list' %}">回聽力圖清單</a>
     <a class="btn btn-outline-primary" href="{% url 'audiogram_edit' audiogram.id %}">修改這張聽力圖</a>
     <a class="btn btn-outline-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張聽力圖</a>

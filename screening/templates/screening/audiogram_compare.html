@@ -8,19 +8,19 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-3">比較聽力圖</h1>
+<h1 class="h3 mt-4">比較聽力圖</h1>
 {% if audiograms|length < 2 %}
 <p>要有兩張聽力圖才能比較。</p>
 {% else %}
-<form method="get" class="compare-picker mb-3">
+<form method="get" class="compare-picker mb-4">
     <input type="hidden" name="ear" value="{{ ear }}">
-    <label for="compare-a" class="form-label fs-5 fw-bold">第一張</label>
+    <label for="compare-a" class="form-label text-xl/normal font-bold">第一張</label>
     <select id="compare-a" name="a" class="form-select form-select-lg mb-2">
         {% for audiogram in audiograms %}
         <option value="{{ audiogram.id }}"{% if audiogram.id == a %} selected{% endif %}>{{ audiogram.tested_on|date:"Y/m/d" }}</option>
         {% endfor %}
     </select>
-    <label for="compare-b" class="form-label fs-5 fw-bold">第二張</label>
+    <label for="compare-b" class="form-label text-xl/normal font-bold">第二張</label>
     <select id="compare-b" name="b" class="form-select form-select-lg mb-2">
         {% for audiogram in audiograms %}
         <option value="{{ audiogram.id }}"{% if audiogram.id == b %} selected{% endif %}>{{ audiogram.tested_on|date:"Y/m/d" }}</option>
@@ -32,9 +32,9 @@
 {% if not result %}
 <p role="alert" class="alert alert-warning">請選兩張不同的聽力圖</p>
 {% else %}
-<nav class="compare-ears d-flex gap-2 mb-2" aria-label="選耳朵">
+<nav class="compare-ears flex gap-2 mb-2" aria-label="選耳朵">
     {% for value, label in ears %}
-    <a class="btn btn-lg flex-fill {% if value == ear %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?a={{ a }}&amp;b={{ b }}&amp;ear={{ value }}"{% if value == ear %} aria-current="true"{% endif %}>{{ label }}</a>
+    <a class="btn btn-lg flex-auto {% if value == ear %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?a={{ a }}&amp;b={{ b }}&amp;ear={{ value }}"{% if value == ear %} aria-current="true"{% endif %}>{{ label }}</a>
     {% endfor %}
 </nav>
 <p class="compare-legend compare-legend-{{ ear }}">
@@ -45,7 +45,7 @@
 {{ chart_points|json_script:"audiogram-points" }}
 {{ old_chart_points|json_script:"audiogram-old-points" }}
 
-<h2 class="h4 mt-3">{{ ear_label }}的數字對照</h2>
+<h2 class="h4 mt-4">{{ ear_label }}的數字對照</h2>
 {# <wbr>: on narrow phones a date header may wrap after the year, so all four columns fit. #}
 <p>差值＝新 − 舊，正數＝要更大聲才聽得到。</p>
 <table class="table compare-table" data-section="pta">
@@ -81,7 +81,7 @@
 </table>
 {% endif %}
 {% endfor %}
-<p class="mt-3">兩次檢查的條件（機器、地點、耳機）不同，數字也會有幾 dB 的差異。這只是數字的對照，不能取代聽力師的判讀。</p>
+<p class="mt-4">兩次檢查的條件（機器、地點、耳機）不同，數字也會有幾 dB 的差異。這只是數字的對照，不能取代聽力師的判讀。</p>
 {% endif %}
 {% endif %}
 <p><a class="btn btn-outline-primary" href="{% url 'audiogram_list' %}">回聽力圖清單</a></p>

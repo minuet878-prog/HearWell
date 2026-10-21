@@ -8,9 +8,9 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-3">{% if audiogram %}修改聽力圖{% else %}新增聽力圖{% endif %}</h1>
+<h1 class="h3 mt-4">{% if audiogram %}修改聽力圖{% else %}新增聽力圖{% endif %}</h1>
 <p>{% if audiogram %}原本標的點已經放在圖上，照報告移動、刪除或補上，再按存檔。{% endif %}照著醫院給的聽力檢查報告，先選要標的符號，再在圖上按住、上下拖曳到報告上的位置，放開就標好了。報告上是「無反應」（符號下面有箭頭）的頻率，往下拖出圖外就會標成無反應。</p>
 <div id="audiogram-app" data-today="{{ today|date:'Y-m-d' }}" data-csrf-token="{{ csrf_token }}"{% if audiogram %} data-audiogram-id="{{ audiogram.id }}"{% endif %}></div>
 {% if audiogram %}{{ initial|json_script:"audiogram-initial" }}{% endif %}
-<noscript><p class="fs-5 fw-bold">需要開啟 JavaScript 才能輸入聽力圖。</p></noscript>
+<noscript><p class="text-xl/normal font-bold">需要開啟 JavaScript 才能輸入聽力圖。</p></noscript>
 {% endblock %}
