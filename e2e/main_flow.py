@@ -773,6 +773,27 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
 
+    # #129: Bootstrap's w-100 was 100%, Tailwind's is 25rem; the buttons fill their column again.
+    def test_audiogram_entry_buttons_fill_their_column(self):
+        for width in (390, 1024):
+            self.open(width)
+            with self.saving_artifacts():
+                self.page.goto(f"{self.live_server_url}/audiograms/new")
+                main = self.page.get_by_role("main")
+                for name in ("遮蔽：關", "清除剛標的點", "存檔"):
+                    with self.subTest(width=width, button=name):
+                        widths = main.get_by_role("button", name=name).evaluate(
+                            """el => {
+                                const column = el.parentElement;
+                                const style = getComputedStyle(column);
+                                const padding = parseFloat(style.paddingLeft)
+                                    + parseFloat(style.paddingRight);
+                                return [el.getBoundingClientRect().width,
+                                        column.clientWidth - padding];
+                            }"""
+                        )
+                        self.assertAlmostEqual(widths[0], widths[1], delta=0.5)
+
     # phase9_ui_refresh_4a_home.md acceptance 8: step cards stack on a phone
     def test_home_step_cards_stack_on_a_phone(self):
         self.open(320, 640)
