@@ -66,7 +66,8 @@ PARTS = {
         ("level-badge", ".level-badge"),
     ),
     "my-hearing-ioi-ha": (("ioi-ha-chart", ".ioi-columns"),),
-    "audiogram-detail": (("audiogram", ".audiogram-plot svg"),),
+    "audiograms": (("degree-badge", ".level-badge"),),
+    "audiogram-detail": (("audiogram", ".audiogram-plot svg"), ("degree-badge", ".level-badge")),
     "audiogram-compare": (("audiogram", ".audiogram-plot svg"),),
 }
 # Recharts and the audiogram draw with JavaScript after load; wait out their animations.
