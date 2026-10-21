@@ -8,12 +8,13 @@ import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
-from itertools import pairwise
+from itertools import combinations, pairwise
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
+from django.test import Client
 from playwright.sync_api import expect, sync_playwright
 
 from screening.models import (
@@ -25,6 +26,7 @@ from screening.models import (
     Question,
     Questionnaire,
     Submission,
+    User,
 )
 from screening.tests.helpers import consented_user, fake_definition, register
 
@@ -793,6 +795,52 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             for card in self.page.locator(".step-cards > li").all():
                 box = card.bounding_box()
                 self.assertLessEqual(box["x"] + box["width"], 320)
+
+    # #127 acceptance 3: public and account pages at 200% text on a phone
+    def test_public_and_account_pages_fit_a_phone_at_double_text_size(self):
+        undecided = Client()
+        undecided.force_login(User.objects.create_user(username="layout_undecided"))
+        cookies = {
+            "anonymous": None,
+            "signed in": self.cookie["value"],
+            "undecided": undecided.cookies[settings.SESSION_COOKIE_NAME].value,
+        }
+        pages = [
+            *(("anonymous", path) for path in ("/", "/login", "/register")),
+            *(
+                (who, path)
+                for who in ("anonymous", "signed in")
+                for path in ("/privacy", "/family", "/add_to_home")
+            ),
+            *(("signed in", path) for path in ("/", "/account", "/account/delete")),
+            ("undecided", "/consent"),
+        ]
+        for who, path in pages:
+            with self.subTest(who=who, path=path):
+                self.context = self.browser.new_context(viewport={"width": 320, "height": 640})
+                self.addCleanup(self.context.close)
+                if cookies[who]:
+                    self.context.add_cookies([{**self.cookie, "value": cookies[who]}])
+                self.context.tracing.start(screenshots=True, snapshots=True)
+                self.page = self.context.new_page()
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.add_style_tag(content="html { font-size: 225% !important; }")
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 320)
+                    controls = self.page.locator(
+                        "main :is(.btn, .form-control, .input-group-text):visible"
+                    ).all()
+                    boxes = [control.bounding_box() for control in controls]
+                    # 1px: an input group's parts share their border on purpose.
+                    for a, b in combinations(boxes, 2):
+                        apart = (
+                            a["x"] + a["width"] <= b["x"] + 1
+                            or b["x"] + b["width"] <= a["x"] + 1
+                            or a["y"] + a["height"] <= b["y"] + 1
+                            or b["y"] + b["height"] <= a["y"] + 1
+                        )
+                        self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
 class PwaNavTest(StaticLiveServerTestCase):

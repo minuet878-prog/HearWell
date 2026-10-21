@@ -157,12 +157,12 @@ class LoginNextTests(TestCase):
     def test_new_text_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.login_url),
-            f'<p class="text-body-emphasis">{self.NOTE}</p>',
+            f'<p class="text-black">{self.NOTE}</p>',
             html=True,
         )
         self.assertContains(
             self.client.get(reverse("index")),
-            f'<p class="text-body-emphasis mt-2">{self.HINT}</p>',
+            f'<p class="text-black mt-2">{self.HINT}</p>',
             html=True,
         )
 
@@ -187,7 +187,7 @@ class LoginViewTests(TestCase):
 
     def _error_block(self, response):
         content = response.content.decode()
-        return re.search(r'class="mb-3 text-danger">(.*?)</div>', content, re.DOTALL).group(1)
+        return re.search(r'class="mb-4 text-danger">(.*?)</div>', content, re.DOTALL).group(1)
 
     def _username_input(self, response):
         return re.search(r'<input[^>]*name="username"[^>]*>', response.content.decode()).group()
@@ -249,7 +249,7 @@ class LoginViewTests(TestCase):
         response = self._login("alice", "wrong-password")
         self.assertContains(
             response,
-            f'<div id="login_error" class="mb-3 text-danger">{self.ERROR}</div>',
+            f'<div id="login_error" class="mb-4 text-danger">{self.ERROR}</div>',
             html=True,
         )
         for name, tag in inputs(response).items():
@@ -412,7 +412,7 @@ class RegisterFormTests(TestCase):
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),
-            f'<div id="id_roc_birth_year_helptext" class="text-body-emphasis mt-1">'
+            f'<div id="id_roc_birth_year_helptext" class="text-black mt-1">'
             f"{self.NOTE}</div>",
             html=True,
         )
@@ -420,7 +420,7 @@ class RegisterFormTests(TestCase):
     def test_password_rules_use_rem_size(self):
         response = self.client.get(self.url)
         self.assertNotContains(response, "form-text")
-        self.assertContains(response, 'id="id_password1_helptext" class="text-body-emphasis mt-1"')
+        self.assertContains(response, 'id="id_password1_helptext" class="text-black mt-1"')
 
     def test_aria_describedby_targets_exist(self):
         response = self._post(username="", password2="Different#123", roc_birth_year="abc")

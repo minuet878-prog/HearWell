@@ -100,7 +100,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mb-3 fw-normal">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="h3 mb-4 font-normal">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
