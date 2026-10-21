@@ -1,7 +1,7 @@
-<section class="ioi-chart mb-4" aria-labelledby="ioi-chart-title">
-    <h2 id="ioi-chart-title" class="fs-3">{{ chart.latest.questionnaire.questionnaire_name }} 各題與常模</h2>
+<section class="ioi-chart mb-6" aria-labelledby="ioi-chart-title">
+    <h2 id="ioi-chart-title" class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ chart.latest.questionnaire.questionnaire_name }} 各題與常模</h2>
     <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}）</p>
-    <p class="fw-bold">常模組別：{{ chart.latest.get_norm_group_display }}</p>
+    <p class="font-bold">常模組別：{{ chart.latest.get_norm_group_display }}</p>
     {% if chart.grouped %}
     <p>灰色是常模範圍：一般助聽器使用者中，中間一半的人的分數。</p>
     {% else %}

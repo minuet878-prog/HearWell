@@ -6,15 +6,12 @@
 <head>
     <title>{% block title %}HearWell{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
-        crossorigin="anonymous">
-    {# Chinese-friendly body font; CDN down or blocked falls back to the system font in styles.css. #}
+    <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
+    {# Chinese-friendly body font; CDN down or blocked falls back to the system font in site.css. #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link href="{% static 'screening/styles.css' %}" rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
     <link rel="manifest" href="{% static 'screening/pwa/manifest.json' %}">
     <meta name="theme-color" content="#1f4e8c">
@@ -36,7 +33,7 @@
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
         <div class="container site-header-bar py-2">
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
                 <button id="pwa-back" class="btn btn-outline-light site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
                 {% endif %}
@@ -44,7 +41,7 @@
             </div>
             {% if user.is_authenticated %}
             {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
-            <a class="site-account text-break" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
+            <a class="site-account wrap-anywhere" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
             <form id="logout-form" action="{% url 'logout' %}" method="post">
                 {% csrf_token %}
                 <button class="btn btn-outline-light" type="submit">登出</button>
@@ -53,10 +50,10 @@
         </div>
     </header>
 
-    {# One nav for all widths: top bar on wide screens, fixed bottom tab bar on phones (styles.css). #}
+    {# One nav for all widths: top bar on wide screens, fixed bottom tab bar on phones (site.css). #}
     {% with page=request.resolver_match.url_name %}
     <nav aria-label="主要導覽" class="site-nav">
-        <ul class="container">
+        <ul class="container px-0">
             <li>
                 <a href="{% url 'index' %}"{% if page == "index" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></svg>
@@ -100,9 +97,9 @@
     </nav>
     {% endwith %}
 
-    <main id="main-content" tabindex="-1" class="container my-4">
+    <main id="main-content" tabindex="-1" class="container my-6">
         {% for message in messages %}
-        <p class="fs-5 fw-bold">{{ message }}</p>
+        <p class="text-xl/normal font-bold">{{ message }}</p>
         {% endfor %}
         {% block body %}{% endblock %}
     </main>

@@ -32,7 +32,7 @@ from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
 from django.test import Client
 from django.urls import reverse
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 from e2e import main_flow
 from screening.models import (
@@ -113,6 +113,7 @@ class Screenshots(StaticLiveServerTestCase):
             "user": self.session(self.user),
             "new": self.session(User.objects.create_user(username="shots_new")),
             "anon": None,
+            "admin": self.session(User.objects.create_superuser(username="shots_admin")),
         }
 
     def session(self, user):
@@ -247,6 +248,19 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("report", "report", reverse("health_report"), media="print"),
             Shot("report", "shared-cover", share, who="anon"),
             Shot("report", "shared-report", f"{share}/report", who="anon"),
+            Shot("report", "shared-report", f"{share}/report", who="anon", media="print"),
+            Shot("report", "report-share-create", reverse("health_report")),
+        ]
+        shots += [
+            Shot("public", "shared-invalid", reverse("shared_cover", args=["missing"]), who="anon"),
+            Shot("public", "admin-login", reverse("admin:login"), who="anon"),
+            Shot("public", "admin-index", reverse("admin:index"), who="admin"),
+            Shot(
+                "public",
+                "admin-questionnaires",
+                reverse("admin:screening_questionnaire_changelist"),
+                who="admin",
+            ),
         ]
         return shots
 
@@ -269,6 +283,9 @@ class Screenshots(StaticLiveServerTestCase):
         page.evaluate("document.fonts.ready")
         if page.locator("#trend-chart, #audiogram-chart, #audiogram-app").count():
             page.wait_for_timeout(SETTLE_MS)
+        if shot.name == "report-share-create":
+            page.locator("#report-share summary").click()
+            expect(page.get_by_role("button", name="確認產生", exact=True)).to_be_visible()
         return context, page
 
     @staticmethod
@@ -296,6 +313,8 @@ class Screenshots(StaticLiveServerTestCase):
                 continue
             # Registered only here, so the fake questionnaire shows up on no other page.
             unknown = shot.name == "result-unknown"
+            if shot.name == "report-share-create":
+                ReportShare.objects.filter(user=self.user).update(revoked_at=NOW)
             with register(fake_definition("unconfigured")) if unknown else nullcontext():
                 for width in WIDTHS:
                     context, page = self.open(shot, width)
@@ -308,10 +327,13 @@ class Screenshots(StaticLiveServerTestCase):
                         taken += 1
                     if chrome and shot.media == "screen":
                         for part, found in self.chrome(page).items():
-                            if found.count():
+                            # Django admin's login page has an empty, unseen footer.
+                            if found.count() and found.is_visible():
                                 self.capture(page, shot.filename(width, part), found)
                                 taken += 1
                     context.close()
+            if shot.name == "report-share-create":
+                ReportShare.objects.filter(user=self.user).update(revoked_at=None)
         (self.out / "styles.json").write_text(
             json.dumps(styles, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8"
         )

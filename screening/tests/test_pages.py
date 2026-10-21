@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 from typing import ClassVar
 
+from django.contrib.staticfiles import finders
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -17,6 +18,7 @@ from screening.models import (
     Category,
     Question,
     Questionnaire,
+    ReportShare,
     Submission,
     User,
 )
@@ -98,7 +100,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mb-3 fw-normal">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="h3 mb-4 font-normal">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -369,7 +371,7 @@ class RedesignLayoutTests(TestCase):
         self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
 
     def test_only_expected_scripts(self):
-        # No Bootstrap JS or anything else: only the bundles each page needs.
+        # No additional scripts: only the bundles each page needs.
         def scripts(url):
             content = self.client.get(url).content.decode()
             return re.findall(r'<script[^>]*src="/static/([^"]+)"', content) + (
@@ -872,6 +874,72 @@ class PwaNavTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         return response.content.decode()
+
+    def _assert_site_stylesheets(self, content):
+        stylesheets = re.findall(
+            r'<link\b(?=[^>]*\brel="stylesheet")[^>]*\bhref="([^"]+)"', content
+        )
+        self.assertEqual(
+            stylesheets,
+            [
+                "/static/screening/frontend/site.css",
+                "https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap",
+            ],
+        )
+
+    def test_pages_load_built_css_with_only_site_and_font_stylesheets(self):
+        share = ReportShare.objects.create(user=self.user, token="css-test-share")
+        pages = [
+            (False, reverse("index")),
+            (True, reverse("index")),
+            *self._pages(),
+            (True, reverse("hhi_comparison", args=[self.questionnaire.id])),
+            (False, reverse("shared_cover", args=[share.token])),
+            (False, reverse("shared_report", args=[share.token])),
+            *(
+                (True, reverse(name))
+                for name in (
+                    "family_guide",
+                    "privacy",
+                    "account_settings",
+                    "delete_account",
+                    "health_report",
+                    "audiogram_new",
+                    "audiogram_compare",
+                )
+            ),
+            *(
+                (True, reverse(name, args=[self.audiogram.id]))
+                for name in (
+                    "audiogram_detail",
+                    "audiogram_edit",
+                    "audiogram_delete",
+                )
+            ),
+        ]
+        for logged_in, url in pages:
+            with self.subTest(logged_in=logged_in, url=url):
+                content = self._get(logged_in, url)
+                self.assertIn(
+                    '<link href="/static/screening/frontend/site.css" rel="stylesheet">', content
+                )
+                self._assert_site_stylesheets(content)
+                self.assertNotIn("screening/styles.css", content)
+
+    # #126: the old custom stylesheet's rules now live in the built site.css.
+    def test_old_stylesheet_is_deleted(self):
+        self.assertIsNone(finders.find("screening/styles.css"))
+
+    def test_invalid_share_loads_built_css_with_only_site_and_font_stylesheets(self):
+        response = self.client.get(reverse("shared_cover", args=["css-missing-share"]))
+        self.assertContains(response, "/static/screening/frontend/site.css", status_code=404)
+        self._assert_site_stylesheets(response.content.decode())
+
+    def test_consent_page_loads_built_css_with_only_site_and_font_stylesheets(self):
+        self.client.force_login(User.objects.create_user(username="css_undecided"))
+        response = self.client.get(reverse("consent"))
+        self.assertContains(response, "/static/screening/frontend/site.css")
+        self._assert_site_stylesheets(response.content.decode())
 
     # 3
     def test_home_has_no_back_button(self):

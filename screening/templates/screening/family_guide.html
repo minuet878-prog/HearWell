@@ -9,19 +9,19 @@
 
 {% block body %}
 {# Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. #}
-<article class="family-guide">
-<h1 class="h3 mt-3">給家人的溝通與陪伴</h1>
+<article class="family-guide wrap-anywhere">
+<h1 class="h3 mt-4">給家人的溝通與陪伴</h1>
 <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
 
-<section class="card card-body mb-3" aria-labelledby="share-title">
+<section class="card card-body mb-4" aria-labelledby="share-title">
     <h2 id="share-title" class="h5">傳給家人</h2>
     <button id="share-button" type="button" class="btn btn-primary btn-lg mb-2" hidden>傳給家人</button>
     {# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
-    <p class="mb-0">可以複製這個網址傳給家人：<span class="text-break fw-bold">https://{{ request.get_host }}{% url 'family_guide' %}</span></p>
+    <p class="mb-0">可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">https://{{ request.get_host }}{% url 'family_guide' %}</span></p>
 </section>
 
 <section aria-labelledby="talk-title">
-    <h2 id="talk-title" class="h4 mt-4">怎麼跟聽損的家人說話</h2>
+    <h2 id="talk-title" class="h4 mt-6">怎麼跟聽損的家人說話</h2>
     <ul>
         <li><strong>先叫名字，等他看你再說</strong>：可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
         <li><strong>面對面、讓他看得到你的臉</strong>：表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</li>
@@ -41,7 +41,7 @@
 </section>
 
 <section aria-labelledby="aid-title">
-    <h2 id="aid-title" class="h4 mt-4">陪伴配戴助聽器</h2>
+    <h2 id="aid-title" class="h4 mt-6">陪伴配戴助聽器</h2>
     <ul>
         <li><strong>剛開始不習慣是正常的</strong>：前幾週可能覺得自己的聲音怪怪的、環境的聲音很吵，大腦需要時間重新適應聲音。</li>
         <li><strong>鼓勵每天戴</strong>：照聽力師建議，從安靜的地方、短時間開始，再慢慢拉長；戴得越規律，越容易適應。</li>
@@ -58,7 +58,7 @@
 </section>
 
 <section aria-labelledby="urgent-title">
-    <h2 id="urgent-title" class="h4 mt-4">什麼時候要馬上就醫</h2>
+    <h2 id="urgent-title" class="h4 mt-6">什麼時候要馬上就醫</h2>
     <p>出現下面任何一種情況，<strong>不要等下次回診，請盡快到耳鼻喉科就醫</strong>：</p>
     <ul>
         <li><strong>突然聽不到或聽力變差</strong>（一耳或兩耳，幾小時到幾天內發生），可能伴隨耳鳴、耳悶或暈眩。這可能是突發性聽力損失，越早治療效果越好。</li>
@@ -74,6 +74,6 @@
     </ul>
 </section>
 
-<p class="mt-4">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
+<p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
 </article>
 {% endblock %}

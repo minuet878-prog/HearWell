@@ -4,12 +4,12 @@
 <h1 class="h3 mt-2">日常聆聽能力（SSQ12-TW）</h1>
 <p>{{ submission.created_at|date:"Y/m/d" }} 作答　助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
 {% if submission.ssq_average is not None %}
-<p class="fs-3 fw-bold">整體平均：{{ submission.ssq_average }}／10</p>
-{% else %}<p class="fs-4 fw-bold">{{ submission.ssq_unavailable_reason }}</p>{% endif %}
+<p class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold">整體平均：{{ submission.ssq_average }}／10</p>
+{% else %}<p class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold">{{ submission.ssq_unavailable_reason }}</p>{% endif %}
 <p>分數越高，代表您回報的聆聽能力越好。這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。</p>
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">選擇或管理配戴狀態比較</a></p>
 <h2 class="h4">逐題回答</h2>
-<ol>{% for answer in answers %}<li class="mb-3">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
+<ol>{% for answer in answers %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
 <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'questionnaire_list' %}">選擇問卷</a>
 {% endblock %}

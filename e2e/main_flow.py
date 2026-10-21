@@ -8,12 +8,13 @@ import os
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
-from itertools import pairwise
+from itertools import combinations, pairwise
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
+from django.test import Client
 from playwright.sync_api import expect, sync_playwright
 
 from screening.models import (
@@ -25,6 +26,7 @@ from screening.models import (
     Question,
     Questionnaire,
     Submission,
+    User,
 )
 from screening.tests.helpers import consented_user, fake_definition, register
 
@@ -771,6 +773,27 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
 
+    # #129: The legacy w-100 was 100%, Tailwind's is 25rem; the buttons fill their column again.
+    def test_audiogram_entry_buttons_fill_their_column(self):
+        for width in (390, 1024):
+            self.open(width)
+            with self.saving_artifacts():
+                self.page.goto(f"{self.live_server_url}/audiograms/new")
+                main = self.page.get_by_role("main")
+                for name in ("遮蔽：關", "清除剛標的點", "存檔"):
+                    with self.subTest(width=width, button=name):
+                        widths = main.get_by_role("button", name=name).evaluate(
+                            """el => {
+                                const column = el.parentElement;
+                                const style = getComputedStyle(column);
+                                const padding = parseFloat(style.paddingLeft)
+                                    + parseFloat(style.paddingRight);
+                                return [el.getBoundingClientRect().width,
+                                        column.clientWidth - padding];
+                            }"""
+                        )
+                        self.assertAlmostEqual(widths[0], widths[1], delta=0.5)
+
     # phase9_ui_refresh_4a_home.md acceptance 8: step cards stack on a phone
     def test_home_step_cards_stack_on_a_phone(self):
         self.open(320, 640)
@@ -793,6 +816,52 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             for card in self.page.locator(".step-cards > li").all():
                 box = card.bounding_box()
                 self.assertLessEqual(box["x"] + box["width"], 320)
+
+    # #127 acceptance 3: public and account pages at 200% text on a phone
+    def test_public_and_account_pages_fit_a_phone_at_double_text_size(self):
+        undecided = Client()
+        undecided.force_login(User.objects.create_user(username="layout_undecided"))
+        cookies = {
+            "anonymous": None,
+            "signed in": self.cookie["value"],
+            "undecided": undecided.cookies[settings.SESSION_COOKIE_NAME].value,
+        }
+        pages = [
+            *(("anonymous", path) for path in ("/", "/login", "/register")),
+            *(
+                (who, path)
+                for who in ("anonymous", "signed in")
+                for path in ("/privacy", "/family", "/add_to_home")
+            ),
+            *(("signed in", path) for path in ("/", "/account", "/account/delete")),
+            ("undecided", "/consent"),
+        ]
+        for who, path in pages:
+            with self.subTest(who=who, path=path):
+                self.context = self.browser.new_context(viewport={"width": 320, "height": 640})
+                self.addCleanup(self.context.close)
+                if cookies[who]:
+                    self.context.add_cookies([{**self.cookie, "value": cookies[who]}])
+                self.context.tracing.start(screenshots=True, snapshots=True)
+                self.page = self.context.new_page()
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.add_style_tag(content="html { font-size: 225% !important; }")
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 320)
+                    controls = self.page.locator(
+                        "main :is(.btn, .form-control, .input-group-text):visible"
+                    ).all()
+                    boxes = [control.bounding_box() for control in controls]
+                    # 1px: an input group's parts share their border on purpose.
+                    for a, b in combinations(boxes, 2):
+                        apart = (
+                            a["x"] + a["width"] <= b["x"] + 1
+                            or b["x"] + b["width"] <= a["x"] + 1
+                            or a["y"] + a["height"] <= b["y"] + 1
+                            or b["y"] + b["height"] <= a["y"] + 1
+                        )
+                        self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
 class PwaNavTest(StaticLiveServerTestCase):
@@ -939,12 +1008,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     TEXT = "rgb(73, 80, 87)"
     PRIMARY = "rgb(31, 78, 140)"
     ERROR = "rgb(194, 59, 28)"
-    # (level, scores, background, text colour); "unknown" keeps only its colour checked.
+    # (level, scores, background, text colour)
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
         ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
         ("severe", (4,) * 10, "rgb(254, 236, 231)", ERROR),
-        ("unknown", (2,) * 10, None, TEXT),
+        ("unknown", (2,) * 10, "rgb(241, 243, 245)", TEXT),
     )
 
     @classmethod
@@ -972,8 +1041,11 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         }
 
     def open(self, signed_in=True, width=1024, javascript=True):
+        # Reduced motion turns off colour transitions, so a style is read at its final value.
         self.context = self.browser.new_context(
-            viewport={"width": width, "height": 900}, java_script_enabled=javascript
+            viewport={"width": width, "height": 900},
+            java_script_enabled=javascript,
+            reduced_motion="reduce",
         )
         if signed_in:
             self.context.add_cookies([self.cookie])
@@ -993,6 +1065,470 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             for question, score in zip(questionnaire.questions.all(), scores, strict=True)
         )
         return record
+
+    def test_tailwind_theme_preserves_original_design_values(self):
+        # Independent values from pre-migration styles.css (#124); inspect built CSS in a browser.
+        self.open(signed_in=False)
+        self.page.goto(f"{self.live_server_url}/privacy")
+        expected = {
+            "--color-primary": "#1f4e8c",
+            "--color-primary-hover": "#173b6a",
+            "--color-primary-active": "#122f55",
+            "--color-body": "#495057",
+            "--color-heading": "#212529",
+            "--color-footer": "#343a40",
+            "--color-normal": "#1e7b55",
+            "--color-normal-bg": "#e3f4ec",
+            "--color-mild": "#8a5a00",
+            "--color-mild-bg": "#fff4d6",
+            "--color-severe": "#c23b1c",
+            "--color-severe-bg": "#feece7",
+            "--color-surface": "#f1f3f5",
+            "--color-brand-soft": "#eef3fa",
+            "--color-brand-selected": "#e8eef7",
+            "--color-pull": "#e7eef8",
+            "--color-border": "#ced4da",
+            "--color-border-subtle": "#dee2e6",
+            "--color-border-strong": "#adb5bd",
+            "--color-input-border": "#6c757d",
+            "--container-content": "40rem",
+            "--container-form": "30rem",
+            "--root-font-size": "112.5%",
+            "--spacing-touch": "2.75rem",
+            "--radius-button": "0.5rem",
+            "--radius-card": "0.75rem",
+            "--radius-band": "1.25rem",
+            "--radius-badge": "1rem",
+            "--radius-tab": "1.5rem",
+            "--shadow-card": "0 0.125rem 0.375rem rgba(15, 23, 42, 0.08)",
+            "--shadow-input-focus": "0 0 0 0.25rem rgba(31, 78, 140, 0.25)",
+            "--color-focus-ring": "rgba(31, 78, 140, 0.5)",
+        }
+        # The CSS minifier rewrites .5rem and rgba() to shorter equivalent values. Let the
+        # browser resolve both independent literals and tokens through the same CSS property.
+        pairs = self.page.evaluate(
+            """expected => Object.entries(expected).map(([name, value]) => {
+                const property = name.startsWith('--color-') ? 'color'
+                    : name.startsWith('--shadow-') ? 'boxShadow'
+                    : name.startsWith('--radius-') ? 'borderTopLeftRadius'
+                    : name === '--root-font-size' ? 'fontSize' : 'maxWidth';
+                const el = document.createElement('div');
+                document.body.append(el);
+                el.style[property] = value;
+                const literal = getComputedStyle(el)[property];
+                el.style[property] = `var(${name})`;
+                const token = getComputedStyle(el)[property];
+                el.remove();
+                return [name, literal, token];
+            })""",
+            expected,
+        )
+        for name, literal, token in pairs:
+            with self.subTest(token=name):
+                self.assertEqual(token, literal)
+        self.assertEqual(self.style(self.page.locator("html"), "fontSize"), "18px")
+        self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
+
+    def test_heading_classes_and_muted_text_look_as_before(self):
+        # #124: The pre-migration .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
+        # line height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body
+        # text colour.
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            for path, selector in (
+                ("/questionnaire_list", "h1.h3"),
+                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-body"),
+            ):
+                with self.subTest(selector=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    element = self.page.locator(selector)
+                    self.assertEqual(self.style(element, "fontSize"), "29.544px")
+                    self.assertEqual(self.style(element, "fontWeight"), "500")
+                    self.assertEqual(self.style(element, "lineHeight"), "35.4528px")
+                    self.assertEqual(self.style(element, "marginBottom"), "9px")
+                    self.assertEqual(self.style(element, "color"), self.TEXT)
+
+    def styles(self, locator, *props):
+        return {prop: self.style(locator, prop) for prop in props}
+
+    def size(self, locator):
+        box = locator.bounding_box()
+        return box["width"], box["height"]
+
+    def audiogram(self, tested_on):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return audiogram
+
+    def test_buttons_keep_their_colours_size_and_focus_ring(self):
+        # #125: The pre-migration values with the site's overrides, on the 18px root.
+        audiogram = self.audiogram(date(2026, 9, 28))
+        large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"}
+        regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "9px"}
+        clear = "rgba(0, 0, 0, 0)"
+        white = "rgb(255, 255, 255)"
+        cases = (
+            # (path, signed in, button role, name, expected styles, focus ring colour)
+            (
+                "/login",
+                False,
+                "button",
+                "登入",
+                {
+                    **large,
+                    "backgroundColor": self.PRIMARY,
+                    "color": white,
+                    "borderTopColor": self.PRIMARY,
+                },
+                "rgba(31, 78, 140, 0.5)",
+            ),
+            (
+                "/login",
+                False,
+                "link",
+                "註冊",
+                {
+                    **large,
+                    "backgroundColor": clear,
+                    "color": self.PRIMARY,
+                    "borderTopColor": self.PRIMARY,
+                },
+                "rgba(31, 78, 140, 0.5)",
+            ),
+            (
+                "/account",
+                True,
+                "button",
+                "登出",
+                {
+                    **regular,
+                    "backgroundColor": clear,
+                    "color": "rgb(248, 249, 250)",
+                    "borderTopColor": "rgb(248, 249, 250)",
+                },
+                "rgba(248, 249, 250, 0.5)",
+            ),
+            (
+                "/account/delete",
+                True,
+                "button",
+                "刪除帳號",
+                {
+                    **large,
+                    "backgroundColor": "rgb(220, 53, 69)",
+                    "color": white,
+                    "borderTopColor": "rgb(220, 53, 69)",
+                },
+                "rgba(225, 83, 97, 0.5)",
+            ),
+            (
+                "/account/delete",
+                True,
+                "link",
+                "下載我的資料",
+                {
+                    "backgroundColor": clear,
+                    "color": self.PRIMARY,
+                    "borderTopColor": clear,
+                    "textDecorationLine": "underline",
+                },
+                "rgba(49, 132, 253, 0.5)",
+            ),
+            (
+                f"/audiograms/{audiogram.pk}",
+                True,
+                "link",
+                "刪除這張聽力圖",
+                {
+                    **regular,
+                    "backgroundColor": clear,
+                    "color": "rgb(220, 53, 69)",
+                    "borderTopColor": "rgb(220, 53, 69)",
+                },
+                "rgba(220, 53, 69, 0.5)",
+            ),
+            (
+                "/audiograms/new",
+                True,
+                "button",
+                "清除剛標的點",
+                {
+                    **large,
+                    "backgroundColor": clear,
+                    "color": "rgb(108, 117, 125)",
+                    "borderTopColor": "rgb(108, 117, 125)",
+                    "opacity": "0.65",
+                    "pointerEvents": "none",
+                },
+                None,
+            ),
+        )
+        with self.saving_artifacts():
+            for path, signed_in, role, name, expected, ring in cases:
+                with self.subTest(button=name):
+                    self.open(signed_in=signed_in)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    area = self.page if name == "登出" else self.page.get_by_role("main")
+                    button = area.get_by_role(role, name=name, exact=True)
+                    self.assertEqual(self.styles(button, *expected), expected)
+                    width, height = self.size(button)
+                    self.assertGreaterEqual(min(width, height), 44)
+                    if ring:
+                        button.focus()
+                        self.assertTrue(button.evaluate("el => el.matches(':focus-visible')"))
+                        self.assertEqual(
+                            self.style(button, "boxShadow"), f"{ring} 0px 0px 0px 4.5px"
+                        )
+
+    def test_button_hover_and_press_colours(self):
+        # The two variants whose hover and press colours the site set itself.
+        cases = (
+            ("button", "登入", "rgb(23, 59, 106)", "rgb(18, 47, 85)"),
+            ("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),
+        )
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            for role, name, hover, pressed in cases:
+                with self.subTest(button=name):
+                    self.page.goto(f"{self.live_server_url}/login")
+                    button = self.page.get_by_role("main").get_by_role(role, name=name)
+                    button.hover()
+                    self.assertEqual(self.style(button, "backgroundColor"), hover)
+                    self.assertEqual(self.style(button, "color"), "rgb(255, 255, 255)")
+                    self.page.mouse.down()
+                    self.assertEqual(self.style(button, "backgroundColor"), pressed)
+                    self.assertEqual(self.style(button, "borderTopColor"), pressed)
+                    self.page.mouse.up()
+
+    def test_form_fields_keep_their_size_and_focus_ring(self):
+        # #125: form fields keep their pre-migration size (owner's decision, 2026-10-21):
+        # regular fields are 42.5px tall, above WCAG AA's 24px, and checkboxes sit in a
+        # clickable 27px-tall label. Buttons are the ones held to 44 x 44.
+        primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
+        field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
+        border = "rgb(222, 226, 230)"
+        self.audiogram(date(2026, 9, 28))
+        with self.saving_artifacts():
+            self.open(signed_in=False)
+            self.page.goto(f"{self.live_server_url}/login")
+            username = self.page.get_by_label("使用者名稱")
+            self.assertEqual(self.size(username)[1], 42.5)
+            self.assertEqual(
+                self.styles(username, "padding", "borderTopColor", "borderTopLeftRadius", "color"),
+                {
+                    "padding": "6.75px 13.5px",
+                    "borderTopColor": border,
+                    "borderTopLeftRadius": "6.75px",
+                    "color": self.TEXT,
+                },
+            )
+            self.assertEqual(
+                self.style(self.page.locator("label.form-label").first, "marginBottom"), "9px"
+            )
+            username.focus()
+            self.assertEqual(self.style(username, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(username, "boxShadow"), primary_ring)
+
+            self.page.goto(f"{self.live_server_url}/register")
+            group = self.page.locator(".input-group")
+            year, field, unit = group.locator("> *").all()
+            self.assertEqual(self.style(group, "display"), "flex")
+            self.assertEqual(
+                self.styles(
+                    year,
+                    "backgroundColor",
+                    "borderTopColor",
+                    "padding",
+                    "borderTopLeftRadius",
+                    "borderTopRightRadius",
+                ),
+                {
+                    "backgroundColor": "rgb(248, 249, 250)",
+                    "borderTopColor": border,
+                    "padding": "6.75px 13.5px",
+                    "borderTopLeftRadius": "6.75px",
+                    "borderTopRightRadius": "0px",
+                },
+            )
+            self.assertEqual(
+                self.styles(field, "borderTopLeftRadius", "borderTopRightRadius", "marginLeft"),
+                {"borderTopLeftRadius": "0px", "borderTopRightRadius": "0px", "marginLeft": "-1px"},
+            )
+            self.assertEqual(
+                self.styles(unit, "borderTopLeftRadius", "borderTopRightRadius", "marginLeft"),
+                {
+                    "borderTopLeftRadius": "0px",
+                    "borderTopRightRadius": "6.75px",
+                    "marginLeft": "-1px",
+                },
+            )
+            self.assertEqual({self.size(part)[1] for part in (year, field, unit)}, {42.5})
+
+            self.open()
+            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            self.page.get_by_text("用數值輸入").click()
+            select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
+            self.assertEqual(self.size(select)[1], 42.5)
+            self.assertEqual(self.style(select, "padding"), "6.75px 40.5px 6.75px 13.5px")
+            self.assertIn("svg", self.style(select, "backgroundImage"))
+            select.focus()
+            self.assertEqual(self.style(select, "borderTopColor"), "rgb(134, 183, 254)")
+            self.assertEqual(self.style(select, "boxShadow"), field_focus_ring)
+            mask = self.page.get_by_label("右耳氣導 500 Hz 遮蔽")
+            self.assertEqual(self.size(mask), (18, 18))
+            self.assertEqual(self.style(mask, "opacity"), "0.5")
+            self.assertEqual(
+                self.styles(mask.locator(".."), "minHeight", "paddingLeft"),
+                {"minHeight": "27px", "paddingLeft": "27px"},
+            )
+            select.select_option("20")
+            mask.focus()
+            self.assertEqual(self.style(mask, "borderTopColor"), "rgb(134, 183, 254)")
+            self.assertEqual(self.style(mask, "boxShadow"), field_focus_ring)
+            mask.check()
+            self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
+            date_field = self.page.get_by_label("檢查日期")
+            self.assertEqual(
+                self.styles(date_field, "padding", "fontSize", "borderTopLeftRadius"),
+                {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"},
+            )
+            self.assertGreaterEqual(self.size(date_field)[1], 44)
+
+            self.audiogram(date(2026, 10, 5))
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            first = self.page.get_by_label("第一張")
+            self.assertEqual(
+                self.styles(first, "padding", "fontSize", "borderTopLeftRadius"),
+                {
+                    "padding": "9px 40.5px 9px 18px",
+                    "fontSize": "22.5px",
+                    "borderTopLeftRadius": "9px",
+                },
+            )
+            self.assertGreaterEqual(self.size(first)[1], 44)
+
+    def test_cards_tables_alerts_and_lists_look_as_before(self):
+        first = self.audiogram(date(2026, 9, 28))
+        self.audiogram(date(2026, 10, 5))
+        with self.saving_artifacts():
+            self.open()
+            self.page.goto(f"{self.live_server_url}/family")
+            card = self.page.locator(".card.card-body").first
+            self.assertEqual(
+                self.styles(
+                    card,
+                    "display",
+                    "padding",
+                    "borderTopWidth",
+                    "borderTopColor",
+                    "borderTopLeftRadius",
+                    "backgroundColor",
+                ),
+                {
+                    "display": "flex",
+                    "padding": "18px",
+                    "borderTopWidth": "1px",
+                    "borderTopColor": "rgba(0, 0, 0, 0.176)",
+                    "borderTopLeftRadius": "6.75px",
+                    "backgroundColor": "rgb(255, 255, 255)",
+                },
+            )
+
+            self.page.goto(f"{self.live_server_url}/audiograms/{first.pk}")
+            table = self.page.locator("table.table").first
+            self.assertEqual(self.style(table, "marginBottom"), "18px")
+            self.assertEqual(self.size(table)[0], self.size(table.locator(".."))[0])
+            cell = table.locator("th").first
+            self.assertEqual(
+                self.styles(cell, "padding", "borderBottomWidth", "borderBottomColor", "color"),
+                {
+                    "padding": "9px",
+                    "borderBottomWidth": "1px",
+                    "borderBottomColor": "rgb(222, 226, 230)",
+                    "color": "rgb(0, 0, 0)",
+                },
+            )
+
+            self.page.goto(f"{self.live_server_url}/audiograms/compare?a={first.pk}&b={first.pk}")
+            warning = self.page.get_by_role("alert").filter(has_text="請選兩張不同的聽力圖")
+            self.assertEqual(
+                self.styles(
+                    warning,
+                    "color",
+                    "backgroundColor",
+                    "borderTopColor",
+                    "padding",
+                    "borderTopLeftRadius",
+                    "marginBottom",
+                ),
+                {
+                    "color": "rgb(102, 77, 3)",
+                    "backgroundColor": "rgb(255, 243, 205)",
+                    "borderTopColor": "rgb(255, 230, 156)",
+                    "padding": "18px",
+                    "borderTopLeftRadius": "6.75px",
+                    "marginBottom": "18px",
+                },
+            )
+
+            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            self.page.get_by_role("button", name="存檔").click()
+            danger = self.page.get_by_role("alert").filter(has_text="請至少標記一個點")
+            self.assertEqual(
+                self.styles(danger, "color", "backgroundColor", "borderTopColor"),
+                {
+                    "color": "rgb(88, 21, 28)",
+                    "backgroundColor": "rgb(248, 215, 218)",
+                    "borderTopColor": "rgb(241, 174, 181)",
+                },
+            )
+
+            self.open(javascript=False)
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            # Skip the browser's required check to reach the server's list of unanswered questions.
+            self.page.evaluate("document.getElementById('answer-form').noValidate = true")
+            self.page.get_by_role("button", name="送出").click()
+            unanswered = self.page.locator("#error-summary ul")
+            self.assertEqual(
+                self.styles(unanswered, "paddingLeft", "listStyleType"),
+                {"paddingLeft": "0px", "listStyleType": "none"},
+            )
+
+    def test_screen_reader_only_text_is_hidden_but_read(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            skip = self.page.get_by_role("link", name="跳到主要內容")
+            self.assertEqual(self.size(skip), (1, 1))
+            self.assertEqual(self.style(skip, "clip"), "rect(0px, 0px, 0px, 0px)")
+            self.page.keyboard.press("Tab")
+            expect(skip).to_be_focused()
+            width, height = self.size(skip)
+            self.assertGreater(width, 44)
+            self.assertGreater(height, 44)
+            self.assertEqual(self.style(skip, "clip"), "auto")
+
+            self.open()
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            pause = self.page.locator(".card-tags .visually-hidden").first
+            self.assertEqual(self.size(pause), (1, 1))
+            self.assertEqual(
+                self.styles(pause, "position", "overflow", "clip", "whiteSpace"),
+                {
+                    "position": "absolute",
+                    "overflow": "hidden",
+                    "clip": "rect(0px, 0px, 0px, 0px)",
+                    "whiteSpace": "nowrap",
+                },
+            )
+            # Still in the accessibility tree: the link's name includes the hidden pause.
+            expect(
+                self.page.get_by_role("link", name=re.compile(r"題\s*，\s*約"))
+            ).not_to_have_count(0)
 
     def test_text_primary_and_error_colours(self):
         self.open(signed_in=False)
@@ -1039,8 +1575,25 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     banner = self.page.locator(f".result-banner-{level}")
                     expect(banner).to_be_visible()
                     self.assertEqual(self.style(banner, "color"), colour)
-                    if background:
-                        self.assertEqual(self.style(banner, "backgroundColor"), background)
+                    self.assertEqual(self.style(banner, "backgroundColor"), background)
+
+    # #126: the badge's class is built from the level code, as the banner's is.
+    def test_level_badge_colours(self):
+        for _, scores, _, _ in self.BANNERS[:3]:
+            self.submission(self.hhie_s, scores)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            for level, _, background, colour in self.BANNERS:
+                if level == "unknown":
+                    # An audiogram with no points has no degree on either ear.
+                    self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
+                with self.subTest(level=level):
+                    badge = self.page.locator(f".level-badge-{level}").first
+                    expect(badge).to_be_visible()
+                    self.assertEqual(self.style(badge, "color"), colour)
+                    self.assertEqual(self.style(badge, "backgroundColor"), background)
 
     def test_answer_choices_are_large_buttons_in_a_row(self):
         self.open(javascript=False)
@@ -1049,8 +1602,26 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             labels = self.page.locator("#id_form-0-score label")
             first, second = labels.nth(0).bounding_box(), labels.nth(1).bounding_box()
             self.assertGreaterEqual(first["height"], 3 * 18)  # 3rem at the 18px base
+            self.assertGreaterEqual(first["width"], 44)  # #119 acceptance 6
             self.assertEqual(first["y"], second["y"])
             self.assertLess(first["x"], second["x"])
+
+    # #119 acceptance 6: link cards and navigation items, like buttons, are at least 44 x 44.
+    def test_link_cards_and_navigation_items_are_large_enough_to_tap(self):
+        self.submission(self.hhie_s, [2] * 10)
+        for width in (390, 1024):
+            self.open(width=width)
+            with self.saving_artifacts():
+                for path in ("/questionnaire_list", "/my_hearing"):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    cards = self.page.get_by_role("main").locator("a.link-card")
+                    items = self.page.get_by_role("navigation", name="主要導覽").locator("a")
+                    self.assertGreater(cards.count(), 0)
+                    self.assertGreater(items.count(), 1)
+                    for target in cards.all() + items.all():
+                        href = target.get_attribute("href")
+                        with self.subTest(width=width, path=path, target=href):
+                            self.assertGreaterEqual(min(self.size(target)), 44)
 
     def test_answer_form_hides_only_while_loading(self):
         self.open(javascript=False)
@@ -1085,3 +1656,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 ".map(el => getComputedStyle(el).boxShadow).filter(s => s !== 'none')"
             )
             self.assertEqual(shadows, [])
+            # A section, and the table in it, stays on one page; a part holding several
+            # sections may break between them, but not right after its heading (#130).
+            section = self.page.locator(f"#report-{self.hhie_s.code}")
+            expect(section.locator("table")).to_have_count(1)
+            for whole in (self.page.locator("#report-summary"), section):
+                self.assertEqual(self.style(whole, "breakInside"), "avoid")
+            part = self.page.locator("#report-life-impact")
+            self.assertEqual(self.style(part, "breakInside"), "auto")
+            self.assertEqual(self.style(part.locator("> h2"), "breakAfter"), "avoid")

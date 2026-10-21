@@ -1,5 +1,5 @@
     {% if ioi_norm.norm_basis %}
-    <p class="fw-bold">本次常模依據：{{ ioi_norm.norm_basis.questionnaire }}，{{ ioi_norm.norm_basis.created_at|date:"Y/m/d" }} 未配戴紀錄，{{ ioi_norm.norm_basis.total_answer_score }} 分。</p>
+    <p class="font-bold">本次常模依據：{{ ioi_norm.norm_basis.questionnaire }}，{{ ioi_norm.norm_basis.created_at|date:"Y/m/d" }} 未配戴紀錄，{{ ioi_norm.norm_basis.total_answer_score }} 分。</p>
     {% else %}<p>目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄；仍可填答，但本次不與常模比較。</p>{% endif %}
     <p>這是常模比較的分組，不代表聽損程度。</p>
-    <p class="h3 text-muted">本量表適合已配戴助聽器的人，用來了解助聽器對您的幫助。請依照最近兩週戴著現有助聽器的經驗，每題選一個最符合的答案。</p>
+    <p class="h3 text-body">本量表適合已配戴助聽器的人，用來了解助聽器對您的幫助。請依照最近兩週戴著現有助聽器的經驗，每題選一個最符合的答案。</p>

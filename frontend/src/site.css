@@ -1,0 +1,1555 @@
+@import "tailwindcss" source(none);
+@source "../../screening/templates";
+@source "../../screening/*.py";
+@source "./**/*.{js,jsx}";
+
+/* Existing design values, unchanged (#124, ADR 0008). Keep these available for #125–#130. */
+@theme static {
+  --font-sans: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+    "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+  --color-primary: #1f4e8c;
+  --color-primary-hover: #173b6a;
+  --color-primary-active: #122f55;
+  --color-body: #495057;
+  --color-heading: #212529;
+  --color-footer: #343a40;
+  --color-normal: #1e7b55;
+  --color-normal-bg: #e3f4ec;
+  --color-mild: #8a5a00;
+  --color-mild-bg: #fff4d6;
+  --color-severe: #c23b1c;
+  --color-severe-bg: #feece7;
+  --color-surface: #f1f3f5;
+  --color-brand-soft: #eef3fa;
+  --color-brand-selected: #e8eef7;
+  --color-pull: #e7eef8;
+  --color-border: #ced4da;
+  --color-border-subtle: #dee2e6;
+  --color-border-strong: #adb5bd;
+  --color-input-border: #6c757d;
+  --container-content: 40rem;
+  --container-form: 30rem;
+  --root-font-size: 112.5%;
+  --spacing-touch: 2.75rem;
+  --radius-button: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-band: 1.25rem;
+  --radius-badge: 1rem;
+  --radius-tab: 1.5rem;
+  --shadow-card: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.08);
+  --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
+  --color-focus-ring: rgba(31, 78, 140, 0.5);
+  /* Pre-migration framework defaults the site never overrode, shared by form fields, cards and alerts (#125). */
+  --radius-field: 0.375rem;
+  --radius-field-lg: 0.5rem;
+  --color-field-focus: #86b7fe;
+  --shadow-field-focus: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  /* The site's own classes (#126). Ear colours follow the audiogram convention, not the brand;
+     the charts' SVG writes the same four in AudiogramChart.jsx and audiogram_thumbnail.html. */
+  --color-ear-right: #c0392b;
+  --color-ear-left: #1f4e8c;
+  --color-ear-right-old: #e8a59d;
+  --color-ear-left-old: #9db5d6;
+  --color-masking: #b35900;
+  --radius-small: 0.25rem;
+}
+
+/* Restore the element defaults the site used before Preflight. Named components follow as
+   named classes (#125), then the site's own classes (#126). */
+@layer base {
+  html {
+    font-size: var(--root-font-size);
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    background-color: #fff;
+    -webkit-text-size-adjust: 100%;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :root { scroll-behavior: smooth; }
+  }
+  hr { margin: 1rem 0; color: inherit; border: 0; border-top: 1px solid; opacity: 0.25; }
+  h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+    margin: 0 0 0.5rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: inherit;
+  }
+  h1, .h1 { font-size: calc(1.375rem + 1.5vw); }
+  h2, .h2 { font-size: calc(1.325rem + 0.9vw); }
+  h3, .h3 { font-size: calc(1.3rem + 0.6vw); }
+  h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
+  h5, .h5 { font-size: 1.25rem; }
+  h6, .h6 { font-size: 1rem; }
+  @media (min-width: 1200px) {
+    h1, .h1 { font-size: 2.5rem; }
+    h2, .h2 { font-size: 2rem; }
+    h3, .h3 { font-size: 1.75rem; }
+    h4, .h4 { font-size: 1.5rem; }
+  }
+  p { margin: 0 0 1rem; }
+  ol, ul { padding-left: 2rem; }
+  ol { list-style-type: decimal; }
+  ul { list-style-type: disc; }
+  ol, ul, dl { margin: 0 0 1rem; }
+  ol ol, ul ul, ol ul, ul ol { margin-bottom: 0; }
+  dt { font-weight: 700; }
+  dd { margin: 0 0 0.5rem; }
+  b, strong { font-weight: bolder; }
+  small { font-size: 0.875em; }
+  a { color: var(--color-primary); text-decoration: underline; }
+  a:hover { color: var(--color-primary-hover); }
+  a:not([href]):not([class]) { color: inherit; text-decoration: none; }
+  img, svg, video, canvas, audio, iframe, embed, object { display: inline; vertical-align: middle; }
+  img, video { max-width: none; }
+  figure { margin: 0 0 1rem; }
+  table { caption-side: bottom; border-collapse: collapse; text-indent: initial; border-color: inherit; }
+  caption { padding-block: 0.5rem; color: var(--color-body); text-align: left; }
+  th { text-align: inherit; }
+  thead, tbody, tfoot, tr, td, th { border-color: inherit; border-style: solid; border-width: 0; }
+  label { display: inline-block; }
+  input, button, select, optgroup, textarea {
+    margin: 0; font: inherit; letter-spacing: normal;
+  }
+  /* Preflight clears the native background and border; restore native controls. */
+  input, select, textarea { background-color: revert; border: revert; padding: revert; }
+  button { border-radius: 0; }
+  button, select { text-transform: none; }
+  button, [type="button"], [type="reset"], [type="submit"] { appearance: button; }
+  button:not(:disabled), [role="button"], [type="submit"]:not(:disabled) { cursor: pointer; }
+  button:focus:not(:focus-visible) { outline: 0; }
+  select { overflow-wrap: normal; }
+  select:disabled { opacity: 1; }
+  textarea { resize: vertical; }
+  ::placeholder { color: revert; opacity: revert; }
+  fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
+  legend { float: left; width: 100%; padding: 0; margin-bottom: 0.5rem; font-size: calc(1.275rem + 0.3vw); line-height: inherit; }
+  legend + * { clear: left; }
+  @media (min-width: 1200px) { legend { font-size: 1.5rem; } }
+  /* Date fields (only the audiogram's so far); Chromium pads each part of the date (#129). */
+  ::-webkit-datetime-edit-fields-wrapper, ::-webkit-datetime-edit-text,
+  ::-webkit-datetime-edit-minute, ::-webkit-datetime-edit-hour-field,
+  ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-month-field,
+  ::-webkit-datetime-edit-year-field { padding: 0; }
+  summary { display: list-item; cursor: pointer; }
+  [hidden] { display: none !important; }
+}
+
+@utility container {
+  width: 100%;
+  max-width: var(--container-content);
+  margin-inline: auto;
+  padding-inline: 0.75rem;
+}
+
+
+/* Named components the pages use, same names and values, with the site's old overrides
+   folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
+   as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
+@layer components {
+  .btn {
+    --btn-padding-x: 0.75rem;
+    --btn-padding-y: 0.375rem;
+    --btn-font-size: 1rem;
+    --btn-color: var(--color-body);
+    --btn-bg: transparent;
+    --btn-border-color: transparent;
+    --btn-hover-border-color: transparent;
+    display: inline-block;
+    min-height: var(--spacing-touch);
+    min-width: var(--spacing-touch);
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    font-size: var(--btn-font-size);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--btn-color);
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid var(--btn-border-color);
+    border-radius: var(--radius-button);
+    background-color: var(--btn-bg);
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+      border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .btn-lg {
+    --btn-padding-x: 1rem;
+    --btn-padding-y: 0.5rem;
+    --btn-font-size: 1.25rem;
+  }
+  .btn-primary {
+    --btn-color: #fff;
+    --btn-bg: var(--color-primary);
+    --btn-border-color: var(--color-primary);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary-hover);
+    --btn-hover-border-color: var(--color-primary-hover);
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-active);
+    --btn-active-border-color: var(--color-primary-active);
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-primary);
+    --btn-disabled-border-color: var(--color-primary);
+  }
+  .btn-danger {
+    --btn-color: #fff;
+    --btn-bg: #dc3545;
+    --btn-border-color: #dc3545;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #bb2d3b;
+    --btn-hover-border-color: #b02a37;
+    --btn-focus-ring: rgba(225, 83, 97, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #b02a37;
+    --btn-active-border-color: #a52834;
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: #dc3545;
+    --btn-disabled-border-color: #dc3545;
+  }
+  /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
+  .btn-outline-primary {
+    --btn-color: var(--color-primary);
+    --btn-border-color: var(--color-primary);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary);
+    --btn-hover-border-color: var(--color-primary);
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-hover);
+    --btn-active-border-color: var(--color-primary-hover);
+    --btn-disabled-color: #0d6efd;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #0d6efd;
+  }
+  .btn-outline-secondary {
+    --btn-color: #6c757d;
+    --btn-border-color: #6c757d;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #6c757d;
+    --btn-hover-border-color: #6c757d;
+    --btn-focus-ring: rgba(108, 117, 125, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #6c757d;
+    --btn-active-border-color: #6c757d;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #6c757d;
+  }
+  .btn-outline-danger {
+    --btn-color: #dc3545;
+    --btn-border-color: #dc3545;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #dc3545;
+    --btn-hover-border-color: #dc3545;
+    --btn-focus-ring: rgba(220, 53, 69, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #dc3545;
+    --btn-active-border-color: #dc3545;
+    --btn-disabled-color: #dc3545;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #dc3545;
+  }
+  .btn-outline-light {
+    --btn-color: #f8f9fa;
+    --btn-border-color: #f8f9fa;
+    --btn-hover-color: #000;
+    --btn-hover-bg: #f8f9fa;
+    --btn-hover-border-color: #f8f9fa;
+    --btn-focus-ring: rgba(248, 249, 250, 0.5);
+    --btn-active-color: #000;
+    --btn-active-bg: #f8f9fa;
+    --btn-active-border-color: #f8f9fa;
+    --btn-disabled-color: #f8f9fa;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #f8f9fa;
+  }
+  /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
+     never overrode it. */
+  .btn-link {
+    --btn-color: var(--color-primary);
+    --btn-hover-color: var(--color-primary-hover);
+    --btn-focus-ring: rgba(49, 132, 253, 0.5);
+    --btn-active-color: var(--color-primary-hover);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-border-color: transparent;
+    text-decoration: underline;
+  }
+  .btn:hover, .btn:focus-visible {
+    color: var(--btn-hover-color);
+    background-color: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border-color);
+  }
+  .btn:focus-visible { outline: 0; box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-link:focus-visible { color: var(--btn-color); }
+  .btn-link:hover { color: var(--btn-hover-color); }
+  .btn:active {
+    color: var(--btn-active-color);
+    background-color: var(--btn-active-bg);
+    border-color: var(--btn-active-border-color);
+  }
+  .btn:disabled, fieldset:disabled .btn {
+    color: var(--btn-disabled-color);
+    pointer-events: none;
+    background-color: var(--btn-disabled-bg);
+    border-color: var(--btn-disabled-border-color);
+    opacity: 0.65;
+  }
+
+  .form-label { margin-bottom: 0.5rem; }
+  .form-control, .form-select {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    appearance: none;
+    background-color: #fff;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-field);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .form-control { background-clip: padding-box; }
+  .form-control:focus {
+    color: var(--color-body);
+    background-color: #fff;
+    border-color: var(--color-primary);
+    outline: 0;
+    box-shadow: var(--shadow-input-focus);
+  }
+  .form-control::-webkit-date-and-time-value { min-width: 85px; height: 1.5em; margin: 0; }
+  .form-control::-webkit-datetime-edit { display: block; padding: 0; }
+  .form-control-lg {
+    min-height: calc(1.5em + 1rem + 2px);
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+    border-radius: var(--radius-field-lg);
+  }
+  .form-select {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+  }
+  .form-select:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
+  .form-select-lg {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 1rem;
+    font-size: 1.25rem;
+    border-radius: var(--radius-field-lg);
+  }
+  .form-check {
+    display: block;
+    min-height: 1.5rem;
+    padding-left: 1.5em;
+    margin-bottom: 0.125rem;
+  }
+  .form-check .form-check-input { float: left; margin-left: -1.5em; }
+  .form-check-input {
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin-top: 0.25em;
+    vertical-align: top;
+    appearance: none;
+    background-color: #fff;
+    background-image: var(--form-check-bg-image);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    border: 1px solid var(--color-border-subtle);
+    print-color-adjust: exact;
+  }
+  .form-check-input[type="checkbox"] { border-radius: 0.25em; }
+  .form-check-input:active { filter: brightness(90%); }
+  .form-check-input:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
+  .form-check-input:checked[type="checkbox"] {
+    --form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  }
+  .form-check-input:disabled { pointer-events: none; filter: none; opacity: 0.5; }
+  .input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+  }
+  .input-group > .form-control { position: relative; flex: 1 1 auto; width: 1%; min-width: 0; }
+  .input-group > .form-control:focus { z-index: 5; }
+  .input-group > :not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .input-group > :not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    text-align: center;
+    white-space: nowrap;
+    background-color: #f8f9fa;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-field);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .form-control, .form-select { transition: none; }
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--color-body);
+    overflow-wrap: break-word;
+    background-color: #fff;
+    background-clip: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.175);
+    border-radius: var(--radius-field);
+  }
+  .card-body { flex: 1 1 auto; padding: 1rem; }
+  .table {
+    width: 100%;
+    margin-bottom: 1rem;
+    vertical-align: top;
+    border-color: var(--color-border-subtle);
+  }
+  .table > :not(caption) > * > * {
+    padding: 0.5rem;
+    color: #000;
+    background-color: #fff;
+    border-bottom-width: 1px;
+    box-shadow: inset 0 0 0 9999px transparent;
+  }
+  .table > tbody { vertical-align: inherit; }
+  .table > thead { vertical-align: bottom; }
+  .alert {
+    position: relative;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-field);
+  }
+  .alert-warning { color: #664d03; background-color: #fff3cd; border-color: #ffe69c; }
+  .alert-danger { color: #58151c; background-color: #f8d7da; border-color: #f1aeb5; }
+  .list-unstyled { padding-left: 0; list-style: none; }
+
+  .visually-hidden, .visually-hidden-focusable:not(:focus):not(:focus-within) {
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+  .visually-hidden:not(caption),
+  .visually-hidden-focusable:not(:focus):not(:focus-within):not(caption) {
+    position: absolute !important;
+  }
+  .visually-hidden *, .visually-hidden-focusable:not(:focus):not(:focus-within) * {
+    overflow: hidden !important;
+  }
+}
+
+/* The site's own classes, moved from the old styles.css with the same names, selectors, order
+   and values (#126). Class names built from data (level codes, ears) are written out here, since
+   no source scan can find them. */
+@layer components {
+  /* Error text at WCAG AA on white. */
+  .text-danger {
+    color: var(--color-severe) !important;
+  }
+
+  /* The first keyboard stop bypasses shared navigation. */
+  .skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2000;
+    padding: 0.75rem 1rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    border: 0.125rem solid currentColor;
+  }
+
+  /* Header */
+  .site-header {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
+     back button or a long name never pushes logout down. The name stays first in the source,
+     so screen readers and Tab still reach it before logout. */
+  .site-header-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+  }
+
+  .site-header-bar .site-account {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  /* Wide screens: one line. A zero basis makes the name take the space left and wrap inside it;
+     sized by its full text, a long name would drop to a new line with logout. */
+  @media (min-width: 48em) {
+    .site-header-bar .site-account {
+      order: 0;
+      flex: 1 1 0;
+      min-width: 0;
+      text-align: end;
+    }
+  }
+
+  .site-brand {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+
+  .site-brand a {
+    color: #fff;
+    text-decoration: none;
+  }
+
+  /* Home-screen app only (spec phase10_pwa_back_refresh.md): pwa-nav.js reveals both. */
+  .site-back {
+    min-width: var(--spacing-touch);
+    min-height: var(--spacing-touch);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .pwa-pull {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1040;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-pull);
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  /* Navigation: one list; top bar on wide screens, fixed bottom tab bar on phones. */
+  .site-nav {
+    background-color: #fff;
+  }
+
+  /* Its list is also the .container utility, which outranks this layer; layout.html adds px-0. */
+  .site-nav ul {
+    display: flex;
+    margin: 0 auto;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    min-width: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    color: var(--color-heading);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .site-nav a[aria-current="page"] {
+    color: var(--color-primary);
+  }
+
+  .site-nav svg {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @media (min-width: 48em) {
+    .site-nav {
+      border-bottom: 1px solid var(--color-border-strong);
+    }
+
+    .site-nav ul {
+      gap: 0.5rem;
+    }
+
+    .site-nav a[aria-current="page"] {
+      box-shadow: inset 0 -0.25rem 0 var(--color-primary);
+    }
+  }
+
+  @media (max-width: 47.99em) {
+    .site-nav {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1030;
+      border-top: 1px solid var(--color-border-strong);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .site-nav ul {
+      padding: 0;
+    }
+
+    .site-nav li {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .site-nav a {
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.125rem;
+      padding: 0.375rem 0.25rem;
+      font-size: 0.875rem;
+    }
+
+    .site-nav a[aria-current="page"] {
+      box-shadow: inset 0 0.25rem 0 var(--color-primary);
+    }
+  }
+
+  /* Site-wide footer: grey band, apart from the content without competing with it. */
+  .site-footer {
+    margin-top: 3rem;
+    padding: 1.5rem 0;
+    background-color: var(--color-surface);
+    color: var(--color-footer);
+  }
+
+  /* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
+  @media (max-width: 47.99em) {
+    /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
+    .site-footer {
+      padding-bottom: calc(1.5rem + 5rem);
+    }
+  }
+
+  .site-footer a {
+    overflow-wrap: anywhere;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .site-footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .site-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+  }
+
+  .site-footer p {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  /* Level badge: the level is always written out; colour only adds to it (same pairs as the
+     result banner, each at least 4.5:1). */
+  .level-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-badge);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .level-badge-normal {
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+  }
+
+  .level-badge-mild_to_moderate {
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+  }
+
+  .level-badge-severe {
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  .level-badge-unknown {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  /* Clickable card: the whole card is one link, with an arrow to say so (spec 4.5). */
+  .link-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    padding: 1.1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background-color: #fff;
+    color: inherit;
+    text-decoration: none;
+    box-shadow: var(--shadow-card);
+  }
+
+  .link-card:hover,
+  .link-card:active {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-soft);
+    color: inherit;
+  }
+
+  .link-card:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.25rem;
+  }
+
+  .link-card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .link-card-title {
+    color: var(--color-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .link-card-arrow {
+    color: var(--color-primary);
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  /* Login and register forms */
+  .narrow-form {
+    max-width: var(--container-form);
+    margin: 0 auto;
+  }
+
+  /* Answer choices: large horizontal buttons; the whole label is clickable. */
+  div.choice-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  div.choice-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-button);
+    font-size: 1.25rem;
+    color: var(--color-heading);
+    cursor: pointer;
+  }
+
+  div.choice-group input {
+    width: 1.5rem;
+    height: 1.5rem;
+    accent-color: var(--color-primary);
+  }
+
+  div.choice-group label:has(input:checked) {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    font-weight: 700;
+  }
+
+  div.choice-group label:focus-within {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. */
+  .trend-summary {
+    padding: 1.25rem 1.5rem;
+    border-left: 0.375rem solid var(--color-primary);
+    border-radius: var(--radius-card);
+    background-color: var(--color-brand-selected);
+    color: var(--color-heading);
+  }
+
+  .trend-summary-score strong {
+    font-size: 2rem;
+    color: var(--color-primary);
+  }
+
+  .trend-summary-score span {
+    font-weight: 700;
+  }
+
+  /* Home (spec phase9_ui_refresh_4a_home.md): pale brand bands around the top and the trust block. */
+  .home-band {
+    background-color: var(--color-brand-soft);
+    border-radius: var(--radius-band);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .home-illustration {
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+    margin: 0 auto 1rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Three across when they fit, otherwise one per row. */
+  .step-cards {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+    gap: 0.75rem;
+  }
+
+  .step-cards li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-card);
+    background-color: #fff;
+  }
+
+  .step-number {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .step-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* A shrunken result card, clearly marked as an example. */
+  .result-preview {
+    position: relative;
+    padding: 2.5rem 1rem 1rem;
+    border: 0.125rem dashed var(--color-border-strong);
+    border-radius: var(--radius-card);
+    margin-bottom: 1.5rem;
+  }
+
+  .result-preview .result-level {
+    font-size: 1.5rem;
+  }
+
+  .preview-tag {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    padding: 0 0.5rem;
+    border-radius: var(--radius-badge);
+    background-color: var(--color-body);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  /* IOI-HA result: plain-language note under an item below the norm (spec phase9_ui_refresh_4d_ioi_ha_items.md). */
+  .ioi-note {
+    margin: 0.5rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--color-brand-soft);
+    border-left: 0.25rem solid var(--color-primary);
+    border-radius: var(--radius-small);
+  }
+
+  /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
+  .question-progress {
+    display: block;
+    font-size: 1rem;
+    color: var(--color-body);
+  }
+
+  /* React answer page (one question per page): focus moves to the question on each page. */
+  .answer-app legend:focus {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .answer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  /* While React loads, the Django form stays hidden (spec phase5_answer_flash.md); without JS the
+     class is never added and the empty note takes no space. */
+  .answer-loading #answer-form {
+    display: none;
+  }
+
+  #answer-loading:empty {
+    display: none;
+  }
+
+  /* Result page: level banner, same colours as the trend chart bands. */
+  .result-banner {
+    padding: 1rem 1.25rem;
+    border-left: 0.375rem solid currentColor;
+    border-radius: var(--radius-button);
+  }
+
+  .result-banner > div:not(.result-level) {
+    color: var(--color-heading);
+  }
+
+  .result-level {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .result-banner-normal {
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+  }
+
+  .result-banner-mild_to_moderate {
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+  }
+
+  .result-banner-severe {
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  .result-banner-unknown {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  details summary {
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 0;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
+  /* Separate pills that wrap, so any number of questionnaires fits a phone
+     (spec phase9_ui_refresh_3_structure.md 4.3); smaller than the main navigation. */
+  .history-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0 1.5rem;
+  }
+
+  .history-tabs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0 1rem;
+    border: 0.125rem solid var(--color-primary);
+    border-radius: var(--radius-tab);
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .history-tabs a[aria-current="page"] {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  /* Aided vs unaided HHIE-S, styled like the trend summary box. */
+  .aided-difference {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-left: 0.375rem solid var(--color-primary);
+    border-radius: var(--radius-button);
+    background-color: var(--color-brand-selected);
+    color: var(--color-heading);
+  }
+
+  /* Legend under both charts. */
+  .trend-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--color-heading);
+  }
+
+  .trend-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  /* Level bands named under the trend chart, in the bands' top-to-bottom order. */
+  .trend-bands {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-weight: 600;
+  }
+
+  .trend-bands li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .trend-band-swatch {
+    flex: none;
+    width: 1.5rem;
+    height: 1rem;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-small);
+  }
+
+  /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
+  .ioi-columns {
+    display: grid;
+    grid-template-columns: 1.25rem repeat(7, minmax(0, 1fr));
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ioi-grid {
+    display: grid;
+    grid-template-rows: repeat(5, 2rem);
+    justify-items: center;
+    align-items: center;
+  }
+
+  /* One line through the middle of each score row: real elements, so a browser can measure them. */
+  .ioi-line {
+    justify-self: stretch;
+    height: 1px;
+    background-color: var(--color-border);
+  }
+
+  .ioi-axis .ioi-grid {
+    color: var(--color-heading);
+    font-size: 0.875rem;
+  }
+
+  /* The axis keeps its numbers on top of its lines, without lines of its own showing. */
+  .ioi-axis .ioi-line {
+    visibility: hidden;
+  }
+
+  .ioi-grid > * {
+    grid-column: 1;
+  }
+
+  .ioi-band,
+  .ioi-legend-band {
+    align-self: stretch;
+    justify-self: stretch;
+    border: 1px solid var(--color-input-border);
+    border-radius: var(--radius-small);
+    background-color: var(--color-border);
+  }
+
+  .ioi-legend-band {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
+  .ioi-dot,
+  .ioi-legend-latest {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+  }
+
+  .ioi-dot-latest,
+  .ioi-legend-latest {
+    z-index: 1;
+    background-color: var(--color-primary);
+  }
+
+  /* The previous answer is a hollow diamond, so it differs from the latest by shape, not only fill. */
+  .ioi-diamond,
+  .ioi-legend-previous {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 0.1875rem solid var(--color-body);
+    background-color: #fff;
+    transform: rotate(45deg);
+  }
+
+  /* With a previous answer the two marks always sit apart, so equal scores stay visible. */
+  .ioi-dot-previous {
+    transform: translateX(-0.5rem) rotate(45deg);
+  }
+
+  .ioi-dot-previous + .ioi-dot-latest {
+    transform: translateX(0.5rem);
+  }
+
+  .ioi-name {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--color-heading);
+    font-size: 0.875rem;
+    text-align: center;
+    /* Four-character names wrap to two lines on narrow phones. */
+    overflow-wrap: anywhere;
+  }
+
+  /* Audiogram input and view (spec phase5_audiogram.md). */
+  .audiogram-chart {
+    max-width: 32rem;
+    margin: 0 auto 0.75rem;
+  }
+
+  .audiogram-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    user-select: none;
+  }
+
+  .audiogram-symbols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .audiogram-symbol {
+    min-height: var(--spacing-touch);
+    border: 0.125rem solid var(--color-input-border);
+    background-color: #fff;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .audiogram-symbol.ear-right {
+    color: var(--color-ear-right);
+  }
+
+  .audiogram-symbol.ear-left {
+    color: var(--color-ear-left);
+  }
+
+  .audiogram-symbol[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 0.125rem var(--color-primary);
+  }
+
+  .audiogram-table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .ear-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.75rem;
+  }
+
+  .ear-result.ear-right {
+    border-top: 0.375rem solid var(--color-ear-right);
+  }
+
+  .ear-result.ear-left {
+    border-top: 0.375rem solid var(--color-ear-left);
+  }
+
+  /* Drag readout over the chart; rem so it grows with the user's font size. */
+  .audiogram-plot {
+    position: relative;
+  }
+
+  .audiogram-magnifier {
+    position: absolute;
+    padding: 0.25rem 0.5rem;
+    border: 0.125rem solid var(--color-heading);
+    border-radius: var(--radius-field);
+    background-color: #fff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* Above the finger by default; beside it near the top, on the side with more room. */
+  .audiogram-magnifier[data-place="above"] {
+    transform: translate(-50%, calc(-100% - 1.5rem));
+  }
+
+  .audiogram-magnifier[data-place="beside"][data-side="right"] {
+    transform: translate(1.5rem, -50%);
+  }
+
+  .audiogram-magnifier[data-place="beside"][data-side="left"] {
+    transform: translate(calc(-100% - 1.5rem), -50%);
+  }
+
+  /* Masking switch: orange when on (white on #b35900 is 4.83:1), with a matching chart frame. */
+  .audiogram-mask-switch {
+    border: 0.125rem solid var(--color-input-border);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .audiogram-mask-switch.on,
+  .audiogram-mask-switch.on:hover {
+    border-color: var(--color-masking);
+    background-color: var(--color-masking);
+    color: #fff;
+  }
+
+  .audiogram-chart.masking {
+    outline: 0.25rem dashed var(--color-masking);
+    outline-offset: 0.25rem;
+  }
+
+  /* Audiogram comparison (spec phase5_audiogram_2.md 4.2): legend samples match the chart's lines. */
+  .compare-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .compare-line {
+    display: inline-block;
+    width: 2rem;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+    border-top: 0.15rem solid var(--color-ear-right);
+  }
+
+  .compare-line.old {
+    border-top: 0.15rem dashed var(--color-ear-right-old);
+  }
+
+  .compare-legend-left .compare-line {
+    border-top-color: var(--color-ear-left);
+  }
+
+  .compare-legend-left .compare-line.old {
+    border-top-color: var(--color-ear-left-old);
+  }
+
+  /* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */
+  .health-report section {
+    margin-top: 1.5rem;
+  }
+
+  .report-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 2rem;
+  }
+
+  .report-handwrite span {
+    display: inline-block;
+    min-width: 12rem;
+    border-bottom: 1px solid currentColor;
+  }
+
+  .report-summary {
+    border: 2px solid var(--color-heading);
+    border-radius: var(--radius-button);
+    padding: 0.75rem 1rem;
+  }
+
+  .report-score {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  /* Fit report columns to the available width, including larger fallback fonts. */
+  .health-report .table {
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+  }
+
+  /* The level is written out in a box, never shown by colour alone. */
+  .report-level {
+    font-weight: 700;
+    border: 2px solid currentColor;
+    border-radius: var(--radius-small);
+    padding: 0 0.4rem;
+  }
+
+  .report-disclaimer {
+    border-top: 1px solid var(--color-input-border);
+    padding-top: 0.5rem;
+    margin-top: 1.5rem;
+  }
+
+  @media print {
+    /* No new shadows on paper, whichever shared class ends up inside the report. */
+    .health-report * {
+      box-shadow: none !important;
+    }
+
+    body:has(.health-report) .site-header,
+    body:has(.health-report) .site-nav,
+    body:has(.health-report) footer,
+    .health-report .no-print {
+      display: none !important;
+    }
+
+    body:has(.health-report) {
+      padding-bottom: 0;
+    }
+
+    .health-report section {
+      margin-top: 1rem;
+      break-inside: avoid;
+    }
+
+    /* A part holds several sections; only the sections inside it stay whole. */
+    .health-report .report-part {
+      break-inside: auto;
+    }
+
+    .health-report .report-part > h2 {
+      break-after: avoid;
+    }
+
+    .report-disclaimer {
+      margin-top: 0.75rem;
+    }
+
+    /* Tighter rows on paper, so the disclaimer does not end up alone on a last page. */
+    .health-report .table > :not(caption) > * > * {
+      padding: 0.2rem 0.5rem;
+    }
+
+    /* Small enough to share the first page with the summary. */
+    .health-report .audiogram-chart {
+      max-width: 10cm;
+    }
+  }
+
+  /* Account settings (spec phase9_ui_refresh_3_structure.md 4.1). */
+  .account-details {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.625rem 1.25rem;
+  }
+
+  .account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Deleting the account is set apart from everything above it. */
+  .account-danger {
+    border-top: 0.125rem solid var(--color-severe);
+  }
+
+  /* The account link sits on the dark header. */
+  .site-account {
+    color: #fff;
+  }
+
+  .site-account:hover {
+    color: #fff;
+  }
+
+  /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1). */
+  .questionnaire-guide {
+    padding: 0.75rem 1.25rem;
+    border-left: 0.375rem solid var(--color-primary);
+    border-radius: var(--radius-card);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .questionnaire-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+  }
+
+  /* The card turns the same pale blue on hover, so the circle turns white to stay visible. */
+  .link-card:hover .questionnaire-icon,
+  .link-card:active .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  .questionnaire-icon svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .card-tag {
+    padding: 0 0.5rem;
+    border-radius: var(--radius-badge);
+    background-color: var(--color-surface);
+    color: var(--color-footer);
+    font-weight: 600;
+  }
+
+  /* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
+  .audiogram-thumbnail {
+    flex: none;
+    width: 6rem;
+    height: 4.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  /* SSQ12 score input follows the reviewed range-and-buttons prototype. */
+  .ssq-scale input[type="range"] {
+    width: 100%;
+    min-height: var(--spacing-touch);
+    accent-color: var(--color-primary);
+  }
+
+  .ssq-scale > label:last-child {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+  }
+
+  /* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
+  @media (max-width: 35em) {
+    .questionnaire-card {
+      flex-wrap: wrap;
+    }
+
+    .questionnaire-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .questionnaire-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  .comparison-items,
+  .report-answers {
+    overflow-wrap: anywhere;
+  }
+
+  @media print {
+    .health-report .report-answers > ol {
+      display: block !important;
+    }
+
+    .health-report .report-answers::details-content {
+      content-visibility: visible;
+    }
+  }
+}
+
+/* Every printed page keeps the same margins; element margins vanish where a page breaks. Outside
+   the layer, since @page is a page rule, not an element style. */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+}

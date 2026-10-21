@@ -21,7 +21,7 @@
 {% endif %}
 {% if current.definition.comparison %}
 <section class="aided-difference" aria-labelledby="difference-title">
-    <h2 id="difference-title" class="fs-4">配戴狀態比較</h2>
+    <h2 id="difference-title" class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">配戴狀態比較</h2>
     {% if saved_comparison %}
     {% include current.definition.comparison.history_template with comparison=saved_comparison %}
     {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
@@ -54,7 +54,7 @@
 {% empty %}
 <p>您還沒有做過篩檢紀錄</p>
 {% endfor %}
-<div class="mt-4">
+<div class="mt-6">
     <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">聽力報告</a>
     <p class="mt-1 mb-0">可以印出來或存成 PDF，帶去給醫師看</p>
 </div>

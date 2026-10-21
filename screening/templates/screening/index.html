@@ -12,11 +12,11 @@
         <path d="M168 32c12 12 19 27 19 43s-7 31-19 43" opacity=".6"/>
         <path d="M186 20c15 15 24 34 24 55s-9 40-24 55" opacity=".35"/>
     </svg>
-    <h1 class="h3">了解聽力對您生活的影響</h1>
-    <p>聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
-    <a class="btn btn-primary btn-lg w-100" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+    <h1 class="h3 text-center">了解聽力對您生活的影響</h1>
+    <p class="text-center">聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
+    <a class="btn btn-primary btn-lg w-full" href="{% url 'questionnaire_list' %}">開始篩檢</a>
     {% if not user.is_authenticated %}
-    <p class="text-body-emphasis mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
+    <p class="text-black mt-2">第一次使用請先註冊，已有帳號請直接登入。</p>
     {% endif %}
 </section>
 <ol class="step-cards" role="list">
