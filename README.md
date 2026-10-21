@@ -41,7 +41,7 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 |---|---|
 | 後端 | Python 3.13、Django 5.2、Django REST Framework、drf-spectacular（OpenAPI） |
 | 資料庫 | PostgreSQL 18（正式環境 Neon，本機 Docker） |
-| 前端 | Django template＋Bootstrap 5.3.8＋自訂樣式；互動重的頁面（趨勢圖、作答頁、聽力圖）用 React 19＋Vite＋Recharts |
+| 前端 | Django template＋Tailwind CSS v4（`frontend/src/site.css`，由 Vite 建置）；互動重的頁面（趨勢圖、作答頁、聽力圖）用 React 19＋Vite＋Recharts |
 | 部署 | Render、whitenoise 提供靜態檔、Sentry 錯誤監控 |
 | 品質 | Django test、Vitest、Playwright（端對端）、Ruff；GitHub Actions 通過才能合併與部署 |
 

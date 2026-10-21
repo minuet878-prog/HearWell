@@ -14,8 +14,8 @@ Phase 4（React）之前量一次全站，留下對照組。之後每次大改�
 
 - 本機 `python manage.py runserver`（由本人啟動），DEBUG 模式。
 - Chrome，視窗寬 1536 px；用本機的假帳號登入，作答過至少一次。
-- **320 px**：Chrome 視窗最窄約 551 px，縮不到 320。551 px 已經在本站最窄的版型（Bootstrap 576 px 以下、`styles.css` 48em 以下），所以在 Console 執行 `document.body.style.zoom = innerWidth / 320`，讓內容寬度等於 320 CSS px，再看 `document.documentElement.scrollWidth > clientWidth`（有左右捲動）。不能用 iframe：Django 的 `X-Frame-Options: DENY` 會擋。
-- **CSS 快取**：本機沒有檔名雜湊，改完 `styles.css` 後要強制重新載入（或在 DevTools 停用快取），否則會量到舊的顏色。正式環境由 whitenoise 換檔名，沒有這個問題。
+- **320 px**：Chrome 視窗最窄約 551 px，縮不到 320。551 px 已經在本站最窄的版型（576 px 以下、48em 以下），所以在 Console 執行 `document.body.style.zoom = innerWidth / 320`，讓內容寬度等於 320 CSS px，再看 `document.documentElement.scrollWidth > clientWidth`（有左右捲動）。不能用 iframe：Django 的 `X-Frame-Options: DENY` 會擋。
+- **CSS 快取**：本機沒有檔名雜湊，改完 `frontend/src/site.css` 並重新建置後要強制重新載入（或在 DevTools 停用快取），否則會量到舊的顏色。正式環境由 whitenoise 換檔名，沒有這個問題。
 
 ### 1.2 頁面清單
 
