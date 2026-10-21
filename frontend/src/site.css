@@ -39,10 +39,15 @@
   --shadow-card: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.08);
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
+  /* Bootstrap defaults the site never overrode, shared by form fields, cards and alerts (#125). */
+  --radius-field: 0.375rem;
+  --radius-field-lg: 0.5rem;
+  --color-field-focus: #86b7fe;
+  --shadow-field-focus: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 
-/* Restore the element defaults the site used before Preflight. Component classes follow in
-   #125; old custom rules remain in styles.css until #126. */
+/* Restore the element defaults the site used before Preflight. Bootstrap's components follow as
+   named classes (#125); old custom rules remain in styles.css until #126. */
 @layer base {
   html {
     font-size: var(--root-font-size);
@@ -131,43 +136,320 @@
   padding-inline: 0.75rem;
 }
 
+
+/* Bootstrap 5.3.8 components the pages use, same names and values, with the site's old overrides
+   folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
+   like Bootstrap, a plain .btn leaves its hover, active and disabled values unset. */
 @layer components {
   .btn {
+    --btn-padding-x: 0.75rem;
+    --btn-padding-y: 0.375rem;
+    --btn-font-size: 1rem;
+    --btn-color: var(--color-body);
+    --btn-bg: transparent;
+    --btn-border-color: transparent;
+    --btn-hover-border-color: transparent;
     display: inline-block;
     min-height: var(--spacing-touch);
     min-width: var(--spacing-touch);
-    padding: 0.375rem 0.75rem;
-    font-size: 1rem;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    font-size: var(--btn-font-size);
     font-weight: 400;
     line-height: 1.5;
-    color: var(--btn-color, var(--color-body));
+    color: var(--btn-color);
     text-align: center;
     text-decoration: none;
     vertical-align: middle;
     cursor: pointer;
     user-select: none;
-    border: 1px solid var(--btn-border, transparent);
+    border: 1px solid var(--btn-border-color);
     border-radius: var(--radius-button);
-    background-color: var(--btn-bg, transparent);
+    background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
+  .btn-lg {
+    --btn-padding-x: 1rem;
+    --btn-padding-y: 0.5rem;
+    --btn-font-size: 1.25rem;
+  }
+  .btn-primary {
+    --btn-color: #fff;
+    --btn-bg: var(--color-primary);
+    --btn-border-color: var(--color-primary);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary-hover);
+    --btn-hover-border-color: var(--color-primary-hover);
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-active);
+    --btn-active-border-color: var(--color-primary-active);
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-primary);
+    --btn-disabled-border-color: var(--color-primary);
+  }
+  .btn-danger {
+    --btn-color: #fff;
+    --btn-bg: #dc3545;
+    --btn-border-color: #dc3545;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #bb2d3b;
+    --btn-hover-border-color: #b02a37;
+    --btn-focus-ring: rgba(225, 83, 97, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #b02a37;
+    --btn-active-border-color: #a52834;
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: #dc3545;
+    --btn-disabled-border-color: #dc3545;
+  }
+  /* The site only recoloured the rest and active states; disabled kept Bootstrap's blue. */
+  .btn-outline-primary {
+    --btn-color: var(--color-primary);
+    --btn-border-color: var(--color-primary);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-primary);
+    --btn-hover-border-color: var(--color-primary);
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-primary-hover);
+    --btn-active-border-color: var(--color-primary-hover);
+    --btn-disabled-color: #0d6efd;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #0d6efd;
+  }
+  .btn-outline-secondary {
+    --btn-color: #6c757d;
+    --btn-border-color: #6c757d;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #6c757d;
+    --btn-hover-border-color: #6c757d;
+    --btn-focus-ring: rgba(108, 117, 125, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #6c757d;
+    --btn-active-border-color: #6c757d;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #6c757d;
+  }
+  .btn-outline-danger {
+    --btn-color: #dc3545;
+    --btn-border-color: #dc3545;
+    --btn-hover-color: #fff;
+    --btn-hover-bg: #dc3545;
+    --btn-hover-border-color: #dc3545;
+    --btn-focus-ring: rgba(220, 53, 69, 0.5);
+    --btn-active-color: #fff;
+    --btn-active-bg: #dc3545;
+    --btn-active-border-color: #dc3545;
+    --btn-disabled-color: #dc3545;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #dc3545;
+  }
   .btn-outline-light {
     --btn-color: #f8f9fa;
-    --btn-border: #f8f9fa;
+    --btn-border-color: #f8f9fa;
     --btn-hover-color: #000;
     --btn-hover-bg: #f8f9fa;
-    --btn-focus: rgba(248, 249, 250, 0.5);
+    --btn-hover-border-color: #f8f9fa;
+    --btn-focus-ring: rgba(248, 249, 250, 0.5);
+    --btn-active-color: #000;
+    --btn-active-bg: #f8f9fa;
+    --btn-active-border-color: #f8f9fa;
+    --btn-disabled-color: #f8f9fa;
+    --btn-disabled-bg: transparent;
+    --btn-disabled-border-color: #f8f9fa;
   }
-  .btn:hover, .btn:focus-visible, .btn:active {
-    color: var(--btn-hover-color, var(--btn-color));
-    background-color: var(--btn-hover-bg, var(--btn-bg));
-    border-color: var(--btn-border, transparent);
+  /* Its focus ring kept Bootstrap's blue; the site never overrode it. */
+  .btn-link {
+    --btn-color: var(--color-primary);
+    --btn-hover-color: var(--color-primary-hover);
+    --btn-focus-ring: rgba(49, 132, 253, 0.5);
+    --btn-active-color: var(--color-primary-hover);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #6c757d;
+    --btn-disabled-border-color: transparent;
+    text-decoration: underline;
   }
-  .btn:focus-visible { outline: 0; box-shadow: 0 0 0 0.25rem var(--btn-focus, var(--color-focus-ring)); }
-  .btn:disabled, .btn.disabled { pointer-events: none; opacity: 0.65; }
-  @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
-  .visually-hidden-focusable:not(:focus):not(:focus-within) {
+  .btn:hover, .btn:focus-visible {
+    color: var(--btn-hover-color);
+    background-color: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border-color);
+  }
+  .btn:focus-visible { outline: 0; box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-link:focus-visible { color: var(--btn-color); }
+  .btn-link:hover { color: var(--btn-hover-color); }
+  .btn:active {
+    color: var(--btn-active-color);
+    background-color: var(--btn-active-bg);
+    border-color: var(--btn-active-border-color);
+  }
+  .btn:disabled, fieldset:disabled .btn {
+    color: var(--btn-disabled-color);
+    pointer-events: none;
+    background-color: var(--btn-disabled-bg);
+    border-color: var(--btn-disabled-border-color);
+    opacity: 0.65;
+  }
+
+  .form-label { margin-bottom: 0.5rem; }
+  .form-control, .form-select {
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    appearance: none;
+    background-color: #fff;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-field);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+  .form-control { background-clip: padding-box; }
+  .form-control:focus {
+    color: var(--color-body);
+    background-color: #fff;
+    border-color: var(--color-primary);
+    outline: 0;
+    box-shadow: var(--shadow-input-focus);
+  }
+  .form-control::-webkit-date-and-time-value { min-width: 85px; height: 1.5em; margin: 0; }
+  .form-control::-webkit-datetime-edit { display: block; padding: 0; }
+  .form-control-lg {
+    min-height: calc(1.5em + 1rem + 2px);
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+    border-radius: var(--radius-field-lg);
+  }
+  .form-select {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 16px 12px;
+  }
+  .form-select:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
+  .form-select-lg {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 1rem;
+    font-size: 1.25rem;
+    border-radius: var(--radius-field-lg);
+  }
+  .form-check {
+    display: block;
+    min-height: 1.5rem;
+    padding-left: 1.5em;
+    margin-bottom: 0.125rem;
+  }
+  .form-check .form-check-input { float: left; margin-left: -1.5em; }
+  .form-check-input {
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin-top: 0.25em;
+    vertical-align: top;
+    appearance: none;
+    background-color: #fff;
+    background-image: var(--form-check-bg-image);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    border: 1px solid var(--color-border-subtle);
+    print-color-adjust: exact;
+  }
+  .form-check-input[type="checkbox"] { border-radius: 0.25em; }
+  .form-check-input:active { filter: brightness(90%); }
+  .form-check-input:focus {
+    border-color: var(--color-field-focus);
+    outline: 0;
+    box-shadow: var(--shadow-field-focus);
+  }
+  .form-check-input:checked { background-color: #0d6efd; border-color: #0d6efd; }
+  .form-check-input:checked[type="checkbox"] {
+    --form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+  }
+  .form-check-input:disabled { pointer-events: none; filter: none; opacity: 0.5; }
+  .input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+  }
+  .input-group > .form-control { position: relative; flex: 1 1 auto; width: 1%; min-width: 0; }
+  .input-group > .form-control:focus { z-index: 5; }
+  .input-group > :not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .input-group > :not(:first-child) {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+  .input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-body);
+    text-align: center;
+    white-space: nowrap;
+    background-color: #f8f9fa;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-field);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .form-control, .form-select { transition: none; }
+  }
+
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    color: var(--color-body);
+    overflow-wrap: break-word;
+    background-color: #fff;
+    background-clip: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.175);
+    border-radius: var(--radius-field);
+  }
+  .card-body { flex: 1 1 auto; padding: 1rem; }
+  .table {
+    width: 100%;
+    margin-bottom: 1rem;
+    vertical-align: top;
+    border-color: var(--color-border-subtle);
+  }
+  .table > :not(caption) > * > * {
+    padding: 0.5rem;
+    color: #000;
+    background-color: #fff;
+    border-bottom-width: 1px;
+    box-shadow: inset 0 0 0 9999px transparent;
+  }
+  .table > tbody { vertical-align: inherit; }
+  .table > thead { vertical-align: bottom; }
+  .alert {
+    position: relative;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-field);
+  }
+  .alert-warning { color: #664d03; background-color: #fff3cd; border-color: #ffe69c; }
+  .alert-danger { color: #58151c; background-color: #f8d7da; border-color: #f1aeb5; }
+  .list-unstyled { padding-left: 0; list-style: none; }
+
+  .visually-hidden, .visually-hidden-focusable:not(:focus):not(:focus-within) {
     width: 1px !important;
     height: 1px !important;
     padding: 0 !important;
@@ -177,7 +459,11 @@
     white-space: nowrap !important;
     border: 0 !important;
   }
+  .visually-hidden:not(caption),
   .visually-hidden-focusable:not(:focus):not(:focus-within):not(caption) {
     position: absolute !important;
+  }
+  .visually-hidden *, .visually-hidden-focusable:not(:focus):not(:focus-within) * {
+    overflow: hidden !important;
   }
 }
