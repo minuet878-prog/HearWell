@@ -168,6 +168,12 @@ class WizardTests(TestCase):
                 self.assertContains(page, "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較")
                 self.assert_ssq12_also(page)
 
+    def test_catching_up_an_unaided_record_opens_the_answer_page_preselected(self):
+        # #154: only this branch marks the link; the other branches' links stay bare (see above).
+        _, params = self.recommendation("older", "yes")
+        start = reverse("screening", args=[self.by_code["hhie-s"].pk])
+        self.assertContains(self.wizard(**params), f'href="{start}?preselect=unaided">開始作答</a>')
+
     def test_aided_with_unaided_record_recommends_ioi_ha(self):
         user, params = self.recommendation("older", "yes")
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
@@ -182,6 +188,28 @@ class WizardTests(TestCase):
             page, f'href="{reverse("screening", args=[self.by_code["ioi-ha"].pk])}">開始作答</a>'
         )
         self.assert_ssq12_also(page)
+
+    def test_after_catching_up_aided_recommends_ioi_ha(self):
+        # #154 acceptance 4: start from the catch-up link, send the form as a browser without
+        # JavaScript does (the preselected 沒戴 kept, first choice on every question), ask again.
+        user = self.login_age(66)
+        page = self.wizard(hearing_aid="yes")
+        start = re.search(r'href="([^"]+)">開始作答</a>', page.content.decode()).group(1)
+        html = self.client.get(start).content.decode()
+        form = re.search(r'<form id="answer-form" action="([^"]+)".*?</form>', html, re.S)
+        data = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"', form[0]))
+        radios = re.findall(r'<input type="radio" name="([^"]+)" value="([^"]*)"', form[0])
+        for name, value in radios:
+            data.setdefault(name, value)
+        checked = re.search(r'name="wearing_hearing_aid" value="([^"]+)"[^>]*checked>', form[0])
+        data["wearing_hearing_aid"] = checked.group(1)
+        response = self.client.post(form.group(1), data)
+        submission = Submission.objects.get(user=user)
+        self.assertRedirects(response, reverse("result", args=[submission.id]))
+        self.assertIs(submission.wearing_hearing_aid, False)
+        page = self.wizard(hearing_aid="yes")
+        self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
+        self.assertEqual(page.context["reason"], "has_norm_basis")
 
     def assert_ssq12_also(self, page):
         main = page.content.decode()

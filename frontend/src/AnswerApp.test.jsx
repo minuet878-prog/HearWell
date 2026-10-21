@@ -49,11 +49,11 @@ const postHeaders = (index = 0) => postCalls()[index][1].headers;
 let navigate;
 let onReady;
 
-async function renderApp() {
+async function renderApp(props = {}) {
   render(
     <AnswerApp
       questionnaireId={1} userId={USER_ID} csrfToken="csrf-token" minutes={MINUTES} introHtml={INTRO}
-      onReady={onReady} navigate={navigate}
+      onReady={onReady} navigate={navigate} {...props}
     />,
   );
   await waitFor(() => expect(onReady).toHaveBeenCalled());
@@ -247,6 +247,51 @@ describe("autosave note (#153)", () => {
     choose("沒戴");
     next();
     expect(screen.getByText(NOTE)).not.toBeNull();
+  });
+});
+
+describe("catching up an unaided record (#154)", () => {
+  const HINT = "請想沒戴助聽器時的情況來回答";
+  const group = () => screen.getByRole("group");
+
+  it("starts on 沒戴 with the hint, read with the question", async () => {
+    await renderApp({ preselectUnaided: true });
+    expect(radio("沒戴").checked).toBe(true);
+    expect(radio("有戴").checked).toBe(false);
+    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
+    expect(group().getAttribute("aria-describedby")).toBe("hearing-aid-hint");
+    expect(document.getElementById("hearing-aid-hint").textContent).toBe(HINT);
+  });
+
+  it("sends 有戴 when the user changes it", async () => {
+    await renderApp({ preselectUnaided: true });
+    answerAll("常常", "有戴");
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(postBody().wearing_hearing_aid).toBe(true);
+  });
+
+  it("chooses nothing and says nothing without it", async () => {
+    await renderApp();
+    expect(screen.getAllByRole("radio").some((r) => r.checked)).toBe(false);
+    expect(group().hasAttribute("aria-describedby")).toBe(false);
+    expect(screen.queryByText(HINT)).toBeNull();
+  });
+
+  it("is no unfinished answer by itself: opening and leaving asks nothing next time", async () => {
+    await renderApp({ preselectUnaided: true });
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("gives way to the user's own draft; starting over starts on 沒戴 again", async () => {
+    saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: true, answers: {}, step: 0, savedAt: Date.now() });
+    await renderApp({ preselectUnaided: true });
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(radio("有戴").checked).toBe(true);
+    cleanup();
+    await renderApp({ preselectUnaided: true });
+    fireEvent.click(screen.getByRole("button", { name: "重新開始" }));
+    expect(radio("沒戴").checked).toBe(true);
   });
 });
 

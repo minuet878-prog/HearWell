@@ -10,10 +10,9 @@ const HEARING_AID = {
     { value: false, label: "沒戴" },
   ],
 };
+// Same wording as screening.html; why 沒戴 is already chosen when catching up an unaided record (#154).
+const UNAIDED_HINT = "請想沒戴助聽器時的情況來回答";
 const FAILED = "送出失敗，請再按一次送出";
-
-const newAnswers = () => ({ key: crypto.randomUUID(), wearing: null, answers: {}, step: 0 });
-const hasAnything = (form) => form.wearing !== null || Object.keys(form.answers).length > 0;
 
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
 // so the browser back button is the previous question (spec 4.1). Scores come from the API only.
@@ -23,6 +22,7 @@ export default function AnswerApp({
   csrfToken,
   minutes,
   introHtml,
+  preselectUnaided = false,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -36,6 +36,11 @@ export default function AnswerApp({
   // Set once the answers were accepted (or already were, 409): nothing may save them again.
   const finished = useRef(false);
   const legend = useRef(null);
+  // Only where a fresh start begins: a draft keeps the user's own choice, and the preselection
+  // by itself is nothing to keep, so opening the page and leaving asks nothing next time.
+  const startWearing = preselectUnaided ? false : null;
+  const newAnswers = () => ({ key: crypto.randomUUID(), wearing: startWearing, answers: {}, step: 0 });
+  const hasAnything = (form) => form.wearing !== startWearing || Object.keys(form.answers).length > 0;
 
   // focus: only after the user chose to continue or start over, not on first load.
   // After a reload (or coming back from the result page) the browser still holds this page's entries
@@ -220,7 +225,11 @@ export default function AnswerApp({
       {/* The ticket's wording, chosen by the site owner; draft.js keeps it in this browser only. */}
       <p>答案會自動存在這支手機，中途離開也沒關係，下次打開會問您要不要接著答。</p>
       {/* The legend must be the fieldset's first child to name the radio group. */}
-      <fieldset className="card card-body mb-4" disabled={isSending}>
+      <fieldset
+        className="card card-body mb-4"
+        disabled={isSending}
+        aria-describedby={isHearingAid && preselectUnaided ? "hearing-aid-hint" : undefined}
+      >
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
             <>
@@ -236,6 +245,7 @@ export default function AnswerApp({
           )}
           {question.text}
         </legend>
+        {isHearingAid && preselectUnaided && <p id="hearing-aid-hint">{UNAIDED_HINT}</p>}
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale">
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
