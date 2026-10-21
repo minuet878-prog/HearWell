@@ -72,7 +72,15 @@
 
 ## 已知的既有失敗（不是本票造成）
 
-`SharedLayoutTest.test_home_step_cards_stack_on_a_phone`、`SharedLayoutTest.test_phone_width_needs_no_sideways_scrolling`（`path='/'`）：首頁在 320px 寬時可以左右捲動到 491px。母分支 `28d3790`（沒有本票改動）單獨跑這兩個，同樣失敗、數值相同。首頁還在用 Bootstrap 的排版 class，屬於 #127–#129 的範圍；本票沒有查原因，也沒有修。#124 的驗證紀錄只跑了瀏覽器樣式測試，沒有記錄這兩個。
+`SharedLayoutTest.test_home_step_cards_stack_on_a_phone`、`SharedLayoutTest.test_phone_width_needs_no_sideways_scrolling`（`path='/'`）：首頁在 320px 寬時可以左右捲動到 491px。母分支 `28d3790`（沒有本票改動）單獨跑這兩個，同樣失敗、數值相同。#124 的驗證紀錄只跑了瀏覽器樣式測試，沒有記錄這兩個。
+
+原因（本人驗收時發現「遮蔽」開關沒有撐滿，2026-10-21 實測）：`w-100`、`w-50` 這兩個 class 在 Bootstrap 和 Tailwind 名稱相同、意思不同。Bootstrap 的 `w-100` 是寬 100%，Tailwind 的是 25rem（450px）；`w-50` 從 50% 變成 12.5rem（225px）。#124 拿掉 Bootstrap、開始掃描模板之後，Tailwind 就產生了自己的版本。
+
+- 首頁 320px 寬時，「開始篩檢」按鈕（`w-100`）寬 450px，右緣在 491px，就是上面兩個測試失敗的原因。
+- 新增聽力圖頁的「遮蔽：關」「清除剛標的點」「存檔」：遷移前和欄寬一樣（1024px 寬時 693px、390px 寬時 363px），現在都是 450px。桌機看起來靠左沒撐滿，手機上超出畫面。
+- 用到的地方共 9 處：`AudiogramApp.jsx` 3 處、`login.html` 2 處、`consent.html` 2 處、`index.html`、`register.html` 各 1 處。
+
+不是本票改的；排版 class 換成 Tailwind 寫法（`w-full`、`w-1/2`）屬於各頁的遷移票（首頁、登入、註冊、同意書是 #127，聽力圖是 #129）。
 
 第一次跑 e2e 全套時另有 `NewUserScreeningTest` 兩個點擊逾時：當時同時跑了 Django 全套，兩邊用同一個測試資料庫名稱互相干擾。單獨重跑 `NewUserScreeningTest`（8 個）與再跑一次 e2e 全套都通過。
 
@@ -105,4 +113,4 @@
 - [ ] 註冊頁：出生年的「民國／年」框和輸入框接在一起。
 - [ ] 新增聽力圖：「用數值輸入」裡的下拉選單和遮蔽勾選框；不標點直接存檔，出現紅色提示框。
 - [ ] 每頁按 Tab，第一站「跳到主要內容」出現。
-- [ ] 中間狀態的版面（首頁卡片、間距等）可能還不對，那是 #127–#129 的範圍。
+- [ ] 中間狀態的版面（首頁卡片、間距、`w-100` 按鈕寬度等）可能還不對，那是 #127–#129 的範圍。
