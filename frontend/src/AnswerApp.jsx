@@ -217,8 +217,8 @@ export default function AnswerApp({
           <div id="answer-intro-text">{introOpen && <div dangerouslySetInnerHTML={{ __html: introHtml }} />}</div>
         </div>
       )}
-      {/* Same as draft.js: kept in this browser's storage only. */}
-      <p>答案會自動存在這個瀏覽器裡，中途離開也沒關係，下次用同一個瀏覽器打開，會問您要不要接著答。</p>
+      {/* The ticket's wording, chosen by the site owner; draft.js keeps it in this browser only. */}
+      <p>答案會自動存在這支手機，中途離開也沒關係，下次打開會問您要不要接著答。</p>
       {/* The legend must be the fieldset's first child to name the radio group. */}
       <fieldset className="card card-body mb-4" disabled={isSending}>
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">

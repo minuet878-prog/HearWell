@@ -238,8 +238,8 @@ describe("questionnaire intro (#153)", () => {
 });
 
 describe("autosave note (#153)", () => {
-  // Drafts live in this browser's storage only (draft.js), so the note says so.
-  const NOTE = "答案會自動存在這個瀏覽器裡，中途離開也沒關係，下次用同一個瀏覽器打開，會問您要不要接著答。";
+  // The ticket's own wording, chosen by the site owner (drafts actually stay in this browser, draft.js).
+  const NOTE = "答案會自動存在這支手機，中途離開也沒關係，下次打開會問您要不要接著答。";
 
   it("tells the user on opening the page, and on every question", async () => {
     await renderApp();
