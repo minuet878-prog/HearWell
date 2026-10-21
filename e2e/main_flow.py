@@ -1096,13 +1096,19 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "--root-font-size": "112.5%",
             "--spacing-touch": "2.75rem",
             "--radius-button": "0.5rem",
-            "--radius-card": "0.75rem",
-            "--radius-band": "1.25rem",
             "--radius-badge": "1rem",
             "--radius-tab": "1.5rem",
-            "--shadow-card": "0 0.125rem 0.375rem rgba(15, 23, 42, 0.08)",
             "--shadow-input-focus": "0 0 0 0.25rem rgba(31, 78, 140, 0.25)",
             "--color-focus-ring": "rgba(31, 78, 140, 0.5)",
+            # 2a shared shell (#137): replaced the card and band radii and the card shadow.
+            "--color-page": "#faf7f2",
+            "--color-footer-bg": "#f3ede3",
+            "--color-border-warm": "#efe6d8",
+            "--shadow-warm": "0 0.25rem 0.75rem rgba(120, 90, 50, 0.08)",
+            "--radius-large": "1.5rem",
+            "--radius-medium": "0.75rem",
+            "--color-gradient-start": "#1f4e8c",
+            "--color-gradient-end": "#3a6bb0",
         }
         # The CSS minifier rewrites .5rem and rgba() to shorter equivalent values. Let the
         # browser resolve both independent literals and tokens through the same CSS property.
@@ -1322,7 +1328,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 {
                     "padding": "6.75px 13.5px",
                     "borderTopColor": border,
-                    "borderTopLeftRadius": "6.75px",
+                    "borderTopLeftRadius": "13.5px",  # 0.75rem since #137
                     "color": self.TEXT,
                 },
             )
@@ -1350,7 +1356,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "backgroundColor": "rgb(248, 249, 250)",
                     "borderTopColor": border,
                     "padding": "6.75px 13.5px",
-                    "borderTopLeftRadius": "6.75px",
+                    "borderTopLeftRadius": "13.5px",
                     "borderTopRightRadius": "0px",
                 },
             )
@@ -1362,7 +1368,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 self.styles(unit, "borderTopLeftRadius", "borderTopRightRadius", "marginLeft"),
                 {
                     "borderTopLeftRadius": "0px",
-                    "borderTopRightRadius": "6.75px",
+                    "borderTopRightRadius": "13.5px",
                     "marginLeft": "-1px",
                 },
             )
@@ -1394,7 +1400,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             date_field = self.page.get_by_label("檢查日期")
             self.assertEqual(
                 self.styles(date_field, "padding", "fontSize", "borderTopLeftRadius"),
-                {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"},
+                {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "13.5px"},
             )
             self.assertGreaterEqual(self.size(date_field)[1], 44)
 
@@ -1406,7 +1412,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 {
                     "padding": "9px 40.5px 9px 18px",
                     "fontSize": "22.5px",
-                    "borderTopLeftRadius": "9px",
+                    "borderTopLeftRadius": "13.5px",
                 },
             )
             self.assertGreaterEqual(self.size(first)[1], 44)
@@ -1432,8 +1438,8 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "display": "flex",
                     "padding": "18px",
                     "borderTopWidth": "1px",
-                    "borderTopColor": "rgba(0, 0, 0, 0.176)",
-                    "borderTopLeftRadius": "6.75px",
+                    "borderTopColor": "rgb(239, 230, 216)",  # warm border and 1.5rem since #137
+                    "borderTopLeftRadius": "27px",
                     "backgroundColor": "rgb(255, 255, 255)",
                 },
             )
@@ -1635,6 +1641,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
 
     def test_printed_report_has_no_site_chrome_or_shadows(self):
         self.submission(self.hhie_s, [2] * 10)
+        self.audiogram(date(2026, 9, 28))
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/report")
@@ -1656,6 +1663,13 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 ".map(el => getComputedStyle(el).boxShadow).filter(s => s !== 'none')"
             )
             self.assertEqual(shadows, [])
+            # White paper behind the whole report, with no gradient anywhere in it (#137).
+            self.assertEqual(self.style(self.page.locator("body"), "backgroundColor"), self.WHITE)
+            gradients = self.page.evaluate(
+                "[...document.querySelectorAll('.health-report, .health-report *')]"
+                ".map(el => getComputedStyle(el).backgroundImage).filter(s => s !== 'none')"
+            )
+            self.assertEqual(gradients, [])
             # A section, and the table in it, stays on one page; a part holding several
             # sections may break between them, but not right after its heading (#130).
             section = self.page.locator(f"#report-{self.hhie_s.code}")
@@ -1665,3 +1679,142 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             part = self.page.locator("#report-life-impact")
             self.assertEqual(self.style(part, "breakInside"), "auto")
             self.assertEqual(self.style(part.locator("> h2"), "breakAfter"), "avoid")
+
+    # #137 (2a): a warm page with white surfaces, and three radius levels.
+    WARM_PAGE = "rgb(250, 247, 242)"
+    WARM_FOOTER = "rgb(243, 237, 227)"
+    WHITE = "rgb(255, 255, 255)"
+
+    def warm_shell_records(self):
+        """A history, an IOI-HA answer below the norm and an audiogram: every surface shows."""
+        basis = self.submission(self.hhie_s, [2] * 10)
+        ioi_ha = Questionnaire.objects.get(code="ioi-ha")
+        ioi = Submission.objects.create(
+            user=self.user,
+            questionnaire=ioi_ha,
+            norm_group=NormGroup.MILD_MODERATE,
+            norm_basis=basis,
+            wearing_hearing_aid=True,
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=ioi, question=question, score=1)
+            for question in ioi_ha.questions.all()
+        )
+        return basis, ioi, self.audiogram(date(2026, 9, 28))
+
+    def test_page_is_warm_and_surfaces_are_white(self):
+        audiogram = self.warm_shell_records()[2]
+        cases = (
+            ("/", "body", self.WARM_PAGE),
+            ("/", ".site-footer", self.WARM_FOOTER),
+            ("/", ".step-cards li", self.WHITE),
+            ("/questionnaire_list", "main a.link-card", self.WHITE),
+            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", self.WHITE),
+            ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", self.WHITE),
+            (f"/audiograms/{audiogram.pk}", ".audiogram-chart", self.WHITE),
+            ("/audiograms/new", "#tested-on", self.WHITE),
+            ("/audiograms/new", ".audiogram-chart", self.WHITE),
+            (f"/questionnaire/{self.hhie_s.pk}", "#id_form-0-score label", self.WHITE),
+        )
+        with self.saving_artifacts():
+            for path, selector, colour in cases:
+                with self.subTest(path=path, selector=selector):
+                    self.open(javascript=not path.startswith("/questionnaire/"))
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "backgroundColor"), colour)
+
+    def test_text_on_the_warm_page_keeps_its_contrast(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            # Colours as the browser resolves them, against the page and footer backgrounds.
+            ratios = self.page.evaluate(
+                """() => {
+                    const rgb = (colour) => {
+                        const probe = document.createElement("span");
+                        probe.style.color = colour;
+                        document.body.append(probe);
+                        const [r, g, b] = getComputedStyle(probe).color.match(/\\d+/g).map(Number);
+                        probe.remove();
+                        return [r, g, b];
+                    };
+                    const lum = (c) => c.map((v) => v / 255)
+                        .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+                        .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+                    const ratio = (a, b) => {
+                        const [hi, lo] = [lum(rgb(a)), lum(rgb(b))].sort((x, y) => y - x);
+                        return (hi + 0.05) / (lo + 0.05);
+                    };
+                    const root = getComputedStyle(document.documentElement);
+                    const token = (name) => root.getPropertyValue(name).trim();
+                    const page = getComputedStyle(document.body).backgroundColor;
+                    const footer = document.querySelector(".site-footer");
+                    const out = {};
+                    for (const name of ["--color-body", "--color-heading", "--color-primary",
+                        "--color-normal", "--color-mild", "--color-severe"]) {
+                        out[name] = ratio(token(name), page);
+                    }
+                    out.body = ratio(getComputedStyle(document.body).color, page);
+                    out.footer = ratio(getComputedStyle(footer).color,
+                        getComputedStyle(footer).backgroundColor);
+                    return out;
+                }"""
+            )
+            self.assertEqual(len(ratios), 8)
+            for name, value in ratios.items():
+                with self.subTest(text=name):
+                    self.assertGreaterEqual(value, 4.5)
+
+    def test_three_radius_levels(self):
+        basis, ioi, audiogram = self.warm_shell_records()
+        # The questionnaire guide only shows a recommendation once the age is known.
+        User.objects.filter(pk=self.user.pk).update(birth_year=1950)
+        large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
+        cases = (
+            ("/", ".step-cards li", large),
+            ("/", ".home-band", large),
+            ("/", ".result-preview", large),
+            ("/questionnaire_list", "main a.link-card", large),
+            ("/questionnaire_list", ".questionnaire-guide", large),
+            ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
+            ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
+            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", large),
+            ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", large),
+            (f"/audiograms/{audiogram.pk}", ".audiogram-chart", large),
+            (f"/submission/{basis.pk}", ".result-banner", medium),
+            (f"/submission/{ioi.pk}", ".ioi-note", medium),
+            ("/audiograms/new", "#tested-on", medium),
+            ("/audiograms/new", ".audiogram-table .form-select", medium),
+            ("/audiograms/new", ".audiogram-symbol", medium),
+            # Left as they were: badges, thumbnails and the charts themselves.
+            ("/my_hearing?questionnaire=hhie-s", ".level-badge", "18px"),
+            ("/audiograms", ".audiogram-thumbnail", "4.5px"),
+            (f"/audiograms/{audiogram.pk}", ".audiogram-svg", "0px"),
+        )
+        with self.saving_artifacts():
+            for path, selector, radius in cases:
+                with self.subTest(path=path, selector=selector):
+                    self.open()
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
+
+    def test_large_blocks_have_warm_borders(self):
+        self.submission(self.hhie_s, [2] * 10)
+        warm = "rgb(239, 230, 216)"
+        cases = (
+            ("/", ".step-cards li"),
+            ("/questionnaire_list", "main a.link-card"),
+            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
+        )
+        with self.saving_artifacts():
+            for path, selector in cases:
+                with self.subTest(path=path, selector=selector):
+                    self.open()
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "borderTopColor"), warm)
