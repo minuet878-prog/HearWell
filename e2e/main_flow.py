@@ -943,7 +943,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
         ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
-        ("severe", (4,) * 10, "rgb(254, 236, 231)", "rgb(194, 59, 28)"),
+        ("severe", (4,) * 10, "rgb(254, 236, 231)", ERROR),
         ("unknown", (2,) * 10, None, TEXT),
     )
 
@@ -999,7 +999,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/privacy")
             self.assertEqual(self.style(self.page.locator("body"), "color"), self.TEXT)
-            muted = self.page.locator(".text-body-secondary").first
+            muted = self.page.get_by_text(re.compile(r"^第 \d+ 版，.*更新$"))
             self.assertEqual(self.style(muted, "color"), self.TEXT)
             self.page.goto(f"{self.live_server_url}/login")
             submit = self.page.get_by_role("button", name="登入")
@@ -1048,7 +1048,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
             labels = self.page.locator("#id_form-0-score label")
             first, second = labels.nth(0).bounding_box(), labels.nth(1).bounding_box()
-            self.assertGreaterEqual(first["height"], 3 * 18)
+            self.assertGreaterEqual(first["height"], 3 * 18)  # 3rem at the 18px base
             self.assertEqual(first["y"], second["y"])
             self.assertLess(first["x"], second["x"])
 
@@ -1067,13 +1067,18 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/report")
-            self.page.emulate_media(media="print")
-            for part in (
-                self.page.locator(".site-header"),
+            chrome = (
+                self.page.get_by_role("banner"),
                 self.page.get_by_role("navigation", name="主要導覽"),
-                self.page.locator(".site-footer"),
+                self.page.get_by_role("contentinfo"),
                 self.page.get_by_role("button", name="列印或存成 PDF"),
-            ):
+            )
+            # Seen on screen first, so a renamed or missing part cannot pass as hidden.
+            for part in chrome:
+                expect(part).to_be_visible()
+            expect(self.page.locator(".health-report")).to_have_count(1)
+            self.page.emulate_media(media="print")
+            for part in chrome:
                 expect(part).to_be_hidden()
             shadows = self.page.evaluate(
                 "[...document.querySelectorAll('.health-report, .health-report *')]"
