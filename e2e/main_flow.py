@@ -357,7 +357,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page.get_by_label("使用者名稱").fill("e2e_user")
         self.page.get_by_label("電子郵件").fill("e2e_user@example.com")
         self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
-        self.page.get_by_label("密碼確認").fill("Fake-pass-2468")
+        # Exact: the "顯示密碼確認" toggle button (#151) also has 密碼確認 in its label.
+        self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-2468")
         self.main().get_by_role("button", name="註冊").click()
         # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
         self.main().get_by_role("button", name="我同意").click()
