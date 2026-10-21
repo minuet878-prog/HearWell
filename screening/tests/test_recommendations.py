@@ -148,7 +148,12 @@ class WizardTests(TestCase):
                 self.assertIn(f">{recommended}</span>", main)
                 self.assertIn(">10 題</span>", main)
                 self.assertIn(f">約 {recommended.definition.minutes} 分鐘</span>", main)
-                self.assertIn("沒有戴助聽器。這份問卷了解聽力對日常生活和心情的影響", main)
+                # The same sentence for both ages, word for word as reviewed.
+                self.assertIn(
+                    "<p><strong>為什麼推薦：</strong>"
+                    "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。</p>",
+                    main,
+                )
                 self.assertIn(
                     f'href="{reverse("screening", args=[recommended.pk])}">開始作答</a>', main
                 )
@@ -174,7 +179,11 @@ class WizardTests(TestCase):
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
         page = self.wizard(**params)
         self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
-        self.assertContains(page, "這份問卷了解助聽器對您的幫助")
+        self.assertContains(
+            page,
+            "<p><strong>為什麼推薦：</strong>"
+            "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。</p>",
+        )
         self.assertContains(
             page, f'href="{reverse("screening", args=[self.by_code["ioi-ha"].pk])}">開始作答</a>'
         )

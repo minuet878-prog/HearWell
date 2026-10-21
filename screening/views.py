@@ -229,7 +229,6 @@ def questionnaire_list(request):
         total,
         recommended=recommended,
         reason=reason,
-        age_label=dict(AgeGroupForm.base_fields["age_group"].choices)[age_group],
         start_url=start_url,
         also=[by_code[SSQ12]] if wearing else [],
         questionnaires=questionnaires,
