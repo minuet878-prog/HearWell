@@ -4,6 +4,11 @@
 
 {% block body %}
 <div class="narrow-form">
+    {# Issue #151: step 2 of the 2 that start on the register page. #}
+    <div class="step-progress">
+        <p class="step-progress-text">第 2 步／共 2 步：同意隱私權</p>
+        <div class="step-progress-bar" aria-hidden="true"><span class="step-progress-segment is-done"></span><span class="step-progress-segment is-done"></span></div>
+    </div>
     <h1 class="h3 mt-2">開始使用之前</h1>
     <p>HearWell 會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p>
     <h2 class="h5">重點</h2>
@@ -18,7 +23,7 @@
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
         <div class="flex gap-2">
-            <button class="w-1/2 btn btn-lg btn-primary" type="submit" name="agree">我同意</button>
+            <button class="w-1/2 btn btn-lg btn-primary" type="submit" name="agree">我同意，開始篩檢</button>
             <button class="w-1/2 btn btn-lg btn-outline-primary" type="submit" name="decline">不同意</button>
         </div>
     </form>

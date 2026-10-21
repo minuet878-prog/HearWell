@@ -1,9 +1,21 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}註冊｜HearWell{% endblock %}
 
+{% block extra_head %}
+<script defer src="{% static 'screening/password-toggle.js' %}"></script>
+{% endblock %}
+
 {% block body %}
 <div class="narrow-form">
+    {# Issue #151: people who already have an account see the way to log in first. #}
+    <a class="w-full btn btn-lg btn-outline-primary mb-6" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">已經有帳號？登入</a>
+    {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
+    <div class="step-progress">
+        <p class="step-progress-text">第 1 步／共 2 步：建立帳號</p>
+        <div class="step-progress-bar" aria-hidden="true"><span class="step-progress-segment is-done"></span><span class="step-progress-segment"></span></div>
+    </div>
     <h1 class="h3 mb-4 font-normal">註冊</h1>
     <form method="post" action="{% url 'register' %}">
         {% csrf_token %}
@@ -14,7 +26,15 @@
         {% for field in form %}
         {% if field.name != "roc_birth_year" %}
         <div class="mb-4">
+            {% if field.widget_type == "password" %}
+            {# Issue #151: the script shows the button; without JavaScript it stays hidden. #}
+            <div class="flex flex-wrap items-end justify-between gap-2 mb-1">
+                {{ field.label_tag }}
+                <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="{{ field.auto_id }}" aria-label="顯示{{ field.label }}" data-label="{{ field.label }}" hidden>顯示</button>
+            </div>
+            {% else %}
             {{ field.label_tag }}
+            {% endif %}
             {{ field }}
             {% include "screening/field_messages.html" %}
         </div>
@@ -32,7 +52,5 @@
         <p>註冊後，會請您閱讀並同意<a class="btn btn-link px-1 align-baseline" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
         <input class="w-full btn btn-lg btn-primary" type="submit" value="註冊">
     </form>
-
-    <p class="mt-4">已經有帳號了嗎？ <a class="btn btn-link px-1 align-baseline" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">從這裡登入</a></p>
 </div>
 {% endblock %}
