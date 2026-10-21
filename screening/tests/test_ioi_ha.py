@@ -355,7 +355,7 @@ class IoiHaTests(TestCase):
 
     # Entry (21-22)
     def test_questionnaire_list_card(self):
-        response = self.client.get(reverse("questionnaire_list"))
+        response = self.client.get(reverse("questionnaire_list") + "?choose=self")
         self.assertContains(response, "<title>選擇問卷\uff5cHearWell</title>")
         main = self._main(response)
         self.assertRegex(

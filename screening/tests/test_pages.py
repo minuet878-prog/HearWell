@@ -512,11 +512,11 @@ class PageFlowTests(TestCase):
 
     # Questionnaire list (4-5)
     def test_questionnaire_list_shows_info(self):
-        main = self._main(self.client.get(reverse("questionnaire_list")))
+        main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
         self._assert_in_order(
             main,
             (
-                "請選擇問卷",
+                "自行選擇問卷",
                 "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
                 # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
@@ -532,7 +532,7 @@ class PageFlowTests(TestCase):
 
     def test_question_count_is_not_hard_coded(self):
         with register(fake_definition("short")):
-            main = self._main(self.client.get(reverse("questionnaire_list")))
+            main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]

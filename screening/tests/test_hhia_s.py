@@ -17,7 +17,7 @@ class HhiaSTests(TestCase):
         call_command("seed_questionnaires", stdout=StringIO())
         user = consented_user(username="adult")
         self.client.force_login(user)
-        response = self.client.get(reverse("questionnaire_list"))
+        response = self.client.get(reverse("questionnaire_list") + "?choose=self")
         self.assertContains(response, "HHIA-S")
         self.assertContains(response, "適合 18–64 歲成人")
         questionnaire = Questionnaire.objects.get(code="hhia-s")

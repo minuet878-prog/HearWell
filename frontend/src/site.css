@@ -1623,6 +1623,30 @@
     color: #fff;
   }
 
+  /* Wizard steps (#152): one segment per step; done segments turn blue, nothing moves. */
+  .step-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .step-bar {
+    display: flex;
+    gap: 0.375rem;
+  }
+
+  .step-bar span {
+    flex: 1;
+    height: 0.625rem;
+    border-radius: 999px;
+    background-color: var(--color-border-strong);
+  }
+
+  .step-bar .step-bar-done {
+    background-color: var(--color-primary);
+  }
+
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1). */
   .questionnaire-guide {
     padding: 0.75rem 1.25rem;

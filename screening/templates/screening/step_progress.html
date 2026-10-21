@@ -1,0 +1,5 @@
+{# "第 n 步／共 N 步" with one bar segment per step; the bar only repeats the text. #}
+<div class="step-progress">
+    <p class="font-bold mb-0">第 {{ step }} 步／共 {{ total }} 步</p>
+    <div class="step-bar" aria-hidden="true">{% for done in segments %}<span{% if done %} class="step-bar-done"{% endif %}></span>{% endfor %}</div>
+</div>

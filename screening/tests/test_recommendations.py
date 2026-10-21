@@ -1,5 +1,7 @@
-"""Age and purpose recommendations (#80)."""
+"""Age and purpose recommendations (#80) and the questionnaire wizard (#152)."""
 
+import re
+import uuid
 from datetime import date
 from io import StringIO
 
@@ -7,7 +9,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Question, Questionnaire
+from screening.models import Answer, Question, Questionnaire, Submission, User
 from screening.tests.helpers import consented_user
 
 
@@ -30,59 +32,7 @@ class RecommendationTests(TestCase):
         self.client.force_login(user)
         return user
 
-    def test_known_birth_year_recommends_without_asking_again(self):
-        for age, code in (
-            (18, "hhia-s"),
-            (30, "hhia-s"),
-            (64, "hhia-s"),
-            (66, "hhie-s"),
-            (80, "hhie-s"),
-        ):
-            with self.subTest(age=age):
-                self.login_age(age)
-                page = self.client.get(reverse("questionnaire_list"))
-                self.assertEqual(page.context["recommended"].code, code)
-                self.assertNotContains(page, 'name="age_group"')
-                self.assertNotContains(page, "第一次使用，請從 HHIE-S 開始")
-                override = self.client.get(reverse("questionnaire_list"), {"age_group": "older"})
-                self.assertEqual(override.context["recommended"].code, code)
-
-    def test_missing_year_and_boundary_year_ask_only_the_actual_interval(self):
-        for age in (None, 65):
-            with self.subTest(age=age):
-                self.login_age(age)
-                page = self.client.get(reverse("questionnaire_list"))
-                self.assertIsNone(page.context["recommended"])
-                self.assertContains(page, 'name="age_group"')
-                for group, code in (("adult", "hhia-s"), ("older", "hhie-s")):
-                    page = self.client.get(reverse("questionnaire_list"), {"age_group": group})
-                    self.assertEqual(page.context["recommended"].code, code)
-                    self.assertNotContains(page, 'name="age_group"')
-                bad = self.client.get(reverse("questionnaire_list"), {"age_group": "anything"})
-                self.assertIsNone(bad.context["recommended"])
-                self.assertContains(bad, 'name="age_group"')
-
-    def test_all_purposes_are_direct_links_even_without_confirmed_age(self):
-        self.login_age(None)
-        page = self.client.get(reverse("questionnaire_list"))
-        for label, questionnaire in (
-            ("了解助聽器的幫助", self.ioi),
-            ("了解目前聆聽能力", self.ssq),
-        ):
-            self.assertContains(
-                page, f'href="{reverse("screening", args=[questionnaire.pk])}">{label}</a>'
-            )
-        page = self.client.get(reverse("questionnaire_list"), {"age_group": "adult"})
-        self.assertContains(
-            page, f'href="{reverse("screening", args=[self.hhia.pk])}">了解聽力對生活的影響</a>'
-        )
-        self.assertContains(page, "聽力對生活的影響（HHIA-S）")
-        self.assertContains(page, "助聽器使用成效（IOI-HA）")
-        self.assertContains(page, "日常聆聽能力（SSQ12-TW）")
-        self.assertContains(page, "自行選擇問卷")
-
     def test_nonrecommended_hhi_stays_available_and_unaided_result_offers_ssq(self):
-        from screening.models import Answer, Submission
 
         user = self.login_age(30)
         page = self.client.get(reverse("screening", args=[self.hhie.pk]))
@@ -106,3 +56,227 @@ class RecommendationTests(TestCase):
 
     def test_anonymous_users_still_need_login(self):
         self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 302)
+
+
+class WizardTests(TestCase):
+    """The questionnaire wizard: age, hearing aid, one recommendation (#152)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.by_code = {q.code: q for q in Questionnaire.objects.all()}
+
+    def login_age(self, age):
+        # age None: no birth year. Subtests log in more than one user per test.
+        user = consented_user(
+            username=f"wizard_{age}_{uuid.uuid4().hex[:8]}",
+            birth_year=None if age is None else date.today().year - age,
+        )
+        self.client.force_login(user)
+        return user
+
+    def wizard(self, **params):
+        return self.client.get(reverse("questionnaire_list"), params)
+
+    def test_without_birth_year_step_one_of_three_asks_age(self):
+        self.login_age(None)
+        page = self.wizard()
+        self.assertContains(page, "第 1 步／共 3 步")
+        self.assertContains(page, 'name="age_group"')
+        self.assertNotContains(page, 'name="hearing_aid"')
+
+    def test_known_birth_year_skips_age_so_hearing_aid_is_step_one_of_two(self):
+        for age in (18, 64, 66, 80):
+            with self.subTest(age=age):
+                self.login_age(age)
+                page = self.wizard()
+                self.assertContains(page, "第 1 步／共 2 步")
+                self.assertContains(page, 'name="hearing_aid"')
+                self.assertNotContains(page, 'name="age_group"')
+
+    def test_birth_year_exactly_65_still_asks_age(self):
+        self.login_age(65)
+        page = self.wizard()
+        self.assertContains(page, "第 1 步／共 3 步")
+        self.assertContains(page, 'name="age_group"')
+
+    def test_answered_age_moves_to_hearing_aid_as_step_two_of_three(self):
+        self.login_age(None)
+        page = self.wizard(age_group="older")
+        self.assertContains(page, "第 2 步／共 3 步")
+        self.assertContains(page, 'name="hearing_aid"')
+        self.assertContains(page, '<input type="hidden" name="age_group" value="older">')
+        bad = self.wizard(age_group="anything")
+        self.assertContains(bad, "第 1 步／共 3 步")
+        self.assertContains(bad, 'id="id_age_group_error"')
+
+    def hhi_record(self, user, *, wearing, questionnaire="hhie-s", answered=10):
+        # A complete record answers all 10 items with an HHI choice.
+        submission = Submission.objects.create(
+            user=user, questionnaire=self.by_code[questionnaire], wearing_hearing_aid=wearing
+        )
+        questions = self.by_code[questionnaire].questions.order_by("question_number")[:answered]
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2) for question in questions
+        )
+        return submission
+
+    def recommendation(self, age, hearing_aid):
+        # age is a birth-year age, or "adult" / "older" answered in the wizard.
+        asked = age in ("adult", "older")
+        user = self.login_age(None if asked else age)
+        params = {"hearing_aid": hearing_aid}
+        if asked:
+            params["age_group"] = age
+        return user, params
+
+    def test_unaided_recommends_life_impact_questionnaire_by_age(self):
+        for age, code in (("older", "hhie-s"), (66, "hhie-s"), ("adult", "hhia-s"), (30, "hhia-s")):
+            with self.subTest(age=age):
+                _, params = self.recommendation(age, "no")
+                page = self.wizard(**params)
+                recommended = self.by_code[code]
+                self.assertEqual(page.context["recommended"], recommended)
+                main = page.content.decode()
+                self.assertIn("推薦您做這一份", main)
+                self.assertIn(f"{recommended.definition.topic}<span", main)
+                self.assertIn(f">{recommended}</span>", main)
+                self.assertIn(">10 題</span>", main)
+                self.assertIn(f">約 {recommended.definition.minutes} 分鐘</span>", main)
+                self.assertIn("沒有戴助聽器。這份問卷了解聽力對日常生活和心情的影響", main)
+                self.assertIn(
+                    f'href="{reverse("screening", args=[recommended.pk])}">開始作答</a>', main
+                )
+                self.assertNotIn("也可以做", main)
+
+    def test_aided_without_unaided_record_recommends_life_impact_and_says_why(self):
+        for age, code in (("older", "hhie-s"), (30, "hhia-s")):
+            with self.subTest(age=age):
+                _, params = self.recommendation(age, "yes")
+                page = self.wizard(**params)
+                self.assertEqual(page.context["recommended"], self.by_code[code])
+                self.assertContains(page, "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較")
+                self.assert_ssq12_also(page)
+
+    def test_aided_with_unaided_record_recommends_ioi_ha(self):
+        user, params = self.recommendation("older", "yes")
+        self.hhi_record(user, wearing=False, questionnaire="hhia-s")
+        page = self.wizard(**params)
+        self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
+        self.assertContains(page, "這份問卷了解助聽器對您的幫助")
+        self.assertContains(
+            page, f'href="{reverse("screening", args=[self.by_code["ioi-ha"].pk])}">開始作答</a>'
+        )
+        self.assert_ssq12_also(page)
+
+    def assert_ssq12_also(self, page):
+        main = page.content.decode()
+        also = main[main.index("也可以做") : main.index("看其他問卷")]
+        ssq12 = self.by_code["ssq12-tw"]
+        self.assertIn(f'href="{reverse("screening", args=[ssq12.pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 1)
+
+    def test_only_records_that_set_the_ioi_ha_norm_group_count(self):
+        # Same records as the IOI-HA norm basis: the user's own, unaided, complete HHI.
+        other = consented_user(username="someone_else")
+        self.hhi_record(other, wearing=False)
+        user, params = self.recommendation("older", "yes")
+        self.hhi_record(user, wearing=True)
+        self.hhi_record(user, wearing=False, answered=9)
+        page = self.wizard(**params)
+        self.assertEqual(page.context["recommended"], self.by_code["hhie-s"])
+        self.assertEqual(page.context["reason"], "needs_norm_basis")
+        # And the other way round: this user's records do not change the other's.
+        self.client.force_login(other)
+        page = self.wizard(age_group="older", hearing_aid="yes")
+        self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
+
+    def test_invalid_hearing_aid_answer_stays_on_that_step(self):
+        self.login_age(66)
+        page = self.wizard(hearing_aid="maybe")
+        self.assertContains(page, "第 1 步／共 2 步")
+        self.assertContains(page, 'id="id_hearing_aid_error"')
+        self.assertNotIn("recommended", page.context)
+
+    def assert_catalog(self, html):
+        # The whole questionnaire list, every defined questionnaire once.
+        self.assertEqual(html.count("questionnaire-card"), len(self.by_code))
+        for questionnaire in self.by_code.values():
+            self.assertIn(f'href="{reverse("screening", args=[questionnaire.pk])}"', html)
+
+    def test_every_step_has_back_and_choose_yourself(self):
+        wizard = reverse("questionnaire_list")
+        choose = f'href="{wizard}?choose=self">自己選問卷</a>'
+        for age, params, back in (
+            (None, {}, reverse("index")),
+            (None, {"age_group": "older"}, wizard),
+            (66, {}, reverse("index")),
+        ):
+            with self.subTest(age=age, params=params):
+                self.login_age(age)
+                page = self.wizard(**params)
+                self.assertContains(page, f'href="{back}">上一步</a>')
+                self.assertContains(page, choose)
+        for age, params, back in (
+            (None, {"age_group": "older", "hearing_aid": "no"}, f"{wizard}?age_group=older"),
+            (66, {"hearing_aid": "yes"}, wizard),
+        ):
+            with self.subTest(age=age, params=params):
+                self.login_age(age)
+                main = self.wizard(**params).content.decode()
+                self.assertIn(f'href="{back}">上一步</a>', main)
+                details = main[main.index("<details") : main.index("</details>")]
+                self.assertIn("<summary>看其他問卷</summary>", details)
+                self.assert_catalog(details)
+
+    def test_choose_yourself_lists_every_questionnaire(self):
+        self.login_age(None)
+        page = self.wizard(choose="self")
+        self.assertContains(page, '<h1 class="h3 mt-2">自行選擇問卷</h1>', html=False)
+        self.assertNotContains(page, 'name="age_group"')
+        self.assert_catalog(page.content.decode())
+
+    def test_greeting_only_on_the_first_screen_after_consent(self):
+        # The sentence ends with a full-width exclamation mark, kept out of the source for Ruff.
+        greeting = "帳號建好了\N{FULLWIDTH EXCLAMATION MARK}接下來幫您找適合的問卷"
+        for age in (None, 66):
+            with self.subTest(age=age):
+                self.login_age(age)
+                self.assertContains(self.wizard(**{"from": "consent"}), greeting)
+                self.assertNotContains(self.wizard(), greeting)
+        self.login_age(None)
+        self.assertNotContains(self.wizard(**{"from": "consent", "age_group": "older"}), greeting)
+
+    def test_agreeing_on_the_consent_page_marks_the_way_into_the_wizard(self):
+        user = User.objects.create_user(username="brand_new")
+        self.client.force_login(user)
+        wizard = reverse("questionnaire_list")
+        response = self.client.post(reverse("consent"), {"agree": "", "next": wizard})
+        self.assertRedirects(response, f"{wizard}?from=consent")
+        self.assertContains(self.client.get(response.url), "帳號建好了")
+        # Already agreed: coming back through the consent page is no new account.
+        response = self.client.get(reverse("consent"), {"next": wizard})
+        self.assertRedirects(response, wizard)
+
+    def submit_choice(self, page, value):
+        # What a browser without JavaScript sends: the form's hidden fields plus one radio.
+        html = page.content.decode()
+        form = re.search(r'<form method="get" action="([^"]+)">(.*?)</form>', html, re.DOTALL)
+        action, body = form.groups()
+        data = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)">', body))
+        name = re.search(rf'<input type="radio" name="([^"]+)" value="{value}"', body).group(1)
+        return self.client.get(action, data | {name: value})
+
+    def test_wizard_walks_to_the_answer_page_with_forms_and_links_only(self):
+        self.login_age(None)
+        page = self.client.get(reverse("questionnaire_list"))
+        page = self.submit_choice(page, "adult")
+        self.assertContains(page, "第 2 步／共 3 步")
+        page = self.submit_choice(page, "no")
+        self.assertContains(page, "第 3 步／共 3 步")
+        start = re.search(r'href="([^"]+)">開始作答</a>', page.content.decode()).group(1)
+        answer = self.client.get(start)
+        self.assertEqual(answer.context["questionnaire"], self.by_code["hhia-s"])
+        self.assertContains(answer, 'id="answer-form"')

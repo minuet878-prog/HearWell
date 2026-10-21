@@ -157,6 +157,16 @@ class AgeGroupForm(forms.Form):
     )
 
 
+class WearingNowForm(forms.Form):
+    # The wizard's second question (#152); the answer page still asks about this answering.
+    hearing_aid = forms.ChoiceField(
+        label="您現在有戴助聽器嗎？",
+        choices=(("no", "沒有戴"), ("yes", "有戴")),
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        error_messages={"required": "請選擇您現在有沒有戴助聽器"},
+    )
+
+
 class ComparisonRecordField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         result = obj.questionnaire.definition.comparison.record_result(obj)

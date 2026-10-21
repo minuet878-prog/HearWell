@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import Counter
+from urllib.parse import urlencode, urlsplit
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -29,6 +30,7 @@ from screening.forms import (
     HearingAidForm,
     HhiComparisonForm,
     RegisterForm,
+    WearingNowForm,
     answer_choices,
 )
 from screening.questionnaires import hhia_s, hhie_s
@@ -146,6 +148,10 @@ def consent(request):
         return redirect("index")
     if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():
         request.user.give_consent()
+        # Into the wizard: its first screen then says the account is ready (#152).
+        wizard_url = reverse("questionnaire_list")
+        if urlsplit(next_url).path == wizard_url:
+            return HttpResponseRedirect(f"{wizard_url}?from=consent")
     if request.user.has_consented():
         return HttpResponseRedirect(next_url or reverse("index"))
     return render(request, "screening/consent.html", {"next": next_url})
@@ -155,44 +161,85 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
-@login_required
-def questionnaire_list(request):
-    questionnaires = list(
-        Questionnaire.objects.defined().annotate(question_count=Count("questions")).order_by("pk")
-    )
-    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-    age = request.user.age
-    age_form = None
-    code = None
-    if age is None or age == 65:
-        age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
-        if age_form.is_valid():
-            code = hhia_s.CODE if age_form.cleaned_data["age_group"] == "adult" else hhie_s.CODE
-            age_form = None
-    else:
-        code = hhia_s.CODE if age < 65 else hhie_s.CODE
-    recommended = by_code.get(code)
+def _wizard_step(request, step, total, **context):
+    # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
         request,
         "screening/questionnaire.html",
-        {
-            "questionnaires": sorted(
-                questionnaires, key=lambda q: (q != recommended, *list_order(q))
-            ),
-            "recommended": recommended,
-            "age_form": age_form,
-            "ssq12": by_code.get(SSQ12),
-            "ioi_ha_questionnaire": by_code.get(IOI_HA),
+        context
+        | {
+            "step": step,
+            "total": total,
+            "segments": [number <= step for number in range(1, total + 1)],
+            # Set by the consent page; only its first screen says the account is ready.
+            "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
     )
 
 
-def _ioi_ha_norm(user, token=None):
-    records = (
-        user.submissions.valid_hhi()
-        .filter(wearing_hearing_aid=False)
-        .select_related("questionnaire")
+@login_required
+def questionnaire_list(request):
+    questionnaires = sorted(
+        Questionnaire.objects.defined().annotate(question_count=Count("questions")),
+        key=list_order,
     )
+    if "choose" in request.GET:
+        return render(request, "screening/questionnaire.html", {"questionnaires": questionnaires})
+    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+    wizard_url = reverse("questionnaire_list")
+    age = request.user.age
+    # A birth year alone cannot tell 64 from 65 in the year someone turns 65.
+    ask_age = age is None or age == 65
+    total = 3 if ask_age else 2
+    if ask_age:
+        age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
+        if not age_form.is_valid():
+            return _wizard_step(
+                request, 1, total, field=age_form["age_group"], back_url=reverse("index")
+            )
+        age_group = age_form.cleaned_data["age_group"]
+    else:
+        age_group = "older" if age > 65 else "adult"
+    wearing_form = WearingNowForm(request.GET if "hearing_aid" in request.GET else None)
+    if not wearing_form.is_valid():
+        return _wizard_step(
+            request,
+            total - 1,
+            total,
+            field=wearing_form["hearing_aid"],
+            age_group=age_group if ask_age else None,
+            back_url=wizard_url if ask_age else reverse("index"),
+        )
+    life_impact = by_code[hhie_s.CODE if age_group == "older" else hhia_s.CODE]
+    wearing = wearing_form.cleaned_data["hearing_aid"] == "yes"
+    if not wearing:
+        recommended, reason = life_impact, "unaided"
+    elif _norm_bases(request.user).exists():
+        recommended, reason = by_code[IOI_HA], "has_norm_basis"
+    else:
+        # IOI-HA compares with the norm group of an unaided record, so that record comes first.
+        recommended, reason = life_impact, "needs_norm_basis"
+    return _wizard_step(
+        request,
+        total,
+        total,
+        recommended=recommended,
+        reason=reason,
+        age_label=dict(AgeGroupForm.base_fields["age_group"].choices)[age_group],
+        start_url=reverse("screening", args=[recommended.pk]),
+        also=[by_code[SSQ12]] if wearing else [],
+        questionnaires=questionnaires,
+        back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
+    )
+
+
+def _norm_bases(user):
+    # The user's own unaided HHIA-S or HHIE-S records that can set the IOI-HA norm group.
+    return user.submissions.valid_hhi().filter(wearing_hearing_aid=False)
+
+
+def _ioi_ha_norm(user, token=None):
+    records = _norm_bases(user).select_related("questionnaire")
     if token is None:
         basis = records.first()
     else:
