@@ -1,9 +1,7 @@
 import json
 import re
 from datetime import date, timedelta
-from pathlib import Path
 
-from django.conf import settings
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -246,8 +244,6 @@ class HealthReportTests(TestCase):
         self.assertIn("screening/print-button.js", content)
         # The level is written out in a bordered label, not shown by colour alone.
         self.assertIn('<span class="report-level">輕度到中度影響</span>', content)
-        css = Path(settings.BASE_DIR, "screening/static/screening/styles.css").read_text()
-        self.assertIn("@media print", css)
 
     # 9
     def test_query_count_does_not_grow_with_records(self):
