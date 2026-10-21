@@ -35,7 +35,7 @@
     <a class="skip-link visually-hidden-focusable" href="#main-content">跳到主要內容</a>
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
-        <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
+        <div class="container site-header-bar py-2">
             <div class="d-flex flex-wrap align-items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
                 <button id="pwa-back" class="btn btn-outline-light site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
@@ -43,14 +43,12 @@
                 <p class="site-brand"><a href="{% url 'index' %}">HearWell</a></p>
             </div>
             {% if user.is_authenticated %}
-            <div class="d-flex flex-wrap align-items-center gap-3">
-                {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
-                <a class="site-account text-break" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
-                <form id="logout-form" action="{% url 'logout' %}" method="post">
-                    {% csrf_token %}
-                    <button class="btn btn-outline-light" type="submit">登出</button>
-                </form>
-            </div>
+            {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
+            <a class="site-account text-break" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
+            <form id="logout-form" action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button class="btn btn-outline-light" type="submit">登出</button>
+            </form>
             {% endif %}
         </div>
     </header>

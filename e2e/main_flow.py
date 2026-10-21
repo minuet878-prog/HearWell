@@ -877,3 +877,43 @@ class PwaNavTest(StaticLiveServerTestCase):
             if same_line:
                 self.assertGreaterEqual(brand["x"], back["x"] + back["width"])
                 self.assertLessEqual(brand["x"] + brand["width"], logout["x"])
+
+    def sign_in_as(self, username):
+        self.client.force_login(consented_user(username=username))
+        self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+
+    def header_boxes(self, username):
+        self.page.goto(f"{self.live_server_url}/my_hearing")
+        self.page.wait_for_load_state("networkidle")
+        return (
+            self.page.locator(".site-brand").bounding_box(),
+            self.page.get_by_role("button", name="登出").bounding_box(),
+            self.page.get_by_role("link", name=f"目前登入：{username}，帳號設定").bounding_box(),
+        )
+
+    @staticmethod
+    def on_same_line(a, b):
+        return a["y"] < b["y"] + b["height"] and b["y"] < a["y"] + a["height"]
+
+    def test_logout_shares_the_first_header_line_on_phones(self):
+        """Logout stays beside the brand however long the name is; the name gets its own line."""
+        username = "family_shared_phone_account"
+        self.sign_in_as(username)
+        for width, standalone in ((360, True), (390, True), (390, False)):
+            with self.subTest(width=width, standalone=standalone):
+                self.open(standalone=standalone, width=width)
+                with self.saving_artifacts():
+                    brand, logout, account = self.header_boxes(username)
+                    self.assertTrue(self.on_same_line(brand, logout))
+                    self.assertLessEqual(logout["x"] + logout["width"], width)
+                    self.assertGreaterEqual(account["y"], logout["y"] + logout["height"])
+
+    def test_header_is_one_line_on_wide_screens(self):
+        username = "family_shared_phone_account"
+        self.sign_in_as(username)
+        self.open(standalone=False, width=1024)
+        with self.saving_artifacts():
+            brand, logout, account = self.header_boxes(username)
+            self.assertTrue(self.on_same_line(brand, logout))
+            self.assertTrue(self.on_same_line(account, logout))
+            self.assertLessEqual(account["x"] + account["width"], logout["x"])

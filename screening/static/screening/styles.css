@@ -101,6 +101,31 @@ html {
     color: #fff;
 }
 
+/* Phones: brand and logout share the first line, the signed-in name gets the second, so a
+   back button or a long name never pushes logout down. The name stays first in the source,
+   so screen readers and Tab still reach it before logout. */
+.site-header-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.site-header-bar .site-account {
+    order: 1;
+    flex-basis: 100%;
+}
+
+@media (min-width: 48em) {
+    .site-header-bar .site-account {
+        order: 0;
+        flex-basis: auto;
+        min-width: 0;
+        margin-left: auto;
+    }
+}
+
 .site-brand {
     margin: 0;
     font-size: 1.75rem;
