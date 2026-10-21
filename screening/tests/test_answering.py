@@ -395,7 +395,7 @@ class ReactAnswerPageTests(TestCase):
                 )
                 # Without JS the one-page form keeps its old progress text and has no bar.
                 self.assertNotIn("還剩大約", content)
-                self.assertNotIn("answer-progress", content)
+                self.assertNotIn("step-progress-bar", content)
 
     def test_ioi_ha_stays_django_only(self):
         response = self._page(self.ioi_ha)

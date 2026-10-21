@@ -1112,25 +1112,6 @@
     color: var(--color-body);
   }
 
-  /* React answer page: one segment per question, answered ones blue. Changing question only
-     recolours it: no transition or movement (ADR 0006). */
-  .answer-progress {
-    display: flex;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .answer-progress > span {
-    flex: 1;
-    height: 0.5rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-border);
-  }
-
-  .answer-progress > .answer-progress-done {
-    background-color: var(--color-primary);
-  }
-
   /* React answer page (one question per page): focus moves to the question on each page. */
   .answer-app legend:focus {
     outline: 3px solid var(--color-primary);

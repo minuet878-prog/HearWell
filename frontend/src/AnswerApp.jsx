@@ -224,10 +224,11 @@ export default function AnswerApp({
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
             <>
-              {/* One segment per question; only the colour changes (ADR 0006). The text says it all. */}
-              <span className="answer-progress" aria-hidden="true">
+              {/* The register steps' bar (#151), one segment per question answered or not; only the
+                  colour changes (ADR 0006). The text says it all. */}
+              <span className="step-progress-bar mb-2" aria-hidden="true">
                 {questions.map((q) => (
-                  <span key={q.id} className={form.answers[q.id] === undefined ? undefined : "answer-progress-done"} />
+                  <span key={q.id} className={form.answers[q.id] === undefined ? "step-progress-segment" : "step-progress-segment is-done"} />
                 ))}
               </span>
               <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>

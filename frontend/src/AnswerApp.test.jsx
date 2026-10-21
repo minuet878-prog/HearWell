@@ -132,9 +132,9 @@ describe("pages", () => {
 });
 
 describe("progress (#153)", () => {
-  // Segments of the bar above the question; answered ones carry the done class.
-  const segments = () => [...document.querySelectorAll(".answer-progress > span")];
-  const done = () => segments().filter((s) => s.classList.contains("answer-progress-done"));
+  // Segments of the bar above the question (the register steps' bar); answered ones are done.
+  const segments = () => [...document.querySelectorAll(".step-progress-bar > .step-progress-segment")];
+  const done = () => segments().filter((s) => s.classList.contains("is-done"));
   const progressText = () => document.querySelector(".question-progress").textContent;
 
   async function answerUpTo(number) {
@@ -190,11 +190,11 @@ describe("progress (#153)", () => {
 
   it("styles the bar with colour only: answered blue, no transition, animation or transform", () => {
     const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
-    const rules = [...css.matchAll(/([^{}]*\.answer-progress[^{}]*)\{([^}]*)\}/g)];
+    const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
     expect(rules.map(([, selector]) => selector.trim())).toEqual([
-      ".answer-progress",
-      ".answer-progress > span",
-      ".answer-progress > .answer-progress-done",
+      ".step-progress-bar",
+      ".step-progress-segment",
+      ".step-progress-segment.is-done",
     ]);
     expect(rules.at(-1)[2]).toMatch(/background-color:\s*var\(--color-primary\)/);
     rules.forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
