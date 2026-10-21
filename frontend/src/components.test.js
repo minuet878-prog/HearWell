@@ -47,3 +47,14 @@ it("no unused Bootstrap component is carried over", () => {
   const unused = [...defined].filter((name) => BOOTSTRAP_FAMILY.test(name) && !used.has(name));
   expect(unused).toEqual([]);
 });
+
+// Class names a template or React builds from data, which no source scan can see (#126).
+const LEVELS = ["normal", "mild_to_moderate", "severe", "unknown"];
+const BUILT_FROM_DATA = [
+  ...LEVELS.flatMap((level) => [`level-badge-${level}`, `result-banner-${level}`]),
+  "ear-right", "ear-left", "compare-legend-left",
+];
+
+it("every class built from data is defined in the site's CSS", () => {
+  expect(BUILT_FROM_DATA.filter((name) => !defined.has(name))).toEqual([]);
+});

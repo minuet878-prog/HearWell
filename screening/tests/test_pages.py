@@ -5,6 +5,7 @@ from datetime import date
 from pathlib import Path
 from typing import ClassVar
 
+from django.contrib.staticfiles import finders
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -911,6 +912,11 @@ class PwaNavTests(TestCase):
                     '<link href="/static/screening/frontend/site.css" rel="stylesheet">', content
                 )
                 self.assertNotIn("bootstrap", content.lower())
+                self.assertNotIn("screening/styles.css", content)
+
+    # #126: the old custom stylesheet's rules now live in the built site.css.
+    def test_old_stylesheet_is_deleted(self):
+        self.assertIsNone(finders.find("screening/styles.css"))
 
     def test_invalid_share_loads_built_css_without_bootstrap(self):
         response = self.client.get(reverse("shared_cover", args=["css-missing-share"]))

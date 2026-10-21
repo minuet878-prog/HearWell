@@ -1508,6 +1508,25 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     if background:
                         self.assertEqual(self.style(banner, "backgroundColor"), background)
 
+    # #126: the badge's class is built from the level code, as the banner's is.
+    def test_level_badge_colours(self):
+        for _, scores, _, _ in self.BANNERS[:3]:
+            self.submission(self.hhie_s, scores)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            for level, _, background, colour in self.BANNERS:
+                if level == "unknown":
+                    # An audiogram with no points has no degree on either ear.
+                    self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
+                    background = "rgb(241, 243, 245)"
+                with self.subTest(level=level):
+                    badge = self.page.locator(f".level-badge-{level}").first
+                    expect(badge).to_be_visible()
+                    self.assertEqual(self.style(badge, "color"), colour)
+                    self.assertEqual(self.style(badge, "backgroundColor"), background)
+
     def test_answer_choices_are_large_buttons_in_a_row(self):
         self.open(javascript=False)
         with self.saving_artifacts():
