@@ -6,7 +6,7 @@ import { build } from "vite";
 import { expect, it } from "vitest";
 
 const LIMIT = 80 * 1024;
-// Before the Tailwind migration every page loaded Bootstrap 5.3.8 (22,970 bytes) and the old
+// Before the migration every page loaded the framework CSS (22,970 bytes) and the old
 // styles.css (5,489 bytes), measured brotli in the same way as below (#124).
 const CSS_LIMIT = 22_970 + 5_489;
 
@@ -50,7 +50,7 @@ for (const name of ["answer", "audiogram-input", "audiogram-view"]) {
 }
 
 // Every page loads the site's CSS on its first visit.
-it("the site's CSS is built and costs no more than Bootstrap plus the old CSS (brotli)", async () => {
+it("the site's CSS is built and costs no more than the pre-migration CSS (brotli)", async () => {
   const css = (await buildOutput()).filter((o) => o.fileName.endsWith(".css"));
   expect(css.map((o) => o.fileName)).toContain("site.css");
   const size = css.reduce((sum, o) => sum + brotliCompressSync(o.source).length, 0);

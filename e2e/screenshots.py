@@ -113,6 +113,11 @@ class Screenshots(StaticLiveServerTestCase):
             "user": self.session(self.user),
             "new": self.session(User.objects.create_user(username="shots_new")),
             "anon": None,
+            "admin": self.session(
+                User.objects.create_superuser(
+                    username="shots_admin", email="shots@example.test", password="test-only"
+                )
+            ),
         }
 
     def session(self, user):
@@ -250,6 +255,17 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("report", "shared-report", f"{share}/report", who="anon", media="print"),
             Shot("report", "report-share-create", reverse("health_report")),
         ]
+        shots += [
+            Shot("public", "shared-invalid", reverse("shared_cover", args=["missing"]), who="anon"),
+            Shot("public", "admin-login", reverse("admin:login"), who="anon"),
+            Shot("public", "admin-index", reverse("admin:index"), who="admin"),
+            Shot(
+                "public",
+                "admin-questionnaires",
+                reverse("admin:screening_questionnaire_changelist"),
+                who="admin",
+            ),
+        ]
         return shots
 
     def open(self, shot, width, standalone=False):
@@ -315,7 +331,8 @@ class Screenshots(StaticLiveServerTestCase):
                         taken += 1
                     if chrome and shot.media == "screen":
                         for part, found in self.chrome(page).items():
-                            if found.count():
+                            # Django admin's login page has an empty, unseen footer.
+                            if found.count() and found.is_visible():
                                 self.capture(page, shot.filename(width, part), found)
                                 taken += 1
                     context.close()

@@ -773,7 +773,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
 
-    # #129: Bootstrap's w-100 was 100%, Tailwind's is 25rem; the buttons fill their column again.
+    # #129: The legacy w-100 was 100%, Tailwind's is 25rem; the buttons fill their column again.
     def test_audiogram_entry_buttons_fill_their_column(self):
         for width in (390, 1024):
             self.open(width)
@@ -1130,7 +1130,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
 
     def test_heading_classes_and_muted_text_look_as_before(self):
-        # #124: Bootstrap's .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
+        # #124: The original .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
         # line height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body
         # text colour.
         self.open(javascript=False)
@@ -1165,7 +1165,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         return audiogram
 
     def test_buttons_keep_their_colours_size_and_focus_ring(self):
-        # #125: Bootstrap 5.3.8's values with the site's overrides, on the 18px root.
+        # #125: The pre-migration values with the site's overrides, on the 18px root.
         audiogram = self.audiogram(date(2026, 9, 28))
         large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"}
         regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "9px"}
@@ -1309,7 +1309,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         # regular fields are 42.5px tall, above WCAG AA's 24px, and checkboxes sit in a
         # clickable 27px-tall label. Buttons are the ones held to 44 x 44.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
-        bootstrap_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
+        field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
         border = "rgb(222, 226, 230)"
         self.audiogram(date(2026, 9, 28))
         with self.saving_artifacts():
@@ -1377,7 +1377,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertIn("svg", self.style(select, "backgroundImage"))
             select.focus()
             self.assertEqual(self.style(select, "borderTopColor"), "rgb(134, 183, 254)")
-            self.assertEqual(self.style(select, "boxShadow"), bootstrap_ring)
+            self.assertEqual(self.style(select, "boxShadow"), field_focus_ring)
             mask = self.page.get_by_label("右耳氣導 500 Hz 遮蔽")
             self.assertEqual(self.size(mask), (18, 18))
             self.assertEqual(self.style(mask, "opacity"), "0.5")
@@ -1388,7 +1388,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             select.select_option("20")
             mask.focus()
             self.assertEqual(self.style(mask, "borderTopColor"), "rgb(134, 183, 254)")
-            self.assertEqual(self.style(mask, "boxShadow"), bootstrap_ring)
+            self.assertEqual(self.style(mask, "boxShadow"), field_focus_ring)
             mask.check()
             self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
             date_field = self.page.get_by_label("檢查日期")
@@ -1604,6 +1604,23 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertGreaterEqual(first["height"], 3 * 18)  # 3rem at the 18px base
             self.assertEqual(first["y"], second["y"])
             self.assertLess(first["x"], second["x"])
+
+    # #119 acceptance 6: link cards and navigation items, like buttons, are at least 44 x 44.
+    def test_link_cards_and_navigation_items_are_large_enough_to_tap(self):
+        self.submission(self.hhie_s, [2] * 10)
+        for width in (390, 1024):
+            self.open(width=width)
+            with self.saving_artifacts():
+                for path in ("/questionnaire_list", "/my_hearing"):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    cards = self.page.get_by_role("main").locator("a.link-card")
+                    items = self.page.get_by_role("navigation", name="主要導覽").locator("a")
+                    self.assertGreater(cards.count(), 0)
+                    self.assertGreater(items.count(), 1)
+                    for target in cards.all() + items.all():
+                        name = target.text_content().split()[0]
+                        with self.subTest(width=width, path=path, target=name):
+                            self.assertGreaterEqual(min(self.size(target)), 44)
 
     def test_answer_form_hides_only_while_loading(self):
         self.open(javascript=False)
