@@ -71,9 +71,7 @@ class ComparisonFromDefinitionTests(TestCase):
     def test_ioi_ha_offers_no_comparison(self):
         ioi = self.questionnaire("ioi-ha", 7)
         self.record(ioi, True, [3] * 7, norm_group=NormGroup.UNGROUPED)
-        self.assertEqual(
-            self.client.get(reverse("hhi_comparison", args=[ioi.pk])).status_code, 404
-        )
+        self.assertEqual(self.client.get(reverse("hhi_comparison", args=[ioi.pk])).status_code, 404)
         self.assertNotContains(self.client.get(reverse("my_hearing")), "配戴狀態比較")
 
     def _options(self, page, field):

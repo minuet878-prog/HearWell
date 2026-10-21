@@ -9,7 +9,7 @@ db.sqlite3
 /docs/deployment/vpsdeploy.md
 /docs/interview.md
 /docs/interview/
-node_modules/
+node_modules
 /screening/static/screening/frontend/
 .claude/*
 !.claude/settings.json

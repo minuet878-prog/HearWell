@@ -785,7 +785,8 @@ def submission_result(request, submission_id):
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
-                and submission.wearing_hearing_aid is False else None
+                and submission.wearing_hearing_aid is False
+                else None
             ),
         },
     )
@@ -851,9 +852,7 @@ def audiogram_new(request):
 
 
 def _own_audiogram(request, audiogram_id):
-    return get_object_or_404(
-        request.user.audiograms.prefetch_related("points"), pk=audiogram_id
-    )
+    return get_object_or_404(request.user.audiograms.prefetch_related("points"), pk=audiogram_id)
 
 
 @login_required

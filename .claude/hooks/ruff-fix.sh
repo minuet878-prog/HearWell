@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI 每次編輯完 .py 檔後自動跑 Ruff（check --fix）；Claude Code 與 Codex 共用這支腳本。
+# AI 每次編輯完 .py 檔後自動跑 Ruff（check --fix，再 format）；Claude Code 與 Codex 共用這支腳本。
 # 有修不掉的問題時回傳 exit 2，Ruff 的訊息會回饋給代理，讓它當場修。
 # worktree 裡沒有 py313/，改用主資料夾的 Ruff；兩邊都找不到時提醒，不靜默跳過。
 input=$(cat)
@@ -33,9 +33,10 @@ if [ ! -x "$ruff" ]; then
   exit 1
 fi
 
-if out=$(printf '%s\n' "$py_files" | tr '\n' '\0' | xargs -0 "$ruff" check --fix --quiet 2>&1); then
-  exit 0
-fi
+out=$(printf '%s\n' "$py_files" | tr '\n' '\0' | xargs -0 "$ruff" check --fix --quiet 2>&1)
+status=$?
+printf '%s\n' "$py_files" | tr '\n' '\0' | xargs -0 "$ruff" format --quiet
+[ "$status" -eq 0 ] && exit 0
 echo "Ruff 發現無法自動修正的問題，請修正：" >&2
 echo "$out" >&2
 exit 2
