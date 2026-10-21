@@ -263,6 +263,16 @@ describe("catching up an unaided record (#154)", () => {
     expect(document.getElementById("hearing-aid-hint").textContent).toBe(HINT);
   });
 
+  it("shows the hint only while 沒戴 is chosen (site owner's choice 1.B)", async () => {
+    await renderApp({ preselectUnaided: true });
+    choose("有戴");
+    expect(screen.queryByText(HINT)).toBeNull();
+    expect(group().hasAttribute("aria-describedby")).toBe(false);
+    choose("沒戴");
+    expect(document.getElementById("hearing-aid-hint").textContent).toBe(HINT);
+    expect(group().getAttribute("aria-describedby")).toBe("hearing-aid-hint");
+  });
+
   it("sends 有戴 when the user changes it", async () => {
     await renderApp({ preselectUnaided: true });
     answerAll("常常", "有戴");

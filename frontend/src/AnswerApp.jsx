@@ -131,6 +131,8 @@ export default function AnswerApp({
   const question = isHearingAid ? HEARING_AID : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
+  // Only while 沒戴 is chosen: after switching to 有戴 the hint would contradict it (site owner, 1.B).
+  const showHint = isHearingAid && preselectUnaided && form.wearing === false;
   const isLast = step === questions.length;
   const isSending = status.type === "sending";
   // The questionnaire's minutes shared out over this question and the ones after it, at least 1.
@@ -228,7 +230,7 @@ export default function AnswerApp({
       <fieldset
         className="card card-body mb-4"
         disabled={isSending}
-        aria-describedby={isHearingAid && preselectUnaided ? "hearing-aid-hint" : undefined}
+        aria-describedby={showHint ? "hearing-aid-hint" : undefined}
       >
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
@@ -245,7 +247,7 @@ export default function AnswerApp({
           )}
           {question.text}
         </legend>
-        {isHearingAid && preselectUnaided && <p id="hearing-aid-hint">{UNAIDED_HINT}</p>}
+        {showHint && <p id="hearing-aid-hint">{UNAIDED_HINT}</p>}
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale">
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
