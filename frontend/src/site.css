@@ -952,6 +952,13 @@
     cursor: pointer;
   }
 
+  /* Colour only, and only with a mouse (#142, ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    div.choice-group label:hover {
+      border-color: var(--color-primary);
+    }
+  }
+
   div.choice-group input {
     width: 1.5rem;
     height: 1.5rem;
