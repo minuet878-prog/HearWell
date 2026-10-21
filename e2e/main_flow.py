@@ -572,9 +572,7 @@ class SharedLayoutTest(StaticLiveServerTestCase):
             expect(first).to_have_value(str(unaided.pk))
             self.page.get_by_role("button", name="查看比較", exact=True).click()
             expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
-            expect(
-                self.page.get_by_text("-20 分", exact=False)
-            ).to_be_visible()
+            expect(self.page.get_by_text("-20 分", exact=False)).to_be_visible()
             self.page.get_by_role("button", name="保留到報告", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()

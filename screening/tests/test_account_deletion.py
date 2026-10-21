@@ -160,8 +160,9 @@ class DeleteAccountTests(TestCase):
         self._fill(self.user)
         before = self._counts(self.user.pk)
         # The account goes last, so answers and records are already deleted when it fails.
-        with mock.patch.object(User, "delete", side_effect=DatabaseError), self.assertRaises(
-            DatabaseError
+        with (
+            mock.patch.object(User, "delete", side_effect=DatabaseError),
+            self.assertRaises(DatabaseError),
         ):
             self._delete()
         self.assertEqual(self._counts(self.user.pk), before)
