@@ -90,7 +90,7 @@ export default function AnswerApp({
   if (status.type === "duplicate") {
     return (
       <div className="answer-app">
-        <p className="fs-4 fw-bold" role="alert">這份作答之前已經送出過</p>
+        <p className="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold" role="alert">這份作答之前已經送出過</p>
         <a className="btn btn-primary btn-lg" href="/my_hearing">到我的紀錄看結果</a>
       </div>
     );
@@ -100,7 +100,7 @@ export default function AnswerApp({
     const where = saved.step === 0 ? "您上次還沒答完" : `您上次答到第 ${saved.step} 題`;
     return (
       <div className="answer-app">
-        <h3 className="fs-3">{where}，要接著答嗎？</h3>
+        <h3 className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{where}，要接著答嗎？</h3>
         <div className="answer-nav">
           <button type="button" className="btn btn-primary btn-lg" onClick={() => begin(saved, true)}>接著答</button>
           <button
@@ -196,14 +196,14 @@ export default function AnswerApp({
   return (
     <div className="answer-app">
       {/* The legend must be the fieldset's first child to name the radio group. */}
-      <fieldset className="card card-body mb-3" disabled={isSending}>
-        <legend ref={legend} tabIndex={-1} className="fw-bold fs-4">
+      <fieldset className="card card-body mb-4" disabled={isSending}>
+        <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && <span className="question-progress">第 {step} 題／共 {questions.length} 題</span>}
           {question.text}
         </legend>
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale">
-            <p className="fs-3 fw-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
+            <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>
             <label className="form-label" htmlFor={`ssq-score-${step}`}>選擇分數（0–10）</label>
             <input
               id={`ssq-score-${step}`} type="range" min="0" max="10" step="1"
@@ -212,8 +212,8 @@ export default function AnswerApp({
               onChange={(event) => choose(Number(event.target.value))}
               onPointerUp={(event) => choose(Number(event.currentTarget.value))}
             />
-            <div className="d-flex justify-content-between gap-2 mb-3"><span>0：{question.scale.min_label}</span><span>10：{question.scale.max_label}</span></div>
-            <div className="d-flex flex-wrap gap-2 mb-3">
+            <div className="flex justify-between gap-2 mb-4"><span>0：{question.scale.min_label}</span><span>10：{question.scale.max_label}</span></div>
+            <div className="flex flex-wrap gap-2 mb-4">
               <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 0} onClick={() => choose(Math.max(0, (current ?? 5) - 1))}>減少 1 分</button>
               <button type="button" className="btn btn-outline-primary btn-lg" disabled={current === 10} onClick={() => choose(Math.min(10, (current ?? 5) + 1))}>增加 1 分</button>
             </div>
@@ -234,10 +234,10 @@ export default function AnswerApp({
         </div>}
       </fieldset>
 
-      {status.type === "error" && <p className="fs-5 fw-bold text-danger" role="alert">{status.message}</p>}
+      {status.type === "error" && <p className="text-xl/normal font-bold text-danger" role="alert">{status.message}</p>}
       {status.type === "expired" && (
-        <div role="alert" className="mb-3">
-          <p className="fs-5 fw-bold text-danger">登入已經過期，請重新登入</p>
+        <div role="alert" className="mb-4">
+          <p className="text-xl/normal font-bold text-danger">登入已經過期，請重新登入</p>
           <a className="btn btn-primary btn-lg" href={loginUrl}>登入</a>
         </div>
       )}

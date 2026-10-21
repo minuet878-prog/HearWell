@@ -6,7 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 
-TEMPLATES = Path(settings.BASE_DIR) / "screening" / "templates" / "screening"
+BASE_DIR = Path(settings.BASE_DIR)
 
 # Names that only Bootstrap gives a meaning, or that Tailwind reads differently (w-50 is 50% in
 # Bootstrap, 12.5rem in Tailwind). Spacing such as mb-3 exists in both with different values, so a
@@ -16,33 +16,63 @@ BOOTSTRAP_ONLY = re.compile(
     r"|flex-(?:column|row|fill)|flex-\w+-(?:column|row)|align-(?:items|self)-\S+"
     r"|justify-content-\S+"
 )
-CLASS_ATTRIBUTE = re.compile(r'class="([^"]*)"')
+# A template's class="…", or a React className="…" or className={`…`}.
+CLASS_ATTRIBUTE = re.compile(r'class(?:Name)?=(?:"([^"]*)"|\{`([^`]*)`\})')
 
 
 class BootstrapUtilityTests(SimpleTestCase):
-    # #127: public and account pages, with the field messages two of them include.
     MIGRATED = (
-        "index.html",
-        "login.html",
-        "register.html",
-        "privacy.html",
-        "family_guide.html",
-        "add_to_home.html",
-        "consent.html",
-        "account.html",
-        "delete_account.html",
-        "field_messages.html",
+        # #127: public and account pages, with the field messages two of them include.
+        *(
+            f"screening/templates/screening/{name}"
+            for name in (
+                "index.html",
+                "login.html",
+                "register.html",
+                "privacy.html",
+                "family_guide.html",
+                "add_to_home.html",
+                "consent.html",
+                "account.html",
+                "delete_account.html",
+                "field_messages.html",
+            )
+        ),
+        # #128: questionnaire list, answering and result pages, and the parts they share.
+        *(
+            f"screening/templates/screening/{name}"
+            for name in (
+                "questionnaire.html",
+                "questionnaire_icon.html",
+                "screening.html",
+                "questionnaires/hhie_s_intro.html",
+                "questionnaires/hhia_s_intro.html",
+                "questionnaires/ssq12_tw_intro.html",
+                "questionnaires/ioi_ha_intro.html",
+                "result.html",
+                "ssq12_result.html",
+                "result_ioi_ha.html",
+                "ioi_ha_source.html",
+                "hhi_comparison.html",
+                "comparison_content.html",
+                "comparisons/average.html",
+                "comparisons/total.html",
+                "level_badge.html",
+            )
+        ),
+        "frontend/src/AnswerApp.jsx",
+        "frontend/src/answer-main.jsx",
     )
 
     def test_migrated_templates_have_no_bootstrap_layout_classes(self):
         found = []
         for name in self.MIGRATED:
-            text = (TEMPLATES / name).read_text()
+            text = (BASE_DIR / name).read_text()
             for lineno, line in enumerate(text.splitlines(), start=1):
-                for value in CLASS_ATTRIBUTE.findall(line):
+                for groups in CLASS_ATTRIBUTE.findall(line):
                     found += [
                         f"{name}:{lineno} {token}"
-                        for token in value.split()
+                        for token in "".join(groups).split()
                         if BOOTSTRAP_ONLY.fullmatch(token)
                     ]
         self.assertEqual(found, [])
