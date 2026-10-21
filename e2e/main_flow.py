@@ -2165,6 +2165,16 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         locator.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
         return locator
 
+    def first_card(self, path):
+        """The page's first clickable card, once nothing above it will still move."""
+        self.page.goto(f"{self.live_server_url}{path}")
+        # My hearing's trend chart draws after its data arrives and pushes the cards down.
+        if self.page.locator("#trend-chart").count():
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+        card = self.page.locator("a.link-card").first
+        card.scroll_into_view_if_needed()
+        return card
+
     def test_clickable_cards_lift_on_hover(self):
         self.submission(self.hhie_s, [2] * 10)
         self.audiogram(date(2026, 9, 28))
@@ -2172,9 +2182,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         with self.saving_artifacts():
             for path in self.CARD_PAGES:
                 with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    card = self.page.locator("a.link-card").first
-                    card.scroll_into_view_if_needed()
+                    card = self.first_card(path)
                     before = card.bounding_box()
                     card.hover()
                     self.settled(card)
@@ -2202,6 +2210,71 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(ripples[0]["iterations"], 1)
             self.assertLessEqual(ripples[0]["endTime"], 1000)
 
+    # TEMPORARY (#141 CI diagnosis): what a Linux browser sees when a card is pressed by touch.
+    def test_zz_touch_probe(self):
+        import json
+
+        self.open(width=390, motion=True, touch=True)
+        self.page.goto(f"{self.live_server_url}/questionnaire_list")
+        card = self.page.locator("a.link-card").first
+        card.scroll_into_view_if_needed()
+        box = card.bounding_box()
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        info = self.page.evaluate(
+            """([x, y]) => ({
+                ua: navigator.userAgent,
+                inner: [innerWidth, innerHeight], dpr: devicePixelRatio,
+                scale: visualViewport.scale,
+                hover: matchMedia('(hover: hover)').matches,
+                anyHover: matchMedia('(any-hover: hover)').matches,
+                pointerCoarse: matchMedia('(pointer: coarse)').matches,
+                atPoint: document.elementFromPoint(x, y)?.className,
+            })""",
+            [x, y],
+        )
+        print("PROBE info", json.dumps(info), flush=True)
+        card.evaluate(
+            """el => {
+                el.addEventListener('click', e => e.preventDefault());
+                window.log = { events: [], frames: 0, active: 0, hoverFrames: 0 };
+                for (const t of ['touchstart', 'touchend', 'pointerdown', 'pointerup',
+                                 'mousedown', 'mouseup', 'click', 'contextmenu']) {
+                    document.addEventListener(t, e => log.events.push(t), true);
+                }
+                (function look() {
+                    log.frames++;
+                    if (el.matches(':active')) log.active++;
+                    if (el.matches(':hover')) log.hoverFrames++;
+                    requestAnimationFrame(look);
+                })();
+            }"""
+        )
+        reset = "() => { log.events = []; log.frames = 0; log.active = 0; log.hoverFrames = 0; }"
+        cdp = self.context.new_cdp_session(self.page)
+        cdp.send(
+            "Input.synthesizeTapGesture",
+            {"x": x, "y": y, "duration": 500, "gestureSourceType": "touch"},
+        )
+        self.page.wait_for_timeout(200)
+        print("PROBE synthesizeTapGesture", json.dumps(self.page.evaluate("log")), flush=True)
+        self.page.evaluate(reset)
+        self.page.touchscreen.tap(x, y)
+        self.page.wait_for_timeout(200)
+        print("PROBE touchscreen.tap", json.dumps(self.page.evaluate("log")), flush=True)
+        self.page.evaluate(reset)
+        cdp.send(
+            "Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]}
+        )
+        self.page.wait_for_timeout(500)
+        mid = self.page.evaluate("log")
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        self.page.wait_for_timeout(200)
+        print(
+            "PROBE dispatchTouchEvent",
+            json.dumps({"mid": mid, "end": self.page.evaluate("log")}),
+            flush=True,
+        )
+
     def test_pressed_cards_sink_on_a_touch_screen(self):
         self.submission(self.hhie_s, [2] * 10)
         self.audiogram(date(2026, 9, 28))
@@ -2218,9 +2291,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         with self.saving_artifacts():
             for path in self.CARD_PAGES:
                 with self.subTest(path=path):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    card = self.page.locator("a.link-card").first
-                    card.scroll_into_view_if_needed()
+                    card = self.first_card(path)
                     # Note the card's look on every frame it is pressed, and stay on the page.
                     card.evaluate(
                         """el => {
