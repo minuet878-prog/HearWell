@@ -429,13 +429,16 @@ class RedesignLayoutTests(TestCase):
 class PageFlowTests(TestCase):
     """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
-    HINT = "第一次使用請先註冊，已有帳號請直接登入。"
-    # As changed by phase9_ui_refresh_3_structure.md 4.4 and phase9_ui_refresh_4a_home.md 4.1.
+    # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
+    HINT = "我已經有帳號，登入"
+    # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1
+    # and spec #148 (ticket #150, the account step).
     HOME_ORDER = (
         'class="home-illustration"',
         "了解聽力對您生活的影響",
         "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
         "開始篩檢",
+        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
@@ -496,9 +499,11 @@ class PageFlowTests(TestCase):
         self.client.logout()
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
-        self._assert_in_order(main, ("開始篩檢", self.HINT, "回答問題，大約 3 分鐘。"))
+        self._assert_in_order(main, ("開始篩檢", self.HINT, "建立帳號，大約 1 分鐘。"))
         self.assertNotIn("7–10 年", main)
-        self.assertRegex(main, rf'<a[^>]*href="{reverse("questionnaire_list")}"[^>]*>\s*開始篩檢')
+        # Spec #148 (ticket #150): straight to registering, then back to choosing a questionnaire.
+        start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
+        self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
     def test_home_order_for_logged_in_without_hint(self):
         main = self._main(self.client.get(reverse("index")))
@@ -1026,7 +1031,9 @@ class PwaNavTests(TestCase):
 class HomeTests(TestCase):
     """Spec docs/specs/phase-09/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
 
+    # Spec #148 (ticket #150) adds the account step in front.
     STEPS = (
+        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
@@ -1054,7 +1061,7 @@ class HomeTests(TestCase):
     def test_step_cards(self):
         steps = self._between(self._main(), "step-cards", "</ol>")
         cards = re.findall(r"<li[^>]*>(.*?)</li>", steps, re.S)
-        self.assertEqual(len(cards), 3)
+        self.assertEqual(len(cards), 4)
         for number, (card, text) in enumerate(zip(cards, self.STEPS, strict=True), start=1):
             with self.subTest(step=number):
                 self.assertRegex(card, rf'class="step-number"[^>]*>{number}<')
