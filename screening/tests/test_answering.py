@@ -231,6 +231,81 @@ class HearingAidTests(TestCase):
         self.assertContains(response, '<p class="text-black mb-1">助聽器：有戴</p>', html=True)
 
 
+class PreselectUnaidedTests(TestCase):
+    """#154: the catch-up link starts the hearing aid question on 沒戴; the user may change it."""
+
+    HINT = "請想沒戴助聽器時的情況來回答"
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="catching_up")
+        cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.question = Question.objects.create(
+            questionnaire=cls.questionnaire,
+            question_text="第一題",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.questionnaire.id])
+
+    def hearing_aid_fieldset(self, response):
+        html = response.content.decode()
+        return re.search(r'<fieldset id="question-hearing-aid".*?</fieldset>', html, re.S).group()
+
+    def test_form_starts_on_unaided_with_the_hint(self):
+        fieldset = self.hearing_aid_fieldset(self.client.get(self.url, {"preselect": "unaided"}))
+        self.assertInHTML(
+            '<input type="radio" name="wearing_hearing_aid" value="False" class="choice-group"'
+            ' required id="id_wearing_hearing_aid_1" checked>',
+            fieldset,
+        )
+        self.assertEqual(fieldset.count("checked"), 1)
+        # Said in the question's group, so a screen reader reads it with the choices.
+        self.assertIn('aria-describedby="hearing-aid-hint"', fieldset)
+        self.assertIn(f'<p id="hearing-aid-hint">{self.HINT}</p>', fieldset)
+
+    def test_tells_react_to_start_on_unaided_too(self):
+        # answer-main.jsx hands this to AnswerApp; without the parameter React chooses nothing.
+        for params, marked in (({"preselect": "unaided"}, True), ({}, False)):
+            with self.subTest(params=params):
+                content = self.client.get(self.url, params).content.decode()
+                app = re.search(r'<div id="answer-app"[^>]*>', content).group()
+                self.assertEqual("data-preselect-unaided" in app, marked)
+
+    def answers(self, **extra):
+        return {
+            "form-TOTAL_FORMS": 1,
+            "form-INITIAL_FORMS": 1,
+            "form-0-score": "4",
+            "form-0-question_id": str(self.question.id),
+            **extra,
+        }
+
+    def test_changed_to_aided_is_saved_as_aided(self):
+        page = self.client.get(self.url, {"preselect": "unaided"})
+        action = re.search(r'<form id="answer-form" action="([^"]+)"', page.content.decode())
+        response = self.client.post(action.group(1), self.answers(wearing_hearing_aid="True"))
+        submission = Submission.objects.get(user=self.user)
+        self.assertRedirects(response, reverse("result", args=[submission.id]))
+        self.assertIs(submission.wearing_hearing_aid, True)
+
+    def test_the_parameter_never_answers_for_the_user(self):
+        # Sent without a choice, even to the marked address: asked again, nothing saved.
+        response = self.client.post(f"{self.url}?preselect=unaided", self.answers())
+        self.assertFalse(Submission.objects.exists())
+        self.assertContains(response, HearingAidTests.ERROR)
+
+    def test_no_preselection_otherwise(self):
+        for params in ({}, {"preselect": "aided"}, {"preselect": ""}):
+            with self.subTest(params=params):
+                fieldset = self.hearing_aid_fieldset(self.client.get(self.url, params))
+                self.assertNotIn("checked", fieldset)
+                self.assertNotIn(self.HINT, fieldset)
+
+
 class TamperedAnswerTests(TestCase):
     ERROR = "表單資料有誤，請重新確認每一題的作答"
 

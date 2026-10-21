@@ -219,6 +219,10 @@ def questionnaire_list(request):
     else:
         # IOI-HA compares with the norm group of an unaided record, so that record comes first.
         recommended, reason = life_impact, "needs_norm_basis"
+    start_url = reverse("screening", args=[recommended.pk])
+    if reason == "needs_norm_basis":
+        # The answer page starts on "沒戴", which the user may still change (#154).
+        start_url += "?preselect=unaided"
     return _wizard_step(
         request,
         total,
@@ -226,7 +230,7 @@ def questionnaire_list(request):
         recommended=recommended,
         reason=reason,
         age_label=dict(AgeGroupForm.base_fields["age_group"].choices)[age_group],
-        start_url=reverse("screening", args=[recommended.pk]),
+        start_url=start_url,
         also=[by_code[SSQ12]] if wearing else [],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
@@ -268,6 +272,10 @@ def screening(request, questionnaire_id):
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
         norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
+        # Set by the wizard when catching up an unaided record (#154): only where the hearing aid
+        # question starts, so the POST still takes whatever the user chose.
+        preselect_unaided = not is_ioi_ha and request.GET.get("preselect") == "unaided"
+        hearing_aid_initial = {"wearing_hearing_aid": False} if preselect_unaided else None
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(
             questions=questions, initial=[{"question_id": question.id} for question in questions]
@@ -281,7 +289,10 @@ def screening(request, questionnaire_id):
                 "question_count": len(questions),
                 "questionnaire": questionnaire,
                 "formset": formset,
-                "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
+                "hearing_aid_form": None
+                if is_ioi_ha
+                else HearingAidForm(initial=hearing_aid_initial),
+                "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
                 "norm_token": _norm_token(request.user, norm) if norm else None,

@@ -50,7 +50,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
             document.getElementById("answer-loading").textContent = "";
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if preselect_unaided %} data-preselect-unaided{% endif %}></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
         {% csrf_token %}
@@ -61,8 +61,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         {% if hearing_aid_form %}
         <div class="card mb-4">
             <div class="card-body">
-                <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% endif %}>
+                <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% elif preselect_unaided %} aria-describedby="hearing-aid-hint"{% endif %}>
                     <legend class="font-bold text-xl/normal">這次填答時，您有沒有戴助聽器？</legend>
+                    {# Same wording as AnswerApp.jsx; why 沒戴 is already chosen (#154). #}
+                    {% if preselect_unaided %}<p id="hearing-aid-hint">請想沒戴助聽器時的情況來回答</p>{% endif %}
                     {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}
                     {{ hearing_aid_form.wearing_hearing_aid }}
                 </fieldset>

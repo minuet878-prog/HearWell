@@ -111,6 +111,16 @@ describe("React entry", () => {
     expect(app().textContent).toContain("第 1 題／共 1 題・還剩大約 3 分鐘");
   });
 
+  it("starts on 沒戴 when the page says so (#154)", async () => {
+    app().dataset.preselectUnaided = "";
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("請想沒戴助聽器時的情況來回答"));
+    const unaided = [...app().querySelectorAll("label")].find((l) => l.textContent === "沒戴");
+    expect(unaided.querySelector("input").checked).toBe(true);
+  });
+
   it("brings the form back at once when loading fails (acceptance 3)", async () => {
     runInline();
     respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
