@@ -2139,7 +2139,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         self.open(motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
-            choice = self.page.locator("div.choice-group label").first
+            # The React page's own choice: the hidden Django form below it has the same markup,
+            # and is all there is until React has loaded the questions.
+            choice = self.page.locator("#answer-app div.choice-group label").first
             choice.scroll_into_view_if_needed()
             before = choice.bounding_box()
             self.assertEqual(self.style(choice, "borderTopColor"), "rgb(206, 212, 218)")

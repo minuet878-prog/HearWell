@@ -19,11 +19,11 @@
 
 | 條件 | 證明 |
 |---|---|
-| 1. 有滑鼠：滑過時卡片上移、陰影加深、邊框變藍，問卷卡圖示外圍出現漣漪 | `e2e/main_flow.py:2178` `test_clickable_cards_lift_on_hover`：三種卡片在過渡跑完後 transform 往上 4.5px、陰影變深、邊框藍，實際位置上移 4.5px；問卷卡圖示的 `::after` 有 1 個漣漪動畫，只播 1 次、1 秒內結束 |
-| 2. 觸控：按下時下沉、放開恢復，不殘留滑過樣子 | `:2213` `test_pressed_cards_sink_on_a_touch_screen`：模擬手機（沒有滑鼠、`hover: hover` 不成立）。按下：強制 `:active`＋`:hover`，三種卡片都往下 2.25px、邊框藍、底色 #e8eef7；放開：只強制 `:hover`（手機點完會殘留），樣式回到靜止（陰影、邊框、白底、沒有位移）。原本用模擬手指按住，CI 上改成強制狀態，見下方「合併前 CI 修正」 |
-| 3. 減少動態效果：沒有動畫或位移，只變顏色 | `:2256` `test_reduced_motion_cards_only_change_colour`：滑過、按下時位置不變、沒有 transform、陰影不變；邊框變藍、按下底色變深；全頁 0 個動畫 |
-| 4. 不能點的框滑過或按下樣式完全不變 | `:2287` `test_boxes_that_cannot_be_clicked_stay_still`：步驟卡、趨勢摘要、結果橫幅，開著動態效果，滑過、按下後等過渡跑完，比對全部計算後的樣式與位置都和之前一樣 |
-| 5. 鍵盤焦點：卡片不位移、看得到焦點框 | `:2313` `test_keyboard_focus_keeps_cards_still_with_a_ring`：按 Tab 移到第一張問卷卡，`:focus-visible` 成立，位置不變、沒有 transform、4px 藍色焦點框、邊框藍 |
+| 1. 有滑鼠：滑過時卡片上移、陰影加深、邊框變藍，問卷卡圖示外圍出現漣漪 | `e2e/main_flow.py:2180` `test_clickable_cards_lift_on_hover`：三種卡片在過渡跑完後 transform 往上 4.5px、陰影變深、邊框藍，實際位置上移 4.5px；問卷卡圖示的 `::after` 有 1 個漣漪動畫，只播 1 次、1 秒內結束 |
+| 2. 觸控：按下時下沉、放開恢復，不殘留滑過樣子 | `:2215` `test_pressed_cards_sink_on_a_touch_screen`：模擬手機（沒有滑鼠、`hover: hover` 不成立）。按下：強制 `:active`＋`:hover`，三種卡片都往下 2.25px、邊框藍、底色 #e8eef7；放開：只強制 `:hover`（手機點完會殘留），樣式回到靜止（陰影、邊框、白底、沒有位移）。原本用模擬手指按住，CI 上改成強制狀態，見下方「合併前 CI 修正」 |
+| 3. 減少動態效果：沒有動畫或位移，只變顏色 | `:2258` `test_reduced_motion_cards_only_change_colour`：滑過、按下時位置不變、沒有 transform、陰影不變；邊框變藍、按下底色變深；全頁 0 個動畫 |
+| 4. 不能點的框滑過或按下樣式完全不變 | `:2289` `test_boxes_that_cannot_be_clicked_stay_still`：步驟卡、趨勢摘要、結果橫幅，開著動態效果，滑過、按下後等過渡跑完，比對全部計算後的樣式與位置都和之前一樣 |
+| 5. 鍵盤焦點：卡片不位移、看得到焦點框 | `:2315` `test_keyboard_focus_keeps_cards_still_with_a_ring`：按 Tab 移到第一張問卷卡，`:focus-visible` 成立，位置不變、沒有 transform、4px 藍色焦點框、邊框藍 |
 
 ### 測試確實抓得到的試驗（已還原）
 
