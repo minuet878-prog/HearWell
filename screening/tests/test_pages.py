@@ -388,9 +388,14 @@ class RedesignLayoutTests(TestCase):
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         wave = "<inline>"
         empty_user = consented_user(username="no_records")
-        for url in (reverse("index"), reverse("login"), reverse("register")):
+        for url in (reverse("index"), reverse("login")):
             with self.subTest(url=url):
                 self.assertEqual(scripts(url), [pwa_js, wave])
+        # The 顯示 button on the password fields (#151).
+        with self.subTest(url="register"):
+            self.assertEqual(
+                scripts(reverse("register")), [pwa_js, "screening/password-toggle.js", wave]
+            )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave])

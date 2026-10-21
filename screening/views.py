@@ -141,7 +141,8 @@ def consent(request):
     if request.method == "POST" and "decline" in request.POST:
         logout(request)
         messages.info(
-            request, "沒有同意就不能使用篩檢功能，您的帳號仍在。想使用時，登入後按「我同意」即可。"
+            request,
+            "沒有同意就不能使用篩檢功能，您的帳號仍在。想使用時，登入後按「我同意，開始篩檢」即可。",
         )
         return redirect("index")
     if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():

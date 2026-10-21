@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from screening import models
 from screening.models import Audiogram, Consent, Questionnaire, Submission, User
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.tests.helpers import consented_user, fake_definition, register, step_bar
 
 PASSWORD = "Xk9#mPq2vLw"
 
@@ -117,8 +117,14 @@ class ConsentPageTests(TestCase):
         response = self.client.get(reverse("consent"))
         self.assertContains(response, "重點")
         self.assertContains(response, f'href="{reverse("privacy")}"')
-        self.assertContains(response, ">我同意</button>")
+        self.assertContains(response, ">我同意，開始篩檢</button>")
         self.assertContains(response, ">不同意</button>")
+
+    def test_step_two_of_two_with_progress_bar(self):
+        # Issue #151.
+        response = self.client.get(reverse("consent"))
+        self.assertContains(response, "第 2 步／共 2 步：同意隱私權")
+        self.assertEqual(step_bar(response), (2, 2))
 
     def test_anonymous_is_sent_to_login(self):
         self.client.logout()

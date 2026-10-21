@@ -302,7 +302,7 @@ describe("TrendChart", () => {
       expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#feece7"]);
       const bandLegend = within(container.querySelector(".trend-bands"));
       const labelColours = LEVELS.map((level) => bandLegend.getByText(level.text).style.color);
-      expect(labelColours).toEqual(["rgb(30, 123, 85)", "rgb(138, 90, 0)", "rgb(194, 59, 28)"]);
+      expect(labelColours).toEqual(["rgb(20, 87, 60)", "rgb(112, 72, 0)", "rgb(143, 42, 18)"]);
       const ticks = [...container.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
       expect(ticks).toEqual([]);
     });
