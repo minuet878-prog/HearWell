@@ -6,10 +6,13 @@ import { defineConfig } from "vite";
 // (collectstatic adds the content hash). Shared code such as React is split into its own file.
 // The site's stylesheet is built here too, by Tailwind (ADR 0008).
 export default defineConfig({
-  plugins: [tailwindcss(), react()],
+  // Keep token alpha values exact through both Tailwind and Vite.
+  plugins: [tailwindcss({ optimize: false }), react()],
   build: {
     outDir: "../screening/static/screening/frontend",
     emptyOutDir: true,
+    // Preserve exact alpha values in design tokens (hex alpha rounds 0.5 to 128/255).
+    cssMinify: false,
     rolldownOptions: {
       input: {
         "site": "src/site.css",

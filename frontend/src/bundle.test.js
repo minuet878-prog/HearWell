@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
 import { brotliCompressSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 
@@ -54,5 +55,6 @@ it("the site's CSS is built and costs no more than Bootstrap plus the old CSS (b
   const css = (await buildOutput()).filter((o) => o.fileName.endsWith(".css"));
   expect(css.map((o) => o.fileName)).toContain("site.css");
   const size = css.reduce((sum, o) => sum + brotliCompressSync(o.source).length, 0);
-  expect(size).toBeLessThanOrEqual(CSS_LIMIT);
+  const legacy = readFileSync(new URL("../../screening/static/screening/styles.css", import.meta.url));
+  expect(size + brotliCompressSync(legacy).length).toBeLessThanOrEqual(CSS_LIMIT);
 }, 60_000);
