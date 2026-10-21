@@ -1,15 +1,21 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 // Bundles go into Django's static files; templates load each entry by its fixed name
 // (collectstatic adds the content hash). Shared code such as React is split into its own file.
+// The site's stylesheet is built here too, by Tailwind (ADR 0008).
 export default defineConfig({
-  plugins: [react()],
+  // Keep token alpha values exact through both Tailwind and Vite.
+  plugins: [tailwindcss({ optimize: false }), react()],
   build: {
     outDir: "../screening/static/screening/frontend",
     emptyOutDir: true,
+    // Preserve exact alpha values in design tokens (hex alpha rounds 0.5 to 128/255).
+    cssMinify: false,
     rolldownOptions: {
       input: {
+        "site": "src/site.css",
         "trend-chart": "src/main.jsx",
         "answer": "src/answer-main.jsx",
         "logout": "src/logout.js",
@@ -17,7 +23,7 @@ export default defineConfig({
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
       },
-      output: { entryFileNames: "[name].js" },
+      output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },
   },
   test: {

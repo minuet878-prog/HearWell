@@ -45,6 +45,7 @@ class FontSizeUnitTests(SimpleTestCase):
         sources = [
             *sorted((BASE_DIR / "screening" / "static" / "screening").rglob("*.css")),
             *sorted((BASE_DIR / "screening" / "templates").rglob("*.html")),
+            *sorted((BASE_DIR / "frontend" / "src").rglob("*.css")),
         ]
         found = []
         for path in sources:

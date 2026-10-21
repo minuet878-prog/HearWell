@@ -994,6 +994,87 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         )
         return record
 
+    def test_tailwind_theme_preserves_original_design_values(self):
+        # Independent values from pre-migration styles.css (#124); inspect built CSS in a browser.
+        self.open(signed_in=False)
+        self.page.goto(f"{self.live_server_url}/privacy")
+        expected = {
+            "--color-primary": "#1f4e8c",
+            "--color-primary-hover": "#173b6a",
+            "--color-primary-active": "#122f55",
+            "--color-body": "#495057",
+            "--color-heading": "#212529",
+            "--color-footer": "#343a40",
+            "--color-normal": "#1e7b55",
+            "--color-normal-bg": "#e3f4ec",
+            "--color-mild": "#8a5a00",
+            "--color-mild-bg": "#fff4d6",
+            "--color-severe": "#c23b1c",
+            "--color-severe-bg": "#feece7",
+            "--color-surface": "#f1f3f5",
+            "--color-brand-soft": "#eef3fa",
+            "--color-brand-selected": "#e8eef7",
+            "--color-pull": "#e7eef8",
+            "--color-border": "#ced4da",
+            "--color-border-subtle": "#dee2e6",
+            "--color-border-strong": "#adb5bd",
+            "--color-input-border": "#6c757d",
+            "--container-content": "40rem",
+            "--container-form": "30rem",
+            "--root-font-size": "112.5%",
+            "--spacing-touch": "2.75rem",
+            "--radius-button": "0.5rem",
+            "--radius-card": "0.75rem",
+            "--radius-band": "1.25rem",
+            "--radius-badge": "1rem",
+            "--radius-tab": "1.5rem",
+            "--shadow-card": "0 0.125rem 0.375rem rgba(15, 23, 42, 0.08)",
+            "--shadow-input-focus": "0 0 0 0.25rem rgba(31, 78, 140, 0.25)",
+            "--color-focus-ring": "rgba(31, 78, 140, 0.5)",
+        }
+        # The CSS minifier rewrites .5rem and rgba() to shorter equivalent values. Let the
+        # browser resolve both independent literals and tokens through the same CSS property.
+        pairs = self.page.evaluate(
+            """expected => Object.entries(expected).map(([name, value]) => {
+                const property = name.startsWith('--color-') ? 'color'
+                    : name.startsWith('--shadow-') ? 'boxShadow'
+                    : name.startsWith('--radius-') ? 'borderTopLeftRadius'
+                    : name === '--root-font-size' ? 'fontSize' : 'maxWidth';
+                const el = document.createElement('div');
+                document.body.append(el);
+                el.style[property] = value;
+                const literal = getComputedStyle(el)[property];
+                el.style[property] = `var(${name})`;
+                const token = getComputedStyle(el)[property];
+                el.remove();
+                return [name, literal, token];
+            })""",
+            expected,
+        )
+        for name, literal, token in pairs:
+            with self.subTest(token=name):
+                self.assertEqual(token, literal)
+        self.assertEqual(self.style(self.page.locator("html"), "fontSize"), "18px")
+        self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
+
+    def test_heading_classes_and_muted_text_look_as_before(self):
+        # #124: Bootstrap's .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
+        # line height 1.2 and a .5rem bottom margin; its .text-muted was the body text colour.
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            for path, selector in (
+                ("/questionnaire_list", "h1.h3"),
+                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-muted"),
+            ):
+                with self.subTest(selector=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    element = self.page.locator(selector)
+                    self.assertEqual(self.style(element, "fontSize"), "29.544px")
+                    self.assertEqual(self.style(element, "fontWeight"), "500")
+                    self.assertEqual(self.style(element, "lineHeight"), "35.4528px")
+                    self.assertEqual(self.style(element, "marginBottom"), "9px")
+                    self.assertEqual(self.style(element, "color"), self.TEXT)
+
     def test_text_primary_and_error_colours(self):
         self.open(signed_in=False)
         with self.saving_artifacts():
