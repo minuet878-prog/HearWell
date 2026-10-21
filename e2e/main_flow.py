@@ -2136,7 +2136,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
     CARD_PAGES = ("/questionnaire_list", "/my_hearing", "/audiograms")
     LIFTED = "matrix(1, 0, 0, 1, 0, -4.5)"
-    DEEP_SHADOW = "rgba(120, 90, 50, 0.16) 0px 9px 22.5px 0px"
+    LIFTED_SHADOW = "rgba(120, 90, 50, 0.16) 0px 9px 22.5px 0px"
+    REST_SHADOW = "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px"
+    PRESSED_CARD = "rgb(232, 238, 247)"  # darker than the hover colour
 
     @staticmethod
     def settled(locator):
@@ -2161,7 +2163,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                         self.styles(card, "transform", "boxShadow", "borderTopColor"),
                         {
                             "transform": self.LIFTED,
-                            "boxShadow": self.DEEP_SHADOW,
+                            "boxShadow": self.LIFTED_SHADOW,
                             "borderTopColor": self.PRIMARY,
                         },
                     )
@@ -2184,10 +2186,10 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     def test_pressed_cards_sink_on_a_touch_screen(self):
         self.submission(self.hhie_s, [2] * 10)
         self.audiogram(date(2026, 9, 28))
-        sunk = f"matrix(1, 0, 0, 1, 0, 2.25) | {self.PRIMARY} | rgb(232, 238, 247)"
+        sunk = f"matrix(1, 0, 0, 1, 0, 2.25) | {self.PRIMARY} | {self.PRESSED_CARD}"
         rest = {
             "transform": "none",
-            "boxShadow": "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px",
+            "boxShadow": self.REST_SHADOW,
             "borderTopColor": self.WARM_BORDER,
             "backgroundColor": self.WHITE,
         }
@@ -2225,7 +2227,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                             "gestureSourceType": "touch",
                         },
                     )
-                    # Pressed: sunk and darker than the hover colour.
+                    # Pressed: sunk and darker.
                     self.assertIn(sunk, self.page.evaluate("[...pressed]"))
                     # Let go: back at rest, though the browser still counts the card as hovered.
                     self.assertTrue(card.evaluate("el => el.matches(':hover')"))
@@ -2239,12 +2241,24 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             before = card.bounding_box()
             card.hover()
             self.assertEqual(card.bounding_box(), before)
-            self.assertEqual(self.style(card, "transform"), "none")
-            self.assertEqual(self.style(card, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(
+                self.styles(card, "transform", "boxShadow", "borderTopColor"),
+                {
+                    "transform": "none",
+                    "boxShadow": self.REST_SHADOW,
+                    "borderTopColor": self.PRIMARY,
+                },
+            )
             self.page.mouse.down()
             self.assertEqual(card.bounding_box(), before)
-            self.assertEqual(self.style(card, "transform"), "none")
-            self.assertEqual(self.style(card, "backgroundColor"), "rgb(232, 238, 247)")
+            self.assertEqual(
+                self.styles(card, "transform", "boxShadow", "backgroundColor"),
+                {
+                    "transform": "none",
+                    "boxShadow": self.REST_SHADOW,
+                    "backgroundColor": self.PRESSED_CARD,
+                },
+            )
             # No ripple, and nothing else animates either.
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
             self.page.mouse.move(0, 0)
@@ -2257,8 +2271,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             ("/my_hearing", ".trend-summary"),
             (f"/submission/{record.pk}", ".result-banner"),
         )
-        every_style = "el => Object.fromEntries([...getComputedStyle(el)].map(p => "
-        every_style += "[p, getComputedStyle(el).getPropertyValue(p)]))"
+        every_style = """el => Object.fromEntries(
+            [...getComputedStyle(el)].map(p => [p, getComputedStyle(el).getPropertyValue(p)])
+        )"""
         self.open(motion=True)
         with self.saving_artifacts():
             for path, selector in cases:
@@ -2268,8 +2283,10 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     box.scroll_into_view_if_needed()
                     before = (box.bounding_box(), box.evaluate(every_style))
                     box.hover()
+                    self.settled(box)
                     self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
                     self.page.mouse.down()
+                    self.settled(box)
                     self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
                     self.page.mouse.up()
 
@@ -2279,7 +2296,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             card = self.page.locator("a.link-card").first
             before = card.bounding_box()
-            card.focus()
+            for _ in range(30):
+                self.page.keyboard.press("Tab")
+                if card.evaluate("el => el === document.activeElement"):
+                    break
+            else:
+                self.fail("Tab never reached the first questionnaire card")
             self.assertTrue(card.evaluate("el => el.matches(':focus-visible')"))
             self.settled(card)
             self.assertEqual(card.bounding_box(), before)

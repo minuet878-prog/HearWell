@@ -898,10 +898,10 @@
     outline-offset: 0.25rem;
   }
 
-  /* Reduced motion: colour changes only. */
+  /* Reduced motion: colour changes only, so the shadow stays put as well. */
   @media (prefers-reduced-motion: reduce) {
     .link-card { transition: none; }
-    .link-card:hover, .link-card:active { transform: none; }
+    .link-card:hover, .link-card:active { transform: none; box-shadow: var(--shadow-warm); }
     .link-card:hover .questionnaire-icon::after { animation: none; }
   }
 
