@@ -11,13 +11,13 @@
 
 {% block body %}
 <article class="health-report">
-<h1 class="h3 mt-3">HearWell 聽力報告</h1>
+<h1 class="h3 mt-4">HearWell 聽力報告</h1>
 {% if not has_records %}
 <p>還沒有可以放進報告的紀錄。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% else %}
 {% include "screening/report_share.html" %}
-<p class="no-print d-flex flex-wrap gap-2">
+<p class="no-print flex flex-wrap gap-2">
     <button id="print-button" type="button" class="btn btn-primary btn-lg">列印或存成 PDF</button>
     <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">回我的紀錄</a>
 </p>

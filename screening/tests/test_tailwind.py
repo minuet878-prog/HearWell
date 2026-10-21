@@ -86,6 +86,19 @@ class BootstrapUtilityTests(SimpleTestCase):
         "frontend/src/audiogram-main.jsx",
         "frontend/src/audiogram-view-main.jsx",
         "frontend/src/main.jsx",
+        # #130: the health report, its sharing block and the pages the family opens.
+        *(
+            f"screening/templates/screening/{name}"
+            for name in (
+                "health_report.html",
+                "report_content.html",
+                "report_comparison.html",
+                "report_share.html",
+                "shared_cover.html",
+                "shared_report.html",
+                "share_invalid.html",
+            )
+        ),
     )
 
     def test_migrated_templates_have_no_bootstrap_layout_classes(self):

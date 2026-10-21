@@ -1638,3 +1638,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 ".map(el => getComputedStyle(el).boxShadow).filter(s => s !== 'none')"
             )
             self.assertEqual(shadows, [])
+            # A section, and the table in it, stays on one page; a part holding several
+            # sections may break between them, but not right after its heading (#130).
+            section = self.page.locator(f"#report-{self.hhie_s.code}")
+            expect(section.locator("table")).to_have_count(1)
+            for whole in (self.page.locator("#report-summary"), section):
+                self.assertEqual(self.style(whole, "breakInside"), "avoid")
+            part = self.page.locator("#report-life-impact")
+            self.assertEqual(self.style(part, "breakInside"), "auto")
+            self.assertEqual(self.style(part.locator("> h2"), "breakAfter"), "avoid")
