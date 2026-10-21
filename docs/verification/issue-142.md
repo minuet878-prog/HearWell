@@ -51,12 +51,12 @@
 | 3. 頁首由上往下藍色漸層、最上緣 #1f4e8c，聲波對螢幕閱讀器隱藏 | `:1877` `test_header_is_a_blue_gradient_with_a_hidden_wave` |
 | 4. 新分頁第一頁聲波播、約 4 秒停；同分頁下一頁不播；沒有無限循環 | `:1889` `test_header_wave_plays_on_a_tabs_first_page_only` |
 | 5. 關掉 JavaScript 時聲波播並在約 4 秒內停 | `:1907` `test_header_wave_plays_on_every_page_without_javascript` |
-| 6. 減少動態效果：沒有動畫或位移，只變色 | `:1915` `test_reduced_motion_keeps_the_header_still`（全頁 0 個動畫）；`:2255` `test_reduced_motion_cards_only_change_colour`（卡片滑過、按下不位移、陰影不變、只變色） |
+| 6. 減少動態效果：沒有動畫或位移，只變色 | `:1915` `test_reduced_motion_keeps_the_header_still`（全頁 0 個動畫）；`:2256` `test_reduced_motion_cards_only_change_colour`（卡片滑過、按下不位移、陰影不變、只變色） |
 | 7. 主要按鈕、導覽目前頁、步驟編號、問卷分頁目前頁、問卷圖示是漸層；白字 ≥ 4.5、白色圖示 ≥ 3 | `:1950` `test_primary_button_states_follow_choice_c`（四種狀態）、`:2067` `test_current_place_and_icons_use_the_gradient`（步驟編號只斷言漸層與白字，沒另算對比；顏色和導覽目前頁相同，最低 5.37:1） |
 | 8. 手機分頁列：目前頁圖示在漸層膠囊、藍色粗體、沒有上緣線、觸控 ≥ 44px | `:2102` `test_phone_tab_bar_puts_the_current_icon_in_a_pill` |
-| 9. 滑鼠滑過可點的卡片浮起、陰影加深、邊框藍、漣漪；不能點的框沒有變化 | `:2168` `test_clickable_cards_lift_on_hover`、`:2286` `test_boxes_that_cannot_be_clicked_stay_still` |
-| 10. 觸控按下卡片下沉、放開恢復，不殘留滑過樣子 | `:2205` `test_pressed_cards_sink_on_a_touch_screen`（Chromium 模擬；iPhone Safari 的按下效果見 [`issue-141.md`](issue-141.md) 的已知風險） |
-| 11. 按鈕、導覽項目、作答選項只變色不位移；鍵盤焦點落在卡片不位移、看得到焦點框 | 不位移：`:1990` `test_buttons_are_pills_and_only_change_colour`（按鈕）、`:2119` `test_navigation_items_only_change_colour`（導覽）、`:2136` `test_answer_choices_only_change_colour`（作答選項，這次補）。變色：按鈕 `:1310` `test_button_hover_and_press_colours`、`:1950`；導覽 `:2119`；作答選項 `:2136`（滑過邊框變藍）。鍵盤焦點：`:2312` `test_keyboard_focus_keeps_cards_still_with_a_ring`；按鈕焦點框和光暈分得出：`:2040` |
+| 9. 滑鼠滑過可點的卡片浮起、陰影加深、邊框藍、漣漪；不能點的框沒有變化 | `:2178` `test_clickable_cards_lift_on_hover`、`:2287` `test_boxes_that_cannot_be_clicked_stay_still` |
+| 10. 觸控按下卡片下沉、放開恢復，不殘留滑過樣子 | `:2213` `test_pressed_cards_sink_on_a_touch_screen`（模擬手機、強制按下與滑過狀態檢查樣式；為什麼不用模擬手指、iPhone 的風險，見 [`issue-141.md`](issue-141.md) 的「合併前 CI 修正」與已知風險） |
+| 11. 按鈕、導覽項目、作答選項只變色不位移；鍵盤焦點落在卡片不位移、看得到焦點框 | 不位移：`:1990` `test_buttons_are_pills_and_only_change_colour`（按鈕）、`:2119` `test_navigation_items_only_change_colour`（導覽）、`:2136` `test_answer_choices_only_change_colour`（作答選項，這次補）。變色：按鈕 `:1310` `test_button_hover_and_press_colours`、`:1950`；導覽 `:2119`；作答選項 `:2136`（滑過邊框變藍）。鍵盤焦點：`:2313` `test_keyboard_focus_keeps_cards_still_with_a_ring`；按鈕焦點框和光暈分得出：`:2040` |
 | 12. 大區塊 1.5rem、中元件 0.75rem、按鈕膠囊；圖表、縮圖、分級徽章不變 | `:1787` `test_three_radius_levels`、`:1990`（膠囊） |
 | 13. 圖表與徽章裁切和改版前逐像素相同；結果橫幅、趨勢圖色帶、遮蔽開關顏色不變；新增裝飾色是藍色系 | 裁切：**5 張偏差，本人在 #137 已接受**（上一節）。顏色：`:1571` `test_result_banner_colours`、`:1602` `test_level_badge_colours`、`:1842` `test_masking_switch_keeps_its_orange`、`frontend/src/TrendChart.test.jsx` 的色帶斷言。裝飾色：逐一核對 2a 在 `site.css` 新加的顏色值，只有藍色系（漸層、按下的漸層、停用的灰藍、光暈與漣漪）、白色，以及規格指定的米白底、頁尾、暖色邊框與陰影，沒有新的綠、橘、紅（人工核對，沒有自動測試） |
 | 14. 四顆刪除類按鈕維持紅色 | `:2020` `test_delete_buttons_stay_red` |

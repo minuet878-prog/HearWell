@@ -2210,75 +2210,17 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(ripples[0]["iterations"], 1)
             self.assertLessEqual(ripples[0]["endTime"], 1000)
 
-    # TEMPORARY (#141 CI diagnosis): what a Linux browser sees when a card is pressed by touch.
-    def test_zz_touch_probe(self):
-        import json
-
-        self.open(width=390, motion=True, touch=True)
-        self.page.goto(f"{self.live_server_url}/questionnaire_list")
-        card = self.page.locator("a.link-card").first
-        card.scroll_into_view_if_needed()
-        box = card.bounding_box()
-        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-        info = self.page.evaluate(
-            """([x, y]) => ({
-                ua: navigator.userAgent,
-                inner: [innerWidth, innerHeight], dpr: devicePixelRatio,
-                scale: visualViewport.scale,
-                hover: matchMedia('(hover: hover)').matches,
-                anyHover: matchMedia('(any-hover: hover)').matches,
-                pointerCoarse: matchMedia('(pointer: coarse)').matches,
-                atPoint: document.elementFromPoint(x, y)?.className,
-            })""",
-            [x, y],
-        )
-        print("PROBE info", json.dumps(info), flush=True)
-        card.evaluate(
-            """el => {
-                el.addEventListener('click', e => e.preventDefault());
-                window.log = { events: [], frames: 0, active: 0, hoverFrames: 0 };
-                for (const t of ['touchstart', 'touchend', 'pointerdown', 'pointerup',
-                                 'mousedown', 'mouseup', 'click', 'contextmenu']) {
-                    document.addEventListener(t, e => log.events.push(t), true);
-                }
-                (function look() {
-                    log.frames++;
-                    if (el.matches(':active')) log.active++;
-                    if (el.matches(':hover')) log.hoverFrames++;
-                    requestAnimationFrame(look);
-                })();
-            }"""
-        )
-        reset = "() => { log.events = []; log.frames = 0; log.active = 0; log.hoverFrames = 0; }"
-        cdp = self.context.new_cdp_session(self.page)
-        cdp.send(
-            "Input.synthesizeTapGesture",
-            {"x": x, "y": y, "duration": 500, "gestureSourceType": "touch"},
-        )
-        self.page.wait_for_timeout(200)
-        print("PROBE synthesizeTapGesture", json.dumps(self.page.evaluate("log")), flush=True)
-        self.page.evaluate(reset)
-        self.page.touchscreen.tap(x, y)
-        self.page.wait_for_timeout(200)
-        print("PROBE touchscreen.tap", json.dumps(self.page.evaluate("log")), flush=True)
-        self.page.evaluate(reset)
-        cdp.send(
-            "Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y}]}
-        )
-        self.page.wait_for_timeout(500)
-        mid = self.page.evaluate("log")
-        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
-        self.page.wait_for_timeout(200)
-        print(
-            "PROBE dispatchTouchEvent",
-            json.dumps({"mid": mid, "end": self.page.evaluate("log")}),
-            flush=True,
-        )
-
     def test_pressed_cards_sink_on_a_touch_screen(self):
+        # Headless Chromium on Linux never sets :active from simulated touch (CI probe,
+        # 2026-10-22), so the states are forced the way DevTools does. Whether a finger sets
+        # them is the phone browser's job, checked by hand on a real phone.
         self.submission(self.hhie_s, [2] * 10)
         self.audiogram(date(2026, 9, 28))
-        sunk = f"matrix(1, 0, 0, 1, 0, 2.25) | {self.PRIMARY} | {self.PRESSED_CARD}"
+        sunk = {
+            "transform": "matrix(1, 0, 0, 1, 0, 2.25)",
+            "borderTopColor": self.PRIMARY,
+            "backgroundColor": self.PRESSED_CARD,
+        }
         rest = {
             "transform": "none",
             "boxShadow": self.REST_SHADOW,
@@ -2287,40 +2229,28 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         }
         self.open(width=390, motion=True, touch=True)
         self.assertFalse(self.page.evaluate("matchMedia('(hover: hover)').matches"))
-        finger = self.context.new_cdp_session(self.page)
+        devtools = self.context.new_cdp_session(self.page)
         with self.saving_artifacts():
             for path in self.CARD_PAGES:
                 with self.subTest(path=path):
                     card = self.first_card(path)
-                    # Note the card's look on every frame it is pressed, and stay on the page.
-                    card.evaluate(
-                        """el => {
-                            el.addEventListener('click', e => e.preventDefault());
-                            window.pressed = new Set();
-                            (function look() {
-                                if (el.matches(':active')) {
-                                    const s = getComputedStyle(el);
-                                    const look = [s.transform, s.borderTopColor, s.backgroundColor];
-                                    pressed.add(look.join(' | '));
-                                }
-                                requestAnimationFrame(look);
-                            })();
-                        }"""
-                    )
-                    box = card.bounding_box()
-                    finger.send(
-                        "Input.synthesizeTapGesture",
-                        {
-                            "x": box["x"] + box["width"] / 2,
-                            "y": box["y"] + box["height"] / 2,
-                            "duration": 500,
-                            "gestureSourceType": "touch",
-                        },
-                    )
+                    devtools.send("DOM.enable")
+                    devtools.send("CSS.enable")
+                    root = devtools.send("DOM.getDocument")["root"]["nodeId"]
+                    node = devtools.send(
+                        "DOM.querySelector", {"nodeId": root, "selector": "a.link-card"}
+                    )["nodeId"]
+
+                    def force(*states, node=node):
+                        devtools.send(
+                            "CSS.forcePseudoState", {"nodeId": node, "forcedPseudoClasses": states}
+                        )
+
                     # Pressed: sunk and darker.
-                    self.assertIn(sunk, self.page.evaluate("[...pressed]"))
-                    # Let go: back at rest, though the browser still counts the card as hovered.
-                    self.assertTrue(card.evaluate("el => el.matches(':hover')"))
+                    force("active", "hover")
+                    self.assertEqual(self.styles(self.settled(card), *sunk), sunk)
+                    # Let go: a phone still counts the tapped card as hovered; it looks at rest.
+                    force("hover")
                     self.assertEqual(self.styles(self.settled(card), *rest), rest)
 
     def test_reduced_motion_cards_only_change_colour(self):
