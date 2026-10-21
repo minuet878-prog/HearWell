@@ -1093,6 +1093,18 @@
   }
 
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
+  /* Register and consent steps (#151): the text says the step; the bar only shows it. */
+  .step-progress { margin-bottom: 1rem; }
+  .step-progress-text { margin-bottom: 0.5rem; font-weight: 700; color: var(--color-heading); }
+  .step-progress-bar { display: flex; gap: 0.25rem; }
+  .step-progress-segment {
+    flex: 1 1 0;
+    height: 0.5rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-border);
+  }
+  .step-progress-segment.is-done { background-color: var(--color-primary); }
+
   .question-progress {
     display: block;
     font-size: 1rem;
