@@ -76,7 +76,8 @@ class NewUserHomeTests(TestCase):
         consent_url = f"{reverse('consent')}?next={self.list_url}"
         self.assertRedirects(response, consent_url)
         response = self.client.post(consent_url, {"agree": "1", "next": self.list_url})
-        self.assertRedirects(response, self.list_url)
+        # The wizard's first screen greets the new account (#152).
+        self.assertRedirects(response, f"{self.list_url}?from=consent")
 
     def test_other_protected_pages_still_go_to_login_and_back(self):
         consented_user(username="tester", password=self.PASSWORD)

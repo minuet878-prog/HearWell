@@ -1094,7 +1094,8 @@
   }
 
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
-  /* Register and consent steps (#151): the text says the step; the bar only shows it. */
+  /* Register, consent and wizard steps (#151, #152; step_progress.html) and the answer page's
+     question bar (#153, AnswerApp.jsx): the text says the step; the bar only shows it. */
   .step-progress { margin-bottom: 1rem; }
   .step-progress-text { margin-bottom: 0.5rem; font-weight: 700; color: var(--color-heading); }
   .step-progress-bar { display: flex; gap: 0.25rem; }

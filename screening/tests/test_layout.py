@@ -188,7 +188,7 @@ class LayoutTests(TestCase):
         submission = Submission.objects.get(pk=made.pk)  # created_at was moved after creating
         full, _ = self._hearing_audiograms()
         cases = {
-            reverse("questionnaire_list"): (
+            reverse("questionnaire_list") + "?choose=self": (
                 reverse("screening", args=[self.hhie_s.pk]),
                 ["HHIE-S", "聽力對生活的影響"],
             ),
