@@ -26,6 +26,7 @@ if (container && fallback) {
       csrfToken={fallback.querySelector("[name=csrfmiddlewaretoken]").value}
       minutes={Number(container.dataset.minutes)}
       introHtml={intro.innerHTML}
+      preselectUnaided={"preselectUnaided" in container.dataset}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {
