@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest import mock
 
 from django.db import DatabaseError, IntegrityError
+from django.template.loader import render_to_string
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -375,6 +376,26 @@ class ReactAnswerPageTests(TestCase):
         self.assertLess(content.index("<h1"), form_start)
         self.assertLess(content.index("共 1 題"), form_start)
         self.assertLess(content.index("本問卷的目的"), form_start)
+
+    def test_hands_react_the_minutes_and_the_intro(self):
+        # #153: React works out the minutes left and folds the intro after the hearing aid question.
+        for questionnaire in (self.hhie_s, self.hhia_s):
+            with self.subTest(code=questionnaire.code):
+                content = self._page(questionnaire).content.decode()
+                app = re.search(r'<div id="answer-app"[^>]*>', content).group()
+                self.assertIn(f'data-minutes="{questionnaire.definition.minutes}"', app)
+                # The definition's intro, word for word, in the box React reads it from.
+                intro = re.search(r'<div id="answer-intro">(.*?)</div>', content, re.S).group(1)
+                expected = render_to_string(
+                    questionnaire.definition.intro_template, {"questionnaire": questionnaire}
+                )
+                self.assertEqual(intro.strip(), expected.strip())
+                self.assertLess(
+                    content.index('id="answer-intro"'), content.index('id="answer-app"')
+                )
+                # Without JS the one-page form keeps its old progress text and has no bar.
+                self.assertNotIn("還剩大約", content)
+                self.assertNotIn("step-progress-bar", content)
 
     def test_ioi_ha_stays_django_only(self):
         response = self._page(self.ioi_ha)
