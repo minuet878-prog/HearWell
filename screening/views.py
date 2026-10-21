@@ -171,7 +171,6 @@ def _wizard_step(request, step, total, **context):
         | {
             "step": step,
             "total": total,
-            "segments": [number <= step for number in range(1, total + 1)],
             # Set by the consent page; only its first screen says the account is ready.
             "from_consent": step == 1 and request.GET.get("from") == "consent",
         },

@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Question, Questionnaire, Submission, User
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, step_bar
 
 
 class RecommendationTests(TestCase):
@@ -84,6 +84,7 @@ class WizardTests(TestCase):
         self.login_age(None)
         page = self.wizard()
         self.assertContains(page, "第 1 步／共 3 步")
+        self.assertEqual(step_bar(page), (1, 3))
         self.assertContains(page, 'name="age_group"')
         self.assertNotContains(page, 'name="hearing_aid"')
 
@@ -93,6 +94,7 @@ class WizardTests(TestCase):
                 self.login_age(age)
                 page = self.wizard()
                 self.assertContains(page, "第 1 步／共 2 步")
+                self.assertEqual(step_bar(page), (1, 2))
                 self.assertContains(page, 'name="hearing_aid"')
                 self.assertNotContains(page, 'name="age_group"')
 
@@ -106,6 +108,7 @@ class WizardTests(TestCase):
         self.login_age(None)
         page = self.wizard(age_group="older")
         self.assertContains(page, "第 2 步／共 3 步")
+        self.assertEqual(step_bar(page), (2, 3))
         self.assertContains(page, 'name="hearing_aid"')
         self.assertContains(page, '<input type="hidden" name="age_group" value="older">')
         bad = self.wizard(age_group="anything")

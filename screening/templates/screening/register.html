@@ -12,10 +12,7 @@
     {# Issue #151: people who already have an account see the way to log in first. #}
     <a class="w-full btn btn-lg btn-outline-primary mb-6" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">已經有帳號？登入</a>
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
-    <div class="step-progress">
-        <p class="step-progress-text">第 1 步／共 2 步：建立帳號</p>
-        <div class="step-progress-bar" aria-hidden="true"><span class="step-progress-segment is-done"></span><span class="step-progress-segment"></span></div>
-    </div>
+    {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <h1 class="h3 mb-4 font-normal">註冊</h1>
     <form method="post" action="{% url 'register' %}">
         {% csrf_token %}
