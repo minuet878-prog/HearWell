@@ -25,6 +25,7 @@ from screening.models import (
     NormGroup,
     Question,
     Questionnaire,
+    ReportShare,
     Submission,
     User,
 )
@@ -1013,6 +1014,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     WARM_FOOTER = "rgb(243, 237, 227)"
     WARM_BORDER = "rgb(239, 230, 216)"
     WHITE = "rgb(255, 255, 255)"
+    # #138-#140 (2a): the brand gradient; #139: the primary button's states (choice C in #136,
+    # with a soft glow so it never looks like the keyboard ring).
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(47, 92, 156))"
+    GLOW = "rgba(58, 107, 176, 0.45) 0px 0px 16.2px 3.6px"
+    FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
     # (level, scores, background, text colour)
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
@@ -1045,12 +1052,13 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "url": self.live_server_url,
         }
 
-    def open(self, signed_in=True, width=1024, javascript=True):
-        # Reduced motion turns off colour transitions, so a style is read at its final value.
+    def open(self, signed_in=True, width=1024, javascript=True, motion=False):
+        # Reduced motion turns off colour transitions, so a style is read at its final value; the
+        # header wave tests turn motion back on.
         self.context = self.browser.new_context(
             viewport={"width": width, "height": 900},
             java_script_enabled=javascript,
-            reduced_motion="reduce",
+            reduced_motion="no-preference" if motion else "reduce",
         )
         if signed_in:
             self.context.add_cookies([self.cookie])
@@ -1177,10 +1185,11 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         return audiogram
 
     def test_buttons_keep_their_colours_size_and_focus_ring(self):
-        # #125: The pre-migration values with the site's overrides, on the 18px root.
+        # #125: The pre-migration values with the site's overrides, on the 18px root; since #139
+        # every button is a pill, and the primary button's gradient covers its border.
         audiogram = self.audiogram(date(2026, 9, 28))
-        large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "9px"}
-        regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "9px"}
+        large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "999px"}
+        regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "999px"}
         clear = "rgba(0, 0, 0, 0)"
         white = "rgb(255, 255, 255)"
         cases = (
@@ -1194,7 +1203,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     **large,
                     "backgroundColor": self.PRIMARY,
                     "color": white,
-                    "borderTopColor": self.PRIMARY,
+                    "borderTopColor": clear,
                 },
                 "rgba(31, 78, 140, 0.5)",
             ),
@@ -1297,11 +1306,9 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                         )
 
     def test_button_hover_and_press_colours(self):
-        # The two variants whose hover and press colours the site set itself.
-        cases = (
-            ("button", "登入", "rgb(23, 59, 106)", "rgb(18, 47, 85)"),
-            ("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),
-        )
+        # The outline variant whose hover and press colours the site set itself; the primary
+        # button's states are in test_primary_button_states_follow_choice_c (#139).
+        cases = (("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),)
         self.open(signed_in=False)
         with self.saving_artifacts():
             for role, name, hover, pressed in cases:
@@ -1845,3 +1852,281 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "color": self.WHITE,
                 },
             )
+
+    # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
+    WAVE_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.closest('.site-wave'))
+        .map(a => ({ state: a.playState, end: a.effect.getComputedTiming().endTime }))"""
+
+    def assert_wave_plays_and_settles(self, page):
+        animations = page.evaluate(self.WAVE_ANIMATIONS)
+        self.assertGreater(len(animations), 0)
+        self.assertLessEqual(max(a["end"] for a in animations), 4000)
+        page.wait_for_timeout(4200)
+        self.assertEqual(
+            [a for a in page.evaluate(self.WAVE_ANIMATIONS) if a["state"] == "running"], []
+        )
+        heights = page.locator(".site-wave span").evaluate_all(
+            "bars => bars.map(bar => bar.getBoundingClientRect().height)"
+        )
+        self.assertEqual(len(heights), 28)
+        self.assertEqual(len(set(heights)), 1)
+
+    def test_header_is_a_blue_gradient_with_a_hidden_wave(self):
+        self.open()
+        with self.saving_artifacts():
+            for path in ("/", "/questionnaire_list"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    header = self.page.locator(".site-header")
+                    self.assertEqual(self.style(header, "backgroundImage"), self.GRADIENT)
+                    wave = header.locator(".site-wave")
+                    self.assertEqual(wave.get_attribute("aria-hidden"), "true")
+                    expect(wave.locator("span")).to_have_count(28)
+
+    def test_header_wave_plays_on_a_tabs_first_page_only(self):
+        self.open(motion=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.assert_wave_plays_and_settles(self.page)
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assertEqual(self.page.evaluate(self.WAVE_ANIMATIONS), [])
+            # A new tab starts again.
+            self.page = self.context.new_page()
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assert_wave_plays_and_settles(self.page)
+            # Nothing anywhere on the page loops for ever.
+            loops = self.page.evaluate(
+                "document.getAnimations()"
+                ".filter(a => a.effect.getTiming().iterations === Infinity).length"
+            )
+            self.assertEqual(loops, 0)
+
+    def test_header_wave_plays_on_every_page_without_javascript(self):
+        self.open(javascript=False, motion=True)
+        with self.saving_artifacts():
+            for path in ("/", "/questionnaire_list"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_wave_plays_and_settles(self.page)
+
+    def test_reduced_motion_keeps_the_header_still(self):
+        self.open()  # reduced motion
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            expect(self.page.locator(".site-wave span")).to_have_count(28)
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+
+    # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
+    # button is a pill and only changes colour.
+    @staticmethod
+    def lowest_contrast(text, background):
+        """Lowest WCAG ratio of a text colour against every colour in a background value."""
+
+        def luminance(rgb):
+            channels = [c / 255 for c in rgb]
+            linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+        def colours(value):
+            return [tuple(map(int, m)) for m in re.findall(r"rgb\((\d+), (\d+), (\d+)\)", value)]
+
+        light = luminance(colours(text)[0])
+        ratios = []
+        for colour in colours(background):
+            pair = sorted((light, luminance(colour)), reverse=True)
+            ratios.append((pair[0] + 0.05) / (pair[1] + 0.05))
+        return min(ratios)
+
+    def text_contrast(self, element, text="color"):
+        """Lowest contrast of an element's text (or icon stroke) against its own background."""
+        background = self.style(element, "backgroundImage")
+        if background == "none":
+            background = self.style(element, "backgroundColor")
+        return self.lowest_contrast(self.style(element, text), background)
+
+    def test_primary_button_states_follow_choice_c(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            button = self.page.get_by_role("main").get_by_role("button", name="登入")
+            self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(button, "color"), self.WHITE)
+            self.assertGreaterEqual(self.text_contrast(button), 4.5)
+            button.hover()
+            self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(button, "boxShadow"), self.GLOW)
+            self.page.mouse.down()
+            self.assertEqual(self.style(button, "backgroundImage"), self.PRESSED_GRADIENT)
+            self.assertEqual(self.style(button, "boxShadow"), "none")
+            self.assertGreaterEqual(self.text_contrast(button), 4.5)
+            self.page.mouse.up()
+            self.page.mouse.move(0, 0)
+            button.evaluate("el => { el.disabled = true; }")
+            disabled = self.styles(
+                button,
+                "backgroundImage",
+                "backgroundColor",
+                "color",
+                "borderTopColor",
+                "boxShadow",
+                "opacity",
+            )
+            self.assertEqual(
+                disabled,
+                {
+                    "backgroundImage": "none",
+                    "backgroundColor": self.WHITE,
+                    "color": "rgb(77, 95, 120)",
+                    "borderTopColor": "rgb(141, 162, 191)",
+                    "boxShadow": "rgb(141, 162, 191) 0px 0px 0px 1px inset",  # a 2px edge in all
+                    "opacity": "1",
+                },
+            )
+            self.assertGreaterEqual(self.lowest_contrast(disabled["color"], self.WHITE), 4.5)
+
+    def test_buttons_are_pills_and_only_change_colour(self):
+        # Except the audiogram symbol buttons, which #120 lists at the medium radius
+        # (test_three_radius_levels).
+        audiogram = self.audiogram(date(2026, 9, 28))
+        cases = (
+            (False, "/login", "button", "登入"),
+            (False, "/login", "link", "註冊"),
+            (True, "/", "button", "登出"),
+            (True, f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖"),
+            (True, "/account/delete", "button", "刪除帳號"),
+        )
+        with self.saving_artifacts():
+            for signed_in, path, role, name in cases:
+                with self.subTest(button=name):
+                    self.open(signed_in=signed_in)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    area = self.page if name == "登出" else self.page.get_by_role("main")
+                    button = area.get_by_role(role, name=name, exact=True)
+                    self.assertEqual(self.style(button, "borderTopLeftRadius"), "999px")
+                    button.scroll_into_view_if_needed()
+                    before = button.bounding_box()
+                    button.hover()
+                    self.assertEqual(button.bounding_box(), before)
+                    self.page.mouse.down()
+                    self.assertEqual(button.bounding_box(), before)
+                    self.assertEqual(self.style(button, "transform"), "none")
+                    # Let go elsewhere, so logout and delete are never actually clicked.
+                    self.page.mouse.move(0, 0)
+                    self.page.mouse.up()
+
+    def test_delete_buttons_stay_red(self):
+        audiogram = self.audiogram(date(2026, 9, 28))
+        self.submission(self.hhie_s, [2] * 10)
+        ReportShare.objects.create(user=self.user, token="red-button-share")
+        red = "rgb(220, 53, 69)"
+        cases = (
+            ("/account/delete", "button", "刪除帳號", "backgroundColor"),
+            (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", "backgroundColor"),
+            (f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖", "color"),
+            ("/report", "button", "取消分享", "color"),
+        )
+        self.open()
+        with self.saving_artifacts():
+            for path, role, name, prop in cases:
+                with self.subTest(button=name):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    button = self.page.get_by_role(role, name=name, exact=True)
+                    self.assertEqual(self.style(button, prop), red)
+                    self.assertEqual(self.style(button, "borderTopColor"), red)
+
+    def test_keyboard_focus_ring_stays_beside_the_glow(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            button = self.page.get_by_role("main").get_by_role("button", name="登入")
+            button.hover()
+            hover_only = self.style(button, "boxShadow")
+            self.page.mouse.move(0, 0)
+            button.focus()
+            self.assertTrue(button.evaluate("el => el.matches(':focus-visible')"))
+            focus_only = self.style(button, "boxShadow")
+            # A blurred glow against a crisp ring: never the same look.
+            self.assertEqual(hover_only, self.GLOW)
+            self.assertEqual(focus_only, self.FOCUS_RING)
+            self.assertNotIn(" 0px 0px 0px ", hover_only)
+            # Hovered as well: the ring stays next to the button, the glow goes outside it.
+            button.hover()
+            self.assertEqual(
+                self.style(button, "boxShadow"),
+                f"{self.FOCUS_RING}, rgba(58, 107, 176, 0.45) 0px 0px 16.2px 8.1px",
+            )
+            # Pressed from the keyboard: no glow, the ring stays.
+            self.page.keyboard.down("Space")
+            self.assertTrue(button.evaluate("el => el.matches(':active')"))
+            self.assertEqual(self.style(button, "boxShadow"), self.FOCUS_RING)
+
+    # #140 (2a): the gradient marks where you are, and the questionnaire icons.
+    def test_current_place_and_icons_use_the_gradient(self):
+        # Two questionnaires answered, so my hearing shows its tabs.
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7)
+        self.open()  # 1024 wide: the top navigation bar
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            current = nav.locator('a[aria-current="page"]')
+            others = nav.locator("a:not([aria-current])")
+            self.assertGreater(others.count(), 0)
+            for element in (current, self.page.locator('.history-tabs a[aria-current="page"]')):
+                self.assertEqual(self.style(element, "backgroundImage"), self.GRADIENT)
+                self.assertEqual(self.style(element, "color"), self.WHITE)
+                self.assertGreaterEqual(self.text_contrast(element), 4.5)
+            # Shape as well as colour: only the current page is a pill.
+            self.assertEqual(self.style(current, "borderTopLeftRadius"), "999px")
+            self.assertEqual(self.style(current, "boxShadow"), "none")
+            for other in others.all():
+                self.assertEqual(self.style(other, "backgroundImage"), "none")
+
+            self.page.goto(f"{self.live_server_url}/")
+            number = self.page.locator(".step-number").first
+            self.assertEqual(self.style(number, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(number, "color"), self.WHITE)
+
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            icon = self.page.locator(".questionnaire-icon").first
+            self.assertEqual(self.style(icon, "backgroundImage"), self.GRADIENT)
+            stroke = self.style(icon.locator("svg"), "stroke")
+            self.assertEqual(stroke, self.WHITE)
+            self.assertGreaterEqual(
+                self.lowest_contrast(stroke, self.style(icon, "backgroundImage")), 3
+            )
+
+    def test_phone_tab_bar_puts_the_current_icon_in_a_pill(self):
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            current = nav.locator('a[aria-current="page"]')
+            self.assertEqual(self.style(current, "boxShadow"), "none")  # no line along the top
+            self.assertEqual(self.style(current.locator("svg"), "backgroundImage"), self.GRADIENT)
+            self.assertEqual(self.style(current.locator("svg"), "stroke"), self.WHITE)
+            self.assertEqual(
+                self.styles(current.locator("span"), "color", "fontWeight"),
+                {"color": self.PRIMARY, "fontWeight": "700"},
+            )
+            self.assertGreaterEqual(min(self.size(current)), 44)
+            for other in nav.locator("a:not([aria-current])").all():
+                self.assertEqual(self.style(other.locator("svg"), "backgroundImage"), "none")
+
+    def test_navigation_items_only_change_colour(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            item = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="我的紀錄"
+            )
+            before = (item.bounding_box(), self.style(item, "color"))
+            item.hover()
+            self.assertEqual(item.bounding_box(), before[0])
+            self.assertNotEqual(self.style(item, "color"), before[1])
+            self.page.mouse.down()
+            self.assertEqual(item.bounding_box(), before[0])
+            self.assertEqual(self.style(item, "transform"), "none")
+            self.page.mouse.move(0, 0)
+            self.page.mouse.up()

@@ -59,6 +59,7 @@
   --radius-pill: 999px;
   --color-gradient-start: #1f4e8c;
   --color-gradient-end: #3a6bb0;
+  --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
@@ -186,7 +187,7 @@
     cursor: pointer;
     user-select: none;
     border: 1px solid var(--btn-border-color);
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-pill);
     background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
@@ -196,20 +197,21 @@
     --btn-padding-y: 0.5rem;
     --btn-font-size: 1.25rem;
   }
+  /* The gradient (2a, #139, below) covers the border, so the border stays transparent. */
   .btn-primary {
     --btn-color: #fff;
     --btn-bg: var(--color-primary);
-    --btn-border-color: var(--color-primary);
+    --btn-border-color: transparent;
     --btn-hover-color: #fff;
     --btn-hover-bg: var(--color-primary-hover);
-    --btn-hover-border-color: var(--color-primary-hover);
+    --btn-hover-border-color: transparent;
     --btn-focus-ring: var(--color-focus-ring);
     --btn-active-color: #fff;
     --btn-active-bg: var(--color-primary-active);
-    --btn-active-border-color: var(--color-primary-active);
-    --btn-disabled-color: #fff;
-    --btn-disabled-bg: var(--color-primary);
-    --btn-disabled-border-color: var(--color-primary);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #4d5f78;
+    --btn-disabled-bg: #fff;
+    --btn-disabled-border-color: #8da2bf;
   }
   .btn-danger {
     --btn-color: #fff;
@@ -314,6 +316,30 @@
     background-color: var(--btn-disabled-bg);
     border-color: var(--btn-disabled-border-color);
     opacity: 0.65;
+  }
+
+  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a glow
+     on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only, never
+     movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
+     ring (owner's choice after #139 review); with both, the ring stays next to the button. */
+  .btn-primary {
+    --btn-glow: rgba(58, 107, 176, 0.45);
+    background-image: var(--gradient-brand);
+    background-origin: border-box;
+  }
+  .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
+  .btn-primary:active {
+    background-image: linear-gradient(var(--color-primary-hover), #2f5c9c);
+    box-shadow: none;
+  }
+  .btn-primary:focus-visible:hover {
+    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0.9rem 0.45rem var(--btn-glow);
+  }
+  .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-primary:disabled, fieldset:disabled .btn-primary {
+    background-image: none;
+    box-shadow: inset 0 0 0 1px var(--btn-disabled-border-color);
+    opacity: 1;
   }
 
   .form-label { margin-bottom: 0.5rem; }
@@ -514,10 +540,75 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header */
+  /* Header: a blue gradient, top colour the same as the app's status bar (#138). */
   .site-header {
-    background-color: var(--color-primary);
+    position: relative;
+    overflow: hidden;
+    background-image: var(--gradient-brand);
     color: #fff;
+  }
+
+  .site-header-bar {
+    position: relative;
+  }
+
+  /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
+     soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
+     is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
+     At 8% white, text over a bar keeps 4.57:1; while the light passes over a bar it dips to 3.3:1
+     for a moment (accepted in #136). */
+  .site-wave {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 0 1rem;
+    pointer-events: none;
+  }
+
+  .site-wave span {
+    flex: 1;
+    height: 22%;
+    border-radius: 4px 4px 0 0;
+    background-color: #fff;
+    opacity: 0.08;
+    transform-origin: bottom;
+    animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
+  }
+
+  /* Each bar jumps to its own heights: seven patterns, staggered over five delays. */
+  .site-wave span:nth-child(7n + 1) { --wave-1: 1.5; --wave-2: 2.88; --wave-3: 2.01; }
+  .site-wave span:nth-child(7n + 2) { --wave-1: 2.67; --wave-2: 2.05; --wave-3: 2.02; }
+  .site-wave span:nth-child(7n + 3) { --wave-1: 2.96; --wave-2: 3.1; --wave-3: 1.41; }
+  .site-wave span:nth-child(7n + 4) { --wave-1: 2.14; --wave-2: 1.56; --wave-3: 1.6; }
+  .site-wave span:nth-child(7n + 5) { --wave-1: 2.16; --wave-2: 3.2; --wave-3: 2.08; }
+  .site-wave span:nth-child(7n + 6) { --wave-1: 2.97; --wave-2: 1.35; --wave-3: 1.9; }
+  .site-wave span:nth-child(7n + 7) { --wave-1: 2.66; --wave-2: 3.16; --wave-3: 1.19; }
+  .site-wave span:nth-child(5n + 2) { --wave-delay: 0.05s; }
+  .site-wave span:nth-child(5n + 3) { --wave-delay: 0.1s; }
+  .site-wave span:nth-child(5n + 4) { --wave-delay: 0.15s; }
+  .site-wave span:nth-child(5n + 5) { --wave-delay: 0.2s; }
+
+  .site-wave::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+    animation: wave-sweep 2.5s ease-in-out 1s both;
+  }
+
+  .header-wave-played .site-wave span,
+  .header-wave-played .site-wave::after {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-wave span,
+    .site-wave::after {
+      animation: none;
+    }
   }
 
   /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
@@ -606,6 +697,8 @@
     text-decoration: none;
   }
 
+  /* Hover and press change colour only, never position (ADR 0006, #140). */
+  .site-nav a:hover,
   .site-nav a[aria-current="page"] {
     color: var(--color-primary);
   }
@@ -630,8 +723,11 @@
       gap: 0.5rem;
     }
 
+    /* The current page is a gradient pill: shape as well as colour (#140). */
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 -0.25rem 0 var(--color-primary);
+      border-radius: var(--radius-pill);
+      background-image: var(--gradient-brand);
+      color: #fff;
     }
   }
 
@@ -663,8 +759,21 @@
       font-size: 0.875rem;
     }
 
+    /* Every icon gets the same pill room, so the current one can fill it without the bar
+       shifting; the current icon turns white in a gradient pill, its label bold blue (#140). */
+    .site-nav svg {
+      box-sizing: content-box;
+      padding: 0.125rem 0.75rem;
+      border-radius: var(--radius-pill);
+    }
+
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 0.25rem 0 var(--color-primary);
+      font-weight: 700;
+    }
+
+    .site-nav a[aria-current="page"] svg {
+      background-image: var(--gradient-brand);
+      stroke: #fff;
     }
   }
 
@@ -896,6 +1005,7 @@
     height: 2.25rem;
     border-radius: 50%;
     background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
     color: #fff;
     font-weight: 700;
     display: flex;
@@ -1043,7 +1153,10 @@
   }
 
   .history-tabs a[aria-current="page"] {
+    border-color: transparent;
     background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
+    background-origin: border-box;
     color: #fff;
   }
 
@@ -1491,20 +1604,16 @@
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
   }
 
-  /* The card turns the same pale blue on hover, so the circle turns white to stay visible. */
-  .link-card:hover .questionnaire-icon,
-  .link-card:active .questionnaire-icon {
-    background-color: #fff;
-  }
-
+  /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
   .questionnaire-icon svg {
     width: 1.75rem;
     height: 1.75rem;
     fill: none;
-    stroke: var(--color-primary);
+    stroke: #fff;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -1586,4 +1695,16 @@
   @page {
     margin: 1.5cm;
   }
+}
+
+/* Header wave (#138). */
+@keyframes wave-jump {
+  20% { transform: scaleY(var(--wave-1)); }
+  45% { transform: scaleY(var(--wave-2)); }
+  70% { transform: scaleY(var(--wave-3)); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes wave-sweep {
+  to { transform: translateX(100%); }
 }
