@@ -1845,3 +1845,85 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "color": self.WHITE,
                 },
             )
+
+    # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
+    WAVE_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.closest('.site-wave'))
+        .map(a => ({ state: a.playState, end: a.effect.getComputedTiming().endTime }))"""
+
+    def moving_context(self, javascript=True):
+        # The other tests here turn motion off; these need it on.
+        context = self.browser.new_context(
+            viewport={"width": 1024, "height": 900},
+            java_script_enabled=javascript,
+            reduced_motion="no-preference",
+        )
+        context.add_cookies([self.cookie])
+        context.tracing.start(screenshots=True, snapshots=True)
+        self.context = context
+        self.addCleanup(context.close)
+        return context
+
+    def assert_wave_plays_and_settles(self, page):
+        animations = page.evaluate(self.WAVE_ANIMATIONS)
+        self.assertGreater(len(animations), 0)
+        self.assertLessEqual(max(a["end"] for a in animations), 4000)
+        page.wait_for_timeout(4200)
+        self.assertEqual(
+            [a for a in page.evaluate(self.WAVE_ANIMATIONS) if a["state"] == "running"], []
+        )
+        heights = page.locator(".site-wave span").evaluate_all(
+            "bars => bars.map(bar => bar.getBoundingClientRect().height)"
+        )
+        self.assertEqual(len(heights), 28)
+        self.assertEqual(len(set(heights)), 1)
+
+    def test_header_is_a_blue_gradient_with_a_hidden_wave(self):
+        self.open()
+        with self.saving_artifacts():
+            for path in ("/", "/questionnaire_list"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    header = self.page.locator(".site-header")
+                    self.assertEqual(
+                        self.style(header, "backgroundImage"),
+                        "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))",
+                    )
+                    wave = header.locator(".site-wave")
+                    self.assertEqual(wave.get_attribute("aria-hidden"), "true")
+                    expect(wave.locator("span")).to_have_count(28)
+
+    def test_header_wave_plays_on_a_tabs_first_page_only(self):
+        context = self.moving_context()
+        with self.saving_artifacts():
+            self.page = context.new_page()
+            self.page.goto(f"{self.live_server_url}/")
+            self.assert_wave_plays_and_settles(self.page)
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assertEqual(self.page.evaluate(self.WAVE_ANIMATIONS), [])
+            # A new tab starts again.
+            self.page = context.new_page()
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assert_wave_plays_and_settles(self.page)
+            # Nothing anywhere on the page loops for ever.
+            loops = self.page.evaluate(
+                "document.getAnimations()"
+                ".filter(a => a.effect.getTiming().iterations === Infinity).length"
+            )
+            self.assertEqual(loops, 0)
+
+    def test_header_wave_plays_on_every_page_without_javascript(self):
+        context = self.moving_context(javascript=False)
+        with self.saving_artifacts():
+            self.page = context.new_page()
+            for path in ("/", "/questionnaire_list"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_wave_plays_and_settles(self.page)
+
+    def test_reduced_motion_keeps_the_header_still(self):
+        self.open()  # reduced motion
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            expect(self.page.locator(".site-wave span")).to_have_count(28)
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)

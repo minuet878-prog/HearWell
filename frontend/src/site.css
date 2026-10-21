@@ -514,10 +514,74 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header */
+  /* Header: a blue gradient, top colour the same as the app's status bar (#138). */
   .site-header {
-    background-color: var(--color-primary);
+    position: relative;
+    overflow: hidden;
+    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
     color: #fff;
+  }
+
+  .site-header-bar {
+    position: relative;
+  }
+
+  /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
+     soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
+     is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
+     At 8% white, text over a bar keeps 4.57:1. */
+  .site-wave {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 0 1rem;
+    pointer-events: none;
+  }
+
+  .site-wave span {
+    flex: 1;
+    height: 22%;
+    border-radius: 4px 4px 0 0;
+    background-color: #fff;
+    opacity: 0.08;
+    transform-origin: bottom;
+    animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
+  }
+
+  /* Each bar jumps to its own heights: seven patterns, staggered over five delays. */
+  .site-wave span:nth-child(7n + 1) { --wave-1: 1.5; --wave-2: 2.88; --wave-3: 2.01; }
+  .site-wave span:nth-child(7n + 2) { --wave-1: 2.67; --wave-2: 2.05; --wave-3: 2.02; }
+  .site-wave span:nth-child(7n + 3) { --wave-1: 2.96; --wave-2: 3.1; --wave-3: 1.41; }
+  .site-wave span:nth-child(7n + 4) { --wave-1: 2.14; --wave-2: 1.56; --wave-3: 1.6; }
+  .site-wave span:nth-child(7n + 5) { --wave-1: 2.16; --wave-2: 3.2; --wave-3: 2.08; }
+  .site-wave span:nth-child(7n + 6) { --wave-1: 2.97; --wave-2: 1.35; --wave-3: 1.9; }
+  .site-wave span:nth-child(7n + 7) { --wave-1: 2.66; --wave-2: 3.16; --wave-3: 1.19; }
+  .site-wave span:nth-child(5n + 2) { --wave-delay: 0.05s; }
+  .site-wave span:nth-child(5n + 3) { --wave-delay: 0.1s; }
+  .site-wave span:nth-child(5n + 4) { --wave-delay: 0.15s; }
+  .site-wave span:nth-child(5n + 5) { --wave-delay: 0.2s; }
+
+  .site-wave::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+    animation: wave-sweep 2.5s ease-in-out 1s both;
+  }
+
+  .header-wave-played .site-wave span,
+  .header-wave-played .site-wave::after {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-wave span,
+    .site-wave::after {
+      animation: none;
+    }
   }
 
   /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
@@ -1586,4 +1650,16 @@
   @page {
     margin: 1.5cm;
   }
+}
+
+/* Header wave (#138). */
+@keyframes wave-jump {
+  20% { transform: scaleY(var(--wave-1)); }
+  45% { transform: scaleY(var(--wave-2)); }
+  70% { transform: scaleY(var(--wave-3)); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes wave-sweep {
+  to { transform: translateX(100%); }
 }
