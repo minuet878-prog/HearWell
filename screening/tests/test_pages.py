@@ -741,7 +741,7 @@ class PwaTests(TestCase):
             "scope": "/",
             "display": "standalone",
             "theme_color": "#1f4e8c",
-            "background_color": "#ffffff",
+            "background_color": "#faf7f2",
             "lang": "zh-Hant",
         }
         for key, value in expected.items():
