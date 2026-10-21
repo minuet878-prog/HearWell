@@ -113,11 +113,7 @@ class Screenshots(StaticLiveServerTestCase):
             "user": self.session(self.user),
             "new": self.session(User.objects.create_user(username="shots_new")),
             "anon": None,
-            "admin": self.session(
-                User.objects.create_superuser(
-                    username="shots_admin", email="shots@example.test", password="test-only"
-                )
-            ),
+            "admin": self.session(User.objects.create_superuser(username="shots_admin")),
         }
 
     def session(self, user):

@@ -27,8 +27,9 @@ class LayoutUtilityTests(SimpleTestCase):
 
     def test_all_templates_have_no_legacy_layout_classes(self):
         found = []
-        for name in self.SOURCES:
-            text = (BASE_DIR / name).read_text()
+        for path in self.SOURCES:
+            name = path.relative_to(BASE_DIR)
+            text = path.read_text()
             for lineno, line in enumerate(text.splitlines(), start=1):
                 for groups in CLASS_ATTRIBUTE.findall(line):
                     found += [

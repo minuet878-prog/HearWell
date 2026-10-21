@@ -39,7 +39,7 @@
   --shadow-card: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.08);
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
-  /* Original defaults the site never overrode, shared by form fields, cards and alerts (#125). */
+  /* Pre-migration framework defaults the site never overrode, shared by form fields, cards and alerts (#125). */
   --radius-field: 0.375rem;
   --radius-field-lg: 0.5rem;
   --color-field-focus: #86b7fe;
@@ -216,7 +216,7 @@
     --btn-disabled-bg: #dc3545;
     --btn-disabled-border-color: #dc3545;
   }
-  /* The site only recoloured the rest and active states; disabled kept the original blue. */
+  /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);
     --btn-border-color: var(--color-primary);
@@ -273,7 +273,8 @@
     --btn-disabled-bg: transparent;
     --btn-disabled-border-color: #f8f9fa;
   }
-  /* Its focus ring kept the original blue; the site never overrode it. */
+  /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
+     never overrode it. */
   .btn-link {
     --btn-color: var(--color-primary);
     --btn-hover-color: var(--color-primary-hover);

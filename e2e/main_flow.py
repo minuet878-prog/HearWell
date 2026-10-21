@@ -1130,7 +1130,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
 
     def test_heading_classes_and_muted_text_look_as_before(self):
-        # #124: The original .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
+        # #124: The pre-migration .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
         # line height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body
         # text colour.
         self.open(javascript=False)
@@ -1602,6 +1602,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             labels = self.page.locator("#id_form-0-score label")
             first, second = labels.nth(0).bounding_box(), labels.nth(1).bounding_box()
             self.assertGreaterEqual(first["height"], 3 * 18)  # 3rem at the 18px base
+            self.assertGreaterEqual(first["width"], 44)  # #119 acceptance 6
             self.assertEqual(first["y"], second["y"])
             self.assertLess(first["x"], second["x"])
 
@@ -1618,8 +1619,8 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     self.assertGreater(cards.count(), 0)
                     self.assertGreater(items.count(), 1)
                     for target in cards.all() + items.all():
-                        name = target.text_content().split()[0]
-                        with self.subTest(width=width, path=path, target=name):
+                        href = target.get_attribute("href")
+                        with self.subTest(width=width, path=path, target=href):
                             self.assertGreaterEqual(min(self.size(target)), 44)
 
     def test_answer_form_hides_only_while_loading(self):
