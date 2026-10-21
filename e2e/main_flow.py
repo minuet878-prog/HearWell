@@ -43,6 +43,7 @@ class SavesFailureArtifacts:
     """On failure, keep the screenshot and trace of that moment for debugging (CI uploads them)."""
 
     saved_context = None
+    saved_count = 0
 
     @contextmanager
     def saving_artifacts(self):
@@ -52,9 +53,12 @@ class SavesFailureArtifacts:
             # Nested blocks see the same failure again; a context's trace can only stop once.
             if self.saved_context is not self.context:
                 self.saved_context = self.context
+                self.saved_count += 1
+                # Named per test and browser context, so one failure never overwrites another.
+                name = f"{'.'.join(self.id().split('.')[-2:])}-{self.saved_count}"
                 ARTIFACTS.mkdir(exist_ok=True)
-                self.page.screenshot(path=ARTIFACTS / "failure.png", full_page=True)
-                self.context.tracing.stop(path=ARTIFACTS / "trace.zip")
+                self.page.screenshot(path=ARTIFACTS / f"{name}.png", full_page=True)
+                self.context.tracing.stop(path=ARTIFACTS / f"{name}.zip")
             raise
 
     @contextmanager
