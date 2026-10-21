@@ -17,6 +17,7 @@ from screening.models import (
     Category,
     Question,
     Questionnaire,
+    ReportShare,
     Submission,
     User,
 )
@@ -872,6 +873,55 @@ class PwaNavTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         return response.content.decode()
+
+    def test_pages_load_built_css_without_bootstrap(self):
+        share = ReportShare.objects.create(user=self.user, token="css-test-share")
+        pages = [
+            (False, reverse("index")),
+            (True, reverse("index")),
+            *self._pages(),
+            (True, reverse("hhi_comparison", args=[self.questionnaire.id])),
+            (False, reverse("shared_cover", args=[share.token])),
+            (False, reverse("shared_report", args=[share.token])),
+            *(
+                (True, reverse(name))
+                for name in (
+                    "family_guide",
+                    "privacy",
+                    "account_settings",
+                    "delete_account",
+                    "health_report",
+                    "audiogram_new",
+                    "audiogram_compare",
+                )
+            ),
+            *(
+                (True, reverse(name, args=[self.audiogram.id]))
+                for name in (
+                    "audiogram_detail",
+                    "audiogram_edit",
+                    "audiogram_delete",
+                )
+            ),
+        ]
+        for logged_in, url in pages:
+            with self.subTest(logged_in=logged_in, url=url):
+                content = self._get(logged_in, url)
+                self.assertIn(
+                    '<link href="/static/screening/frontend/site.css" rel="stylesheet">', content
+                )
+                self.assertNotIn("bootstrap", content.lower())
+
+    def test_invalid_share_loads_built_css_without_bootstrap(self):
+        response = self.client.get(reverse("shared_cover", args=["css-missing-share"]))
+        self.assertContains(response, "/static/screening/frontend/site.css", status_code=404)
+        self.assertNotContains(response, "bootstrap", status_code=404)
+
+    def test_consent_page_loads_built_css_without_bootstrap(self):
+        self.client.force_login(User.objects.create_user(username="css_undecided"))
+        response = self.client.get(reverse("consent"))
+        self.assertContains(response, "/static/screening/frontend/site.css")
+        self.assertNotContains(response, "bootstrap")
 
     # 3
     def test_home_has_no_back_button(self):

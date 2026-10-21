@@ -6,8 +6,11 @@ import { build } from "vite";
 import { expect, it } from "vitest";
 
 const LIMIT = 80 * 1024;
+// Before the Tailwind migration every page loaded Bootstrap 5.3.8 (22,970 bytes) and the old
+// styles.css (5,489 bytes), measured brotli in the same way as below (#124).
+const CSS_LIMIT = 22_970 + 5_489;
 
-async function entryDownload(name) {
+async function buildOutput() {
   const root = fileURLToPath(new URL("..", import.meta.url));
   // Vitest sets NODE_ENV=test, which would bundle React's larger development build.
   const nodeEnv = process.env.NODE_ENV;
@@ -15,7 +18,11 @@ async function entryDownload(name) {
   const result = await build({ root, logLevel: "silent", build: { write: false } }).finally(() => {
     process.env.NODE_ENV = nodeEnv;
   });
-  const chunks = [result].flat().flatMap((r) => r.output).filter((o) => o.type === "chunk");
+  return [result].flat().flatMap((r) => r.output);
+}
+
+async function entryDownload(name) {
+  const chunks = (await buildOutput()).filter((o) => o.type === "chunk");
   const byFile = Object.fromEntries(chunks.map((c) => [c.fileName, c]));
 
   // The entry plus everything it imports statically is what the browser downloads.
@@ -41,3 +48,11 @@ for (const name of ["answer", "audiogram-input", "audiogram-view"]) {
     expect(size).toBeLessThanOrEqual(LIMIT);
   }, 60_000);
 }
+
+// Every page loads the site's CSS on its first visit.
+it("the site's CSS is built and costs no more than Bootstrap plus the old CSS (brotli)", async () => {
+  const css = (await buildOutput()).filter((o) => o.fileName.endsWith(".css"));
+  expect(css.map((o) => o.fileName)).toContain("site.css");
+  const size = css.reduce((sum, o) => sum + brotliCompressSync(o.source).length, 0);
+  expect(size).toBeLessThanOrEqual(CSS_LIMIT);
+}, 60_000);

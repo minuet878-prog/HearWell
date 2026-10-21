@@ -6,9 +6,7 @@
 <head>
     <title>{% block title %}HearWell{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
-        crossorigin="anonymous">
+    <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
     {# Chinese-friendly body font; CDN down or blocked falls back to the system font in styles.css. #}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +34,7 @@
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
         <div class="container site-header-bar py-2">
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
                 <button id="pwa-back" class="btn btn-outline-light site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
                 {% endif %}
@@ -44,7 +42,7 @@
             </div>
             {% if user.is_authenticated %}
             {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
-            <a class="site-account text-break" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
+            <a class="site-account wrap-anywhere" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
             <form id="logout-form" action="{% url 'logout' %}" method="post">
                 {% csrf_token %}
                 <button class="btn btn-outline-light" type="submit">登出</button>
@@ -100,9 +98,9 @@
     </nav>
     {% endwith %}
 
-    <main id="main-content" tabindex="-1" class="container my-4">
+    <main id="main-content" tabindex="-1" class="container my-6">
         {% for message in messages %}
-        <p class="fs-5 fw-bold">{{ message }}</p>
+        <p class="text-xl/normal font-bold">{{ message }}</p>
         {% endfor %}
         {% block body %}{% endblock %}
     </main>
