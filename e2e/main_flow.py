@@ -1014,6 +1014,12 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     WARM_FOOTER = "rgb(243, 237, 227)"
     WARM_BORDER = "rgb(239, 230, 216)"
     WHITE = "rgb(255, 255, 255)"
+    # #138-#140 (2a): the brand gradient; #139: the primary button's states (choice C in #136,
+    # with a soft glow so it never looks like the keyboard ring).
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(47, 92, 156))"
+    GLOW = "rgba(58, 107, 176, 0.45) 0px 0px 16.2px 3.6px"
+    FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
     # (level, scores, background, text colour)
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
@@ -1046,12 +1052,13 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "url": self.live_server_url,
         }
 
-    def open(self, signed_in=True, width=1024, javascript=True):
-        # Reduced motion turns off colour transitions, so a style is read at its final value.
+    def open(self, signed_in=True, width=1024, javascript=True, motion=False):
+        # Reduced motion turns off colour transitions, so a style is read at its final value; the
+        # header wave tests turn motion back on.
         self.context = self.browser.new_context(
             viewport={"width": width, "height": 900},
             java_script_enabled=javascript,
-            reduced_motion="reduce",
+            reduced_motion="no-preference" if motion else "reduce",
         )
         if signed_in:
             self.context.add_cookies([self.cookie])
@@ -1851,19 +1858,6 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         .filter(a => a.effect.target.closest('.site-wave'))
         .map(a => ({ state: a.playState, end: a.effect.getComputedTiming().endTime }))"""
 
-    def moving_context(self, javascript=True):
-        # The other tests here turn motion off; these need it on.
-        context = self.browser.new_context(
-            viewport={"width": 1024, "height": 900},
-            java_script_enabled=javascript,
-            reduced_motion="no-preference",
-        )
-        context.add_cookies([self.cookie])
-        context.tracing.start(screenshots=True, snapshots=True)
-        self.context = context
-        self.addCleanup(context.close)
-        return context
-
     def assert_wave_plays_and_settles(self, page):
         animations = page.evaluate(self.WAVE_ANIMATIONS)
         self.assertGreater(len(animations), 0)
@@ -1885,24 +1879,20 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     header = self.page.locator(".site-header")
-                    self.assertEqual(
-                        self.style(header, "backgroundImage"),
-                        "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))",
-                    )
+                    self.assertEqual(self.style(header, "backgroundImage"), self.GRADIENT)
                     wave = header.locator(".site-wave")
                     self.assertEqual(wave.get_attribute("aria-hidden"), "true")
                     expect(wave.locator("span")).to_have_count(28)
 
     def test_header_wave_plays_on_a_tabs_first_page_only(self):
-        context = self.moving_context()
+        self.open(motion=True)
         with self.saving_artifacts():
-            self.page = context.new_page()
             self.page.goto(f"{self.live_server_url}/")
             self.assert_wave_plays_and_settles(self.page)
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.page.evaluate(self.WAVE_ANIMATIONS), [])
             # A new tab starts again.
-            self.page = context.new_page()
+            self.page = self.context.new_page()
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assert_wave_plays_and_settles(self.page)
             # Nothing anywhere on the page loops for ever.
@@ -1913,9 +1903,8 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(loops, 0)
 
     def test_header_wave_plays_on_every_page_without_javascript(self):
-        context = self.moving_context(javascript=False)
+        self.open(javascript=False, motion=True)
         with self.saving_artifacts():
-            self.page = context.new_page()
             for path in ("/", "/questionnaire_list"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
@@ -1930,11 +1919,6 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
 
     # #139 (2a): primary buttons follow choice C in #136 (docs/verification/issue-136.md); every
     # button is a pill and only changes colour.
-    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))"
-    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(47, 92, 156))"
-    GLOW = "rgba(58, 107, 176, 0.35) 0px 0px 0px 5.4px"
-    FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
-
     @staticmethod
     def lowest_contrast(text, background):
         """Lowest WCAG ratio of a text colour against every colour in a background value."""
@@ -1954,6 +1938,13 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             ratios.append((pair[0] + 0.05) / (pair[1] + 0.05))
         return min(ratios)
 
+    def text_contrast(self, element, text="color"):
+        """Lowest contrast of an element's text (or icon stroke) against its own background."""
+        background = self.style(element, "backgroundImage")
+        if background == "none":
+            background = self.style(element, "backgroundColor")
+        return self.lowest_contrast(self.style(element, text), background)
+
     def test_primary_button_states_follow_choice_c(self):
         self.open(signed_in=False)
         with self.saving_artifacts():
@@ -1961,19 +1952,25 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             button = self.page.get_by_role("main").get_by_role("button", name="登入")
             self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
             self.assertEqual(self.style(button, "color"), self.WHITE)
-            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 4.5)
+            self.assertGreaterEqual(self.text_contrast(button), 4.5)
             button.hover()
             self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
             self.assertEqual(self.style(button, "boxShadow"), self.GLOW)
             self.page.mouse.down()
             self.assertEqual(self.style(button, "backgroundImage"), self.PRESSED_GRADIENT)
             self.assertEqual(self.style(button, "boxShadow"), "none")
-            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.PRESSED_GRADIENT), 4.5)
+            self.assertGreaterEqual(self.text_contrast(button), 4.5)
             self.page.mouse.up()
             self.page.mouse.move(0, 0)
             button.evaluate("el => { el.disabled = true; }")
             disabled = self.styles(
-                button, "backgroundImage", "backgroundColor", "color", "borderTopColor", "opacity"
+                button,
+                "backgroundImage",
+                "backgroundColor",
+                "color",
+                "borderTopColor",
+                "boxShadow",
+                "opacity",
             )
             self.assertEqual(
                 disabled,
@@ -1982,12 +1979,15 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "backgroundColor": self.WHITE,
                     "color": "rgb(77, 95, 120)",
                     "borderTopColor": "rgb(141, 162, 191)",
+                    "boxShadow": "rgb(141, 162, 191) 0px 0px 0px 1px inset",  # a 2px edge in all
                     "opacity": "1",
                 },
             )
             self.assertGreaterEqual(self.lowest_contrast(disabled["color"], self.WHITE), 4.5)
 
     def test_buttons_are_pills_and_only_change_colour(self):
+        # Except the audiogram symbol buttons, which #120 lists at the medium radius
+        # (test_three_radius_levels).
         audiogram = self.audiogram(date(2026, 9, 28))
         cases = (
             (False, "/login", "button", "登入"),
@@ -2040,15 +2040,21 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/login")
             button = self.page.get_by_role("main").get_by_role("button", name="登入")
+            button.hover()
+            hover_only = self.style(button, "boxShadow")
+            self.page.mouse.move(0, 0)
             button.focus()
             self.assertTrue(button.evaluate("el => el.matches(':focus-visible')"))
-            self.assertEqual(self.style(button, "boxShadow"), self.FOCUS_RING)
-            self.assertNotEqual(self.FOCUS_RING, self.GLOW)
+            focus_only = self.style(button, "boxShadow")
+            # A blurred glow against a crisp ring: never the same look.
+            self.assertEqual(hover_only, self.GLOW)
+            self.assertEqual(focus_only, self.FOCUS_RING)
+            self.assertNotIn(" 0px 0px 0px ", hover_only)
             # Hovered as well: the ring stays next to the button, the glow goes outside it.
             button.hover()
             self.assertEqual(
                 self.style(button, "boxShadow"),
-                f"{self.FOCUS_RING}, rgba(58, 107, 176, 0.35) 0px 0px 0px 9.9px",
+                f"{self.FOCUS_RING}, rgba(58, 107, 176, 0.45) 0px 0px 16.2px 8.1px",
             )
             # Pressed from the keyboard: no glow, the ring stays.
             self.page.keyboard.down("Space")
@@ -2070,7 +2076,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             for element in (current, self.page.locator('.history-tabs a[aria-current="page"]')):
                 self.assertEqual(self.style(element, "backgroundImage"), self.GRADIENT)
                 self.assertEqual(self.style(element, "color"), self.WHITE)
-                self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 4.5)
+                self.assertGreaterEqual(self.text_contrast(element), 4.5)
             # Shape as well as colour: only the current page is a pill.
             self.assertEqual(self.style(current, "borderTopLeftRadius"), "999px")
             self.assertEqual(self.style(current, "boxShadow"), "none")
@@ -2085,8 +2091,11 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             icon = self.page.locator(".questionnaire-icon").first
             self.assertEqual(self.style(icon, "backgroundImage"), self.GRADIENT)
-            self.assertEqual(self.style(icon.locator("svg"), "stroke"), self.WHITE)
-            self.assertGreaterEqual(self.lowest_contrast(self.WHITE, self.GRADIENT), 3)
+            stroke = self.style(icon.locator("svg"), "stroke")
+            self.assertEqual(stroke, self.WHITE)
+            self.assertGreaterEqual(
+                self.lowest_contrast(stroke, self.style(icon, "backgroundImage")), 3
+            )
 
     def test_phone_tab_bar_puts_the_current_icon_in_a_pill(self):
         self.open(width=390)

@@ -59,6 +59,7 @@
   --radius-pill: 999px;
   --color-gradient-start: #1f4e8c;
   --color-gradient-end: #3a6bb0;
+  --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
@@ -196,20 +197,21 @@
     --btn-padding-y: 0.5rem;
     --btn-font-size: 1.25rem;
   }
+  /* The gradient (2a, #139, below) covers the border, so the border stays transparent. */
   .btn-primary {
     --btn-color: #fff;
     --btn-bg: var(--color-primary);
-    --btn-border-color: var(--color-primary);
+    --btn-border-color: transparent;
     --btn-hover-color: #fff;
     --btn-hover-bg: var(--color-primary-hover);
-    --btn-hover-border-color: var(--color-primary-hover);
+    --btn-hover-border-color: transparent;
     --btn-focus-ring: var(--color-focus-ring);
     --btn-active-color: #fff;
     --btn-active-bg: var(--color-primary-active);
-    --btn-active-border-color: var(--color-primary-active);
-    --btn-disabled-color: #fff;
-    --btn-disabled-bg: var(--color-primary);
-    --btn-disabled-border-color: var(--color-primary);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #4d5f78;
+    --btn-disabled-bg: #fff;
+    --btn-disabled-border-color: #8da2bf;
   }
   .btn-danger {
     --btn-color: #fff;
@@ -316,33 +318,27 @@
     opacity: 0.65;
   }
 
-  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a pale
-     glow on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only,
-     never movement (ADR 0006). The keyboard ring stays next to the button and the glow goes
-     outside it, so focus always shows and the two never look alike (#139). */
+  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a glow
+     on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only, never
+     movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
+     ring (owner's choice after #139 review); with both, the ring stays next to the button. */
   .btn-primary {
-    --btn-glow: rgba(58, 107, 176, 0.35);
-    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    --btn-glow: rgba(58, 107, 176, 0.45);
+    background-image: var(--gradient-brand);
     background-origin: border-box;
-    border-color: transparent;
   }
-  .btn-primary:hover, .btn-primary:focus-visible { border-color: transparent; }
-  .btn-primary:hover { box-shadow: 0 0 0 0.3rem var(--btn-glow); }
+  .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
   .btn-primary:active {
-    background-image: linear-gradient(#173b6a, #2f5c9c);
-    border-color: transparent;
+    background-image: linear-gradient(var(--color-primary-hover), #2f5c9c);
     box-shadow: none;
   }
   .btn-primary:focus-visible:hover {
-    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0 0.55rem var(--btn-glow);
+    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0.9rem 0.45rem var(--btn-glow);
   }
   .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
   .btn-primary:disabled, fieldset:disabled .btn-primary {
-    color: #4d5f78;
     background-image: none;
-    background-color: #fff;
-    border-color: #8da2bf;
-    box-shadow: inset 0 0 0 1px #8da2bf;
+    box-shadow: inset 0 0 0 1px var(--btn-disabled-border-color);
     opacity: 1;
   }
 
@@ -548,7 +544,7 @@
   .site-header {
     position: relative;
     overflow: hidden;
-    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-image: var(--gradient-brand);
     color: #fff;
   }
 
@@ -559,7 +555,8 @@
   /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
      soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
      is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
-     At 8% white, text over a bar keeps 4.57:1. */
+     At 8% white, text over a bar keeps 4.57:1; while the light passes over a bar it dips to 3.3:1
+     for a moment (accepted in #136). */
   .site-wave {
     position: absolute;
     inset: 0;
@@ -729,7 +726,7 @@
     /* The current page is a gradient pill: shape as well as colour (#140). */
     .site-nav a[aria-current="page"] {
       border-radius: var(--radius-pill);
-      background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+      background-image: var(--gradient-brand);
       color: #fff;
     }
   }
@@ -775,7 +772,7 @@
     }
 
     .site-nav a[aria-current="page"] svg {
-      background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+      background-image: var(--gradient-brand);
       stroke: #fff;
     }
   }
@@ -1008,7 +1005,7 @@
     height: 2.25rem;
     border-radius: 50%;
     background-color: var(--color-primary);
-    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-image: var(--gradient-brand);
     color: #fff;
     font-weight: 700;
     display: flex;
@@ -1158,7 +1155,7 @@
   .history-tabs a[aria-current="page"] {
     border-color: transparent;
     background-color: var(--color-primary);
-    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-image: var(--gradient-brand);
     background-origin: border-box;
     color: #fff;
   }
@@ -1608,7 +1605,7 @@
     height: 3rem;
     border-radius: 50%;
     background-color: var(--color-primary);
-    background-image: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+    background-image: var(--gradient-brand);
   }
 
   /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
