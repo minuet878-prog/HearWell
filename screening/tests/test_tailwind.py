@@ -62,6 +62,30 @@ class BootstrapUtilityTests(SimpleTestCase):
         ),
         "frontend/src/AnswerApp.jsx",
         "frontend/src/answer-main.jsx",
+        # #129: my hearing history and the audiogram pages.
+        *(
+            f"screening/templates/screening/{name}"
+            for name in (
+                "my_hearing.html",
+                "comparisons/average_history.html",
+                "comparisons/total_history.html",
+                "ioi_ha_chart.html",
+                "ioi_ha_lines.html",
+                "audiogram_list.html",
+                "audiogram_new.html",
+                "audiogram_detail.html",
+                "audiogram_compare.html",
+                "audiogram_delete.html",
+                "audiogram_point_value.html",
+                "audiogram_thumbnail.html",
+            )
+        ),
+        "frontend/src/TrendChart.jsx",
+        "frontend/src/AudiogramApp.jsx",
+        "frontend/src/AudiogramChart.jsx",
+        "frontend/src/audiogram-main.jsx",
+        "frontend/src/audiogram-view-main.jsx",
+        "frontend/src/main.jsx",
     )
 
     def test_migrated_templates_have_no_bootstrap_layout_classes(self):

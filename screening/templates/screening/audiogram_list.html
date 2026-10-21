@@ -4,8 +4,8 @@
 {% block title %}聽力圖｜HearWell{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-3">聽力圖</h1>
-<p class="d-flex flex-wrap gap-2 align-items-center">
+<h1 class="h3 mt-4">聽力圖</h1>
+<p class="flex flex-wrap gap-2 items-center">
     <a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">新增聽力圖</a>
     {% if audiograms|length >= 2 %}
     <a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
