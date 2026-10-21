@@ -1052,13 +1052,15 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "url": self.live_server_url,
         }
 
-    def open(self, signed_in=True, width=1024, javascript=True, motion=False):
+    def open(self, signed_in=True, width=1024, javascript=True, motion=False, touch=False):
         # Reduced motion turns off colour transitions, so a style is read at its final value; the
-        # header wave tests turn motion back on.
+        # header wave tests turn motion back on. Touch is a phone without a mouse.
         self.context = self.browser.new_context(
             viewport={"width": width, "height": 900},
             java_script_enabled=javascript,
             reduced_motion="no-preference" if motion else "reduce",
+            has_touch=touch,
+            is_mobile=touch,
         )
         if signed_in:
             self.context.add_cookies([self.cookie])
@@ -2130,3 +2132,163 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(self.style(item, "transform"), "none")
             self.page.mouse.move(0, 0)
             self.page.mouse.up()
+
+    # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
+    CARD_PAGES = ("/questionnaire_list", "/my_hearing", "/audiograms")
+    LIFTED = "matrix(1, 0, 0, 1, 0, -4.5)"
+    DEEP_SHADOW = "rgba(120, 90, 50, 0.16) 0px 9px 22.5px 0px"
+
+    @staticmethod
+    def settled(locator):
+        """Wait for the element's own transitions to finish, then hand it back."""
+        locator.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
+        return locator
+
+    def test_clickable_cards_lift_on_hover(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.audiogram(date(2026, 9, 28))
+        self.open(motion=True)
+        with self.saving_artifacts():
+            for path in self.CARD_PAGES:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.page.locator("a.link-card").first
+                    card.scroll_into_view_if_needed()
+                    before = card.bounding_box()
+                    card.hover()
+                    self.settled(card)
+                    self.assertEqual(
+                        self.styles(card, "transform", "boxShadow", "borderTopColor"),
+                        {
+                            "transform": self.LIFTED,
+                            "boxShadow": self.DEEP_SHADOW,
+                            "borderTopColor": self.PRIMARY,
+                        },
+                    )
+                    self.assertAlmostEqual(card.bounding_box()["y"], before["y"] - 4.5)
+                    self.page.mouse.move(0, 0)
+
+            # The questionnaire card's icon sends out one ripple.
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            card = self.page.locator("a.link-card").first
+            card.hover()
+            ripples = card.locator(".questionnaire-icon").evaluate(
+                """icon => document.getAnimations()
+                    .filter(a => a.effect.target === icon && a.effect.pseudoElement === '::after')
+                    .map(a => a.effect.getComputedTiming())"""
+            )
+            self.assertEqual(len(ripples), 1)
+            self.assertEqual(ripples[0]["iterations"], 1)
+            self.assertLessEqual(ripples[0]["endTime"], 1000)
+
+    def test_pressed_cards_sink_on_a_touch_screen(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.audiogram(date(2026, 9, 28))
+        sunk = f"matrix(1, 0, 0, 1, 0, 2.25) | {self.PRIMARY} | rgb(232, 238, 247)"
+        rest = {
+            "transform": "none",
+            "boxShadow": "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px",
+            "borderTopColor": self.WARM_BORDER,
+            "backgroundColor": self.WHITE,
+        }
+        self.open(width=390, motion=True, touch=True)
+        self.assertFalse(self.page.evaluate("matchMedia('(hover: hover)').matches"))
+        finger = self.context.new_cdp_session(self.page)
+        with self.saving_artifacts():
+            for path in self.CARD_PAGES:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.page.locator("a.link-card").first
+                    card.scroll_into_view_if_needed()
+                    # Note the card's look on every frame it is pressed, and stay on the page.
+                    card.evaluate(
+                        """el => {
+                            el.addEventListener('click', e => e.preventDefault());
+                            window.pressed = new Set();
+                            (function look() {
+                                if (el.matches(':active')) {
+                                    const s = getComputedStyle(el);
+                                    const look = [s.transform, s.borderTopColor, s.backgroundColor];
+                                    pressed.add(look.join(' | '));
+                                }
+                                requestAnimationFrame(look);
+                            })();
+                        }"""
+                    )
+                    box = card.bounding_box()
+                    finger.send(
+                        "Input.synthesizeTapGesture",
+                        {
+                            "x": box["x"] + box["width"] / 2,
+                            "y": box["y"] + box["height"] / 2,
+                            "duration": 500,
+                            "gestureSourceType": "touch",
+                        },
+                    )
+                    # Pressed: sunk and darker than the hover colour.
+                    self.assertIn(sunk, self.page.evaluate("[...pressed]"))
+                    # Let go: back at rest, though the browser still counts the card as hovered.
+                    self.assertTrue(card.evaluate("el => el.matches(':hover')"))
+                    self.assertEqual(self.styles(self.settled(card), *rest), rest)
+
+    def test_reduced_motion_cards_only_change_colour(self):
+        self.open()  # reduced motion
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            card = self.page.locator("a.link-card").first
+            before = card.bounding_box()
+            card.hover()
+            self.assertEqual(card.bounding_box(), before)
+            self.assertEqual(self.style(card, "transform"), "none")
+            self.assertEqual(self.style(card, "borderTopColor"), self.PRIMARY)
+            self.page.mouse.down()
+            self.assertEqual(card.bounding_box(), before)
+            self.assertEqual(self.style(card, "transform"), "none")
+            self.assertEqual(self.style(card, "backgroundColor"), "rgb(232, 238, 247)")
+            # No ripple, and nothing else animates either.
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+            self.page.mouse.move(0, 0)
+            self.page.mouse.up()
+
+    def test_boxes_that_cannot_be_clicked_stay_still(self):
+        record = self.submission(self.hhie_s, [2] * 10)
+        cases = (
+            ("/", ".step-cards li"),
+            ("/my_hearing", ".trend-summary"),
+            (f"/submission/{record.pk}", ".result-banner"),
+        )
+        every_style = "el => Object.fromEntries([...getComputedStyle(el)].map(p => "
+        every_style += "[p, getComputedStyle(el).getPropertyValue(p)]))"
+        self.open(motion=True)
+        with self.saving_artifacts():
+            for path, selector in cases:
+                with self.subTest(box=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    box = self.page.locator(selector).first
+                    box.scroll_into_view_if_needed()
+                    before = (box.bounding_box(), box.evaluate(every_style))
+                    box.hover()
+                    self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
+                    self.page.mouse.down()
+                    self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
+                    self.page.mouse.up()
+
+    def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
+        self.open(motion=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            card = self.page.locator("a.link-card").first
+            before = card.bounding_box()
+            card.focus()
+            self.assertTrue(card.evaluate("el => el.matches(':focus-visible')"))
+            self.settled(card)
+            self.assertEqual(card.bounding_box(), before)
+            self.assertEqual(
+                self.styles(card, "transform", "outline", "outlineOffset", "borderTopColor"),
+                {
+                    "transform": "none",
+                    "outline": f"{self.PRIMARY} solid 4px",  # 0.25rem, drawn in whole pixels
+                    "outlineOffset": "4px",
+                    "borderTopColor": self.PRIMARY,
+                },
+            )

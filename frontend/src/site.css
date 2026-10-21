@@ -54,6 +54,7 @@
   --color-footer-bg: #f3ede3;
   --color-border-warm: #efe6d8;
   --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
+  --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
   --radius-large: 1.5rem;
   --radius-medium: 0.75rem;
   --radius-pill: 999px;
@@ -862,18 +863,46 @@
     color: inherit;
     text-decoration: none;
     box-shadow: var(--shadow-warm);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
+      border-color 0.15s ease-out, background-color 0.15s ease-out;
   }
 
-  .link-card:hover,
+  /* Only clickable cards move (#141, ADR 0006). Hover only where there is a mouse, so a tap
+     never leaves a card looking hovered; a press sinks the card on every device. */
+  @media (hover: hover) and (pointer: fine) {
+    .link-card:hover {
+      border-color: var(--color-primary);
+      background-color: var(--color-brand-soft);
+      color: inherit;
+      transform: translateY(-0.25rem);
+      box-shadow: var(--shadow-warm-lifted);
+    }
+
+    .link-card:hover .questionnaire-icon::after {
+      animation: icon-ripple 0.8s ease-out both;
+    }
+  }
+
   .link-card:active {
     border-color: var(--color-primary);
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-brand-selected);
     color: inherit;
+    transform: translateY(0.125rem);
+    box-shadow: none;
   }
 
+  /* Keyboard focus never moves the card; the border turns blue beside the ring. */
   .link-card:focus-visible {
+    border-color: var(--color-primary);
     outline: 0.25rem solid var(--color-primary);
     outline-offset: 0.25rem;
+  }
+
+  /* Reduced motion: colour changes only. */
+  @media (prefers-reduced-motion: reduce) {
+    .link-card { transition: none; }
+    .link-card:hover, .link-card:active { transform: none; }
+    .link-card:hover .questionnaire-icon::after { animation: none; }
   }
 
   .link-card-body {
@@ -1597,6 +1626,7 @@
   }
 
   .questionnaire-icon {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
@@ -1606,6 +1636,16 @@
     border-radius: 50%;
     background-color: var(--color-primary);
     background-image: var(--gradient-brand);
+  }
+
+  /* The ring a hovered card's icon sends out once (#141); invisible at rest. */
+  .questionnaire-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0.25rem rgba(58, 107, 176, 0.4);
+    opacity: 0;
   }
 
   /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
@@ -1707,4 +1747,10 @@
 
 @keyframes wave-sweep {
   to { transform: translateX(100%); }
+}
+
+/* Questionnaire icon ripple (#141). */
+@keyframes icon-ripple {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
 }
