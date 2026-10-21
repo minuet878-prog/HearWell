@@ -374,8 +374,9 @@ class RedesignLayoutTests(TestCase):
         # No additional scripts: only the bundles each page needs.
         def scripts(url):
             content = self.client.get(url).content.decode()
-            return re.findall(r'<script[^>]*src="/static/([^"]+)"', content) + (
-                ["<inline>"] if re.search(r"<script(?![^>]*src=)", content) else []
+            inline = re.findall(r"<script(?![^>]*src=)", content)
+            return re.findall(r'<script[^>]*src="/static/([^"]+)"', content) + ["<inline>"] * len(
+                inline
             )
 
         logout_js, answer_js = (
@@ -383,19 +384,20 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
         # Every page: back button and pull to refresh in the home-screen app
-        # (spec phase10_pwa_back_refresh.md).
+        # (spec phase10_pwa_back_refresh.md), and the header wave's inline check (#138).
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
+        wave = "<inline>"
         empty_user = consented_user(username="no_records")
         for url in (reverse("index"), reverse("login"), reverse("register")):
             with self.subTest(url=url):
-                self.assertEqual(scripts(url), [pwa_js])
+                self.assertEqual(scripts(url), [pwa_js, wave])
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js])
+            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave])
         self.client.force_login(self.user)
         expected = {
-            reverse("index"): [pwa_js, logout_js],
-            reverse("questionnaire_list"): [pwa_js, logout_js],
+            reverse("index"): [pwa_js, logout_js, wave],
+            reverse("questionnaire_list"): [pwa_js, logout_js, wave],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
@@ -403,10 +405,16 @@ class RedesignLayoutTests(TestCase):
                 logout_js,
                 answer_js,
                 "screening/submit-button.js",
+                wave,
                 "<inline>",
             ],
-            reverse("result", args=[self.submission.id]): [pwa_js, logout_js],
-            reverse("my_hearing"): [pwa_js, logout_js, test_history.TrendChartPageTests.CHART_JS],
+            reverse("result", args=[self.submission.id]): [pwa_js, logout_js, wave],
+            reverse("my_hearing"): [
+                pwa_js,
+                logout_js,
+                test_history.TrendChartPageTests.CHART_JS,
+                wave,
+            ],
         }
         for url, bundles in expected.items():
             with self.subTest(url=url):
@@ -741,7 +749,7 @@ class PwaTests(TestCase):
             "scope": "/",
             "display": "standalone",
             "theme_color": "#1f4e8c",
-            "background_color": "#ffffff",
+            "background_color": "#faf7f2",
             "lang": "zh-Hant",
         }
         for key, value in expected.items():

@@ -32,16 +32,12 @@
   --root-font-size: 112.5%;
   --spacing-touch: 2.75rem;
   --radius-button: 0.5rem;
-  --radius-card: 0.75rem;
-  --radius-band: 1.25rem;
   --radius-badge: 1rem;
   --radius-tab: 1.5rem;
-  --shadow-card: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.08);
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
-  /* Pre-migration framework defaults the site never overrode, shared by form fields, cards and alerts (#125). */
+  /* Pre-migration framework defaults the site never overrode, shared by form fields and alerts (#125). */
   --radius-field: 0.375rem;
-  --radius-field-lg: 0.5rem;
   --color-field-focus: #86b7fe;
   --shadow-field-focus: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
   /* The site's own classes (#126). Ear colours follow the audiogram convention, not the brand;
@@ -52,6 +48,19 @@
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
   --radius-small: 0.25rem;
+  /* 2a shared shell (#120, #137): a warm page under white surfaces, three radius levels, and the
+     blue gradient's two ends for the header, buttons and navigation. */
+  --color-page: #faf7f2;
+  --color-footer-bg: #f3ede3;
+  --color-border-warm: #efe6d8;
+  --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
+  --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
+  --radius-large: 1.5rem;
+  --radius-medium: 0.75rem;
+  --radius-pill: 999px;
+  --color-gradient-start: #1f4e8c;
+  --color-gradient-end: #3a6bb0;
+  --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
@@ -69,8 +78,11 @@
     font-weight: 400;
     line-height: 1.5;
     color: var(--color-body);
-    background-color: #fff;
+    background-color: var(--color-page);
     -webkit-text-size-adjust: 100%;
+  }
+  @media print {
+    body { background-color: #fff; }
   }
   @media (prefers-reduced-motion: no-preference) {
     :root { scroll-behavior: smooth; }
@@ -176,7 +188,7 @@
     cursor: pointer;
     user-select: none;
     border: 1px solid var(--btn-border-color);
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-pill);
     background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
@@ -186,20 +198,21 @@
     --btn-padding-y: 0.5rem;
     --btn-font-size: 1.25rem;
   }
+  /* The gradient (2a, #139, below) covers the border, so the border stays transparent. */
   .btn-primary {
     --btn-color: #fff;
     --btn-bg: var(--color-primary);
-    --btn-border-color: var(--color-primary);
+    --btn-border-color: transparent;
     --btn-hover-color: #fff;
     --btn-hover-bg: var(--color-primary-hover);
-    --btn-hover-border-color: var(--color-primary-hover);
+    --btn-hover-border-color: transparent;
     --btn-focus-ring: var(--color-focus-ring);
     --btn-active-color: #fff;
     --btn-active-bg: var(--color-primary-active);
-    --btn-active-border-color: var(--color-primary-active);
-    --btn-disabled-color: #fff;
-    --btn-disabled-bg: var(--color-primary);
-    --btn-disabled-border-color: var(--color-primary);
+    --btn-active-border-color: transparent;
+    --btn-disabled-color: #4d5f78;
+    --btn-disabled-bg: #fff;
+    --btn-disabled-border-color: #8da2bf;
   }
   .btn-danger {
     --btn-color: #fff;
@@ -306,6 +319,30 @@
     opacity: 0.65;
   }
 
+  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a glow
+     on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only, never
+     movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
+     ring (owner's choice after #139 review); with both, the ring stays next to the button. */
+  .btn-primary {
+    --btn-glow: rgba(58, 107, 176, 0.45);
+    background-image: var(--gradient-brand);
+    background-origin: border-box;
+  }
+  .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
+  .btn-primary:active {
+    background-image: linear-gradient(var(--color-primary-hover), #2f5c9c);
+    box-shadow: none;
+  }
+  .btn-primary:focus-visible:hover {
+    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0.9rem 0.45rem var(--btn-glow);
+  }
+  .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  .btn-primary:disabled, fieldset:disabled .btn-primary {
+    background-image: none;
+    box-shadow: inset 0 0 0 1px var(--btn-disabled-border-color);
+    opacity: 1;
+  }
+
   .form-label { margin-bottom: 0.5rem; }
   .form-control, .form-select {
     display: block;
@@ -318,7 +355,7 @@
     appearance: none;
     background-color: #fff;
     border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-field);
+    border-radius: var(--radius-medium);
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
   .form-control { background-clip: padding-box; }
@@ -335,7 +372,7 @@
     min-height: calc(1.5em + 1rem + 2px);
     padding: 0.5rem 1rem;
     font-size: 1.25rem;
-    border-radius: var(--radius-field-lg);
+    border-radius: var(--radius-medium);
   }
   .form-select {
     padding-right: 2.25rem;
@@ -355,7 +392,7 @@
     padding-bottom: 0.5rem;
     padding-left: 1rem;
     font-size: 1.25rem;
-    border-radius: var(--radius-field-lg);
+    border-radius: var(--radius-medium);
   }
   .form-check {
     display: block;
@@ -418,7 +455,7 @@
     white-space: nowrap;
     background-color: #f8f9fa;
     border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-field);
+    border-radius: var(--radius-medium);
   }
   @media (prefers-reduced-motion: reduce) {
     .btn, .form-control, .form-select { transition: none; }
@@ -433,8 +470,9 @@
     overflow-wrap: break-word;
     background-color: #fff;
     background-clip: border-box;
-    border: 1px solid rgba(0, 0, 0, 0.175);
-    border-radius: var(--radius-field);
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-warm);
   }
   .card-body { flex: 1 1 auto; padding: 1rem; }
   .table {
@@ -503,10 +541,75 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header */
+  /* Header: a blue gradient, top colour the same as the app's status bar (#138). */
   .site-header {
-    background-color: var(--color-primary);
+    position: relative;
+    overflow: hidden;
+    background-image: var(--gradient-brand);
     color: #fff;
+  }
+
+  .site-header-bar {
+    position: relative;
+  }
+
+  /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
+     soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
+     is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
+     At 8% white, text over a bar keeps 4.57:1; while the light passes over a bar it dips to 3.3:1
+     for a moment (accepted in #136). */
+  .site-wave {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    padding: 0 1rem;
+    pointer-events: none;
+  }
+
+  .site-wave span {
+    flex: 1;
+    height: 22%;
+    border-radius: 4px 4px 0 0;
+    background-color: #fff;
+    opacity: 0.08;
+    transform-origin: bottom;
+    animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
+  }
+
+  /* Each bar jumps to its own heights: seven patterns, staggered over five delays. */
+  .site-wave span:nth-child(7n + 1) { --wave-1: 1.5; --wave-2: 2.88; --wave-3: 2.01; }
+  .site-wave span:nth-child(7n + 2) { --wave-1: 2.67; --wave-2: 2.05; --wave-3: 2.02; }
+  .site-wave span:nth-child(7n + 3) { --wave-1: 2.96; --wave-2: 3.1; --wave-3: 1.41; }
+  .site-wave span:nth-child(7n + 4) { --wave-1: 2.14; --wave-2: 1.56; --wave-3: 1.6; }
+  .site-wave span:nth-child(7n + 5) { --wave-1: 2.16; --wave-2: 3.2; --wave-3: 2.08; }
+  .site-wave span:nth-child(7n + 6) { --wave-1: 2.97; --wave-2: 1.35; --wave-3: 1.9; }
+  .site-wave span:nth-child(7n + 7) { --wave-1: 2.66; --wave-2: 3.16; --wave-3: 1.19; }
+  .site-wave span:nth-child(5n + 2) { --wave-delay: 0.05s; }
+  .site-wave span:nth-child(5n + 3) { --wave-delay: 0.1s; }
+  .site-wave span:nth-child(5n + 4) { --wave-delay: 0.15s; }
+  .site-wave span:nth-child(5n + 5) { --wave-delay: 0.2s; }
+
+  .site-wave::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+    animation: wave-sweep 2.5s ease-in-out 1s both;
+  }
+
+  .header-wave-played .site-wave span,
+  .header-wave-played .site-wave::after {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-wave span,
+    .site-wave::after {
+      animation: none;
+    }
   }
 
   /* Phones: brand and logout share the first line, the signed-in name gets the second, so a
@@ -595,6 +698,8 @@
     text-decoration: none;
   }
 
+  /* Hover and press change colour only, never position (ADR 0006, #140). */
+  .site-nav a:hover,
   .site-nav a[aria-current="page"] {
     color: var(--color-primary);
   }
@@ -619,8 +724,11 @@
       gap: 0.5rem;
     }
 
+    /* The current page is a gradient pill: shape as well as colour (#140). */
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 -0.25rem 0 var(--color-primary);
+      border-radius: var(--radius-pill);
+      background-image: var(--gradient-brand);
+      color: #fff;
     }
   }
 
@@ -652,8 +760,21 @@
       font-size: 0.875rem;
     }
 
+    /* Every icon gets the same pill room, so the current one can fill it without the bar
+       shifting; the current icon turns white in a gradient pill, its label bold blue (#140). */
+    .site-nav svg {
+      box-sizing: content-box;
+      padding: 0.125rem 0.75rem;
+      border-radius: var(--radius-pill);
+    }
+
     .site-nav a[aria-current="page"] {
-      box-shadow: inset 0 0.25rem 0 var(--color-primary);
+      font-weight: 700;
+    }
+
+    .site-nav a[aria-current="page"] svg {
+      background-image: var(--gradient-brand);
+      stroke: #fff;
     }
   }
 
@@ -661,7 +782,7 @@
   .site-footer {
     margin-top: 3rem;
     padding: 1.5rem 0;
-    background-color: var(--color-surface);
+    background-color: var(--color-footer-bg);
     color: var(--color-footer);
   }
 
@@ -736,24 +857,52 @@
     gap: 1rem;
     margin-bottom: 0.5rem;
     padding: 1.1rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
     background-color: #fff;
     color: inherit;
     text-decoration: none;
-    box-shadow: var(--shadow-card);
+    box-shadow: var(--shadow-warm);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
+      border-color 0.15s ease-out, background-color 0.15s ease-out;
   }
 
-  .link-card:hover,
+  /* Only clickable cards move (#141, ADR 0006). Hover only where there is a mouse, so a tap
+     never leaves a card looking hovered; a press sinks the card on every device. */
+  @media (hover: hover) and (pointer: fine) {
+    .link-card:hover {
+      border-color: var(--color-primary);
+      background-color: var(--color-brand-soft);
+      color: inherit;
+      transform: translateY(-0.25rem);
+      box-shadow: var(--shadow-warm-lifted);
+    }
+
+    .link-card:hover .questionnaire-icon::after {
+      animation: icon-ripple 0.8s ease-out both;
+    }
+  }
+
   .link-card:active {
     border-color: var(--color-primary);
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-brand-selected);
     color: inherit;
+    transform: translateY(0.125rem);
+    box-shadow: none;
   }
 
+  /* Keyboard focus never moves the card; the border turns blue beside the ring. */
   .link-card:focus-visible {
+    border-color: var(--color-primary);
     outline: 0.25rem solid var(--color-primary);
     outline-offset: 0.25rem;
+  }
+
+  /* Reduced motion: colour changes only, so the shadow stays put as well. */
+  @media (prefers-reduced-motion: reduce) {
+    .link-card { transition: none; }
+    .link-card:hover, .link-card:active { transform: none; box-shadow: var(--shadow-warm); }
+    .link-card:hover .questionnaire-icon::after { animation: none; }
   }
 
   .link-card-body {
@@ -797,9 +946,17 @@
     padding: 0.5rem 1rem;
     border: 2px solid var(--color-border);
     border-radius: var(--radius-button);
+    background-color: #fff;
     font-size: 1.25rem;
     color: var(--color-heading);
     cursor: pointer;
+  }
+
+  /* Colour only, and only with a mouse (#142, ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    div.choice-group label:hover {
+      border-color: var(--color-primary);
+    }
   }
 
   div.choice-group input {
@@ -824,7 +981,7 @@
   .trend-summary {
     padding: 1.25rem 1.5rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-large);
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
   }
@@ -841,7 +998,7 @@
   /* Home (spec phase9_ui_refresh_4a_home.md): pale brand bands around the top and the trust block. */
   .home-band {
     background-color: var(--color-brand-soft);
-    border-radius: var(--radius-band);
+    border-radius: var(--radius-large);
     padding: 1.5rem;
     margin-bottom: 1.5rem;
   }
@@ -873,9 +1030,10 @@
     flex-direction: column;
     gap: 0.5rem;
     padding: 1rem;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-card);
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
     background-color: #fff;
+    box-shadow: var(--shadow-warm);
   }
 
   .step-number {
@@ -883,6 +1041,7 @@
     height: 2.25rem;
     border-radius: 50%;
     background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
     color: #fff;
     font-weight: 700;
     display: flex;
@@ -905,7 +1064,7 @@
     position: relative;
     padding: 2.5rem 1rem 1rem;
     border: 0.125rem dashed var(--color-border-strong);
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-large);
     margin-bottom: 1.5rem;
   }
 
@@ -930,7 +1089,7 @@
     padding: 0.5rem 0.75rem;
     background-color: var(--color-brand-soft);
     border-left: 0.25rem solid var(--color-primary);
-    border-radius: var(--radius-small);
+    border-radius: var(--radius-medium);
   }
 
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
@@ -966,7 +1125,7 @@
   .result-banner {
     padding: 1rem 1.25rem;
     border-left: 0.375rem solid currentColor;
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-medium);
   }
 
   .result-banner > div:not(.result-level) {
@@ -1030,7 +1189,10 @@
   }
 
   .history-tabs a[aria-current="page"] {
+    border-color: transparent;
     background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
+    background-origin: border-box;
     color: #fff;
   }
 
@@ -1039,7 +1201,7 @@
     margin-bottom: 1.5rem;
     padding: 1rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-button);
+    border-radius: var(--radius-large);
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
   }
@@ -1181,9 +1343,26 @@
   }
 
   /* Audiogram input and view (spec phase5_audiogram.md). */
+  /* White frame around a chart (#137). Its side padding and border are pushed out by an equal
+     negative margin, so the chart keeps its width and its crop stays pixel-identical (#143); on a
+     phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The top
+     is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
+  .audiogram-chart,
+  .ioi-chart {
+    --chart-frame: 0.75rem;
+    padding: calc(1rem - 1px) calc(var(--chart-frame) - 1px);
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+  }
+
   .audiogram-chart {
-    max-width: 32rem;
-    margin: 0 auto 0.75rem;
+    max-width: calc(32rem + 2 * var(--chart-frame));
+    margin: 0 max(-1 * var(--chart-frame), (100% - 32rem) / 2 - var(--chart-frame)) 0.75rem;
+  }
+
+  .ioi-chart {
+    margin-inline: calc(-1 * var(--chart-frame));
   }
 
   .audiogram-svg {
@@ -1202,6 +1381,7 @@
 
   .audiogram-symbol {
     min-height: var(--spacing-touch);
+    border-radius: var(--radius-medium);
     border: 0.125rem solid var(--color-input-border);
     background-color: #fff;
     font-size: 1.125rem;
@@ -1411,6 +1591,9 @@
     /* Small enough to share the first page with the summary. */
     .health-report .audiogram-chart {
       max-width: 10cm;
+      margin-inline: auto;
+      padding: 0;
+      border: 0;
     }
   }
 
@@ -1444,12 +1627,13 @@
   .questionnaire-guide {
     padding: 0.75rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-card);
+    border-radius: var(--radius-large);
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
   }
 
   .questionnaire-icon {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
@@ -1457,20 +1641,26 @@
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
   }
 
-  /* The card turns the same pale blue on hover, so the circle turns white to stay visible. */
-  .link-card:hover .questionnaire-icon,
-  .link-card:active .questionnaire-icon {
-    background-color: #fff;
+  /* The ring a hovered card's icon sends out once (#141); invisible at rest. */
+  .questionnaire-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0.25rem rgba(58, 107, 176, 0.4);
+    opacity: 0;
   }
 
+  /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
   .questionnaire-icon svg {
     width: 1.75rem;
     height: 1.75rem;
     fill: none;
-    stroke: var(--color-primary);
+    stroke: #fff;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -1552,4 +1742,22 @@
   @page {
     margin: 1.5cm;
   }
+}
+
+/* Header wave (#138). */
+@keyframes wave-jump {
+  20% { transform: scaleY(var(--wave-1)); }
+  45% { transform: scaleY(var(--wave-2)); }
+  70% { transform: scaleY(var(--wave-3)); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes wave-sweep {
+  to { transform: translateX(100%); }
+}
+
+/* Questionnaire icon ripple (#141). */
+@keyframes icon-ripple {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
 }

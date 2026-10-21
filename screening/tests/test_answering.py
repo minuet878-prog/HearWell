@@ -12,6 +12,12 @@ from screening.models import Answer, Category, Question, Questionnaire, Submissi
 from screening.tests.helpers import consented_user, fake_definition, register
 
 
+def answer_loading_script(content):
+    """The answer page's own inline script; every page also carries the header wave's (#138)."""
+    scripts = re.finditer(r"<script>(.*?)</script>", content, re.DOTALL)
+    return next((script for script in scripts if "answer-loading" in script.group(1)), None)
+
+
 class ScreeningViewAcceptValueTests(TestCase):
     def setUp(self):
         self.user_a = consented_user(username="user_a")
@@ -418,7 +424,7 @@ class AnswerFlashTests(TestCase):
                 self.assertIsNotNone(status)
                 self.assertIn('role="status"', status.group())
                 self.assertLess(status.start(), form_start)
-                inline = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
+                inline = answer_loading_script(content)
                 self.assertIsNotNone(inline)
                 self.assertLess(inline.start(), form_start)
                 self.assertIn("answer-loading", inline.group(1))
@@ -439,7 +445,7 @@ class AnswerFlashTests(TestCase):
     def test_ioi_ha_has_no_loading_step(self):
         content = self._page(self.ioi_ha).content.decode()
         self.assertNotIn('id="answer-loading"', content)
-        self.assertNotIn("<script>", content)
+        self.assertIsNone(answer_loading_script(content))
 
 
 class WebDoubleSubmitTests(TestCase):
@@ -640,7 +646,7 @@ class WebFormErrorsStayTests(TestCase):
         self.assertNotIn(self.ANSWER_JS, content)
         self.assertNotIn('id="answer-app"', content)
         self.assertNotIn("answer-loading", content)
-        self.assertNotIn("<script>", content)
+        self.assertIsNone(answer_loading_script(content))
         form_tag = re.search(r'<form id="answer-form"[^>]*>', content).group()
         self.assertNotIn("hidden", form_tag)
         self.assertNotIn("style=", form_tag)

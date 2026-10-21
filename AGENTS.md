@@ -134,6 +134,9 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
 - worktree 裡沒有 `py313/` 和 `frontend/node_modules`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`；要建置前端就用捷徑連到主資料夾的 `node_modules`（`.gitignore` 已忽略）。測試資料庫會自動改名成 `test_<資料庫>_<worktree 名稱>`，可以跟主資料夾同時跑。
+- Shell 是 zsh：批次操作（一次建好幾張 issue、設依賴、改多個檔）寫成 Python（`subprocess`）。zsh 陣列從 1 開始編號、`status` 是唯讀保留變數；#120 拆票時因此 7 張的標題全部錯一位、第 1 張沒建成。批次建完後逐張核對標題、內文與「被擋住」關係。
+- 要看指令成功與否時，輸出先寫進檔案、再用 `rc=$?` 取結束碼：`指令 | tail` 拿到的是 `tail` 的結束碼，失敗會被蓋掉（#131 的截圖基準因此看似成功、其實中途停了）。
+- 合併 commit 的多行訊息寫進檔案，用 `git merge -F <檔案>`；`git merge` 不從標準輸入讀訊息。
 
 ## 參考文件
 
