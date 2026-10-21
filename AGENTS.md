@@ -21,22 +21,24 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 | 步驟 | 指令 | 說明 |
 |---|---|---|
 | 0 開工 | — | 讀 `docs/roadmap.md` 和 `gh issue list`，三行以內報告：做到哪、還欠什麼、這次打算做什麼 |
-| 1 拷問需求 | `/grill-with-docs` | 一次問一題直到沒有模糊處，給我全部的選擇/建議/代價並順手更新 `GLOSSARY.md` 和 `docs/adr/` |
-| 2 寫規格 | `/to-spec` | 寫成 GitHub issue，驗收條件用 Given / When / Then |
-| 3 拆票 | `/to-tickets` | 拆成 tracer-bullet tickets，標明誰擋住誰 |
-| 4 實作 | `/implement`（一張或少數幾張）或 `/implement-spec`（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |
-| 4b 交叉審查 | `/code-review`（換另一個代理跑） | 合併前一定要做，見下方 |
+| 1 拷問需求 | `/mattpocock-skills:grill-with-docs` ★ | 一次問一題直到沒有模糊處，給我全部的選擇/建議/代價並順手更新 `GLOSSARY.md` 和 `docs/adr/` |
+| 2 寫規格 | `/mattpocock-skills:to-spec` ★ | 寫成 GitHub issue，驗收條件用 Given / When / Then |
+| 3 拆票 | `/mattpocock-skills:to-tickets` ★ | 拆成 tracer-bullet tickets，標明誰擋住誰 |
+| 4 實作 | `/mattpocock-skills:implement` ★（一張或少數幾張）或 `/mattpocock-skills:implement-spec` ★（整份規格、平行） | TDD；全部完成後跑 `/code-review` 自審 |
+| 4b 交叉審查 | `/code-review`（換另一個代理跑） | 碰到計分、門檻、動資料的 migration、權限時必做，見下方 |
 | 5 驗收 | — | 貼出測試結果、逐條對驗收條件打勾，等我實際操作確認；驗收結果寫進 `docs/verification/`，跟程式放在同一個 PR |
 | 6 PR | `/pr` | 寫 PR 說明（摘要、證據、合併風險）；我驗收通過才合併，不在合併後另開 PR 補記驗收 |
 | 7 收尾 | — | 更新 `docs/roadmap.md` 和 `docs/interview/`（見下方） |
-| 8 復盤 | `/retro` | 每個母規格結案後跑一次；其他時候我輸入才做 |
+| 8 復盤 | `/mattpocock-skills:retro` ★ | 每個母規格結案後跑一次；其他時候我輸入才做 |
 
+- ★：只能由我在輸入框打完整指令才會啟動，代理叫不動；做到那一步就請我輸入。
 - 小改動（改字、改樣式）可以跳過 1–3 和 4b，直接說清楚要改什麼，再走 4–7。
 - 涉及畫面或計算的需求，先用一兩句話複述你理解的內容；畫面有多種做法時，先做比較頁讓我選。
 
 ### 交叉審查（合併前）
 
 - 原因：代理審自己寫的程式容易漏看。#84 自審 0 項，合併後換另一個代理審，才找出 #90 的三個問題。
+- 何時必做：diff 碰到計分或分級、門檻、會動資料的 migration、權限（登入、限定 `request.user`）。其他票做完第 4 步的自審就進第 5 步，驗證紀錄寫明「不需交叉審查」。
 - 誰審：實作和審查不能是同一個代理。Codex 實作的由 Claude Code 審，Claude Code 實作的由 Codex 審。
 - 時機：自審修完之後、寫驗證紀錄（`docs/verification/`）和我實際驗收之前。實作的代理做到這裡先停，告訴我分支名稱、規格 issue 編號，以及要貼給另一個代理的指令。
 - 怎麼審：
@@ -73,6 +75,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
    - 功能分支（和 `/implement-spec` 的子分支）上可以自己 commit、合併子分支，Conventional Commits 格式。
    - **push、開 PR、合併回 `main` 都要先問我。** `/implement-spec` 要開 draft PR 時也一樣。
    - commit 作者用我的 git 設定；沒有設定時先問我。
+   - 同時有別的 session 在主資料夾工作時，實作開 worktree（`.claude/worktrees/`），不在主資料夾切分支。
 2. **不擅自動我的資料**：不刪除、不覆寫、不批次修改真實資料（資料庫、資料檔、匯出檔）。需要時先說明影響，等我同意。
 3. **不碰我的服務**：不自己啟動、重啟或停掉我電腦上的伺服器和資料庫。例外：Claude Desktop 預覽用的開發伺服器（`.claude/launch.json`，埠 8001）可以自己啟動和停止；資料庫還是由我來開。
 4. **試驗要先講**：探索用的修改先說「這是試驗」，結束後主動還原。
@@ -130,7 +133,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - 門檻（問卷定義的 `thresholds`）第一次要改之前，先做規則版本號，不要直接改數字，否則歷史分級會被回溯改寫。
 - Django shell 是 autocommit，沒有 rollback。
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
-- worktree 裡沒有 `py313/`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`。
+- worktree 裡沒有 `py313/` 和 `frontend/node_modules`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`；要建置前端就用捷徑連到主資料夾的 `node_modules`（`.gitignore` 已忽略）。測試資料庫會自動改名成 `test_<資料庫>_<worktree 名稱>`，可以跟主資料夾同時跑。
 
 ## 參考文件
 

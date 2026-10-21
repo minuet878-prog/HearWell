@@ -8,6 +8,7 @@
 | 成人問卷需求、來源、計分審定與拆票 | [功能規劃](planning/README.md) |
 | 2026-10-18 之後的決策與理由（ADR） | [`adr/`](adr/) |
 | 每張票的測試、審查與本人驗收紀錄 | [`verification/`](verification/) |
+| 母規格結案後的復盤（流程與工具改善） | [`retros/`](retros/) |
 | 無障礙量測、已修問題與後續待辦 | [無障礙](accessibility/README.md) |
 | API 格式 | [API 文件](api/README.md) |
 | 部署操作筆記 | [部署參考](deployment/README.md) |
