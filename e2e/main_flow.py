@@ -2133,16 +2133,19 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.page.mouse.move(0, 0)
             self.page.mouse.up()
 
-    def test_answer_choices_never_move(self):
-        # #120 acceptance 11: like buttons and navigation items, answer choices never move.
+    def test_answer_choices_only_change_colour(self):
+        # #120 acceptance 11: like buttons and navigation items, answer choices turn blue on
+        # hover and never move.
         self.open(motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
             choice = self.page.locator("div.choice-group label").first
             choice.scroll_into_view_if_needed()
             before = choice.bounding_box()
+            self.assertEqual(self.style(choice, "borderTopColor"), "rgb(206, 212, 218)")
             choice.hover()
             self.assertEqual(self.settled(choice).bounding_box(), before)
+            self.assertEqual(self.style(choice, "borderTopColor"), self.PRIMARY)
             self.page.mouse.down()
             self.assertEqual(self.settled(choice).bounding_box(), before)
             self.assertEqual(self.style(choice, "transform"), "none")
