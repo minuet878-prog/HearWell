@@ -221,9 +221,7 @@ class HearingAidTests(TestCase):
     def test_new_text_uses_readable_style(self):
         submission = self._make_submission(True)
         response = self.client.get(reverse("result", args=[submission.id]))
-        self.assertContains(
-            response, '<p class="text-black mb-1">助聽器：有戴</p>', html=True
-        )
+        self.assertContains(response, '<p class="text-black mb-1">助聽器：有戴</p>', html=True)
 
 
 class TamperedAnswerTests(TestCase):

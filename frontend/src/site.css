@@ -39,7 +39,7 @@
   --shadow-card: 0 0.125rem 0.375rem rgba(15, 23, 42, 0.08);
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
-  /* Bootstrap defaults the site never overrode, shared by form fields, cards and alerts (#125). */
+  /* Pre-migration framework defaults the site never overrode, shared by form fields, cards and alerts (#125). */
   --radius-field: 0.375rem;
   --radius-field-lg: 0.5rem;
   --color-field-focus: #86b7fe;
@@ -54,7 +54,7 @@
   --radius-small: 0.25rem;
 }
 
-/* Restore the element defaults the site used before Preflight. Bootstrap's components follow as
+/* Restore the element defaults the site used before Preflight. Named components follow as
    named classes (#125), then the site's own classes (#126). */
 @layer base {
   html {
@@ -150,9 +150,9 @@
 }
 
 
-/* Bootstrap 5.3.8 components the pages use, same names and values, with the site's old overrides
+/* Named components the pages use, same names and values, with the site's old overrides
    folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
-   like Bootstrap, a plain .btn leaves its hover, active and disabled values unset. */
+   as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
 @layer components {
   .btn {
     --btn-padding-x: 0.75rem;
@@ -216,7 +216,7 @@
     --btn-disabled-bg: #dc3545;
     --btn-disabled-border-color: #dc3545;
   }
-  /* The site only recoloured the rest and active states; disabled kept Bootstrap's blue. */
+  /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);
     --btn-border-color: var(--color-primary);
@@ -273,7 +273,8 @@
     --btn-disabled-bg: transparent;
     --btn-disabled-border-color: #f8f9fa;
   }
-  /* Its focus ring kept Bootstrap's blue; the site never overrode it. */
+  /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
+     never overrode it. */
   .btn-link {
     --btn-color: var(--color-primary);
     --btn-hover-color: var(--color-primary-hover);

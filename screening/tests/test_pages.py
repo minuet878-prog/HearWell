@@ -371,7 +371,7 @@ class RedesignLayoutTests(TestCase):
         self.assertRegex(content, r'<fieldset[^>]*aria-describedby="id_wearing_hearing_aid_error"')
 
     def test_only_expected_scripts(self):
-        # No Bootstrap JS or anything else: only the bundles each page needs.
+        # No additional scripts: only the bundles each page needs.
         def scripts(url):
             content = self.client.get(url).content.decode()
             return re.findall(r'<script[^>]*src="/static/([^"]+)"', content) + (
@@ -875,7 +875,19 @@ class PwaNavTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return response.content.decode()
 
-    def test_pages_load_built_css_without_bootstrap(self):
+    def _assert_site_stylesheets(self, content):
+        stylesheets = re.findall(
+            r'<link\b(?=[^>]*\brel="stylesheet")[^>]*\bhref="([^"]+)"', content
+        )
+        self.assertEqual(
+            stylesheets,
+            [
+                "/static/screening/frontend/site.css",
+                "https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap",
+            ],
+        )
+
+    def test_pages_load_built_css_with_only_site_and_font_stylesheets(self):
         share = ReportShare.objects.create(user=self.user, token="css-test-share")
         pages = [
             (False, reverse("index")),
@@ -911,23 +923,23 @@ class PwaNavTests(TestCase):
                 self.assertIn(
                     '<link href="/static/screening/frontend/site.css" rel="stylesheet">', content
                 )
-                self.assertNotIn("bootstrap", content.lower())
+                self._assert_site_stylesheets(content)
                 self.assertNotIn("screening/styles.css", content)
 
     # #126: the old custom stylesheet's rules now live in the built site.css.
     def test_old_stylesheet_is_deleted(self):
         self.assertIsNone(finders.find("screening/styles.css"))
 
-    def test_invalid_share_loads_built_css_without_bootstrap(self):
+    def test_invalid_share_loads_built_css_with_only_site_and_font_stylesheets(self):
         response = self.client.get(reverse("shared_cover", args=["css-missing-share"]))
         self.assertContains(response, "/static/screening/frontend/site.css", status_code=404)
-        self.assertNotContains(response, "bootstrap", status_code=404)
+        self._assert_site_stylesheets(response.content.decode())
 
-    def test_consent_page_loads_built_css_without_bootstrap(self):
+    def test_consent_page_loads_built_css_with_only_site_and_font_stylesheets(self):
         self.client.force_login(User.objects.create_user(username="css_undecided"))
         response = self.client.get(reverse("consent"))
         self.assertContains(response, "/static/screening/frontend/site.css")
-        self.assertNotContains(response, "bootstrap")
+        self._assert_site_stylesheets(response.content.decode())
 
     # 3
     def test_home_has_no_back_button(self):
