@@ -2,7 +2,7 @@
 
 日期：2026-10-21。規格：[#104](https://github.com/minuet878-prog/HearWell/issues/104)（母規格 [#99](https://github.com/minuet878-prog/HearWell/issues/99)，決策見 ADR 0005）。基準：`713a05e`（#100 的 PR #113 合併後的 `main`）；功能分支：`refactor/questionnaire-code-guard`。
 
-狀態：自動驗證完成，等本人人工驗收。沒有動真實資料，沒有 migration，也沒有改正式程式碼（只加測試和一句規範）。
+狀態：2026-10-21 本人人工驗收通過（回覆「#104 驗收 ok」）。沒有動真實資料，沒有 migration，也沒有改正式程式碼（只加測試和一句規範）。
 
 ## 行為
 
@@ -31,9 +31,9 @@
 - 自審（Matt `/code-review`）：Standards 0 項硬性違規，6 項判斷題，採納 2 項（`code_lines` 改名 `questionnaire_code_lines`、`CODING_STANDARDS.md` 補註），其餘（formset 資料重複、兩種寫法並存）跟著現有寫法不修。Spec 0 項要修，採納 1 項建議（加斷言鎖住掃描範圍，避免路徑寫錯時檢查空轉）。
 - 交叉審查：本人 2026-10-21 決定這個 session 跳過。
 
-## 人工驗收（請本人操作）
+## 人工驗收
 
-這張票沒有改畫面和正式程式碼，驗收以跑測試為主：
+2026-10-21 本人回覆「#104 驗收 ok」，以下操作範圍確認通過。這張票沒有改畫面和正式程式碼，驗收以跑測試為主：
 
 1. 跑這次的兩組測試，結果是 OK：
    `python manage.py test --settings=config.test_settings screening.tests.test_standards screening.tests.test_questionnaire_definitions`
