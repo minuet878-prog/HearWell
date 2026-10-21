@@ -21,6 +21,7 @@ class NewUserHomeTests(TestCase):
     def setUp(self):
         self.list_url = reverse("questionnaire_list")
         self.start_url = f"{reverse('register')}?next={self.list_url}"
+        self.login_url = f"{reverse('login')}?next={self.list_url}"
 
     def _main(self):
         content = self.client.get(reverse("index")).content.decode()
@@ -40,9 +41,21 @@ class NewUserHomeTests(TestCase):
     def test_anonymous_sees_start_and_login_buttons_and_four_steps(self):
         main = self._main()
         self.assertEqual(self._link(main, "開始篩檢"), self.start_url)
-        self.assertEqual(self._link(main, "我已經有帳號，登入"), reverse("login"))
+        self.assertEqual(self._link(main, "我已經有帳號，登入"), self.login_url)
         self.assertEqual(self._steps(main), list(self.STEPS))
         self.assertNotIn(self.OLD_HINT, main)
+
+    def test_login_button_logs_in_then_chooses_a_questionnaire(self):
+        consented_user(username="returning", password=self.PASSWORD)
+        page = self.client.get(self._link(self._main(), "我已經有帳號，登入"))
+        self.assertContains(
+            page, f'<input type="hidden" name="next" value="{self.list_url}">', html=True
+        )
+        response = self.client.post(
+            reverse("login"),
+            {"username": "returning", "password": self.PASSWORD, "next": self.list_url},
+        )
+        self.assertRedirects(response, self.list_url)
 
     def test_start_registers_then_consents_then_chooses_a_questionnaire(self):
         page = self.client.get(self._link(self._main(), "開始篩檢"))

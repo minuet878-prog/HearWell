@@ -20,7 +20,7 @@
     {% else %}
     {# Spec #148: first-time visitors register first, then come back to choose a questionnaire. #}
     <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
-    <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'login' %}">我已經有帳號，登入</a>
+    <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a>
     {% endif %}
 </section>
 <ol class="step-cards" role="list">
