@@ -431,3 +431,60 @@ class PublishedAnsweringTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Submission.objects.exists())
+
+
+class DefinitionOnlyQuestionnaireTests(TestCase):
+    """Issue #104: a questionnaire added only as a definition works from catalog to history."""
+
+    def setUp(self):
+        self.enterContext(
+            register(
+                fake_definition(
+                    "fake-flow",
+                    name="假全流程",
+                    questions=((Category.SOCIAL, "假流程題一"), (Category.EMOTIONAL, "假流程題二")),
+                    choices=lambda number: ((5, f"假的{number}有"), (1, f"假的{number}沒有")),
+                    thresholds=((4, "假的輕分級", "normal"), (10, "假的重分級", "severe")),
+                    advice={"severe": "假的重分級建議"},
+                )
+            )
+        )
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.client.force_login(consented_user(username="definitions_i"))
+
+    def test_catalog_answer_result_and_history(self):
+        questionnaire = Questionnaire.objects.get(code="fake-flow")
+        answer_url = reverse("screening", args=[questionnaire.pk])
+        catalog = self.client.get(reverse("questionnaire_list"))
+        self.assertContains(catalog, f'href="{answer_url}"')
+        self.assertContains(catalog, "假主題（假全流程）")
+
+        page = self.client.get(answer_url)
+        self.assertContains(page, "假流程題二")
+        self.assertContains(page, "假的2沒有")
+        first, second = questionnaire.questions.order_by("question_number")
+        response = self.client.post(
+            answer_url,
+            {
+                "form-TOTAL_FORMS": 2,
+                "form-INITIAL_FORMS": 0,
+                "form-0-question_id": str(first.pk),
+                "form-0-score": "5",
+                "form-1-question_id": str(second.pk),
+                "form-1-score": "1",
+                "wearing_hearing_aid": "False",
+            },
+        )
+        result_url = reverse("result", args=[Submission.objects.get().pk])
+        self.assertRedirects(response, result_url)
+
+        result = self.client.get(result_url)
+        self.assertContains(result, "總分 6 分（滿分 10）")
+        self.assertContains(result, "假的重分級")
+        self.assertContains(result, "假的重分級建議")
+        self.assertContains(result, "假的2沒有")
+
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "fake-flow"})
+        self.assertContains(history, f'href="{result_url}"')
+        self.assertContains(history, "總分：6")
+        self.assertContains(history, "假的重分級")
