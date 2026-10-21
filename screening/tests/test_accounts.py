@@ -412,8 +412,7 @@ class RegisterFormTests(TestCase):
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),
-            f'<div id="id_roc_birth_year_helptext" class="text-black mt-1">'
-            f"{self.NOTE}</div>",
+            f'<div id="id_roc_birth_year_helptext" class="text-black mt-1">{self.NOTE}</div>',
             html=True,
         )
 

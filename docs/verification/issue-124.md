@@ -104,6 +104,7 @@ py313/bin/python e2e/compare_shots.py e2e-artifacts/shots/main-isolated-v2 e2e-a
 
 ```python
 """Isolate shared regions at integer coordinates, preserving the original captures."""
+
 import inspect
 import os
 import re
@@ -112,61 +113,78 @@ from pathlib import Path
 import django
 from django.conf import settings
 from django.core.management import call_command
-if os.environ.get('REFERENCE'):
-    settings.TEMPLATES[0]['DIRS'] = ['/tmp/hearwell-124-reference']
+
+if os.environ.get("REFERENCE"):
+    settings.TEMPLATES[0]["DIRS"] = ["/tmp/hearwell-124-reference"]
 django.setup()
 from e2e import screenshots as shots
 from playwright.sync_api import expect
 
 # Use the same pinned official CSS as the original main capture, served locally.
 source = textwrap.dedent(inspect.getsource(shots.Screenshots.open))
-source = source.replace('page = context.new_page()', """context.route(re.compile(r"https://cdnjs.cloudflare.com/ajax/libs/bootstrap/.*"),
+source = source.replace(
+    "page = context.new_page()",
+    """context.route(re.compile(r"https://cdnjs.cloudflare.com/ajax/libs/bootstrap/.*"),
         lambda route: route.fulfill(path="/tmp/hearwell-bootstrap.css", content_type="text/css"))
-    page = context.new_page()""")
+    page = context.new_page()""",
+)
 exec(source, shots.__dict__)
 shots.Screenshots.open = shots.open
 shots.Screenshots.port = int(os.environ.get("CAPTURE_PORT", "8770"))
-if os.environ.get('DEBUG_SHOT'):
+if os.environ.get("DEBUG_SHOT"):
     original_shots = shots.Screenshots.shots
-    shots.Screenshots.shots = lambda self: [s for s in original_shots(self) if s.name == 'answer-hhie-s' and not s.javascript]
+    shots.Screenshots.shots = lambda self: [
+        s for s in original_shots(self) if s.name == "answer-hhie-s" and not s.javascript
+    ]
+
 
 def isolated(self, page, path, locator=None):
     page.evaluate("document.documentElement.style.scrollBehavior = 'auto'")
     page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
     if locator is None:
-        raise AssertionError('only chrome captures are supported')
+        raise AssertionError("only chrome captures are supported")
     # Body migration changes footer Y and the content behind the fixed navigation. Give
     # each region the same pixel origin and opaque surroundings to compare its own styles.
-    saved = locator.get_attribute('style')
-    width = locator.bounding_box()['width']
-    locator.evaluate('''(el, width) => {
+    saved = locator.get_attribute("style")
+    width = locator.bounding_box()["width"]
+    locator.evaluate(
+        """(el, width) => {
       el.setAttribute('data-isolated', '');
       Object.assign(el.style, {position:'fixed', top:'0px', left:'0px', right:'auto',
         bottom:'auto', margin:'0', width:width+'px', zIndex:'99999'});
-    }''', width)
-    sheet = page.evaluate_handle("css => { const s = document.createElement('style'); s.textContent = css; document.head.append(s); return s; }", 'body * { visibility: hidden !important; } [data-isolated], [data-isolated] * { visibility: visible !important; }')
-    locator.screenshot(path=self.out / path, animations='disabled', caret='hide')
-    sheet.evaluate('(el) => el.remove()')
+    }""",
+        width,
+    )
+    sheet = page.evaluate_handle(
+        "css => { const s = document.createElement('style'); s.textContent = css; document.head.append(s); return s; }",
+        "body * { visibility: hidden !important; } [data-isolated], [data-isolated] * { visibility: visible !important; }",
+    )
+    locator.screenshot(path=self.out / path, animations="disabled", caret="hide")
+    sheet.evaluate("(el) => el.remove()")
     locator.evaluate("el => el.removeAttribute('data-isolated')")
     if saved is None:
         locator.evaluate("el => el.removeAttribute('style')")
     else:
         locator.evaluate('(el, value) => el.setAttribute("style", value)', saved)
-    if path.startswith('chrome--header--') and '-app--' not in path:
-        page.keyboard.press('Tab')
-        skip = page.get_by_role('link', name='跳到主要內容', exact=True)
+    if path.startswith("chrome--header--") and "-app--" not in path:
+        page.keyboard.press("Tab")
+        skip = page.get_by_role("link", name="跳到主要內容", exact=True)
         expect(skip).to_be_focused()
         expect(skip).to_be_visible()
         # Preserve its original fixed offsets, padding, border and focus outline.
-        saved_skip = skip.get_attribute('style')
+        saved_skip = skip.get_attribute("style")
         skip.evaluate("el => el.style.position = 'fixed'")
-        skip.screenshot(path=self.out / path.replace('--header--','--skip--'), animations='disabled')
+        skip.screenshot(
+            path=self.out / path.replace("--header--", "--skip--"), animations="disabled"
+        )
         if saved_skip is None:
             skip.evaluate("el => el.removeAttribute('style')")
         else:
             skip.evaluate('(el, value) => el.setAttribute("style", value)', saved_skip)
-        page.keyboard.press('Enter')
-        expect(page.get_by_role('main')).to_be_focused()
+        page.keyboard.press("Enter")
+        expect(page.get_by_role("main")).to_be_focused()
+
+
 shots.Screenshots.capture = isolated
-call_command('test', 'e2e.screenshots', interactive=False)
+call_command("test", "e2e.screenshots", interactive=False)
 ```
