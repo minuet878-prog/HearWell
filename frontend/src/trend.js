@@ -1,11 +1,5 @@
 // Pure data helpers for the trend chart. Scores and level text come from the API as is (rule 10).
 
-const STATUS_TEXT = new Map([
-  [false, "沒戴助聽器"],
-  [true, "有戴助聽器"],
-  [null, "助聽器未記錄"],
-]);
-
 export function selectPoints(submissions, code) {
   // submissions: one API page, newest first. Mixing questionnaires would mix level bands,
   // so only the questionnaire the page asks for is kept.
@@ -56,23 +50,4 @@ export function chartDays(points) {
     }
   }
   return days.slice(-CHART_DAYS);
-}
-
-export function summarize(points) {
-  // The pieces of the summary box; the wording is fixed by spec phase9_ui_refresh_2_data.md 4.2.
-  const latest = points.at(-1);
-  const statusText = STATUS_TEXT.get(latest.wearing);
-  const previous = points.slice(0, -1).findLast((p) => p.wearing === latest.wearing);
-  let change;
-  if (points.length === 1) change = "再做一次篩檢，就能看到分數的變化。";
-  else if (latest.wearing === null) change = "這筆沒有記錄助聽器，不和其他紀錄比較。";
-  else if (!previous) change = `這是第一筆${statusText}的紀錄。`;
-  else {
-    const diff = latest.total - previous.total;
-    const since = `上一次${statusText}（${previous.date}）`;
-    if (diff > 0) change = `比${since}增加 ${diff} 分。`;
-    else if (diff < 0) change = `比${since}減少 ${-diff} 分。`;
-    else change = `和${since}相同。`;
-  }
-  return { date: latest.date, statusText, total: latest.total, levelText: latest.levelText, change };
 }
