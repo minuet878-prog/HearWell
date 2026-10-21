@@ -3,8 +3,11 @@
     py313/bin/python e2e/compare_shots.py e2e-artifacts/shots/main e2e-artifacts/shots/branch
     py313/bin/python e2e/compare_shots.py <base> <new> --group answering
 
-Writes report.md and a diff image per differing screenshot into <new>-diff/, and exits 1 if
-anything differs. Any changed pixel counts: two captures of one commit match exactly, so even
+Writes report.md, a diff image per differing screenshot and gallery.html (each screenshot's
+before and after side by side, for a person to look through a redesign, #143) into <new>-diff/,
+and exits 1 if anything differs. A redesign changes whole pages on purpose, so read the gallery
+for those and use --group parts as the check: the cropped charts and badges must still match.
+Any changed pixel counts: two captures of one commit match exactly, so even
 a slightly different grey shows up and a person decides whether it is acceptable. Screenshots
 of different sizes are compared over the larger size, the missing part counting as changed.
 The font and root font size in each capture's styles.json are compared too.
@@ -13,7 +16,9 @@ Uses the Chromium that Playwright already installed, so no image library is need
 
 import argparse
 import base64
+import html
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -78,6 +83,30 @@ def compare_styles(base, new, prefix):
     return rows
 
 
+def write_gallery(base, new, out, names, changed):
+    """Each screenshot's before and after side by side, changed ones marked."""
+    figures = []
+    for name in names:
+        images = "".join(
+            f"<figure><figcaption>{label}</figcaption>"
+            f'<img src="{html.escape(os.path.relpath(folder / name, out))}" alt=""></figure>'
+            for label, folder in (("改版前", base), ("改版後", new))
+            if (folder / name).is_file()
+        )
+        mark = "不同" if name in changed else "相同"
+        figures.append(
+            f"<section><h2>{html.escape(name)}（{mark}）</h2><div>{images}</div></section>"
+        )
+    (out / "gallery.html").write_text(
+        '<!doctype html><meta charset="utf-8"><title>截圖對照</title>'
+        "<style>body{font-family:sans-serif;margin:1rem}h2{font-size:1rem}"
+        "section>div{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}"
+        "img{max-width:100%;border:1px solid #ccc}figure{margin:0}</style>"
+        f"<h1>截圖對照：{html.escape(str(base))} → {html.escape(str(new))}</h1>" + "".join(figures),
+        encoding="utf-8",
+    )
+
+
 def compare(base, new, group):
     prefix = f"{group}--" if group else ""
     out = new.with_name(f"{new.name}-diff")
@@ -87,6 +116,7 @@ def compare(base, new, group):
     rows = [f"| {n} | 只在基準 |" for n in sorted(names_base - names_new)]
     rows += [f"| {n} | 只在新的 |" for n in sorted(names_new - names_base)]
     same = 0
+    changed = names_base ^ names_new
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page()
@@ -95,11 +125,13 @@ def compare(base, new, group):
             if result["count"] == 0:
                 same += 1
                 continue
+            changed.add(name)
             (out / name).write_bytes(base64.b64decode(result["diff"]))
             (bw, bh), (nw, nh) = result["sizes"]
             size = f"，尺寸 {bw}x{bh} → {nw}x{nh}" if (bw, bh) != (nw, nh) else ""
             rows.append(f"| {name} | {result['count']} 個像素不同{size}（[差異圖]({name})） |")
         browser.close()
+    write_gallery(base, new, out, sorted(names_base | names_new), changed)
     styles = compare_styles(base, new, prefix)
     rows += styles
     total = len(names_base | names_new)
@@ -120,7 +152,9 @@ def main():
     parser = argparse.ArgumentParser(description="Compare two screenshot captures.")
     parser.add_argument("base", type=Path)
     parser.add_argument("new", type=Path)
-    parser.add_argument("--group", default="", help="public, answering, history, report, chrome")
+    parser.add_argument(
+        "--group", default="", help="public, answering, history, report, chrome, parts"
+    )
     args = parser.parse_args()
     for folder in (args.base, args.new):
         if not (folder / "styles.json").is_file():

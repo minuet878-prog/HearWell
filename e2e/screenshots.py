@@ -8,8 +8,10 @@ Build the frontend first, then capture into a folder of your choice (e2e-artifac
         py313/bin/python manage.py test --settings=config.test_settings e2e.screenshots
 
 SHOTS_GROUPS limits the run to some groups, comma separated (default: all of them):
-public, answering, history, report, and chrome (only the header, navigation and footer of
-every page, plus the home-screen app header). Compare two captures with e2e/compare_shots.py.
+public, answering, history, report, chrome (only the header, navigation and footer of
+every page, plus the home-screen app header), and parts (only the trend chart, IOI-HA chart,
+audiogram and level badges, which a redesign must leave untouched, #143). Compare two captures
+with e2e/compare_shots.py.
 Each capture also writes styles.json: the font family and root font size every page asks for,
 since the screenshots themselves cannot show a lost web font.
 
@@ -56,7 +58,18 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 NOW = datetime(2026, 10, 1, 10, 0, tzinfo=ZoneInfo("Asia/Taipei"))
 WIDTHS = (390, 1024)
 GOOGLE_FONTS = re.compile(r"https://fonts\.(googleapis|gstatic)\.com/.*")
-GROUPS = ("public", "answering", "history", "report", "chrome")
+GROUPS = ("public", "answering", "history", "report", "chrome", "parts")
+# Page -> the parts cropped from it; each crop holds only the drawing, not the frame around it.
+PARTS = {
+    "my-hearing-hhie-s": (
+        ("trend-chart", "#trend-chart .recharts-surface"),
+        ("level-badge", ".level-badge"),
+    ),
+    "my-hearing-ioi-ha": (("ioi-ha-chart", ".ioi-columns"),),
+    "audiograms": (("degree-badge", ".level-badge"),),
+    "audiogram-detail": (("audiogram", ".audiogram-plot svg"), ("degree-badge", ".level-badge")),
+    "audiogram-compare": (("audiogram", ".audiogram-plot svg"),),
+}
 # Recharts and the audiogram draw with JavaScript after load; wait out their animations.
 SETTLE_MS = 1600
 
@@ -72,7 +85,7 @@ class Shot:
             flags += "--nojs"
         if self.media == "print":
             flags += "--print"
-        prefix = f"chrome--{part}" if part else self.group
+        prefix = part or self.group
         return f"{prefix}--{self.name}{flags}--{width}.png"
 
 
@@ -307,9 +320,10 @@ class Screenshots(StaticLiveServerTestCase):
         taken = 0
         styles = {}
         chrome = "chrome" in self.groups
+        parts = "parts" in self.groups
         for shot in self.shots():
             page_wanted = shot.group in self.groups
-            if not (page_wanted or chrome):
+            if not (page_wanted or chrome or (parts and shot.name in PARTS)):
                 continue
             # Registered only here, so the fake questionnaire shows up on no other page.
             unknown = shot.name == "result-unknown"
@@ -329,7 +343,20 @@ class Screenshots(StaticLiveServerTestCase):
                         for part, found in self.chrome(page).items():
                             # Django admin's login page has an empty, unseen footer.
                             if found.count() and found.is_visible():
-                                self.capture(page, shot.filename(width, part), found)
+                                self.capture(page, shot.filename(width, f"chrome--{part}"), found)
+                                taken += 1
+                    if parts and shot.media == "screen":
+                        for part, selector in PARTS.get(shot.name, ()):
+                            found = page.locator(selector)
+                            # Seen first, so a renamed part cannot drop out of both captures.
+                            expect(found.first).to_be_visible()
+                            for index in range(found.count()):
+                                name = shot.filename(width, f"parts--{part}-{index + 1}")
+                                # Mid-screen, clear of the fixed header and phone tab bar.
+                                found.nth(index).evaluate(
+                                    "el => el.scrollIntoView({block: 'center'})"
+                                )
+                                self.capture(page, name, found.nth(index))
                                 taken += 1
                     context.close()
             if shot.name == "report-share-create":
@@ -341,7 +368,9 @@ class Screenshots(StaticLiveServerTestCase):
             app = Shot("chrome", "questionnaire-list-app", reverse("questionnaire_list"))
             for width in WIDTHS:
                 context, page = self.open(app, width, standalone=True)
-                self.capture(page, app.filename(width, "header"), page.get_by_role("banner"))
+                self.capture(
+                    page, app.filename(width, "chrome--header"), page.get_by_role("banner")
+                )
                 taken += 1
                 context.close()
         print(f"{taken} screenshots in {self.out}")
