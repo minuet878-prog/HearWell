@@ -20,6 +20,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
+    {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
+    <script>
+        if (sessionStorage.getItem("header-wave-played")) {
+            document.documentElement.classList.add("header-wave-played");
+        } else {
+            sessionStorage.setItem("header-wave-played", "1");
+        }
+    </script>
     {% if user.is_authenticated %}
     {# Clears unfinished answers kept in this browser when logging out. #}
     <script type="module" src="{% static 'screening/frontend/logout.js' %}"></script>
@@ -32,6 +40,8 @@
     <a class="skip-link visually-hidden-focusable" href="#main-content">跳到主要內容</a>
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
+        {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
+        <div class="site-wave" aria-hidden="true">{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
         <div class="container site-header-bar py-2">
             <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
