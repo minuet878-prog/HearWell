@@ -1022,7 +1022,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     fixtures = ("questions_fixture.json",)
     TEXT = "rgb(73, 80, 87)"
     PRIMARY = "rgb(31, 78, 140)"
-    ERROR = "rgb(194, 59, 28)"
+    ERROR = "rgb(143, 42, 18)"  # #149: the severe level colour, darkened to 7:1
     # #137 (2a): a warm page and footer, white surfaces, warm borders on large blocks.
     WARM_PAGE = "rgb(250, 247, 242)"
     WARM_FOOTER = "rgb(243, 237, 227)"
@@ -1036,8 +1036,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
     # (level, scores, background, text colour)
     BANNERS = (
-        ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
-        ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
+        ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(20, 87, 60)"),
+        ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(112, 72, 0)"),
         ("severe", (4,) * 10, "rgb(254, 236, 231)", ERROR),
         ("unknown", (2,) * 10, "rgb(241, 243, 245)", TEXT),
     )
@@ -1104,11 +1104,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             "--color-body": "#495057",
             "--color-heading": "#212529",
             "--color-footer": "#343a40",
-            "--color-normal": "#1e7b55",
+            # #149: the three level colours darkened to 7:1; their backgrounds unchanged.
+            "--color-normal": "#14573c",
             "--color-normal-bg": "#e3f4ec",
-            "--color-mild": "#8a5a00",
+            "--color-mild": "#704800",
             "--color-mild-bg": "#fff4d6",
-            "--color-severe": "#c23b1c",
+            "--color-severe": "#8f2a12",
             "--color-severe-bg": "#feece7",
             "--color-surface": "#f1f3f5",
             "--color-brand-soft": "#eef3fa",
@@ -1627,6 +1628,84 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(badge).to_be_visible()
                     self.assertEqual(self.style(badge, "color"), colour)
                     self.assertEqual(self.style(badge, "backgroundColor"), background)
+
+    # #149: each level's text reaches 7:1 on its soft background and on white.
+    def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
+        records = {
+            level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
+        }
+        self.open()
+        with self.saving_artifacts():
+            for level, record in records.items():
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                banner = self.page.locator(f".result-banner-{level}")
+                expect(banner).to_be_visible()
+                with self.subTest(page="result", level=level):
+                    text = self.style(banner.locator(".result-level"), "color")
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(text, self.style(banner, "backgroundColor")), 7
+                    )
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            bands = self.page.locator("#trend-chart .trend-bands li")
+            expect(bands).to_have_count(3)
+            for level, record in records.items():
+                badge = self.page.locator(f".level-badge-{level}").first
+                expect(badge).to_be_visible()
+                with self.subTest(page="my_hearing badge", level=level):
+                    text = self.style(badge, "color")
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(text, self.style(badge, "backgroundColor")), 7
+                    )
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+                # The chart's level names sit on white beside a swatch of their band.
+                band = bands.filter(has_text=record.classified["text"])
+                with self.subTest(page="my_hearing chart", level=level):
+                    text = self.style(band.locator("span").last, "color")
+                    swatch = self.style(band.locator(".trend-band-swatch"), "backgroundColor")
+                    self.assertGreaterEqual(self.lowest_contrast(text, swatch), 7)
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+
+    def assert_framed_in_its_text_colour(self, element):
+        colour = self.style(element, "color")
+        for side in ("Top", "Right", "Bottom", "Left"):
+            with self.subTest(side=side):
+                self.assertEqual(self.style(element, f"border{side}Style"), "solid")
+                self.assertEqual(self.style(element, f"border{side}Width"), "2px")
+                self.assertEqual(self.style(element, f"border{side}Color"), colour)
+
+    # #149: a frame in the level's own colour, so the soft background has an edge on the page.
+    def test_result_banner_and_level_badges_are_framed_in_the_level_colour(self):
+        records = {
+            level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
+        }
+        self.open()
+        with self.saving_artifacts():
+            for level, record in records.items():
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                banner = self.page.locator(f".result-banner-{level}")
+                expect(banner).to_be_visible()
+                with self.subTest(page="result", level=level):
+                    self.assert_framed_in_its_text_colour(banner)
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            for level in records:
+                badge = self.page.locator(f".level-badge-{level}").first
+                expect(badge).to_be_visible()
+                with self.subTest(page="my_hearing", level=level):
+                    self.assert_framed_in_its_text_colour(badge)
+
+    # #149: on paper, often black and white, the level stays written out in a frame.
+    def test_printed_report_writes_the_level_in_a_frame(self):
+        self.submission(self.hhie_s, (4,) * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            self.page.emulate_media(media="print")
+            levels = self.page.locator(f"#report-{self.hhie_s.code} .report-level")
+            expect(levels).to_have_count(1)
+            expect(levels).to_be_visible()
+            expect(levels).to_have_text("顯著影響")
+            self.assert_framed_in_its_text_colour(levels)
 
     def test_answer_choices_are_large_buttons_in_a_row(self):
         self.open(javascript=False)
