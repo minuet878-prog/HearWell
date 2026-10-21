@@ -1,7 +1,7 @@
 # #143 截圖工具：改版前後對照頁與元素裁切驗證
 
 日期：2026-10-21；分支 `feat/143-shot-gallery`；母分支 `feat/120-warm-shell`（2a 功能分支）。
-狀態：自動驗證完成，**等本人驗收**。子分支合回 `feat/120-warm-shell`；沒有 push、開 PR 或合併回 `main`。
+狀態：自動驗證完成；本人 2026-10-21 回覆「ok」，驗收通過。子分支合回 `feat/120-warm-shell`；沒有 push、開 PR 或合併回 `main`。
 
 ## 範圍
 
@@ -70,6 +70,6 @@ py313/bin/python e2e/compare_shots.py <基準> <新的>
 
 不需交叉審查：只改測試工具，沒有修改計分、分級、門檻、資料 migration 或權限。
 
-## 本人驗收（待驗收）
+## 本人驗收（2026-10-21 通過）
 
-- [ ] 打開 `e2e-artifacts/shots/131-diff/gallery.html`（不進版控），確認改版前後並排、看得懂哪幾張不同。
+- [x] 打開 `e2e-artifacts/shots/131-diff/gallery.html`（不進版控），確認改版前後並排、看得懂哪幾張不同。
