@@ -1008,6 +1008,11 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
     TEXT = "rgb(73, 80, 87)"
     PRIMARY = "rgb(31, 78, 140)"
     ERROR = "rgb(194, 59, 28)"
+    # #137 (2a): a warm page and footer, white surfaces, warm borders on large blocks.
+    WARM_PAGE = "rgb(250, 247, 242)"
+    WARM_FOOTER = "rgb(243, 237, 227)"
+    WARM_BORDER = "rgb(239, 230, 216)"
+    WHITE = "rgb(255, 255, 255)"
     # (level, scores, background, text colour)
     BANNERS = (
         ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
@@ -1107,6 +1112,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             "--shadow-warm": "0 0.25rem 0.75rem rgba(120, 90, 50, 0.08)",
             "--radius-large": "1.5rem",
             "--radius-medium": "0.75rem",
+            "--radius-pill": "999px",
             "--color-gradient-start": "#1f4e8c",
             "--color-gradient-end": "#3a6bb0",
         }
@@ -1438,7 +1444,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
                     "display": "flex",
                     "padding": "18px",
                     "borderTopWidth": "1px",
-                    "borderTopColor": "rgb(239, 230, 216)",  # warm border and 1.5rem since #137
+                    "borderTopColor": self.WARM_BORDER,  # and 1.5rem since #137
                     "borderTopLeftRadius": "27px",
                     "backgroundColor": "rgb(255, 255, 255)",
                 },
@@ -1665,9 +1671,14 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(shadows, [])
             # White paper behind the whole report, with no gradient anywhere in it (#137).
             self.assertEqual(self.style(self.page.locator("body"), "backgroundColor"), self.WHITE)
+            # Only what prints: a hidden print button may carry a gradient on screen.
             gradients = self.page.evaluate(
-                "[...document.querySelectorAll('.health-report, .health-report *')]"
-                ".map(el => getComputedStyle(el).backgroundImage).filter(s => s !== 'none')"
+                """() => [document.documentElement, document.body,
+                    ...document.querySelectorAll('.health-report, .health-report *')]
+                    .filter(el => el.checkVisibility())
+                    .flatMap(el => [null, '::before', '::after']
+                        .map(part => getComputedStyle(el, part).backgroundImage))
+                    .filter(image => image !== 'none')"""
             )
             self.assertEqual(gradients, [])
             # A section, and the table in it, stays on one page; a part holding several
@@ -1681,10 +1692,6 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             self.assertEqual(self.style(part.locator("> h2"), "breakAfter"), "avoid")
 
     # #137 (2a): a warm page with white surfaces, and three radius levels.
-    WARM_PAGE = "rgb(250, 247, 242)"
-    WARM_FOOTER = "rgb(243, 237, 227)"
-    WHITE = "rgb(255, 255, 255)"
-
     def warm_shell_records(self):
         """A history, an IOI-HA answer below the norm and an audiogram: every surface shows."""
         basis = self.submission(self.hhie_s, [2] * 10)
@@ -1713,6 +1720,7 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", self.WHITE),
             (f"/audiograms/{audiogram.pk}", ".audiogram-chart", self.WHITE),
             ("/audiograms/new", "#tested-on", self.WHITE),
+            ("/audiograms/new", ".audiogram-table .form-select", self.WHITE),
             ("/audiograms/new", ".audiogram-chart", self.WHITE),
             (f"/questionnaire/{self.hhie_s.pk}", "#id_form-0-score label", self.WHITE),
         )
@@ -1793,28 +1801,47 @@ class StyleInBrowserTest(StaticLiveServerTestCase):
             ("/audiograms", ".audiogram-thumbnail", "4.5px"),
             (f"/audiograms/{audiogram.pk}", ".audiogram-svg", "0px"),
         )
+        self.open()
         with self.saving_artifacts():
             for path, selector, radius in cases:
                 with self.subTest(path=path, selector=selector):
-                    self.open()
                     self.page.goto(f"{self.live_server_url}{path}")
                     found = self.page.locator(selector).first
                     expect(found).to_be_attached()
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
-    def test_large_blocks_have_warm_borders(self):
+    def test_large_white_blocks_have_warm_borders_and_shadows(self):
         self.submission(self.hhie_s, [2] * 10)
-        warm = "rgb(239, 230, 216)"
         cases = (
             ("/", ".step-cards li"),
             ("/questionnaire_list", "main a.link-card"),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
         )
+        self.open()
         with self.saving_artifacts():
             for path, selector in cases:
                 with self.subTest(path=path, selector=selector):
-                    self.open()
                     self.page.goto(f"{self.live_server_url}{path}")
                     found = self.page.locator(selector).first
                     expect(found).to_be_attached()
-                    self.assertEqual(self.style(found, "borderTopColor"), warm)
+                    self.assertEqual(self.style(found, "borderTopColor"), self.WARM_BORDER)
+                    self.assertEqual(
+                        self.style(found, "boxShadow"),
+                        "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px",
+                    )
+
+    def test_masking_switch_keeps_its_orange(self):
+        # ADR 0007: the masking switch is one of the few non-level colours kept (#137 acceptance 4).
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            self.page.get_by_role("button", name="遮蔽：關").click()
+            switch = self.page.get_by_role("button", name="遮蔽：開（△ □ [ ]）")
+            self.assertEqual(
+                self.styles(switch, "backgroundColor", "borderTopColor", "color"),
+                {
+                    "backgroundColor": "rgb(179, 89, 0)",
+                    "borderTopColor": "rgb(179, 89, 0)",
+                    "color": self.WHITE,
+                },
+            )
