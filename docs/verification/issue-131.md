@@ -1,7 +1,7 @@
 # #131 Tailwind 遷移收尾驗證（全站比對、文件、驗收）
 
 日期：2026-10-21；分支 `codex/131-tailwind-acceptance`（從 `feat/130-report-pages` 的 `0931dd1` 開出，內容和母分支 `feat/tailwind-migration` 的 `94db418` 相同）。
-狀態：自動驗證完成，**等本人實際操作驗收**。沒有 push、開 PR 或合併回 `main`。
+狀態：自動驗證完成；本人 2026-10-21 回覆「ok」，實際操作驗收通過。子分支合回 `feat/tailwind-migration`；沒有 push、開 PR 或合併回 `main`。
 
 ## 範圍與經過
 
@@ -17,7 +17,7 @@
 - **截圖工具的修正**：admin 登入頁有一個空的 `<footer>`，工具原本只看元素在不在，拍頁尾時等到逾時。改成只拍看得到的頁首／導覽／頁尾；網站自己的頁面這三塊都看得到，張數不變。
 - **順手修的格式**：`ruff format --check .`（CI 會跑）在三個檔案失敗。`docs/verification/issue-124.md` 裡的一段 Python 是 #124 留下的；`test_accounts.py`、`test_answering.py` 是 #127、#128 換成較短的 class 名之後沒有重排。不修的話，合併回 `main` 的 PR 會被 CI 擋下。只動排版，意思不變。
 
-## 刻意的差異（要本人接受）
+## 刻意的差異（本人 2026-10-21 接受）
 
 1. **首頁主標題與說明文字置中**（`f569fd8`，本人在 #130 驗收時另外要求）：首頁 4 張（登入前後 × 390／1024）不同，差異圖上紅色只在標題和說明那兩行，其他像素都沒變。
 
@@ -25,7 +25,7 @@
 
 | 條件 | 證明 |
 |---|---|
-| 1. 全站截圖比對，每個差異都說明並經本人接受 | 基準在 `origin/main`（`ef638a7`）用暫時的 worktree 拍，本分支再拍，兩邊用同一份截圖工具：**394 張中 390 張逐像素相同，4 張不同都是首頁置中**（上方第 1 項）；字型與基礎字級 0 頁不同。本人接受：待驗收 |
+| 1. 全站截圖比對，每個差異都說明並經本人接受 | 基準在 `origin/main`（`ef638a7`）用暫時的 worktree 拍，本分支再拍，兩邊用同一份截圖工具：**394 張中 390 張逐像素相同，4 張不同都是首頁置中**（上方第 1 項）；字型與基礎字級 0 頁不同。本人 2026-10-21 已接受 |
 | 2. e2e、一般測試、前端測試、`ruff check .` 全過 | 見下方「自動驗證」 |
 | 3. 全專案搜尋 Bootstrap 只剩 ADR、驗證紀錄、歷史文件 | `git grep -il bootstrap` 共 19 個檔案，全部在 `docs/`：ADR 0008／0009、`docs/verification/` 10 份、`docs/decisions/` 2 份、`docs/specs/` 3 份、`docs/reviews/` 1 份、`docs/accessibility/accessibility_baseline.md`（只剩第 145 行 2026-10-14 量測結果表裡的一列；量測方法段落已改寫）。程式碼、模板、設定檔 0 個 |
 | 4. Render 部署腳本不用新增步驟就產生 CSS | `build.sh:11` 本來就跑 `npm run build --prefix frontend`；`frontend/src/bundle.test.js:55` 斷言建置會產出 `site.css` |
@@ -88,9 +88,9 @@
 
 不需交叉審查：只改測試、文件與樣式註解，沒有修改計分、分級、門檻、資料 migration 或權限。
 
-## 本人實際操作（待驗收）
+## 本人實際操作（2026-10-21 通過）
 
-- [ ] 接受上方「刻意的差異」第 1 項（首頁置中）。
-- [ ] 看過全站比對報告（`e2e-artifacts/shots/131-diff/report.md`，不進版控）。
-- [ ] 讀過 `AGENTS.md` 專案概要與 `CODING_STANDARDS.md` 第 21 條。
-- [ ] 抽看幾頁（例如首頁、作答、聽力報告列印預覽、Django admin），畫面和正式站一樣。
+- [x] 接受上方「刻意的差異」第 1 項（首頁置中）。
+- [x] 看過全站比對報告（`e2e-artifacts/shots/131-diff/report.md`，不進版控）。
+- [x] 讀過 `AGENTS.md` 專案概要與 `CODING_STANDARDS.md` 第 21 條。
+- [x] 抽看幾頁（例如首頁、作答、聽力報告列印預覽、Django admin），畫面和正式站一樣。
