@@ -17,7 +17,7 @@
 6. **每個讀取分數的地方都走同一條計算路徑**（`Submission` 的計分方法），不要另寫一份聚合。API 由後端算好回傳，前端不重算。
 7. **0 是合法分數，不能當「沒資料」的哨兵值**。空的 submission 要另外處理。
 8. `Sum` 一律加 `default=0`（`test_standards.py` 自動檢查）。
-9. **分級、建議與量表說明文字只從 `scoring.py` 或問卷定義（`screening/questionnaires/`，ADR 0005）產生**，模板和前端直接顯示，不手寫第二份（曾在報告裡同一句出現兩次）。
+9. **分級、建議與量表說明文字只從 `scoring.py` 或問卷定義（`screening/questionnaires/`，ADR 0005）產生**，模板和前端直接顯示，不手寫第二份（曾在報告裡同一句出現兩次）。問卷代碼字串（例如 `"hhie-s"`）也只寫在問卷定義裡，其他程式引用定義的 `CODE`（`test_standards.py` 自動檢查）。
 
 ## 資料完整性
 

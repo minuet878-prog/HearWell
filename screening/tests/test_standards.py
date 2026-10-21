@@ -54,7 +54,7 @@ class FontSizeUnitTests(SimpleTestCase):
         self.assertEqual(found, [], "use rem for font-size")
 
 
-def code_lines(text, codes):
+def questionnaire_code_lines(text, codes):
     """Line numbers where a code stands alone, not inside a longer id like report-ioi-ha."""
     pattern = re.compile(rf"(?<![\w-])(?:{'|'.join(map(re.escape, codes))})(?![\w-])")
     return [n for n, line in enumerate(text.splitlines(), start=1) if pattern.search(line)]
@@ -83,16 +83,19 @@ class QuestionnaireCodeTests(SimpleTestCase):
                 yield path
 
     def test_codes_appear_only_in_definitions(self):
+        sources = list(self._sources())
+        for scanned in ("screening/views.py", "frontend/src/AnswerApp.jsx"):
+            self.assertIn(BASE_DIR / scanned, sources)
         found = [
             f"{path.relative_to(BASE_DIR)}:{n}"
-            for path in self._sources()
-            for n in code_lines(path.read_text(), questionnaires.DEFINITIONS)
+            for path in sources
+            for n in questionnaire_code_lines(path.read_text(), questionnaires.DEFINITIONS)
         ]
         self.assertEqual(found, [], "ask the questionnaire definition instead of its code")
 
     def test_a_hard_coded_code_is_caught(self):
         source = 'id="report-ioi-ha"\nif questionnaire.code == "ssq12-tw":\n'
-        self.assertEqual(code_lines(source, questionnaires.DEFINITIONS), [2])
+        self.assertEqual(questionnaire_code_lines(source, questionnaires.DEFINITIONS), [2])
 
 
 class MigrationsUpToDateTests(TestCase):
