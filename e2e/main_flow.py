@@ -6,7 +6,7 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import os
 import re
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import pairwise
 from zoneinfo import ZoneInfo
@@ -20,7 +20,9 @@ from screening.models import (
     Answer,
     Audiogram,
     AudiogramPoint,
+    Category,
     NormGroup,
+    Question,
     Questionnaire,
     Submission,
 )
@@ -928,3 +930,153 @@ class PwaNavTest(StaticLiveServerTestCase):
             self.assertTrue(self.on_same_line(brand, logout))
             self.assertTrue(self.on_same_line(account, logout))
             self.assertLessEqual(account["x"] + account["width"], logout["x"])
+
+
+class StyleInBrowserTest(StaticLiveServerTestCase):
+    """#123: style rules measured as the browser computes them, whatever produced the CSS."""
+
+    fixtures = ("questions_fixture.json",)
+    TEXT = "rgb(73, 80, 87)"
+    PRIMARY = "rgb(31, 78, 140)"
+    ERROR = "rgb(194, 59, 28)"
+    # (level, scores, background, text colour); "unknown" keeps only its colour checked.
+    BANNERS = (
+        ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
+        ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
+        ("severe", (4,) * 10, "rgb(254, 236, 231)", "rgb(194, 59, 28)"),
+        ("unknown", (2,) * 10, None, TEXT),
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    saving_artifacts = NewUserScreeningTest.saving_artifacts
+
+    def setUp(self):
+        self.user = consented_user(username="style_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, signed_in=True, width=1024, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900}, java_script_enabled=javascript
+        )
+        if signed_in:
+            self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def submission(self, questionnaire, scores):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question, score in zip(questionnaire.questions.all(), scores, strict=True)
+        )
+        return record
+
+    def test_text_primary_and_error_colours(self):
+        self.open(signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/privacy")
+            self.assertEqual(self.style(self.page.locator("body"), "color"), self.TEXT)
+            muted = self.page.locator(".text-body-secondary").first
+            self.assertEqual(self.style(muted, "color"), self.TEXT)
+            self.page.goto(f"{self.live_server_url}/login")
+            submit = self.page.get_by_role("button", name="登入")
+            self.assertEqual(self.style(submit, "backgroundColor"), self.PRIMARY)
+            self.page.get_by_label("使用者名稱").fill("nobody")
+            self.page.get_by_label("密碼").fill("not-the-password")
+            submit.click()
+            error = self.page.locator("#login_error")
+            expect(error).to_be_visible()
+            self.assertEqual(self.style(error, "color"), self.ERROR)
+
+    def test_result_banner_colours(self):
+        unconfigured = Questionnaire.objects.create(
+            questionnaire_name="Unknown", code="unconfigured"
+        )
+        Question.objects.bulk_create(
+            Question(
+                questionnaire=unconfigured,
+                question_text=f"題目{n}",
+                question_number=n,
+                category=Category.EMOTIONAL,
+            )
+            for n in range(1, 11)
+        )
+        self.enterContext(register(fake_definition("unconfigured")))
+        self.open()
+        with self.saving_artifacts():
+            for level, scores, background, colour in self.BANNERS:
+                with self.subTest(level=level):
+                    unknown = level == "unknown"
+                    record = self.submission(unconfigured if unknown else self.hhie_s, scores)
+                    logs = (
+                        self.assertLogs("screening.scoring", "ERROR") if unknown else nullcontext()
+                    )
+                    with logs:
+                        self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                    banner = self.page.locator(f".result-banner-{level}")
+                    expect(banner).to_be_visible()
+                    self.assertEqual(self.style(banner, "color"), colour)
+                    if background:
+                        self.assertEqual(self.style(banner, "backgroundColor"), background)
+
+    def test_answer_choices_are_large_buttons_in_a_row(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            labels = self.page.locator("#id_form-0-score label")
+            first, second = labels.nth(0).bounding_box(), labels.nth(1).bounding_box()
+            self.assertGreaterEqual(first["height"], 3 * 18)
+            self.assertEqual(first["y"], second["y"])
+            self.assertLess(first["x"], second["x"])
+
+    def test_answer_form_hides_only_while_loading(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            form = self.page.locator("#answer-form")
+            expect(form).to_be_visible()
+            self.assertEqual(self.style(self.page.locator("#answer-loading"), "display"), "none")
+            self.page.evaluate("document.documentElement.classList.add('answer-loading')")
+            self.assertEqual(self.style(form, "display"), "none")
+
+    def test_printed_report_has_no_site_chrome_or_shadows(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            self.page.emulate_media(media="print")
+            for part in (
+                self.page.locator(".site-header"),
+                self.page.get_by_role("navigation", name="主要導覽"),
+                self.page.locator(".site-footer"),
+                self.page.get_by_role("button", name="列印或存成 PDF"),
+            ):
+                expect(part).to_be_hidden()
+            shadows = self.page.evaluate(
+                "[...document.querySelectorAll('.health-report, .health-report *')]"
+                ".map(el => getComputedStyle(el).boxShadow).filter(s => s !== 'none')"
+            )
+            self.assertEqual(shadows, [])

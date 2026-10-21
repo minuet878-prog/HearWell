@@ -5,7 +5,6 @@ from datetime import date
 from pathlib import Path
 from typing import ClassVar
 
-from django.contrib.staticfiles import finders
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -151,41 +150,6 @@ class AccessibilityTests(TestCase):
         self.client.force_login(self.user)
         self.url = reverse("screening", args=[self.questionnaire.id])
 
-    def _css(self):
-        with open(finders.find("screening/styles.css"), encoding="utf-8") as f:
-            return re.sub(r"/\*.*?\*/", "", f.read(), flags=re.DOTALL)
-
-    def _rule(self, selector):
-        # Exactly one rule for the selector, so a later rule cannot silently override it.
-        bodies = [
-            body
-            for selectors, body in re.findall(r"([^{}]+)\{([^}]*)\}", self._css())
-            if selectors.strip() == selector
-        ]
-        self.assertEqual(len(bodies), 1, selector)
-        return bodies[0].lower()
-
-    def test_stylesheet_loads_after_bootstrap(self):
-        content = self.client.get(reverse("index")).content.decode()
-        self.assertLess(content.index("bootstrap.min.css"), content.index("screening/styles"))
-
-    def test_body_and_muted_text_color(self):
-        root = self._rule(":root")
-        self.assertIn("--bs-body-color: #495057", root)
-        self.assertIn("--bs-body-color-rgb: 73, 80, 87", root)
-        self.assertIn("--bs-secondary-color: #495057", root)
-
-    def test_level_and_error_text_colors(self):
-        expected = {
-            ".text-success": "#1e7b55",
-            ".text-warning": "#8a5a00",
-            ".text-danger": "#c23b1c",
-            ".text-secondary": "#495057",
-        }
-        for selector, color in expected.items():
-            with self.subTest(selector=selector):
-                self.assertIn(f"color: {color} !important", self._rule(selector))
-
     def test_each_question_in_fieldset_with_legend(self):
         content = self.client.get(self.url).content.decode()
         self.assertEqual(content.count("<fieldset"), 3)
@@ -215,10 +179,8 @@ class AccessibilityTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(response, '<div id="id_wearing_hearing_aid" class="choice-group">')
         self.assertContains(response, '<div id="id_form-0-score" class="choice-group">')
-        self.assertIn("min-height: 3rem", self._rule("div.choice-group label"))
         # The input sits inside its label, so the whole button is clickable.
         self.assertRegex(response.content.decode(), r'<label for="id_form-0-score_0">\s*<input')
-        self.assertIn("display: flex", self._rule("div.choice-group"))
 
 
 class RedesignLayoutTests(TestCase):
@@ -646,17 +608,17 @@ class PageFlowTests(TestCase):
             with self.subTest(question=i):
                 self.assertIn(f"題目內容{i:02d}——{answer}", body)
 
-    def test_result_banner_colors(self):
-        css = Path(finders.find("screening/styles.css")).read_text()
+    def test_result_banner_marks_its_level(self):
+        # The colours themselves are measured in a browser: e2e StyleInBrowserTest.
         unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")
         self.enterContext(register(fake_definition("unconfigured")))
         cases = (
-            ("normal", [0] * 10, self.hhie_s, "#e3f4ec", "#1e7b55"),
-            ("mild_to_moderate", [2] * 6 + [0] * 4, self.hhie_s, "#fff4d6", "#8a5a00"),
-            ("severe", [4] * 10, self.hhie_s, "#feece7", "#c23b1c"),
-            ("unknown", [2] * 10, unknown, None, "#495057"),
+            ("normal", [0] * 10, self.hhie_s),
+            ("mild_to_moderate", [2] * 6 + [0] * 4, self.hhie_s),
+            ("severe", [4] * 10, self.hhie_s),
+            ("unknown", [2] * 10, unknown),
         )
-        for level, scores, questionnaire, background, color in cases:
+        for level, scores, questionnaire in cases:
             with self.subTest(level=level):
                 submission = self._submit(scores, questionnaire=questionnaire)
                 if level == "unknown":
@@ -665,11 +627,6 @@ class PageFlowTests(TestCase):
                 else:
                     main = self._result(submission)
                 self.assertRegex(main, rf'class="[^"]*\bresult-banner-{level}\b')
-                rule = re.search(rf"\.result-banner-{level}\s*\{{([^}}]*)\}}", css)
-                self.assertIsNotNone(rule)
-                self.assertRegex(rule.group(1), rf"(?<!-)color:\s*{color}")
-                if background:
-                    self.assertRegex(rule.group(1), rf"background-color:\s*{background}")
 
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))

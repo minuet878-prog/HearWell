@@ -406,8 +406,6 @@ class ReactAnswerPageTests(TestCase):
 class AnswerFlashTests(TestCase):
     """Spec docs/specs/phase-05/phase5_answer_flash.md, acceptance 1, 6-8 (page side)."""
 
-    CSS = Path(__file__).resolve().parent.parent / "static" / "screening" / "styles.css"
-
     # Borrowed without inheriting (and rerunning) its tests; unwrap so `cls` is this class.
     setUpTestData = classmethod(ReactAnswerPageTests.setUpTestData.__func__)
     setUp = ReactAnswerPageTests.setUp
@@ -439,9 +437,6 @@ class AnswerFlashTests(TestCase):
         self.assertNotIn("hidden", form_tag)
         self.assertNotIn("style=", form_tag)
         self.assertNotIn("answer-loading", re.search(r"<html[^>]*>", content).group())
-        css = self.CSS.read_text(encoding="utf-8")
-        self.assertRegex(css, r"\.answer-loading #answer-form\s*\{[^}]*display:\s*none")
-        self.assertRegex(css, r"#answer-loading:empty\s*\{[^}]*display:\s*none")
 
     def test_ioi_ha_has_no_loading_step(self):
         content = self._page(self.ioi_ha).content.decode()
