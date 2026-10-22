@@ -632,6 +632,42 @@ class IoiHaResultRedesignTests(TestCase):
                     "<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>", next_steps
                 )
 
+    def test_heading_outline_skips_no_level_and_nests_items_under_their_group(self):
+        # Rule 17: each item heading sits one level under its own group, or under the title.
+        def outline(main):
+            headings = re.findall(r"<h([1-6])[^>]*>(.*?)</h\1>", main, re.S)
+            return [(int(level), re.sub(r"<[^>]+>", "", text).strip()) for level, text in headings]
+
+        names = scoring.IOI_HA_ITEM_NAMES
+        cases = {
+            "grouped, two below": (
+                self.TWO_BELOW_ONE_ABOVE,
+                True,
+                [(1, "助聽器使用成效"), (2, "比一般使用者低的 2 項")]
+                + [(3, names[n]) for n in (1, 6)]
+                + [(2, "其他 5 項")]
+                + [(3, names[n]) for n in (2, 3, 4, 5, 7)]
+                + [(2, "接下來")],
+            ),
+            "grouped, none below": (
+                (3,) * 7,
+                True,
+                [(1, "助聽器使用成效"), (2, "其他 7 項")]
+                + [(3, names[n]) for n in range(1, 8)]
+                + [(2, "接下來")],
+            ),
+            "ungrouped": (
+                self.TWO_BELOW_ONE_ABOVE,
+                False,
+                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)] + [(2, "接下來")],
+            ),
+        }
+        for case, (scores, grouped, expected) in cases.items():
+            with self.subTest(case):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                self.assertEqual(outline(self._main(self._result(scores, grouped))), expected)
+
     def test_next_steps_link_to_the_report_and_my_records(self):
         # Ungrouped first: once an unaided HHIE-S exists, every later IOI-HA is grouped.
         for grouped in (False, True):

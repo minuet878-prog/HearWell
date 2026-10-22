@@ -1055,8 +1055,9 @@ def submission_result(request, submission_id):
     )
 
 
-def _ioi_ha_items(submission, answers):
-    # The only place IOI-HA answers meet the norms; the result page and the report both use it.
+def _ioi_ha_items(submission, answers, texts):
+    # The only place IOI-HA answers meet the norms; the result page and the report both use it,
+    # each with its own words for the comparison (texts: NORM_VERSUS_TEXT or NORM_COMPARISON_TEXT).
     grouped = submission.norm_group != NormGroup.UNGROUPED
     items = []
     for answer in answers:
@@ -1070,8 +1071,8 @@ def _ioi_ha_items(submission, answers):
                 "name": IOI_HA_ITEM_NAMES[number],
                 "text": answer.question.question_text,
                 "label": IOI_HA_CHOICES[number][answer.score - 1],
-                "comparison": NORM_COMPARISON_TEXT.get(comparison),
-                "versus": NORM_VERSUS_TEXT.get(comparison),
+                "comparison_code": comparison,
+                "comparison": texts.get(comparison),
                 "note": IOI_HA_BELOW_NORM_NOTES[number] if comparison == "below" else None,
                 # The result page's 5-cell scale, scores 1-5: the norm cells and the answer.
                 "cells": [
@@ -1089,21 +1090,21 @@ def _ioi_ha_items(submission, answers):
 def _ioi_ha_summary(submission):
     # One IOI-HA record against the norms, for the report and the home page's last result.
     answers = submission.answers.select_related("question").order_by("question__question_number")
-    items, grouped = _ioi_ha_items(submission, answers)
+    items, grouped = _ioi_ha_items(submission, answers, NORM_COMPARISON_TEXT)
     return {
         "submission": submission,
         "items": items,
         "grouped": grouped,
-        "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
-        "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
+        "below": sum(item["comparison_code"] == "below" for item in items),
+        "above": sum(item["comparison_code"] == "above" for item in items),
     }
 
 
 def _ioi_ha_result(request, submission, answers):
     # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
-    items, grouped = _ioi_ha_items(submission, answers)
+    items, grouped = _ioi_ha_items(submission, answers, NORM_VERSUS_TEXT)
     # Items below the norm come first and open; the rest are folded under 「其他 n 項」 (#187).
-    below = [item for item in items if item["versus"] == NORM_VERSUS_TEXT["below"]]
+    below = [item for item in items if item["comparison_code"] == "below"]
     return render(
         request,
         "screening/result_ioi_ha.html",
@@ -1112,6 +1113,7 @@ def _ioi_ha_result(request, submission, answers):
             "items": items,
             "grouped": grouped,
             "below": below,
+            "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
         },
     )

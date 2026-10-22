@@ -1837,6 +1837,14 @@
     margin-bottom: 1.5rem;
   }
 
+  /* 「其他 n 項」 is the h2 its folded items sit under (rule 17), drawn as plain summary text. */
+  .ioi-others-title {
+    display: inline;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+  }
+
   .ioi-items {
     display: flex;
     flex-direction: column;

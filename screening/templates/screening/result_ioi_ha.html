@@ -7,7 +7,7 @@
 <p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答</p>
 <section class="card card-body mb-6">
     {% if grouped %}
-    <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項比一般使用者低</p>
+    <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
     <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
     {% with basis=submission.norm_basis %}
     <p class="mb-0">分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.total_answer_score }} 分。這是常模比較的分組，不代表聽損程度。</p>
@@ -23,23 +23,23 @@
 {% if grouped %}
 {% if below %}
 <section class="ioi-below" aria-labelledby="ioi-below-title">
-    <h2 id="ioi-below-title" class="h4">比一般使用者低的 {{ below|length }} 項</h2>
+    <h2 id="ioi-below-title" class="h4">{{ below_text }}的 {{ below|length }} 項</h2>
     <ol class="ioi-items">
-        {% for item in below %}{% include "screening/ioi_ha_item.html" with hide_versus=True %}{% endfor %}
+        {% for item in below %}{% include "screening/ioi_ha_item.html" with heading=3 hide_versus=True %}{% endfor %}
     </ol>
 </section>
 {% endif %}
 {% if others %}
 <details class="ioi-others">
-    <summary>其他 {{ others|length }} 項</summary>
+    <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
     <ol class="ioi-items">
-        {% for item in others %}{% include "screening/ioi_ha_item.html" %}{% endfor %}
+        {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
     </ol>
 </details>
 {% endif %}
 {% else %}
 <ol class="ioi-items">
-    {% for item in items %}{% include "screening/ioi_ha_item.html" %}{% endfor %}
+    {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
 </ol>
 {% endif %}
 <section class="card card-body my-6" aria-labelledby="ioi-next-title">
