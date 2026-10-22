@@ -74,6 +74,22 @@ class NewUserHomeTests(TestCase):
         for part in ("ill-face", "ill-hair", "ill-cheek", "ill-accent"):
             self.assertIn(part, picture)
 
+    def test_result_preview_shows_the_result_page_score_bar(self):
+        # Design picker round 2: the example card carries the same bar as the result page,
+        # with HHIE-S's own thresholds and the made-up 18 points.
+        main = self._main()
+        preview = main[main.index('<figure class="result-preview">') : main.index("</figure>")]
+        self.assertIn('<div class="score-bar" aria-hidden="true">', preview)
+        for level, width in (("normal", 20), ("mild_to_moderate", 40), ("severe", 40)):
+            with self.subTest(level=level):
+                self.assertIn(
+                    f'class="score-bar-segment score-bar-segment-{level}" '
+                    f'style="width: {width}.00%"',
+                    preview,
+                )
+        self.assertIn('class="score-bar-marker" style="--position: 45.00%"', preview)
+        self.assertLess(preview.index("result-banner"), preview.index("score-bar"))
+
     # The logo and the one-time ring are drawn by CSS on btn-start and checked in e2e.
     def test_start_button_uses_the_btn_start_class(self):
         for logged_in in (False, True):

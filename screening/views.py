@@ -92,6 +92,9 @@ def index(request):
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_advice": get_advice(preview["level"]),
+            "preview_score_bar": _score_bar(
+                hhie_s.THRESHOLDS, HOME_PREVIEW_SCORE, preview["level"]
+            ),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
         },
@@ -951,19 +954,20 @@ def shared_report(request, token):
     return _family_page(request, "screening/shared_report.html", context)
 
 
-def _score_bar(submission, classified_score):
+def _score_bar(thresholds, score, level):
     # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
     # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
-    thresholds = submission.questionnaire.definition.thresholds
-    if classified_score["level"] == "unknown" or not thresholds:
+    if level == "unknown" or not thresholds:
         return None
     ceiling = thresholds[-1][0]
     segments = []
     start = 0
-    for upper, text, level in thresholds:
-        segments.append({"level": level, "text": text, "width": (upper - start) / ceiling * 100})
+    for upper, text, segment_level in thresholds:
+        segments.append(
+            {"level": segment_level, "text": text, "width": (upper - start) / ceiling * 100}
+        )
         start = upper
-    position = max(0, min(100, submission.total_answer_score / ceiling * 100))
+    position = max(0, min(100, score / ceiling * 100))
     return {"segments": segments, "position": position}
 
 
@@ -1003,7 +1007,11 @@ def submission_result(request, submission_id):
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
-            "score_bar": _score_bar(submission, classified_score),
+            "score_bar": _score_bar(
+                submission.questionnaire.definition.thresholds,
+                submission.total_answer_score,
+                classified_score["level"],
+            ),
             "next_steps": submission.questionnaire.definition.next_steps.get(
                 classified_score["level"], ()
             ),

@@ -62,6 +62,7 @@
         <div class="result-level">{{ preview_text }}</div>
         <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
     </div>
+    {% include "screening/score_bar.html" with bar=preview_score_bar %}
     <p class="mt-2 mb-2">{{ preview_advice|slice:":40" }}……</p>
     <figcaption>實際結果依您的回答而定。</figcaption>
 </figure>

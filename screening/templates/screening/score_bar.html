@@ -1,0 +1,16 @@
+{# Ticket #158's score position bar; shared by the result page and the home page's example. #}
+<div class="score-bar" aria-hidden="true">
+    <div class="score-bar-track">
+        <div class="score-bar-segments">
+            {% for segment in bar.segments %}
+            <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
+            {% endfor %}
+        </div>
+        <div class="score-bar-marker" style="--position: {{ bar.position|floatformat:2 }}%"></div>
+    </div>
+    <div class="score-bar-labels">
+        {% for segment in bar.segments %}
+        <span class="score-bar-label-{{ segment.level }}">{{ segment.text }}</span>
+        {% endfor %}
+    </div>
+</div>

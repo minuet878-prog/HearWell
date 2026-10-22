@@ -11,21 +11,7 @@
     <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
 {% if score_bar %}
-<div class="score-bar" aria-hidden="true">
-    <div class="score-bar-track">
-        <div class="score-bar-segments">
-            {% for segment in score_bar.segments %}
-            <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
-            {% endfor %}
-        </div>
-        <div class="score-bar-marker" style="--position: {{ score_bar.position|floatformat:2 }}%"></div>
-    </div>
-    <div class="score-bar-labels">
-        {% for segment in score_bar.segments %}
-        <span class="score-bar-label-{{ segment.level }}">{{ segment.text }}</span>
-        {% endfor %}
-    </div>
-</div>
+{% include "screening/score_bar.html" with bar=score_bar %}
 {% endif %}
 {% if next_steps %}
 <h2 class="h4 mt-6">接下來建議您</h2>

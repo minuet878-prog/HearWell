@@ -2524,6 +2524,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             hero = self.page.locator(".home-hero")
             self.assertEqual(self.style(hero, "backgroundColor"), self.WHITE)
+            # Design picker round 2: the result example is a white card with the score bar.
+            preview = self.page.locator(".result-preview")
+            self.assertEqual(self.style(preview, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(preview, "borderTopStyle"), "solid")
+            expect(preview.locator(".score-bar-marker")).to_be_visible()
             animations = self.page.evaluate(
                 """() => document.getAnimations()
                     .filter(a => a.effect.target.closest('.home-hero'))
@@ -2745,6 +2750,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             # Shape as well as colour: only the current page is a pill.
             self.assertEqual(self.style(current, "borderTopLeftRadius"), "999px")
             self.assertEqual(self.style(current, "boxShadow"), "none")
+            # Design picker round 2: a shadow along the top parts the white bar from the white
+            # header, and the pill sits inside the bar instead of filling its height.
+            self.assertIn("inset", self.style(nav, "boxShadow"))
+            bar, pill = nav.bounding_box(), current.bounding_box()
+            self.assertGreaterEqual(pill["y"] - bar["y"], 4)
+            self.assertGreaterEqual(bar["y"] + bar["height"] - pill["y"] - pill["height"], 4)
+            self.assertGreaterEqual(pill["height"], 44)
             for other in others.all():
                 self.assertEqual(self.style(other, "backgroundImage"), "none")
 
