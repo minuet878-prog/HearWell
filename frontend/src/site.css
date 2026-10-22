@@ -2099,6 +2099,15 @@
     margin-top: 1.5rem;
   }
 
+  /* #198: at 200% text on a phone a date like 2026/09/28 cannot break, so headings and list
+     lines run off the screen. Screen only: the printed report stays as it was. Tables keep
+     their column widths. */
+  @media screen {
+    .health-report :is(h1, h2, h3, li) {
+      overflow-wrap: anywhere;
+    }
+  }
+
   .report-meta {
     display: flex;
     flex-wrap: wrap;
