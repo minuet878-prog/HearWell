@@ -191,3 +191,31 @@ class ThiQueryCountTests(ThiReportTestCase):
     def test_export_query_count_does_not_grow_with_thi_records(self):
         few, many = self._query_counts(reverse("download_my_data"))
         self.assertEqual(many, few)
+
+
+class ThiSameResultEverywhereTests(ThiReportTestCase):
+    def test_one_record_has_the_same_total_and_level_in_all_four_places(self):
+        submission = self.record(test_thi.scores_for(58))
+        result = self.client.get(reverse("result", args=[submission.pk])).content.decode()
+        api = self.client.get(reverse("api:submission", args=[submission.pk])).json()
+        report = test_report._section(
+            self.client.get(reverse("health_report")).content.decode(), "report-thi"
+        )
+        exported = self.client.get(reverse("download_my_data")).json()["submissions"][0]
+        on_result = (
+            int(re.search(r"總分 (\d+) 分", result).group(1)),
+            re.search(r'aria-describedby="result-score">([^<]+)</h2>', result).group(1),
+        )
+        on_report = re.search(
+            r'<span class="report-score">(\d+) 分</span>.*?<span class="report-level">([^<]+)<',
+            report,
+        ).groups()
+        self.assertEqual(
+            {
+                "result page": on_result,
+                "api": (api["scores"]["total"], api["level"]["text"]),
+                "report": (int(on_report[0]), on_report[1]),
+                "export": (exported["total_score"], exported["level"]),
+            },
+            dict.fromkeys(("result page", "api", "report", "export"), (58, "重度障礙")),
+        )
