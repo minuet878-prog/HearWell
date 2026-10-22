@@ -132,6 +132,10 @@ class ThiAnswerPageTests(ThiTestCase):
         legends = re.findall(r'<span class="question-progress">[^<]*</span>([^<]*)</legend>', page)
         self.assertEqual(tuple(legends), QUESTIONS)
 
+    def test_web_page_credits_the_chinese_version(self):
+        # The owner's choice after #212: credit the hospital form as HHIA-S credits its source.
+        self.assertIn("中文版：黃啟原修訂；信度考驗：李恆惠。", self._page(self.thi))
+
     def test_every_item_offers_often_sometimes_never_and_no_not_applicable(self):
         page = self._page(self.thi)
         for number in range(1, 26):

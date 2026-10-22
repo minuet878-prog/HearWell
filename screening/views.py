@@ -586,7 +586,8 @@ def _trend_chart(records, since_last):
     if since_last is not None:
         change = None  # 「和上一次比」 above the chart says it (decision 2026-10-22, #162)
     elif len(records) == 1:
-        change = "再做一次篩檢，就能看到分數的變化。"
+        # THI is not a screening (GLOSSARY: 篩檢問卷 is not every questionnaire).
+        change = f"再做一次{'篩檢' if definition.life_impact else ''}，就能看到分數的變化。"
     elif wearing is None:
         change = "這筆沒有記錄助聽器，不和其他紀錄比較。"
     else:

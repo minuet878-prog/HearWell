@@ -115,7 +115,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
             [
                 "最近一次（2026/01/15，有戴助聽器）",
                 "52 分 中度障礙",
-                "再做一次篩檢，就能看到分數的變化。",
+                # THI is not a screening (GLOSSARY: 篩檢問卷 is not every questionnaire).
+                "再做一次，就能看到分數的變化。",
             ],
         )
 
