@@ -269,7 +269,7 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("report", "shared-cover", share, who="anon"),
             Shot("report", "shared-report", f"{share}/report", who="anon"),
             Shot("report", "shared-report", f"{share}/report", who="anon", media="print"),
-            Shot("report", "report-share-create", reverse("health_report")),
+            Shot("report", "share-page", reverse("share_report")),
         ]
         shots += [
             Shot("public", "shared-invalid", reverse("shared_cover", args=["missing"]), who="anon"),
@@ -308,9 +308,6 @@ class Screenshots(StaticLiveServerTestCase):
         page.evaluate("document.fonts.ready")
         if page.locator("#trend-chart, #audiogram-chart, #audiogram-app").count():
             page.wait_for_timeout(SETTLE_MS)
-        if shot.name == "report-share-create":
-            page.locator("#report-share summary").click()
-            expect(page.get_by_role("button", name="確認產生", exact=True)).to_be_visible()
         return context, page
 
     @staticmethod

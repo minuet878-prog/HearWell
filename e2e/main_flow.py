@@ -352,8 +352,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 expect(self.page.locator(f"#{section}")).to_be_visible()
             self.page.emulate_media(media="screen")
             self.page.evaluate("window.dispatchEvent(new Event('afterprint'))")
-            self.main().get_by_text("產生分享連結", exact=True).click()
-            self.main().get_by_role("button", name="確認產生", exact=True).click()
+            self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
+            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            expect(self.main().get_by_role("button", name="取消分享", exact=True)).to_be_visible()
             share = unaided.user.report_shares.get()
             with self.browser.new_context() as family_context:
                 family_page = family_context.new_page()
@@ -2909,7 +2910,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("/account/delete", "button", "刪除帳號", "backgroundColor"),
             (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", "backgroundColor"),
             (f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖", "color"),
-            ("/report", "button", "取消分享", "color"),
+            ("/share", "button", "取消分享", "color"),
         )
         self.open()
         with self.saving_artifacts():
