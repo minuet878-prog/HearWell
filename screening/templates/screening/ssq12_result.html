@@ -37,7 +37,7 @@
 </section>
 {% endif %}
 {% endwith %}
-<details class="mb-4">
+<details class="dropdown-box mb-4">
     <summary>看全部 {{ answers|length }} 題的回答</summary>
     <ol>{% for answer in answers %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
 </details>

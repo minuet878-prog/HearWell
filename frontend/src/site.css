@@ -110,8 +110,9 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card or the report's summary box has none; the box already frames it. */
-  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
+     inside a card, the report's summary box or the home page's result example has none; the box
+     already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary, .result-preview) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -1245,7 +1246,8 @@
     background-image: var(--gradient-brand);
   }
 
-  /* On a phone the line wraps into two even halves, not one word alone on the second line. */
+  /* On a phone the line wraps into two even halves, not one word alone on the second line;
+     「聽力師」 stays whole (the template keeps it on one line). */
   .home-credential-text {
     text-wrap: balance;
   }
@@ -1280,11 +1282,12 @@
     gap: 0.75rem;
   }
 
+  /* Number, icon and words in one row (pages tidy-up), so each card is half as tall. */
   .step-cards li {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--color-border-warm);
     border-radius: var(--radius-large);
     background-color: #fff;
@@ -1292,6 +1295,7 @@
   }
 
   .step-number {
+    flex: none;
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 50%;
@@ -1305,8 +1309,9 @@
   }
 
   .step-icon {
-    width: 2.5rem;
-    height: 2.5rem;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
     fill: none;
     stroke: var(--color-primary);
     stroke-width: 1.8;
@@ -1525,6 +1530,28 @@
 
   /* A reminder or a short explanation on a text-heavy page (guide chapters, audiogram result):
      light blue with the brand bar, no shadow, so it does not read as a card to tap. */
+  /* A link inside a sentence: reads as a plain text link and keeps the line height, yet its tap
+     area still reaches 44px (the padding is cancelled by a negative margin, so the line box does
+     not grow). Was a button-styled link whose 44px height stretched its line (pages tidy-up). */
+  .inline-link {
+    display: inline-block;
+    padding: 0.6rem 0.15rem;
+    margin: -0.6rem 0;
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  /* Register form: labels bold, each field's help in the body grey and a step smaller (pages tidy-up). */
+  .register-form label {
+    font-weight: 700;
+    color: var(--color-heading);
+  }
+
+  .field-help {
+    color: var(--color-body);
+    font-size: 0.9375rem;
+  }
+
   .tip-box {
     margin: 0 0 1rem;
     padding: 0.85rem 1rem;
@@ -1654,18 +1681,25 @@
     color: var(--color-primary);
   }
 
-  /* add_to_home: one block per phone, closed until the user picks theirs (#196). The summary is
-     the tap target; hover and press change colour only, never position (ADR 0006). The answer
-     page's "這份問卷在問什麼？" is the same box, with a button (React) instead of a summary. */
-  .phone-choice, .answer-about {
+  /* Dropdowns, one look site-wide (dropdowns tidy-up, owner's pick B): on the page a white box
+     with a chevron, first made for add_to_home's phones (#196); inside a card a line on top
+     instead, so a box never sits in a box. The summary is the tap target; hover and press change
+     colour only, never position (ADR 0006). The answer page's "這份問卷在問什麼？" is the box with
+     a button (React) instead of a summary. */
+  .dropdown-box, .answer-about {
     border: 0.125rem solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
   }
 
+  .dropdown-line {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--color-border-warm);
+  }
+
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .phone-choice > summary, .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .answer-about > button {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -1684,11 +1718,16 @@
     cursor: pointer;
   }
 
-  .phone-choice > summary::-webkit-details-marker { display: none; }
+  .dropdown-line > summary {
+    padding-inline: 0;
+  }
+
+  .dropdown-box > summary::-webkit-details-marker,
+  .dropdown-line > summary::-webkit-details-marker { display: none; }
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .phone-choice > summary::after, .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .answer-about > button::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -1698,7 +1737,9 @@
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
   }
 
-  .phone-choice[open] > summary::after, .answer-about > button[aria-expanded="true"]::after {
+  .dropdown-box[open] > summary::after,
+  .dropdown-line[open] > summary::after,
+  .answer-about > button[aria-expanded="true"]::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
   }
 
@@ -1714,20 +1755,26 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .phone-choice > summary:hover, .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .answer-about > button:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .phone-choice > summary:active, .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .answer-about > button:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
 
-  .phone-choice > ol,
-  .phone-choice > ul,
-  .phone-choice > p,
+  /* What opens below the summary: inside the box's edges; a line's content needs none. */
+  .dropdown-box > :not(summary) {
+    margin-inline: 1rem;
+  }
+
+  .dropdown-box > :not(summary):last-child {
+    margin-bottom: 1rem;
+  }
+
   .answer-about > div > div {
     margin: 0 1rem 1rem;
   }

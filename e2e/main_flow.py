@@ -1326,9 +1326,11 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     expect(self.main()).to_contain_text(
                         "已放進聽力報告，新增紀錄不會自動換掉這一組。"
                     )
-                    result = self.main().get_by_role("region", name="目前查看的兩筆")
-                    expect(result.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
+                    # Pages tidy-up: the pair on screen is the saved one, so it shows once.
+                    preview = self.main().get_by_role("region", name="目前查看的兩筆")
+                    expect(preview).to_have_count(0)
                     saved = self.main().get_by_role("region", name="聽力報告裡的組合")
+                    expect(saved.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
                     expect(saved.get_by_text(card_texts[2], exact=True)).to_be_visible()
                     self.page.goto(f"{self.live_server_url}/report")
                     for text in report_texts:
@@ -1597,7 +1599,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             for path, selector in (
                 ("/account", "a.settings-row-link"),
-                ("/add_to_home", ".phone-choice > summary"),
+                ("/add_to_home", ".dropdown-box > summary"),
             ):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
