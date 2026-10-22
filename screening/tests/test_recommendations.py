@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.forms import WearingNowForm
-from screening.models import Answer, Question, Questionnaire, Submission, User
+from screening.models import Answer, Consent, Question, Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
 
 
@@ -303,15 +303,59 @@ class WizardTests(TestCase):
         self.login_age(None)
         self.assertNotContains(self.wizard(**{"from": "consent", "age_group": "older"}), greeting)
 
-    def test_agreeing_on_the_consent_page_marks_the_way_into_the_wizard(self):
+    def register_and_agree(self, next_url):
+        # A brand-new account, then 「我同意，開始篩檢」 on the consent page that follows.
+        password = "Xk9#mPq2vLw"
+        self.client.post(
+            reverse("register"),
+            {
+                "username": f"new_{uuid.uuid4().hex[:8]}",
+                "email": "new@example.com",
+                "password1": password,
+                "password2": password,
+                "next": next_url,
+            },
+        )
+        return self.client.post(reverse("consent"), {"agree": "", "next": next_url})
+
+    def test_agreeing_right_after_registering_marks_the_way_into_the_wizard(self):
+        wizard = reverse("questionnaire_list")
+        response = self.register_and_agree(wizard)
+        self.assertRedirects(response, f"{wizard}?from=consent")
+        self.assertContains(self.client.get(response.url), "帳號建好了")
+
+    def test_an_older_account_agreeing_for_the_first_time_gets_no_greeting(self):
+        # Made before the consent page existed (or asked again later): not a new account.
         user = User.objects.create_user(username="brand_new")
         self.client.force_login(user)
         wizard = reverse("questionnaire_list")
         response = self.client.post(reverse("consent"), {"agree": "", "next": wizard})
-        self.assertRedirects(response, f"{wizard}?from=consent")
-        self.assertContains(self.client.get(response.url), "帳號建好了")
+        self.assertRedirects(response, wizard)
+        self.assertNotContains(self.client.get(response.url), "帳號建好了")
+
+    def test_agreeing_keeps_the_query_string_of_next(self):
+        choose = f"{reverse('questionnaire_list')}?choose=self"
+        response = self.register_and_agree(choose)
+        self.assertRedirects(response, f"{choose}&from=consent")
+        self.assertContains(self.client.get(response.url), "自行選擇問卷")
+
+    def test_a_new_account_with_an_outside_next_still_goes_home(self):
+        for bad in ("https://evil.example.com/questionnaire_list", "//evil.example.com"):
+            with self.subTest(next=bad):
+                self.client.logout()
+                self.assertRedirects(
+                    self.register_and_agree(bad), reverse("index"), fetch_redirect_response=False
+                )
+
+    def test_the_greeting_comes_once_per_new_account(self):
+        wizard = reverse("questionnaire_list")
+        self.register_and_agree(wizard)
         # Already agreed: coming back through the consent page is no new account.
         response = self.client.get(reverse("consent"), {"next": wizard})
+        self.assertRedirects(response, wizard)
+        # Asked to agree again later (a new privacy notice) in the same session: still no greeting.
+        Consent.objects.all().delete()
+        response = self.client.post(reverse("consent"), {"agree": "", "next": wizard})
         self.assertRedirects(response, wizard)
 
     def submit_choice(self, page, value):

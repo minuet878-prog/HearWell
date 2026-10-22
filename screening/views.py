@@ -1,7 +1,7 @@
 import json
 import uuid
 from collections import Counter
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -103,6 +103,10 @@ def logout_view(request):
     return HttpResponseRedirect(reverse("index"))
 
 
+# Set when an account is made; only then does agreeing on the consent page greet the user (#152).
+NEW_ACCOUNT = "screening.new_account"
+
+
 @require_http_methods(["GET", "POST"])
 def register(request):
     next_url = _safe_next(request)
@@ -119,6 +123,7 @@ def register(request):
                 form.add_error("username", form.instance.unique_error_message(User, ["username"]))
             else:
                 login(request, user)
+                request.session[NEW_ACCOUNT] = True
                 # New accounts agree to the privacy notice before anything else.
                 if next_url:
                     return redirect_to_login(next_url, reverse("consent"))
@@ -149,10 +154,14 @@ def consent(request):
         return redirect("index")
     if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():
         request.user.give_consent()
-        # Into the wizard: its first screen then says the account is ready (#152).
-        wizard_url = reverse("questionnaire_list")
-        if urlsplit(next_url).path == wizard_url:
-            return HttpResponseRedirect(f"{wizard_url}?from=consent")
+        # Right after registering, into the wizard: its first screen then says the account is
+        # ready (#152). Popped on any agreeing, so agreeing again later says nothing.
+        parts = urlsplit(next_url)
+        if request.session.pop(NEW_ACCOUNT, False) and parts.path == reverse("questionnaire_list"):
+            query = urlencode(
+                [*parse_qsl(parts.query, keep_blank_values=True), ("from", "consent")]
+            )
+            return HttpResponseRedirect(urlunsplit(parts._replace(query=query)))
     if request.user.has_consented():
         return HttpResponseRedirect(next_url or reverse("index"))
     return render(request, "screening/consent.html", {"next": next_url})
