@@ -1,5 +1,6 @@
 """SADL answering, scoring and pre-launch visibility (#167)."""
 
+import json
 import re
 import uuid
 from dataclasses import replace
@@ -57,7 +58,9 @@ class SadlAnsweringTests(SadlTestCase):
     def test_answer_page_does_not_ask_about_wearing_and_explains_who_answers_item_14(self):
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
         self.assertNotContains(page, "有沒有戴助聽器")
-        self.assertNotContains(page, 'id="answer-app"')
+        # React (#170): the page itself has no wearing step, told via data-always-aided.
+        self.assertContains(page, 'id="answer-app"')
+        self.assertContains(page, "data-always-aided")
         self.assertContains(page, "請依您現在戴著或最近戴過的助聽器回答")
         self.assertContains(page, "拿部分補助、自己也付了錢，請照樣作答")
 
@@ -199,3 +202,62 @@ class SadlScoringTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlAnswerApiTests(SadlTestCase):
+    """SADL answered through /api/submissions/ (#170): always-aided, no wearing field needed."""
+
+    def _body(self, values, **overrides):
+        """values: 15 item scores, 1-7 or None for 「不適用」 (API score, not the "na" sentinel)."""
+        questions = list(self.questionnaire.questions.all())
+        body = {
+            "questionnaire": self.questionnaire.pk,
+            "answers": [
+                {"question": question.pk, "score": value}
+                for question, value in zip(questions, values, strict=True)
+            ],
+        }
+        body.update(overrides)
+        return body
+
+    def _post(self, body):
+        return self.client.post(
+            "/api/submissions/",
+            json.dumps(body),
+            content_type="application/json",
+            headers={"Idempotency-Key": str(uuid.uuid4())},
+        )
+
+    def test_a_submission_without_a_wearing_field_is_saved_as_worn(self):
+        response = self._post(self._body([4] * 15))
+        self.assertEqual(response.status_code, 201)
+        submission = Submission.objects.get()
+        self.assertIs(submission.wearing_hearing_aid, True)
+
+    def test_a_submission_sending_wearing_false_is_still_saved_as_worn(self):
+        # The web form never offers this choice either (views.screening, always_aided); the API
+        # must not trust a caller that sends it anyway.
+        response = self._post(self._body([4] * 15, wearing_hearing_aid=False))
+        self.assertEqual(response.status_code, 201)
+        submission = Submission.objects.get()
+        self.assertIs(submission.wearing_hearing_aid, True)
+
+    def test_a_missing_answer_is_rejected_with_the_same_message_as_the_web_form(self):
+        questions = list(self.questionnaire.questions.all())
+        body = {
+            "questionnaire": self.questionnaire.pk,
+            "answers": [{"question": question.pk, "score": 4} for question in questions[:-1]],
+        }
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        # Same message as forms.BaseAnswerFormSet.clean() (shared by the web form).
+        self.assertEqual(response.json(), {"answers": ["有題目沒有作答"]})
+        self.assertFalse(Submission.objects.exists())
+
+    def test_not_applicable_outside_item_11_or_14_is_rejected_like_the_web_form(self):
+        response = self._post(self._body([None] + [4] * 14))
+        self.assertEqual(response.status_code, 400)
+        # Same message as forms.BaseAnswerFormSet.clean() (shared by the web form).
+        self.assertEqual(response.json(), {"answers": ["表單資料有誤，請重新確認每一題的作答"]})
+        self.assertFalse(Submission.objects.exists())

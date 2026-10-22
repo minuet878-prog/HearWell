@@ -746,3 +746,88 @@ describe("SSQ12-TW", () => {
     expect(postBody().answers.every((a) => a.score === null)).toBe(true);
   });
 });
+
+describe("always-aided (#170)", () => {
+  // Same shape as SADL: 7 labelled choices, with 不適用 only on items 11 and 14.
+  const SADL_LABELS = ["一點都沒有", "一點點", "有一些", "中等程度", "相當程度", "非常多", "極度"];
+  const sadlChoices = (number) => {
+    const choices = SADL_LABELS.map((label, i) => ({ value: i + 1, label }));
+    return [11, 14].includes(number) ? [...choices, { value: null, label: "不適用" }] : choices;
+  };
+  const SADL_QUESTIONS = Array.from({ length: 15 }, (_, i) => {
+    const number = i + 1;
+    return { id: 200 + i, number, text: `SADL 第${number}題`, choices: sadlChoices(number) };
+  });
+  const SADL = { id: 2, code: "sadl", name: "SADL", levels: [], questions: SADL_QUESTIONS };
+
+  function answerAllSadl(label = "一點都沒有") {
+    SADL_QUESTIONS.forEach((_, i) => {
+      choose(label);
+      if (i < SADL_QUESTIONS.length - 1) next();
+    });
+  }
+
+  it("starts directly on question 1, with no wearing step or 上一題 button", async () => {
+    mockApi(undefined, SADL);
+    await renderApp({ alwaysAided: true });
+    expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
+    expect(legend()).toMatch(/^第 1 題／共 15 題・還剩大約 \d 分鐘SADL 第1題$/);
+    expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
+  });
+
+  it("shows all seven labels on every item, and 不適用 only on items 11 and 14", async () => {
+    mockApi(undefined, SADL);
+    await renderApp({ alwaysAided: true });
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(SADL_LABELS);
+    for (let i = 0; i < 10; i++) {
+      choose(SADL_LABELS[0]);
+      next();
+    }
+    expect(legend()).toMatch(/第11題$/);
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual([
+      ...SADL_LABELS,
+      "不適用",
+    ]);
+    choose("不適用");
+    next();
+    expect(legend()).toMatch(/第12題$/);
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(SADL_LABELS);
+    choose(SADL_LABELS[0]);
+    next();
+    expect(legend()).toMatch(/第13題$/);
+    choose(SADL_LABELS[0]);
+    next();
+    expect(legend()).toMatch(/第14題$/);
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual([
+      ...SADL_LABELS,
+      "不適用",
+    ]);
+  });
+
+  it("sends wearing_hearing_aid true without ever asking", async () => {
+    mockApi(undefined, SADL);
+    await renderApp({ alwaysAided: true });
+    answerAllSadl();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(postBody().wearing_hearing_aid).toBe(true);
+  });
+
+  it("keeps an unfinished answer and continues it from question 1, not a wearing step", async () => {
+    mockApi(undefined, SADL);
+    await renderApp({ alwaysAided: true });
+    choose(SADL_LABELS[0]);
+    next();
+    choose(SADL_LABELS[1]);
+    cleanup();
+    await renderApp({ alwaysAided: true });
+    screen.getByRole("heading", { name: "您上次答到第 2 題，要接著答嗎？" });
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(legend()).toMatch(/^第 2 題/);
+    expect(radio(SADL_LABELS[1]).checked).toBe(true);
+    history.back();
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
+    expect(radio(SADL_LABELS[0]).checked).toBe(true);
+    expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
+  });
+});

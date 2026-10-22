@@ -327,8 +327,9 @@ def screening(request, questionnaire_id):
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
                 "norm_token": _norm_token(request.user, norm) if norm else None,
-                # The React page always asks about wearing, so always-aided ones keep this form.
-                "use_react": not is_ioi_ha and not always_aided,
+                # An always-aided questionnaire's React page skips the wearing step itself.
+                "use_react": not is_ioi_ha,
+                "always_aided": always_aided,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },

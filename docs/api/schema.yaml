@@ -618,7 +618,6 @@ components:
       required:
       - answers
       - questionnaire
-      - wearing_hearing_aid
     SubmissionDetail:
       type: object
       properties:
