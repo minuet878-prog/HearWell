@@ -17,6 +17,7 @@ from screening.tests.helpers import consented_user
 INVALID_TEXT = "這個連結已經失效，請向分享的家人要新的連結"
 SCORE = re.compile(r"\d+ 分")
 COVER_TEXT = "家人分享了一份 HearWell 聽力報告給您"
+TOKEN_WITH_DB = "XKCHYOI8__zeol2dBAdjP9Vp19URZ_MGg9va6Do_KVs"
 
 
 def _taipei(moment):
@@ -280,6 +281,9 @@ class ReportShareTests(TestCase):
     def test_cover_has_no_health_data_and_does_not_count(self):
         self._full_records()
         share = self._share()
+        # A real CI token that contains "dB" (PR #233), so the token can't pass for health data.
+        ReportShare.objects.filter(pk=share.pk).update(token=TOKEN_WITH_DB)
+        share.refresh_from_db()
         self.client.logout()
         response = self._cover(share)
         self.assertContains(response, COVER_TEXT)
@@ -288,7 +292,8 @@ class ReportShareTests(TestCase):
         self.assertContains(
             response, f"連結有效到 {timezone.localtime(share.expires_at):%-m月%-d日}"
         )
-        content = response.content.decode()
+        # The random token in the link isn't health data, but could contain "dB" by chance.
+        content = response.content.decode().replace(share.token, "")
         self.assertNotRegex(content, SCORE)
         for text in ("顯著影響", "dB", "聽力圖", "歲", 'id="audiogram-chart"'):
             with self.subTest(text=text):
