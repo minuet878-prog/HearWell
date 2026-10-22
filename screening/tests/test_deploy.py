@@ -78,8 +78,8 @@ print(json.dumps({
         dumped = self._settings(debug=False)
         self.assertFalse(self._uses_toolbar(dumped))
         self.assertFalse(dumped["debug_url"])
-        self.assertEqual(dumped["hsts_header"], "max-age=3600; includeSubDomains")
-        self.assertEqual(dumped["hsts_seconds"], 3600)
+        self.assertEqual(dumped["hsts_header"], "max-age=86400; includeSubDomains")
+        self.assertEqual(dumped["hsts_seconds"], 86400)
         self.assertIs(dumped["hsts_subdomains"], True)
         self.assertIs(dumped["hsts_preload"], False)
 
