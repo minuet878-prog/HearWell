@@ -1566,7 +1566,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         const loads = [400, 500, 600, 700].map(
             (weight) => document.fonts.load(`${weight} 18px "Noto Sans TC"`, "聽力"),
         );
-        return (await Promise.all(loads)).map((faces) => faces.length > 0);
+        // A missing weight would load the nearest one instead, so each face's weight is checked.
+        const faces = await Promise.all(loads);
+        return faces.map((list) => list.map((face) => face.weight));
     }"""
 
     def test_body_font_comes_from_our_own_host(self):
@@ -1579,7 +1581,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 requests = []
                 self.page.on("request", lambda request, seen=requests: seen.append(request))
                 self.page.goto(f"{self.live_server_url}{path}")
-                self.assertEqual(self.page.evaluate(self.LOAD_FONT_WEIGHTS), [True] * 4)
+                loaded = self.page.evaluate(self.LOAD_FONT_WEIGHTS)
+                for weight, faces in zip(("400", "500", "600", "700"), loaded, strict=True):
+                    self.assertTrue(faces)
+                    self.assertEqual(set(faces), {weight})
                 self.assertTrue(
                     self.style(self.page.locator("body"), "fontFamily").startswith('"Noto Sans TC"')
                 )
