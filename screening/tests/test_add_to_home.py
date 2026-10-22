@@ -9,6 +9,8 @@ import re
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.tests.helpers import consented_user
+
 DETAILS = re.compile(
     r"<details([^>]*)>\s*<summary([^>]*)>(.*?)</summary>(.*?)</details>", re.DOTALL
 )
@@ -59,3 +61,13 @@ class AddToHomeTests(TestCase):
                 self.assertNotRegex(attrs, r"\bopen\b")
         self.assertNotRegex(self.main, r"\son[a-z]+=")
         self.assertNotIn("<script", self.main)
+
+    def test_bottom_of_the_page_names_the_four_tabs(self):
+        tabs = "從主畫面打開時，請用畫面下方的「首頁、開始篩檢、我的紀錄、聽力圖」切換頁面。"
+        self.assertIn(tabs, self.main.rsplit("</details>", 1)[1])
+        # The same four, in the same order, as the tab bar a logged-in user sees.
+        self.client.force_login(consented_user(username="addtohometabs"))
+        content = self.client.get(reverse("add_to_home")).content.decode()
+        nav = content[content.index('<nav aria-label="主要導覽"') : content.index("</nav>")]
+        labels = re.findall(r"<span>(.*?)</span>", nav)
+        self.assertEqual(labels, ["首頁", "開始篩檢", "我的紀錄", "聽力圖"])
