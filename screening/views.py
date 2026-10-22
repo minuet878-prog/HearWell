@@ -981,7 +981,16 @@ def shared_report(request, token):
         open_count=F("open_count") + 1, last_opened_at=timezone.now()
     )
     context = _report_context(share.user)
-    context.update({"share": share, "shared": True, "owner": share.user})
+    # #194 "先看重點": the latest life-impact record, picked as the home page's last result is.
+    last = get_user_state(share.user, today=timezone.localdate()).last_result
+    context.update(
+        {
+            "share": share,
+            "shared": True,
+            "owner": share.user,
+            "life_impact": last.submission if last and last.is_life_impact else None,
+        }
+    )
     return _family_page(request, "screening/shared_report.html", context)
 
 
