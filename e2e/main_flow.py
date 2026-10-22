@@ -4,6 +4,7 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
     python manage.py test --settings=config.test_settings e2e.main_flow
 """
 
+import calendar
 import os
 import re
 from contextlib import contextmanager, nullcontext
@@ -68,7 +69,40 @@ class SavesFailureArtifacts:
             yield
 
 
-class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+class OnAPhone:
+    """Finding things on a page and answering questions, shared by the main-flow routes."""
+
+    def main(self):
+        return self.page.get_by_role("main")
+
+    def assert_fits_a_phone_at_double_text_size(self, where):
+        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
+        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
+        # Wait for the stylesheet first: a click only waits until the new page starts, and an
+        # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
+        self.page.wait_for_load_state("load")
+        self.page.locator("html").evaluate(
+            "html => html.style.setProperty('font-size', '225%', 'important')"
+        )
+        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+        self.assertLessEqual(scroll_width, 320, where)
+
+    def question(self, number):
+        """The one question on screen, checked to be the expected one."""
+        group = self.page.get_by_role("group")
+        expect(group).to_have_count(1)
+        if number is not None:
+            expect(group).to_contain_text(f"第 {number} 題／共 {QUESTION_COUNT} 題")
+        return group
+
+    def answer(self, label, number=None):
+        self.question(number).get_by_label(label).check()
+
+    def next(self):
+        self.main().get_by_role("button", name="下一題").click()
+
+
+class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec 4.1: one method per step, so a failure's traceback names the step."""
 
     fixtures = ("questions_fixture.json",)
@@ -421,9 +455,6 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(shared["url"], url)
             self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
 
-    def main(self):
-        return self.page.get_by_role("main")
-
     def step1_start_goes_to_register(self):
         # Spec #148 (ticket #150): first-time visitors register straight away.
         self.page.goto(self.live_server_url)
@@ -434,18 +465,6 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         segments = self.main().locator(".step-progress-bar > .step-progress-segment")
         expect(segments).to_have_count(total)
         expect(segments.and_(self.page.locator(".is-done"))).to_have_count(done)
-
-    def assert_fits_a_phone_at_double_text_size(self, where):
-        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
-        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
-        # Wait for the stylesheet first: a click only waits until the new page starts, and an
-        # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
-        self.page.wait_for_load_state("load")
-        self.page.locator("html").evaluate(
-            "html => html.style.setProperty('font-size', '225%', 'important')"
-        )
-        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
-        self.assertLessEqual(scroll_width, 320, where)
 
     def step2_register(self):
         # #151: two numbered steps, register then consent.
@@ -583,19 +602,165 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         expect(self.page.get_by_role("heading", name="重點摘要")).to_be_visible()
         self.page.emulate_media(media="screen")
 
-    def question(self, number):
-        """The one question on screen, checked to be the expected one."""
-        group = self.page.get_by_role("group")
-        expect(group).to_have_count(1)
-        if number is not None:
-            expect(group).to_contain_text(f"第 {number} 題／共 {QUESTION_COUNT} 題")
-        return group
 
-    def answer(self, label, number=None):
-        self.question(number).get_by_label(label).check()
+class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#163: a returning user whose last HHIE-S is over 6 months old takes it again."""
 
-    def next(self):
-        self.main().get_by_role("button", name="下一題").click()
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ZoneInfo("Asia/Taipei")
+    REMINDER = "距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # 200 days ago is past 6 months whatever today is. Unaided, like the retest below, so
+        # 我的紀錄 compares the two (the comparison only pairs records worn the same way).
+        user = consented_user(username="returning_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        old = Submission.objects.create(
+            user=user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=old, question=question, score=4)
+            for question in self.hhie_s.questions.all()
+        )
+        old_moment = datetime.now(self.TAIPEI) - timedelta(days=200)
+        Submission.objects.filter(pk=old.pk).update(created_at=old_moment)
+        self.old_date = f"{old_moment:%Y/%m/%d}"
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, **device):
+        self.context = self.browser.new_context(**{**self.playwright.devices["Pixel 7"], **device})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_returning_user_retests_hhie_s(self):
+        self.open()
+        with self.saving_artifacts():
+            self.step1_history_shows_the_reminder()
+            self.step2_home_shows_the_reminder()
+            self.step3_retest()
+            self.step4_result_steps_and_score_bar()
+            self.step5_home_shows_the_next_date()
+            self.step6_history_compares_with_last_time()
+
+    def test_home_and_result_fit_a_phone_at_double_text_size(self):
+        """#163 acceptance 3: the returning user's home before and after, and the result."""
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            self.assert_fits_a_phone_at_double_text_size("home, retest due")
+            self.page.goto(self.live_server_url)
+            self.step3_retest()
+            self.assert_fits_a_phone_at_double_text_size("result")
+            self.page.goto(self.live_server_url)
+            expect(self.main()).to_contain_text("下次建議")
+            self.assert_fits_a_phone_at_double_text_size("home, next date")
+
+    def test_history_fits_a_phone_at_double_text_size(self):
+        """#163 acceptance 3: 我的紀錄 after the retest, with 和上一次比 and the trend chart."""
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            self.step3_retest()
+            self.page.goto(f"{self.live_server_url}/my_hearing")
+            expect(self.main().get_by_role("region", name="和上一次比")).to_be_visible()
+            # The trend chart arrives after the page loads; measure the page with it.
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("my_hearing")
+
+    def step1_history_shows_the_reminder(self):
+        # Before the retest: the reminder is there and one record has nothing to compare with.
+        self.page.goto(f"{self.live_server_url}/my_hearing")
+        expect(self.page.locator("#retest-reminder")).to_contain_text(self.REMINDER)
+        expect(self.main().get_by_role("region", name="和上一次比")).to_have_count(0)
+
+    def step2_home_shows_the_reminder(self):
+        self.page.goto(self.live_server_url)
+        expect(self.main().get_by_role("heading", name="歡迎回來")).to_be_visible()
+        expect(self.main()).to_contain_text(f"{self.old_date} 作答")
+        expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 40 分")
+        expect(self.main()).to_contain_text(self.REMINDER)
+
+    def step3_retest(self):
+        self.main().get_by_role("link", name=re.compile("^再做一次")).click()
+        expect(self.page).to_have_url(re.compile(rf"/questionnaire/{self.hhie_s.pk}$"))
+        self.answer("沒戴")
+        self.next()
+        for number in range(1, QUESTION_COUNT + 1):
+            self.answer("有時", number=number)
+            if number < QUESTION_COUNT:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+
+    def step4_result_steps_and_score_bar(self):
+        # Every answer 有時 (2 points) x 10.
+        expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
+        expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
+        # HHIE-S 輕度到中度影響's steps (ticket #157): the report button, then the retest.
+        expect(self.main().get_by_role("heading", name="接下來建議您")).to_be_visible()
+        steps = self.main().locator("ol.next-steps > li")
+        expect(steps).to_have_count(3)
+        expect(steps.nth(0)).to_contain_text("聽力問題已經慢慢影響您的社交活動與情緒")
+        expect(steps.nth(1)).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
+        expect(steps.nth(1).get_by_role("link", name="看／印聽力報告")).to_be_visible()
+        expect(steps.nth(2)).to_have_text("半年後再做一次，時間到了首頁會提醒您。")
+        # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
+        # (9-24 of 0-40), with every level named below it.
+        expect(self.page.locator(".score-bar-labels > span")).to_have_text(
+            ["無/極輕微影響", "輕度到中度影響", "顯著影響"]
+        )
+        bar = self.page.locator(".score-bar-segments").bounding_box()
+        marker = self.page.locator(".score-bar-marker").bounding_box()
+        self.assertAlmostEqual(
+            marker["x"], bar["x"] + (bar["width"] - marker["width"]) / 2, delta=0.5
+        )
+        mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
+        centre = marker["x"] + marker["width"] / 2
+        self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
+
+    def step5_home_shows_the_next_date(self):
+        self.main().get_by_role("link", name="回首頁").click()
+        today = datetime.now(self.TAIPEI).date()
+        expect(self.main()).to_contain_text(f"{today:%Y/%m/%d} 作答")
+        expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 20 分")
+        expect(self.main()).to_contain_text(f"下次建議 {six_months_after(today):%Y/%m/%d} 再做")
+        expect(self.main()).not_to_contain_text(self.REMINDER)
+
+    def step6_history_compares_with_last_time(self):
+        today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
+        self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+            "link", name="我的紀錄"
+        ).click()
+        expect(self.page.locator("#retest-reminder")).to_have_count(0)
+        since_last = self.main().get_by_role("region", name="和上一次比")
+        expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分")
+        expect(since_last).to_contain_text(f"最近一次（{today}）：20 分")
+
+
+def six_months_after(day):
+    """The same day six calendar months on, or that month's last day (ADR 0010)."""
+    month_index = day.month + 5  # 0-based month, six months on
+    year, month = day.year + month_index // 12, month_index % 12 + 1
+    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
 
 
 class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
