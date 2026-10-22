@@ -1720,7 +1720,8 @@
 
   /* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
   @media (max-width: 35em) {
-    .questionnaire-card {
+    .questionnaire-card,
+    .recommended-heading {
       flex-wrap: wrap;
     }
 
