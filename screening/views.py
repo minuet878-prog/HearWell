@@ -1,7 +1,7 @@
 import json
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -11,7 +11,13 @@ from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Prefetch, prefetch_related_objects
-from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -20,7 +26,7 @@ from django.utils.http import content_disposition_header, url_has_allowed_host_a
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
-from screening import models
+from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare
 from screening.audiogram_thumbnail import thumbnail
@@ -128,30 +134,49 @@ def family_guide(request):
     return render(request, "screening/family_guide.html")
 
 
+def _assessment_context(request):
+    # An unknown county is treated like none chosen: the menu again, not an error.
+    roster = assessment_hospitals.roster()
+    county = request.GET.get("county")
+    if county not in roster["counties"]:
+        county = None
+    return {
+        "roster_version": roster["version"],
+        "counties": roster["counties"],
+        "county": county,
+        "hospitals": [h for h in roster["hospitals"] if h["county"] == county],
+    }
+
+
+def _after_fitting_context(request):
+    # #220 H8, H9, then SADL (the owner's addition): what the wizard offers someone who
+    # wears hearing aids, not every listed questionnaire.
+    return {"follow_ups": _wearing_follow_ups(list(Questionnaire.objects.defined()))}
+
+
 @dataclass(frozen=True)
 class GuideChapter:
     slug: str
     title: str
-    template: str | None  # None until the chapter is written: listed but not linked
+    template: str
+    extra_context: Callable[[HttpRequest], dict] | None = None
 
 
 # The hearing-aid guide's chapters in reading order (spec #218).
 GUIDE_CHAPTERS = (
     GuideChapter("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
-    GuideChapter("assessment", "身障鑑定與鑑定醫院", "screening/guide/assessment.html"),
+    GuideChapter(
+        "assessment", "身障鑑定與鑑定醫院", "screening/guide/assessment.html", _assessment_context
+    ),
     GuideChapter("form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html"),
     GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
     GuideChapter("form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html"),
-    GuideChapter("after-fitting", "配戴助聽器之後", "screening/guide/after_fitting.html"),
-)
-
-
-# Hearing (b230) assessment hospitals taken from the MOHW roster by
-# scripts/extract_assessment_hospitals.py (#222).
-ASSESSMENT_HOSPITALS = json.loads(
-    (Path(__file__).resolve().parent / "data" / "assessment_hospitals.json").read_text(
-        encoding="utf-8"
-    )
+    GuideChapter(
+        "after-fitting",
+        "配戴助聽器之後",
+        "screening/guide/after_fitting.html",
+        _after_fitting_context,
+    ),
 )
 
 
@@ -162,31 +187,13 @@ def guide(request):
 
 def guide_chapter(request, chapter):
     # Like the family guide: the same reviewed content for everyone, no user data.
-    found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter and c.template), None)
+    found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
     context = {"chapter": found}
-    if found.slug == "assessment":
-        context.update(_assessment_hospitals(request.GET.get("county")))
-    if found.slug == "after-fitting":
-        # #220 H8, H9, then SADL (the owner's addition): what the wizard offers someone who
-        # wears hearing aids, IOI-HA and its 「也可以做」, not every listed questionnaire.
-        questionnaires = list(Questionnaire.objects.defined())
-        by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-        context["follow_ups"] = [by_code[IOI_HA], *_also_suggest(by_code, questionnaires)]
+    if found.extra_context:
+        context.update(found.extra_context(request))
     return render(request, found.template, context)
-
-
-def _assessment_hospitals(county):
-    # An unknown county is treated like none chosen: the menu again, not an error.
-    if county not in ASSESSMENT_HOSPITALS["counties"]:
-        county = None
-    return {
-        "roster_version": ASSESSMENT_HOSPITALS["version"],
-        "counties": ASSESSMENT_HOSPITALS["counties"],
-        "county": county,
-        "hospitals": [h for h in ASSESSMENT_HOSPITALS["hospitals"] if h["county"] == county],
-    }
 
 
 class MonitoringTestError(Exception):
@@ -335,6 +342,8 @@ def questionnaire_list(request):
     if reason == "needs_norm_basis":
         # The answer page starts on "沒戴", which the user may still change (#154).
         start_url += "?preselect=unaided"
+    # IOI-HA is the recommendation itself or waits for a norm basis; the rest is 「也可以做」.
+    also = [q for q in _wearing_follow_ups(questionnaires) if q.code != IOI_HA] if wearing else []
     return _wizard_step(
         request,
         total,
@@ -343,7 +352,7 @@ def questionnaire_list(request):
         reason=reason,
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
-        also=_also_suggest(by_code, questionnaires) if wearing else [],
+        also=also,
         # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
         offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,
@@ -351,11 +360,14 @@ def questionnaire_list(request):
     )
 
 
-def _also_suggest(by_code, questionnaires):
-    # "也可以做": SSQ12-TW, plus a satisfaction-type questionnaire (SADL) when it is visible
-    # (#174). Asks the definition's result, not SADL's code, per CODING_STANDARDS.md rule 9.
+def _wearing_follow_ups(questionnaires):
+    # The follow-ups for someone who wears hearing aids: IOI-HA, then SSQ12-TW and a
+    # satisfaction-type questionnaire (SADL) when it is visible (#174). One missing from the
+    # database is left out. Asks the definition's result, not SADL's code, per
+    # CODING_STANDARDS.md rule 9.
+    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
     satisfaction = next((q for q in questionnaires if q.definition.result == SUBSCALES), None)
-    return [q for q in (by_code.get(SSQ12), satisfaction) if q]
+    return [q for q in (by_code.get(IOI_HA), by_code.get(SSQ12), satisfaction) if q]
 
 
 def _norm_bases(user):

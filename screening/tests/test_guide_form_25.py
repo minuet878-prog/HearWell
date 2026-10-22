@@ -1,9 +1,12 @@
+from dataclasses import replace
+
 from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Questionnaire
 from screening.questionnaires import hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.tests import test_guide
+from screening.tests.helpers import register
 
 # Wording finalised in #220 (F1-F7).
 FORM_25 = (
@@ -136,3 +139,22 @@ class AfterFittingChapterTests(TestCase):
             with self.subTest(questionnaire=questionnaire.questionnaire_name):
                 href = f'href="{reverse("screening", args=[questionnaire.pk])}"'
                 self.assertNotIn(href, content)
+
+    def test_a_follow_up_missing_from_the_database_is_left_out(self):
+        Questionnaire.objects.filter(pk=self.ioi_ha.pk).delete()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertNotIn(f'href="{reverse("screening", args=[self.ioi_ha.pk])}"', content)
+        for questionnaire in (self.ssq12, self.sadl):
+            with self.subTest(questionnaire=questionnaire.questionnaire_name):
+                self.assertIn(f'href="{reverse("screening", args=[questionnaire.pk])}"', content)
+
+    def test_an_unlisted_follow_up_is_not_linked(self):
+        with register(replace(sadl.DEFINITION, listed=False)), self.assertNumQueries(1):
+            response = self.client.get(self.url)
+        content = response.content.decode()
+        self.assertNotIn(f'href="{reverse("screening", args=[self.sadl.pk])}"', content)
+        for questionnaire in (self.ioi_ha, self.ssq12):
+            with self.subTest(questionnaire=questionnaire.questionnaire_name):
+                self.assertIn(f'href="{reverse("screening", args=[questionnaire.pk])}"', content)

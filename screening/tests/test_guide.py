@@ -83,13 +83,12 @@ class GuideContentsTests(TestCase):
         self.assertIn(CONTENTS_TITLE, content)
         self.assertNotIn(LOGIN_NOTE, content)
 
-    def test_only_written_chapters_are_linked(self):
+    def test_every_chapter_is_linked(self):
         content = self.client.get(self.url).content.decode()
         for chapter in GUIDE_CHAPTERS:
             href = f'href="{reverse("guide_chapter", args=[chapter.slug])}"'
             with self.subTest(chapter=chapter.slug):
-                self.assertEqual(href in content, chapter.template is not None)
-        self.assertIn(f'href="{reverse("guide_chapter", args=["before-you-go"])}"', content)
+                self.assertIn(href, content)
 
 
 class GuideChapterTests(TestCase):
@@ -124,8 +123,6 @@ class GuideChapterTests(TestCase):
         self.client.force_login(User.objects.create_user(username="guide_old"))
         self.assertEqual(self.client.get(self.url).status_code, 200)
 
-    def test_unwritten_or_unknown_chapters_are_not_found(self):
-        for slug in ("no-such-chapter",):
-            with self.subTest(slug=slug):
-                url = reverse("guide_chapter", args=[slug])
-                self.assertEqual(self.client.get(url).status_code, 404)
+    def test_unknown_chapter_is_not_found(self):
+        url = reverse("guide_chapter", args=["no-such-chapter"])
+        self.assertEqual(self.client.get(url).status_code, 404)
