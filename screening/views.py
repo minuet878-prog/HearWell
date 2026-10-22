@@ -186,13 +186,21 @@ def guide(request):
     context = {"chapters": GUIDE_CHAPTERS}
     if request.user.is_authenticated:
         audiogram = request.user.audiograms.prefetch_related("points").first()
-        latest = request.user.submissions.defined().order_by("-created_at", "-id").first()
+        latest = (
+            request.user.submissions.defined()
+            .select_related("questionnaire")
+            .order_by("-created_at", "-id")
+            .first()
+        )
         context["has_records"] = audiogram is not None or latest is not None
-        # The life-impact record picked as the home page's last result is.
+        # The same life-impact record the home page shows as the last result.
         last = get_user_state(request.user, today=timezone.localdate()).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
-        context["wearing"] = latest is not None and latest.wearing_hearing_aid is True
+        # IOI-HA saves no wearing answer, but only people wearing hearing aids take it.
+        context["wearing"] = latest is not None and (
+            latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
+        )
         if audiogram is not None:
             context |= _guide_audiogram(audiogram)
     response = render(request, "screening/guide/index.html", context)

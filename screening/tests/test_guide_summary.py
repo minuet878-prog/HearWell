@@ -16,7 +16,7 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.questionnaires import hhie_s
+from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_audiogram, test_guide
 from screening.tests.helpers import consented_user
 
@@ -346,6 +346,34 @@ class GuideSummaryStatesTests(TestCase):
         # The other boxes stay as they are.
         self.assertIn("您 2026/10/02 做的聽力對生活的影響（HHIE-S）：顯著影響。", text)
         self.assertIn(THRESHOLD_TITLE, text)
+
+    def test_an_ioi_ha_as_the_latest_questionnaire_counts_as_wearing(self):
+        # IOI-HA saves no wearing answer, but only people wearing hearing aids take it.
+        self.answer(wearing=False, day=1)
+        questionnaire = Questionnaire.objects.create(questionnaire_name="IOI-HA", code=ioi_ha.CODE)
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        moment = timezone.make_aware(datetime(2026, 10, 2, 12))
+        Submission.objects.filter(pk=submission.pk).update(created_at=moment)
+        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+        response = self.client.get(reverse("guide"))
+        text = test_guide.text_of(response)
+        self.assertIn(WEARING, text)
+        reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
+        self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+        self.assertNotIn(RECOMMENDS, text)
+
+    def test_wearing_with_both_ears_without_a_pta_still_points_to_reapplying(self):
+        self.answer(wearing=True, day=1)
+        audiogram = self.make(PTA_55, PTA_55)
+        audiogram.points.filter(frequency=4000).delete()
+        response = self.client.get(reverse("guide"))
+        text = test_guide.text_of(response)
+        self.assertIn(WEARING, text)
+        reapply = reverse("guide_chapter", args=["form-9"]) + "#reapply"
+        self.assertContains(response, f'<a href="{reapply}">{REAPPLY}</a>')
+        self.assertNotIn(FITTING_INSUFFICIENT, text)
+        # The threshold box still says there is too little data.
+        self.assertIn(INSUFFICIENT, text)
 
     def test_not_wearing_in_the_latest_questionnaire_keeps_the_suggestion(self):
         self.answer(wearing=True, day=1)
