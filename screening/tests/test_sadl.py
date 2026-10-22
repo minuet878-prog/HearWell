@@ -11,9 +11,21 @@ from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from screening.models import Questionnaire, Submission
+from screening.models import Answer, Questionnaire, Submission
 from screening.questionnaires import sadl
 from screening.tests.helpers import consented_user, register
+
+
+def sadl_submission(user, questionnaire, *, wearing_hearing_aid=True, score=4):
+    """A fully-answered SADL record (15 items, none 「不適用」), owned by the given user."""
+    submission = Submission.objects.create(
+        user=user, questionnaire=questionnaire, wearing_hearing_aid=wearing_hearing_aid
+    )
+    Answer.objects.bulk_create(
+        Answer(submission=submission, question=question, score=score)
+        for question in questionnaire.questions.all()
+    )
+    return submission
 
 
 class SadlTestCase(TestCase):
@@ -199,3 +211,69 @@ class SadlScoringTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlRecommendationTests(SadlTestCase):
+    """Wizard "也可以做" and the home-page overall-score card for SADL (#174)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        super().setUp()
+        self.hhie = Questionnaire.objects.get(code="hhie-s")
+        self.ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+
+    def wizard(self, **params):
+        return self.client.get(reverse("questionnaire_list"), params)
+
+    def also_list(self, page):
+        main = page.content.decode()
+        return main[main.index("也可以做") : main.index("看其他問卷")]
+
+    def test_aided_also_lists_ssq12_and_sadl_when_sadl_is_visible(self):
+        page = self.wizard(age_group="older", hearing_aid="yes")
+        also = self.also_list(page)
+        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 2)
+
+    def test_unlisted_sadl_is_not_in_the_also_list_in_production(self):
+        with override_settings(DEBUG=False):
+            page = self.wizard(age_group="older", hearing_aid="yes")
+        self.assertNotContains(page, "SADL")
+        also = self.also_list(page)
+        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertNotIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 1)
+
+    def test_aided_with_only_a_sadl_record_still_recommends_life_impact_and_says_why(self):
+        # SADL is not a life-impact record (#166): having only one still needs the unaided
+        # HHIE-S/HHIA-S catch-up, same as having no records at all.
+        sadl_submission(self.user, self.questionnaire)
+        page = self.wizard(age_group="older", hearing_aid="yes")
+        self.assertEqual(page.context["recommended"], self.hhie)
+        self.assertEqual(page.context["reason"], "needs_norm_basis")
+        self.assertContains(
+            page,
+            "<p><strong>為什麼推薦：</strong>"
+            "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+            "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
+        )
+
+    def test_home_page_shows_the_overall_score_for_a_sadl_only_history(self):
+        sadl_submission(self.user, self.questionnaire)
+        page = self.client.get(reverse("index"))
+        self.assertContains(page, "歡迎回來")
+        self.assertContains(page, "整體滿意度：4.0")
+        # Not a life-impact record (#166): no retest reminder of either phrasing.
+        self.assertNotContains(page, "距離上次的生活影響評估")
+        self.assertNotContains(page, "下次建議")
+        self.assertNotContains(page, "再做一次")
+
+    def test_another_users_sadl_record_does_not_make_a_new_user_look_returning(self):
+        other = consented_user(username="other_sadl_user", password="Test-pass-12345")
+        sadl_submission(other, self.questionnaire)
+        page = self.client.get(reverse("index"))
+        self.assertContains(page, "了解聽力對您生活的影響")
+        self.assertNotContains(page, "歡迎回來")
