@@ -1267,7 +1267,7 @@ def audiogram_detail(request, audiogram_id):
     # #201: the report holds the latest audiogram; the compare button picks this one and the one
     # before it (the next newer when this is the oldest), in the model's newest-first order.
     rows = list(request.user.audiograms.values_list("id", "tested_on"))
-    ids = [audiogram_id for audiogram_id, _ in rows]
+    ids = [row_id for row_id, _ in rows]
     here = ids.index(audiogram.id)
     if here > 0:
         context["latest_tested_on"] = rows[0][1]

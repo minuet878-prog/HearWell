@@ -114,6 +114,19 @@ def _compare_rows(new, old, frequencies):
     return rows
 
 
+def _more_or_less(diff):
+    # Numbers and direction only, never better or worse (ADR 0013).
+    return f"{'多' if diff > 0 else '少'} {abs(diff):g} dB"
+
+
+def average_change(pta):
+    """「舊 31.25 → 新 36.25 dB HL，多 5 dB」, or None when either average is missing (#203)."""
+    if pta["diff"] is None:
+        return None
+    change = "兩次一樣" if pta["diff"] == 0 else _more_or_less(pta["diff"])
+    return f"舊 {pta['old']:g} → 新 {pta['new']:g} dB HL，{change}"
+
+
 def largest_change(rows):
     """The air frequencies whose difference is largest in size, or None (#203).
 
@@ -125,7 +138,13 @@ def largest_change(rows):
     if size == 0:
         return None
     pairs = [(frequency, diff) for frequency, diff in diffs if abs(diff) == size]
-    return {"pairs": pairs, "size": size, "same": len({diff for _, diff in pairs}) == 1}
+    same = len({diff for _, diff in pairs}) == 1
+    if same:
+        each = "各" if len(pairs) > 1 else ""
+        text = f"{'、'.join(str(f) for f, _ in pairs)} Hz，{each}{_more_or_less(pairs[0][1])}"
+    else:
+        text = "、".join(f"{f} Hz {_more_or_less(diff)}" for f, diff in pairs)
+    return {"pairs": pairs, "size": size, "same": same, "text": text}
 
 
 def compare(new_points, old_points):
@@ -161,7 +180,6 @@ def compare(new_points, old_points):
                 "new_degree": n["degree"],
                 "old_degree": o["degree"],
                 "diff": n["pta"] - o["pta"] if both else None,
-                "size": abs(n["pta"] - o["pta"]) if both else None,
                 "no_response": both and any(p.no_response for p in pta_points),
             },
             "air": air,
@@ -172,4 +190,5 @@ def compare(new_points, old_points):
                 BONE_FREQUENCIES,
             ),
         }
+        result[ear]["pta"]["change"] = average_change(result[ear]["pta"])
     return result

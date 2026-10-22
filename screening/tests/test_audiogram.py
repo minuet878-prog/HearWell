@@ -612,9 +612,11 @@ class AudiogramResultPageTests(TestCase):
                 main = self._page(this)
                 link = re.search(r'<a [^>]*href="([^"]*)"[^>]*>和以前的聽力圖比較</a>', main)
                 self.assertEqual(link.group(1), f"{compare}?a={this.id}&amp;b={before.id}")
-                # The pair opens on the compare page.
-                page = self.client.get(f"{compare}?a={this.id}&b={before.id}")
-                self.assertEqual(page.status_code, 200)
+                # The pair opens on the compare page, both chosen in their rows.
+                page = self._main(self.client.get(f"{compare}?a={this.id}&b={before.id}"))
+                newer, older = sorted((this, before), key=lambda a: a.tested_on, reverse=True)
+                self.assertIn(f'name="a" value="{newer.id}" checked', page)
+                self.assertIn(f'name="b" value="{older.id}" checked', page)
 
     def test_edit_and_delete_are_quiet_links_and_delete_still_asks(self):
         audiogram = self._make(self.MILD_RIGHT)
@@ -782,6 +784,14 @@ class AudiogramLargestChangeRuleTests(SimpleTestCase):
             [_air("right", 1000, 30), _air("right", 2000, 60), _bone("right", 500, 10)],
         )
         self.assertEqual(largest["pairs"], [(1000, 5)])
+
+    def test_sentences_say_size_and_direction_only(self):
+        new = [_air("right", 4000, 50), _air("right", 8000, 70)]
+        old = [_air("right", 4000, 40), _air("right", 8000, 60)]
+        self.assertEqual(self._largest(new, old)["text"], "4000、8000 Hz，各多 10 dB")
+        self.assertEqual(self._largest(new[:1], old[:1])["text"], "4000 Hz，多 10 dB")
+        new[1] = _air("right", 8000, 50)
+        self.assertEqual(self._largest(new, old)["text"], "4000 Hz 多 10 dB、8000 Hz 少 10 dB")
 
     def test_nothing_when_all_equal_or_nothing_to_compare(self):
         same = [_air("right", 1000, 30), _air("right", 4000, 40)]
@@ -1409,7 +1419,7 @@ class AudiogramCompareSummaryTests(TestCase):
         )
         self.assertIn("右耳四頻平均：舊 31.25 → 新 36.25 dB HL，多 5 dB", text)
         self.assertIn("程度：舊 輕度，新 輕度", text)
-        for word in ("都還是", "變成", "變差", "變好"):
+        for word in ("都還是", "變成", "變差", "變好", "高音"):
             self.assertNotIn(word, text)
         self.assertIn("機器、地點、耳機不同，數字本來就會差幾分貝。", text)
         self.assertIn("dB 數字越大，代表要越大聲才聽得到。", text)

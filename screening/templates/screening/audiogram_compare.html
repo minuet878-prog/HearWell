@@ -43,17 +43,15 @@
 {# #203 (spec #183 stories 110-116): the summary in the chart's own frame, so the chart keeps its width. #}
 <section class="audiogram-chart compare-summary" aria-label="{{ ear_label }}的比較">
     {% with pta=result.pta %}
-    {% if pta.diff is None %}
-    <p class="font-bold">其中一張四頻資料不足，無法比較平均</p>
-    {% else %}
-    <p class="font-bold">{{ ear_label }}四頻平均：舊 {{ pta.old|stringformat:"g" }} → 新 {{ pta.new|stringformat:"g" }} dB HL，{% if pta.diff > 0 %}多 {{ pta.size|stringformat:"g" }} dB{% elif pta.diff < 0 %}少 {{ pta.size|stringformat:"g" }} dB{% else %}兩次一樣{% endif %}</p>
+    {% if pta.change %}
+    <p class="font-bold">{{ ear_label }}四頻平均：{{ pta.change }}</p>
     <p>程度：舊 {{ pta.old_degree }}，新 {{ pta.new_degree }}</p>
+    {% else %}
+    <p class="font-bold">其中一張四頻資料不足，無法比較平均</p>
     {% endif %}
     {% if pta.no_response %}<p>含無反應的頻率，實際差距可能不同</p>{% endif %}
     {% endwith %}
-    {% with largest=result.largest %}{% if largest %}
-    <p>差最多的頻率：{% if largest.same %}{% for frequency, diff in largest.pairs %}{{ frequency }}{% if not forloop.last %}、{% endif %}{% endfor %} Hz，{% if largest.pairs|length > 1 %}各{% endif %}{% if largest.pairs.0.1 > 0 %}多{% else %}少{% endif %} {{ largest.size }} dB{% else %}{% for frequency, diff in largest.pairs %}{{ frequency }} Hz {% if diff > 0 %}多{% else %}少{% endif %} {{ largest.size }} dB{% if not forloop.last %}、{% endif %}{% endfor %}{% endif %}</p>
-    {% endif %}{% endwith %}
+    {% if result.largest %}<p>差最多的頻率：{{ result.largest.text }}</p>{% endif %}
     <p>機器、地點、耳機不同，數字本來就會差幾分貝。</p>
     <p>dB 數字越大，代表要越大聲才聽得到。</p>
     <div id="audiogram-chart"></div>

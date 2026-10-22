@@ -1995,10 +1995,19 @@
     gap: 0.5rem;
   }
 
-  /* #201: both ears' degrees side by side, each kept whole when they wrap. */
+  /* #201: both ears' degrees side by side, each kept whole when they wrap. The line is a whole
+     45px at the 18px base, so the chart below starts on a whole pixel and draws as before. */
+  .audiogram-summary p {
+    line-height: 2.5rem;
+  }
+
   .audiogram-summary-ear {
     display: inline-block;
     margin-right: 1.5rem;
+  }
+
+  .audiogram-summary .level-badge {
+    vertical-align: middle;
   }
 
   /* Edit and delete under the result: quiet, centred text links, still a full touch target. */

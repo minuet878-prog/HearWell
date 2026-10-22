@@ -10,6 +10,7 @@ const NO_RESPONSE = "nr";
 // #199, #200 (spec #183 stories 80-93): one thing per step on one screen; only saving checks.
 const STEPS = ["檢查日期", "標右耳", "標左耳", "確認存檔"];
 const STEP_EAR = { 2: "right", 3: "left" };
+const EAR_STEP = { right: 2, left: 3 };
 const EAR_LABEL = { right: "右耳", left: "左耳" };
 const FORWARD = { 1: "下一步：標右耳", 2: "右耳標完了，換左耳", 3: "左耳標完了，確認存檔" };
 
@@ -17,8 +18,9 @@ const FORWARD = { 1: "下一步：標右耳", 2: "右耳標完了，換左耳", 
 function earCount(points, ear) {
   const marked = Object.values(points).filter((p) => p.ear === ear);
   const count = (conduction) => marked.filter((p) => p.conduction === conduction).length;
-  return marked.length === 0 ? null : `氣導 ${count("air")} 個、骨導 ${count("bone")} 個`;
+  return `氣導 ${count("air")} 個、骨導 ${count("bone")} 個`;
 }
+const hasMarks = (points, ear) => Object.values(points).some((p) => p.ear === ear);
 
 function levelOptions(conduction) {
   const values = [];
@@ -262,7 +264,7 @@ export default function AudiogramApp({
             <AudiogramChart points={Object.values(points)} symbol={symbol} masked={masked} onCommit={(f, level) => commit(symbol, f, level)} />
           </div>
           <p className="audiogram-count font-bold mb-2">
-            {EAR_LABEL[ear]}已標：{earCount(points, ear) ?? "氣導 0 個、骨導 0 個"}
+            {EAR_LABEL[ear]}已標：{earCount(points, ear)}
           </p>
           <button type="button" className="btn btn-outline-secondary btn-lg w-full mb-4" disabled={!lastPoint} onClick={clearLast}>
             {lastPoint ? `清除 ${lastLabel}` : "清除剛標的點"}
@@ -283,8 +285,8 @@ export default function AudiogramApp({
           </div>
           {["right", "left"].map((side) => (
             <p key={side} className="flex flex-wrap items-center justify-between gap-2">
-              <span>{`${EAR_LABEL[side]}：${earCount(points, side) ?? "還沒有標任何點"}`}</span>
-              <button type="button" className="btn btn-link" onClick={() => goTo(side === "right" ? 2 : 3)}>{`改${EAR_LABEL[side]}`}</button>
+              <span>{`${EAR_LABEL[side]}：${hasMarks(points, side) ? earCount(points, side) : "還沒有標任何點"}`}</span>
+              <button type="button" className="btn btn-link" onClick={() => goTo(EAR_STEP[side])}>{`改${EAR_LABEL[side]}`}</button>
             </p>
           ))}
           <ValueTable points={points} symbols={SYMBOLS} onSet={setFromTable} onMask={maskFromTable} />

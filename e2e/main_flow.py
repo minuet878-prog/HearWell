@@ -3175,6 +3175,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.assertEqual(self.style(link, "color"), self.ERROR)
                 self.assertGreaterEqual(self.lowest_contrast(self.ERROR, self.WARM_PAGE), 4.5)
                 self.assertGreaterEqual(self.size(link)[1], 44)
+                edit = self.page.get_by_role("link", name="修改這張", exact=True)
+                self.assertGreaterEqual(self.size(edit)[1], 44)
 
     def test_keyboard_focus_ring_stays_beside_the_glow(self):
         self.open(signed_in=False)
