@@ -26,6 +26,12 @@
             sessionStorage.setItem("header-wave-played", "1");
         }
     </script>
+    {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
+    <script>
+        addEventListener("load", () => {
+            document.fonts.ready.then(() => document.documentElement.classList.add("smooth-scroll"));
+        });
+    </script>
     {% if user.is_authenticated %}
     {# Clears unfinished answers kept in this browser when logging out. #}
     <script type="module" src="{% static 'screening/frontend/logout.js' %}"></script>

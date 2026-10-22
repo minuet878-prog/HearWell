@@ -1917,6 +1917,40 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.page.goto(f"{self.live_server_url}/guide/form-9#{anchor}")
                     expect(self.main().get_by_role("heading", name=heading)).to_be_in_viewport()
 
+    def test_form_9_anchor_lands_when_fonts_arrive_after_the_jump(self):
+        """On a slow phone the fonts arrive after the jump and rewrap the lines above."""
+        self.open(390, 640)
+        held = []
+        self.context.route(re.compile(r"\.woff2?$"), lambda route: held.append(route))
+        with self.saving_artifacts():
+            self.page.goto(
+                f"{self.live_server_url}/guide/form-9#reapply", wait_until="domcontentloaded"
+            )
+            self.page.wait_for_function("window.scrollY > 0")
+            for route in held:
+                route.continue_()
+            self.page.wait_for_function("document.fonts.status === 'loaded'")
+            # The heading is on screen for a moment as the scroll passes it; wait until it stops.
+            self.page.wait_for_function(
+                "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+                "return still; }",
+                polling=200,
+            )
+            # At the top, where the jump puts it, not just somewhere on screen.
+            heading = self.main().get_by_role("heading", name="再次申請（換新機）")
+            self.assertLess(abs(heading.bounding_box()["y"]), 10)
+            # Jumps within the page, once loaded, still scroll smoothly.
+            expect(self.page.locator("html")).to_have_css("scroll-behavior", "smooth")
+
+    def test_reduced_motion_keeps_jumps_instant_after_loading(self):
+        self.open(390, 640)
+        with self.saving_artifacts():
+            self.page.emulate_media(reduced_motion="reduce")
+            self.page.goto(f"{self.live_server_url}/guide/form-9#reapply")
+            html = self.page.locator("html")
+            expect(html).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+            expect(html).to_have_css("scroll-behavior", "auto")
+
 
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
