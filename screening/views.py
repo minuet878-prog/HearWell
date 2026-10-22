@@ -690,16 +690,18 @@ def _taipei(moment):
     return timezone.localtime(moment).isoformat()
 
 
+def _has_subscores(answers):
+    # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
+    # the answers already loaded with their questions, no query of its own.
+    return any(answer.question.category != models.Category.NONE for answer in answers)
+
+
 def _export_submission(submission):
     # Only graded questionnaires have a total, subscales and level (same as their result
     # pages); the others export null, not 0.
     result = submission.questionnaire.definition.result
     not_scored = result != LEVEL
-    # As on the result page (#212): only items marked emotional or social make subscores; THI
-    # has none (spec #208 Q5). Read from the prefetched answers, no query per record.
-    no_subscores = not_scored or all(
-        answer.question.category == models.Category.NONE for answer in submission.answers.all()
-    )
+    has_subscores = not not_scored and _has_subscores(submission.answers.all())
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
@@ -715,8 +717,8 @@ def _export_submission(submission):
             for answer in submission.answers.all()
         ],
         "total_score": None if not_scored else submission.total_answer_score,
-        "emotional_score": None if no_subscores else submission.emotional_score,
-        "social_score": None if no_subscores else submission.social_score,
+        "emotional_score": submission.emotional_score if has_subscores else None,
+        "social_score": submission.social_score if has_subscores else None,
         "level": None if not_scored else submission.classified["text"],
         "norm_group": submission.get_norm_group_display() or None,
     }
@@ -1055,10 +1057,7 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
-            # Only items marked emotional or social make these subscores; THI has none (#208 Q5).
-            "has_subscores": submission.questionnaire.questions.exclude(
-                category=models.Category.NONE
-            ).exists(),
+            "has_subscores": _has_subscores(answers),
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_color": classified_score["color"],
