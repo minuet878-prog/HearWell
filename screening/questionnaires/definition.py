@@ -13,6 +13,9 @@ SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SAD
 # next step of every life-impact questionnaire, the one step not traced to its advice.
 RETEST_MONTHS = 6
 RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
+# The hearing-aid guide link (#220 E4) after the button of the life-impact step that recommends
+# a hearing check or assessment (spec #218, ticket #229).
+GUIDE_ACTION = {"second_label": "看助聽器選配指引", "second_url": "guide"}
 
 
 @dataclass(frozen=True)
@@ -53,7 +56,8 @@ class Definition:
     advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
     # LEVEL only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
-    # that takes no arguments). Every clause but the retest reminder traces back to `advice`.
+    # that takes no arguments), and where a second link follows it, "second_label" and
+    # "second_url" likewise. Every clause but the retest reminder traces back to `advice`.
     next_steps: dict = field(default_factory=dict)
     # A life-impact questionnaire (GLOSSARY, ADR 0016): the home page's last result and retest
     # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded
