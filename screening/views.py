@@ -529,6 +529,16 @@ TREND_LEGEND = (
 )
 
 
+def _previous_same_wearing(records):
+    # records: one tab's records, newest first. The record the newest one is compared with:
+    # the latest before it worn the same way (records worn otherwise may sit in between).
+    # None when the newest has no hearing aid status or is the first of its status.
+    wearing = records[0].wearing_hearing_aid
+    if wearing is None:
+        return None
+    return next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
+
+
 def _trend_chart(records):
     # records: this user's HHIE-S, newest first. React draws only the chart itself, so the
     # text around it is on the page from the start and nothing below moves when it arrives.
@@ -536,22 +546,14 @@ def _trend_chart(records):
     latest = records[0]
     wearing = latest.wearing_hearing_aid
     status = TREND_STATUS_TEXT[wearing]
-    previous = next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
     if len(records) == 1:
         change = "再做一次篩檢，就能看到分數的變化。"
     elif wearing is None:
         change = "這筆沒有記錄助聽器，不和其他紀錄比較。"
-    elif previous is None:
+    elif _previous_same_wearing(records) is None:
         change = f"這是第一筆{status}的紀錄。"
     else:
-        diff = latest.total_answer_score - previous.total_answer_score
-        since = f"上一次{status}（{timezone.localdate(previous.created_at):%Y/%m/%d}）"
-        if diff > 0:
-            change = f"比{since}增加 {diff} 分。"
-        elif diff < 0:
-            change = f"比{since}減少 {-diff} 分。"
-        else:
-            change = f"和{since}相同。"
+        change = None  # 「和上一次比」 above the chart says it (decision 2026-10-22, #162)
     statuses = {r.wearing_hearing_aid for r in records}
     return {
         "latest": latest,
@@ -591,15 +593,18 @@ def my_hearing(request):
     same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
     # Ticket #162: the same retest reminder as the home page (ADR 0010).
     user_state = get_user_state(request.user, today=timezone.localdate())
-    # Ticket #162: a life-impact tab compares its newest two records, whatever was worn.
+    # Ticket #162: a life-impact tab compares its newest record with the one before it worn
+    # the same way, as the trend chart does (decision 2026-10-22).
     since_last = None
-    if current.definition.result == LEVEL and len(records) >= 2:
-        latest, previous = records[:2]
-        since_last = {
-            "latest": latest,
-            "previous": previous,
-            "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
-        }
+    if current.definition.result == LEVEL:
+        latest = records[0]
+        previous = _previous_same_wearing(records)
+        if previous is not None:
+            since_last = {
+                "latest": latest,
+                "previous": previous,
+                "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+            }
     comparison = current.definition.comparison
     show_comparison = False
     if comparison is not None:

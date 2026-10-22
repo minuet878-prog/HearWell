@@ -17,7 +17,7 @@
 {% if user_state.retest_due %}
 <section id="retest-reminder" class="bg-brand-soft rounded-large p-6 mb-6">
     <p>{{ user_state.reminder }}</p>
-    <a class="btn btn-primary btn-lg" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次</a>
+    <a class="btn btn-primary btn-lg" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
 </section>
 {% endif %}
 {% if questionnaires|length > 1 %}

@@ -7,7 +7,7 @@
     <div class="trend-summary mb-4">
         <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}，{{ chart.status }}）</p>
         <p class="trend-summary-score mb-1"><strong>{{ chart.latest.total_answer_score }} 分</strong> <span>{{ chart.latest.classified.text }}</span></p>
-        <p class="mb-0">{{ chart.change }}</p>
+        {% if chart.change %}<p class="mb-0">{{ chart.change }}</p>{% endif %}
     </div>
     <div class="card">
         <div class="card-body">

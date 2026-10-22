@@ -477,48 +477,45 @@ class HistoryTabsTests(TestCase):
         legend = re.search(r'class="trend-legend">(.*?)</ul>', trend, re.DOTALL).group(1)
         return re.findall(r"<li>(.*?)</li>", legend, re.DOTALL)
 
-    def test_trend_summary_compares_with_the_same_status_only(self):
-        # phase9_ui_refresh_2_data.md acceptance 5: unaided 26, 24, 20 and aided 14, 10.
+    def _since_last(self, main):
+        return re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
+
+    def test_trend_summary_leaves_the_comparison_to_since_last(self):
+        # phase9_ui_refresh_2_data.md acceptance 5 (unaided 26, 24, 20 and aided 14, 10), now
+        # compared in 「和上一次比」 instead of the summary (decision 2026-10-22, #162).
         self._hhie_s(26, False, days_ago=30)
         self._hhie_s(24, False, days_ago=20)
         aided = self._hhie_s(14, True, days_ago=10)
         self._hhie_s(20, False, days_ago=5)
         latest = self._hhie_s(10, True, days_ago=1)
+        main = self._main(self.client.get(self._tab_url("hhie-s")))
         trend = self._trend()
         self.assertEqual(
             self._summary(trend),
-            [
-                f"最近一次（{self._date(latest)}，有戴助聽器）",
-                "10 分 輕度到中度影響",
-                f"比上一次有戴助聽器（{self._date(aided)}）減少 4 分。",
-            ],
+            [f"最近一次（{self._date(latest)}，有戴助聽器）", "10 分 輕度到中度影響"],
         )
         self.assertIn("<strong>10 分</strong>", trend)
+        since_last = self._since_last(main)
+        self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
+        self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
 
-    def test_trend_summary_increase_no_change_and_down_to_0(self):
-        first = self._hhie_s(12, False, days_ago=10)
-        second = self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"比上一次沒戴助聽器（{self._date(first)}）增加 6 分。"
-        )
-        third = self._hhie_s(18, False, days_ago=3)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"和上一次沒戴助聽器（{self._date(second)}）相同。"
-        )
+    def test_trend_summary_has_no_comparison_line_down_to_0(self):
+        self._hhie_s(12, False, days_ago=10)
+        self._hhie_s(18, False, days_ago=5)
+        self.assertEqual(len(self._summary(self._trend())), 2)
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary(self._trend())
-        self.assertEqual(summary[1], "0 分 無/極輕微影響")
-        self.assertEqual(summary[2], f"比上一次沒戴助聽器（{self._date(third)}）減少 18 分。")
+        self.assertEqual(summary[1:], ["0 分 無/極輕微影響"])
 
-    def test_trend_summary_finds_the_previous_status_before_the_charts_five_days(self):
-        # Acceptance 17: the chart draws five days, the summary looks further back.
+    def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
+        # Acceptance 17: the chart draws five days, the comparison looks further back.
         aided = self._hhie_s(8, True, days_ago=10)
         for days_ago in range(6, 1, -1):
             self._hhie_s(20, False, days_ago=days_ago)
         self._hhie_s(12, True, days_ago=1)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"比上一次有戴助聽器（{self._date(aided)}）增加 4 分。"
-        )
+        since_last = self._since_last(self._main(self.client.get(self._tab_url("hhie-s"))))
+        self.assertIn(f"上一次（{self._date(aided)}）：8 分", since_last)
+        self.assertIn("比上一次多 4 分（分數越低越好）", since_last)
 
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
@@ -663,6 +660,8 @@ class HistoryRetestTests(TestCase):
         self.enterContext(patch("django.utils.timezone.localdate", localdate))
 
     def _submit(self, code, scores, days_ago, user=None, **fields):
+        # 沒戴 unless a test says otherwise: 「和上一次比」 needs a recorded hearing aid status.
+        fields.setdefault("wearing_hearing_aid", False)
         questionnaire = Questionnaire.objects.get(code=code)
         submission = Submission.objects.create(
             user=user or self.user, questionnaire=questionnaire, **fields
@@ -694,7 +693,11 @@ class HistoryRetestTests(TestCase):
         reminder = self._reminder(main)
         self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
         retake = self._retake_url(self.hhie_s)
-        self.assertIn(f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次</a>', reminder)
+        # The home page's button text (decision 2026-10-22).
+        self.assertIn(
+            f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次（大約 3 分鐘）</a>',
+            reminder,
+        )
         # At the top: right under the page title, before any record.
         self.assertLess(main.index('id="retest-reminder"'), main.index('class="link-card"'))
         self.assertLess(main.index("<h1"), main.index('id="retest-reminder"'))
@@ -777,19 +780,41 @@ class HistoryRetestTests(TestCase):
         self._submit("ioi-ha", [4] * 7, days_ago=10, norm_group="mild_moderate")
         self.assertIsNone(self._since_last(self._main()))
 
-    def test_since_last_takes_the_newest_two_whatever_was_worn(self):
-        # Spec #148 as written: the newest two records of the tab, aided or not.
-        self._submit("hhie-s", [4] * 5 + [0] * 5, days_ago=60, wearing_hearing_aid=False)  # 20
-        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40, wearing_hearing_aid=False)
-        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
+    def test_since_last_compares_with_the_same_hearing_aid_status(self):
+        # Decision 2026-10-22: the newest record against the one before it worn the same way,
+        # even with a record worn the other way in between.
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16, 2026/09/12
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=20, wearing_hearing_aid=True)  # 8
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 沒戴 12, 2026/10/12
+        main = self._main()
         self.assertEqual(
-            self._since_last(self._main())[1:],
+            self._since_last(main)[1:],
             [
                 "上一次（2026/09/12）：16 分",
-                "最近一次（2026/10/12）：8 分",
-                "比上一次少 8 分（分數越低越好）",
+                "最近一次（2026/10/12）：12 分",
+                "比上一次少 4 分（分數越低越好）",
             ],
         )
+        # The trend summary leaves the comparison to 「和上一次比」, so it is said once.
+        summary = re.search(r'class="trend-summary[^"]*">(.*?)</div>', main, re.S).group(1)
+        self.assertEqual(len(re.findall(r"<p[^>]*>", summary)), 2)
+        self.assertNotIn("上一次沒戴助聽器", main)
+
+    def test_no_since_last_when_the_newest_status_is_unrecorded(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=20)  # 沒戴 12
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=None)  # 8
+        main = self._main()
+        self.assertIsNone(self._since_last(main))
+        # The trend summary still explains why there is no comparison.
+        self.assertIn("這筆沒有記錄助聽器，不和其他紀錄比較。", main)
+
+    def test_no_since_last_for_the_first_record_of_its_status(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
+        main = self._main()
+        self.assertIsNone(self._since_last(main))
+        self.assertIn("這是第一筆有戴助聽器的紀錄。", main)
 
     def test_only_the_logged_in_user_s_records_count(self):
         # This user: 16 then 12, the newer one 2026/04/22, so a retest is due.
