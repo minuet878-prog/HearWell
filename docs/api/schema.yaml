@@ -412,8 +412,11 @@ components:
           type: string
         max:
           type: integer
+        color:
+          type: string
       required:
       - code
+      - color
       - max
       - text
     PaginatedSubmissionList:

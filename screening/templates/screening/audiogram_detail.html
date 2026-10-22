@@ -16,10 +16,10 @@
     <section class="card card-body ear-result ear-{{ ear }}" data-ear="{{ ear }}">
         <h2 class="h4">{{ label }}</h2>
         {% if result.pta is None %}
-        <p class="mb-0">{% include "screening/level_badge.html" with text="資料不足" level="unknown" %}，無法判讀</p>
+        <p class="mb-0">{% include "screening/level_badge.html" with text="資料不足" color="unknown" %}，無法判讀</p>
         {% else %}
         <p class="mb-1">四頻平均：{{ result.pta|stringformat:"g" }} dB HL</p>
-        <p class="mb-1">程度：{% include "screening/level_badge.html" with text=result.degree level=result.degree|degree_level %}</p>
+        <p class="mb-1">程度：{% include "screening/level_badge.html" with text=result.degree color=result.degree|degree_level %}</p>
         <p class="mb-1">類型：{% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}</p>
         {% if result.no_response %}<p class="mb-0">含無反應的頻率，實際聽力可能更差</p>{% endif %}
         {% endif %}

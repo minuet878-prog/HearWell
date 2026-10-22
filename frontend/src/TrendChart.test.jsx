@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendChart from "./TrendChart.jsx";
 
 const LEVELS = [
-  { code: "normal", text: "無/極輕微影響", max: 8 },
-  { code: "mild_to_moderate", text: "輕度到中度影響", max: 24 },
-  { code: "severe", text: "顯著影響", max: 40 },
+  { code: "normal", text: "無/極輕微影響", max: 8, color: "normal" },
+  { code: "mild_to_moderate", text: "輕度到中度影響", max: 24, color: "mild_to_moderate" },
+  { code: "severe", text: "顯著影響", max: 40, color: "severe" },
 ];
 
 function submission(
@@ -293,6 +293,22 @@ describe("TrendChart", () => {
       expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#feece7"]);
       const ticks = [...container.querySelectorAll(".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value")];
       expect(ticks).toEqual([]);
+    });
+
+    it("fills each band by its level's colour, not its code (#210)", async () => {
+      mockApi({
+        results: [submission(1, "2026-10-14", 18)],
+        levels: [
+          { code: "none", text: "無", max: 16, color: "normal" },
+          { code: "mild", text: "輕度", max: 36, color: "mild_to_moderate" },
+          { code: "moderate", text: "中度", max: 56, color: "mild_to_moderate" },
+          { code: "severe", text: "重度", max: 100, color: "severe" },
+        ],
+      });
+      const { container } = render(<TrendChart code="hhie-s" />);
+      await chartDrawn(container);
+      const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
+      expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#fff4d6", "#feece7"]);
     });
 
     it("writes no level name inside the plot (phase9_ui_refresh_3_structure.md 4.5)", async () => {

@@ -1,5 +1,6 @@
 """Ticket #210 (spec #208, ADR 0016): life-impact questionnaires are marked by their definition."""
 
+import re
 from datetime import timedelta
 
 from django.test import TestCase
@@ -71,3 +72,85 @@ class GradedButNotLifeImpactTests(TestCase):
         self.assertNotContains(response, "建議再做一次追蹤")
         self.assertNotContains(response, "下次建議")
         self.assertNotContains(response, "再做一次（大約 3 分鐘）")
+
+
+class LevelColorTests(TestCase):
+    """A level's colour (ADR 0007's three) is set apart from its code: two codes, one colour."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="life_impact_b")
+        cls.graded = Questionnaire.objects.create(questionnaire_name="假分級", code="fake-colors")
+        cls.question = Question.objects.create(
+            questionnaire=cls.graded, question_text="假題", question_number=1
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.enterContext(
+            register(
+                fake_definition(
+                    "fake-colors",
+                    thresholds=(
+                        (2, "假的無分級", "fake-none"),
+                        (4, "假的輕分級", "fake-mild"),
+                        (6, "假的中分級", "fake-moderate"),
+                    ),
+                    level_colors={
+                        "fake-none": "normal",
+                        "fake-mild": "mild_to_moderate",
+                        "fake-moderate": "mild_to_moderate",
+                    },
+                    advice={"fake-mild": "假的輕建議", "fake-moderate": "假的中建議"},
+                    trend_chart=True,
+                )
+            )
+        )
+
+    def _submit(self, score):
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.graded, wearing_hearing_aid=False
+        )
+        Answer.objects.create(submission=submission, question=self.question, score=score)
+        return submission
+
+    def test_result_page_shows_two_levels_in_one_colour_with_their_own_text(self):
+        for score, text in ((4, "假的輕分級"), (6, "假的中分級")):
+            with self.subTest(text=text):
+                page = self.client.get(reverse("result", args=[self._submit(score).pk]))
+                self.assertContains(
+                    page, '<div class="result-banner result-banner-mild_to_moderate">'
+                )
+                self.assertContains(page, f'aria-describedby="result-score">{text}</h2>')
+
+    def test_score_bar_segments_take_the_level_colours(self):
+        page = self.client.get(reverse("result", args=[self._submit(4).pk])).content.decode()
+        self.assertEqual(
+            re.findall(r'class="score-bar-segment score-bar-segment-([\w-]+)"', page),
+            ["normal", "mild_to_moderate", "mild_to_moderate"],
+        )
+
+    def test_history_badges_and_trend_bands_take_the_level_colours(self):
+        self._submit(4)
+        self._submit(6)
+        page = self.client.get(reverse("my_hearing")).content.decode()
+        for text in ("假的輕分級", "假的中分級"):
+            with self.subTest(text=text):
+                self.assertIn(
+                    f'<span class="level-badge level-badge-mild_to_moderate">{text}</span>', page
+                )
+        self.assertEqual(
+            re.findall(r'<li class="trend-band-([\w-]+)">', page),
+            ["mild_to_moderate", "mild_to_moderate", "normal"],
+        )
+
+    def test_api_gives_each_level_its_colour_for_the_trend_chart(self):
+        detail = self.client.get(reverse("api:questionnaire", args=[self.graded.pk])).json()
+        self.assertEqual(
+            [(level["code"], level["color"]) for level in detail["levels"]],
+            [
+                ("fake-none", "normal"),
+                ("fake-mild", "mild_to_moderate"),
+                ("fake-moderate", "mild_to_moderate"),
+            ],
+        )

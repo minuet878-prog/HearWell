@@ -61,7 +61,7 @@
         <h2 class="h4 mb-0">結果長這樣</h2>
         <span class="preview-tag">示意圖</span>
     </div>
-    <div class="result-banner result-banner-{{ preview_level }}">
+    <div class="result-banner result-banner-{{ preview_color }}">
         <div class="result-level">{{ preview_text }}</div>
         <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
     </div>
@@ -82,7 +82,7 @@
 <p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
 {% if user_state.last_result.is_life_impact %}
 {% with classified=submission.classified %}
-<div class="result-banner result-banner-{{ classified.level }}">
+<div class="result-banner result-banner-{{ classified.color }}">
     <div>上次結果</div>
     <h2 class="result-level mb-0">{{ classified.text }}</h2>
     <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ submission.total_answer_score }} 分</div>

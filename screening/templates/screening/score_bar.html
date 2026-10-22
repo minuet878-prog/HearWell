@@ -3,7 +3,7 @@
     <div class="score-bar-track">
         <div class="score-bar-segments">
             {% for segment in bar.segments %}
-            <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
+            <div class="score-bar-segment score-bar-segment-{{ segment.color }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
             {% endfor %}
         </div>
         <div class="score-bar-marker" style="--position: {{ bar.position|floatformat:2 }}%"></div>

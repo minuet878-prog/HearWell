@@ -96,11 +96,11 @@ def index(request):
         "screening/index.html",
         {
             "preview_score": HOME_PREVIEW_SCORE,
-            "preview_level": preview["level"],
+            "preview_color": preview["color"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_score_bar": _score_bar(
-                hhie_s.THRESHOLDS, HOME_PREVIEW_SCORE, preview["level"]
+                hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
             ),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
@@ -565,6 +565,7 @@ def _trend_chart(records, since_last):
     # and nothing below moves when it arrives. The wording is fixed by spec
     # phase9_ui_refresh_2_data.md 4.2.
     latest = records[0]
+    definition = latest.questionnaire.definition
     wearing = latest.wearing_hearing_aid
     status = TREND_STATUS_TEXT[wearing]
     if since_last is not None:
@@ -587,8 +588,8 @@ def _trend_chart(records, since_last):
         ],
         # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
         "levels": [
-            {"code": level, "text": text}
-            for _, text, level in reversed(latest.questionnaire.definition.thresholds)
+            {"code": level, "text": text, "color": definition.color(level)}
+            for _, text, level in reversed(definition.thresholds)
         ],
     }
 
@@ -966,9 +967,10 @@ def shared_report(request, token):
     return _family_page(request, "screening/shared_report.html", context)
 
 
-def _score_bar(thresholds, score, level):
+def _score_bar(definition, score, level):
     # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
     # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+    thresholds = definition.thresholds
     if level == "unknown" or not thresholds:
         return None
     ceiling = thresholds[-1][0]
@@ -978,6 +980,7 @@ def _score_bar(thresholds, score, level):
         segments.append(
             {
                 "level": segment_level,
+                "color": definition.color(segment_level),
                 "text": text,
                 "width": (upper - start) / ceiling * 100,
                 "current": segment_level == level,
@@ -1024,9 +1027,9 @@ def submission_result(request, submission_id):
             "social": social,
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
-            "classified_score_level": classified_score["level"],
+            "classified_score_color": classified_score["color"],
             "score_bar": _score_bar(
-                submission.questionnaire.definition.thresholds,
+                submission.questionnaire.definition,
                 submission.total_answer_score,
                 classified_score["level"],
             ),

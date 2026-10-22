@@ -25,7 +25,7 @@ def since_last_text(difference):
     return "和上一次一樣"
 
 
-UNKNOWN = {"text": "無法判讀", "level": "unknown"}
+UNKNOWN = {"text": "無法判讀", "level": "unknown", "color": "unknown"}
 UNKNOWN_ADVICE = (
     "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"
     "若對聽力有疑慮，請直接諮詢聽力師或耳鼻喉科醫師。"
@@ -138,7 +138,8 @@ def classify(total_score, questionnaire_code):
     if total_score >= 0:
         for upper, text, level in thresholds:
             if total_score <= upper:
-                return {"text": text, "level": level}
+                color = questionnaires.get(questionnaire_code).color(level)
+                return {"text": text, "level": level, "color": color}
     logger.error("Score %s out of range for questionnaire %r", total_score, questionnaire_code)
     return UNKNOWN
 

@@ -37,6 +37,10 @@ class Definition:
     # LEVEL only. Each tuple is (upper bound inclusive, text, level); the last upper bound is
     # the max score. Published numbers never change: a new rule needs a rule version first.
     thresholds: tuple = ()
+    # LEVEL only: level -> its colour, one of ADR 0007's three (normal green, mild_to_moderate
+    # orange, severe red), which badges, banners, the score bar and the trend chart draw. A level
+    # not listed is coloured by its own code: HHIE-S and HHIA-S levels are named like the colours.
+    level_colors: dict = field(default_factory=dict)
     advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
     # LEVEL only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
@@ -60,6 +64,9 @@ class Definition:
     result_note: str = ""
     # SUBSCALES only: item number -> value or None (不適用) in, overall and subscales out.
     score: Callable[[dict], dict] | None = None
+
+    def color(self, level):
+        return self.level_colors.get(level, level)
 
     @property
     def averaged(self):  # for templates, which cannot see the constants above
