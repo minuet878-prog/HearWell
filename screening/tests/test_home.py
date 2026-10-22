@@ -1,12 +1,15 @@
-"""Spec #148 batch 1, ticket #150: the new-user home page."""
+"""Spec #148 batch 1, ticket #150: the new-user home page.
+Spec #148 batch 2, ticket #159: the returning-user home page.
+"""
 
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from screening.models import Audiogram
+from screening.models import Answer, Audiogram, Category, Question, Questionnaire, Submission
 from screening.tests.helpers import consented_user
 
 
@@ -116,3 +119,89 @@ class NewUserHomeTests(TestCase):
             "<div>HHIE-S 總分 18 分（滿分 40）</div></div>",
             self._main(),
         )
+
+    def test_anonymous_home_has_no_never_cache_header(self):
+        response = self.client.get(reverse("index"))
+        self.assertNotIn("no-store", response.get("Cache-Control", ""))
+
+
+class ReturningUserHomeTests(TestCase):
+    """Spec #148 batch 2, ticket #159: the returning-user home page."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="returning_tester")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhie_questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.hhie_s,
+                question_text=f"HHIE題{i}",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
+        cls.ioi_questions = Question.objects.bulk_create(
+            Question(questionnaire=cls.ioi_ha, question_text=f"IOI題{i}", question_number=i)
+            for i in range(1, 8)
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _submit(self, questionnaire, questions, score, days_ago):
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score) for question in questions
+        )
+        Submission.objects.filter(pk=submission.pk).update(
+            created_at=timezone.now() - timedelta(days=days_ago)
+        )
+        submission.refresh_from_db()
+        return submission
+
+    def _main(self):
+        content = self.client.get(reverse("index")).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def test_due_retest_shows_reminder_and_retake_button(self):
+        submission = self._submit(self.hhie_s, self.hhie_questions, score=4, days_ago=200)
+        response = self.client.get(reverse("index"))
+        main = content = response.content.decode()
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertIn("已經滿 6 個月", main)
+        self.assertIn(
+            f'href="{reverse("screening", args=[self.hhie_s.pk])}">再做一次（大約 3 分鐘）</a>',
+            main,
+        )
+        self.assertIn(reverse("result", args=[submission.id]), main)
+
+    def test_not_due_shows_next_date_and_secondary_retake(self):
+        self._submit(self.hhie_s, self.hhie_questions, score=4, days_ago=30)
+        main = self._main()
+        self.assertIn("下次建議", main)
+        self.assertIn(f'href="{reverse("my_hearing")}">看我的紀錄與趨勢</a>', main)
+        self.assertIn(f'href="{reverse("screening", args=[self.hhie_s.pk])}">再做一次</a>', main)
+
+    def test_only_ioi_ha_shows_its_summary_without_a_reminder(self):
+        self._submit(self.ioi_ha, self.ioi_questions, score=3, days_ago=1)
+        main = self._main()
+        self.assertIn("助聽器使用成效（IOI-HA）", main)
+        self.assertNotIn("已經滿 6 個月", main)
+        self.assertNotIn("下次建議", main)
+        self.assertNotIn("再做一次", main)
+
+    def test_signed_in_home_is_never_cached(self):
+        response = self.client.get(reverse("index"))
+        self.assertIn("no-store", response["Cache-Control"])
+
+    def test_only_the_logged_in_user_s_records_are_shown(self):
+        other = consented_user(username="someone_else")
+        other_submission = Submission.objects.create(user=other, questionnaire=self.hhie_s)
+        Answer.objects.bulk_create(
+            Answer(submission=other_submission, question=question, score=4)
+            for question in self.hhie_questions
+        )
+        main = self._main()
+        self.assertNotIn(reverse("result", args=[other_submission.id]), main)

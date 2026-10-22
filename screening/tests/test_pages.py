@@ -1079,25 +1079,8 @@ class HomeTests(TestCase):
         self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
         self.assertIn(get_advice(classified["level"])[:40] + "……", preview)
 
-    # 5
-    def test_shows_no_user_data(self):
-        user = consented_user(username="homeowner_a")
-        questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        submission = Submission.objects.create(user=user, questionnaire=questionnaire)
-        for number, score in enumerate((4, 4, 4, 4, 4, 4, 4, 2, 0, 0), start=1):
-            question = Question.objects.create(
-                questionnaire=questionnaire,
-                question_text=f"題目{number}",
-                question_number=number,
-                category=Category.SOCIAL,
-            )
-            Answer.objects.create(submission=submission, question=question, score=score)
-        self.client.force_login(user)
-        main = self._main()
-        self.assertNotIn("homeowner_a", main)
-        self.assertNotIn("總分 30", main)
-        self.assertNotIn(classify(30, "hhie-s")["text"], main)
-        self.assertNotIn(timezone.localdate(submission.created_at).strftime("%Y/%m/%d"), main)
+    # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
+    # A returning user's home page now shows their own last result on purpose.
 
     # 6
     def test_trust_block(self):

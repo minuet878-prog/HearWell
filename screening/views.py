@@ -33,6 +33,7 @@ from screening.forms import (
     WearingNowForm,
     answer_choices,
 )
+from screening.main_flow import NEW_USER_STATE, get_user_state
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
@@ -70,7 +71,12 @@ HOME_PREVIEW_SCORE = 18
 
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
-    return render(
+    user_state = (
+        get_user_state(request.user, today=timezone.localdate())
+        if request.user.is_authenticated
+        else NEW_USER_STATE
+    )
+    response = render(
         request,
         "screening/index.html",
         {
@@ -79,8 +85,13 @@ def index(request):
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_advice": get_advice(preview["level"]),
+            "user_state": user_state,
         },
     )
+    if request.user.is_authenticated:
+        # The home page shows this account's own records (ticket #159): never cached.
+        add_never_cache_headers(response)
+    return response
 
 
 def family_guide(request):
@@ -563,6 +574,14 @@ def my_hearing(request):
     # (spec phase9_ui_refresh_2_data.md 4.3).
     per_day = Counter(timezone.localdate(s.created_at) for s in records)
     same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
+    comparison = current.definition.comparison
+    show_comparison = False
+    if comparison is not None:
+        comparable = comparison.records(request.user.submissions.filter(questionnaire=current))
+        show_comparison = (
+            comparable.filter(wearing_hearing_aid=True).exists()
+            and comparable.filter(wearing_hearing_aid=False).exists()
+        )
     return render(
         request,
         "screening/my_hearing.html",
@@ -571,6 +590,7 @@ def my_hearing(request):
             "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
+            "show_comparison": show_comparison,
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")
             .first(),
