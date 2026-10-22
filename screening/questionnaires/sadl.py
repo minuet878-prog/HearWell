@@ -48,6 +48,12 @@ SUBSCALE_ITEMS = (
 )
 REVERSED = {2, 4, 7, 13}
 
+# No norms or grades (#166): the result page explains the scale instead.
+RESULT_NOTE = (
+    "1 到 7 分，分數越高越滿意，4 分是中間。"
+    "這份紀錄反映您對目前或最近使用的助聽器的感受，不能代替專業評估。"
+)
+
 
 def _average(values):
     return (Decimal(sum(values)) / len(values)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
@@ -83,6 +89,7 @@ DEFINITION = Definition(
     source_template="screening/sadl_source.html",
     result=SUBSCALES,
     choices=choices,
+    result_note=RESULT_NOTE,
     score=score,
     listed=False,
     always_aided=True,

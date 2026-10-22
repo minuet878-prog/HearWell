@@ -5,7 +5,7 @@
 <h1 class="h3 mt-2">助聽器滿意度（SADL）</h1>
 <p>{{ submission.created_at|date:"Y/m/d" }} 作答</p>
 <p class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold">整體滿意度：{{ satisfaction.overall }}</p>
-<p>1 到 7 分，分數越高越滿意，4 分是中間。這份紀錄反映您對目前或最近使用的助聽器的感受，不能代替專業評估。</p>
+<p>{{ submission.questionnaire.definition.result_note }}</p>
 <h2 class="h4">四個面向</h2>
 <ul>{% for subscale in satisfaction.subscales %}<li class="mb-2">{{ subscale.name }}：{{ subscale.score }}</li>{% endfor %}</ul>
 {% if satisfaction.not_applicable %}
@@ -14,5 +14,5 @@
 {% endwith %}
 <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'questionnaire_list' %}">選擇問卷</a>
-{% include "screening/sadl_source.html" %}
+{% include submission.questionnaire.definition.source_template %}
 {% endblock %}

@@ -5,7 +5,9 @@ from dataclasses import replace
 from io import StringIO
 
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import Questionnaire, Submission
@@ -59,7 +61,9 @@ class SadlAnsweringTests(SadlTestCase):
     def test_every_item_has_seven_labels_and_only_items_11_and_14_take_not_applicable(self):
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk])).content.decode()
         for label in ("一點都沒有", "一點點", "有一些", "中等程度", "相當程度", "非常多", "極度"):
-            self.assertEqual(page.count(f" {label}</label>"), 15, label)
+            # The label right after the radio, with no letter A–G in front of it.
+            self.assertEqual(page.count('class="choice-group" id="id_form-'), 15 * 7 + 2)
+            self.assertEqual(page.count(f">\n {label}</label>"), 15, label)
         self.assertEqual(page.count('value="na"'), 2)
         self.assertIn("不適用：不戴助聽器講電話也聽得清楚", page)
         self.assertIn("不適用：助聽器的錢不是我出的（例如全額補助、家人出錢）", page)
@@ -84,7 +88,8 @@ class SadlScoringTests(SadlTestCase):
 
     def test_an_unanswered_item_is_not_saved_and_is_listed(self):
         response = self.answer([4, 4, None] + [4] * 12)
-        self.assertContains(response, "第 3 題")
+        self.assertContains(response, 'href="#question-3">第 3 題</a>')
+        self.assertNotContains(response, 'href="#question-2">')
         self.assertFalse(Submission.objects.exists())
 
     def test_not_applicable_is_refused_outside_items_11_and_14(self):
@@ -142,3 +147,11 @@ class SadlScoringTests(SadlTestCase):
         self.answer([4] * 15)
         result = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
         self.assertContains(result, credit)
+
+    def test_result_page_reads_the_answers_once(self):
+        self.answer([4] * 15)
+        submission = Submission.objects.get()
+        with CaptureQueriesContext(connection) as ctx:
+            self.client.get(reverse("result", args=[submission.pk]))
+        reads = [q for q in ctx.captured_queries if '"screening_question"' in q["sql"]]
+        self.assertEqual(len(reads), 1)

@@ -43,6 +43,8 @@ class Definition:
     always_aided: bool = False
     # Copyright credit shown at the bottom of the answer page; "" when the intro already has it.
     source_template: str = ""
+    # SUBSCALES only: how to read the scores, in place of norms or grades.
+    result_note: str = ""
     # SUBSCALES only: item number -> value or None (不適用) in, overall and subscales out.
     score: Callable[[dict], dict] | None = None
 
