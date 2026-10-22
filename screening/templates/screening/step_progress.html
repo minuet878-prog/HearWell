@@ -1,0 +1,6 @@
+{% load custom_filters %}
+{# "第 n 步／共 N 步" with one bar segment per step (#151, #152); the bar only repeats the text. #}
+<div class="step-progress">
+    <p class="step-progress-text">第 {{ step }} 步／共 {{ total }} 步{% if label %}：{{ label }}{% endif %}</p>
+    <div class="step-progress-bar" aria-hidden="true">{% for done in step|step_segments:total %}<span class="step-progress-segment{% if done %} is-done{% endif %}"></span>{% endfor %}</div>
+</div>

@@ -93,7 +93,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_new_user_completes_hhie_s(self):
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
             self.step3_choose_hhie_s()
             self.step4_answer_and_change_one()
@@ -101,12 +101,71 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
 
+    def test_show_password_with_javascript(self):
+        """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
+        with self.saving_artifacts():
+            self.step1_start_goes_to_register()
+            password = self.page.get_by_label("密碼：", exact=True)
+            password.fill("Fake-pass-2468")
+            toggle = self.main().locator('button.password-toggle[aria-controls="id_password1"]')
+            expect(toggle).to_have_accessible_name("顯示密碼")
+            toggle.click()
+            expect(password).to_have_attribute("type", "text")
+            expect(toggle).to_have_accessible_name("隱藏密碼")
+            expect(toggle).to_have_text("隱藏")
+            toggle.click()
+            expect(password).to_have_attribute("type", "password")
+            expect(toggle).to_have_accessible_name("顯示密碼")
+
+    def test_first_visit_pages_fit_a_phone_at_double_text_size(self):
+        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%."""
+        self.context.close()
+        self.context = self.browser.new_context(
+            **{**self.playwright.devices["Pixel 7"], "viewport": {"width": 320, "height": 640}}
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            self.assert_fits_a_phone_at_double_text_size("home")
+            self.main().get_by_role("link", name="開始篩檢").click()
+            self.assert_fits_a_phone_at_double_text_size("register")
+            self.fill_register_form()
+            self.main().get_by_role("button", name="註冊").click()
+            self.assert_fits_a_phone_at_double_text_size("consent")
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            expect(self.main().locator(".questionnaire-guide")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard age")
+            self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+                "65 歲以上", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
+            self.assert_fits_a_phone_at_double_text_size("wizard hearing aid")
+            self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
+                "沒有戴", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
+            self.main().get_by_text("看其他問卷", exact=True).click()
+            expect(self.main().locator("details a.link-card").first).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard recommendation")
+            self.main().get_by_role("link", name="開始作答").click()
+            expect(self.page.get_by_role("group")).to_have_count(1)
+            self.assert_fits_a_phone_at_double_text_size("answer hearing aid step")
+            self.answer("沒戴")
+            self.next()
+            self.question(1)
+            self.main().get_by_role("button", name="這份問卷在問什麼？").click()
+            expect(self.page.locator("#answer-intro-text")).to_contain_text("本問卷的目的")
+            self.assert_fits_a_phone_at_double_text_size("answer question 1, intro open")
+
     def test_adult_completes_hhia_s_with_keyboard(self):
         """Issue #78: real React flow, original labels, focus and saved results."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
+            self.choose_self()
             self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
             self.answer("沒戴")
             self.next()
@@ -135,8 +194,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
         self.step2_register()
+        self.choose_self()
         self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
         self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
             "沒戴", exact=True
@@ -153,9 +213,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         """#79: range input, N/A, zero and draft restoration in a real browser."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_needs_login()
+            self.step1_start_goes_to_register()
             self.step2_register()
-            self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+            self.choose_self()
+            self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
             self.answer("沒戴")
             self.next()
             expect(self.main().get_by_text("未作答", exact=True)).to_be_visible()
@@ -282,9 +343,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
         self.step2_register()
-        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        self.choose_self()
+        self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
         self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？").get_by_label(
             "沒戴", exact=True
         ).check()
@@ -295,8 +357,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.main().get_by_role("button", name="送出").click()
         expect(self.main().get_by_text("未計算：包含不適用題目", exact=True)).to_be_visible()
 
-    def test_age_confirmation_and_purpose_links_without_javascript(self):
-        """#80: server-rendered selection preserves browser back and scales at 320px."""
+    def test_age_step_and_recommendation_without_javascript(self):
+        """#80, #152: server-rendered selection preserves browser back and scales at 320px."""
         call_command("seed_questionnaires", verbosity=0)
         self.context.close()
         self.context = self.browser.new_context(
@@ -304,24 +366,36 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         )
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_needs_login()
+        self.step1_start_goes_to_register()
+        # #151: without JavaScript the 顯示 button could not work, so none shows.
+        expect(self.main().get_by_role("button", name=re.compile("顯示"))).to_have_count(0)
         self.step2_register()
         age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
         age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
         self.page.keyboard.press("Space")
-        self.main().get_by_role("button", name="看適合我的問卷").click()
-        expect(
-            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
-        ).to_be_visible()
-        self.main().get_by_role("link", name="了解目前聆聽能力", exact=True).click()
+        self.main().get_by_role("button", name="下一步").click()
+        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
+            "有戴", exact=True
+        ).check()
+        self.main().get_by_role("button", name="下一步").click()
+        # Wearing one with no unaided record: HHIA-S first, SSQ12 listed as also worth doing.
+        recommended = self.main().locator("#recommended-title")
+        expect(recommended).to_contain_text("HHIA-S")
+        self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
         expect(self.page.get_by_role("heading", name="SSQ12-TW", exact=True)).to_be_visible()
         self.page.go_back()
-        expect(
-            self.main().get_by_text("依您的年齡，建議先了解聽力對生活的影響（HHIA-S）", exact=False)
-        ).to_be_visible()
+        expect(recommended).to_contain_text("HHIA-S")
         self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
         self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
+        # #155: the wizard ends on the answer page, the server's form starting on 沒戴 (#154).
+        self.main().get_by_role("link", name="開始作答").click()
+        expect(self.page).to_have_url(re.compile(r"/questionnaire/\d+\?preselect=unaided$"))
+        expect(self.page.get_by_role("heading", name="HHIA-S", exact=True)).to_be_visible()
+        hearing_aid = self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
+        expect(hearing_aid.get_by_label("沒戴", exact=True)).to_be_checked()
+        expect(self.page.locator("#hearing-aid-hint")).to_have_text("請想沒戴助聽器時的情況來回答")
+        self.assert_fits_a_phone_at_double_text_size("answer page without javascript")
 
     def test_family_guide_without_share_sheet(self):
         """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
@@ -347,33 +421,109 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def main(self):
         return self.page.get_by_role("main")
 
-    def step1_start_needs_login(self):
+    def step1_start_goes_to_register(self):
+        # Spec #148 (ticket #150): first-time visitors register straight away.
         self.page.goto(self.live_server_url)
         self.main().get_by_role("link", name="開始篩檢").click()
-        expect(self.page.get_by_text("登入後會帶您回到剛剛的頁面")).to_be_visible()
+        expect(self.page).to_have_url(re.compile(r"/register\?next=/questionnaire_list$"))
+
+    def assert_step_bar(self, done, total):
+        segments = self.main().locator(".step-progress-bar > .step-progress-segment")
+        expect(segments).to_have_count(total)
+        expect(segments.and_(self.page.locator(".is-done"))).to_have_count(done)
+
+    def assert_fits_a_phone_at_double_text_size(self, where):
+        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
+        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
+        self.page.locator("html").evaluate(
+            "html => html.style.setProperty('font-size', '225%', 'important')"
+        )
+        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+        self.assertLessEqual(scroll_width, 320, where)
 
     def step2_register(self):
-        self.main().get_by_role("link", name="註冊").click()
+        # #151: two numbered steps, register then consent.
+        expect(self.main().locator(".step-progress-text")).to_have_text(
+            "第 1 步／共 2 步：建立帳號"
+        )
+        self.assert_step_bar(1, 2)
+        self.fill_register_form()
+        self.main().get_by_role("button", name="註冊").click()
+        # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
+        expect(self.main().locator(".step-progress-text")).to_have_text(
+            "第 2 步／共 2 步：同意隱私權"
+        )
+        self.assert_step_bar(2, 2)
+        self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+        expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
+        expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
+
+    def fill_register_form(self):
         self.page.get_by_label("使用者名稱").fill("e2e_user")
         self.page.get_by_label("電子郵件").fill("e2e_user@example.com")
         self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
-        self.page.get_by_label("密碼確認").fill("Fake-pass-2468")
-        self.main().get_by_role("button", name="註冊").click()
-        # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
-        self.main().get_by_role("button", name="我同意").click()
-        expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
-        expect(self.page).to_have_url(re.compile(r"/questionnaire_list$"))
+        # Exact: the "顯示密碼確認" toggle button (#151) also has 密碼確認 in its label.
+        self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-2468")
+
+    def choose_self(self):
+        # #152: the wizard's way out to every questionnaire's card.
+        self.main().get_by_role("link", name="自己選問卷").click()
 
     def step3_choose_hhie_s(self):
-        self.main().get_by_role("link", name="HHIE-S").click()
+        # #152 wizard: no birth year, so it asks the age, then the hearing aid, then recommends.
+        guide = self.main().locator(".questionnaire-guide")
+        steps = self.main().locator(".step-progress-text")
+        # Coming from consent: the first screen says the account is done, so 第 1 步 is new.
+        expect(guide).to_have_text("帳號建好了\N{FULLWIDTH EXCLAMATION MARK}接下來幫您找適合的問卷")
+        expect(steps).to_have_text("第 1 步／共 3 步")
+        self.assert_step_bar(1, 3)
+        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+            "65 歲以上", exact=True
+        ).check()
+        self.main().get_by_role("button", name="下一步").click()
+        expect(guide).to_have_count(0)
+        expect(steps).to_have_text("第 2 步／共 3 步")
+        self.assert_step_bar(2, 3)
+        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
+            "沒有戴", exact=True
+        ).check()
+        self.main().get_by_role("button", name="下一步").click()
+        expect(steps).to_have_text("第 3 步／共 3 步")
+        self.assert_step_bar(3, 3)
+        expect(self.main().get_by_role("heading", name="推薦您做這一份")).to_be_visible()
+        expect(self.main().locator("#recommended-title")).to_contain_text("HHIE-S")
+        expect(self.main()).to_contain_text(
+            "為什麼推薦：您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。"
+        )
+        # SSQ12 is only also worth doing for people wearing hearing aids.
+        expect(self.main().get_by_role("heading", name="也可以做")).to_have_count(0)
+        self.main().get_by_role("link", name="開始作答").click()
+        # Unaided: no 沒戴 preselection (#154).
+        expect(self.page).to_have_url(re.compile(r"/questionnaire/\d+$"))
         # React took over: only its hearing aid question shows, the Django form is hidden.
         hearing_aid = self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
         expect(hearing_aid).to_be_visible()
         expect(self.page.get_by_role("group")).to_have_count(1)
 
     def step4_answer_and_change_one(self):
+        app = self.main().locator(".answer-app")
+        about = self.main().get_by_role("button", name="這份問卷在問什麼？")
+        progress = self.main().locator(".answer-app .question-progress")
+        # #153: the hearing aid step shows the whole intro and no question count.
+        expect(app).to_contain_text("本問卷的目的在幫助您了解自己的聽力")
+        expect(app).to_contain_text("答案會自動存在這支手機，中途離開也沒關係")
+        expect(about).to_have_count(0)
+        self.assert_step_bar(0, 0)
         self.answer("沒戴")
         self.next()
+        # From question 1 the intro folds away until asked for.
+        expect(app.get_by_text("本問卷的目的", exact=False)).to_have_count(0)
+        expect(about).to_have_attribute("aria-expanded", "false")
+        self.assert_step_bar(0, QUESTION_COUNT)
+        expect(progress).to_have_text("第 1 題／共 10 題・還剩大約 3 分鐘")
+        about.click()
+        expect(about).to_have_attribute("aria-expanded", "true")
+        expect(self.page.locator("#answer-intro-text")).to_contain_text("本問卷的目的")
         self.answer("常常", number=1)
         self.next()
         self.answer("有時", number=2)
@@ -386,6 +536,12 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         for number in range(3, QUESTION_COUNT + 1):
             self.next()
             self.answer("有時", number=number)
+            if number == 3:
+                # #153 acceptance 1: 3 of 10 segments answered; 3 minutes x 8/10 left, rounded.
+                self.assert_step_bar(3, QUESTION_COUNT)
+                expect(progress).to_have_text("第 3 題／共 10 題・還剩大約 2 分鐘")
+        # Rounded down to none on the last question, but never less than a minute.
+        expect(progress).to_have_text("第 10 題／共 10 題・還剩大約 1 分鐘")
 
     def step5_submit(self):
         self.main().get_by_role("button", name="送出").click()
@@ -801,7 +957,7 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_icon_circle_stays_visible_on_hover(self):
         self.open(1280)
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             card = self.page.locator("a.link-card").first
             card.hover()
             colour = "el => getComputedStyle(el).backgroundColor"
@@ -852,12 +1008,24 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
-            self.assertEqual(len(boxes), 3)
+            # Spec #148 (ticket #150) adds the account step.
+            self.assertEqual(len(boxes), 4)
             self.assertEqual({box["x"] for box in boxes}, {boxes[0]["x"]})
             for upper, lower in pairwise(boxes):
                 self.assertGreaterEqual(lower["y"], upper["y"] + upper["height"])
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
+
+    # Spec #148 (ticket #150): four steps sit two by two on a wide screen, never three and one.
+    def test_home_step_cards_two_by_two_on_a_wide_screen(self):
+        self.open(1280)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
+            self.assertEqual(len(boxes), 4)
+            self.assertEqual(boxes[0]["y"], boxes[1]["y"])
+            self.assertEqual(boxes[2]["y"], boxes[3]["y"])
+            self.assertGreater(boxes[2]["y"], boxes[0]["y"])
 
     # phase9_ui_refresh_4a_home.md review 1: at 200% text the step cards still fit a phone
     def test_home_step_cards_fit_a_phone_at_double_text_size(self):
@@ -1057,7 +1225,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     fixtures = ("questions_fixture.json",)
     TEXT = "rgb(73, 80, 87)"
     PRIMARY = "rgb(31, 78, 140)"
-    ERROR = "rgb(194, 59, 28)"
+    ERROR = "rgb(143, 42, 18)"  # #149: the severe level colour, darkened to 7:1
     # #137 (2a): a warm page and footer, white surfaces, warm borders on large blocks.
     WARM_PAGE = "rgb(250, 247, 242)"
     WARM_FOOTER = "rgb(243, 237, 227)"
@@ -1071,8 +1239,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
     # (level, scores, background, text colour)
     BANNERS = (
-        ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(30, 123, 85)"),
-        ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(138, 90, 0)"),
+        ("normal", (0,) * 10, "rgb(227, 244, 236)", "rgb(20, 87, 60)"),
+        ("mild_to_moderate", (2,) * 6 + (0,) * 4, "rgb(255, 244, 214)", "rgb(112, 72, 0)"),
         ("severe", (4,) * 10, "rgb(254, 236, 231)", ERROR),
         ("unknown", (2,) * 10, "rgb(241, 243, 245)", TEXT),
     )
@@ -1139,11 +1307,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             "--color-body": "#495057",
             "--color-heading": "#212529",
             "--color-footer": "#343a40",
-            "--color-normal": "#1e7b55",
+            # #149: the three level colours darkened to 7:1; their backgrounds unchanged.
+            "--color-normal": "#14573c",
             "--color-normal-bg": "#e3f4ec",
-            "--color-mild": "#8a5a00",
+            "--color-mild": "#704800",
             "--color-mild-bg": "#fff4d6",
-            "--color-severe": "#c23b1c",
+            "--color-severe": "#8f2a12",
             "--color-severe-bg": "#feece7",
             "--color-surface": "#f1f3f5",
             "--color-brand-soft": "#eef3fa",
@@ -1581,7 +1750,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(skip, "clip"), "auto")
 
             self.open()
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             pause = self.page.locator(".card-tags .visually-hidden").first
             self.assertEqual(self.size(pause), (1, 1))
             self.assertEqual(
@@ -1685,6 +1854,84 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(badge, "color"), colour)
                     self.assertEqual(self.style(badge, "backgroundColor"), background)
 
+    # #149: each level's text reaches 7:1 on its soft background and on white.
+    def test_level_text_reaches_7_to_1_on_its_soft_background_and_on_white(self):
+        records = {
+            level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
+        }
+        self.open()
+        with self.saving_artifacts():
+            for level, record in records.items():
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                banner = self.page.locator(f".result-banner-{level}")
+                expect(banner).to_be_visible()
+                with self.subTest(page="result", level=level):
+                    text = self.style(banner.locator(".result-level"), "color")
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(text, self.style(banner, "backgroundColor")), 7
+                    )
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            bands = self.page.locator("#trend-chart .trend-bands li")
+            expect(bands).to_have_count(3)
+            for level, record in records.items():
+                badge = self.page.locator(f".level-badge-{level}").first
+                expect(badge).to_be_visible()
+                with self.subTest(page="my_hearing badge", level=level):
+                    text = self.style(badge, "color")
+                    self.assertGreaterEqual(
+                        self.lowest_contrast(text, self.style(badge, "backgroundColor")), 7
+                    )
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+                # The chart's level names sit on white beside a swatch of their band.
+                band = bands.filter(has_text=record.classified["text"])
+                with self.subTest(page="my_hearing chart", level=level):
+                    text = self.style(band.locator("span").last, "color")
+                    swatch = self.style(band.locator(".trend-band-swatch"), "backgroundColor")
+                    self.assertGreaterEqual(self.lowest_contrast(text, swatch), 7)
+                    self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
+
+    def assert_framed_in_its_text_colour(self, element):
+        colour = self.style(element, "color")
+        for side in ("Top", "Right", "Bottom", "Left"):
+            with self.subTest(side=side):
+                self.assertEqual(self.style(element, f"border{side}Style"), "solid")
+                self.assertEqual(self.style(element, f"border{side}Width"), "2px")
+                self.assertEqual(self.style(element, f"border{side}Color"), colour)
+
+    # #149: a frame in the level's own colour, so the soft background has an edge on the page.
+    def test_result_banner_and_level_badges_are_framed_in_the_level_colour(self):
+        records = {
+            level: self.submission(self.hhie_s, scores) for level, scores, _, _ in self.BANNERS[:3]
+        }
+        self.open()
+        with self.saving_artifacts():
+            for level, record in records.items():
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                banner = self.page.locator(f".result-banner-{level}")
+                expect(banner).to_be_visible()
+                with self.subTest(page="result", level=level):
+                    self.assert_framed_in_its_text_colour(banner)
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
+            for level in records:
+                badge = self.page.locator(f".level-badge-{level}").first
+                expect(badge).to_be_visible()
+                with self.subTest(page="my_hearing", level=level):
+                    self.assert_framed_in_its_text_colour(badge)
+
+    # #149: on paper, often black and white, the level stays written out in a frame.
+    def test_printed_report_writes_the_level_in_a_frame(self):
+        self.submission(self.hhie_s, (4,) * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            self.page.emulate_media(media="print")
+            levels = self.page.locator(f"#report-{self.hhie_s.code} .report-level")
+            expect(levels).to_have_count(1)
+            expect(levels).to_be_visible()
+            expect(levels).to_have_text("顯著影響")
+            self.assert_framed_in_its_text_colour(levels)
+
     def test_answer_choices_are_large_buttons_in_a_row(self):
         self.open(javascript=False)
         with self.saving_artifacts():
@@ -1702,7 +1949,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         for width in (390, 1024):
             self.open(width=width)
             with self.saving_artifacts():
-                for path in ("/questionnaire_list", "/my_hearing"):
+                for path in ("/questionnaire_list?choose=self", "/my_hearing"):
                     self.page.goto(f"{self.live_server_url}{path}")
                     cards = self.page.get_by_role("main").locator("a.link-card")
                     items = self.page.get_by_role("navigation", name="主要導覽").locator("a")
@@ -1793,7 +2040,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("/", "body", self.WARM_PAGE),
             ("/", ".site-footer", self.WARM_FOOTER),
             ("/", ".step-cards li", self.WHITE),
-            ("/questionnaire_list", "main a.link-card", self.WHITE),
+            ("/questionnaire_list?choose=self", "main a.link-card", self.WHITE),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", self.WHITE),
             ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", self.WHITE),
             (f"/audiograms/{audiogram.pk}", ".audiogram-chart", self.WHITE),
@@ -1855,15 +2102,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_three_radius_levels(self):
         basis, ioi, audiogram = self.warm_shell_records()
-        # The questionnaire guide only shows a recommendation once the age is known.
-        User.objects.filter(pk=self.user.pk).update(birth_year=1950)
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
         cases = (
             ("/", ".step-cards li", large),
             ("/", ".home-band", large),
             ("/", ".result-preview", large),
-            ("/questionnaire_list", "main a.link-card", large),
-            ("/questionnaire_list", ".questionnaire-guide", large),
+            ("/questionnaire_list?choose=self", "main a.link-card", large),
+            ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
             ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", large),
@@ -1892,7 +2137,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.submission(self.hhie_s, [2] * 10)
         cases = (
             ("/", ".step-cards li"),
-            ("/questionnaire_list", "main a.link-card"),
+            ("/questionnaire_list?choose=self", "main a.link-card"),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
         )
         self.open()
@@ -2159,7 +2404,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(number, "backgroundImage"), self.GRADIENT)
             self.assertEqual(self.style(number, "color"), self.WHITE)
 
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             icon = self.page.locator(".questionnaire-icon").first
             self.assertEqual(self.style(icon, "backgroundImage"), self.GRADIENT)
             stroke = self.style(icon.locator("svg"), "stroke")
@@ -2224,7 +2469,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.mouse.up()
 
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
-    CARD_PAGES = ("/questionnaire_list", "/my_hearing", "/audiograms")
+    CARD_PAGES = ("/questionnaire_list?choose=self", "/my_hearing", "/audiograms")
     LIFTED = "matrix(1, 0, 0, 1, 0, -4.5)"
     LIFTED_SHADOW = "rgba(120, 90, 50, 0.16) 0px 9px 22.5px 0px"
     REST_SHADOW = "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px"
@@ -2267,7 +2512,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.mouse.move(0, 0)
 
             # The questionnaire card's icon sends out one ripple.
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             card = self.page.locator("a.link-card").first
             card.hover()
             ripples = card.locator(".questionnaire-icon").evaluate(
@@ -2325,7 +2570,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_reduced_motion_cards_only_change_colour(self):
         self.open()  # reduced motion
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             card = self.page.locator("a.link-card").first
             before = card.bounding_box()
             card.hover()
@@ -2382,7 +2627,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             card = self.page.locator("a.link-card").first
             before = card.bounding_box()
             for _ in range(30):

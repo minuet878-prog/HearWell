@@ -39,7 +39,7 @@ class CatalogFromDefinitionTests(TestCase):
         self.client.force_login(consented_user(username="definitions_a"))
 
     def _card(self):
-        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        content = self.client.get(reverse("questionnaire_list") + "?choose=self").content.decode()
         main = content[content.index("<main") : content.index("</main>")]
         href = f'href="{reverse("screening", args=[self.fake.pk])}"'
         return next((c for c in test_layout._cards(main) if href in c), None)
@@ -72,10 +72,12 @@ class UndefinedQuestionnaireTests(TestCase):
         self.client.force_login(self.user)
 
     def test_catalog_and_recommendation_skip_it(self):
-        response = self.client.get(reverse("questionnaire_list"))
+        response = self.client.get(reverse("questionnaire_list") + "?choose=self")
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "無定義")
         self.assertNotContains(response, reverse("screening", args=[self.undefined.pk]))
+        response = self.client.get(reverse("questionnaire_list"), {"hearing_aid": "no"})
+        self.assertNotContains(response, "無定義")
         self.assertEqual(response.context["recommended"], self.hhie_s)
 
     def test_answer_page_is_404(self):
@@ -147,7 +149,7 @@ class RealDefinitionsTests(TestCase):
         self.client.force_login(consented_user(username="definitions_c"))
 
     def test_catalog_cards(self):
-        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        content = self.client.get(reverse("questionnaire_list") + "?choose=self").content.decode()
         main = content[content.index("<main") : content.index("</main>")]
         cards = test_layout._cards(main)
         hrefs = [
@@ -455,7 +457,7 @@ class DefinitionOnlyQuestionnaireTests(TestCase):
     def test_catalog_answer_result_and_history(self):
         questionnaire = Questionnaire.objects.get(code="fake-flow")
         answer_url = reverse("screening", args=[questionnaire.pk])
-        catalog = self.client.get(reverse("questionnaire_list"))
+        catalog = self.client.get(reverse("questionnaire_list") + "?choose=self")
         self.assertContains(catalog, f'href="{answer_url}"')
         self.assertContains(catalog, "假主題（假全流程）")
 

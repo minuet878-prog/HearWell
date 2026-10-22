@@ -1,6 +1,7 @@
 import json
 import uuid
 from collections import Counter
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -29,6 +30,7 @@ from screening.forms import (
     HearingAidForm,
     HhiComparisonForm,
     RegisterForm,
+    WearingNowForm,
     answer_choices,
 )
 from screening.questionnaires import hhia_s, hhie_s
@@ -41,6 +43,7 @@ from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
+    RECOMMENDATION_REASONS,
     classify,
     compare_to_norm,
     get_advice,
@@ -101,6 +104,10 @@ def logout_view(request):
     return HttpResponseRedirect(reverse("index"))
 
 
+# Set when an account is made; only then does agreeing on the consent page greet the user (#152).
+NEW_ACCOUNT = "screening.new_account"
+
+
 @require_http_methods(["GET", "POST"])
 def register(request):
     next_url = _safe_next(request)
@@ -117,6 +124,7 @@ def register(request):
                 form.add_error("username", form.instance.unique_error_message(User, ["username"]))
             else:
                 login(request, user)
+                request.session[NEW_ACCOUNT] = True
                 # New accounts agree to the privacy notice before anything else.
                 if next_url:
                     return redirect_to_login(next_url, reverse("consent"))
@@ -141,11 +149,20 @@ def consent(request):
     if request.method == "POST" and "decline" in request.POST:
         logout(request)
         messages.info(
-            request, "沒有同意就不能使用篩檢功能，您的帳號仍在。想使用時，登入後按「我同意」即可。"
+            request,
+            "沒有同意就不能使用篩檢功能，您的帳號仍在。想使用時，登入後按「我同意，開始篩檢」即可。",
         )
         return redirect("index")
     if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():
         request.user.give_consent()
+        # Right after registering, into the wizard: its first screen then says the account is
+        # ready (#152). Popped on any agreeing, so agreeing again later says nothing.
+        parts = urlsplit(next_url)
+        if request.session.pop(NEW_ACCOUNT, False) and parts.path == reverse("questionnaire_list"):
+            query = urlencode(
+                [*parse_qsl(parts.query, keep_blank_values=True), ("from", "consent")]
+            )
+            return HttpResponseRedirect(urlunsplit(parts._replace(query=query)))
     if request.user.has_consented():
         return HttpResponseRedirect(next_url or reverse("index"))
     return render(request, "screening/consent.html", {"next": next_url})
@@ -155,44 +172,88 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
-@login_required
-def questionnaire_list(request):
-    questionnaires = list(
-        Questionnaire.objects.defined().annotate(question_count=Count("questions")).order_by("pk")
-    )
-    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-    age = request.user.age
-    age_form = None
-    code = None
-    if age is None or age == 65:
-        age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
-        if age_form.is_valid():
-            code = hhia_s.CODE if age_form.cleaned_data["age_group"] == "adult" else hhie_s.CODE
-            age_form = None
-    else:
-        code = hhia_s.CODE if age < 65 else hhie_s.CODE
-    recommended = by_code.get(code)
+def _wizard_step(request, step, total, **context):
+    # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
         request,
         "screening/questionnaire.html",
-        {
-            "questionnaires": sorted(
-                questionnaires, key=lambda q: (q != recommended, *list_order(q))
-            ),
-            "recommended": recommended,
-            "age_form": age_form,
-            "ssq12": by_code.get(SSQ12),
-            "ioi_ha_questionnaire": by_code.get(IOI_HA),
+        context
+        | {
+            "step": step,
+            "total": total,
+            # Set by the consent page; only its first screen says the account is ready.
+            "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
     )
 
 
-def _ioi_ha_norm(user, token=None):
-    records = (
-        user.submissions.valid_hhi()
-        .filter(wearing_hearing_aid=False)
-        .select_related("questionnaire")
+@login_required
+def questionnaire_list(request):
+    questionnaires = sorted(
+        Questionnaire.objects.defined().annotate(question_count=Count("questions")),
+        key=list_order,
     )
+    if "choose" in request.GET:
+        return render(request, "screening/questionnaire.html", {"questionnaires": questionnaires})
+    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+    wizard_url = reverse("questionnaire_list")
+    age = request.user.age
+    # A birth year alone cannot tell 64 from 65 in the year someone turns 65.
+    ask_age = age is None or age == 65
+    total = 3 if ask_age else 2
+    if ask_age:
+        age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
+        if not age_form.is_valid():
+            return _wizard_step(
+                request, 1, total, field=age_form["age_group"], back_url=reverse("index")
+            )
+        age_group = age_form.cleaned_data["age_group"]
+    else:
+        age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
+    wearing_form = WearingNowForm(request.GET if "hearing_aid" in request.GET else None)
+    if not wearing_form.is_valid():
+        return _wizard_step(
+            request,
+            total - 1,
+            total,
+            field=wearing_form["hearing_aid"],
+            age_group=age_group if ask_age else None,
+            back_url=wizard_url if ask_age else reverse("index"),
+        )
+    life_impact = by_code[hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE]
+    wearing = wearing_form.cleaned_data["hearing_aid"]
+    if not wearing:
+        recommended, reason = life_impact, "unaided"
+    elif _norm_bases(request.user).exists():
+        recommended, reason = by_code[IOI_HA], "has_norm_basis"
+    else:
+        # IOI-HA compares with the norm group of an unaided record, so that record comes first.
+        recommended, reason = life_impact, "needs_norm_basis"
+    start_url = reverse("screening", args=[recommended.pk])
+    if reason == "needs_norm_basis":
+        # The answer page starts on "沒戴", which the user may still change (#154).
+        start_url += "?preselect=unaided"
+    return _wizard_step(
+        request,
+        total,
+        total,
+        recommended=recommended,
+        reason=reason,
+        why=RECOMMENDATION_REASONS[reason],
+        start_url=start_url,
+        also=[by_code[SSQ12]] if wearing else [],
+        questionnaires=questionnaires,
+        back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
+    )
+
+
+def _norm_bases(user):
+    # The user's own unaided HHIA-S or HHIE-S records that can set the IOI-HA norm group.
+    return user.submissions.valid_hhi().filter(wearing_hearing_aid=False)
+
+
+def _ioi_ha_norm(user, token=None):
+    records = _norm_bases(user).select_related("questionnaire")
     if token is None:
         basis = records.first()
     else:
@@ -221,6 +282,10 @@ def screening(request, questionnaire_id):
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
         norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
+        # Set by the wizard when catching up an unaided record (#154): only where the hearing aid
+        # question starts, so the POST still takes whatever the user chose.
+        preselect_unaided = not is_ioi_ha and request.GET.get("preselect") == "unaided"
+        hearing_aid_initial = {"wearing_hearing_aid": False} if preselect_unaided else None
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(
             questions=questions, initial=[{"question_id": question.id} for question in questions]
@@ -234,7 +299,10 @@ def screening(request, questionnaire_id):
                 "question_count": len(questions),
                 "questionnaire": questionnaire,
                 "formset": formset,
-                "hearing_aid_form": None if is_ioi_ha else HearingAidForm(),
+                "hearing_aid_form": None
+                if is_ioi_ha
+                else HearingAidForm(initial=hearing_aid_initial),
+                "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
                 "norm_token": _norm_token(request.user, norm) if norm else None,

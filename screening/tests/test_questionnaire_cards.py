@@ -8,7 +8,7 @@ from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
 from screening.views import list_order
 
-GUIDE = "確認年齡，推薦適合您的問卷"
+GUIDE = "自行選擇問卷"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')
 TAGS = re.compile(r'<span class="card-tag">([^<]*)</span>')
 
@@ -42,7 +42,7 @@ class QuestionnaireCardTests(TestCase):
         self.enterContext(register(fake_definition("fake-later"), fake_definition("fake-last")))
 
     def _main(self):
-        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        content = self.client.get(reverse("questionnaire_list") + "?choose=self").content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
     def _card(self, questionnaire):
@@ -53,7 +53,6 @@ class QuestionnaireCardTests(TestCase):
     def test_guide_above_the_cards(self):
         main = self._main()
         self.assertIn(GUIDE, main)
-        self.assertLess(main.index("請選擇問卷"), main.index(GUIDE))
         self.assertLess(main.index(GUIDE), main.index('class="link-card'))
 
     # 2
