@@ -292,13 +292,12 @@ class Submission(models.Model):
 
     @cached_property
     def satisfaction(self):
-        # The only scoring path for subscale questionnaires (SADL).
+        # The only scoring path for subscale questionnaires (SADL). Callers prefetch the answers
+        # with their questions, so a list scores every record from one query.
         definition = self.questionnaire.definition
         if definition.result != SUBSCALES:
             return None
-        return definition.score(
-            dict(self.answers.values_list("question__question_number", "score"))
-        )
+        return definition.score({a.question.question_number: a.score for a in self.answers.all()})
 
     @property
     def classified(self):

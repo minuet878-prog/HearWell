@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Prefetch
+from django.db.models import Count, F, Prefetch, prefetch_related_objects
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -771,6 +771,9 @@ def submission_result(request, submission_id):
     if result == NORM:
         return _ioi_ha_result(request, submission, answers)
     if result == SUBSCALES:
+        prefetch_related_objects(
+            [submission], Prefetch("answers", queryset=Answer.objects.select_related("question"))
+        )
         return render(request, "screening/sadl_result.html", {"submission": submission})
     total_score = submission.total_answer_score
     emotional = submission.emotional_score

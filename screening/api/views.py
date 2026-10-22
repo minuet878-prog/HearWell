@@ -93,7 +93,8 @@ class SubmissionList(ListAPIView):
     pagination_class = SubmissionPagination
 
     def get_queryset(self):
-        return _own_submissions(self.request)
+        # With the answers: SADL's scores are worked out from them (Submission.satisfaction).
+        return _own_submission_details(self.request)
 
     @extend_schema(
         request=SubmissionCreateSerializer,

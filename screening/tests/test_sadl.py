@@ -1,5 +1,6 @@
 """SADL answering, scoring and pre-launch visibility (#167)."""
 
+import re
 import uuid
 from dataclasses import replace
 from io import StringIO
@@ -60,14 +61,22 @@ class SadlAnsweringTests(SadlTestCase):
 
     def test_every_item_has_seven_labels_and_only_items_11_and_14_take_not_applicable(self):
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk])).content.decode()
-        for label in ("一點都沒有", "一點點", "有一些", "中等程度", "相當程度", "非常多", "極度"):
-            # The label right after the radio, with no letter A–G in front of it.
-            self.assertEqual(page.count('class="choice-group" id="id_form-'), 15 * 7 + 2)
-            self.assertEqual(page.count(f">\n {label}</label>"), 15, label)
-        self.assertEqual(page.count('value="na"'), 2)
-        self.assertIn("不適用：不戴助聽器講電話也聽得清楚", page)
-        self.assertIn("不適用：助聽器的錢不是我出的（例如全額補助、家人出錢）", page)
-        self.assertNotIn(">A<", page)
+        labels = ["一點都沒有", "一點點", "有一些", "中等程度", "相當程度", "非常多", "極度"]
+        seven = [(str(value), label) for value, label in enumerate(labels, start=1)]
+        not_applicable = {
+            11: ("na", "不適用：不戴助聽器講電話也聽得清楚"),
+            14: ("na", "不適用：助聽器的錢不是我出的（例如全額補助、家人出錢）"),
+        }
+        for number in range(1, 16):
+            with self.subTest(item=number):
+                group = re.search(rf'id="question-{number}".*?</fieldset>', page, re.S).group()
+                # Each option is the radio's value and the text right after it, so a letter
+                # A–G in front of a label would not match.
+                options = re.findall(
+                    r'value="([^"]+)" class="choice-group" id="[^"]+">\n (.*?)</label>', group
+                )
+                expected = seven + ([not_applicable[number]] if number in not_applicable else [])
+                self.assertEqual(options, expected)
 
 
 @override_settings(DEBUG=True)
@@ -142,11 +151,12 @@ class SadlScoringTests(SadlTestCase):
 
     def test_answer_and_result_pages_credit_the_scale_and_its_translators(self):
         credit = "© University of Memphis, 1999；中文版：Fang 等，2013（國泰綜合醫院）"
-        page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
-        self.assertContains(page, credit)
+        page = self.client.get(reverse("screening", args=[self.questionnaire.pk])).content.decode()
+        self.assertGreater(page.find(credit), page.index("</form>"))
         self.answer([4] * 15)
         result = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
-        self.assertContains(result, credit)
+        result = result.content.decode()
+        self.assertGreater(result.find(credit), result.index("選擇問卷</a>"))
 
     def test_result_page_reads_the_answers_once(self):
         self.answer([4] * 15)
@@ -173,3 +183,17 @@ class SadlScoringTests(SadlTestCase):
         for name, text in approved.items():
             with self.subTest(name=name):
                 self.assertContains(page, f"<strong>{name}：4.0</strong><br>{text}")
+
+    def test_the_submission_list_reads_answers_the_same_number_of_times_for_two_or_five(self):
+        def list_queries():
+            with CaptureQueriesContext(connection) as ctx:
+                response = self.client.get("/api/submissions/")
+            self.assertEqual(response.status_code, 200)
+            return len(ctx.captured_queries)
+
+        for _ in range(2):
+            self.answer([4] * 15)
+        two = list_queries()
+        for _ in range(3):
+            self.answer([4] * 15)
+        self.assertEqual(list_queries(), two)
