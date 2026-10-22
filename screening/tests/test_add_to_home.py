@@ -5,6 +5,7 @@ fallback), it opens without JavaScript, and the bottom of the page lists the 4 t
 """
 
 import re
+from pathlib import Path
 
 from django.test import TestCase
 from django.urls import reverse
@@ -21,6 +22,7 @@ IPHONE_STEPS = (
     "往下滑，點「加入主畫面」。",
     "點右上角的「加入」。",
 )
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 ANDROID_STEPS = (
     "用 Chrome 打開 HearWell 網站。",
     "點右上角的「⋮」（三個點）。",
@@ -71,3 +73,20 @@ class AddToHomeTests(TestCase):
         nav = content[content.index('<nav aria-label="主要導覽"') : content.index("</nav>")]
         labels = re.findall(r"<span>(.*?)</span>", nav)
         self.assertEqual(labels, ["首頁", "開始篩檢", "我的紀錄", "聽力圖"])
+
+    def test_summaries_are_big_enough_and_only_change_colour(self):
+        for summary, (_, body) in self.blocks.items():
+            with self.subTest(summary=summary):
+                self.assertNotIn("<summary", body)
+        self.assertIn('<details class="phone-choice', self.main)
+        css = SITE_CSS.read_text(encoding="utf-8")
+        rules = re.findall(r"\.phone-choice[^{]*\{[^}]*\}", css)
+        self.assertTrue(rules)
+        # Tap target of at least 44px (2.75rem); hover and press change colour, never position
+        # (ADR 0006).
+        self.assertTrue(any("min-height: var(--spacing-touch)" in rule for rule in rules))
+        self.assertTrue(any(":hover" in rule for rule in rules))
+        self.assertTrue(any(":active" in rule for rule in rules))
+        for rule in rules:
+            self.assertNotIn("transform", rule)
+            self.assertNotIn("translate", rule)
