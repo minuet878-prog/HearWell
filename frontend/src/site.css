@@ -1,4 +1,9 @@
 @import "tailwindcss" source(none);
+/* Body font served from our own host, not Google Fonts (#181, ADR 0014); only the weights in use. */
+@import "@fontsource/noto-sans-tc/400.css";
+@import "@fontsource/noto-sans-tc/500.css";
+@import "@fontsource/noto-sans-tc/600.css";
+@import "@fontsource/noto-sans-tc/700.css";
 @source "../../screening/templates";
 @source "../../screening/*.py";
 @source "./**/*.{js,jsx}";

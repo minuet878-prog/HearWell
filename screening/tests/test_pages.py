@@ -955,15 +955,12 @@ class PwaNavTests(TestCase):
         stylesheets = re.findall(
             r'<link\b(?=[^>]*\brel="stylesheet")[^>]*\bhref="([^"]+)"', content
         )
-        self.assertEqual(
-            stylesheets,
-            [
-                "/static/screening/frontend/site.css",
-                "https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap",
-            ],
-        )
+        self.assertEqual(stylesheets, ["/static/screening/frontend/site.css"])
+        # #181, ADR 0014: the font comes from our own host, so no page reaches Google for it.
+        self.assertNotIn("fonts.googleapis.com", content)
+        self.assertNotIn("fonts.gstatic.com", content)
 
-    def test_pages_load_built_css_with_only_site_and_font_stylesheets(self):
+    def test_pages_load_built_css_with_only_the_site_stylesheet(self):
         share = ReportShare.objects.create(user=self.user, token="css-test-share")
         pages = [
             (False, reverse("index")),
@@ -1006,12 +1003,12 @@ class PwaNavTests(TestCase):
     def test_old_stylesheet_is_deleted(self):
         self.assertIsNone(finders.find("screening/styles.css"))
 
-    def test_invalid_share_loads_built_css_with_only_site_and_font_stylesheets(self):
+    def test_invalid_share_loads_built_css_with_only_the_site_stylesheet(self):
         response = self.client.get(reverse("shared_cover", args=["css-missing-share"]))
         self.assertContains(response, "/static/screening/frontend/site.css", status_code=404)
         self._assert_site_stylesheets(response.content.decode())
 
-    def test_consent_page_loads_built_css_with_only_site_and_font_stylesheets(self):
+    def test_consent_page_loads_built_css_with_only_the_site_stylesheet(self):
         self.client.force_login(User.objects.create_user(username="css_undecided"))
         response = self.client.get(reverse("consent"))
         self.assertContains(response, "/static/screening/frontend/site.css")

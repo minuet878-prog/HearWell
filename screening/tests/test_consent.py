@@ -43,6 +43,17 @@ class PrivacyPageTests(TestCase):
             with self.subTest(section=section):
                 self.assertContains(response, section)
 
+    def test_lists_only_services_the_site_still_uses(self):
+        # #181, ADR 0014: cdnjs went with Bootstrap and the font comes from our own host, so
+        # neither is listed; one fewer service is a minor fix that keeps version 1.
+        response = self.client.get(reverse("privacy"))
+        self.assertNotContains(response, "cdnjs")
+        self.assertNotContains(response, "Google")
+        for service in ("Render", "Neon", "Sentry"):
+            with self.subTest(service=service):
+                self.assertContains(response, service)
+        self.assertEqual(models.CONSENT_VERSION, 1)
+
     def test_no_placeholder_left(self):
         # Acceptance 16: operator, contact and regions are filled in before release.
         response = self.client.get(reverse("privacy"))

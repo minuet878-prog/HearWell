@@ -10,6 +10,7 @@ import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
+from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -1560,6 +1561,39 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for question, score in zip(questionnaire.questions.all(), scores, strict=True)
         )
         return record
+
+    LOAD_FONT_WEIGHTS = """async () => {
+        const loads = [400, 500, 600, 700].map(
+            (weight) => document.fonts.load(`${weight} 18px "Noto Sans TC"`, "聽力"),
+        );
+        // A missing weight would load the nearest one instead, so each face's weight is checked.
+        const faces = await Promise.all(loads);
+        return faces.map((list) => list.map((face) => face.weight));
+    }"""
+
+    def test_body_font_comes_from_our_own_host(self):
+        # #181, ADR 0014: Noto Sans TC in all four weights, and no request leaves for Google
+        # Fonts or cdnjs (the privacy notice lists neither).
+        own_host = urlparse(self.live_server_url).netloc
+        for signed_in, path in ((False, "/"), (False, "/register"), (True, "/my_hearing")):
+            with self.subTest(path=path):
+                self.open(signed_in=signed_in)
+                requests = []
+                self.page.on("request", lambda request, seen=requests: seen.append(request))
+                self.page.goto(f"{self.live_server_url}{path}")
+                loaded = self.page.evaluate(self.LOAD_FONT_WEIGHTS)
+                for weight, faces in zip(("400", "500", "600", "700"), loaded, strict=True):
+                    self.assertTrue(faces)
+                    self.assertEqual(set(faces), {weight})
+                self.assertTrue(
+                    self.style(self.page.locator("body"), "fontFamily").startswith('"Noto Sans TC"')
+                )
+                hosts = {urlparse(r.url).netloc for r in requests if r.url.startswith("http")}
+                self.assertEqual(hosts, {own_host})
+                font_files = [r for r in requests if r.url.endswith(".woff2")]
+                self.assertTrue(font_files)
+                for request in font_files:
+                    self.assertEqual(request.response().status, 200)
 
     def test_tailwind_theme_preserves_original_design_values(self):
         # Independent values from pre-migration styles.css (#124); inspect built CSS in a browser.
