@@ -1,5 +1,5 @@
 from screening.questionnaires.comparison import TotalComparison
-from screening.questionnaires.definition import LEVEL, Definition
+from screening.questionnaires.definition import LEVEL, RETEST_STEP, Definition
 
 CODE = "hhie-s"
 
@@ -39,7 +39,6 @@ ADVICE = {
 }
 
 # Draft reviewed and finalized by the audiologist, issue #156.
-RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
 NEXT_STEPS = {
     "normal": (
         {

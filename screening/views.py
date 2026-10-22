@@ -76,6 +76,12 @@ def index(request):
         if request.user.is_authenticated
         else NEW_USER_STATE
     )
+    last = user_state.last_result
+    last_ioi_ha = (
+        _ioi_ha_summary(last.submission)
+        if last and last.submission.questionnaire.definition.result == NORM
+        else None
+    )
     response = render(
         request,
         "screening/index.html",
@@ -86,6 +92,7 @@ def index(request):
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_advice": get_advice(preview["level"]),
             "user_state": user_state,
+            "last_ioi_ha": last_ioi_ha,
         },
     )
     if request.user.is_authenticated:
@@ -804,15 +811,7 @@ def _report_context(user):
     }
     ioi_ha = next((s for s in submissions if s.questionnaire.definition.result == NORM), None)
     if ioi_ha:
-        answers = ioi_ha.answers.select_related("question").order_by("question__question_number")
-        items, grouped = _ioi_ha_items(ioi_ha, answers)
-        context["ioi_ha"] = {
-            "submission": ioi_ha,
-            "items": items,
-            "grouped": grouped,
-            "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
-            "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
-        }
+        context["ioi_ha"] = _ioi_ha_summary(ioi_ha)
     audiogram = user.audiograms.prefetch_related("points").first()
     if audiogram:
         context.update(_audiogram_context(audiogram))
@@ -970,6 +969,19 @@ def _ioi_ha_items(submission, answers):
             }
         )
     return items, grouped
+
+
+def _ioi_ha_summary(submission):
+    # One IOI-HA record against the norms, for the report and the home page's last result.
+    answers = submission.answers.select_related("question").order_by("question__question_number")
+    items, grouped = _ioi_ha_items(submission, answers)
+    return {
+        "submission": submission,
+        "items": items,
+        "grouped": grouped,
+        "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
+        "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
+    }
 
 
 def _ioi_ha_result(request, submission, answers):

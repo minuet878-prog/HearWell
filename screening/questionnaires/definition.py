@@ -8,6 +8,11 @@ LEVEL = "level"  # total score graded by thresholds, with advice (HHIE-S, HHIA-S
 AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
 NORM = "norm"  # each item against the norms, no total (IOI-HA)
 
+# The retest reminder (ADR 0010): months after the latest life-impact record, and the last
+# next step of every life-impact questionnaire, the one step not traced to its advice.
+RETEST_MONTHS = 6
+RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
+
 
 @dataclass(frozen=True)
 class Definition:

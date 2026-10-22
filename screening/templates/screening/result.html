@@ -13,10 +13,12 @@
 {% if score_bar %}
 <div class="score-bar" aria-hidden="true">
     <div class="score-bar-track">
-        {% for segment in score_bar.segments %}
-        <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
-        {% endfor %}
-        <div class="score-bar-marker" style="left: {{ score_bar.position|floatformat:2 }}%"></div>
+        <div class="score-bar-segments">
+            {% for segment in score_bar.segments %}
+            <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
+            {% endfor %}
+        </div>
+        <div class="score-bar-marker" style="--position: {{ score_bar.position|floatformat:2 }}%"></div>
     </div>
     <div class="score-bar-labels">
         {% for segment in score_bar.segments %}

@@ -3,9 +3,12 @@ Spec #148 batch 2, ticket #159: the returning-user home page.
 """
 
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -128,69 +131,144 @@ class NewUserHomeTests(TestCase):
 class ReturningUserHomeTests(TestCase):
     """Spec #148 batch 2, ticket #159: the returning-user home page."""
 
+    # Acceptance 9: "today" and every record's time are fixed, never the real clock.
+    TODAY = date(2026, 10, 22)
+    NOON = timezone.make_aware(datetime(2026, 10, 22, 12))
+    PRIMARY = "btn btn-primary btn-lg w-full mt-2"
+    SECONDARY = "btn btn-outline-primary btn-lg w-full mt-2"
+
     @classmethod
     def setUpTestData(cls):
         cls.user = consented_user(username="returning_tester")
-        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        cls.hhie_questions = Question.objects.bulk_create(
-            Question(
-                questionnaire=cls.hhie_s,
-                question_text=f"HHIE題{i}",
-                question_number=i,
-                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+        cls.questions = {}
+        for name, code, count in (
+            ("HHIE-S", "hhie-s", 10),
+            ("HHIA-S", "hhia-s", 10),
+            ("IOI-HA", "ioi-ha", 7),
+            ("SSQ12-TW", "ssq12-tw", 12),
+        ):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=name, code=code)
+            cls.questions[code] = Question.objects.bulk_create(
+                Question(
+                    questionnaire=questionnaire,
+                    question_text=f"{name}題{i}",
+                    question_number=i,
+                    category=(
+                        (Category.EMOTIONAL if i <= 5 else Category.SOCIAL)
+                        if code.startswith("hhi")
+                        else Category.NONE
+                    ),
+                )
+                for i in range(1, count + 1)
             )
-            for i in range(1, 11)
-        )
-        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
-        cls.ioi_questions = Question.objects.bulk_create(
-            Question(questionnaire=cls.ioi_ha, question_text=f"IOI題{i}", question_number=i)
-            for i in range(1, 8)
-        )
+        cls.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.get(code="hhia-s")
 
     def setUp(self):
         self.client.force_login(self.user)
+        real_localdate = timezone.localdate
 
-    def _submit(self, questionnaire, questions, score, days_ago):
-        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        def localdate(value=None, timezone=None):
+            return self.TODAY if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+
+    def _submit(self, code, scores, days_ago, user=None, **fields):
+        questionnaire = Questionnaire.objects.get(code=code)
+        submission = Submission.objects.create(
+            user=user or self.user, questionnaire=questionnaire, **fields
+        )
         Answer.objects.bulk_create(
-            Answer(submission=submission, question=question, score=score) for question in questions
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questions[code], scores, strict=True)
         )
         Submission.objects.filter(pk=submission.pk).update(
-            created_at=timezone.now() - timedelta(days=days_ago)
+            created_at=self.NOON - timedelta(days=days_ago)
         )
         submission.refresh_from_db()
         return submission
+
+    def _hhie_s(self, days_ago, user=None):
+        return self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago, user=user)  # 12
 
     def _main(self):
         content = self.client.get(reverse("index")).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def test_due_retest_shows_reminder_and_retake_button(self):
-        submission = self._submit(self.hhie_s, self.hhie_questions, score=4, days_ago=200)
-        response = self.client.get(reverse("index"))
-        main = content = response.content.decode()
-        main = content[content.index("<main") : content.index("</main>")]
-        self.assertIn("已經滿 6 個月", main)
+    def _retake_url(self, questionnaire):
+        return reverse("screening", args=[questionnaire.pk])
+
+    def test_due_retest_shows_reminder_and_primary_retake_button(self):
+        # Acceptance 4: 2026/04/22 is exactly six months before "today".
+        submission = self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        main = self._main()
         self.assertIn(
-            f'href="{reverse("screening", args=[self.hhie_s.pk])}">再做一次（大約 3 分鐘）</a>',
+            '<p class="mt-4">距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>', main
+        )
+        self.assertIn(
+            f'<a class="{self.PRIMARY}" href="{self._retake_url(self.hhie_s)}">'
+            "再做一次（大約 3 分鐘）</a>",
             main,
         )
+        self.assertNotIn("看我的紀錄與趨勢", main)
         self.assertIn(reverse("result", args=[submission.id]), main)
 
     def test_not_due_shows_next_date_and_secondary_retake(self):
-        self._submit(self.hhie_s, self.hhie_questions, score=4, days_ago=30)
+        # Acceptance 5: one month in (2026/09/22), so next 2027/03/22.
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=30)
         main = self._main()
-        self.assertIn("下次建議", main)
-        self.assertIn(f'href="{reverse("my_hearing")}">看我的紀錄與趨勢</a>', main)
-        self.assertIn(f'href="{reverse("screening", args=[self.hhie_s.pk])}">再做一次</a>', main)
+        self.assertIn('<p class="mt-4">下次建議 2027/03/22 再做</p>', main)
+        self.assertIn(
+            f'<a class="{self.PRIMARY}" href="{reverse("my_hearing")}">看我的紀錄與趨勢</a>', main
+        )
+        self.assertIn(
+            f'<a class="{self.SECONDARY}" href="{self._retake_url(self.hhie_s)}">再做一次</a>', main
+        )
+        self.assertNotIn("再做一次（大約 3 分鐘）", main)
 
-    def test_only_ioi_ha_shows_its_summary_without_a_reminder(self):
-        self._submit(self.ioi_ha, self.ioi_questions, score=3, days_ago=1)
+    def test_last_result_card_shows_the_latest_life_impact_record(self):
+        # Acceptance 2: newer IOI-HA and SSQ12 records do not take the card from HHIE-S.
+        self._submit("hhie-s", [0] * 10, days_ago=40)
+        latest = self._hhie_s(days_ago=30)
+        self._submit("ioi-ha", [3] * 7, days_ago=20, norm_group="ungrouped")
+        self._submit("ssq12-tw", [6] * 12, days_ago=10)
         main = self._main()
-        self.assertIn("助聽器使用成效（IOI-HA）", main)
-        self.assertNotIn("已經滿 6 個月", main)
+        self.assertIn('<p class="mt-2">2026/09/22 作答</p>', main)
+        self.assertIn('<h2 class="result-level mb-0">輕度到中度影響</h2>', main)
+        self.assertIn("<div>HHIE-S 總分 12 分</div>", main)
+        self.assertIn(f'href="{reverse("result", args=[latest.id])}"', main)
+
+    def test_only_ioi_ha_shows_its_norm_summary_without_a_reminder(self):
+        # Acceptance 3. Mild to moderate norms: items 1 and 2 below, item 5 above.
+        self._submit("ioi-ha", [1, 1, 3, 3, 5, 3, 3], days_ago=1, norm_group="mild_moderate")
+        main = self._main()
+        self.assertIn('<h2 class="result-level mb-0">助聽器使用成效（IOI-HA）</h2>', main)
+        self.assertIn("<div>7 項中 2 項低於常模、1 項高於常模</div>", main)
+        self.assertNotIn("滿 6 個月", main)
         self.assertNotIn("下次建議", main)
         self.assertNotIn("再做一次", main)
+
+    def test_ungrouped_ioi_ha_says_it_cannot_be_compared(self):
+        self._submit("ioi-ha", [3] * 7, days_ago=1, norm_group="ungrouped")
+        self.assertIn("<div>未分組，無法和常模比較</div>", self._main())
+
+    def test_only_ssq12_shows_its_average(self):
+        self._submit("ssq12-tw", [6] * 12, days_ago=1)
+        main = self._main()
+        self.assertIn('<h2 class="result-level mb-0">日常聆聽能力（SSQ12-TW）</h2>', main)
+        self.assertIn("<div>整體平均：6.0／10</div>", main)
+        self.assertNotIn("再做一次", main)
+
+    def test_hhia_s_retake_stays_hhia_s_past_65(self):
+        # Acceptance 6. Born 1950: over 65 on the fixed "today".
+        older = consented_user(username="past_65", birth_year=1950)
+        self._submit("hhia-s", [0] * 10, days_ago=1, user=older)
+        self.client.force_login(older)
+        main = self._main()
+        self.assertIn(
+            f'<a class="{self.SECONDARY}" href="{self._retake_url(self.hhia_s)}">再做一次</a>', main
+        )
+        self.assertNotIn(self._retake_url(self.hhie_s), main)
 
     def test_signed_in_home_is_never_cached(self):
         response = self.client.get(reverse("index"))
@@ -198,10 +276,36 @@ class ReturningUserHomeTests(TestCase):
 
     def test_only_the_logged_in_user_s_records_are_shown(self):
         other = consented_user(username="someone_else")
-        other_submission = Submission.objects.create(user=other, questionnaire=self.hhie_s)
-        Answer.objects.bulk_create(
-            Answer(submission=other_submission, question=question, score=4)
-            for question in self.hhie_questions
-        )
+        theirs = self._hhie_s(days_ago=1, user=other)
         main = self._main()
-        self.assertNotIn(reverse("result", args=[other_submission.id]), main)
+        self.assertNotIn(reverse("result", args=[theirs.id]), main)
+        self.assertIn("開始篩檢", main)  # this user has no records: still the new-user home
+
+    def _count_queries(self):
+        with CaptureQueriesContext(connection) as queries:
+            self.assertEqual(self.client.get(reverse("index")).status_code, 200)
+        return len(queries)
+
+    def test_queries_do_not_grow_with_records(self):
+        # CODING_STANDARDS 15, for both kinds of last result card.
+        for card, add in (
+            ("life impact", lambda days: self._hhie_s(days_ago=days)),
+            (
+                "IOI-HA",
+                lambda days: self._submit(
+                    "ioi-ha", [3] * 7, days_ago=days, norm_group="mild_moderate"
+                ),
+            ),
+        ):
+            with self.subTest(card=card):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                add(1)
+                add(2)
+                two = self._count_queries()
+                for days in range(3, 8):
+                    add(days)
+                if card == "life impact":
+                    self._submit("ioi-ha", [3] * 7, days_ago=9, norm_group="mild_moderate")
+                    self._submit("ssq12-tw", [6] * 12, days_ago=10)
+                self.assertEqual(self._count_queries(), two)

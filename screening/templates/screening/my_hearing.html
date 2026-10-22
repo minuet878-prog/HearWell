@@ -35,7 +35,7 @@
         {# IOI-HA: no total or level, only its fixed norm group. #}
         <span>{{ submission.questionnaire.questionnaire_name }}　常模組別：{{ submission.get_norm_group_display }}</span>
         {% elif submission.questionnaire.definition.averaged %}
-        <span>{% if submission.ssq_average is not None %}整體平均：{{ submission.ssq_average }}／10{% else %}{{ submission.ssq_unavailable_reason }}{% endif %}</span>
+        <span>{% include "screening/ssq_average.html" %}</span>
         <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% else %}
         <span>總分：{{ submission.total_answer_score }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
@@ -57,7 +57,7 @@
         {% if saved_comparison %}
         {% include current.definition.comparison.history_template with comparison=saved_comparison %}
         {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
-        <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">選擇或管理比較（{{ current }}）</a>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">比較戴與不戴助聽器</a>
     </section>
     {% endif %}
 </section>

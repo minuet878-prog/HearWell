@@ -81,17 +81,21 @@
 <div class="result-banner result-banner-unknown">
     <div>上次結果</div>
     <h2 class="result-level mb-0">{{ submission.questionnaire.definition.topic }}（{{ submission.questionnaire.questionnaire_name }}）</h2>
+    {% if last_ioi_ha %}
+    <div>{% include "screening/ioi_ha_summary.html" with ioi_ha=last_ioi_ha %}</div>
+    {% elif submission.questionnaire.definition.averaged %}
+    <div>{% include "screening/ssq_average.html" %}</div>
+    {% endif %}
 </div>
 {% endif %}
 <p class="mt-2"><a href="{% url 'result' submission.id %}">看這次結果</a></p>
 {% endwith %}
+{% if user_state.reminder %}
+<p class="mt-4">{{ user_state.reminder }}</p>
+{% endif %}
 {% if user_state.retest_due %}
-<p class="mt-4">距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>
 <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次（大約 3 分鐘）</a>
 {% else %}
-{% if user_state.next_suggested_date %}
-<p class="mt-4">下次建議 {{ user_state.next_suggested_date|date:"Y/m/d" }} 再做</p>
-{% endif %}
 <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
 {% if user_state.retest_questionnaire %}
 <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次</a>

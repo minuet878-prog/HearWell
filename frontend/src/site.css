@@ -1310,6 +1310,10 @@
 
   .score-bar-track {
     position: relative;
+  }
+
+  /* Rounded and clipped on their own, so the taller marker above them is not cut off. */
+  .score-bar-segments {
     display: flex;
     height: 0.75rem;
     border-radius: var(--radius-small);
@@ -1339,7 +1343,9 @@
     height: 1.25rem;
     background-color: var(--color-heading);
     border-radius: var(--radius-small);
-    transform: translateX(-50%);
+    /* Shifted by its own width in proportion, so 0 and full marks sit flush inside the bar. */
+    left: var(--position);
+    transform: translateX(calc(-1 * var(--position)));
   }
 
   .score-bar-labels {

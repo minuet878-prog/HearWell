@@ -71,7 +71,7 @@ class ScoreBarTests(TestCase):
         self.assertIn(
             'class="score-bar-segment score-bar-segment-severe" style="width: 40.00%"', page
         )
-        self.assertIn('class="score-bar-marker" style="left: 30.00%"', page)
+        self.assertIn('class="score-bar-marker" style="--position: 30.00%"', page)
 
     def test_hhia_s_uses_its_own_thresholds(self):
         # HHIA-S's own definition, not HHIE-S's (same numbers, but read independently).
@@ -79,11 +79,11 @@ class ScoreBarTests(TestCase):
         self.assertIn(
             'class="score-bar-segment score-bar-segment-normal" style="width: 20.00%"', page
         )
-        self.assertIn('class="score-bar-marker" style="left: 30.00%"', page)
+        self.assertIn('class="score-bar-marker" style="--position: 30.00%"', page)
 
     def test_marker_stays_inside_the_bar_at_both_ends(self):
-        self.assertIn('style="left: 0.00%"', self._get(self._hhie_s(0)))
-        self.assertIn('style="left: 100.00%"', self._get(self._hhie_s(40)))
+        self.assertIn('style="--position: 0.00%"', self._get(self._hhie_s(0)))
+        self.assertIn('style="--position: 100.00%"', self._get(self._hhie_s(40)))
 
     def test_uses_the_questionnaire_s_own_thresholds_not_a_fixed_table(self):
         questionnaire = Questionnaire.objects.create(questionnaire_name="假問卷", code="fake-level")
@@ -102,14 +102,22 @@ class ScoreBarTests(TestCase):
         self.assertIn(
             'class="score-bar-segment score-bar-segment-high" style="width: 50.00%"', page
         )
-        self.assertIn('style="left: 25.00%"', page)
+        self.assertIn('style="--position: 25.00%"', page)
         self.assertIn('class="score-bar-label-low">低</span>', page)
         self.assertIn('class="score-bar-label-high">高</span>', page)
 
-    def test_no_bar_when_unclassifiable(self):
+    def test_no_bar_without_thresholds(self):
         submission = self._submit(self.unknown, [self.unknown_question], [4])
         with self.assertLogs("screening.scoring", "ERROR"):
             page = self._get(submission)
+        self.assertNotIn("score-bar", page)
+
+    def test_no_bar_when_the_score_is_outside_the_thresholds(self):
+        # HHIE-S has thresholds, but 10 points an item (100) is out of range: 「無法判讀」.
+        submission = self._submit(self.hhie_s, self.hhie_questions, [10] * 10)
+        with self.assertLogs("screening.scoring", "ERROR"):
+            page = self._get(submission)
+        self.assertIn("無法判讀", page)
         self.assertNotIn("score-bar", page)
 
     def test_bar_is_hidden_from_assistive_technology(self):

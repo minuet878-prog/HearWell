@@ -263,7 +263,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             # #161: the comparison link only shows once both statuses exist; the page was
             # rendered before the aided record above, so reload to see it.
             self.page.reload()
-            self.main().get_by_role("link", name="選擇或管理比較", exact=False).click()
+            self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True).click()
             self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(unaided.pk))
             self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
             self.main().get_by_role("button", name="查看比較", exact=True).focus()
@@ -2676,6 +2676,37 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for path, selector in cases:
                 with self.subTest(box=selector):
                     check(path, selector)
+
+    # #158 acceptance 2 and 6: at 0 and full marks the marker sits flush inside the bar, is not
+    # cut off, and nothing on the bar moves, with or without reduced motion.
+    def test_score_bar_marker_stays_inside_and_still(self):
+        records = {
+            0: self.submission(self.hhie_s, [0] * 10),
+            40: self.submission(self.hhie_s, [4] * 10),
+        }
+        for motion in (False, True):
+            self.open(motion=motion)
+            with self.saving_artifacts():
+                for total, record in records.items():
+                    with self.subTest(total=total, motion=motion):
+                        self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                        bar = self.page.locator(".score-bar-segments").bounding_box()
+                        marker = self.page.locator(".score-bar-marker").bounding_box()
+                        flush = (
+                            bar["x"] if total == 0 else bar["x"] + bar["width"] - marker["width"]
+                        )
+                        self.assertAlmostEqual(marker["x"], flush, delta=0.5)
+                        track = self.page.locator(".score-bar-track")
+                        self.assertEqual(self.style(track, "overflow"), "visible")
+                        # The bar only: the header wave plays on a tab's first page (ADR 0006).
+                        animations = self.page.locator(".score-bar").evaluate(
+                            "el => el.getAnimations({subtree: true}).length"
+                        )
+                        self.assertEqual(animations, 0)
+                        for selector in (".score-bar-segment", ".score-bar-marker"):
+                            found = self.page.locator(selector).first
+                            self.assertEqual(self.style(found, "transitionDuration"), "0s")
+                            self.assertEqual(self.style(found, "animationName"), "none")
 
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)

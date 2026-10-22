@@ -1,0 +1,1 @@
+{# One IOI-HA record against its norm group, from views._ioi_ha_summary; the report and the home page. #}{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}

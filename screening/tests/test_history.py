@@ -308,6 +308,12 @@ class HistoryTabsTests(TestCase):
         main = self._main(self.client.get(self.url))
         self.assertLess(main.index("要給醫師或家人看"), main.index("配戴狀態比較"))
         self.assertLess(main.index("聽力報告"), main.index("配戴狀態比較"))
+        # Acceptance 4: the entry reads 「比較戴與不戴助聽器」, inside the bottom card.
+        card = main[main.index('aria-labelledby="for-doctor-title"') :]
+        self.assertIn(
+            f'href="{reverse("hhi_comparison", args=[self.hhie_s.pk])}">比較戴與不戴助聽器</a>',
+            card,
+        )
 
     def test_difference_hidden_without_both_statuses(self):
         # Ticket #161: only shown when this questionnaire has both an aided and unaided record.
@@ -435,6 +441,9 @@ class HistoryTabsTests(TestCase):
         Answer.objects.create(submission=submission, question=question, score=4)
         response = self.client.get(self._tab_url("hhia-s"))
         main = self._main(response)
+        # Acceptance 2 of #161: both tabs, told apart by their names.
+        labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", self._tabs(main))
+        self.assertEqual(labels, [self.HHIE_S_TAB, self.HHIA_S_TAB])
         self.assertEqual(self._current_tab(self._tabs(main)), self.HHIA_S_TAB)
         self.assertIn(reverse("result", args=[submission.id]), main)
         self.assertNotIn("trend-chart", main)
