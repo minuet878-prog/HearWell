@@ -12,7 +12,7 @@ from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
-from screening.scoring import classify
+from screening.scoring import classify, ssq_since_last_text
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -281,6 +281,31 @@ class Submission(models.Model):
         return (Decimal(scores["score_total"]) / 12).quantize(
             Decimal("0.1"), rounding=ROUND_HALF_UP
         )
+
+    @cached_property
+    def ssq_since_last(self):
+        # SSQ12-TW's 「比上一次」 (ticket #188): the latest earlier record of the same questionnaire
+        # worn the same way, shown only when both have an overall average (ADR 0001).
+        if self.ssq_average is None or self.wearing_hearing_aid is None:
+            return None
+        previous = (
+            Submission.objects.filter(
+                user_id=self.user_id,
+                questionnaire_id=self.questionnaire_id,
+                wearing_hearing_aid=self.wearing_hearing_aid,
+            )
+            .filter(
+                models.Q(created_at__lt=self.created_at)
+                | models.Q(created_at=self.created_at, id__lt=self.id)
+            )
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if previous is None or previous.ssq_average is None:
+            return None
+        # The difference of the unrounded averages, the same rule as a wearing comparison's.
+        difference = self.questionnaire.definition.comparison.difference(previous, self)
+        return {"previous": previous, "text": ssq_since_last_text(previous, difference)}
 
     @property
     def ssq_unavailable_reason(self):

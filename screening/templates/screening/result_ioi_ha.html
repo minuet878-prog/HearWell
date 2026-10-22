@@ -3,33 +3,52 @@
 {% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
 
 {% block body %}
-<p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
-<h1 class="h3">{{ submission.questionnaire.questionnaire_name }} 結果</h1>
-<p class="text-xl/normal font-bold">常模組別：{{ submission.get_norm_group_display }}</p>
-<p>這是常模比較的分組，不代表聽損程度。</p>
+<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
+<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+<section class="card card-body mb-6">
+    {% if grouped %}
+    <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項比一般使用者低</p>
+    <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
+    {% with basis=submission.norm_basis %}
+    <p class="mb-0">分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.total_answer_score }} 分。這是常模比較的分組，不代表聽損程度。</p>
+    {% endwith %}
+    {% else %}
+    <p class="mb-0">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
+    {% endif %}
+    <ul class="trend-legend" aria-hidden="true">
+        {% if grouped %}<li><span class="ioi-legend-band"></span>一般使用者的範圍（常模）</li>{% endif %}
+        <li><span class="ioi-legend-latest"></span>您的回答</li>
+    </ul>
+</section>
 {% if grouped %}
-{% with basis=submission.norm_basis %}
-<p>分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.total_answer_score }} 分。</p>
-{% endwith %}
-<p>常模範圍是一般助聽器使用者中，中間一半的人的分數。</p>
+{% if below %}
+<section class="ioi-below" aria-labelledby="ioi-below-title">
+    <h2 id="ioi-below-title" class="h4">比一般使用者低的 {{ below|length }} 項</h2>
+    <ol class="ioi-items">
+        {% for item in below %}{% include "screening/ioi_ha_item.html" with hide_versus=True %}{% endfor %}
+    </ol>
+</section>
+{% endif %}
+{% if others %}
+<details class="ioi-others">
+    <summary>其他 {{ others|length }} 項</summary>
+    <ol class="ioi-items">
+        {% for item in others %}{% include "screening/ioi_ha_item.html" %}{% endfor %}
+    </ol>
+</details>
+{% endif %}
 {% else %}
-<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
-{% endif %}
-<ol>
-    {% for item in items %}
-    <li class="mb-4">
-        <div>{{ item.text }}</div>
-        <div class="font-bold">您的回答：{{ item.label }}{% if item.comparison %}（{{ item.comparison }}）{% endif %}</div>
-        {% if item.note %}<p class="ioi-note">{{ item.note }}</p>{% endif %}
-    </li>
-    {% endfor %}
+<ol class="ioi-items">
+    {% for item in items %}{% include "screening/ioi_ha_item.html" %}{% endfor %}
 </ol>
-{% if grouped %}
-<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
 {% endif %}
-<div class="flex flex-col min-[576px]:flex-row gap-2 my-4">
-    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
-    <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
-</div>
+<section class="card card-body my-6" aria-labelledby="ioi-next-title">
+    <h2 id="ioi-next-title" class="h4">接下來</h2>
+    {% if grouped %}<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>{% endif %}
+    <div class="flex flex-col min-[576px]:flex-row gap-2">
+        <a class="btn btn-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
+    </div>
+</section>
 {% include "screening/ioi_ha_source.html" with with_norms=True with_notes=True %}
 {% endblock %}

@@ -21,7 +21,6 @@ class IoiHaTests(TestCase):
     HEARING_AID_PROMPT = "這次填答時，您有沒有戴助聽器？"
     SOURCE = ("原量表：IOI-HA（Cox 等人）", "中譯：林克寰《助聽器選配與驗證》", "CC BY 3.0 台灣")
     NORM_SOURCE = "常模：Cox、Alexander、Beyer（2003）"
-    NORM_NOTE = "常模範圍是一般助聽器使用者中，中間一半的人的分數"
     ADVICE = "如有多項低於常模，可以帶這份結果跟您的聽力師討論"
     UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
     COMPARISONS = ("低於常模", "在範圍內", "高於常模")
@@ -86,7 +85,9 @@ class IoiHaTests(TestCase):
         return Submission.objects.get(questionnaire=self.ioi_ha)
 
     def _items(self, main):
-        return re.findall(r"<li[^>]*>(.*?)</li>", main, re.DOTALL)
+        # By question number, wherever the result page groups them (#187).
+        items = re.findall(r'<li class="ioi-item">(.*?)</li>', main, re.DOTALL)
+        return sorted(items, key=lambda item: int(re.search(r"IOI題(\d+)", item).group(1)))
 
     # Answering (1-4)
     def test_answer_page_items_and_text(self):
@@ -197,8 +198,7 @@ class IoiHaTests(TestCase):
         submission.refresh_from_db()
         self.assertEqual(submission.norm_group, "mild_moderate")
         main = self._main(self.client.get(reverse("result", args=[submission.id])))
-        self.assertIn("常模組別：輕度至中度", main)
-        self.assertIn("10 分", main)
+        self.assertIn("沒戴助聽器時填的 HHIE-S，10 分", main)
 
     def test_ungrouped_stays_ungrouped(self):
         submission = self._group_after_post()
@@ -206,7 +206,7 @@ class IoiHaTests(TestCase):
         submission.refresh_from_db()
         self.assertEqual(submission.norm_group, "ungrouped")
         main = self._main(self.client.get(reverse("result", args=[submission.id])))
-        self.assertIn("常模組別：未分組", main)
+        self.assertIn(self.UNGROUPED_NOTE, main)
 
     # Result (13-16)
     def test_compare_to_norm_both_groups(self):
@@ -233,9 +233,9 @@ class IoiHaTests(TestCase):
         response = self.client.get(self._post(scores=(3, 5, 3, 1, 4, 3, 3)).url)
         items = self._items(self._main(response))
         self.assertEqual(len(items), 7)
-        self.assertIn("高於常模", items[1])
-        self.assertIn("低於常模", items[3])
-        self.assertIn("在範圍內", items[4])
+        self.assertIn("比一般使用者好", items[1])
+        self.assertIn("比一般使用者低", items[3])
+        self.assertIn("在一般範圍內", items[4])
         self.assertIn(ioi_ha.ITEM_CHOICES[4][0], items[3])
 
     def test_grouped_result_page(self):
@@ -246,10 +246,8 @@ class IoiHaTests(TestCase):
         self.assertContains(response, "<title>IOI-HA 結果\uff5cHearWell</title>", html=False)
         main = self._main(response)
         for text in (
-            "常模組別：輕度至中度",
             "2026/10/01",
             "24 分",
-            self.NORM_NOTE,
             self.ADVICE,
             self.NORM_SOURCE,
             *self.SOURCE,
@@ -266,7 +264,6 @@ class IoiHaTests(TestCase):
         main = self._main(response)
         items = self._items(main)
         self.assertEqual(len(items), 7)
-        self.assertIn("常模組別：未分組", main)
         self.assertIn(self.UNGROUPED_NOTE, main)
         for text in self.COMPARISONS:
             self.assertNotIn(text, main)
@@ -276,11 +273,10 @@ class IoiHaTests(TestCase):
         # Item 1 = 3 is within mild_moderate (3-5) but below moderately_severe (4-5).
         self._hhie_s(30, wearing=False)
         main = self._main(self.client.get(self._post().url))
-        self.assertRegex(main, r"<h1[^>]*>IOI-HA 結果</h1>")
-        self.assertIn("常模組別：中重度以上", main)
+        self.assertIn("沒戴助聽器時填的 HHIE-S，30 分", main)
         items = self._items(main)
-        self.assertIn("低於常模", items[0])
-        self.assertIn("在範圍內", items[1])
+        self.assertIn("比一般使用者低", items[0])
+        self.assertIn("在一般範圍內", items[1])
 
     def test_user_records_delete_together_but_basis_not_alone(self):
         basis = self._hhie_s(10, wearing=False)
@@ -389,7 +385,7 @@ class IoiHaTests(TestCase):
         # Item 4 = 5 is above its norm (2-4): above gets no note either (review a).
         scores = (1, 3, 1, 5, 3, 3, 3)
         items = self._items(self._main(self.client.get(self._post(scores=scores).url)))
-        self.assertIn("高於常模", items[3])
+        self.assertIn("比一般使用者好", items[3])
         notes = self._notes_on(scores)
         notes_text = scoring.IOI_HA_BELOW_NORM_NOTES
         self.assertEqual(notes, [notes_text[1], None, notes_text[3], None, None, None, None])
@@ -460,6 +456,193 @@ class IoiHaTests(TestCase):
                 "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
             },
         )
+
+
+class IoiHaResultRedesignTests(TestCase):
+    """Ticket #187 (spec #183, IOI-HA stories 1-11, acceptance 1-2)."""
+
+    BASIS_DAY = datetime(2026, 10, 1, 12, 0, tzinfo=ZoneInfo("Asia/Taipei"))
+    ANSWERED_AT = datetime(2026, 10, 15, 12, 0, tzinfo=ZoneInfo("Asia/Taipei"))
+    # mild_moderate: item 1 (3-5) and item 6 (3-5) below, item 4 (2-4) above, the rest within.
+    TWO_BELOW_ONE_ABOVE = (1, 3, 3, 5, 3, 2, 3)
+
+    setUpTestData = IoiHaTests.__dict__["setUpTestData"]
+    _main = IoiHaTests._main
+    _hhie_s = IoiHaTests._hhie_s
+    _post = IoiHaTests._post
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.url = reverse("screening", args=[self.ioi_ha.id])
+
+    def _result(self, scores, grouped=True):
+        if grouped:
+            self._hhie_s(24, wearing=False, created_at=self.BASIS_DAY)
+        result_url = self._post(scores=scores).url
+        Submission.objects.filter(questionnaire=self.ioi_ha).update(created_at=self.ANSWERED_AT)
+        return self.client.get(result_url)
+
+    def _below(self, main):
+        # The expanded group of items below the norm.
+        match = re.search(r'<section class="ioi-below".*?</section>', main, re.S)
+        return match.group(0) if match else ""
+
+    def _others(self, main):
+        # The collapsed group of every other item.
+        match = re.search(r'<details class="ioi-others".*?</details>', main, re.S)
+        return match.group(0) if match else ""
+
+    def _items(self, html):
+        return re.findall(r'<li class="ioi-item[^"]*">(.*?)</li>', html, re.S)
+
+    def _scale(self, item):
+        # The 5-cell scale, score 1 to 5: "B" is a norm cell, "*" marks the answer.
+        scale = re.search(r'<div class="ioi-scale" aria-hidden="true">(.*?)</div>', item, re.S)
+        cells = re.findall(r'<span class="ioi-cell( ioi-cell-band)?">(.*?)</span>', scale.group(1))
+        return ["B" * bool(band) + "*" * ("ioi-dot" in inside) or "-" for band, inside in cells]
+
+    def test_title_is_the_topic_with_code_and_date_below(self):
+        main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
+        self.assertRegex(main, r"<h1[^>]*>助聽器使用成效</h1>")
+        self.assertIn("IOI-HA・2026/10/15 作答", main)
+        self.assertLess(main.index("助聽器使用成效</h1>"), main.index("IOI-HA・2026/10/15"))
+
+    def test_grouped_summary_and_groups(self):
+        # Acceptance 1.
+        main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
+        self.assertIn("7 項中，有 2 項比一般使用者低", main)
+        self.assertIn("比較對象：一般助聽器使用者中，中間一半的人（常模）", main)
+        self.assertIn("分組依據：2026/10/01 沒戴助聽器時填的 HHIE-S，24 分。", main)
+        self.assertIn("這是常模比較的分組，不代表聽損程度。", main)
+        self.assertNotIn("常模組別", main)
+
+        below = self._below(main)
+        self.assertIn("比一般使用者低的 2 項", below)
+        self.assertNotIn("<details", below)
+        below_items = self._items(below)
+        self.assertEqual(len(below_items), 2)
+        for item, number, label in (
+            (below_items[0], 1, ioi_ha.ITEM_CHOICES[1][0]),
+            (below_items[1], 6, ioi_ha.ITEM_CHOICES[6][1]),
+        ):
+            with self.subTest(item=number):
+                self.assertIn(scoring.IOI_HA_ITEM_NAMES[number], item)
+                self.assertIn(f"IOI題{number}", item)
+                self.assertIn(f"您的回答：{label}", item)
+                self.assertIn(scoring.IOI_HA_BELOW_NORM_NOTES[number], item)
+
+        others = self._others(main)
+        self.assertIn("其他 5 項", others)
+        self.assertNotIn("<details open", others)
+        other_items = self._items(others)
+        self.assertEqual(len(other_items), 5)
+        names = [scoring.IOI_HA_ITEM_NAMES[n] for n in (2, 3, 4, 5, 7)]
+        for item, name, number in zip(other_items, names, (2, 3, 4, 5, 7), strict=True):
+            with self.subTest(item=number):
+                self.assertIn(name, item)
+                expected = "比一般使用者好" if number == 4 else "在一般範圍內"
+                self.assertIn(expected, item)
+                label = ioi_ha.ITEM_CHOICES[number][4 if number == 4 else 2]
+                self.assertIn(f"您的回答：{label}", item)
+                self.assertNotIn("ioi-note", item)
+        # The advice sentence keeps 「低於常模」 word for word; the items no longer say it.
+        for old in ("（低於常模）", "在範圍內", "高於常模"):
+            with self.subTest(absent=old):
+                self.assertNotIn(old, main)
+
+    def test_each_item_has_a_hidden_scale_of_norm_and_answer(self):
+        main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
+        below = self._items(self._below(main))
+        others = self._items(self._others(main))
+        # Item 1 answered 1 against 3-5, item 4 answered 5 against 2-4,
+        # item 2 answered 3 against 3-4.
+        self.assertEqual(self._scale(below[0]), ["*", "-", "B", "B", "B"])
+        self.assertEqual(self._scale(others[2]), ["-", "B", "B", "B", "*"])
+        self.assertEqual(self._scale(others[0]), ["-", "-", "B*", "B", "-"])
+        legend = re.search(r'<ul class="trend-legend" aria-hidden="true">(.*?)</ul>', main, re.S)
+        self.assertIn("一般使用者的範圍（常模）", legend.group(1))
+        self.assertIn("您的回答", legend.group(1))
+
+    def test_screen_readers_get_each_comparison_and_answer_as_text(self):
+        # Acceptance: the words carry what the scale shows, even inside the folded group.
+        main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
+        items = self._items(self._below(main)) + self._items(self._others(main))
+        expected = (
+            (1, "比一般使用者低", 0),
+            (6, "比一般使用者低", 1),
+            (2, "在一般範圍內", 2),
+            (3, "在一般範圍內", 2),
+            (4, "比一般使用者好", 4),
+            (5, "在一般範圍內", 2),
+            (7, "在一般範圍內", 2),
+        )
+        for item, (number, versus, choice) in zip(items, expected, strict=True):
+            with self.subTest(item=number):
+                text = re.sub(
+                    r'<div class="ioi-scale" aria-hidden="true">.*?</div>', "", item, flags=re.S
+                )
+                self.assertIn(versus, text)
+                self.assertIn(f"您的回答：{ioi_ha.ITEM_CHOICES[number][choice]}", text)
+
+    def _next(self, main):
+        match = re.search(r'<section[^>]*aria-labelledby="ioi-next-title".*?</section>', main, re.S)
+        return match.group(0)
+
+    def test_ungrouped_has_no_groups_band_or_advice(self):
+        # Acceptance 3.
+        main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
+        self.assertIn(IoiHaTests.UNGROUPED_NOTE, main)
+        for absent in (
+            "比一般使用者",
+            "在一般範圍內",
+            "項中，有",
+            "比較對象",
+            "其他 ",
+            "ioi-below",
+            "ioi-others",
+            "ioi-cell-band",
+            "ioi-legend-band",
+            "一般使用者的範圍",
+            "ioi-note",
+            IoiHaTests.ADVICE,
+        ):
+            with self.subTest(absent=absent):
+                self.assertNotIn(absent, main)
+        items = self._items(main)
+        self.assertEqual(len(items), 7)
+        for number, item in enumerate(items, start=1):
+            with self.subTest(item=number):
+                self.assertIn(scoring.IOI_HA_ITEM_NAMES[number], item)
+                self.assertIn(f"IOI題{number}", item)
+                score = self.TWO_BELOW_ONE_ABOVE[number - 1]
+                self.assertIn(f"您的回答：{ioi_ha.ITEM_CHOICES[number][score - 1]}", item)
+                expected = ["-"] * 5
+                expected[score - 1] = "*"
+                self.assertEqual(self._scale(item), expected)
+        for text in (IoiHaTests.NORM_SOURCE, IoiHaTests.NOTE_SOURCE, *IoiHaTests.SOURCE):
+            with self.subTest(source=text):
+                self.assertIn(text, main)
+
+    def test_advice_word_for_word_only_when_grouped(self):
+        # Acceptance 4: the sentence shows even with no item below the norm, as before.
+        for scores in (self.TWO_BELOW_ONE_ABOVE, (3,) * 7):
+            with self.subTest(scores=scores):
+                next_steps = self._next(self._main(self._result(scores)))
+                self.assertIn(
+                    "<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>", next_steps
+                )
+
+    def test_next_steps_link_to_the_report_and_my_records(self):
+        # Ungrouped first: once an unaided HHIE-S exists, every later IOI-HA is grouped.
+        for grouped in (False, True):
+            with self.subTest(grouped=grouped):
+                next_steps = self._next(self._main(self._result((3,) * 7, grouped=grouped)))
+                self.assertIn("接下來", next_steps)
+                self.assertIn(f'href="{reverse("health_report")}">看／印聽力報告</a>', next_steps)
+                my_records = f"{reverse('my_hearing')}?questionnaire=ioi-ha"
+                self.assertIn(f'href="{my_records}">看我的紀錄</a>', next_steps)
+                self.assertNotIn("回首頁", next_steps)
+                self.assertEqual(IoiHaTests.ADVICE in next_steps, grouped)
 
 
 class IoiHaFixtureTests(TestCase):

@@ -280,7 +280,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 if number < 12:
                     self.next()
             self.main().get_by_role("button", name="送出").click()
-            expect(self.main().get_by_text("整體平均：6.3／10", exact=True)).to_be_visible()
+            expect(
+                self.main().get_by_text("整體平均 6.3 分（滿分 10）", exact=True)
+            ).to_be_visible()
             expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
             self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
             self.main().get_by_role("link", name="看我的紀錄", exact=True).click()

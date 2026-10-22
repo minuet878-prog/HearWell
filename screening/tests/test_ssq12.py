@@ -1,13 +1,16 @@
 """SSQ12-TW public answering flow (#79)."""
 
+import re
 import uuid
+from datetime import datetime
 from io import StringIO
+from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Questionnaire
+from screening.models import Answer, Questionnaire, Submission
 from screening.tests.helpers import consented_user
 
 
@@ -48,7 +51,7 @@ class Ssq12Tests(TestCase):
                 self.assertIsNone(data["level"])
                 self.assertIsNone(data["average_unavailable_reason"])
                 page = self.client.get(reverse("result", args=[data["id"]]))
-                self.assertContains(page, f"整體平均：{expected}")
+                self.assertContains(page, f"整體平均 <strong>{expected}</strong> 分（滿分 10）")
                 self.assertNotContains(page, "情緒分數")
                 self.assertNotContains(page, "總分")
                 history = self.client.get(reverse("my_hearing"), {"questionnaire": "ssq12-tw"})
@@ -175,7 +178,7 @@ class Ssq12Tests(TestCase):
         self.assertContains(page, "未計算：包含不適用題目")
 
     def test_owner_privacy_and_deletion_include_ssq12(self):
-        from screening.models import Answer, Submission, User
+        from screening.models import User
 
         self.start()
         data = self.post([6] * 12).json()
@@ -214,3 +217,127 @@ class Ssq12Tests(TestCase):
         self.assertTrue(score["nullable"])
         self.assertEqual(score["maximum"], 10)
         self.assertNotIn("scale", components["Question"]["required"])
+
+
+class Ssq12ResultRedesignTests(TestCase):
+    """The SSQ12-TW result page's layout and 「比上一次」 line (#188)."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="ssq_redesign")
+        self.client.force_login(self.user)
+
+    def record(self, day, total=None, wearing=False, scores=None):
+        """An SSQ12-TW record made at noon Taipei time; scores default to summing to total."""
+        if scores is None:
+            scores = [total // 12 + 1] * (total % 12) + [total // 12] * (12 - total % 12)
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questionnaire.questions.all(), scores, strict=True)
+        )
+        when = datetime(*day, 12, tzinfo=ZoneInfo("Asia/Taipei"))
+        Submission.objects.filter(pk=submission.pk).update(created_at=when)
+        return submission
+
+    def main(self, submission):
+        content = self.client.get(reverse("result", args=[submission.id])).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def text(self, main):
+        return " ".join(re.sub(r"<[^>]+>", " ", main).split())
+
+    def bar(self, main):
+        # The 0–10 position bar, hidden from assistive tech; "" when the page has none.
+        found = re.search(r'<div class="ssq-bar" aria-hidden="true">(.*?)ssq-bar-ends', main, re.S)
+        return found.group(1) if found else ""
+
+    def test_since_last_names_the_previous_record_and_the_bar_marks_both(self):
+        self.record((2026, 4, 20), total=70)  # 5.8
+        latest = self.record((2026, 10, 15), total=78)  # 6.5
+        main = self.main(latest)
+        self.assertIn("比上一次（2026/04/20，5.8 分）多 0.7 分（分數越高越好）", self.text(main))
+        bar = self.bar(main)
+        self.assertIn("--average: 6.5", bar)
+        self.assertIn("--average: 5.8", bar)
+
+    def test_since_last_skips_records_worn_the_other_way(self):
+        self.record((2026, 1, 10), total=60, wearing=True)  # 5.0
+        self.record((2026, 4, 20), total=70, wearing=False)
+        latest = self.record((2026, 10, 15), total=78, wearing=True)
+        main = self.main(latest)
+        self.assertIn("比上一次（2026/01/10，5.0 分）多 1.5 分（分數越高越好）", self.text(main))
+        self.assertIn("--average: 5.0", self.bar(main))
+
+    def test_no_since_last_without_a_comparable_previous_record(self):
+        not_applicable = [6] * 11 + [None]
+        cases = {
+            "first record": [],
+            "previous worn the other way": [dict(total=70, wearing=True)],
+            "previous has not applicable": [dict(total=70), dict(scores=not_applicable)],
+            "hearing aid not recorded": [dict(total=70, wearing=None)],
+        }
+        for case, earlier in cases.items():
+            with self.subTest(case):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                for month, record in enumerate(earlier, start=1):
+                    self.record((2026, month, 10), **record)
+                wearing = None if case == "hearing aid not recorded" else False
+                main = self.main(self.record((2026, 10, 15), total=78, wearing=wearing))
+                self.assertNotIn("上一次", self.text(main))
+                bar = self.bar(main)
+                self.assertIn("這次", bar)
+                self.assertNotIn("上次", bar)
+                self.assertEqual(bar.count("--average:"), 3)  # this record's label, fill, marker
+
+    def test_a_record_with_not_applicable_has_neither_since_last_nor_bar(self):
+        self.record((2026, 4, 20), total=70)
+        latest = self.record((2026, 10, 15), scores=[6] * 11 + [None])
+        main = self.main(latest)
+        text = self.text(main)
+        self.assertIn("未計算：包含不適用題目", text)
+        self.assertNotIn("上一次", text)
+        self.assertNotIn("整體平均 ", text)
+        self.assertEqual(self.bar(main), "")
+
+    def test_difference_uses_unrounded_averages_and_reads_more_less_or_same(self):
+        # ADR 0001: 52 and 56 show 4.3 and 4.7, yet differ by 4 / 12 = 0.33, shown as 0.3.
+        for previous, latest, expected in (
+            (52, 56, "比上一次（2026/04/20，4.3 分）多 0.3 分（分數越高越好）"),
+            (56, 52, "比上一次（2026/04/20，4.7 分）少 0.3 分（分數越高越好）"),
+            (48, 52, "比上一次（2026/04/20，4.0 分）多 0.3 分（分數越高越好）"),
+            (70, 70, "和上一次一樣"),
+        ):
+            with self.subTest(previous=previous, latest=latest):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                self.record((2026, 4, 20), total=previous)
+                main = self.main(self.record((2026, 10, 15), total=latest))
+                self.assertIn(expected, self.text(main))
+                self.assertIn("上次", self.bar(main))
+
+    def test_page_reads_topic_status_average_then_folded_answers_and_disclaimer_last(self):
+        latest = self.record((2026, 10, 15), total=78, wearing=True)
+        main = self.main(latest)
+        self.assertIn('<h1 class="h3 mt-2 mb-1">日常聆聽能力</h1>', main)
+        text = self.text(main)
+        order = [
+            "SSQ12-TW・2026/10/15 作答・有戴助聽器",
+            "整體平均 6.5 分（滿分 10）",
+            "分數越高，代表您回報的聆聽能力越好。",
+            "看全部 12 題的回答",
+        ]
+        self.assertEqual([text.index(part) for part in order], sorted(text.index(p) for p in order))
+        folded = re.search(
+            r"<details[^>]*>\s*<summary>看全部 12 題的回答</summary>(.*?)</details>", main, re.S
+        )
+        self.assertIsNotNone(folded)
+        self.assertEqual(folded.group(1).count("<li"), 12)
+        self.assertIn(
+            self.questionnaire.questions.get(question_number=12).question_text, folded.group(1)
+        )
+        self.assertTrue(text.endswith("這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。"))
