@@ -18,7 +18,9 @@ const QUESTIONS = Array.from({ length: 10 }, (_, i) => ({
   text: `第${i + 1}題的完整題目文字`,
   choices: CHOICES,
 }));
-const QUESTIONNAIRE = { id: 1, code: "hhie-s", name: "HHIE-S", levels: [], questions: QUESTIONS };
+const QUESTIONNAIRE = {
+  id: 1, code: "hhie-s", name: "HHIE-S", levels: [], wearing_question: "這次填答時，您有沒有戴助聽器？", questions: QUESTIONS,
+};
 const USER_ID = 7;
 const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
@@ -97,6 +99,13 @@ describe("pages", () => {
     expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
     expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["有戴", "沒戴"]);
     expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
+  });
+
+  it("asks the wearing question the questionnaire's data gives (#212, THI)", async () => {
+    mockApi(undefined, { ...QUESTIONNAIRE, code: "thi", name: "THI", wearing_question: "您現在有沒有配戴助聽器？" });
+    await renderApp();
+    expect(legend()).toBe("您現在有沒有配戴助聽器？");
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["有戴", "沒戴"]);
   });
 
   it("then shows one question per page with its full text and choices", async () => {

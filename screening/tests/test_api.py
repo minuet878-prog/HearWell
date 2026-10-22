@@ -339,7 +339,9 @@ class ApiQuestionnaireDetailTests(TestCase):
         response = self.client.get(self._url(self.questionnaire.pk))
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(set(data), {"id", "code", "name", "levels", "questions"})
+        self.assertEqual(
+            set(data), {"id", "code", "name", "levels", "wearing_question", "questions"}
+        )
         self.assertEqual(data["code"], "hhie-s")
         self.assertEqual(len(data["levels"]), 3)
         self.assertEqual([q["number"] for q in data["questions"]], [1, 2])

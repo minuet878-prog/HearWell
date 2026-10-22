@@ -21,6 +21,7 @@ const QUESTIONNAIRE = {
   code: "hhie-s",
   name: "HHIE-S",
   levels: [],
+  wearing_question: "這次填答時，您有沒有戴助聽器？",
   questions: [{ id: 11, number: 1, text: "第1題的完整題目文字", choices: [{ value: 4, label: "常常" }] }],
 };
 

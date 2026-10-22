@@ -58,6 +58,8 @@ class Definition:
     listed: bool = True
     # Answered about the hearing aids worn now or lately: wearing is not asked, saved as worn.
     always_aided: bool = False
+    # The wearing question on the answer page, web and React alike (spec #208).
+    wearing_question: str = "這次填答時，您有沒有戴助聽器？"
     # Copyright credit shown at the bottom of the answer page; "" when the intro already has it.
     source_template: str = ""
     # SUBSCALES only: how to read the scores, in place of norms or grades.

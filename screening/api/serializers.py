@@ -94,9 +94,11 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class QuestionnaireDetailSerializer(QuestionnaireSerializer):
     questions = QuestionSerializer(many=True)
+    # The React answer page asks this, the same words as the web form (screening.html).
+    wearing_question = serializers.CharField(source="definition.wearing_question", read_only=True)
 
     class Meta(QuestionnaireSerializer.Meta):
-        fields = (*QuestionnaireSerializer.Meta.fields, "questions")
+        fields = (*QuestionnaireSerializer.Meta.fields, "wearing_question", "questions")
 
 
 class ScoresSerializer(serializers.Serializer):
