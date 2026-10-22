@@ -416,6 +416,19 @@ class ReportComparison(models.Model):
     def difference_text(self):
         return self.questionnaire.definition.comparison.difference_text(self.unaided, self.aided)
 
+    # The comparison page's result card (#191).
+    @property
+    def unaided_result(self):
+        return self.questionnaire.definition.comparison.record_result(self.unaided)
+
+    @property
+    def aided_result(self):
+        return self.questionnaire.definition.comparison.record_result(self.aided)
+
+    @property
+    def direction_text(self):
+        return self.questionnaire.definition.comparison.direction_text(self.unaided, self.aided)
+
     @property
     def summary(self):  # one line of the report summary
         return self.questionnaire.definition.comparison.summary(self.unaided, self.aided)

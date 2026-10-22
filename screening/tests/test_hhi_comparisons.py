@@ -66,7 +66,7 @@ class HhiComparisonTests(TestCase):
         self.assertEqual(saved.unaided_id, unaided.pk)
         self.assertEqual(saved.aided_id, aided.pk)
         self.assertContains(page, "聽力報告裡的組合")
-        self.assertContains(page, "不一定是開始使用助聽器前後")
+        self.assertContains(page, "不一定是開始戴之前和之後的比較")
 
     def test_versions_keep_independent_pairs_and_removal_keeps_answers(self):
         hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
@@ -326,3 +326,115 @@ class WearingComparisonEntryTests(TestCase):
         main = self.main(reverse("result", args=[ssq12.pk]))
         self.assertNotIn("選擇問卷", main)
         self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main)
+
+
+def preview_text(page):
+    """The 「目前查看的兩筆」 section as plain text, one space between pieces."""
+    section = re.search(
+        r'<section aria-labelledby="preview-title".*?</section>', page.content.decode(), re.S
+    ).group(0)
+    return " ".join(re.sub(r"<[^>]+>", " ", section).split())
+
+
+class ComparisonResultCardTests(TestCase):
+    """The comparison page's result card (#191): two scores, one direction, the reminders."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
+        Question.objects.bulk_create(
+            Question(questionnaire=hhie, question_text=f"題{n}", question_number=n)
+            for n in range(1, 11)
+        )
+        self.user = consented_user(username="card_user")
+        self.client.force_login(self.user)
+
+    def record(self, code, wearing, scores):
+        questionnaire = Questionnaire.objects.get(code=code)
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=s)
+            for q, s in zip(questionnaire.questions.all(), scores, strict=True)
+        )
+        return record
+
+    def preview(self, code, unaided, aided):
+        first = self.record(code, False, unaided)
+        second = self.record(code, True, aided)
+        url = f"/comparisons/{first.questionnaire_id}"
+        return self.client.get(url, {"unaided": first.pk, "aided": second.pk, "action": "preview"})
+
+    def test_hhie_s_card_shows_both_scores_the_direction_and_the_reminders(self):
+        page = self.preview("hhie-s", [4, 4, 4] + [0] * 7, [2, 2, 2] + [0] * 7)
+        card = preview_text(page)
+        self.assertIn("沒戴 12 分", card)
+        self.assertIn("有戴 6 分", card)
+        self.assertIn("有戴比沒戴少 6 分（分數越低越好）", card)
+        self.assertIn("差值不能單獨判定助聽器效益", card)
+        self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+        # The old lines of the report fragment are not on the card.
+        self.assertNotIn("差值（配戴", card)
+        self.assertNotIn("少了 6 分", card)
+
+    def test_direction_sentence_for_more_and_same_on_both_versions(self):
+        for code, unaided, aided, sentence in (
+            ("hhie-s", [2] * 10, [2, 2] + [4] * 8, "有戴比沒戴多 16 分（分數越低越好）"),
+            ("hhie-s", [2] * 10, [2] * 10, "有戴和沒戴的分數一樣"),
+            ("hhia-s", [4] * 10, [2] * 10, "有戴比沒戴少 20 分（分數越低越好）"),
+            ("hhia-s", [0] * 10, [0] * 10, "有戴和沒戴的分數一樣"),
+        ):
+            with self.subTest(code=code, sentence=sentence):
+                card = preview_text(self.preview(code, unaided, aided))
+                self.assertIn(sentence, card)
+                self.assertIn("差值不能單獨判定助聽器效益", card)
+
+    def test_card_draws_no_conclusion(self):
+        page = self.preview("hhie-s", [4] * 10, [0] * 10).content.decode()
+        for conclusion in ("有幫助", "影響比較小", "變好", "變差"):
+            with self.subTest(conclusion=conclusion):
+                self.assertNotIn(conclusion, page)
+
+    def test_the_old_reminder_moves_into_the_card(self):
+        page = self.preview("hhie-s", [4] * 10, [2] * 10)
+        self.assertNotContains(page, "前測與後測")
+        self.assertContains(page, "兩筆是不同時間填的，不一定是開始戴之前和之後的比較", count=1)
+
+    def test_reports_keep_their_comparison_section(self):
+        # The owner's report, its print version (the same page) and the family's report read as
+        # before #191; the card is only on the comparison page.
+        first = self.record("hhie-s", False, [4, 4, 4] + [0] * 7)
+        second = self.record("hhie-s", True, [2, 2, 2] + [0] * 7)
+        Submission.objects.filter(pk=first.pk).update(
+            created_at=datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI)
+        )
+        Submission.objects.filter(pk=second.pk).update(
+            created_at=datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI)
+        )
+        self.client.post(
+            f"/comparisons/{first.questionnaire_id}",
+            {"unaided": first.pk, "aided": second.pk, "action": "save"},
+        )
+        owner = self.client.get("/report").content.decode()
+        self.client.post("/report/share", {"confirm": "1"})
+        token = self.user.report_shares.get().token
+        self.client.logout()
+        family = self.client.get(f"/shared/{token}/report").content.decode()
+        for name, content in (("owner", owner), ("family", family)):
+            with self.subTest(report=name):
+                section = re.search(
+                    r'<section id="report-difference".*?</section>', content, re.S
+                ).group(0)
+                self.assertEqual(
+                    " ".join(re.sub(r"<[^>]+>", " ", section).split()),
+                    "配戴狀態比較（HHIE-S，報告保留組合） "
+                    "這是您選定的兩筆，新增作答不會自動換組；"
+                    "不一定是開始使用助聽器前後的前測與後測。 "
+                    "未配戴：2026/04/20 10:30，12 分，輕度到中度影響。 "
+                    "配戴：2026/09/02 09:00，6 分，無/極輕微影響。 "
+                    "差值（配戴 \u2212 未配戴）：-6 分，少了 6 分。"
+                    "分數越低，生活影響越少；差值不能單獨判定助聽器效益。",
+                )
+                self.assertNotIn("有戴比沒戴", content)
+                self.assertNotIn("不一定是開始戴之前和之後的比較", content)

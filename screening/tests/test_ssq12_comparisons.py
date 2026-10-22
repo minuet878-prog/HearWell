@@ -1,5 +1,6 @@
 """SSQ12 saved comparison public pages (#83)."""
 
+import re
 from datetime import datetime
 from io import StringIO
 
@@ -44,8 +45,8 @@ class SsqComparisonTests(TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "4.3")
         self.assertContains(page, "4.7")
-        self.assertContains(page, "+0.3")
-        self.assertNotContains(page, "+0.4")
+        self.assertContains(page, "有戴比沒戴多 0.3 分（分數越高越好）")
+        self.assertNotContains(page, "0.4 分")
         for question in self.questionnaire.questions.all():
             self.assertContains(page, question.question_text)
 
@@ -197,3 +198,67 @@ class Ssq12ComparisonRadioCardTests(TestCase):
         cards = test_hhi_comparisons.radio_cards
         self.assertEqual(cards(page, "unaided"), [("2026/04/20・平均 4.3 分", False)])
         self.assertEqual(cards(page, "aided"), [("2026/09/02・未計算：包含不適用題目", False)])
+
+
+class Ssq12ComparisonResultCardTests(TestCase):
+    """The comparison page's result card for SSQ12-TW (#191): averages, higher is better."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="ssq_card")
+        self.client.force_login(self.user)
+        self.url = f"/comparisons/{self.questionnaire.pk}"
+
+    def preview(self, unaided, aided):
+        pair = []
+        for wearing, scores in ((False, unaided), (True, aided)):
+            record = Submission.objects.create(
+                user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=record, question=q, score=s)
+                for q, s in zip(self.questionnaire.questions.all(), scores, strict=True)
+            )
+            pair.append(record)
+        return self.client.get(
+            self.url, {"unaided": pair[0].pk, "aided": pair[1].pk, "action": "preview"}
+        )
+
+    def test_card_shows_both_averages_and_the_direction(self):
+        # Unrounded averages subtracted (ADR 0001): 52/12 = 4.33…, 56/12 = 4.67…, difference 0.3.
+        for unaided, aided, sentence in (
+            ([4] * 11 + [8], [4] * 10 + [6, 10], "有戴比沒戴多 0.3 分（分數越高越好）"),
+            ([4] * 10 + [6, 10], [4] * 11 + [8], "有戴比沒戴少 0.3 分（分數越高越好）"),
+            ([4] * 11 + [8], [4] * 10 + [6, 6], "有戴和沒戴的平均一樣"),
+        ):
+            with self.subTest(sentence=sentence):
+                card = test_hhi_comparisons.preview_text(self.preview(unaided, aided))
+                self.assertIn("沒戴 平均", card)
+                self.assertIn(sentence, card)
+                self.assertIn("差值不能單獨判定助聽器效益", card)
+                self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+                self.assertNotIn("差值（配戴", card)
+        card = test_hhi_comparisons.preview_text(self.preview([4] * 11 + [8], [4] * 10 + [6, 10]))
+        self.assertIn("沒戴 平均 4.3 分", card)
+        self.assertIn("有戴 平均 4.7 分", card)
+
+    def test_not_applicable_skips_the_difference_and_keeps_the_items(self):
+        page = self.preview([None] + [4] * 11, [6] * 12)
+        card = test_hhi_comparisons.preview_text(page)
+        self.assertIn("未計算整體差值：包含不適用題目或缺少完整回答", card)
+        self.assertNotIn("有戴比沒戴", card)
+        self.assertIn("差值不能單獨判定助聽器效益", card)
+        self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+        details = re.search(
+            r"<details>\s*<summary>看每一題的回答</summary>.*?</details>",
+            page.content.decode(),
+            re.S,
+        )
+        self.assertIsNotNone(details)
+        for question in self.questionnaire.questions.all():
+            self.assertIn(question.question_text, details.group(0))
+        first = self.questionnaire.questions.get(question_number=1).question_text
+        self.assertIn(
+            f"{first}<br>沒戴：<strong>不適用</strong>；有戴：<strong>6</strong>", details.group(0)
+        )

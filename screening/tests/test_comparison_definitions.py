@@ -48,7 +48,7 @@ class ComparisonFromDefinitionTests(TestCase):
         url = reverse("hhi_comparison", args=[fake.pk])
         page = self.client.get(url, {"unaided": unaided.pk, "aided": aided.pk})
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "：-20 分，少了 20 分。分數越低")
+        self.assertContains(page, "有戴比沒戴少 20 分（分數越低越好）")
         self.client.post(url, {"unaided": unaided.pk, "aided": aided.pk, "action": "save"})
         report = self.client.get(reverse("health_report")).content.decode()
         self.assertRegex(report, r'<section id="report-fake-anchor"')

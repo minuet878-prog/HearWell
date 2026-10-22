@@ -305,7 +305,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
             self.main().get_by_role("button", name="查看比較", exact=True).focus()
             self.page.keyboard.press("Enter")
-            expect(self.main().get_by_text("+1.8 分", exact=False)).to_be_visible()
+            expect(
+                self.main().get_by_text("有戴比沒戴多 1.8 分（分數越高越好）", exact=True)
+            ).to_be_visible()
             self.main().get_by_role("button", name="放進聽力報告", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.main().get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
@@ -987,7 +989,9 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             expect(first).to_be_checked()
             self.page.get_by_role("button", name="查看比較", exact=True).click()
             expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
-            expect(self.page.get_by_text("-20 分", exact=False)).to_be_visible()
+            expect(
+                self.page.get_by_text("有戴比沒戴少 20 分（分數越低越好）", exact=True)
+            ).to_be_visible()
             # Submit a stale/foreign id through the actual form to check server-side errors.
             self.page.locator('input[type="hidden"][name="aided"]').evaluate(
                 "el => el.value = '999999'"
