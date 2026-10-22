@@ -1936,6 +1936,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             )
             heading = self.main().get_by_role("heading", name="再次申請（換新機）")
             expect(heading).to_be_in_viewport()
+            # Jumps within the page, once loaded, still scroll smoothly.
+            expect(self.page.locator("html")).to_have_css("scroll-behavior", "smooth")
 
 
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):

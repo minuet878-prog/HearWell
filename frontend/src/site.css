@@ -93,7 +93,9 @@
     body { background-color: #fff; }
   }
   @media (prefers-reduced-motion: no-preference) {
-    :root { scroll-behavior: smooth; }
+    /* Only once the page and fonts have loaded (layout.html): a smooth jump into a page stops
+       where the target was, and a font arriving mid-scroll moves it. */
+    :root.smooth-scroll { scroll-behavior: smooth; }
   }
   hr { margin: 1rem 0; color: inherit; border: 0; border-top: 1px solid; opacity: 0.25; }
   h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {

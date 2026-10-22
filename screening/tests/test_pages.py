@@ -413,25 +413,27 @@ class RedesignLayoutTests(TestCase):
             test_answering.ReactAnswerPageTests.ANSWER_JS,
         )
         # Every page: back button and pull to refresh in the home-screen app
-        # (spec phase10_pwa_back_refresh.md), and the header wave's inline check (#138).
+        # (spec phase10_pwa_back_refresh.md), the header wave's inline check (#138), and the
+        # inline switch that turns on smooth scrolling once the page and fonts have loaded.
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         wave = "<inline>"
+        smooth = "<inline>"
         empty_user = consented_user(username="no_records")
         for url in (reverse("index"), reverse("login")):
             with self.subTest(url=url):
-                self.assertEqual(scripts(url), [pwa_js, wave])
+                self.assertEqual(scripts(url), [pwa_js, wave, smooth])
         # The 顯示 button on the password fields (#151).
         with self.subTest(url="register"):
             self.assertEqual(
-                scripts(reverse("register")), [pwa_js, "screening/password-toggle.js", wave]
+                scripts(reverse("register")), [pwa_js, "screening/password-toggle.js", wave, smooth]
             )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave])
+            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave, smooth])
         self.client.force_login(self.user)
         expected = {
-            reverse("index"): [pwa_js, logout_js, wave],
-            reverse("questionnaire_list"): [pwa_js, logout_js, wave],
+            reverse("index"): [pwa_js, logout_js, wave, smooth],
+            reverse("questionnaire_list"): [pwa_js, logout_js, wave, smooth],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
@@ -440,14 +442,16 @@ class RedesignLayoutTests(TestCase):
                 answer_js,
                 "screening/submit-button.js",
                 wave,
+                smooth,
                 "<inline>",
             ],
-            reverse("result", args=[self.submission.id]): [pwa_js, logout_js, wave],
+            reverse("result", args=[self.submission.id]): [pwa_js, logout_js, wave, smooth],
             reverse("my_hearing"): [
                 pwa_js,
                 logout_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
+                smooth,
             ],
         }
         for url, bundles in expected.items():
