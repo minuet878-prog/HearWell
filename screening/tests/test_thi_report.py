@@ -86,11 +86,14 @@ class ThiReportPartTests(ThiReportTestCase):
         scores = [0] * 25
         for number in (5, 11, 23):
             scores[number - 1] = 4
-        self.record(scores)
+        submission = self.record(scores)
+        support = "如果耳鳴讓您覺得心情低落、很難熬"  # #211 draft, as on the result page
+        self.assertContains(self.client.get(reverse("result", args=[submission.pk])), support)
         for page, response in self.reports().items():
             with self.subTest(page=page):
                 content = response.content.decode()
                 self.assertIn('<span class="report-level">無障礙或輕微障礙</span>', content)
+                self.assertNotIn(support, content)
                 self.assertNotIn("1925", content)
                 self.assertNotIn("逐題回答", content)
                 for text in test_thi.QUESTIONS:
