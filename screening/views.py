@@ -138,7 +138,7 @@ class GuideChapter:
 GUIDE_CHAPTERS = (
     GuideChapter("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
     GuideChapter("assessment", "身障鑑定與鑑定醫院", None),
-    GuideChapter("form-9", "九號表：申請助聽器補助", None),
+    GuideChapter("form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html"),
     GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
     GuideChapter("form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html"),
     GuideChapter("after-fitting", "配戴助聽器之後", "screening/guide/after_fitting.html"),
