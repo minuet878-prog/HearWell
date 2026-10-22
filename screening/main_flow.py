@@ -7,7 +7,7 @@ from datetime import date
 from django.utils import timezone
 
 from screening.questionnaires.definition import LEVEL, RETEST_MONTHS
-from screening.scoring import RETEST_DUE_TEXT, retest_next_text
+from screening.scoring import RETEST_BUTTON_TEXT, RETEST_DUE_TEXT, retest_next_text
 
 
 def _add_months(start, months):
@@ -32,6 +32,7 @@ class UserState:
     next_suggested_date: date | None
     retest_questionnaire: object | None  # the questionnaire "再做一次" should open
     reminder: str | None = None  # the home page's retest line
+    retest_button: str | None = None  # the retake button's text, once a retest is due
 
 
 NEW_USER_STATE = UserState(
@@ -61,6 +62,7 @@ def get_user_state(user, today):
             next_suggested_date=None if due else next_date,
             retest_questionnaire=latest.questionnaire,
             reminder=RETEST_DUE_TEXT if due else retest_next_text(next_date),
+            retest_button=RETEST_BUTTON_TEXT if due else None,
         )
     latest = submissions[0]
     return UserState(

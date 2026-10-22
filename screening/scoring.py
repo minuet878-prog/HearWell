@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 
 # The home page's retest reminder (ADR 0010, ticket #159).
 RETEST_DUE_TEXT = f"距離上次的生活影響評估已經滿 {RETEST_MONTHS} 個月，建議再做一次追蹤。"
+# Its button, on the home page and 我的紀錄 alike (ticket #162).
+RETEST_BUTTON_TEXT = "再做一次（大約 3 分鐘）"
 
 
 def retest_next_text(day):

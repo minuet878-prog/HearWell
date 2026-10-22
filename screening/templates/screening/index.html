@@ -94,7 +94,7 @@
 <p class="mt-4">{{ user_state.reminder }}</p>
 {% endif %}
 {% if user_state.retest_due %}
-<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次（大約 3 分鐘）</a>
+<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
 {% else %}
 <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
 {% if user_state.retest_questionnaire %}
