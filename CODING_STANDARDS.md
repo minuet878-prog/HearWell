@@ -50,4 +50,4 @@
 
 ## 健康資料
 
-24. 健康資料頁面（`GLOSSARY.md`）一律禁止瀏覽器快取：view 加 `@health_data_page`，共用電腦登出後按上一頁才看不到。需要登入、但確定沒有健康資料的頁面，列進 `test_standards.py` 的 `NO_HEALTH_DATA` 並寫明理由；兩邊都沒有，`test_standards.py` 會失敗。
+24. 健康資料頁面（`GLOSSARY.md`）一律禁止瀏覽器快取，共用電腦登出後按上一頁才看不到。需要登入的頁面加 `@health_data_page`；確定沒有健康資料的，列進 `test_standards.py` 的 `NO_HEALTH_DATA` 並寫明理由；兩邊都沒有，`test_standards.py` 會失敗。不用登入就看得到的家人分享頁、只在登入時顯示紀錄的首頁，在 view 裡用 `add_never_cache_headers`，各有頁面測試守住。

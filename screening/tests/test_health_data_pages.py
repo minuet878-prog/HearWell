@@ -34,7 +34,7 @@ class HealthDataPagesTests(TestCase):
         self.assertIn("no-store", response.get("Cache-Control", ""))
 
     def test_health_data_pages_are_never_cached(self):
-        audiogram = [self.audiogram.id]
+        audiogram_args = [self.audiogram.id]
         for url in (
             reverse("questionnaire_list"),
             reverse("screening", args=[self.questionnaire.id]),
@@ -45,9 +45,9 @@ class HealthDataPagesTests(TestCase):
             reverse("health_report"),
             reverse("account_settings"),
             reverse("audiogram_list"),
-            reverse("audiogram_detail", args=audiogram),
-            reverse("audiogram_edit", args=audiogram),
-            reverse("audiogram_delete", args=audiogram),
+            reverse("audiogram_detail", args=audiogram_args),
+            reverse("audiogram_edit", args=audiogram_args),
+            reverse("audiogram_delete", args=audiogram_args),
             reverse("audiogram_compare"),
         ):
             with self.subTest(url=url):

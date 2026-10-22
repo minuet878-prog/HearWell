@@ -66,7 +66,6 @@ def _safe_next(request):
     return ""
 
 
-# A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 def health_data_page(view):
     """Mark a 健康資料頁面 (GLOSSARY.md): never cached, so after logging out on a shared computer
     the back button cannot show it again (#182). test_standards checks every logged-in view."""
@@ -75,6 +74,7 @@ def health_data_page(view):
     return view
 
 
+# A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18
 
 

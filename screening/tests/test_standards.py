@@ -7,9 +7,13 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase
+from django.test import Client, SimpleTestCase, TestCase
+from django.urls import reverse
+from django.urls.converters import IntConverter
 
 from screening import questionnaires
+from screening import urls as screening_urls
+from screening.views import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
 
@@ -121,38 +125,56 @@ NO_HEALTH_DATA = {
 }
 
 
-def unmarked_logged_in_views(source, exceptions):
-    """Names of views behind @login_required with neither @health_data_page nor an exception."""
-    found = []
-    for node in ast.parse(source).body:
-        if not isinstance(node, ast.FunctionDef):
-            continue
-        names = {getattr(d, "id", None) for d in node.decorator_list}
-        if "login_required" in names and "health_data_page" not in names:
-            if node.name not in exceptions:
-                found.append(node.name)
-    return found
+def logged_in_views():
+    """(URL name, view) for each page in screening's URLs that sends a logged-out visitor to log
+    in, whatever form the login requirement takes (decorator, mixin, other module)."""
+    client = Client()
+    login = reverse("login")
+    for pattern in screening_urls.urlpatterns:
+        kwargs = {
+            name: 1 if isinstance(converter, IntConverter) else "x"
+            for name, converter in pattern.pattern.converters.items()
+        }
+        url = reverse(pattern.name, kwargs=kwargs)
+        if any(
+            client.generic(method, url).get("Location", "").startswith(login)
+            for method in ("GET", "POST")
+        ):
+            yield pattern.name, pattern.callback
 
 
-class HealthDataPageTests(SimpleTestCase):
+def unmarked(views, exceptions):
+    """Names of views carrying neither @health_data_page nor an entry in exceptions."""
+    return [
+        name
+        for name, view in views
+        if not getattr(view, "health_data_page", False) and name not in exceptions
+    ]
+
+
+class HealthDataPageTests(TestCase):
     """#182: every logged-in page is a 健康資料頁面 (never cached) or says why it holds none."""
 
     def test_every_logged_in_view_is_marked_or_excused(self):
-        source = (BASE_DIR / "screening" / "views.py").read_text()
+        views = dict(logged_in_views())
+        # The scan finds logged-in pages and only those.
+        self.assertIn("my_hearing", views)
+        self.assertNotIn("privacy", views)
         self.assertEqual(
-            unmarked_logged_in_views(source, NO_HEALTH_DATA),
+            unmarked(views.items(), NO_HEALTH_DATA),
             [],
             "add @health_data_page, or list the view in NO_HEALTH_DATA with its reason",
         )
 
     def test_an_unmarked_view_is_caught(self):
-        source = (
-            "@login_required\ndef shown(request): ...\n"
-            "@login_required\n@health_data_page\ndef marked(request): ...\n"
-            "def public(request): ...\n"
-        )
-        self.assertEqual(unmarked_logged_in_views(source, {}), ["shown"])
-        self.assertEqual(unmarked_logged_in_views(source, {"shown": "why"}), [])
+        def shown(request): ...
+
+        @health_data_page
+        def marked(request): ...
+
+        views = [("shown", shown), ("marked", marked)]
+        self.assertEqual(unmarked(views, {}), ["shown"])
+        self.assertEqual(unmarked(views, {"shown": "why"}), [])
 
 
 class MigrationsUpToDateTests(TestCase):
