@@ -10,8 +10,6 @@ const HEARING_AID = {
     { value: false, label: "沒戴" },
   ],
 };
-// Same wording as screening.html; why 沒戴 is already chosen when catching up an unaided record (#154).
-const UNAIDED_HINT = "請想沒戴助聽器時的情況來回答";
 const FAILED = "送出失敗，請再按一次送出";
 
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
@@ -23,6 +21,8 @@ export default function AnswerApp({
   minutes,
   introHtml,
   preselectUnaided = false,
+  // Why 沒戴 is already chosen when catching up an unaided record (#154); from screening.html.
+  unaidedHint,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -247,7 +247,7 @@ export default function AnswerApp({
           )}
           {question.text}
         </legend>
-        {showHint && <p id="hearing-aid-hint">{UNAIDED_HINT}</p>}
+        {showHint && <p id="hearing-aid-hint">{unaidedHint}</p>}
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale">
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>

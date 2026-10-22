@@ -3,7 +3,7 @@
     <span class="link-card-body">
         <span class="link-card-title">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</span>
         <span>{{ questionnaire.definition.audience }}</span>
-        <span class="card-tags"><span class="card-tag">{{ questionnaire.question_count }} 題</span>{# A pause for screen readers between the tags. #}<span class="visually-hidden">，</span><span class="card-tag">約 {{ questionnaire.definition.minutes }} 分鐘</span></span>
+        <span class="card-tags">{% include "screening/card_tags.html" %}</span>
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>

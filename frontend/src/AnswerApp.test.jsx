@@ -252,10 +252,12 @@ describe("autosave note (#153)", () => {
 
 describe("catching up an unaided record (#154)", () => {
   const HINT = "請想沒戴助聽器時的情況來回答";
+  // answer-main.jsx reads the hint from the Django form on the page.
+  const PRESELECTED = { preselectUnaided: true, unaidedHint: HINT };
   const group = () => screen.getByRole("group");
 
   it("starts on 沒戴 with the hint, read with the question", async () => {
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     expect(radio("沒戴").checked).toBe(true);
     expect(radio("有戴").checked).toBe(false);
     expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
@@ -264,7 +266,7 @@ describe("catching up an unaided record (#154)", () => {
   });
 
   it("shows the hint only while 沒戴 is chosen (site owner's choice 1.B)", async () => {
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     choose("有戴");
     expect(screen.queryByText(HINT)).toBeNull();
     expect(group().hasAttribute("aria-describedby")).toBe(false);
@@ -274,7 +276,7 @@ describe("catching up an unaided record (#154)", () => {
   });
 
   it("sends 有戴 when the user changes it", async () => {
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     answerAll("常常", "有戴");
     submit();
     await waitFor(() => expect(navigate).toHaveBeenCalled());
@@ -289,17 +291,17 @@ describe("catching up an unaided record (#154)", () => {
   });
 
   it("is no unfinished answer by itself: opening and leaving asks nothing next time", async () => {
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 
   it("gives way to the user's own draft; starting over starts on 沒戴 again", async () => {
     saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: true, answers: {}, step: 0, savedAt: Date.now() });
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     fireEvent.click(screen.getByRole("button", { name: "接著答" }));
     expect(radio("有戴").checked).toBe(true);
     cleanup();
-    await renderApp({ preselectUnaided: true });
+    await renderApp(PRESELECTED);
     fireEvent.click(screen.getByRole("button", { name: "重新開始" }));
     expect(radio("沒戴").checked).toBe(true);
   });
