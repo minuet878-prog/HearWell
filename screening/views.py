@@ -1025,6 +1025,10 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
+            # Only items marked emotional or social make these subscores; THI has none (#208 Q5).
+            "has_subscores": submission.questionnaire.questions.exclude(
+                category=models.Category.NONE
+            ).exists(),
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_color": classified_score["color"],
