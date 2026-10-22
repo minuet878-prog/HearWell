@@ -1041,6 +1041,9 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "support_message": submission.questionnaire.definition.support(
+                {answer.question.question_number: answer.score for answer in answers}
+            ),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
