@@ -136,6 +136,22 @@ class SharedReportHighlightsTests(TestCase):
         highlights = _text(_card(self._shared(), "family-highlights"))
         self.assertRegex(highlights, r"右耳：\s*中度\s+左耳：\s*資料不足，無法判讀")
 
+    def test_badges_carry_their_level_colour(self):
+        # level_badge.html reads "color"; the card passed "level", so every badge came out as
+        # "level-badge-" with no colour (found in #201's review).
+        self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=2)  # 26, 顯著影響
+        self._audiogram(self.user, date(2026, 9, 28), right_air=(40, 45, 50, 45), left_air=(30,))
+        card = _card(self._shared(), "family-highlights")
+        badges = re.findall(r'<span class="level-badge ([^"]*)">([^<]*)</span>', card)
+        self.assertEqual(
+            badges,
+            [
+                ("level-badge-severe", "顯著影響"),
+                ("level-badge-mild_to_moderate", "中度"),
+                ("level-badge-unknown", "資料不足，無法判讀"),
+            ],
+        )
+
     # Acceptance 16 (ticket #194 acceptance 4)
     def test_help_cards_link_to_the_three_family_guide_sections(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
