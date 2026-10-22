@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 const COMPONENTS = [
   "btn", "btn-lg", "btn-primary", "btn-outline-primary",
   "btn-outline-secondary", "btn-outline-danger", "btn-danger", "btn-link",
-  "form-control", "form-control-lg", "form-select", "form-select-lg", "form-label",
+  "form-control", "form-control-lg", "form-select", "form-label",
   "form-check", "form-check-input", "input-group", "input-group-text",
   "card", "card-body", "table", "alert", "alert-warning", "alert-danger",
   "visually-hidden", "visually-hidden-focusable", "list-unstyled",
@@ -52,7 +52,7 @@ it("no unused named component is carried over", () => {
 const LEVELS = ["normal", "mild_to_moderate", "severe", "unknown"];
 const BUILT_FROM_DATA = [
   ...LEVELS.flatMap((level) => [`level-badge-${level}`, `result-banner-${level}`]),
-  "ear-right", "ear-left", "compare-legend-left",
+  "ear-right", "ear-left",
 ];
 
 it("every class built from data is defined in the site's CSS", () => {

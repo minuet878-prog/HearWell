@@ -114,6 +114,20 @@ def _compare_rows(new, old, frequencies):
     return rows
 
 
+def largest_change(rows):
+    """The air frequencies whose difference is largest in size, or None (#203).
+
+    Only rows with both values and a response count; ties are all kept, in frequency order,
+    and nothing is returned when every difference is 0.
+    """
+    diffs = [(row["frequency"], row["diff"]) for row in rows if row["reason"] is None]
+    size = max((abs(diff) for _, diff in diffs), default=0)
+    if size == 0:
+        return None
+    pairs = [(frequency, diff) for frequency, diff in diffs if abs(diff) == size]
+    return {"pairs": pairs, "size": size, "same": len({diff for _, diff in pairs}) == 1}
+
+
 def compare(new_points, old_points):
     """Two audiograms side by side (spec docs/specs/phase-05/phase5_audiogram_2.md 4.2).
 
@@ -135,6 +149,11 @@ def compare(new_points, old_points):
             for p in new_points + old_points
             if p.ear == ear and p.conduction == "air" and p.frequency in PTA_FREQUENCIES
         ]
+        air = _compare_rows(
+            by_frequency(new_points, ear, "air"),
+            by_frequency(old_points, ear, "air"),
+            AIR_FREQUENCIES,
+        )
         result[ear] = {
             "pta": {
                 "new": n["pta"],
@@ -142,13 +161,11 @@ def compare(new_points, old_points):
                 "new_degree": n["degree"],
                 "old_degree": o["degree"],
                 "diff": n["pta"] - o["pta"] if both else None,
+                "size": abs(n["pta"] - o["pta"]) if both else None,
                 "no_response": both and any(p.no_response for p in pta_points),
             },
-            "air": _compare_rows(
-                by_frequency(new_points, ear, "air"),
-                by_frequency(old_points, ear, "air"),
-                AIR_FREQUENCIES,
-            ),
+            "air": air,
+            "largest": largest_change(air),
             "bone": _compare_rows(
                 by_frequency(new_points, ear, "bone"),
                 by_frequency(old_points, ear, "bone"),

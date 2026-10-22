@@ -11,7 +11,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.tests import test_answering, test_pages
+from screening.tests import test_answering, test_layout, test_pages
 from screening.tests.helpers import consented_user
 
 SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
@@ -744,6 +744,52 @@ class AudiogramCompareRuleTests(SimpleTestCase):
         self.assertFalse(result["right"]["pta"]["no_response"])
 
 
+class AudiogramLargestChangeRuleTests(SimpleTestCase):
+    """#203 (spec #183 stories 114-116): the frequencies that changed most, from compare()."""
+
+    _compare = AudiogramCompareRuleTests._compare
+
+    def _largest(self, new, old, ear="right"):
+        return self._compare(new, old)[ear]["largest"]
+
+    def test_one_frequency(self):
+        largest = self._largest(
+            [_air("right", 1000, 35), _air("right", 4000, 50)],
+            [_air("right", 1000, 30), _air("right", 4000, 40)],
+        )
+        self.assertEqual(largest["pairs"], [(4000, 10)])
+        self.assertEqual((largest["size"], largest["same"]), (10, True))
+
+    def test_ties_are_all_listed_and_size_ignores_the_sign(self):
+        new = [_air("right", 2000, 35), _air("right", 4000, 50), _air("right", 8000, 70)]
+        old = [_air("right", 2000, 30), _air("right", 4000, 40), _air("right", 8000, 60)]
+        largest = self._largest(new, old)
+        self.assertEqual(largest["pairs"], [(4000, 10), (8000, 10)])
+        self.assertTrue(largest["same"])
+        new[2] = _air("right", 8000, 50)
+        largest = self._largest(new, old)
+        self.assertEqual(largest["pairs"], [(4000, 10), (8000, -10)])
+        self.assertEqual((largest["size"], largest["same"]), (10, False))
+
+    def test_only_air_with_both_values_and_a_response(self):
+        largest = self._largest(
+            [
+                _air("right", 1000, 35),
+                _air("right", 2000, 120, no_response=True),
+                _air("right", 6000, 90),
+                _bone("right", 500, 60),
+            ],
+            [_air("right", 1000, 30), _air("right", 2000, 60), _bone("right", 500, 10)],
+        )
+        self.assertEqual(largest["pairs"], [(1000, 5)])
+
+    def test_nothing_when_all_equal_or_nothing_to_compare(self):
+        same = [_air("right", 1000, 30), _air("right", 4000, 40)]
+        self.assertIsNone(self._largest(same, same))
+        self.assertIsNone(self._largest([_air("right", 1000, 30)], [_air("right", 2000, 30)]))
+        self.assertIsNone(self._largest(same, same, ear="left"))
+
+
 class AudiogramEditApiTests(TestCase):
     """Spec docs/specs/phase-05/phase5_audiogram_2.md 4.1, acceptance 2-4, 6, 7 (API side)."""
 
@@ -1062,14 +1108,13 @@ class AudiogramComparePageTests(TestCase):
     def test_defaults_to_latest_two(self):
         _, middle, latest = self._three()
         response = self._get()
-        self.assertEqual(self._legend(response).count("2026/09/10"), 1)
+        # #202: the legend is text outside the chart, older first.
         legend = self._legend(response)
-        self.assertLess(legend.index("2026/09/10"), legend.index("2026/05/01"))
-        self.assertNotIn("2026/01/10", legend)
+        self.assertEqual(legend, "舊（2026/05/01）虛線、新（2026/09/10）實線")
         self.assertEqual(self._row(response, "pta", "pta")[1:3], ["35 dB（輕度）", "40 dB（輕度）"])
         main = self._main(response)
-        self.assertRegex(main, rf'<option value="{latest.id}" selected>')
-        self.assertRegex(main, rf'<option value="{middle.id}" selected>')
+        self.assertRegex(main, rf'name="a" value="{latest.id}" checked')
+        self.assertRegex(main, rf'name="b" value="{middle.id}" checked')
 
     def test_new_and_old_follow_dates_not_selects(self):
         oldest, _, latest = self._three()
@@ -1133,7 +1178,7 @@ class AudiogramComparePageTests(TestCase):
         )
         main = self._main(response)
         self.assertIn("差值＝新 − 舊，正數＝要更大聲才聽得到", main)  # noqa: RUF001
-        self.assertIn("兩次檢查的條件（機器、地點、耳機）不同，數字也會有幾 dB 的差異。", main)
+        self.assertIn("機器、地點、耳機不同，數字本來就會差幾分貝。", main)
         self.assertIn("這只是數字的對照，不能取代聽力師的判讀。", main)
 
     def test_zero_minus_and_equal(self):
@@ -1264,3 +1309,143 @@ class AudiogramComparePageTests(TestCase):
             with self.subTest(header=header):
                 self.assertIn('<th scope="col">2026/<wbr>01/10</th>', header)
                 self.assertIn('<th scope="col">2026/<wbr>09/10</th>', header)
+
+
+class AudiogramComparePickerTests(TestCase):
+    """#202 (spec #183 stories 106-109, 117-119): old and new rows, folded pickers, pill ears."""
+
+    URL = AudiogramComparePageTests.URL
+    setUpTestData = AudiogramComparePageTests.__dict__["setUpTestData"]
+    setUp = AudiogramComparePageTests.setUp
+    _make = AudiogramPageTests._make
+    _main = AudiogramPageTests._main
+    _get = AudiogramComparePageTests._get
+    _three = AudiogramComparePageTests._three
+
+    def _pick_row(self, main, label):
+        rows = re.findall(
+            r'<details class="compare-pick">\s*<summary>(.*?)</summary>(.*?)</details>', main, re.S
+        )
+        [(summary, choices)] = [row for row in rows if f">{label}<" in row[0]]
+        return test_layout._text(summary), choices
+
+    def test_old_and_new_rows_fold_their_choices_into_one_form(self):
+        oldest, middle, latest = self._three()
+        main = self._main(self._get(a=latest.id, b=middle.id))
+        form = re.search(r'<form method="get" class="compare-picker">(.*?)</form>', main, re.S)
+        form = form.group(1)
+        self.assertEqual(form.count('<details class="compare-pick">'), 2)
+        old_summary, old_choices = self._pick_row(main, "舊")
+        new_summary, new_choices = self._pick_row(main, "新")
+        self.assertEqual(old_summary, "舊 2026/05/01 換一張")
+        self.assertEqual(new_summary, "新 2026/09/10 換一張")
+        # Every audiogram is a radio card in each row; the row's own one is chosen.
+        for choices, name, chosen in ((old_choices, "b", middle), (new_choices, "a", latest)):
+            for audiogram in (oldest, middle, latest):
+                checked = " checked" if audiogram == chosen else ""
+                self.assertIn(f'name="{name}" value="{audiogram.id}"{checked}>', choices)
+            self.assertIn('<div class="choice-group choice-stack">', choices)
+            button = '<button type="submit" class="btn btn-primary btn-lg">比較</button>'
+            self.assertIn(button, choices)
+        self.assertIn('<input type="hidden" name="ear" value="right">', form)
+
+    def test_picking_a_newer_one_in_the_old_row_swaps_them(self):
+        _, middle, latest = self._three()
+        # 舊 row sends b, 新 row sends a: b is now the newest.
+        main = self._main(self._get(a=middle.id, b=latest.id))
+        self.assertEqual(self._pick_row(main, "舊")[0], "舊 2026/05/01 換一張")
+        self.assertEqual(self._pick_row(main, "新")[0], "新 2026/09/10 換一張")
+
+    def test_ears_are_pill_links(self):
+        oldest, _, latest = self._three()
+        main = self._main(self._get(a=latest.id, b=oldest.id))
+        nav = re.search(r'<nav class="ear-switch" aria-label="選耳朵">(.*?)</nav>', main, re.S)
+        links = re.findall(r"<a ([^>]*)>([^<]*)</a>", nav.group(1))
+        self.assertEqual([text for _, text in links], ["右耳", "左耳"])
+        self.assertIn('aria-current="true"', links[0][0])
+        self.assertIn("href=", links[1][0])
+
+    def test_numbers_fold_under_their_own_heading_and_the_note_stays(self):
+        oldest, _, latest = self._three()
+        main = self._main(self._get(a=latest.id, b=oldest.id))
+        folded = re.search(
+            r"<details[^>]*>\s*<summary>看每個頻率的數字</summary>(.*?)</details>", main, re.S
+        )
+        self.assertIn('data-section="pta"', folded.group(1))
+        self.assertIn("差值＝新 − 舊，正數＝要更大聲才聽得到", folded.group(1))  # noqa: RUF001
+        self.assertIn("這只是數字的對照，不能取代聽力師的判讀。", main)
+
+
+class AudiogramCompareSummaryTests(TestCase):
+    """#203 (spec #183 stories 110-116): the summary card above the chart."""
+
+    URL = AudiogramComparePageTests.URL
+    setUpTestData = AudiogramComparePageTests.__dict__["setUpTestData"]
+    setUp = AudiogramComparePageTests.setUp
+    _make = AudiogramPageTests._make
+    _main = AudiogramPageTests._main
+    _get = AudiogramComparePageTests._get
+
+    def _summary(self, old_points, new_points):
+        old = self._make(old_points, tested_on=date(2026, 1, 10))
+        new = self._make(new_points, tested_on=date(2026, 9, 10))
+        main = self._main(self._get(a=new.id, b=old.id))
+        card = re.search(
+            r'<section class="audiogram-chart compare-summary"[^>]*>(.*?)</section>', main, re.S
+        )
+        return test_layout._text(card.group(1)), card.group(1)
+
+    def test_averages_difference_and_both_degrees(self):
+        text, card = self._summary(
+            _four(_air, "right", (30, 30, 30, 35)), _four(_air, "right", (35, 35, 35, 40))
+        )
+        self.assertIn("右耳四頻平均：舊 31.25 → 新 36.25 dB HL，多 5 dB", text)
+        self.assertIn("程度：舊 輕度，新 輕度", text)
+        for word in ("都還是", "變成", "變差", "變好"):
+            self.assertNotIn(word, text)
+        self.assertIn("機器、地點、耳機不同，數字本來就會差幾分貝。", text)
+        self.assertIn("dB 數字越大，代表要越大聲才聽得到。", text)
+        # The chart sits in the card, under the summary.
+        self.assertIn('<div id="audiogram-chart"></div>', card)
+        self.assertLess(card.index("右耳四頻平均"), card.index('id="audiogram-chart"'))
+
+    def test_less_and_equal_averages(self):
+        forty = _four(_air, "right", (40,) * 4)
+        text, _ = self._summary(forty, _four(_air, "right", (35, 40, 35, 40)))
+        self.assertIn("舊 40 → 新 37.5 dB HL，少 2.5 dB", text)
+        text, _ = self._summary(_four(_air, "right", (40,) * 4), _four(_air, "right", (40,) * 4))
+        self.assertIn("舊 40 → 新 40 dB HL，兩次一樣", text)
+
+    def test_largest_change_lists_ties(self):
+        old = [*_four(_air, "right", (30,) * 4), _air("right", 8000, 50)]
+        new = [*_four(_air, "right", (30, 35, 30, 40)), _air("right", 8000, 60)]
+        text, _ = self._summary(old, new)
+        self.assertIn("差最多的頻率：4000、8000 Hz，各多 10 dB", text)
+        thirty = _four(_air, "right", (30,) * 4)
+        text, _ = self._summary(thirty, _four(_air, "right", (30, 30, 30, 40)))
+        self.assertIn("差最多的頻率：4000 Hz，多 10 dB", text)
+        text, _ = self._summary(
+            [*_four(_air, "right", (30,) * 4), _air("right", 8000, 50)],
+            [*_four(_air, "right", (30, 30, 30, 40)), _air("right", 8000, 40)],
+        )
+        self.assertIn("差最多的頻率：4000 Hz 多 10 dB、8000 Hz 少 10 dB", text)
+
+    def test_identical_audiograms_have_no_largest_change(self):
+        same = _four(_air, "right", (30,) * 4)
+        text, _ = self._summary(same, same)
+        self.assertNotIn("差最多的頻率", text)
+
+    def test_one_side_short_of_the_four(self):
+        text, _ = self._summary(
+            [_air("right", f, 30) for f in (500, 1000, 2000)], _four(_air, "right", (35,) * 4)
+        )
+        self.assertIn("其中一張四頻資料不足，無法比較平均", text)
+        self.assertNotIn("右耳四頻平均", text)
+        self.assertNotIn("程度：", text)
+
+    def test_no_response_note_stays(self):
+        text, _ = self._summary(
+            _four(_air, "right", (80,) * 4),
+            [*_four(_air, "right", (90, 100, 110, 0))[:3], _air("right", 4000, 120, True)],
+        )
+        self.assertIn("含無反應的頻率，實際差距可能不同", text)

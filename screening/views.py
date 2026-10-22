@@ -1341,7 +1341,15 @@ def audiogram_compare(request):
     ear = request.GET.get("ear")
     if ear not in Ear.values:
         ear = Ear.RIGHT
-    context.update(a=ids[0], b=ids[1], ear=ear, ears=Ear.choices)
+    # #202: the 舊 and 新 rows, newest first as the model orders them, even for one picked twice.
+    picked = [audiogram for audiogram in audiograms if audiogram.id in ids]
+    context.update(
+        a=ids[0],
+        b=ids[1],
+        ear=ear,
+        ears=Ear.choices,
+        pick_rows=[("舊", "b", picked[-1]), ("新", "a", picked[0])],
+    )
     if len(pair) == 2:
         new, old = pair
         result = compare(new.points.all(), old.points.all())[ear]
