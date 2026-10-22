@@ -59,6 +59,8 @@ const ok = { ok: true, status: 200, json: () => Promise.resolve(QUESTIONNAIRE) }
 beforeEach(() => {
   vi.resetModules();
   localStorage.clear();
+  // A test that starts past the wearing step leaves its step in the history entry (#245).
+  history.replaceState(null, "");
   html().className = "";
   page();
 });
@@ -125,6 +127,23 @@ describe("React entry", () => {
     // The hidden form keeps its hint, so React's copy needs an id of its own.
     const ids = [...document.querySelectorAll("[id]")].map((el) => el.id);
     expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+  });
+
+  it("hands IOI-HA's norm token over and skips the wearing step (#245)", async () => {
+    app().dataset.skipWearing = "";
+    app().dataset.normToken = "signed-token";
+    runInline();
+    globalThis.fetch = vi.fn((url, options = {}) =>
+      Promise.resolve(options.method === "POST" ? { ok: false, status: 500 } : ok),
+    );
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
+    expect(app().textContent).not.toContain("這次填答時，您有沒有戴助聽器？");
+    act(() => app().querySelector("input[type=radio]").click());
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent.includes("送出")).click());
+    await waitFor(() => expect(fetch.mock.calls.some(([, o]) => o?.method === "POST")).toBe(true));
+    const [, post] = fetch.mock.calls.find(([, o]) => o?.method === "POST");
+    expect(JSON.parse(post.body).norm_token).toBe("signed-token");
   });
 
   it("brings the form back at once when loading fails (acceptance 3)", async () => {

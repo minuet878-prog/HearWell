@@ -1446,9 +1446,12 @@
   /* Questionnaire intros (screening/questionnaires/*_intro.html): the reviewed sentences, grouped
      under small titles, each group led by a round icon named by data-icon. No inner div, so the
      page's #answer-intro box stays one div deep. */
+  /* minmax(0, 1fr), not 1fr: a long run like 「HHIA-S，2026/10/23」 at double text size would
+     otherwise widen the column, and the page, past a 320px phone (CI on #247 after #248). */
   .q-intro-row {
     display: grid;
-    grid-template-columns: 2.25rem 1fr;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    overflow-wrap: anywhere;
     column-gap: 0.75rem;
     padding: 0.75rem 0;
     border-top: 1px solid var(--color-border-warm);

@@ -31,6 +31,8 @@ if (container && fallback) {
       preselectUnaided={"preselectUnaided" in container.dataset}
       unaidedHint={hint?.textContent}
       alwaysAided={"alwaysAided" in container.dataset}
+      skipWearing={"skipWearing" in container.dataset}
+      normToken={container.dataset.normToken}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {

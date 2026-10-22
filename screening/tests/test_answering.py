@@ -479,12 +479,6 @@ class ReactAnswerPageTests(TestCase):
                 self.assertNotIn("還剩大約", content)
                 self.assertNotIn("step-progress-bar", content)
 
-    def test_ioi_ha_stays_django_only(self):
-        response = self._page(self.ioi_ha)
-        self.assertNotContains(response, self.ANSWER_JS)
-        self.assertNotContains(response, 'id="answer-app"')
-        self.assertContains(response, 'id="answer-form"')
-
     def test_answer_js_only_on_answer_pages(self):
         for url in (reverse("index"), reverse("questionnaire_list"), reverse("my_hearing")):
             with self.subTest(url=url):
@@ -544,11 +538,6 @@ class AnswerFlashTests(TestCase):
         self.assertNotIn("hidden", form_tag)
         self.assertNotIn("style=", form_tag)
         self.assertNotIn("answer-loading", re.search(r"<html[^>]*>", content).group())
-
-    def test_ioi_ha_has_no_loading_step(self):
-        content = self._page(self.ioi_ha).content.decode()
-        self.assertNotIn('id="answer-loading"', content)
-        self.assertIsNone(answer_loading_script(content))
 
 
 class WebDoubleSubmitTests(TestCase):
@@ -686,7 +675,7 @@ class WebDoubleSubmitTests(TestCase):
                 self.assertRedirects(response, self._result_url(Submission.objects.latest("id")))
         self.assertEqual(Submission.objects.count(), 3)
 
-    # 10: the page parts submit-button.js needs, on every web questionnaire (IOI-HA has no React).
+    # 10: the page parts submit-button.js needs, on every web questionnaire's fallback form.
     def test_submit_feedback_markup(self):
         for code in ("hhie-s", "ioi-ha"):
             with self.subTest(code=code):
@@ -792,7 +781,7 @@ class WebFormErrorsStayTests(TestCase):
 
     def test_opening_the_page_still_loads_react(self):
         # Acceptance 3.
-        for code in ("hhie-s", "hhia-s"):
+        for code in ("hhie-s", "hhia-s", "ioi-ha"):
             with self.subTest(code=code):
                 response = self.client.get(self._url(code))
                 self.assertContains(response, self.ANSWER_JS)

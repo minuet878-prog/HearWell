@@ -23,6 +23,10 @@ export default function AnswerApp({
   unaidedHint,
   // Answered wearing hearing aids by definition (#170, e.g. SADL): no wearing step at all.
   alwaysAided = false,
+  // IOI-HA (#245): no wearing step, and none sent; the record stays 未記錄 as on the web form.
+  skipWearing = false,
+  // IOI-HA's signed norm basis from the page (ADR 0002), sent back with the answers.
+  normToken,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -40,15 +44,16 @@ export default function AnswerApp({
   // Only where a fresh start begins: a draft keeps the user's own choice, and the preselection
   // by itself is nothing to keep, so opening the page and leaving asks nothing next time.
   const startWearing = alwaysAided ? true : preselectUnaided ? false : null;
+  const asksWearing = !alwaysAided && !skipWearing;
   const newAnswers = () => ({
     key: crypto.randomUUID(),
     wearing: startWearing,
     answers: {},
-    step: alwaysAided ? 1 : 0,
+    step: asksWearing ? 0 : 1,
   });
   const hasAnything = (form) => form.wearing !== startWearing || Object.keys(form.answers).length > 0;
   // The first step shown: the hearing aid question, or question 1 when there is none (#170).
-  const groundFloor = alwaysAided ? 1 : 0;
+  const groundFloor = asksWearing ? 0 : 1;
 
   // focus: only after the user chose to continue or start over, not on first load.
   // After a reload (or coming back from the result page) the browser still holds this page's entries
@@ -136,7 +141,10 @@ export default function AnswerApp({
   }
 
   const { step } = form;
-  const isHearingAid = !alwaysAided && step === 0;
+  const isHearingAid = asksWearing && step === 0;
+  // IOI-HA has no wearing step, so its intro, which tells the norm basis before answering
+  // (ADR 0002), is in full on item 1 instead.
+  const introInFull = isHearingAid || (skipWearing && step === 1);
   const question = isHearingAid ? { text: wearingQuestion, choices: HEARING_AID_CHOICES } : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
@@ -160,7 +168,7 @@ export default function AnswerApp({
 
   async function submit() {
     const missing = [
-      form.wearing === null ? 0 : null,
+      asksWearing && form.wearing === null ? 0 : null,
       ...questions.map((q, i) => (form.answers[q.id] === undefined ? i + 1 : null)),
     ].filter((s) => s !== null);
     if (missing.length > 0) {
@@ -182,7 +190,8 @@ export default function AnswerApp({
         },
         body: JSON.stringify({
           questionnaire: questionnaireId,
-          wearing_hearing_aid: form.wearing,
+          ...(skipWearing ? {} : { wearing_hearing_aid: form.wearing }),
+          ...(normToken ? { norm_token: normToken } : {}),
           answers: questions.map((q) => ({ question: q.id, score: form.answers[q.id] })),
         }),
       });
@@ -216,8 +225,8 @@ export default function AnswerApp({
 
   return (
     <div className="answer-app">
-      {/* The page's own intro (the definition's intro_template), in full only before question 1. */}
-      {isHearingAid ? (
+      {/* The page's own intro (the definition's intro_template), in full only on the first page. */}
+      {introInFull ? (
         <div dangerouslySetInnerHTML={{ __html: introHtml }} />
       ) : (
         <div className="answer-about mb-4">

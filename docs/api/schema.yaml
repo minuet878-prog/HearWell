@@ -622,6 +622,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AnswerInput'
+        norm_token:
+          type: string
+          description: 'IOI-HA only: the answer page''s data-norm-token; ignored for
+            the others.'
       required:
       - answers
       - questionnaire

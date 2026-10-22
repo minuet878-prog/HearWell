@@ -840,3 +840,96 @@ describe("always-aided (#170)", () => {
     expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
   });
 });
+
+describe("IOI-HA (#245)", () => {
+  // Same shape as IOI-HA: 7 items, each with its own five labels for 1-5.
+  const IOI_QUESTIONS = Array.from({ length: 7 }, (_, i) => ({
+    id: 300 + i,
+    number: i + 1,
+    text: `IOI-HA 第${i + 1}題`,
+    choices: [1, 2, 3, 4, 5].map((value) => ({ value, label: `第${i + 1}題選項${value}` })),
+  }));
+  const IOI_HA = { id: 3, code: "ioi-ha", name: "IOI-HA", levels: [], questions: IOI_QUESTIONS };
+  const NORM_ERROR = "常模依據無法確認，請重新開啟問卷。";
+
+  function answerAllIoi() {
+    IOI_QUESTIONS.forEach((q, i) => {
+      choose(`第${q.number}題選項3`);
+      if (i < IOI_QUESTIONS.length - 1) next();
+    });
+  }
+
+  it("starts on item 1 with no wearing step, showing each item's own labels", async () => {
+    mockApi(undefined, IOI_HA);
+    await renderApp({ skipWearing: true, normToken: "signed" });
+    expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
+    expect(legend()).toMatch(/^第 1 題／共 7 題・還剩大約 \d 分鐘IOI-HA 第1題$/);
+    expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
+    choose("第1題選項1");
+    next();
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(
+      [1, 2, 3, 4, 5].map((value) => `第2題選項${value}`),
+    );
+  });
+
+  it("shows the intro, with its norm basis, in full on item 1 only (ADR 0002)", async () => {
+    mockApi(undefined, IOI_HA);
+    const intro = "<p>本次常模依據：HHIE-S，2026/10/20 未配戴紀錄，20 分。</p>";
+    await renderApp({ skipWearing: true, normToken: "signed", introHtml: intro });
+    expect(screen.getByText(/本次常模依據/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "這份問卷在問什麼？" })).toBeNull();
+    choose("第1題選項1");
+    next();
+    expect(screen.queryByText(/本次常模依據/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "這份問卷在問什麼？" }));
+    expect(screen.getByText(/本次常模依據/)).toBeTruthy();
+  });
+
+  it("sends the page's norm token and no wearing answer", async () => {
+    mockApi(undefined, IOI_HA);
+    await renderApp({ skipWearing: true, normToken: "signed" });
+    answerAllIoi();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/submission/99"));
+    expect(postBody()).toEqual({
+      questionnaire: 1,
+      norm_token: "signed",
+      answers: IOI_QUESTIONS.map((q) => ({ question: q.id, score: 3 })),
+    });
+  });
+
+  it("sends no norm token when the page has none", async () => {
+    mockApi();
+    await renderApp();
+    answerAll();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(postBody()).not.toHaveProperty("norm_token");
+    expect(postBody().wearing_hearing_aid).toBe(false);
+  });
+
+  it("says when the norm basis cannot be confirmed", async () => {
+    mockApi([{ status: 400, body: { norm_token: [NORM_ERROR] } }], IOI_HA);
+    await renderApp({ skipWearing: true, normToken: "stale" });
+    answerAllIoi();
+    submit();
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(NORM_ERROR));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps an unfinished answer and continues it from item 1, not a wearing step", async () => {
+    mockApi(undefined, IOI_HA);
+    await renderApp({ skipWearing: true, normToken: "signed" });
+    choose("第1題選項2");
+    next();
+    choose("第2題選項4");
+    cleanup();
+    await renderApp({ skipWearing: true, normToken: "signed" });
+    screen.getByRole("heading", { name: "您上次答到第 2 題，要接著答嗎？" });
+    fireEvent.click(screen.getByRole("button", { name: "接著答" }));
+    expect(radio("第2題選項4").checked).toBe(true);
+    history.back();
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
+    expect(radio("第1題選項2").checked).toBe(true);
+  });
+});
