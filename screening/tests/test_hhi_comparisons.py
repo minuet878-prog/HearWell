@@ -313,6 +313,14 @@ class WearingComparisonEntryTests(TestCase):
         for url in (reverse("result", args=[hhie_s.pk]), reverse("result", args=[ssq12.pk])):
             self.assertNotIn("選擇或管理配戴狀態比較", self.main(url))
 
+    def test_hhia_s_entry_follows_the_same_rule(self):
+        # Story 23 names HHIA-S too; it shares the result page with HHIE-S.
+        hhia_s = Questionnaire.objects.get(code="hhia-s")
+        record = self.record(hhia_s, False, 2)
+        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 0, "結果頁": 0})
+        self.record(hhia_s, True, 0)
+        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 1, "結果頁": 1})
+
     def test_ssq12_result_page_has_no_choose_questionnaire_button(self):
         ssq12 = self.record(self.ssq12, False, 6)
         main = self.main(reverse("result", args=[ssq12.pk]))
