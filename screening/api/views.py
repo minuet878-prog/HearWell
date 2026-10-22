@@ -34,12 +34,8 @@ class QuestionnaireDetail(RetrieveAPIView):
     serializer_class = QuestionnaireDetailSerializer
 
     def get_queryset(self):
-        return (
-            Questionnaire.objects.defined()
-            .exclude(code=IOI_HA)
-            .prefetch_related(
-                Prefetch("questions", queryset=Question.objects.select_related("questionnaire"))
-            )
+        return Questionnaire.objects.defined().prefetch_related(
+            Prefetch("questions", queryset=Question.objects.select_related("questionnaire"))
         )
 
 
@@ -49,22 +45,23 @@ class SubmissionPagination(CursorPagination):
     ordering = ("-created_at", "-id")
 
 
-def _own_submissions(request):
+def _own_submissions(request, with_ioi_ha=False):
     # Same query as the my_hearing page: scoped to request.user (IDOR) and scored once.
-    # IOI-HA has no total or level, so it is left out until it has its own API.
-    return (
-        request.user.submissions.defined()
-        .exclude(questionnaire__code=IOI_HA)
-        .select_related("questionnaire")
-        .with_scores()
-    )
+    # IOI-HA has no total or level, so lists and GET leave it out until it has its own API;
+    # a submit still answers with the record it saved (#245).
+    submissions = request.user.submissions.defined()
+    if not with_ioi_ha:
+        submissions = submissions.exclude(questionnaire__code=IOI_HA)
+    return submissions.select_related("questionnaire").with_scores()
 
 
-def _own_submission_details(request):
+def _own_submission_details(request, with_ioi_ha=False):
     answers = Answer.objects.select_related("question__questionnaire").order_by(
         "question__question_number"
     )
-    return _own_submissions(request).prefetch_related(Prefetch("answers", queryset=answers))
+    return _own_submissions(request, with_ioi_ha).prefetch_related(
+        Prefetch("answers", queryset=answers)
+    )
 
 
 def _find_by_key(user, key):
@@ -118,7 +115,7 @@ class SubmissionList(ListAPIView):
         key = _parse_key(request)
         if key is None:
             return Response({"detail": "缺少或無效的收據編號"}, status.HTTP_400_BAD_REQUEST)
-        serializer = SubmissionCreateSerializer(data=request.data)
+        serializer = SubmissionCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         existing = _find_by_key(request.user, key)
@@ -131,6 +128,7 @@ class SubmissionList(ListAPIView):
                     data["questionnaire"],
                     wearing_hearing_aid=data["wearing_hearing_aid"],
                     idempotency_key=key,
+                    **data.get("norm", {}),
                 )
                 created = True
             except IntegrityError:
@@ -141,7 +139,7 @@ class SubmissionList(ListAPIView):
         if not created and not _same_content(existing, data):
             return Response({"detail": "這個收據編號已經用過"}, status.HTTP_409_CONFLICT)
         # Same query and serializer as GET /api/submissions/{id}/, so the bodies match.
-        submission = _own_submission_details(request).get(pk=existing.pk)
+        submission = _own_submission_details(request, with_ioi_ha=True).get(pk=existing.pk)
         return Response(
             SubmissionDetailSerializer(submission).data,
             status.HTTP_201_CREATED if created else status.HTTP_200_OK,

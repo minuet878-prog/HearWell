@@ -41,6 +41,7 @@ from screening.forms import (
     WearingNowForm,
     answer_choices,
 )
+from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
 from screening.main_flow import NEW_USER_STATE, get_user_state
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
@@ -57,7 +58,6 @@ from screening.scoring import (
     classify,
     compare_to_norm,
     get_advice,
-    ioi_ha_group,
     max_score,
     since_last_text,
 )
@@ -383,7 +383,7 @@ def questionnaire_list(request):
     wearing = wearing_form.cleaned_data["hearing_aid"]
     if not wearing:
         recommended, reason = life_impact, "unaided"
-    elif _norm_bases(request.user).exists():
+    elif norm_bases(request.user).exists():
         recommended, reason = by_code[IOI_HA], "has_norm_basis"
     else:
         # IOI-HA compares with the norm group of an unaided record, so that record comes first.
@@ -420,33 +420,6 @@ def _wearing_follow_ups(questionnaires):
     return [q for q in (by_code.get(IOI_HA), by_code.get(SSQ12), satisfaction) if q]
 
 
-def _norm_bases(user):
-    # The user's own unaided HHIA-S or HHIE-S records that can set the IOI-HA norm group.
-    return user.submissions.valid_hhi().filter(wearing_hearing_aid=False)
-
-
-def _ioi_ha_norm(user, token=None):
-    records = _norm_bases(user).select_related("questionnaire")
-    if token is None:
-        basis = records.first()
-    else:
-        data = signing.loads(token, salt="screening.ioi-norm")
-        if data["user"] != user.pk:
-            raise signing.BadSignature("Wrong norm owner")
-        basis = records.filter(pk=data["basis"]).first() if data["basis"] else None
-        if data["basis"] and basis is None:
-            raise signing.BadSignature("Unavailable norm basis")
-    total = None if basis is None else basis.total_answer_score
-    return {"norm_group": ioi_ha_group(total), "norm_basis": basis}
-
-
-def _norm_token(user, norm):
-    return signing.dumps(
-        {"user": user.pk, "basis": norm["norm_basis"].pk if norm["norm_basis"] else None},
-        salt="screening.ioi-norm",
-    )
-
-
 @login_required
 @require_http_methods(["GET", "POST"])
 @health_data_page
@@ -456,7 +429,7 @@ def screening(request, questionnaire_id):
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
         always_aided = questionnaire.definition.always_aided
-        norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
+        norm = ioi_ha_norm(request.user) if is_ioi_ha else None
         # Set by the wizard when catching up an unaided record (#154): only where the hearing aid
         # question starts, so the POST still takes whatever the user chose.
         preselect_unaided = (
@@ -484,9 +457,10 @@ def screening(request, questionnaire_id):
                 "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
-                "norm_token": _norm_token(request.user, norm) if norm else None,
-                # An always-aided questionnaire's React page skips the wearing step itself.
-                "use_react": not is_ioi_ha,
+                "norm_token": norm_token(request.user, norm) if norm else None,
+                # Every questionnaire, IOI-HA too since #245; always-aided ones and IOI-HA skip
+                # the wearing step there.
+                "use_react": True,
                 "always_aided": always_aided,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
@@ -511,12 +485,12 @@ def screening(request, questionnaire_id):
             return _already_sent(request, existing)
         try:
             norm = (
-                _ioi_ha_norm(request.user, request.POST.get("norm_token") or None)
+                ioi_ha_norm(request.user, request.POST.get("norm_token") or None)
                 if is_ioi_ha
                 else None
             )
         except signing.BadSignature:
-            return HttpResponseBadRequest("常模依據無法確認，請重新開啟問卷。")
+            return HttpResponseBadRequest(TOKEN_ERROR)
         formset = AnswerFormSet(questions=questions, data=request.POST)
         hearing_aid_form = (
             None
@@ -575,7 +549,7 @@ def screening(request, questionnaire_id):
                     "hearing_aid_form": hearing_aid_form,
                     "is_ioi_ha": is_ioi_ha,
                     "ioi_norm": norm,
-                    "norm_token": _norm_token(request.user, norm) if norm else None,
+                    "norm_token": norm_token(request.user, norm) if norm else None,
                     # Stay on this form: React would start over and drop the errors and answers.
                     "use_react": False,
                     # Nothing was saved, so the fixed answers go out under the same number.
