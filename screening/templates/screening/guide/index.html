@@ -6,6 +6,26 @@
 {% if not user.is_authenticated %}
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
+{% else %}
+<p>依您在 HearWell 最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+{% if not has_records %}
+<p>這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。</p>
+<p><a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a></p>
+<p><a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
+{% endif %}
+{% endif %}
+{% if life_impact %}
+<section class="card card-body mt-6" aria-labelledby="questionnaire-title">
+    <h2 id="questionnaire-title" class="h4">問卷結果</h2>
+    <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.classified.text }}。</p>
+</section>
+{% endif %}
+{% if has_records and not audiogram %}
+<section class="card card-body mt-6" aria-labelledby="audiogram-title">
+    <h2 id="audiogram-title" class="h4">聽力圖</h2>
+    <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
+    <p class="mb-0"><a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
+</section>
 {% endif %}
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
@@ -15,6 +35,19 @@
     <p class="mb-0">依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
     {% else %}
     <p class="mb-0">依您 {{ date }} 的聽力圖：{% for label, ear in ears %}{% if ear.pta is None %}{{ label }}：資料不足，無法判讀{% else %}{{ label }}四頻平均 {{ ear.pta|stringformat:"g" }} dB HL{% endif %}{% if not forloop.last %}，{% endif %}{% endfor %}。</p>
+    {% endif %}
+</section>
+{# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
+<section class="card card-body mt-6" aria-labelledby="fitting-title">
+    <h2 id="fitting-title" class="h4">要不要找聽力師評估</h2>
+    {% if wearing %}
+    <p class="mb-0">您已在使用助聽器，換新機與再次申請補助的規定見九號表章節。<a href="{% url 'guide_chapter' 'form-9' %}#reapply">看再次申請的規定</a></p>
+    {% elif fitting %}
+    <p class="mb-0">您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。<a href="{% url 'guide_chapter' 'before-you-go' %}">去之前要準備什麼</a></p>
+    {% elif fitting is False %}
+    <p class="mb-0">您兩耳的四頻平均都在 25 dB HL 以內。如果您仍覺得聽不清楚，建議安排聽力評估。</p>
+    {% else %}
+    <p class="mb-0">這張聽力圖缺少頻率，資料不足，無法判斷。請確認 500、1000、2000、4000 Hz 都有記錄。<a href="{% url 'audiogram_edit' audiogram.pk %}">修改這張聽力圖</a></p>
     {% endif %}
 </section>
 {# Judges only by the b230 formula (ADR 0017): no level, and a lower bound never says 未達到. #}
@@ -34,6 +67,9 @@
     {% else %}
     <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率約 {{ threshold.ratio }}%，未達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
     <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
+    {% endif %}
+    {% if threshold.status != "insufficient" %}
+    <p>如果您已經有身障證明，可以直接進行九號表。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
     {% endif %}
     {% if worked %}
     <details class="mb-0">
