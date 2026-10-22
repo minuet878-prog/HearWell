@@ -7,6 +7,43 @@
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
 {% endif %}
+{% if audiogram %}
+{% with date=audiogram.tested_on|date:"Y/m/d" %}
+<section class="card card-body mt-6" aria-labelledby="audiogram-title">
+    <h2 id="audiogram-title" class="h4">聽力圖</h2>
+    <p class="mb-0">依您 {{ date }} 的聽力圖：{% for label, ear in ears %}{% if ear.pta is None %}{{ label }}：資料不足，無法判讀{% else %}{{ label }}四頻平均 {{ ear.pta|stringformat:"g" }} dB HL{% endif %}{% if not forloop.last %}，{% endif %}{% endfor %}。</p>
+</section>
+{# Judges only by the b230 formula (ADR 0017): no level, and a lower bound never says 未達到. #}
+<section class="card card-body mt-6" aria-labelledby="threshold-title">
+    <h2 id="threshold-title" class="h4">身障鑑定門檻</h2>
+    <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
+    {% if threshold.status == "insufficient" %}
+    <p class="mb-0">兩耳都要有四頻平均，才能估算鑑定門檻。</p>
+    {% elif threshold.status == "uncertain" %}
+    <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率至少約 {{ threshold.ratio }}%。這張聽力圖有測不到反應的點，無法確定是否達到鑑定門檻，請以鑑定醫院為準。</p>
+    <p><a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
+    <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
+    {% elif threshold.status == "reached" %}
+    <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率約 {{ threshold.ratio }}%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
+    {% if threshold.no_response %}<p>這張聽力圖有測不到反應的點，實際比率可能更高。</p>{% endif %}
+    <p>身障補助要先有身心障礙證明。請先到鑑定醫院申請身障鑑定，拿到證明後，才能申請九號表的助聽器補助。<a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
+    {% else %}
+    <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率約 {{ threshold.ratio }}%，未達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
+    <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
+    {% endif %}
+    {% if worked %}
+    <details class="mb-0">
+        <summary>怎麼算的</summary>
+        <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
+        <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>
+        {% if worked.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
+        <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（{{ worked.better }} × 5 ＋ {{ worked.worse }}）÷ 6 ＝ {{ threshold.ratio }}%，四捨五入到小數一位。</p>
+        <p class="mb-0">3. 身障鑑定門檻是 45.0%。出處：<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a></p>
+    </details>
+    {% endif %}
+</section>
+{% endwith %}
+{% endif %}
 <section aria-labelledby="contents-title">
     <h2 id="contents-title" class="h4 mt-6">選配與補助，一步一步看</h2>
     <ol class="list-unstyled">
