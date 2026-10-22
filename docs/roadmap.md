@@ -11,8 +11,16 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   token——Noto Sans TC 字體、`.link-card` 等共用 class 的圓角／陰影／間距微調；不換主色、不動版面）、第二批前置重構
   「問卷由程式定義」（母規格 #99，#100–#105，ADR 0005）、手機頁首登出被擠到第二行（#118）、遷移 Tailwind、畫面不變
   （#119，#122–#131，ADR 0008、0009；2026-10-21 合併回 `main`）、2a 共用外殼（#120，#136–#143，ADR 0006、0007；
-  功能分支 `feat/120-warm-shell` 一次合併回 `main`）。
-- 下一步：設計系統第 2 階段的 2b 頁面版面（方塊格、進度環，另外拷問）；APHAB＋SADL 可以開始寫規格。
+  功能分支 `feat/120-warm-shell` 一次合併回 `main`）、2b 主線動線第一批「第一次來」（母規格 #148，#149–#155，
+  ADR 0010）。
+- 進行中：
+  - 2b 第二批「重測循環」：#156–#159、#161 已合併（結果頁依分級的下一步與分數位置條、老使用者首頁與重測提醒、
+    我的紀錄依主題分頁）；剩 #160（首頁「還可以做」）、#162（我的紀錄重測提醒與跟上次比較）、#163（老使用者 e2e）。
+  - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
+    子量表白話說明）；剩 #170（React 作答頁與送出 API）、#171（我的紀錄）、#172（聽力報告與分享報告）、
+    #173（資料匯出）、#174（推薦精靈與老使用者首頁）。正式站看不到，取得 HARL 與中文版譯者書面同意後另開 PR 上線。
+- 下一步：做完上面兩組剩下的票。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
+  [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
@@ -46,6 +54,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 問卷由程式定義 | #99–#105：每份問卷一個定義檔，選項、門檻、計分、比較、目錄都向定義查；admin 問卷與題目唯讀；`seed_questionnaires`；寫死代碼的自動檢查與假問卷全流程測試（ADR 0005） |
 | 遷移 Tailwind | #119、#122–#131：Bootstrap 換成 Tailwind CSS v4（官方 Vite 外掛），畫面不變；截圖比對、瀏覽器量樣式的 e2e（ADR 0008、0009） |
 | 2a 共用外殼 | #120、#136–#143：米白底與白色卡片、頁首漸層與只播一次的聲波、漸層按鈕與目前頁、三層圓角、可點的卡片浮起與下沉；改版前後全站對照與圖表裁切比對（ADR 0006、0007） |
+| 2b 第一批「第一次來」 | #148 的第一批、#149–#155：分級顏色加深到 7:1、新使用者首頁、註冊與同意分步、問卷精靈（年齡、助聽器、推薦）、作答頁分段進度、補做生活影響紀錄時預選「沒戴」、第一次來的 e2e（ADR 0010，[驗證紀錄](verification/issues-149-155.md)） |
 | 「我的紀錄」不跳動 | 趨勢圖的標題、摘要、圖例改由 Django 產生，React 只在固定高度的框裡畫圖，載入時紀錄卡片不再被推走（[驗證紀錄](verification/trend-chart-layout-shift.md)） |
 | 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
@@ -70,7 +79,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 工作量：小／中／大。
 
 ### 問卷
-- **成人問卷第二批**：APHAB＋SADL；之後 COSI、耳鳴量表。訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
+- **成人問卷第三批**：COSI、耳鳴量表（第二批的 SADL 進行中，見「目前進度」）。訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
 - **React 版 IOI-HA**（API 要先開放 IOI-HA 寫入）。
 
 ### 追蹤與紀錄
