@@ -199,3 +199,67 @@ class SadlScoringTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlExportTests(SadlTestCase):
+    """Data export includes SADL (#173)."""
+
+    def answer(self, values):
+        """Sends the server form; each value is 1–7, "na", or None for an unanswered item."""
+        questions = list(self.questionnaire.questions.all())
+        data = {
+            "idempotency_key": str(uuid.uuid4()),
+            "form-TOTAL_FORMS": len(questions),
+            "form-INITIAL_FORMS": 0,
+        }
+        for index, (question, value) in enumerate(zip(questions, values, strict=True)):
+            data[f"form-{index}-question_id"] = question.pk
+            if value is not None:
+                data[f"form-{index}-score"] = value
+        return self.client.post(reverse("screening", args=[self.questionnaire.pk]), data)
+
+    def _exported_sadl(self):
+        submissions = self.client.get(reverse("download_my_data")).json()["submissions"]
+        return next(
+            s for s in submissions if s["questionnaire"] == self.questionnaire.questionnaire_name
+        )
+
+    def test_export_labels_each_answer_in_chinese_including_not_applicable(self):
+        self.answer([1] * 10 + ["na", 1, 1, "na", 1])
+        exported = self._exported_sadl()
+        self.assertEqual(exported["answers"][0]["choice"], "一點都沒有")
+        self.assertIsNone(exported["answers"][10]["score"])
+        self.assertEqual(exported["answers"][10]["choice"], "不適用")
+        self.assertIsNone(exported["answers"][13]["score"])
+        self.assertEqual(exported["answers"][13]["choice"], "不適用")
+
+    def test_export_has_overall_and_subscale_scores_matching_the_result_page(self):
+        self.answer([4] * 15)
+        exported = self._exported_sadl()
+        self.assertEqual(exported["overall_score"], "4.0")
+        self.assertEqual(
+            exported["subscale_scores"],
+            {"正面效果": "4.0", "服務與費用": "4.0", "負面特徵": "4.0", "個人形象": "4.0"},
+        )
+        self.assertIsNone(exported["level"])
+        self.assertIsNone(exported["total_score"])
+        self.assertIsNone(exported["emotional_score"])
+        self.assertIsNone(exported["social_score"])
+
+    def test_export_does_not_carry_the_ssq12_average_field_when_both_are_answered(self):
+        self.answer([4] * 15)
+        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        self.client.post(
+            "/api/submissions/",
+            {
+                "questionnaire": ssq12.pk,
+                "wearing_hearing_aid": False,
+                "answers": [{"question": q.pk, "score": 6} for q in ssq12.questions.all()],
+            },
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+        )
+        exported = self._exported_sadl()
+        self.assertNotIn("average_score", exported)
+        self.assertNotIn("average_unavailable_reason", exported)

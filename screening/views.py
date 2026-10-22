@@ -652,6 +652,13 @@ def _export_submission(submission):
         for answer in data["answers"]:
             if answer["score"] is None:
                 answer["choice"] = "不適用"
+    if result == SUBSCALES:
+        satisfaction = submission.satisfaction
+        data["overall_score"] = str(satisfaction["overall"])
+        data["subscale_scores"] = {s["name"]: str(s["score"]) for s in satisfaction["subscales"]}
+        for answer in data["answers"]:
+            if answer["score"] is None:
+                answer["choice"] = "不適用"
     return data
 
 
