@@ -2,7 +2,7 @@
 
 日期：2026-10-22。沒有 GitHub issue：需求是本人在「HearWell 設計選擇器」挑的組合，加上動手前確認的兩個決定。決策見 ADR 0012。分支：`feat/home-brand-refresh`（從 `origin/main` `23d0bf6` 開出）。
 
-狀態：自動驗證完成；自審（`/mattpocock-skills:code-review`，Standards＋Spec 兩軸）完成並已補強測試。不需要交叉審查：沒有動到計分、分級、門檻、migration 或權限。等本人實際操作驗收。沒有動真實資料。
+狀態：自動驗證完成；自審（`/mattpocock-skills:code-review`，Standards＋Spec 兩軸）完成並已補強測試。不需要交叉審查：沒有動到計分、分級、門檻、migration 或權限。`views.py` 的 `_score_bar` 改了參數（畫分數條用），沒有改分級或門檻本身。本人實際操作驗收通過（2026-10-22）。沒有動真實資料。
 
 ## 本人的選擇
 
