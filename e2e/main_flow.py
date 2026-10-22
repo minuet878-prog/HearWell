@@ -685,6 +685,10 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             # The trend chart arrives after the page loads; measure the page with it.
             expect(self.page.locator(".recharts-wrapper")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("my_hearing")
+            # Its dates stay inside its own box, not only inside the page.
+            since_last = self.main().get_by_role("region", name="和上一次比")
+            content_width, box_width = since_last.evaluate("e => [e.scrollWidth, e.clientWidth]")
+            self.assertLessEqual(content_width, box_width, "和上一次比")
 
     def step1_history_shows_the_reminder(self):
         # Before the retest: the reminder is there and one record has nothing to compare with.

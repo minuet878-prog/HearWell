@@ -985,6 +985,15 @@
     border-radius: var(--radius-large);
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
+    /* A date that still does not fit breaks rather than widening the page (#163). */
+    overflow-wrap: anywhere;
+  }
+
+  /* Narrow screens and larger text: less side padding, so the date fits on one line first. */
+  @media (max-width: 35em) {
+    .trend-summary {
+      padding-inline: 0.75rem;
+    }
   }
 
   .trend-summary-score strong {
