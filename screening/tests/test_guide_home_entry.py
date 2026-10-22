@@ -53,3 +53,27 @@ class ReturningUserGuideEntryTests(TestCase):
         self.assertEqual(
             re.findall(r"<span>(.*?)</span>", nav), ["首頁", "開始篩檢", "我的紀錄", "聽力圖"]
         )
+
+
+class NewUserGuideEntryTests(TestCase):
+    """The owner picked option B: one card between the steps and the result preview."""
+
+    def _between_steps_and_preview(self):
+        content = self.client.get(reverse("index")).content.decode()
+        start = content.index("</ol>", content.index('<ol class="step-cards"'))
+        return content[start : content.index('<figure class="result-preview">')]
+
+    def assert_guide_card_after_the_steps(self):
+        between = self._between_steps_and_preview()
+        self.assertRegex(
+            between,
+            r'<ul class="list-unstyled[^"]*">\s*<li><a class="link-card" href="/guide">\s*'
+            r'<span class="link-card-body">\s*<span class="link-card-title">' + CARD + r"</span>",
+        )
+
+    def test_visitor_sees_the_guide_card_after_the_steps(self):
+        self.assert_guide_card_after_the_steps()
+
+    def test_signed_in_user_without_records_sees_the_guide_card_after_the_steps(self):
+        self.client.force_login(consented_user(username="guide_entry_new"))
+        self.assert_guide_card_after_the_steps()
