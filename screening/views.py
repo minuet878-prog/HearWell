@@ -792,7 +792,15 @@ REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
 def _report_context(user):
     # One builder for the owner's report and the family's copy (rule 10: same scoring path).
-    submissions = list(user.submissions.defined().select_related("questionnaire").with_scores())
+    # Answers are prefetched so SADL's per-record satisfaction (#172) reads them once, not once
+    # per record shown.
+    answers = Answer.objects.select_related("question").order_by("question__question_number")
+    submissions = list(
+        user.submissions.defined()
+        .select_related("questionnaire")
+        .prefetch_related(Prefetch("answers", queryset=answers))
+        .with_scores()
+    )
     by_questionnaire = {}
     for submission in submissions:  # newest first
         if submission.questionnaire.definition.result == LEVEL:
@@ -818,6 +826,7 @@ def _report_context(user):
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
     ssq_records = [s for s in submissions if s.questionnaire.definition.result == AVERAGE]
+    sadl_records = [s for s in submissions if s.questionnaire.definition.result == SUBSCALES]
     context = {
         "comparisons": comparisons,
         "ssq_comparison": next(
@@ -825,6 +834,8 @@ def _report_context(user):
         ),
         "ssq_latest": ssq_records[0] if ssq_records else None,
         "ssq_recent": ssq_records[:REPORT_RECENT],
+        "sadl_latest": sadl_records[0] if sadl_records else None,
+        "sadl_recent": sadl_records[:REPORT_RECENT],
         "sections": sections,
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),

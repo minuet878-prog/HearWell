@@ -3,6 +3,7 @@
 import re
 import uuid
 from dataclasses import replace
+from datetime import timedelta
 from io import StringIO
 
 from django.core.management import call_command
@@ -10,9 +11,11 @@ from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
-from screening.models import Questionnaire, Submission
+from screening.models import Answer, Questionnaire, Submission
 from screening.questionnaires import sadl
+from screening.tests import test_report
 from screening.tests.helpers import consented_user, register
 
 
@@ -330,3 +333,109 @@ class SadlHistoryTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlReportTests(SadlTestCase):
+    """Health report and shared report show a SADL part (#172)."""
+
+    def _record(self, score=4, wearing=True, days_ago=0):
+        questions = list(self.questionnaire.questions.order_by("question_number"))
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=q, score=score) for q in questions
+        )
+        if days_ago:
+            Submission.objects.filter(pk=submission.pk).update(
+                created_at=timezone.now() - timedelta(days=days_ago)
+            )
+        return Submission.objects.get(pk=submission.pk)
+
+    def _share_report(self):
+        self.client.post("/report/share", {"confirm": "1"})
+        share = self.user.report_shares.get()
+        self.client.logout()
+        return self.client.get(f"/shared/{share.token}/report")
+
+    # acceptance 1
+    def test_report_shows_latest_overall_subscales_and_recent_list(self):
+        older = self._record(score=4, days_ago=3)
+        latest = self._record(score=4, days_ago=0)
+        report = self.client.get(reverse("health_report")).content.decode()
+        section = test_report._section(report, "report-sadl")
+        self.assertIn("整體滿意度：4.0", section)
+        for name in ("正面效果", "服務與費用", "負面特徵", "個人形象"):
+            with self.subTest(name=name):
+                self.assertIn(f"{name}：4.0", section)
+        self.assertIn("最近 2 次紀錄", section)
+        for record in (older, latest):
+            self.assertIn(timezone.localtime(record.created_at).strftime("%Y/%m/%d %H:%M"), section)
+
+    # acceptance 2
+    def test_sadl_and_ssq12_sections_stay_separate(self):
+        self._record()
+        ssq = Questionnaire.objects.get(code="ssq12-tw")
+        ssq_submission = Submission.objects.create(
+            user=self.user, questionnaire=ssq, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=ssq_submission, question=q, score=2)
+            for q in ssq.questions.order_by("question_number")
+        )
+        content = self.client.get(reverse("health_report")).content.decode()
+        ssq_section = test_report._section(content, "report-ssq12")
+        sadl_section = test_report._section(content, "report-sadl")
+        self.assertIn("SSQ12-TW", ssq_section)
+        self.assertNotIn("SADL", ssq_section)
+        self.assertNotIn("整體滿意度", ssq_section)
+        self.assertIn("SADL", sadl_section)
+        self.assertIn("整體滿意度", sadl_section)
+        self.assertNotIn("SSQ12", sadl_section)
+
+    # acceptance 3
+    def test_family_shared_report_shows_the_same_sadl_section(self):
+        self._record()
+        owner_content = self.client.get(reverse("health_report")).content.decode()
+        shared_content = self._share_report().content.decode()
+        self.assertEqual(
+            test_report._section(owner_content, "report-sadl"),
+            test_report._section(shared_content, "report-sadl"),
+        )
+
+    # acceptance 4
+    def test_report_scores_match_the_result_page(self):
+        # Same case as SadlScoringTests.test_overall_and_subscale_scores...: items 2/4/7/13
+        # are reversed, so an all-1 answer set is not an all-1 score set.
+        submission = self._record(score=1)
+        report = self.client.get(reverse("health_report")).content.decode()
+        result = self.client.get(reverse("result", args=[submission.pk])).content.decode()
+        section = test_report._section(report, "report-sadl")
+        self.assertIn("整體滿意度：2.6", section)
+        self.assertIn("整體滿意度：2.6", result)
+        names_and_scores = zip(
+            ("正面效果", "服務與費用", "負面特徵", "個人形象"),
+            ("1.0", "1.0", "5.0", "5.0"),
+            strict=True,
+        )
+        for name, score in names_and_scores:
+            with self.subTest(name=name):
+                self.assertIn(f"{name}：{score}", section)
+                self.assertIn(f"{name}：{score}", result)
+
+    def test_no_sadl_records_leaves_the_part_out(self):
+        content = self.client.get(reverse("health_report")).content.decode()
+        self.assertNotIn('id="report-satisfaction"', content)
+        self.assertNotIn('id="report-sadl"', content)
+
+    def test_query_count_does_not_grow_with_more_sadl_records(self):
+        for _ in range(5):
+            self._record()
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(reverse("health_report"))
+        for _ in range(5):
+            self._record()
+        with CaptureQueriesContext(connection) as many:
+            self.client.get(reverse("health_report"))
+        self.assertEqual(len(many), len(few))

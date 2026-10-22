@@ -1,5 +1,6 @@
 """Health report groups adult results into three parts (#90)."""
 
+from dataclasses import replace
 from html.parser import HTMLParser
 from io import StringIO
 
@@ -7,13 +8,15 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from screening.models import Answer, NormGroup, Question, Questionnaire, Submission
+from screening.questionnaires import sadl
 from screening.questionnaires.hhia_s import EXPLANATION as HHIA_S_EXPLANATION
 from screening.tests import test_report
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, register
 
 PARTS = {
     "report-life-impact": "生活影響",
     "report-listening": "日常聆聽能力",
+    "report-satisfaction": "助聽器滿意度",
     "report-hearing-aid-outcome": "助聽器使用成效",
 }
 
@@ -51,6 +54,7 @@ class ReportPartsTests(TestCase):
         call_command("seed_questionnaires", stdout=StringIO())
         self.hhia = Questionnaire.objects.get(code="hhia-s")
         self.ssq = Questionnaire.objects.get(code="ssq12-tw")
+        self.sadl = Questionnaire.objects.get(code="sadl")
         self.hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
         Question.objects.bulk_create(
             Question(questionnaire=self.hhie, question_text=f"假 HHIE 題{n}", question_number=n)
@@ -122,45 +126,54 @@ class ReportPartsTests(TestCase):
         self.save_pair(self.hhia)
         self.save_pair(self.ssq)
         self.record(self.ioi, score=3, norm_group=NormGroup.MILD_MODERATE, norm_basis=basis)
-        owner = self.client.get("/report")
-        for response in (owner, self.family_report()):
-            outline = _outline(response)
-            for part in PARTS:
-                self.assertEqual(outline.parents[part], ())
-            expected = {
-                "report-hhie-s": "report-life-impact",
-                "report-difference": "report-life-impact",
-                "report-hhia-s": "report-life-impact",
-                "report-comparison-hhia-s": "report-life-impact",
-                "report-ssq12": "report-listening",
-                "report-comparison-ssq12-tw": "report-listening",
-                "report-ioi-ha": "report-hearing-aid-outcome",
-            }
-            for section_id, part in expected.items():
-                self.assertEqual(outline.parents[section_id], (part,), section_id)
-            # Each comparison follows its own questionnaire, not the other HHI.
-            life = [
-                s for s, parents in outline.parents.items() if parents == ("report-life-impact",)
-            ]
-            for questionnaire, comparison in (
-                ("report-hhie-s", "report-difference"),
-                ("report-hhia-s", "report-comparison-hhia-s"),
-            ):
-                self.assertEqual(life[life.index(questionnaire) + 1], comparison)
+        with register(replace(sadl.DEFINITION, listed=True)):
+            self.record(self.sadl)
+            owner = self.client.get("/report")
+            for response in (owner, self.family_report()):
+                outline = _outline(response)
+                for part in PARTS:
+                    self.assertEqual(outline.parents[part], ())
+                expected = {
+                    "report-hhie-s": "report-life-impact",
+                    "report-difference": "report-life-impact",
+                    "report-hhia-s": "report-life-impact",
+                    "report-comparison-hhia-s": "report-life-impact",
+                    "report-ssq12": "report-listening",
+                    "report-comparison-ssq12-tw": "report-listening",
+                    "report-sadl": "report-satisfaction",
+                    "report-ioi-ha": "report-hearing-aid-outcome",
+                }
+                for section_id, part in expected.items():
+                    self.assertEqual(outline.parents[section_id], (part,), section_id)
+                # Each comparison follows its own questionnaire, not the other HHI.
+                life = [
+                    s
+                    for s, parents in outline.parents.items()
+                    if parents == ("report-life-impact",)
+                ]
+                for questionnaire, comparison in (
+                    ("report-hhie-s", "report-difference"),
+                    ("report-hhia-s", "report-comparison-hhia-s"),
+                ):
+                    self.assertEqual(life[life.index(questionnaire) + 1], comparison)
 
     def test_parts_are_level_two_and_their_contents_level_three(self):
         basis = self.save_pair(self.hhie)
         self.save_pair(self.ssq)
         self.record(self.ioi, score=3, norm_group=NormGroup.MILD_MODERATE, norm_basis=basis)
-        owner = self.client.get("/report")
-        for response in (owner, self.family_report()):
-            outline = _outline(response)
-            self.assertEqual([level for level, _ in outline.headings].count(1), 1)
-            part_titles = {sections[0] for _, sections in outline.headings if len(sections) == 1}
-            self.assertLessEqual(set(PARTS), part_titles)
-            for level, sections in outline.headings:
-                if sections and sections[0] in PARTS:
-                    self.assertEqual(level, 2 if len(sections) == 1 else 3, sections)
+        with register(replace(sadl.DEFINITION, listed=True)):
+            self.record(self.sadl)
+            owner = self.client.get("/report")
+            for response in (owner, self.family_report()):
+                outline = _outline(response)
+                self.assertEqual([level for level, _ in outline.headings].count(1), 1)
+                part_titles = {
+                    sections[0] for _, sections in outline.headings if len(sections) == 1
+                }
+                self.assertLessEqual(set(PARTS), part_titles)
+                for level, sections in outline.headings:
+                    if sections and sections[0] in PARTS:
+                        self.assertEqual(level, 2 if len(sections) == 1 else 3, sections)
 
     def test_parts_without_records_are_left_out(self):
         self.record(self.hhie, wearing=False)
