@@ -19,7 +19,7 @@ from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
 CONSENT_VERSION = 1
-PRIVACY_UPDATED_ON = date(2026, 10, 22)
+PRIVACY_UPDATED_ON = date(2026, 10, 23)
 
 
 class User(AbstractUser):

@@ -1,6 +1,8 @@
 import json
+import re
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 from unittest import mock
 
 from django.contrib.auth.views import redirect_to_login
@@ -10,9 +12,17 @@ from django.utils import timezone
 
 from screening import models
 from screening.models import Audiogram, Consent, Questionnaire, Submission, User
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register, step_bar
 
 PASSWORD = "Xk9#mPq2vLw"
+TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
+HIGHLIGHTS = (
+    "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
+    "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
+    "您可以隨時要求查詢、更正或刪除您的資料。",
+    "結果只是參考，不是醫療診斷。",
+)
 
 
 def _consent_url(next_url):
@@ -59,9 +69,10 @@ class PrivacyPageTests(TestCase):
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "待補")
         self.assertContains(response, "HearWell 開發者")
-        # In the notice itself; the site footer adds one more on every page.
+        # In the notice itself (who, requests, the contact card at the bottom since #197); the
+        # site footer adds one more on every page.
         notice = response.content.decode().split('<footer class="site-footer"')[0]
-        self.assertEqual(notice.count('href="mailto:hearwellweb@gmail.com"'), 2)
+        self.assertEqual(notice.count('href="mailto:hearwellweb@gmail.com"'), 3)
         self.assertContains(response, "美國俄亥俄州", count=2)
 
     def test_it_names_what_error_monitoring_sends(self):
@@ -88,6 +99,55 @@ class PrivacyPageTests(TestCase):
     def _assert_footer_link(self, response):
         footer = response.content.decode().split("<footer", 1)[1]
         self.assertIn(f'href="{reverse("privacy")}"', footer)
+
+
+class PrivacyHighlightsTests(TestCase):
+    """#197 (spec #183 stories 75-79): highlights on top, contact card at the bottom."""
+
+    def _list_items(self, html):
+        return [test_layout._text(item) for item in re.findall(r"<li>(.*?)</li>", html, re.S)]
+
+    def _privacy_main(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def test_highlights_on_top_match_the_consent_page(self):
+        main = self._privacy_main()
+        top = main[main.index("先看重點") : main.index("誰在蒐集")]
+        self.assertEqual(self._list_items(top), list(HIGHLIGHTS))
+        self.client.force_login(User.objects.create_user(username="highlights_reader"))
+        consent = self.client.get(reverse("consent")).content.decode()
+        summary = consent[consent.index("重點") : consent.index("閱讀完整的隱私權說明")]
+        self.assertEqual(self._list_items(summary), list(HIGHLIGHTS))
+
+    def test_highlights_are_written_in_one_place(self):
+        files = [
+            path.name
+            for path in TEMPLATES.rglob("*.html")
+            if HIGHLIGHTS[1] in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(files, ["consent_highlights.html"])
+
+    def test_full_text_stays_open_with_the_share_page_wording(self):
+        main = self._privacy_main()
+        self.assertNotIn("<details", main)
+        sharing = main[main.index("您主動分享時") : main.index("您可以要求什麼")]
+        self.assertIn("在「分享報告給家人」頁產生分享連結後", test_layout._text(sharing))
+        self.assertNotIn("「聽力報告」頁", sharing)
+
+    def test_contact_card_comes_last(self):
+        main = self._privacy_main()
+        last = main[main.index("有問題或要刪除資料？") :]
+        self.assertGreater(main.index("有問題或要刪除資料？"), main.index("說明改版"))
+        self.assertIn('href="mailto:hearwellweb@gmail.com"', last)
+        self.assertIn("到「帳號設定」自己下載、刪除", test_layout._text(last))
+
+    def test_minor_fix_moves_the_date_and_keeps_the_version(self):
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 23))
+        self.assertEqual(models.CONSENT_VERSION, 1)
+        user = consented_user(username="already_agreed")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
 
 
 class NewUserTests(TestCase):

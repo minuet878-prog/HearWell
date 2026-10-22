@@ -2191,6 +2191,11 @@
     }
   }
 
+  /* Privacy notice (#197): the highlights card on top, framed in the brand blue. */
+  .privacy-highlights {
+    border: 0.125rem solid var(--color-primary);
+  }
+
   /* Account settings (#195): one white card per group, a divider between rows. */
   .settings-group {
     margin: 0;

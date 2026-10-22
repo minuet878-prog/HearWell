@@ -9,12 +9,7 @@
     <h1 class="h3 mt-2">開始使用之前</h1>
     <p>HearWell 會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p>
     <h2 class="h5">重點</h2>
-    <ul>
-        <li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li>
-        <li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li>
-        <li>您可以隨時要求查詢、更正或刪除您的資料。</li>
-        <li>結果只是參考，不是醫療診斷。</li>
-    </ul>
+    {% include "screening/consent_highlights.html" %}
     <p><a class="btn btn-link px-0" href="{% url 'privacy' %}">閱讀完整的隱私權說明</a></p>
     <form method="post" action="{% url 'consent' %}">
         {% csrf_token %}
