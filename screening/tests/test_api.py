@@ -608,10 +608,12 @@ class ApiSubmitTests(TestCase):
         self.assertEqual(response.json(), detail.json())
 
     def test_errors_are_in_chinese_by_field(self):
+        # wearing_hearing_aid is only required once the questionnaire is known (#170, SADL is
+        # always-aided and needs none), so a missing questionnaire alone cannot flag it too.
         response = self._post({"answers": "not a list"})
         self.assertEqual(response.status_code, 400)
         errors = response.json()
-        self.assertEqual(set(errors), {"questionnaire", "wearing_hearing_aid", "answers"})
+        self.assertEqual(set(errors), {"questionnaire", "answers"})
         for messages in errors.values():
             for message in messages:
                 self.assertRegex(message, r"[一-鿿]")

@@ -259,10 +259,17 @@ def questionnaire_list(request):
         reason=reason,
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
-        also=[by_code[SSQ12]] if wearing else [],
+        also=_also_suggest(by_code, questionnaires) if wearing else [],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
     )
+
+
+def _also_suggest(by_code, questionnaires):
+    # "也可以做": SSQ12-TW, plus a satisfaction-type questionnaire (SADL) when it is visible
+    # (#174). Asks the definition's result, not SADL's code, per CODING_STANDARDS.md rule 9.
+    satisfaction = next((q for q in questionnaires if q.definition.result == SUBSCALES), None)
+    return [q for q in (by_code.get(SSQ12), satisfaction) if q]
 
 
 def _norm_bases(user):
@@ -327,8 +334,9 @@ def screening(request, questionnaire_id):
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
                 "norm_token": _norm_token(request.user, norm) if norm else None,
-                # The React page always asks about wearing, so always-aided ones keep this form.
-                "use_react": not is_ioi_ha and not always_aided,
+                # An always-aided questionnaire's React page skips the wearing step itself.
+                "use_react": not is_ioi_ha,
+                "always_aided": always_aided,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },
@@ -571,8 +579,14 @@ def _trend_chart(records):
 
 @login_required
 def my_hearing(request):
+    # SADL's satisfaction score reads submission.answers directly (models.py), so it needs
+    # its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
+    answers = Answer.objects.select_related("question")
     submissions = list(
-        request.user.submissions.defined().select_related("questionnaire").with_scores()
+        request.user.submissions.defined()
+        .select_related("questionnaire")
+        .prefetch_related(Prefetch("answers", queryset=answers))
+        .with_scores()
     )
     if not submissions:
         return render(request, "screening/my_hearing.html", {"submissions": []})
@@ -649,10 +663,19 @@ def _export_submission(submission):
             str(submission.ssq_average) if submission.ssq_average is not None else None
         )
         data["average_unavailable_reason"] = submission.ssq_unavailable_reason
-        for answer in data["answers"]:
-            if answer["score"] is None:
-                answer["choice"] = "不適用"
+        _mark_not_applicable_answers(data)
+    if result == SUBSCALES:
+        satisfaction = submission.satisfaction
+        data["overall_score"] = str(satisfaction["overall"])
+        data["subscale_scores"] = {s["name"]: str(s["score"]) for s in satisfaction["subscales"]}
+        _mark_not_applicable_answers(data)
     return data
+
+
+def _mark_not_applicable_answers(data):
+    for answer in data["answers"]:
+        if answer["score"] is None:
+            answer["choice"] = "不適用"
 
 
 @login_required
@@ -779,7 +802,15 @@ REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
 def _report_context(user):
     # One builder for the owner's report and the family's copy (rule 10: same scoring path).
-    submissions = list(user.submissions.defined().select_related("questionnaire").with_scores())
+    # Answers are prefetched so SADL's per-record satisfaction (#172) reads them once, not once
+    # per record shown.
+    answers = Answer.objects.select_related("question").order_by("question__question_number")
+    submissions = list(
+        user.submissions.defined()
+        .select_related("questionnaire")
+        .prefetch_related(Prefetch("answers", queryset=answers))
+        .with_scores()
+    )
     by_questionnaire = {}
     for submission in submissions:  # newest first
         if submission.questionnaire.definition.result == LEVEL:
@@ -805,6 +836,7 @@ def _report_context(user):
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
     ssq_records = [s for s in submissions if s.questionnaire.definition.result == AVERAGE]
+    sadl_records = [s for s in submissions if s.questionnaire.definition.result == SUBSCALES]
     context = {
         "comparisons": comparisons,
         "ssq_comparison": next(
@@ -812,6 +844,8 @@ def _report_context(user):
         ),
         "ssq_latest": ssq_records[0] if ssq_records else None,
         "ssq_recent": ssq_records[:REPORT_RECENT],
+        "sadl_latest": sadl_records[0] if sadl_records else None,
+        "sadl_recent": sadl_records[:REPORT_RECENT],
         "sections": sections,
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),

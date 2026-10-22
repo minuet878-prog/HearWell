@@ -1,8 +1,10 @@
 """SADL answering, scoring and pre-launch visibility (#167)."""
 
+import json
 import re
 import uuid
 from dataclasses import replace
+from datetime import timedelta
 from io import StringIO
 
 from django.core.management import call_command
@@ -10,10 +12,24 @@ from django.db import connection
 from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
-from screening.models import Questionnaire, Submission
+from screening.models import Answer, Questionnaire, Submission
 from screening.questionnaires import sadl
+from screening.tests import test_report
 from screening.tests.helpers import consented_user, register
+
+
+def sadl_submission(user, questionnaire, *, wearing_hearing_aid=True, score=4):
+    """A fully-answered SADL record (15 items, none 「不適用」), owned by the given user."""
+    submission = Submission.objects.create(
+        user=user, questionnaire=questionnaire, wearing_hearing_aid=wearing_hearing_aid
+    )
+    Answer.objects.bulk_create(
+        Answer(submission=submission, question=question, score=score)
+        for question in questionnaire.questions.all()
+    )
+    return submission
 
 
 class SadlTestCase(TestCase):
@@ -57,7 +73,9 @@ class SadlAnsweringTests(SadlTestCase):
     def test_answer_page_does_not_ask_about_wearing_and_explains_who_answers_item_14(self):
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
         self.assertNotContains(page, "有沒有戴助聽器")
-        self.assertNotContains(page, 'id="answer-app"')
+        # React (#170): the page itself has no wearing step, told via data-always-aided.
+        self.assertContains(page, 'id="answer-app"')
+        self.assertContains(page, "data-always-aided")
         self.assertContains(page, "請依您現在戴著或最近戴過的助聽器回答")
         self.assertContains(page, "拿部分補助、自己也付了錢，請照樣作答")
 
@@ -199,3 +217,365 @@ class SadlScoringTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlExportTests(SadlTestCase):
+    """Data export includes SADL (#173)."""
+
+    def answer(self, values):
+        """Sends the server form; each value is 1–7, "na", or None for an unanswered item."""
+        questions = list(self.questionnaire.questions.all())
+        data = {
+            "idempotency_key": str(uuid.uuid4()),
+            "form-TOTAL_FORMS": len(questions),
+            "form-INITIAL_FORMS": 0,
+        }
+        for index, (question, value) in enumerate(zip(questions, values, strict=True)):
+            data[f"form-{index}-question_id"] = question.pk
+            if value is not None:
+                data[f"form-{index}-score"] = value
+        return self.client.post(reverse("screening", args=[self.questionnaire.pk]), data)
+
+    def _exported_sadl(self):
+        submissions = self.client.get(reverse("download_my_data")).json()["submissions"]
+        return next(
+            s for s in submissions if s["questionnaire"] == self.questionnaire.questionnaire_name
+        )
+
+    def test_export_labels_each_answer_in_chinese_including_not_applicable(self):
+        self.answer([1] * 10 + ["na", 1, 1, "na", 1])
+        exported = self._exported_sadl()
+        self.assertEqual(exported["answers"][0]["choice"], "一點都沒有")
+        self.assertIsNone(exported["answers"][10]["score"])
+        self.assertEqual(exported["answers"][10]["choice"], "不適用")
+        self.assertIsNone(exported["answers"][13]["score"])
+        self.assertEqual(exported["answers"][13]["choice"], "不適用")
+
+    def test_export_has_overall_and_subscale_scores_matching_the_result_page(self):
+        self.answer([4] * 15)
+        exported = self._exported_sadl()
+        self.assertEqual(exported["overall_score"], "4.0")
+        self.assertEqual(
+            exported["subscale_scores"],
+            {"正面效果": "4.0", "服務與費用": "4.0", "負面特徵": "4.0", "個人形象": "4.0"},
+        )
+        self.assertIsNone(exported["level"])
+        self.assertIsNone(exported["total_score"])
+        self.assertIsNone(exported["emotional_score"])
+        self.assertIsNone(exported["social_score"])
+
+    def test_export_does_not_carry_the_ssq12_average_field_when_both_are_answered(self):
+        self.answer([4] * 15)
+        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        self.client.post(
+            "/api/submissions/",
+            {
+                "questionnaire": ssq12.pk,
+                "wearing_hearing_aid": False,
+                "answers": [{"question": q.pk, "score": 6} for q in ssq12.questions.all()],
+            },
+            content_type="application/json",
+            HTTP_IDEMPOTENCY_KEY=str(uuid.uuid4()),
+        )
+        exported = self._exported_sadl()
+        self.assertNotIn("average_score", exported)
+        self.assertNotIn("average_unavailable_reason", exported)
+
+
+@override_settings(DEBUG=True)
+class SadlHistoryTests(SadlTestCase):
+    """我的紀錄的 SADL 分頁 (#171)."""
+
+    def answer(self, values):
+        questions = list(self.questionnaire.questions.all())
+        data = {
+            "idempotency_key": str(uuid.uuid4()),
+            "form-TOTAL_FORMS": len(questions),
+            "form-INITIAL_FORMS": 0,
+        }
+        for index, (question, value) in enumerate(zip(questions, values, strict=True)):
+            data[f"form-{index}-question_id"] = question.pk
+            if value is not None:
+                data[f"form-{index}-score"] = value
+        return self.client.post(reverse("screening", args=[self.questionnaire.pk]), data)
+
+    def test_the_sadl_tab_lists_each_record_by_overall_score_linking_to_its_result(self):
+        # A second questionnaire so the tab nav (and its label) actually renders.
+        Submission.objects.create(
+            user=self.user, questionnaire=Questionnaire.objects.get(code="ssq12-tw")
+        )
+        self.answer([4] * 15)
+        first = Submission.objects.latest("pk")
+        self.answer([1] * 15)
+        second = Submission.objects.latest("pk")
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertContains(history, "助聽器滿意度（SADL）")
+        self.assertContains(history, "整體滿意度：4.0")
+        self.assertContains(history, "整體滿意度：2.6")
+        self.assertContains(history, reverse("result", args=[first.pk]))
+        self.assertContains(history, reverse("result", args=[second.pk]))
+
+    def test_the_sadl_tab_has_no_wearing_comparison_or_trend_chart(self):
+        self.answer([4] * 15)
+        self.answer([1] * 15)
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertNotContains(history, "配戴狀態比較")
+        self.assertNotContains(history, "比較戴與不戴助聽器")
+        self.assertNotIn("trend-chart", history.content.decode())
+        self.assertNotContains(history, "screening/frontend/trend-chart.js")
+
+    def test_another_users_sadl_record_does_not_appear(self):
+        self.answer([4] * 15)
+        other = consented_user(username="sadl_other", password="Test-pass-12345")
+        self.client.force_login(other)
+        self.answer([1] * 15)
+        self.client.force_login(self.user)
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertContains(history, "整體滿意度：4.0")
+        self.assertNotContains(history, "整體滿意度：2.6")
+
+    def test_the_tab_reads_answers_the_same_number_of_times_for_two_or_five_records(self):
+        def list_queries():
+            with CaptureQueriesContext(connection) as ctx:
+                response = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+            self.assertEqual(response.status_code, 200)
+            return len(ctx.captured_queries)
+
+        for _ in range(2):
+            self.answer([4] * 15)
+        two = list_queries()
+        for _ in range(3):
+            self.answer([4] * 15)
+        self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlReportTests(SadlTestCase):
+    """Health report and shared report show a SADL part (#172)."""
+
+    def _record(self, score=4, wearing=True, days_ago=0):
+        questions = list(self.questionnaire.questions.order_by("question_number"))
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=q, score=score) for q in questions
+        )
+        if days_ago:
+            Submission.objects.filter(pk=submission.pk).update(
+                created_at=timezone.now() - timedelta(days=days_ago)
+            )
+        return Submission.objects.get(pk=submission.pk)
+
+    def _share_report(self):
+        self.client.post("/report/share", {"confirm": "1"})
+        share = self.user.report_shares.get()
+        self.client.logout()
+        return self.client.get(f"/shared/{share.token}/report")
+
+    # acceptance 1
+    def test_report_shows_latest_overall_subscales_and_recent_list(self):
+        older = self._record(score=4, days_ago=3)
+        latest = self._record(score=4, days_ago=0)
+        report = self.client.get(reverse("health_report")).content.decode()
+        section = test_report._section(report, "report-sadl")
+        self.assertIn("整體滿意度：4.0", section)
+        for name in ("正面效果", "服務與費用", "負面特徵", "個人形象"):
+            with self.subTest(name=name):
+                self.assertIn(f"{name}：4.0", section)
+        self.assertIn("最近 2 次紀錄", section)
+        for record in (older, latest):
+            self.assertIn(timezone.localtime(record.created_at).strftime("%Y/%m/%d %H:%M"), section)
+
+    # acceptance 2
+    def test_sadl_and_ssq12_sections_stay_separate(self):
+        self._record()
+        ssq = Questionnaire.objects.get(code="ssq12-tw")
+        ssq_submission = Submission.objects.create(
+            user=self.user, questionnaire=ssq, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=ssq_submission, question=q, score=2)
+            for q in ssq.questions.order_by("question_number")
+        )
+        content = self.client.get(reverse("health_report")).content.decode()
+        ssq_section = test_report._section(content, "report-ssq12")
+        sadl_section = test_report._section(content, "report-sadl")
+        self.assertIn("SSQ12-TW", ssq_section)
+        self.assertNotIn("SADL", ssq_section)
+        self.assertNotIn("整體滿意度", ssq_section)
+        self.assertIn("SADL", sadl_section)
+        self.assertIn("整體滿意度", sadl_section)
+        self.assertNotIn("SSQ12", sadl_section)
+
+    # acceptance 3
+    def test_family_shared_report_shows_the_same_sadl_section(self):
+        self._record()
+        owner_content = self.client.get(reverse("health_report")).content.decode()
+        shared_content = self._share_report().content.decode()
+        self.assertEqual(
+            test_report._section(owner_content, "report-sadl"),
+            test_report._section(shared_content, "report-sadl"),
+        )
+
+    # acceptance 4
+    def test_report_scores_match_the_result_page(self):
+        # Same case as SadlScoringTests.test_overall_and_subscale_scores...: items 2/4/7/13
+        # are reversed, so an all-1 answer set is not an all-1 score set.
+        submission = self._record(score=1)
+        report = self.client.get(reverse("health_report")).content.decode()
+        result = self.client.get(reverse("result", args=[submission.pk])).content.decode()
+        section = test_report._section(report, "report-sadl")
+        self.assertIn("整體滿意度：2.6", section)
+        self.assertIn("整體滿意度：2.6", result)
+        names_and_scores = zip(
+            ("正面效果", "服務與費用", "負面特徵", "個人形象"),
+            ("1.0", "1.0", "5.0", "5.0"),
+            strict=True,
+        )
+        for name, score in names_and_scores:
+            with self.subTest(name=name):
+                self.assertIn(f"{name}：{score}", section)
+                self.assertIn(f"{name}：{score}", result)
+
+    def test_no_sadl_records_leaves_the_part_out(self):
+        content = self.client.get(reverse("health_report")).content.decode()
+        self.assertNotIn('id="report-satisfaction"', content)
+        self.assertNotIn('id="report-sadl"', content)
+
+    def test_query_count_does_not_grow_with_more_sadl_records(self):
+        for _ in range(5):
+            self._record()
+        with CaptureQueriesContext(connection) as few:
+            self.client.get(reverse("health_report"))
+        for _ in range(5):
+            self._record()
+        with CaptureQueriesContext(connection) as many:
+            self.client.get(reverse("health_report"))
+        self.assertEqual(len(many), len(few))
+
+
+@override_settings(DEBUG=True)
+class SadlRecommendationTests(SadlTestCase):
+    """Wizard "也可以做" and the home-page overall-score card for SADL (#174)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        super().setUp()
+        self.hhie = Questionnaire.objects.get(code="hhie-s")
+        self.ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+
+    def wizard(self, **params):
+        return self.client.get(reverse("questionnaire_list"), params)
+
+    def also_list(self, page):
+        main = page.content.decode()
+        return main[main.index("也可以做") : main.index("看其他問卷")]
+
+    def test_aided_also_lists_ssq12_and_sadl_when_sadl_is_visible(self):
+        page = self.wizard(age_group="older", hearing_aid="yes")
+        also = self.also_list(page)
+        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 2)
+
+    def test_unlisted_sadl_is_not_in_the_also_list_in_production(self):
+        with override_settings(DEBUG=False):
+            page = self.wizard(age_group="older", hearing_aid="yes")
+        self.assertNotContains(page, "SADL")
+        also = self.also_list(page)
+        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertNotIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 1)
+
+    def test_aided_with_only_a_sadl_record_still_recommends_life_impact_and_says_why(self):
+        # SADL is not a life-impact record (#166): having only one still needs the unaided
+        # HHIE-S/HHIA-S catch-up, same as having no records at all.
+        sadl_submission(self.user, self.questionnaire)
+        page = self.wizard(age_group="older", hearing_aid="yes")
+        self.assertEqual(page.context["recommended"], self.hhie)
+        self.assertEqual(page.context["reason"], "needs_norm_basis")
+        self.assertContains(
+            page,
+            "<p><strong>為什麼推薦：</strong>"
+            "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+            "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
+        )
+
+    def test_home_page_shows_the_overall_score_for_a_sadl_only_history(self):
+        sadl_submission(self.user, self.questionnaire)
+        page = self.client.get(reverse("index"))
+        self.assertContains(page, "歡迎回來")
+        self.assertContains(page, "整體滿意度：4.0")
+        # Not a life-impact record (#166): no retest reminder of either phrasing.
+        self.assertNotContains(page, "距離上次的生活影響評估")
+        self.assertNotContains(page, "下次建議")
+        self.assertNotContains(page, "再做一次")
+
+    def test_another_users_sadl_record_does_not_make_a_new_user_look_returning(self):
+        other = consented_user(username="other_sadl_user", password="Test-pass-12345")
+        sadl_submission(other, self.questionnaire)
+        page = self.client.get(reverse("index"))
+        self.assertContains(page, "了解聽力對您生活的影響")
+        self.assertNotContains(page, "歡迎回來")
+
+
+@override_settings(DEBUG=True)
+class SadlAnswerApiTests(SadlTestCase):
+    """SADL answered through /api/submissions/ (#170): always-aided, no wearing field needed."""
+
+    def _body(self, values, **overrides):
+        """values: 15 item scores, 1-7 or None for 「不適用」 (API score, not the "na" sentinel)."""
+        questions = list(self.questionnaire.questions.all())
+        body = {
+            "questionnaire": self.questionnaire.pk,
+            "answers": [
+                {"question": question.pk, "score": value}
+                for question, value in zip(questions, values, strict=True)
+            ],
+        }
+        body.update(overrides)
+        return body
+
+    def _post(self, body):
+        return self.client.post(
+            "/api/submissions/",
+            json.dumps(body),
+            content_type="application/json",
+            headers={"Idempotency-Key": str(uuid.uuid4())},
+        )
+
+    def test_a_submission_without_a_wearing_field_is_saved_as_worn(self):
+        response = self._post(self._body([4] * 15))
+        self.assertEqual(response.status_code, 201)
+        submission = Submission.objects.get()
+        self.assertIs(submission.wearing_hearing_aid, True)
+
+    def test_a_submission_sending_wearing_false_is_still_saved_as_worn(self):
+        # The web form never offers this choice either (views.screening, always_aided); the API
+        # must not trust a caller that sends it anyway.
+        response = self._post(self._body([4] * 15, wearing_hearing_aid=False))
+        self.assertEqual(response.status_code, 201)
+        submission = Submission.objects.get()
+        self.assertIs(submission.wearing_hearing_aid, True)
+
+    def test_a_missing_answer_is_rejected_with_the_same_message_as_the_web_form(self):
+        questions = list(self.questionnaire.questions.all())
+        body = {
+            "questionnaire": self.questionnaire.pk,
+            "answers": [{"question": question.pk, "score": 4} for question in questions[:-1]],
+        }
+        response = self._post(body)
+        self.assertEqual(response.status_code, 400)
+        # Same message as forms.BaseAnswerFormSet.clean() (shared by the web form).
+        self.assertEqual(response.json(), {"answers": ["有題目沒有作答"]})
+        self.assertFalse(Submission.objects.exists())
+
+    def test_not_applicable_outside_item_11_or_14_is_rejected_like_the_web_form(self):
+        response = self._post(self._body([None] + [4] * 14))
+        self.assertEqual(response.status_code, 400)
+        # Same message as forms.BaseAnswerFormSet.clean() (shared by the web form).
+        self.assertEqual(response.json(), {"answers": ["表單資料有誤，請重新確認每一題的作答"]})
+        self.assertFalse(Submission.objects.exists())
