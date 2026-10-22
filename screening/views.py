@@ -1,5 +1,6 @@
 import json
 import uuid
+from dataclasses import dataclass
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -126,15 +127,21 @@ def family_guide(request):
     return render(request, "screening/family_guide.html")
 
 
-# The hearing-aid guide's chapters in reading order (spec #218): (slug, title, template). A
-# chapter without a template yet is listed on the contents page but not linked.
+@dataclass(frozen=True)
+class GuideChapter:
+    slug: str
+    title: str
+    template: str | None  # None until the chapter is written: listed but not linked
+
+
+# The hearing-aid guide's chapters in reading order (spec #218).
 GUIDE_CHAPTERS = (
-    ("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
-    ("assessment", "身障鑑定與鑑定醫院", None),
-    ("form-9", "九號表：申請助聽器補助", None),
-    ("types-and-prices", "助聽器的種類與價格", None),
-    ("form-25", "二十五號表：使用效益驗證", None),
-    ("after-fitting", "配戴助聽器之後", None),
+    GuideChapter("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
+    GuideChapter("assessment", "身障鑑定與鑑定醫院", None),
+    GuideChapter("form-9", "九號表：申請助聽器補助", None),
+    GuideChapter("types-and-prices", "助聽器的種類與價格", None),
+    GuideChapter("form-25", "二十五號表：使用效益驗證", None),
+    GuideChapter("after-fitting", "配戴助聽器之後", None),
 )
 
 
@@ -145,10 +152,10 @@ def guide(request):
 
 def guide_chapter(request, chapter):
     # Like the family guide: the same reviewed content for everyone, no user data.
-    template = next((t for slug, _, t in GUIDE_CHAPTERS if slug == chapter and t), None)
-    if template is None:
+    found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter and c.template), None)
+    if found is None:
         raise Http404
-    return render(request, template)
+    return render(request, found.template, {"chapter": found})
 
 
 class MonitoringTestError(Exception):

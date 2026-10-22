@@ -96,9 +96,11 @@ class GuideChapterTests(TestCase):
         self.url = reverse("guide_chapter", args=["before-you-go"])
 
     def test_before_you_go_is_open_without_logging_in(self):
-        response = self.client.get(self.url)
+        with self.assertNumQueries(0):
+            response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>', html=False)
+        self.assertContains(response, "<title>去找聽力師之前\uff5cHearWell</title>")
+        self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
         text = text_of(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]
         self.assertEqual(positions, sorted(positions))

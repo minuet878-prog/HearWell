@@ -10,13 +10,13 @@
 <section aria-labelledby="contents-title">
     <h2 id="contents-title" class="h4 mt-6">選配與補助，一步一步看</h2>
     <ol class="list-unstyled">
-        {% for slug, title, template in chapters %}
-        <li>{% if template %}<a class="link-card" href="{% url 'guide_chapter' slug %}">
+        {% for chapter in chapters %}
+        <li>{% if chapter.template %}<a class="link-card" href="{% url 'guide_chapter' chapter.slug %}">
             <span class="link-card-body">
-                <span class="link-card-title">{{ title }}</span>
+                <span class="link-card-title">{{ chapter.title }}</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a>{% else %}{{ title }}{% endif %}</li>
+        </a>{% else %}{{ chapter.title }}{% endif %}</li>
         {% endfor %}
     </ol>
 </section>
