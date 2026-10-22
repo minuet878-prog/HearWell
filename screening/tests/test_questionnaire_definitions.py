@@ -197,7 +197,7 @@ class RealDefinitionsTests(TestCase):
             with self.subTest(code=code):
                 url = reverse("screening", args=[self.questionnaires[code].pk])
                 content = self.client.get(url).content.decode()
-                self.assertIn(f"共 1 題，大約 {minutes} 分鐘。", content)
+                self.assertIn(f"共 1 題・大約 {minutes} 分鐘", content)
                 for sentence in sentences:
                     self.assertIn(sentence, content)
 

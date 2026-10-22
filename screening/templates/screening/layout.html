@@ -111,14 +111,13 @@
         {% endfor %}
         {% block body %}{% endblock %}
     </main>
-    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). #}
+    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). "加到手機主畫面" lives on the home page's "您還可以" and the account page; icons are decorative, the words carry the meaning. #}
     <footer class="site-footer">
         <div class="container">
             <ul class="site-footer-links">
-                <li><a href="{% url 'family_guide' %}">給家人看：怎麼跟聽損的家人溝通</a></li>
-                <li><a href="{% url 'add_to_home' %}">把 HearWell 加到手機主畫面</a></li>
-                <li><a href="{% url 'privacy' %}">隱私權說明</a></li>
-                {% if user.is_authenticated %}<li><a href="{% url 'account_settings' %}">帳號設定</a></li>{% endif %}
+                <li><a href="{% url 'family_guide' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>給家人看：怎麼跟聽損的家人溝通</a></li>
+                <li><a href="{% url 'privacy' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+                {% if user.is_authenticated %}<li><a href="{% url 'account_settings' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>{% endif %}
             </ul>
             <p>結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
             <p>聯絡我們：<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>

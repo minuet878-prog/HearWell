@@ -17,13 +17,15 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   禁止快取（#182）、成人問卷第三批 THI 耳鳴障礙量表（母規格 #208，#210–#217，ADR 0015、0016）、2c 支線改版三批
   （母規格 #183，#185–#204，ADR 0013；PR #219、#235、#237、#239）、家人溝通頁改成分段卡片（#240，驗證見
   `docs/verification/issue-240.md`）、IOI-HA 改用 React 作答頁（#245，驗證見 `docs/verification/issue-245.md`）、助聽器選配指引（母規格 #218，
-  #220–#231，ADR 0017）。
+  #220–#231，ADR 0017）、頁尾改圖示＋文字、標題加藍條、老使用者首頁白卡片、作答頁與問卷介紹整理
+  （驗證見 `docs/verification/footer-headings-answer-page.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
-- 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
+- 下一步：文字多的頁面整理（選配指引六章、結果頁、聽力圖結果頁說明，見
+  `docs/verification/footer-headings-answer-page.md` 的「留給下一個分支」）。SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
 - 等時間：見下方「時間型待辦」。
 

@@ -2,7 +2,7 @@
 {# a box of fixed height, so the record cards below do not move when the chart arrives. #}
 <div id="trend-chart">
 <section aria-labelledby="trend-title" class="mb-6">
-    <h2 id="trend-title" class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ questionnaire.questionnaire_name }} 總分變化</h2>
+    <h2 id="trend-title" class="heading-bar text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ questionnaire.questionnaire_name }} 總分變化</h2>
     <p>分數越低，{{ questionnaire.definition.topic }}越小。</p>
     <div class="trend-summary mb-4">
         <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}，{{ chart.status }}）</p>

@@ -35,10 +35,18 @@ class AddToHomeTests(TestCase):
     def setUp(self):
         content = self.client.get(reverse("add_to_home")).content.decode()
         self.main = content[content.index("<main") : content.index("</main>")]
-        self.blocks = {
-            summary.strip(): (details_attrs, body)
-            for details_attrs, _, summary, body in DETAILS.findall(self.main)
-        }
+        # Footer redesign: each summary starts with a decorative phone icon, then its words.
+        self.icons = {}
+        self.blocks = {}
+        for details_attrs, _, summary, body in DETAILS.findall(self.main):
+            words = re.sub(r"<svg.*?</svg>", "", summary, flags=re.DOTALL).strip()
+            self.icons[words] = summary[: summary.index(words)]
+            self.blocks[words] = (details_attrs, body)
+
+    def test_each_phone_has_a_decorative_icon(self):
+        for words, icon in self.icons.items():
+            with self.subTest(summary=words):
+                self.assertRegex(icon, r'^<svg [^>]*aria-hidden="true"')
 
     def test_iphone_block_holds_only_the_iphone_steps_with_the_fallback(self):
         self.assertEqual(list(self.blocks), ["我用 iPhone", "我用 Android"])

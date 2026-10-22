@@ -1,5 +1,5 @@
 <section class="ioi-chart mb-6" aria-labelledby="ioi-chart-title">
-    <h2 id="ioi-chart-title" class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ chart.latest.questionnaire.questionnaire_name }} 各題與常模</h2>
+    <h2 id="ioi-chart-title" class="heading-bar text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{{ chart.latest.questionnaire.questionnaire_name }} 各題與常模</h2>
     <p class="mb-1">最近一次（{{ chart.latest.created_at|date:"Y/m/d" }}）</p>
     <p class="font-bold">常模組別：{{ chart.latest.get_norm_group_display }}</p>
     {% if chart.grouped %}

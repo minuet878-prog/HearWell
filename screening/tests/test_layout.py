@@ -108,8 +108,11 @@ class LayoutTests(TestCase):
             with self.subTest(url=url, logged_in=logged_in):
                 content = self.client.get(url).content.decode()
                 footer = _footer(content)
-                for name in ("family_guide", "add_to_home", "privacy"):
+                for name in ("family_guide", "privacy"):
                     self.assertIn(f'href="{reverse(name)}"', footer)
+                # Footer redesign: "加到手機主畫面" left the footer; the home page card and the
+                # account page keep it.
+                self.assertNotIn(f'href="{reverse("add_to_home")}"', footer)
                 self.assertIn("結果僅供參考，不能取代聽力檢查與醫師診斷。", footer)
                 self.assertIn('href="mailto:hearwellweb@gmail.com"', footer)
                 self.assertIn("hearwellweb@gmail.com", _text(footer))
@@ -124,10 +127,8 @@ class LayoutTests(TestCase):
     # 5 (changed by the owner after review: the footer made these two links repeat)
     def test_home_links_moved_to_footer_disclaimer_stays(self):
         content = self._get(reverse("index"))
-        for name in ("family_guide", "add_to_home"):
-            with self.subTest(link=name):
-                self.assertNotIn(f'href="{reverse(name)}"', _main(content))
-                self.assertIn(f'href="{reverse(name)}"', _footer(content))
+        self.assertNotIn(f'href="{reverse("family_guide")}"', _main(content))
+        self.assertIn(f'href="{reverse("family_guide")}"', _footer(content))
         # The trust line (brand refresh).
         self.assertIn("內容由台灣執業聽力師設計與審定。", _main(content))
 

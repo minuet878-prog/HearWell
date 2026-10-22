@@ -31,8 +31,8 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 </div>
 {% endif %}
 <div>
-    <h1 class="h2 mt-4">{{ questionnaire.questionnaire_name }}</h1>
-    <p class="text-xl/normal font-bold">共 {{ question_count }} 題，大約 {{ questionnaire.definition.minutes }} 分鐘。</p>
+    <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
+    <p>{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
     {# React reads the intro from here and shows it per step (#153); without JS it just stays. #}
     <div id="answer-intro">
     {% include questionnaire.definition.intro_template %}
