@@ -5,7 +5,7 @@
         {% if audiogram %}
         <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}</li>
         {% endif %}
-        {% for section in sections %}{% with latest=section.latest %}
+        {% for section in sections|add:tinnitus_sections %}{% with latest=section.latest %}
         <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
         {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
@@ -52,6 +52,29 @@
     </table>
 </section>
 {% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
+{% endwith %}{% endfor %}
+</section>
+{% endif %}
+
+{% if tinnitus_sections %}
+<section id="report-tinnitus" class="report-part" aria-labelledby="tinnitus-title">
+<h2 id="tinnitus-title" class="h4">耳鳴</h2>
+{% for section in tinnitus_sections %}{% with latest=section.latest code=section.questionnaire.code %}
+<section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
+    <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
+    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
+    <p>助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
+    <p>{{ section.advice }}</p>
+    <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
+    <table class="table">
+        <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>
+        <tbody>
+            {% for record in section.recent %}
+            <tr><td>{{ record.created_at|date:"Y/m/d" }}</td><td>{{ record.total_answer_score }}</td><td>{{ record.classified.text }}</td><td>{{ record.get_wearing_hearing_aid_display }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
 {% endwith %}{% endfor %}
 </section>
 {% endif %}

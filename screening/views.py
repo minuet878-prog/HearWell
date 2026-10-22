@@ -673,6 +673,11 @@ def _export_submission(submission):
     # pages); the others export null, not 0.
     result = submission.questionnaire.definition.result
     not_scored = result != LEVEL
+    # As on the result page (#212): only items marked emotional or social make subscores; THI
+    # has none (spec #208 Q5). Read from the prefetched answers, no query per record.
+    no_subscores = not_scored or all(
+        answer.question.category == models.Category.NONE for answer in submission.answers.all()
+    )
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
@@ -688,8 +693,8 @@ def _export_submission(submission):
             for answer in submission.answers.all()
         ],
         "total_score": None if not_scored else submission.total_answer_score,
-        "emotional_score": None if not_scored else submission.emotional_score,
-        "social_score": None if not_scored else submission.social_score,
+        "emotional_score": None if no_subscores else submission.emotional_score,
+        "social_score": None if no_subscores else submission.social_score,
         "level": None if not_scored else submission.classified["text"],
         "norm_group": submission.get_norm_group_display() or None,
     }
@@ -883,7 +888,10 @@ def _report_context(user):
         "ssq_recent": ssq_records[:REPORT_RECENT],
         "sadl_latest": sadl_records[0] if sadl_records else None,
         "sadl_recent": sadl_records[:REPORT_RECENT],
-        "sections": sections,
+        "sections": [s for s in sections if s["questionnaire"].definition.life_impact],
+        # Graded but not life impact (ADR 0016): THI, in its own part with no subscores,
+        # answers or comparison (spec #208 Q5, Q9).
+        "tinnitus_sections": [s for s in sections if not s["questionnaire"].definition.life_impact],
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),
     }
