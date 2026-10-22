@@ -24,6 +24,7 @@ urlpatterns = [
     path("my_hearing", views.my_hearing, name="my_hearing"),
     path("comparisons/<int:questionnaire_id>", views.hhi_comparison, name="hhi_comparison"),
     path("report", views.health_report, name="health_report"),
+    path("share", views.share_report, name="share_report"),
     path("report/share", views.report_share_create, name="report_share_create"),
     path(
         "report/share/<int:share_id>/cancel",

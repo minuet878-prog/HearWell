@@ -229,16 +229,11 @@ class LayoutTests(TestCase):
             main, rf'class="btn btn-outline-primary[^"]*" href="{reverse("health_report")}"'
         )
 
-    # 10
-    def test_report_page_one_solid_button_until_confirm(self):
+    # 10 (#193: sharing moved to its own page; the report keeps one link to it)
+    def test_report_page_one_solid_button(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         main = _main(self._get(reverse("health_report")))
-        before, rest = main.split("<details>", 1)
-        inside, after = rest.split("</details>", 1)
         solid = re.compile(r'class="btn btn-primary[^"]*"[^>]*>([^<]*)<')
-        # Seen without opening anything: only the print button is solid.
-        self.assertEqual(solid.findall(before + after), ["列印或存成 PDF"])
-        self.assertRegex(
-            inside, r'<summary class="btn btn-outline-primary[^"]*">產生分享連結</summary>'
-        )
-        self.assertRegex(inside, r'class="btn btn-primary[^"]*" type="submit" name="confirm"')
+        self.assertEqual(solid.findall(main), ["列印或存成 PDF"])
+        link = rf'class="btn btn-outline-primary[^"]*" href="{reverse("share_report")}">'
+        self.assertRegex(main, link + "分享報告給家人<")

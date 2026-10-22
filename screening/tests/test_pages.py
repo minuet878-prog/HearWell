@@ -1046,7 +1046,7 @@ class PwaNavTests(TestCase):
             (True, reverse("screening", args=[self.questionnaire.id])),
             (False, reverse("login")),
             (False, reverse("register")),
-            (True, reverse("health_report")),  # the share form
+            (True, reverse("share_report")),  # the share form (#193)
             (True, reverse("audiogram_compare")),
             (True, reverse("audiogram_delete", args=[self.audiogram.id])),
             (True, reverse("delete_account")),

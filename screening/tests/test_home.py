@@ -367,7 +367,7 @@ class ReturningUserHomeTests(TestCase):
         return found.group(0)
 
     def test_more_you_can_do_links_four_cards_to_their_pages(self):
-        # Acceptance 1: sharing goes straight to the report's sharing block.
+        # Acceptance 1; #193 moved sharing to its own page.
         self._hhie_s(days_ago=30)
         section = self._more_section(self._main())
         self.assertIn('<h2 id="more-title" class="h4">您還可以</h2>', section)
@@ -381,15 +381,10 @@ class ReturningUserHomeTests(TestCase):
             [
                 ("/audiograms/new", "記錄醫院的聽力圖"),
                 ("/report", "印聽力報告給醫師看"),
-                ("/report#report-share", "分享報告給家人"),
+                ("/share", "分享報告給家人"),
                 ("/add_to_home", "加到手機主畫面"),
             ],
         )
-
-    def test_share_card_target_is_the_report_sharing_block(self):
-        self._hhie_s(days_ago=30)
-        report = self.client.get(reverse("health_report")).content.decode()
-        self.assertIn('<section id="report-share"', report)
 
     def test_more_you_can_do_shows_all_four_cards_without_javascript(self):
         # Acceptance 3: only the script hides "加到手機主畫面", so the page itself hides nothing.
