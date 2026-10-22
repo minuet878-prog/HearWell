@@ -1727,7 +1727,14 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Ticket #160 acceptance 2 and 3: the home page's "您還可以" in and out of the app."""
 
     fixtures = ("questions_fixture.json",)
-    CARDS = ("記錄醫院的聽力圖", "印聽力報告給醫師看", "分享報告給家人", "加到手機主畫面")
+    # #228 put the hearing-aid guide card before the one the app hides.
+    CARDS = (
+        "記錄醫院的聽力圖",
+        "印聽力報告給醫師看",
+        "分享報告給家人",
+        "了解助聽器選配與補助",
+        "加到手機主畫面",
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -1775,8 +1782,8 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_home_screen_app_hides_add_to_home(self):
         cards = self.open_home(standalone=True)
         with self.saving_artifacts():
-            # Role locators skip hidden elements, so only three cards are left.
-            expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:3]))
+            # Role locators skip hidden elements, so the last card is gone.
+            expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:-1]))
             expect(self.page.locator("main [data-hide-in-app]")).to_be_hidden()
 
     # #195: the account page's "加到手機主畫面" row hides in the app the same way.
@@ -1790,7 +1797,7 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 ["分享報告給家人", "給家人看：怎麼跟聽損的家人溝通"]
             )
 
-    def test_browser_tab_and_no_javascript_show_all_four(self):
+    def test_browser_tab_and_no_javascript_show_every_card(self):
         for standalone, javascript in ((False, True), (True, False)):
             with self.subTest(standalone=standalone, javascript=javascript):
                 cards = self.open_home(standalone=standalone, javascript=javascript)
