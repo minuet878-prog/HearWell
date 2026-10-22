@@ -24,6 +24,11 @@ def _taipei(moment):
     return timezone.localtime(moment).strftime("%Y/%m/%d %H:%M")
 
 
+def _share_page_time(moment):
+    # The share page (#193) writes "10 月 29 日 14:30".
+    return timezone.localtime(moment).strftime("%-m 月 %-d 日 %H:%M")
+
+
 class ReportShareTests(TestCase):
     """Spec docs/specs/phase-08/phase8_c1_family_share.md, acceptance 1-23 (24 is manual)."""
 
@@ -76,6 +81,12 @@ class ReportShareTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return response.content.decode()
 
+    def _share_page(self):
+        # #193 moved the owner's sharing block from the report to its own page.
+        response = self.client.get(reverse("share_report"))
+        self.assertEqual(response.status_code, 200)
+        return response.content.decode()
+
     def _assert_invalid(self, token):
         for name in ("shared_cover", "shared_report"):
             response = self.client.get(reverse(name, args=[token]))
@@ -88,14 +99,14 @@ class ReportShareTests(TestCase):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         before = timezone.now()
         response = self._create()
-        self.assertRedirects(response, reverse("health_report"))
+        self.assertRedirects(response, reverse("share_report"))
         share = ReportShare.objects.get(user=self.user)
         self.assertGreaterEqual(share.expires_at, before + timedelta(days=7))
         self.assertLessEqual(share.expires_at, timezone.now() + timedelta(days=7))
-        content = self._report()
+        content = self._share_page()
         self.assertIn(f"https://testserver{reverse('shared_cover', args=[share.token])}", content)
-        self.assertIn(f"有效到 {_taipei(share.expires_at)}", content)
-        self.assertIn("已開啟 0 次", content)
+        self.assertIn(f"有效到 {_share_page_time(share.expires_at)}", content)
+        self.assertIn("家人打開過 0 次", content)
         self.assertIn("還沒有人打開", content)
         self.assertIn("取消分享", content)
 
@@ -144,7 +155,7 @@ class ReportShareTests(TestCase):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         share = self._share()
         response = self.client.post(reverse("report_share_cancel", args=[share.pk]))
-        self.assertRedirects(response, reverse("health_report"))
+        self.assertRedirects(response, reverse("share_report"))
         self.assertFalse(ReportShare.objects.active().exists())
         self.client.logout()
         self._assert_invalid(share.token)
@@ -165,8 +176,8 @@ class ReportShareTests(TestCase):
         response = self.client.post(reverse("report_share_cancel", args=[share.pk]))
         self.assertEqual(response.status_code, 404)
         self.assertTrue(ReportShare.objects.active().filter(pk=share.pk).exists())
-        # Nor see it: the other user's report page shows no trace of A's link.
-        self.assertNotIn(share.token, self._report())
+        # Nor see it: the other user's share page shows no trace of A's link.
+        self.assertNotIn(share.token, self._share_page())
 
     # 7
     def test_unknown_or_malformed_code_is_invalid(self):
@@ -194,9 +205,9 @@ class ReportShareTests(TestCase):
         share.refresh_from_db()
         self.assertEqual(share.open_count, 3)
         self.client.force_login(self.user)
-        content = self._report()
-        self.assertIn("已開啟 3 次", content)
-        self.assertIn(f"最後一次開啟：{_taipei(share.last_opened_at)}", content)
+        content = self._share_page()
+        self.assertIn("家人打開過 3 次", content)
+        self.assertIn(f"最後一次打開：{_share_page_time(share.last_opened_at)}", content)
         self.assertNotIn("還沒有人打開", content)
 
     # 9
@@ -247,8 +258,8 @@ class ReportShareTests(TestCase):
 
     # 12
     def test_no_records_cannot_share(self):
-        content = self._report()
-        self.assertNotIn("產生分享連結", content)
+        content = self._share_page()
+        self.assertNotIn("我知道了，產生連結", content)
         self._create()
         self.assertFalse(ReportShare.objects.exists())
 
@@ -272,7 +283,7 @@ class ReportShareTests(TestCase):
     def test_only_one_active_link(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         share = self._share()
-        self.assertNotIn("產生分享連結", self._report())
+        self.assertNotIn("我知道了，產生連結", self._share_page())
         self._create()
         self.assertEqual(list(ReportShare.objects.active()), [share])
         self.assertEqual(ReportShare.objects.count(), 1)
@@ -334,14 +345,6 @@ class ReportShareTests(TestCase):
         self.assertEqual(self._cover(share).status_code, 200)
         self.assertEqual(self._shared(share).status_code, 200)
 
-    # 18
-    def test_share_block_on_report_and_not_printed(self):
-        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
-        content = self._report()
-        self.assertRegex(content, r'<section[^>]*id="report-share"[^>]*class="[^"]*no-print')
-        self.assertLess(content.index('id="report-share"'), content.index('id="report-summary"'))
-        self.assertIn("產生分享連結", test_report._section(content, "report-share"))
-
     # 19
     def test_family_version_hides_identity_but_shows_age(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
@@ -362,7 +365,7 @@ class ReportShareTests(TestCase):
     def test_family_sees_latest_records(self):
         self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=3)
         share = self._share()
-        self.assertIn("連結有效期間，家人看到的是您最新的報告", self._report())
+        self.assertIn("連結有效期間，家人看到的是您最新的報告", self._share_page())
         newer = self._hhie_s(self.user, [0] * 10, wearing=True, days_ago=0)
         self.client.logout()
         section = test_report._section(self._shared(share).content.decode(), "report-hhie-s")
@@ -409,17 +412,15 @@ class ReportShareTests(TestCase):
                 else:
                     share = self._share()
                     self.client.post(reverse("report_share_cancel", args=[share.pk]))
-                block = test_report._section(self._report(), "report-share")
-                self.assertIn("產生分享連結", block)
-                self.assertNotIn("已開啟", block)
-                self.assertNotIn(share.token, block)
+                page = self._share_page()
+                self.assertIn("我知道了，產生連結", page)
+                self.assertNotIn("家人打開過", page)
+                self.assertNotIn(share.token, page)
 
     # 23
+    # #183 (Q32) replaced the two-step confirm with one press; the backend check stays.
     def test_nothing_made_without_confirm(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
-        block = test_report._section(self._report(), "report-share")
-        # The confirm button sits inside the closed <details>, so it is never the first click.
-        self.assertRegex(block, re.compile(r'<details>.*name="confirm".*</details>', re.S))
         self._create(other="1")
         self.assertFalse(ReportShare.objects.exists())
 

@@ -5,7 +5,6 @@
 
 {% block extra_head %}
 {% if has_records %}<script defer src="{% static 'screening/print-button.js' %}"></script>{% endif %}
-{% if share %}<script defer src="{% static 'screening/share-button.js' %}"></script>{% endif %}
 {% if audiogram %}<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>{% endif %}
 {% endblock %}
 
@@ -16,9 +15,9 @@
 <p>還沒有可以放進報告的紀錄。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% else %}
-{% include "screening/report_share.html" %}
 <p class="no-print flex flex-wrap gap-2">
     <button id="print-button" type="button" class="btn btn-primary btn-lg">列印或存成 PDF</button>
+    <a id="report-share" class="btn btn-outline-primary btn-lg" href="{% url 'share_report' %}">分享報告給家人</a>
     <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}">回我的紀錄</a>
 </p>
 <div class="report-meta">

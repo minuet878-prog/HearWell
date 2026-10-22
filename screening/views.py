@@ -943,8 +943,19 @@ def _report_context(user):
 def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
-    context["share"] = request.user.report_shares.active().first()
     return render(request, "screening/health_report.html", context)
+
+
+@login_required
+@health_data_page
+def share_report(request):
+    # #193: what the family will see, then one press makes the link; only the user's own link.
+    user = request.user
+    context = {
+        "has_records": user.submissions.exists() or user.audiograms.exists(),
+        "share": user.report_shares.active().first(),
+    }
+    return render(request, "screening/share_report.html", context)
 
 
 @login_required
@@ -959,7 +970,7 @@ def report_share_create(request):
             User.objects.select_for_update().get(pk=user.pk)
             if not user.report_shares.active().exists():
                 models.ReportShare.objects.create(user=user)
-    return redirect("health_report")
+    return redirect("share_report")
 
 
 @login_required
@@ -968,7 +979,7 @@ def report_share_cancel(request, share_id):
     share = get_object_or_404(models.ReportShare.objects.active(), pk=share_id, user=request.user)
     share.revoked_at = timezone.now()
     share.save(update_fields=["revoked_at"])
-    return redirect("health_report")
+    return redirect("share_report")
 
 
 def _family_page(request, template, context=None, status=200):
@@ -1004,7 +1015,16 @@ def shared_report(request, token):
         open_count=F("open_count") + 1, last_opened_at=timezone.now()
     )
     context = _report_context(share.user)
-    context.update({"share": share, "shared": True, "owner": share.user})
+    # #194 "先看重點": the latest life-impact record, picked as the home page's last result is.
+    last = get_user_state(share.user, today=timezone.localdate()).last_result
+    context.update(
+        {
+            "share": share,
+            "shared": True,
+            "owner": share.user,
+            "life_impact": last.submission if last and last.is_life_impact else None,
+        }
+    )
     return _family_page(request, "screening/shared_report.html", context)
 
 

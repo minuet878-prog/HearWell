@@ -1,0 +1,74 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}分享報告給家人｜HearWell{% endblock %}
+
+{% block extra_head %}
+{% if share %}
+<script defer src="{% static 'screening/share-button.js' %}"></script>
+<script defer src="{% static 'screening/copy-link.js' %}"></script>
+{% endif %}
+{% endblock %}
+
+{% block body %}
+{# #193 (spec #183 stories 43-54): three steps, what the family will see, make the link, send it. #}
+<h1 class="h3 mt-2">分享報告給家人</h1>
+{% if not has_records and not share %}
+<p>還沒有可以放進報告的紀錄。</p>
+<a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% else %}
+<section class="card card-body mb-4" aria-labelledby="share-step-1">
+    <h2 id="share-step-1" class="h4 share-step"><span class="step-number" aria-hidden="true">1</span>家人會看到什麼</h2>
+    <ul>
+        <li>聽力圖</li>
+        <li>各問卷的分數、分級和建議</li>
+        <li>每一題的回答</li>
+        <li>每份問卷最近 5 筆紀錄</li>
+        <li>放進報告的配戴比較</li>
+        <li>年齡</li>
+    </ul>
+    <p>不會看到：使用者名稱、出生年</p>
+    <p class="mb-0">連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。</p>
+</section>
+
+<section class="card card-body mb-4" aria-labelledby="share-step-2">
+    <h2 id="share-step-2" class="h4 share-step"><span class="step-number" aria-hidden="true">2</span>產生連結</h2>
+    {% if share %}
+    <ul class="mb-0">
+        <li>有效到 {{ share.expires_at|date:"n 月 j 日 H:i" }}</li>
+        <li>家人打開過 {{ share.open_count }} 次</li>
+        <li>{% if share.last_opened_at %}最後一次打開：{{ share.last_opened_at|date:"n 月 j 日 H:i" }}{% else %}還沒有人打開{% endif %}</li>
+    </ul>
+    {% else %}
+    <p>拿到連結的人，不用登入就看得到這份報告；連結 7 天後失效，您可以隨時取消。</p>
+    <form method="post" action="{% url 'report_share_create' %}">
+        {% csrf_token %}
+        <button class="btn btn-primary btn-lg" type="submit" name="confirm" value="1">我知道了，產生連結</button>
+    </form>
+    {% endif %}
+</section>
+
+<section class="card card-body mb-4" aria-labelledby="share-step-3">
+    <h2 id="share-step-3" class="h4 share-step"><span class="step-number" aria-hidden="true">3</span>傳給家人</h2>
+    {% if share %}
+    {# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
+    {% url 'shared_cover' share.token as share_path %}
+    {% with share_url="https://"|add:request.get_host|add:share_path %}
+    {# Without JavaScript both buttons stay hidden and the address below is the way to copy. #}
+    <p class="flex flex-wrap gap-2">
+        <button id="share-button" type="button" class="btn btn-primary btn-lg" data-url="{{ share_url }}" data-title="HearWell 聽力報告" hidden>再傳一次給家人</button>
+        <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg" data-url="{{ share_url }}" hidden>複製連結</button>
+    </p>
+    <p id="copy-status" class="font-bold" aria-live="polite"></p>
+    <p id="share-url">可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">{{ share_url }}</span></p>
+    {% endwith %}
+    <form method="post" action="{% url 'report_share_cancel' share.pk %}">
+        {% csrf_token %}
+        <button class="btn btn-outline-danger btn-lg" type="submit">取消分享</button>
+    </form>
+    {% else %}
+    <p class="mb-0">產生連結後才能傳。</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

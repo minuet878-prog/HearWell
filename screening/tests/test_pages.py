@@ -717,18 +717,18 @@ class PwaTests(TestCase):
         "把 HearWell 加到手機主畫面",
         "加到主畫面後，HearWell 會像其他 app 一樣出現在手機桌面上，"
         "點一下就能打開，不用每次輸入網址。",
-        "iPhone（Safari）",
+        "我用 iPhone",
         "用 Safari 打開 HearWell 網站。",
         "點畫面下方的「分享」按鈕（一個方框，上面有向上的箭頭）。如果沒看到，先點「⋯」再點「分享」。",
         "往下滑，點「加入主畫面」。",
         "點右上角的「加入」。",
         "第一次從主畫面打開時，需要再登入一次。",
-        "Android 手機（Chrome）",
+        "我用 Android",
         "用 Chrome 打開 HearWell 網站。",
         "點右上角的「⋮」（三個點）。",
         "點「加到主畫面」或「安裝應用程式」。",
         "再點一次「安裝」或「新增」。",
-        "從主畫面打開時，請用畫面下方的「首頁、開始篩檢、我的紀錄」切換頁面。",
+        "從主畫面打開時，請用畫面下方的「首頁、開始篩檢、我的紀錄、聽力圖」切換頁面。",
     )
 
     @classmethod
@@ -1046,7 +1046,7 @@ class PwaNavTests(TestCase):
             (True, reverse("screening", args=[self.questionnaire.id])),
             (False, reverse("login")),
             (False, reverse("register")),
-            (True, reverse("health_report")),  # the share form
+            (True, reverse("share_report")),  # the share form (#193)
             (True, reverse("audiogram_compare")),
             (True, reverse("audiogram_delete", args=[self.audiogram.id])),
             (True, reverse("delete_account")),
