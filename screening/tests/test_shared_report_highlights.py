@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
@@ -166,3 +166,53 @@ class SharedReportHighlightsTests(TestCase):
         help_card = _card(response.content.decode(), "family-help")
         self.assertEqual(len(re.findall(r"<a ", help_card)), 3)
         self.assertNotIn(self.share.token, help_card)
+
+    # Acceptance 16: the cover is unchanged; the report page reads intro → title → cards → report.
+    def test_cover_unchanged_and_report_follows_the_cards_uncollapsed(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        self._right_moderate_left_mild()
+        cover = self.client.get(reverse("shared_cover", args=[self.share.token])).content.decode()
+        for text in (INTRO, "先看重點", "您可以怎麼幫忙"):
+            with self.subTest(text=text):
+                self.assertNotIn(text, cover)
+        content = self._shared()
+        order = [
+            content.index('<article class="health-report">'),
+            content.index(INTRO),
+            content.index("HearWell 聽力報告</h1>"),
+            content.index("連結有效到"),
+            content.index('id="family-highlights"'),
+            content.index('id="family-help"'),
+            content.index('id="report-summary"'),
+            content.index('id="report-audiogram"'),
+            content.index('id="report-life-impact"'),
+            content.index("</article>"),
+        ]
+        self.assertEqual(order, sorted(order))
+        before_report = content[: content.index('id="report-summary"')]
+        self.assertNotIn("<details", before_report)  # the full report is not folded away
+
+    # Acceptance 16 / ticket acceptance 3: only the new line and cards are kept off paper.
+    def test_intro_and_cards_are_not_printed_but_title_and_expiry_are(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        self._right_moderate_left_mild()
+        content = self._shared()
+        self.assertRegex(content, rf'<p class="no-print[^"]*">{INTRO}</p>')
+        for card_id in ("family-highlights", "family-help"):
+            with self.subTest(card=card_id):
+                self.assertRegex(content, rf'<section id="{card_id}" class="[^"]*\bno-print\b')
+        self.assertIn('<h1 class="h3 mt-4">HearWell 聽力報告</h1>', content)
+        self.assertRegex(content, r'<p class="font-bold">這是家人分享給您的報告，連結有效到 ')
+
+    def test_expired_or_cancelled_links_still_show_nothing(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        expired = ReportShare.objects.create(
+            user=self.user, expires_at=timezone.now() - timedelta(minutes=1)
+        )
+        cancelled = ReportShare.objects.create(user=self.user, revoked_at=timezone.now())
+        for share in (expired, cancelled):
+            response = self.client.get(reverse("shared_report", args=[share.token]))
+            with self.subTest(share=share.pk):
+                self.assertEqual(response.status_code, 404)
+                self.assertNotContains(response, "先看重點", status_code=404)
+                self.assertNotContains(response, "您可以怎麼幫忙", status_code=404)
