@@ -3,6 +3,8 @@
 Ported from the standalone audiogram tool; no Django code here.
 """
 
+from decimal import ROUND_HALF_UP, Decimal
+
 AIR_FREQUENCIES = (250, 500, 1000, 2000, 3000, 4000, 6000, 8000)
 BONE_FREQUENCIES = (500, 1000, 2000, 4000)
 PTA_FREQUENCIES = (500, 1000, 2000, 4000)
@@ -94,6 +96,69 @@ def interpret(points):
     """
     points = list(points)
     return {ear: _interpret_ear([p for p in points if p.ear == ear]) for ear in ("right", "left")}
+
+
+# Disability assessment, hearing function (b230), level 1 starts at this dual-ear ratio (%):
+# 身心障礙者鑑定作業辦法 附表二甲 (docs/planning/hearing-aid-guide/research.md section 1).
+ASSESSMENT_THRESHOLD = Decimal("45.0")
+
+
+def _ear_ratio_uncapped(ear_pta):
+    return (Decimal(str(ear_pta)) - NORMAL_LIMIT) * Decimal("1.5")
+
+
+def _ear_ratio(ear_pta):
+    """One ear's impairment ratio (%): (PTA - 25) x 1.5, at most 100. Below 25 dB it counts as 0
+    (the form says nothing; the owner's choice, grill Q14)."""
+    return min(max(_ear_ratio_uncapped(ear_pta), Decimal(0)), Decimal(100))
+
+
+def assessment_estimate(points):
+    """The dual-ear impairment ratio the b230 assessment would compute from this audiogram (ADR
+    0017, spec #218): the better ear (the smaller ratio) counts five times, the worse ear once,
+    rounded half up to one decimal as the assessment form says.
+
+    A no-response point counts at its marked level, so the ratio is a lower bound: reaching the
+    threshold is certain, missing it is not ("uncertain", grill Q10). Only the air points of the
+    four PTA frequencies make the ratio, so only they raise the no-response flag.
+    """
+    points = list(points)
+    ears = {}
+    no_response = False
+    for ear in ("right", "left"):
+        air = {p.frequency: p for p in points if p.ear == ear and p.conduction == "air"}
+        ear_pta = pta({f: p.db for f, p in air.items()})
+        ears[ear] = {"pta": ear_pta, "ratio": None if ear_pta is None else _ear_ratio(ear_pta)}
+        no_response |= any(air[f].no_response for f in PTA_FREQUENCIES if f in air)
+    if None in (ears["right"]["pta"], ears["left"]["pta"]):
+        return {**ears, "ratio": None, "status": "insufficient", "no_response": no_response}
+    better, worse = sorted(e["ratio"] for e in ears.values())
+    ratio = ((better * 5 + worse) / 6).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+    if ratio >= ASSESSMENT_THRESHOLD:
+        status = "reached"
+    else:
+        status = "uncertain" if no_response else "not_reached"
+    return {
+        **ears,
+        "better": better,
+        "worse": worse,
+        # An ear under the normal limit was counted as 0% rather than below it, and one whose
+        # ratio went over 100% as 100% ("超過 100% 以 100% 計", the assessment form).
+        "zeroed": any(e["pta"] < NORMAL_LIMIT for e in ears.values()),
+        "capped": any(_ear_ratio_uncapped(e["pta"]) > 100 for e in ears.values()),
+        "ratio": ratio,
+        "status": status,
+        "no_response": no_response,
+    }
+
+
+def recommends_fitting_assessment(points):
+    """Whether to suggest an audiologist's hearing-aid assessment (grill Q3, ADR 0017): either
+    ear's PTA over the normal limit. None when an unknown ear could still decide it."""
+    ptas = [r["pta"] for r in interpret(points).values()]
+    if any(p is not None and p > NORMAL_LIMIT for p in ptas):
+        return True
+    return None if None in ptas else False
 
 
 def _compare_rows(new, old, frequencies):

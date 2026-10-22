@@ -28,7 +28,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
-from screening.audiogram import compare
+from screening.audiogram import assessment_estimate, compare
 from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
     ROC_OFFSET,
@@ -183,7 +183,36 @@ GUIDE_CHAPTERS = (
 
 def guide(request):
     # Open without logging in (spec #218): the contents are for family too.
-    return render(request, "screening/guide/index.html", {"chapters": GUIDE_CHAPTERS})
+    context = {"chapters": GUIDE_CHAPTERS}
+    if request.user.is_authenticated:
+        audiogram = request.user.audiograms.prefetch_related("points").first()
+        if audiogram is not None:
+            context |= _guide_audiogram(audiogram)
+    response = render(request, "screening/guide/index.html", context)
+    if request.user.is_authenticated:
+        # Shows this account's audiogram (GLOSSARY 健康資料頁面): never cached.
+        add_never_cache_headers(response)
+    return response
+
+
+def _percent(ratio):
+    # 43.125 and 52.5 and 100, as the worked steps write them.
+    return format(ratio.normalize(), "f")
+
+
+def _guide_audiogram(audiogram):
+    # The latest audiogram's 聽力圖 and 身障鑑定門檻 boxes (#226, ADR 0017).
+    points = list(audiogram.points.all())
+    estimate = assessment_estimate(points)
+    ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
+    context = {"audiogram": audiogram, "ears": ears, "threshold": estimate}
+    if estimate["ratio"] is not None:
+        context["worked"] = {
+            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, e in ears],
+            "better": _percent(estimate["better"]),
+            "worse": _percent(estimate["worse"]),
+        }
+    return context
 
 
 def guide_chapter(request, chapter):
