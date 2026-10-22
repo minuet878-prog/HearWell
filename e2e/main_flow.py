@@ -40,6 +40,7 @@ from screening.tests.helpers import consented_user, fake_definition, register
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
+BROWSER_ATTRIBUTES = ("page", "context", "saved_context")
 QUESTION_COUNT = 10
 
 
@@ -70,6 +71,12 @@ class SavesFailureArtifacts:
         # unittest records a failing subtest and carries on, so no outer block ever sees it.
         with super().subTest(*args, **params), self.saving_artifacts():
             yield
+
+    def __getstate__(self):
+        # --parallel pickles a failed subtest's test case to send it back, after the test has
+        # ended, when Django no longer leaves out what cannot be pickled: the browser objects.
+        state = super().__getstate__()
+        return {key: value for key, value in state.items() if key not in BROWSER_ATTRIBUTES}
 
 
 AUDIOGRAM_FORWARD = re.compile("^下一步：標右耳$|換左耳$|確認存檔$")
