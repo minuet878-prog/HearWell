@@ -121,7 +121,8 @@ class FamilyGuideTests(TestCase):
         content = self.client.get(self.url).content.decode()
         headings = [content.index(f'id="{anchor}"') for anchor in ANCHORS]
         self.assertEqual(headings, sorted(headings))
-        sources = content[content.index('id="sources-title"') : content.index("</footer>")]
+        start = content.index('id="sources-title"')
+        sources = content[start : content.index("</section>", start)]
         positions = [sources.index(f"<h3>{topic}</h3>") for topic in TOPICS]
         self.assertEqual(positions, sorted(positions))
         ends = [*positions[1:], len(sources)]

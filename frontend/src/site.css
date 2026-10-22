@@ -2333,25 +2333,25 @@
     padding-bottom: 0;
   }
 
-  .tip-point {
+  .family-guide .tip-point {
     display: block;
     color: var(--color-heading);
   }
 
-  .family-urgent {
+  .family-guide .family-urgent {
     border: 0.125rem solid var(--color-mild);
     background-color: var(--color-mild-bg);
   }
 
-  .family-urgent .topic-icon {
+  .family-guide .family-urgent .topic-icon {
     stroke: var(--color-mild);
   }
 
-  .family-urgent .tips > li {
+  .family-guide .family-urgent .tips > li {
     border-top-color: var(--color-mild);
   }
 
-  .urgent-call {
+  .family-guide .urgent-call {
     margin-bottom: 0;
     padding: 0.875rem;
     border-radius: var(--radius-large);
@@ -2359,7 +2359,7 @@
     color: var(--color-heading);
   }
 
-  .urgent-number {
+  .family-guide .urgent-number {
     font-size: 1.75rem;
     font-weight: 800;
   }
