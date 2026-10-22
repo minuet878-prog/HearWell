@@ -231,7 +231,9 @@ class HhiComparisonRadioCardTests(TestCase):
         aided = self.record(True, 2, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
         pair = {"unaided": unaided.pk, "aided": aided.pk, "action": "save"}
         page = self.client.post(self.url, pair, follow=True)
-        self.assertContains(page, "已放進聽力報告")
+        # The flash says it in the card's words.
+        self.assertContains(page, "已放進聽力報告，新增紀錄不會自動換掉這一組。")
+        self.assertNotContains(page, "自動換組")
         self.assertContains(page, "聽力報告裡的組合")
         self.assertContains(page, "新增紀錄不會自動換掉")
         self.assertContains(page, ">從報告移除</button>")

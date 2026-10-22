@@ -500,7 +500,7 @@ def hhi_comparison(request, questionnaire_id):
             request.user.report_comparisons.update_or_create(
                 questionnaire=questionnaire, defaults=form.cleaned_data
             )
-            messages.success(request, "已放進聽力報告，新增作答不會自動換組。")
+            messages.success(request, "已放進聽力報告，新增紀錄不會自動換掉這一組。")
             return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
     return render(
         request,
