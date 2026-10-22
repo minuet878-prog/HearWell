@@ -1,4 +1,5 @@
 import secrets
+from collections import Counter
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
@@ -12,7 +13,7 @@ from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
-from screening.scoring import classify
+from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -214,6 +215,13 @@ class SubmissionQuerySet(models.QuerySet):
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
 
 
+def shared_days(moments):
+    # The Taipei dates two or more of these moments fall on: a record made on one shows its time
+    # too (spec phase9_ui_refresh_2_data.md 4.3; 我的紀錄 and the comparison page, #190).
+    per_day = Counter(timezone.localdate(moment) for moment in moments)
+    return frozenset(day for day, count in per_day.items() if count > 1)
+
+
 class Submission(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="submissions"
@@ -282,6 +290,37 @@ class Submission(models.Model):
             Decimal("0.1"), rounding=ROUND_HALF_UP
         )
 
+    def previous_same_wearing(self, earlier):
+        # earlier: this questionnaire's records before this one, newest first. The record this one
+        # is compared with: the latest worn the same way (records worn otherwise may sit in
+        # between). None when this one has no hearing aid status or is the first of its status.
+        if self.wearing_hearing_aid is None:
+            return None
+        return next((r for r in earlier if r.wearing_hearing_aid == self.wearing_hearing_aid), None)
+
+    @cached_property
+    def ssq_since_last(self):
+        # SSQ12-TW's 「比上一次」 (ticket #188): the record previous_same_wearing picks, shown only
+        # when both have an overall average (ADR 0001).
+        if self.ssq_average is None:
+            return None
+        earlier = (
+            Submission.objects.filter(user_id=self.user_id, questionnaire_id=self.questionnaire_id)
+            .filter(
+                models.Q(created_at__lt=self.created_at)
+                | models.Q(created_at=self.created_at, id__lt=self.id)
+            )
+            .order_by("-created_at", "-id")
+        )
+        previous = self.previous_same_wearing(earlier)
+        if previous is None or previous.ssq_average is None:
+            return None
+        # The difference of the unrounded averages, the same rule as a wearing comparison's.
+        difference = self.questionnaire.definition.comparison.difference(previous, self)
+        day = timezone.localdate(previous.created_at)
+        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.ssq_average)
+        return {"previous": previous, "text": text}
+
     @property
     def ssq_unavailable_reason(self):
         if self.questionnaire.definition.result != AVERAGE or self.ssq_average is not None:
@@ -289,6 +328,18 @@ class Submission(models.Model):
         if self._calculate_scores()["numeric_count"] == 0:
             return "未計算：沒有可用數值回答"
         return "未計算：包含不適用題目"
+
+    @cached_property
+    def ssq_lowest_answers(self):
+        # SSQ12-TW's 「分數最低的 n 題」 (ticket #189): up to 3 answers with a score, lowest first,
+        # ties by item number; 不適用 is left out, and there is no threshold.
+        if self.questionnaire.definition.result != AVERAGE:
+            return []
+        return list(
+            self.answers.filter(score__isnull=False)
+            .select_related("question")
+            .order_by("score", "question__question_number")[:3]
+        )
 
     @cached_property
     def satisfaction(self):
@@ -364,6 +415,19 @@ class ReportComparison(models.Model):
     @property
     def difference_text(self):
         return self.questionnaire.definition.comparison.difference_text(self.unaided, self.aided)
+
+    # The comparison page's result card (#191).
+    @property
+    def unaided_result(self):
+        return self.questionnaire.definition.comparison.record_result(self.unaided)
+
+    @property
+    def aided_result(self):
+        return self.questionnaire.definition.comparison.record_result(self.aided)
+
+    @property
+    def direction_text(self):
+        return self.questionnaire.definition.comparison.direction_text(self.unaided, self.aided)
 
     @property
     def summary(self):  # one line of the report summary

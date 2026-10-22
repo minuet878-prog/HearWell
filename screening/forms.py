@@ -7,7 +7,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import Answer, Question, Submission, User
+from screening.models import Answer, Question, Submission, User, shared_days
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -184,24 +184,27 @@ class WearingNowForm(forms.Form):
 
 
 class ComparisonRecordField(forms.ModelChoiceField):
+    # The Taipei dates this questionnaire's comparable records share; set by the form.
+    shared_days = frozenset()
+
     def label_from_instance(self, obj):
         result = obj.questionnaire.definition.comparison.record_result(obj)
-        when = timezone.localtime(obj.created_at).strftime("%Y/%m/%d %H:%M")
-        return f"{when}，{obj.get_wearing_hearing_aid_display()}，{result}（紀錄 {obj.pk}）"
+        when = timezone.localtime(obj.created_at)
+        shown = when.strftime("%Y/%m/%d %H:%M" if when.date() in self.shared_days else "%Y/%m/%d")
+        return f"{shown}・{result}"
 
 
 class HhiComparisonForm(forms.Form):
+    # Radio cards, none chosen until the user picks (ADR 0003); #190.
     unaided = ComparisonRecordField(
-        label="未配戴紀錄",
+        label="沒戴助聽器時",
         queryset=Submission.objects.none(),
-        empty_label="請選擇未配戴紀錄",
-        widget=forms.Select(attrs={"class": "form-select"}),
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
     )
     aided = ComparisonRecordField(
-        label="配戴紀錄",
+        label="戴助聽器時",
         queryset=Submission.objects.none(),
-        empty_label="請選擇配戴紀錄",
-        widget=forms.Select(attrs={"class": "form-select"}),
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
     )
 
     def __init__(self, *args, user, questionnaire, **kwargs):
@@ -210,5 +213,9 @@ class HhiComparisonForm(forms.Form):
             "questionnaire"
         )
         records = questionnaire.definition.comparison.records(records)
-        self.fields["unaided"].queryset = records.filter(wearing_hearing_aid=False)
-        self.fields["aided"].queryset = records.filter(wearing_hearing_aid=True)
+        days = shared_days(
+            records.filter(wearing_hearing_aid__isnull=False).values_list("created_at", flat=True)
+        )
+        for name, wearing in (("unaided", False), ("aided", True)):
+            self.fields[name].queryset = records.filter(wearing_hearing_aid=wearing)
+            self.fields[name].shared_days = days

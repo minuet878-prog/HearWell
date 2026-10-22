@@ -1,14 +1,26 @@
 """Selected HHI comparisons are explicit and persist per questionnaire (#82)."""
 
+import re
+from datetime import datetime
 from io import StringIO
+from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from screening.models import Answer, Question, Questionnaire, Submission
 from screening.tests.helpers import consented_user
+
+TAIPEI = ZoneInfo("Asia/Taipei")
+
+
+def radio_cards(page, name):
+    """(text, checked) of each radio card of one group, as the page shows them."""
+    found = re.findall(r"<label[^>]*>(<input[^>]*>)\s*(.*?)</label>", page.content.decode(), re.S)
+    return [(text.strip(), " checked" in tag) for tag, text in found if f'name="{name}"' in tag]
 
 
 class HhiComparisonTests(TestCase):
@@ -37,12 +49,12 @@ class HhiComparisonTests(TestCase):
         data = {"unaided": unaided.pk, "aided": aided.pk}
         page = self.client.get(self.url)
         self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "尚未保留")
+        self.assertNotContains(page, "聽力報告裡的組合")
         page = self.client.get(self.url, data)
         self.assertContains(page, "目前查看的兩筆")
         self.assertContains(page, "40 分")
         self.assertContains(page, "20 分")
-        self.assertContains(page, "尚未保留")
+        self.assertNotContains(page, "聽力報告裡的組合")
         response = self.client.post(self.url, {**data, "action": "save"})
         self.assertRedirects(response, self.url)
         self.record(False, 0)
@@ -53,8 +65,8 @@ class HhiComparisonTests(TestCase):
         saved = page.context["saved"]
         self.assertEqual(saved.unaided_id, unaided.pk)
         self.assertEqual(saved.aided_id, aided.pk)
-        self.assertContains(page, "報告保留組合")
-        self.assertContains(page, "不一定是開始使用助聽器前後")
+        self.assertContains(page, "聽力報告裡的組合")
+        self.assertContains(page, "不一定是開始戴之前和之後的比較")
 
     def test_versions_keep_independent_pairs_and_removal_keeps_answers(self):
         hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
@@ -150,3 +162,279 @@ class HhiComparisonTests(TestCase):
         with CaptureQueriesContext(connection) as many:
             self.client.get(self.url)
         self.assertEqual(len(many), len(few))
+
+
+class HhiComparisonRadioCardTests(TestCase):
+    """The comparison page picks the two records with radio cards (#190)."""
+
+    def setUp(self):
+        self.questionnaire = Questionnaire.objects.create(
+            code="hhie-s", questionnaire_name="HHIE-S"
+        )
+        Question.objects.bulk_create(
+            Question(questionnaire=self.questionnaire, question_text=f"題{n}", question_number=n)
+            for n in range(1, 11)
+        )
+        self.user = consented_user(username="radio_user")
+        self.client.force_login(self.user)
+        self.url = f"/comparisons/{self.questionnaire.pk}"
+
+    def record(self, wearing, score, when):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=score)
+            for q in self.questionnaire.questions.all()
+        )
+        Submission.objects.filter(pk=record.pk).update(created_at=when)
+        return record
+
+    def test_cards_show_date_and_score_with_time_on_shared_days_and_none_chosen(self):
+        self.record(False, 2, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
+        self.record(False, 4, datetime(2026, 4, 20, 15, 5, tzinfo=TAIPEI))
+        self.record(True, 0, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
+        page = self.client.get(self.url)
+        self.assertContains(page, "<legend", count=2)
+        self.assertContains(page, "沒戴助聽器時</legend>")
+        self.assertContains(page, "戴助聽器時</legend>")
+        self.assertCountEqual(
+            radio_cards(page, "unaided"),
+            [("2026/04/20 10:30・20 分", False), ("2026/04/20 15:05・40 分", False)],
+        )
+        self.assertEqual(radio_cards(page, "aided"), [("2026/09/02・0 分", False)])
+
+    def test_preview_without_javascript_then_button_follows_the_saved_pair(self):
+        unaided = self.record(False, 4, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
+        aided = self.record(True, 2, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
+        other_aided = self.record(True, 0, datetime(2026, 9, 9, 9, 0, tzinfo=TAIPEI))
+        chosen = {"unaided": unaided.pk, "aided": aided.pk, "action": "preview"}
+        # A plain GET form submission, as a browser without JavaScript sends it.
+        page = self.client.get(self.url, chosen)
+        self.assertContains(page, "目前查看的兩筆")
+        self.assertContains(page, "差值不能單獨判定助聽器效益")
+        self.assertContains(page, ">放進聽力報告</button>")
+        self.assertIn(("2026/04/20・40 分", True), radio_cards(page, "unaided"))
+        self.assertIn(("2026/09/02・20 分", True), radio_cards(page, "aided"))
+        response = self.client.post(self.url, {**chosen, "action": "save"})
+        self.assertRedirects(response, self.url)
+        for page in (self.client.get(self.url), self.client.get(self.url, chosen)):
+            self.assertContains(page, "這一組已經在聽力報告裡")
+            self.assertNotContains(page, 'value="save"')
+            self.assertIn(("2026/09/02・20 分", True), radio_cards(page, "aided"))
+        page = self.client.get(self.url, {**chosen, "aided": other_aided.pk})
+        self.assertContains(page, ">改放這一組到報告</button>")
+        self.assertNotContains(page, "這一組已經在聽力報告裡")
+        self.assertNotContains(page, "放進聽力報告</button>")
+
+    def test_saved_pair_card_and_removal_keeps_every_answer(self):
+        unaided = self.record(False, 4, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
+        aided = self.record(True, 2, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
+        pair = {"unaided": unaided.pk, "aided": aided.pk, "action": "save"}
+        page = self.client.post(self.url, pair, follow=True)
+        # The flash says it in the card's words.
+        self.assertContains(page, "已放進聽力報告，新增紀錄不會自動換掉這一組。")
+        self.assertNotContains(page, "自動換組")
+        self.assertContains(page, "聽力報告裡的組合")
+        self.assertContains(page, "新增紀錄不會自動換掉")
+        self.assertContains(page, ">從報告移除</button>")
+        answers = Answer.objects.filter(submission__user=self.user).count()
+        page = self.client.post(self.url, {"action": "remove"}, follow=True)
+        self.assertContains(page, "已從報告移除這一組，原始作答保持不變。")
+        self.assertNotContains(page, "聽力報告裡的組合")
+        self.assertNotContains(page, "從報告移除</button>")
+        self.assertIn(("2026/04/20・40 分", False), radio_cards(page, "unaided"))
+        self.assertEqual(Answer.objects.filter(submission__user=self.user).count(), answers)
+        self.assertEqual(self.user.submissions.count(), 2)
+
+    def test_missing_choice_keeps_error_summary_linked_to_the_group(self):
+        unaided = self.record(False, 4, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
+        self.record(True, 2, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
+        response = self.client.post(self.url, {"unaided": unaided.pk, "action": "save"})
+        self.assertContains(response, 'id="comparison-errors"', status_code=400)
+        self.assertContains(response, 'href="#id_aided_0">戴助聽器時</a>', status_code=400)
+        self.assertContains(response, 'id="id_aided_0"', status_code=400)
+        self.assertContains(response, 'aria-describedby="id_aided_error"', status_code=400)
+        self.assertContains(response, '<div id="id_aided_error">', status_code=400)
+        self.assertIn(("2026/04/20・40 分", True), radio_cards(response, "unaided"))
+        self.assertFalse(self.user.report_comparisons.exists())
+
+
+class WearingComparisonEntryTests(TestCase):
+    """One 「比較戴與不戴助聽器」 entry on 我的紀錄 and the result pages (#186)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="entry_user")
+        self.client.force_login(self.user)
+
+    def record(self, questionnaire, wearing, score):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=score)
+            for q in questionnaire.questions.all()
+        )
+        return record
+
+    def main(self, url):
+        content = self.client.get(url).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def entries(self, questionnaire, result):
+        """How many 「比較戴與不戴助聽器」 links its 我的紀錄 tab and a result page show."""
+        button = (
+            f'href="{reverse("hhi_comparison", args=[questionnaire.pk])}">比較戴與不戴助聽器</a>'
+        )
+        pages = {
+            "我的紀錄": f"{reverse('my_hearing')}?questionnaire={questionnaire.code}",
+            "結果頁": reverse("result", args=[result.pk]),
+        }
+        return {name: self.main(url).count(button) for name, url in pages.items()}
+
+    def test_entry_shows_only_once_a_questionnaire_has_both_wearing_statuses(self):
+        hhie_s = self.record(self.hhie_s, False, 2)
+        ssq12 = self.record(self.ssq12, False, 6)
+        none = {"我的紀錄": 0, "結果頁": 0}
+        one = {"我的紀錄": 1, "結果頁": 1}
+        self.assertEqual(self.entries(self.hhie_s, hhie_s), none)
+        self.assertEqual(self.entries(self.ssq12, ssq12), none)
+        # An aided HHIE-S brings HHIE-S's entry only: the condition is per questionnaire.
+        self.record(self.hhie_s, True, 0)
+        self.assertEqual(self.entries(self.hhie_s, hhie_s), one)
+        self.assertEqual(self.entries(self.ssq12, ssq12), none)
+        self.record(self.ssq12, True, 8)
+        self.assertEqual(self.entries(self.ssq12, ssq12), one)
+        for url in (reverse("result", args=[hhie_s.pk]), reverse("result", args=[ssq12.pk])):
+            self.assertNotIn("選擇或管理配戴狀態比較", self.main(url))
+
+    def test_hhia_s_entry_follows_the_same_rule(self):
+        # Story 23 names HHIA-S too; it shares the result page with HHIE-S.
+        hhia_s = Questionnaire.objects.get(code="hhia-s")
+        record = self.record(hhia_s, False, 2)
+        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 0, "結果頁": 0})
+        self.record(hhia_s, True, 0)
+        self.assertEqual(self.entries(hhia_s, record), {"我的紀錄": 1, "結果頁": 1})
+
+    def test_ssq12_result_page_has_no_choose_questionnaire_button(self):
+        ssq12 = self.record(self.ssq12, False, 6)
+        main = self.main(reverse("result", args=[ssq12.pk]))
+        self.assertNotIn("選擇問卷", main)
+        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main)
+
+
+def preview_text(page):
+    """The 「目前查看的兩筆」 section as plain text, one space between pieces."""
+    section = re.search(
+        r'<section aria-labelledby="preview-title".*?</section>', page.content.decode(), re.S
+    ).group(0)
+    return " ".join(re.sub(r"<[^>]+>", " ", section).split())
+
+
+class ComparisonResultCardTests(TestCase):
+    """The comparison page's result card (#191): two scores, one direction, the reminders."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
+        Question.objects.bulk_create(
+            Question(questionnaire=hhie, question_text=f"題{n}", question_number=n)
+            for n in range(1, 11)
+        )
+        self.user = consented_user(username="card_user")
+        self.client.force_login(self.user)
+
+    def record(self, code, wearing, scores):
+        questionnaire = Questionnaire.objects.get(code=code)
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=s)
+            for q, s in zip(questionnaire.questions.all(), scores, strict=True)
+        )
+        return record
+
+    def preview(self, code, unaided, aided):
+        first = self.record(code, False, unaided)
+        second = self.record(code, True, aided)
+        url = f"/comparisons/{first.questionnaire_id}"
+        return self.client.get(url, {"unaided": first.pk, "aided": second.pk, "action": "preview"})
+
+    def test_hhie_s_card_shows_both_scores_the_direction_and_the_reminders(self):
+        page = self.preview("hhie-s", [4, 4, 4] + [0] * 7, [2, 2, 2] + [0] * 7)
+        card = preview_text(page)
+        self.assertIn("沒戴 12 分", card)
+        self.assertIn("有戴 6 分", card)
+        self.assertIn("有戴比沒戴少 6 分（分數越低越好）", card)
+        self.assertIn("差值不能單獨判定助聽器效益", card)
+        self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
+        # The old lines of the report fragment are not on the card.
+        self.assertNotIn("差值（配戴", card)
+        self.assertNotIn("少了 6 分", card)
+
+    def test_direction_sentence_for_more_and_same_on_both_versions(self):
+        for code, unaided, aided, sentence in (
+            ("hhie-s", [2] * 10, [2, 2] + [4] * 8, "有戴比沒戴多 16 分（分數越低越好）"),
+            ("hhie-s", [2] * 10, [2] * 10, "有戴和沒戴的分數一樣"),
+            ("hhia-s", [4] * 10, [2] * 10, "有戴比沒戴少 20 分（分數越低越好）"),
+            ("hhia-s", [0] * 10, [0] * 10, "有戴和沒戴的分數一樣"),
+        ):
+            with self.subTest(code=code, sentence=sentence):
+                card = preview_text(self.preview(code, unaided, aided))
+                self.assertIn(sentence, card)
+                self.assertIn("差值不能單獨判定助聽器效益", card)
+
+    def test_card_draws_no_conclusion(self):
+        page = self.preview("hhie-s", [4] * 10, [0] * 10).content.decode()
+        for conclusion in ("有幫助", "影響比較小", "變好", "變差"):
+            with self.subTest(conclusion=conclusion):
+                self.assertNotIn(conclusion, page)
+
+    def test_the_old_reminder_moves_into_the_card(self):
+        page = self.preview("hhie-s", [4] * 10, [2] * 10)
+        self.assertNotContains(page, "前測與後測")
+        self.assertContains(page, "兩筆是不同時間填的，不一定是開始戴之前和之後的比較", count=1)
+
+    def test_reports_keep_their_comparison_section(self):
+        # The owner's report, its print version (the same page) and the family's report read as
+        # before #191; the card is only on the comparison page.
+        first = self.record("hhie-s", False, [4, 4, 4] + [0] * 7)
+        second = self.record("hhie-s", True, [2, 2, 2] + [0] * 7)
+        Submission.objects.filter(pk=first.pk).update(
+            created_at=datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI)
+        )
+        Submission.objects.filter(pk=second.pk).update(
+            created_at=datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI)
+        )
+        self.client.post(
+            f"/comparisons/{first.questionnaire_id}",
+            {"unaided": first.pk, "aided": second.pk, "action": "save"},
+        )
+        owner = self.client.get("/report").content.decode()
+        self.client.post("/report/share", {"confirm": "1"})
+        token = self.user.report_shares.get().token
+        self.client.logout()
+        family = self.client.get(f"/shared/{token}/report").content.decode()
+        for name, content in (("owner", owner), ("family", family)):
+            with self.subTest(report=name):
+                section = re.search(
+                    r'<section id="report-difference".*?</section>', content, re.S
+                ).group(0)
+                self.assertEqual(
+                    " ".join(re.sub(r"<[^>]+>", " ", section).split()),
+                    "配戴狀態比較（HHIE-S，報告保留組合） "
+                    "這是您選定的兩筆，新增作答不會自動換組；"
+                    "不一定是開始使用助聽器前後的前測與後測。 "
+                    "未配戴：2026/04/20 10:30，12 分，輕度到中度影響。 "
+                    "配戴：2026/09/02 09:00，6 分，無/極輕微影響。 "
+                    "差值（配戴 \u2212 未配戴）：-6 分，少了 6 分。"
+                    "分數越低，生活影響越少；差值不能單獨判定助聽器效益。",
+                )
+                self.assertNotIn("有戴比沒戴", content)
+                self.assertNotIn("不一定是開始戴之前和之後的比較", content)

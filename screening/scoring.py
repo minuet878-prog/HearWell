@@ -16,13 +16,20 @@ def retest_next_text(day):
     return f"下次建議 {day:%Y/%m/%d} 再做"
 
 
-def since_last_text(difference):
-    # 我的紀錄's 「和上一次比」 (ticket #162): numbers and direction only, no verdict (ADR 0010).
+LOWER_IS_BETTER = "分數越低越好"
+HIGHER_IS_BETTER = "分數越高越好"
+
+
+def since_last_text(difference, better=LOWER_IS_BETTER, day=None, score=None):
+    # 「和上一次比」: numbers and direction only, no verdict (ADR 0010, ADR 0013). 我的紀錄's
+    # life-impact tabs (ticket #162) use the defaults; SSQ12-TW's result page (ticket #188) also
+    # names the previous record by its Taipei day and score, and there a higher score is better.
+    if difference == 0:
+        return "和上一次一樣"
+    previous = f"（{day:%Y/%m/%d}，{score} 分）" if day else ""
     if difference < 0:
-        return f"比上一次少 {-difference} 分（分數越低越好）"
-    if difference > 0:
-        return f"比上一次多 {difference} 分（分數越低越好）"
-    return "和上一次一樣"
+        return f"比上一次{previous}少 {-difference} 分（{better}）"
+    return f"比上一次{previous}多 {difference} 分（{better}）"
 
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}
@@ -108,6 +115,8 @@ def ioi_ha_group(unaided_hhie_s_total):
 
 
 NORM_COMPARISON_TEXT = {"below": "低於常模", "within": "在範圍內", "above": "高於常模"}
+# The same comparisons in the IOI-HA result page's words (#183).
+NORM_VERSUS_TEXT = {"below": "比一般使用者低", "within": "在一般範圍內", "above": "比一般使用者好"}
 
 
 def compare_to_norm(group, item_number, score):

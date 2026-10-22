@@ -1,6 +1,5 @@
 import json
 import uuid
-from collections import Counter
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -44,6 +43,7 @@ from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
+    NORM_VERSUS_TEXT,
     RECOMMENDATION_REASONS,
     classify,
     compare_to_norm,
@@ -53,7 +53,16 @@ from screening.scoring import (
     since_last_text,
 )
 
-from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
+from .models import (
+    Answer,
+    AudiogramPoint,
+    Ear,
+    NormGroup,
+    Questionnaire,
+    Submission,
+    User,
+    shared_days,
+)
 
 
 def _safe_next(request):
@@ -465,7 +474,7 @@ def hhi_comparison(request, questionnaire_id):
     if request.method == "POST" and request.POST.get("action") == "remove":
         if saved:
             saved.delete()
-        messages.success(request, "已移除報告保留組合，原始作答保持不變。")
+        messages.success(request, "已從報告移除這一組，原始作答保持不變。")
         return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
     data = (
         request.POST
@@ -491,7 +500,7 @@ def hhi_comparison(request, questionnaire_id):
             request.user.report_comparisons.update_or_create(
                 questionnaire=questionnaire, defaults=form.cleaned_data
             )
-            messages.success(request, "已保留這組比較，新增作答不會自動換組。")
+            messages.success(request, "已放進聽力報告，新增紀錄不會自動換掉這一組。")
             return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
     return render(
         request,
@@ -501,6 +510,10 @@ def hhi_comparison(request, questionnaire_id):
             "form": form,
             "saved": saved,
             "preview": preview,
+            # The pair on screen is the one in the report: no button to save it again (#190).
+            "preview_is_saved": saved is not None
+            and preview is not None
+            and (preview.unaided_id, preview.aided_id) == (saved.unaided_id, saved.aided_id),
         },
         status=400 if request.method == "POST" else 200,
     )
@@ -549,16 +562,6 @@ TREND_LEGEND = (
 )
 
 
-def _previous_same_wearing(records):
-    # records: one tab's records, newest first. The record the newest one is compared with:
-    # the latest before it worn the same way (records worn otherwise may sit in between).
-    # None when the newest has no hearing aid status or is the first of its status.
-    wearing = records[0].wearing_hearing_aid
-    if wearing is None:
-        return None
-    return next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
-
-
 def _trend_chart(records, since_last):
     # records: this user's HHIE-S, newest first; since_last: the page's 「和上一次比」 or None.
     # React draws only the chart itself, so the text around it is on the page from the start
@@ -593,6 +596,19 @@ def _trend_chart(records, since_last):
     }
 
 
+def _shows_wearing_comparison(user, questionnaire):
+    # The 「比較戴與不戴助聽器」 entry on 我的紀錄 and the result pages (ticket #186): only once
+    # this questionnaire has comparable records both with and without a hearing aid.
+    comparison = questionnaire.definition.comparison
+    if comparison is None:
+        return False
+    comparable = comparison.records(user.submissions.filter(questionnaire=questionnaire))
+    return (
+        comparable.filter(wearing_hearing_aid=True).exists()
+        and comparable.filter(wearing_hearing_aid=False).exists()
+    )
+
+
 @login_required
 @health_data_page
 def my_hearing(request):
@@ -617,8 +633,8 @@ def my_hearing(request):
     records = [s for s in submissions if s.questionnaire_id == current.id]
     # Records sharing a Taipei date with another of this tab show their time too
     # (spec phase9_ui_refresh_2_data.md 4.3).
-    per_day = Counter(timezone.localdate(s.created_at) for s in records)
-    same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
+    days = shared_days(s.created_at for s in records)
+    same_day = {s.id for s in records if timezone.localdate(s.created_at) in days}
     # Ticket #162: the same retest reminder as the home page (ADR 0010).
     user_state = get_user_state(request.user, today=timezone.localdate())
     # Ticket #162: a life-impact tab compares its newest record with the one before it worn
@@ -626,21 +642,13 @@ def my_hearing(request):
     since_last = None
     if current.definition.result == LEVEL:
         latest = records[0]
-        previous = _previous_same_wearing(records)
+        previous = latest.previous_same_wearing(records[1:])
         if previous is not None:
             since_last = {
                 "latest": latest,
                 "previous": previous,
                 "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
             }
-    comparison = current.definition.comparison
-    show_comparison = False
-    if comparison is not None:
-        comparable = comparison.records(request.user.submissions.filter(questionnaire=current))
-        show_comparison = (
-            comparable.filter(wearing_hearing_aid=True).exists()
-            and comparable.filter(wearing_hearing_aid=False).exists()
-        )
     return render(
         request,
         "screening/my_hearing.html",
@@ -651,7 +659,7 @@ def my_hearing(request):
             "current": current,
             "user_state": user_state,
             "since_last": since_last,
-            "show_comparison": show_comparison,
+            "show_comparison": _shows_wearing_comparison(request.user, current),
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")
             .first(),
@@ -1000,7 +1008,16 @@ def submission_result(request, submission_id):
     result = submission.questionnaire.definition.result
     if result == AVERAGE:
         return render(
-            request, "screening/ssq12_result.html", {"submission": submission, "answers": answers}
+            request,
+            "screening/ssq12_result.html",
+            {
+                "submission": submission,
+                "answers": answers,
+                "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
+                "show_comparison": _shows_wearing_comparison(
+                    request.user, submission.questionnaire
+                ),
+            },
         )
     if result == NORM:
         return _ioi_ha_result(request, submission, answers)
@@ -1034,6 +1051,7 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "show_comparison": _shows_wearing_comparison(request.user, submission.questionnaire),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
@@ -1044,8 +1062,9 @@ def submission_result(request, submission_id):
     )
 
 
-def _ioi_ha_items(submission, answers):
-    # The only place IOI-HA answers meet the norms; the result page and the report both use it.
+def _ioi_ha_items(submission, answers, texts):
+    # The only place IOI-HA answers meet the norms; the result page and the report both use it,
+    # each with its own words for the comparison (texts: NORM_VERSUS_TEXT or NORM_COMPARISON_TEXT).
     grouped = submission.norm_group != NormGroup.UNGROUPED
     items = []
     for answer in answers:
@@ -1053,13 +1072,23 @@ def _ioi_ha_items(submission, answers):
         comparison = (
             compare_to_norm(submission.norm_group, number, answer.score) if grouped else None
         )
+        norm = IOI_HA_NORMS[submission.norm_group][number] if grouped else None
         items.append(
             {
                 "name": IOI_HA_ITEM_NAMES[number],
                 "text": answer.question.question_text,
                 "label": IOI_HA_CHOICES[number][answer.score - 1],
-                "comparison": NORM_COMPARISON_TEXT.get(comparison),
+                "comparison_code": comparison,
+                "comparison": texts.get(comparison),
                 "note": IOI_HA_BELOW_NORM_NOTES[number] if comparison == "below" else None,
+                # The result page's 5-cell scale, scores 1-5: the norm cells and the answer.
+                "cells": [
+                    {
+                        "band": norm is not None and norm[0] <= score <= norm[1],
+                        "mine": score == answer.score,
+                    }
+                    for score in range(1, 6)
+                ],
             }
         )
     return items, grouped
@@ -1068,23 +1097,32 @@ def _ioi_ha_items(submission, answers):
 def _ioi_ha_summary(submission):
     # One IOI-HA record against the norms, for the report and the home page's last result.
     answers = submission.answers.select_related("question").order_by("question__question_number")
-    items, grouped = _ioi_ha_items(submission, answers)
+    items, grouped = _ioi_ha_items(submission, answers, NORM_COMPARISON_TEXT)
     return {
         "submission": submission,
         "items": items,
         "grouped": grouped,
-        "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
-        "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
+        "below": sum(item["comparison_code"] == "below" for item in items),
+        "above": sum(item["comparison_code"] == "above" for item in items),
     }
 
 
 def _ioi_ha_result(request, submission, answers):
     # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
-    items, grouped = _ioi_ha_items(submission, answers)
+    items, grouped = _ioi_ha_items(submission, answers, NORM_VERSUS_TEXT)
+    # Items below the norm come first and open; the rest are folded under 「其他 n 項」 (#187).
+    below = [item for item in items if item["comparison_code"] == "below"]
     return render(
         request,
         "screening/result_ioi_ha.html",
-        {"submission": submission, "items": items, "grouped": grouped},
+        {
+            "submission": submission,
+            "items": items,
+            "grouped": grouped,
+            "below": below,
+            "below_text": NORM_VERSUS_TEXT["below"],
+            "others": [item for item in items if item not in below],
+        },
     )
 
 

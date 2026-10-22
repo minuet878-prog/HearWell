@@ -11,6 +11,7 @@ class TotalComparison:
     anchor: str  # the report section id; bookmarks and family links point at it
     template = "screening/comparisons/total.html"
     history_template = "screening/comparisons/total_history.html"
+    card_template = "screening/comparisons/card.html"  # the comparison page's result card
 
     def records(self, submissions):
         return submissions.complete_hhi()
@@ -29,6 +30,14 @@ class TotalComparison:
             return f"多了 {change} 分"
         return "沒有變化"
 
+    def direction_text(self, unaided, aided):
+        change = self.difference(unaided, aided)
+        if change < 0:
+            return f"有戴比沒戴少 {-change} 分（分數越低越好）"
+        if change > 0:
+            return f"有戴比沒戴多 {change} 分（分數越低越好）"
+        return "有戴和沒戴的分數一樣"
+
     def summary(self, unaided, aided):
         return (
             f"沒戴 {unaided.total_answer_score} 分、有戴 {aided.total_answer_score} 分，"
@@ -43,6 +52,7 @@ class AverageComparison:
     anchor: str  # the report section id; bookmarks and family links point at it
     template = "screening/comparisons/average.html"
     history_template = "screening/comparisons/average_history.html"
+    card_template = "screening/comparisons/average_card.html"  # the comparison page's result card
 
     def records(self, submissions):
         return submissions.with_scores().filter(answer_count=12)
@@ -64,6 +74,16 @@ class AverageComparison:
         if change is None:
             return "未計算整體差值：包含不適用題目或缺少完整回答"
         return f"{change:+.1f} 分"
+
+    def direction_text(self, unaided, aided):
+        change = self.difference(unaided, aided)
+        if change is None:
+            return self.difference_text(unaided, aided)
+        if change > 0:
+            return f"有戴比沒戴多 {change} 分（分數越高越好）"
+        if change < 0:
+            return f"有戴比沒戴少 {-change} 分（分數越高越好）"
+        return "有戴和沒戴的平均一樣"
 
     def summary(self, unaided, aided):
         return self.difference_text(unaided, aided)
