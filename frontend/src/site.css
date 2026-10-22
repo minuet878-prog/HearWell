@@ -2612,7 +2612,11 @@
       display: none;
     }
 
+    /* A whole label moves to the next line rather than splitting (it wraps inside only when it
+       alone is wider than the line). */
     .health-report .report-level {
+      display: inline-block;
+      max-width: 100%;
       border-radius: var(--radius-badge);
       padding: 0 0.5rem;
     }
