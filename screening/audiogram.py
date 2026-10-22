@@ -103,11 +103,14 @@ def interpret(points):
 ASSESSMENT_THRESHOLD = Decimal("45.0")
 
 
+def _ear_ratio_uncapped(ear_pta):
+    return (Decimal(str(ear_pta)) - NORMAL_LIMIT) * Decimal("1.5")
+
+
 def _ear_ratio(ear_pta):
     """One ear's impairment ratio (%): (PTA - 25) x 1.5, at most 100. Below 25 dB it counts as 0
     (the form says nothing; the owner's choice, grill Q14)."""
-    ratio = (Decimal(str(ear_pta)) - NORMAL_LIMIT) * Decimal("1.5")
-    return min(max(ratio, Decimal(0)), Decimal(100))
+    return min(max(_ear_ratio_uncapped(ear_pta), Decimal(0)), Decimal(100))
 
 
 def assessment_estimate(points):
@@ -139,8 +142,10 @@ def assessment_estimate(points):
         **ears,
         "better": better,
         "worse": worse,
-        # An ear under the normal limit was counted as 0% rather than below it.
+        # An ear under the normal limit was counted as 0% rather than below it, and one whose
+        # ratio went over 100% as 100% ("超過 100% 以 100% 計", the assessment form).
         "zeroed": any(e["pta"] < NORMAL_LIMIT for e in ears.values()),
+        "capped": any(_ear_ratio_uncapped(e["pta"]) > 100 for e in ears.values()),
         "ratio": ratio,
         "status": status,
         "no_response": no_response,

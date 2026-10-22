@@ -38,6 +38,7 @@ HOW_FORMULA = (
     "這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。"
 )
 ZERO_NOTE = "四頻平均低於 25 dB HL 的耳，以 0% 計。"
+CAP_NOTE = "單耳比率超過 100% 的，以 100% 計。"
 THRESHOLD_IS = "3. 身障鑑定門檻是 45.0%。"
 # The worked steps for right 53.75 dB, left 60 dB, and for an ear under 25 dB.
 EACH_EAR = (
@@ -161,6 +162,20 @@ class GuideSummaryTests(TestCase):
             with self.subTest(sentence=sentence):
                 self.assertIn(sentence, text)
         self.assertNotIn(ZERO_NOTE, text)
+        self.assertNotIn(CAP_NOTE, text)
+
+    def test_an_ear_over_100_percent_is_noted_as_100(self):
+        self.make((90, 90, 95, 95), PTA_55)
+        text = self.text()
+        self.assertIn(CAP_NOTE, text)
+        self.assertNotIn(ZERO_NOTE, text)
+
+    def test_both_ears_without_a_pta_say_so_once(self):
+        audiogram = self.make(PTA_55, PTA_55)
+        audiogram.points.filter(frequency=4000).delete()
+        text = self.text()
+        self.assertIn("依您 2026/10/01 的聽力圖：兩耳都資料不足，無法判讀。", text)
+        self.assertNotIn("右耳：資料不足", text)
 
     def test_an_ear_under_25_is_noted_as_0_percent(self):
         self.make((10, 10, 10, 10), (100, 100, 100, 100))

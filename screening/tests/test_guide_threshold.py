@@ -68,6 +68,8 @@ class AssessmentEstimateTests(SimpleTestCase):
     def test_an_ear_counts_at_most_100_percent(self):
         result = estimate((90, 90, 95, 95), PTA_55)
         self.assertEqual(result["right"]["ratio"], 100)
+        self.assertTrue(result["capped"])
+        self.assertFalse(estimate((90, 90, 90, 90), PTA_55)["capped"])  # 97.5%, under the cap
 
     def test_not_reached_with_a_no_response_point_is_uncertain(self):
         # Left 80, 80, 80 and 4 kHz unheard at 120: PTA 90, ratio 35.0%, a lower bound.

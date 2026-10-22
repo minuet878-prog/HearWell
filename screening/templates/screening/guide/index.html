@@ -11,7 +11,11 @@
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
 <section class="card card-body mt-6" aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
+    {% if threshold.right.pta is None and threshold.left.pta is None %}
+    <p class="mb-0">依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
+    {% else %}
     <p class="mb-0">依您 {{ date }} 的聽力圖：{% for label, ear in ears %}{% if ear.pta is None %}{{ label }}：資料不足，無法判讀{% else %}{{ label }}四頻平均 {{ ear.pta|stringformat:"g" }} dB HL{% endif %}{% if not forloop.last %}，{% endif %}{% endfor %}。</p>
+    {% endif %}
 </section>
 {# Judges only by the b230 formula (ADR 0017): no level, and a lower bound never says 未達到. #}
 <section class="card card-body mt-6" aria-labelledby="threshold-title">
@@ -37,6 +41,7 @@
         <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
         <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>
         {% if threshold.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
+        {% if threshold.capped %}<p>單耳比率超過 100% 的，以 100% 計。</p>{% endif %}
         <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（{{ worked.better }} × 5 ＋ {{ worked.worse }}）÷ 6 ＝ {{ threshold.ratio }}%，四捨五入到小數一位。</p>
         <p class="mb-0">3. 身障鑑定門檻是 45.0%。出處：<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a></p>
     </details>
