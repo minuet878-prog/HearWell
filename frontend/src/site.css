@@ -381,13 +381,6 @@
     box-shadow: var(--shadow-field-focus);
   }
   .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
-  .form-select-lg {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
-    padding-left: 1rem;
-    font-size: 1.25rem;
-    border-radius: var(--radius-medium);
-  }
   .form-check {
     display: block;
     min-height: 1.5rem;
@@ -2002,9 +1995,45 @@
     gap: 0.5rem;
   }
 
+  /* #201: both ears' degrees side by side, each kept whole when they wrap. The line is a whole
+     45px at the 18px base, so the chart below starts on a whole pixel and draws as before. */
+  .audiogram-summary p {
+    line-height: 2.5rem;
+  }
+
+  .audiogram-summary-ear {
+    display: inline-block;
+    margin-right: 1.5rem;
+  }
+
+  .audiogram-summary .level-badge {
+    vertical-align: middle;
+  }
+
+  /* Edit and delete under the result: quiet, centred text links, still a full touch target. */
+  .quiet-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 1.5rem;
+  }
+
+  .quiet-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0 0.5rem;
+    font-weight: 700;
+  }
+
+  .quiet-links .quiet-link-danger {
+    color: var(--color-severe);
+  }
+
+  /* min(): at 200% text 14rem is wider than a phone, so a card never asks for more than the row. */
   .ear-results {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
     gap: 0.75rem;
   }
 
@@ -2066,32 +2095,92 @@
     outline-offset: 0.25rem;
   }
 
-  /* Audiogram comparison (spec phase5_audiogram_2.md 4.2): legend samples match the chart's lines. */
-  .compare-legend {
+  /* Audiogram comparison (#202): 舊 and 新 rows that fold their radio cards; the row is the tap
+     target and only changes colour (ADR 0006). */
+  .compare-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .compare-pick {
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .compare-pick > summary {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-    margin-bottom: 0.5rem;
+    align-items: center;
+    gap: 0 0.75rem;
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    border-radius: inherit;
   }
 
-  .compare-line {
-    display: inline-block;
-    width: 2rem;
-    margin-right: 0.4rem;
-    vertical-align: middle;
-    border-top: 0.15rem solid var(--color-ear-right);
+  .compare-pick-change {
+    margin-left: auto;
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
-  .compare-line.old {
-    border-top: 0.15rem dashed var(--color-ear-right-old);
+  @media (hover: hover) and (pointer: fine) {
+    .compare-pick > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
   }
 
-  .compare-legend-left .compare-line {
-    border-top-color: var(--color-ear-left);
+  .compare-pick > summary:active {
+    background-color: var(--color-brand-selected);
   }
 
-  .compare-legend-left .compare-line.old {
-    border-top-color: var(--color-ear-left-old);
+  .compare-pick > fieldset,
+  .compare-pick > p,
+  .compare-pick > button {
+    margin-inline: 1rem;
+  }
+
+  .compare-pick > button {
+    margin-bottom: 1rem;
+  }
+
+  /* #204: at 200% text the four-column number tables scroll in their own box, not the page. */
+  .compare-table-scroll {
+    overflow-x: auto;
+  }
+
+  .compare-table-scroll:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202). */
+  .ear-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 1rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-selected);
+  }
+
+  .ear-switch a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    border-radius: var(--radius-tab);
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .ear-switch a[aria-current="true"] {
+    background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
+    color: #fff;
   }
 
   /* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */

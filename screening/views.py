@@ -1306,7 +1306,17 @@ def _own_audiogram(request, audiogram_id):
 @health_data_page
 def audiogram_detail(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
-    return render(request, "screening/audiogram_detail.html", _audiogram_context(audiogram))
+    context = _audiogram_context(audiogram)
+    # #201: the report holds the latest audiogram; the compare button picks this one and the one
+    # before it (the next newer when this is the oldest), in the model's newest-first order.
+    rows = list(request.user.audiograms.values_list("id", "tested_on"))
+    ids = [row_id for row_id, _ in rows]
+    here = ids.index(audiogram.id)
+    if here > 0:
+        context["latest_tested_on"] = rows[0][1]
+    if len(ids) > 1:
+        context["compare_with"] = ids[here + 1] if here + 1 < len(ids) else ids[here - 1]
+    return render(request, "screening/audiogram_detail.html", context)
 
 
 def _audiogram_context(audiogram):
@@ -1374,7 +1384,15 @@ def audiogram_compare(request):
     ear = request.GET.get("ear")
     if ear not in Ear.values:
         ear = Ear.RIGHT
-    context.update(a=ids[0], b=ids[1], ear=ear, ears=Ear.choices)
+    # #202: the 舊 and 新 rows, newest first as the model orders them, even for one picked twice.
+    picked = [audiogram for audiogram in audiograms if audiogram.id in ids]
+    context.update(
+        a=ids[0],
+        b=ids[1],
+        ear=ear,
+        ears=Ear.choices,
+        pick_rows=[("舊", "b", picked[-1]), ("新", "a", picked[0])],
+    )
     if len(pair) == 2:
         new, old = pair
         result = compare(new.points.all(), old.points.all())[ear]
