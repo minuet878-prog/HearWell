@@ -23,14 +23,14 @@
         {% if life_impact %}{% with classified=life_impact.classified %}
         <li class="mb-2">
             <span class="font-bold">{{ life_impact.questionnaire.definition.topic }}</span>
-            {% include "screening/level_badge.html" with text=classified.text level=classified.level %}
+            {% include "screening/level_badge.html" with text=classified.text color=classified.level %}
             <br>{{ life_impact.created_at|date:"Y/m/d" }} 作答
         </li>
         {% endwith %}{% endif %}
         {% if audiogram %}
         <li class="mb-2">
             <span class="font-bold">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</span>
-            <br>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" level=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}
+            <br>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}
         </li>
         {% endif %}
     </ul>
