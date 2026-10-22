@@ -4,7 +4,7 @@ import { expect, it } from "vitest";
 
 // The shared components the site kept as named classes (#125). Only those used are defined.
 const COMPONENTS = [
-  "btn", "btn-lg", "btn-primary", "btn-outline-primary", "btn-outline-light",
+  "btn", "btn-lg", "btn-primary", "btn-outline-primary",
   "btn-outline-secondary", "btn-outline-danger", "btn-danger", "btn-link",
   "form-control", "form-control-lg", "form-select", "form-select-lg", "form-label",
   "form-check", "form-check-input", "input-group", "input-group-text",

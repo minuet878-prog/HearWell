@@ -55,6 +55,18 @@ class FontSizeUnitTests(SimpleTestCase):
         self.assertEqual(found, [], "use rem for font-size")
 
 
+class TemplateCommentTests(SimpleTestCase):
+    """Django's {# #} comment ends on its own line; one split over two lines shows on the page."""
+
+    def test_comments_close_on_the_same_line(self):
+        found = []
+        for path in sorted((BASE_DIR / "screening" / "templates").rglob("*.html")):
+            for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+                if re.search(r"\{#(?!.*#\})", line):
+                    found.append(f"{path.relative_to(BASE_DIR)}:{lineno}")
+        self.assertEqual(found, [], "use {% comment %} for comments longer than a line")
+
+
 def questionnaire_code_lines(text, codes):
     """Line numbers where a code stands alone, not inside a longer id like report-ioi-ha."""
     pattern = re.compile(rf"(?<![\w-])(?:{'|'.join(map(re.escape, codes))})(?![\w-])")

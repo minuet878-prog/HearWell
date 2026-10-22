@@ -186,6 +186,32 @@ class AccessibilityTests(TestCase):
         self.assertRegex(response.content.decode(), r'<label for="id_form-0-score_0">\s*<input')
 
 
+class HeaderBrandTests(TestCase):
+    """The white header with the wave-W logo and the two-colour wordmark."""
+
+    def _brand(self, content):
+        return re.search(r'<p class="site-brand">(.*?)</p>', content, re.DOTALL).group(1)
+
+    def test_brand_reads_hearwell_and_the_logo_is_decoration(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(consented_user(username="brandtester"))
+            with self.subTest(logged_in=logged_in):
+                brand = self._brand(self.client.get(reverse("index")).content.decode())
+                self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
+                self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "HearWell")
+                self.assertIn('<span class="site-wordmark-tint">Well</span>', brand)
+
+    def test_header_buttons_are_blue_outlines_on_the_white_header(self):
+        self.client.force_login(consented_user(username="logouttester"))
+        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        self.assertRegex(
+            content, r'<button class="btn btn-outline-primary" type="submit">登出</button>'
+        )
+        self.assertRegex(content, r'id="pwa-back" class="btn btn-outline-primary site-back"')
+        self.assertNotIn("btn-outline-light", content)
+
+
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
     LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄", "聽力圖")
@@ -445,8 +471,7 @@ class PageFlowTests(TestCase):
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
         "結果長這樣",
         "示意圖",
-        "很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。",
-        "由聽力師開發",
+        "內容由台灣執業聽力師設計與審定。",
     )
 
     @classmethod
@@ -749,7 +774,16 @@ class PwaTests(TestCase):
         for url, head in heads.items():
             with self.subTest(url=url):
                 self.assertRegex(head, rf'<link rel="manifest" href="{self.STATIC}manifest\.json')
-                self.assertIn('<meta name="theme-color" content="#1f4e8c">', head)
+                # The header turned white, so the phone's status bar matches it (#138's rule).
+                self.assertIn('<meta name="theme-color" content="#ffffff">', head)
+                # Browser tab icon: SVG where supported, a 32px PNG for the rest.
+                self.assertRegex(
+                    head, rf'<link rel="icon" href="{self.STATIC}favicon-32\.png" sizes="32x32">'
+                )
+                self.assertRegex(
+                    head,
+                    rf'<link rel="icon" href="{self.STATIC}favicon\.svg" type="image/svg\+xml">',
+                )
                 self.assertRegex(
                     head, rf'<link rel="apple-touch-icon" href="{self.STATIC}apple-touch-icon\.png'
                 )
@@ -765,7 +799,7 @@ class PwaTests(TestCase):
             "start_url": "/",
             "scope": "/",
             "display": "standalone",
-            "theme_color": "#1f4e8c",
+            "theme_color": "#ffffff",
             "background_color": "#faf7f2",
             "lang": "zh-Hant",
         }
@@ -792,6 +826,21 @@ class PwaTests(TestCase):
     def test_apple_touch_icon_is_180(self):
         self.assertEqual(self._png_size(self.PWA_DIR / "apple-touch-icon.png"), (180, 180))
 
+    def test_favicon_png_is_32(self):
+        self.assertEqual(self._png_size(self.PWA_DIR / "favicon-32.png"), (32, 32))
+
+    def test_favicon_app_icon_and_header_draw_the_same_wave_w(self):
+        # ADR 0012: the logo lives in three files; changing one alone fails here.
+        wave = "M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22"
+        css = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
+        for path in (self.PWA_DIR / "favicon.svg", self.PWA_DIR / "icon.svg", css):
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn(wave, text)
+                if path.suffix == ".svg":
+                    self.assertIn('<stop offset="0" stop-color="#1f4e8c"/>', text)
+                    self.assertIn('<stop offset="1" stop-color="#1d6f99"/>', text)
+
     # 21
     def test_pwa_folder_has_only_app_info_and_icons(self):
         # Allow-list: a service worker added here under any name fails this test.
@@ -799,6 +848,8 @@ class PwaTests(TestCase):
         expected = {
             "manifest.json",
             "icon.svg",
+            "favicon.svg",
+            "favicon-32.png",
             "icon-192.png",
             "icon-512.png",
             "apple-touch-icon.png",
@@ -1084,28 +1135,48 @@ class HomeTests(TestCase):
         self.assertIn(f"result-banner-{classified['level']}", preview)
         self.assertIn(classified["text"], preview)
         self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
-        self.assertIn(get_advice(classified["level"])[:40] + "……", preview)
+        # Brand refresh round 4 ("結果頁會告訴您"): the title sits in the card, and three checks
+        # say what the result page tells you, instead of advice cut off mid-sentence.
+        self.assertRegex(
+            preview, r'<h2 class="h4 mb-0">結果長這樣</h2>\s*<span class="preview-tag">'
+        )
+        items = re.findall(r"<li>.*?</svg>\s*([^<]+?)\s*</li>", preview, re.S)
+        self.assertEqual(items, ["聽力對生活的影響程度", "分數落在哪一段", "接下來可以怎麼做"])
+        self.assertEqual(preview.count('aria-hidden="true"'), preview.count("<svg") + 1)
+        self.assertNotIn(get_advice(classified["level"])[:40], preview)
+        self.assertNotIn("……", preview)
 
     # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
     # A returning user's home page now shows their own last result on purpose.
 
-    # 6
+    # 6, changed in the brand refresh (design picker round 3): the "由聽力師開發" block repeated
+    # the top's 國際標準量表 label, so it became one line in a badge card.
     def test_trust_block(self):
         main = self._main()
-        trust = self._between(main, "home-trust", "</section>")
-        self.assertRegex(trust, r"<h2[^>]*>由聽力師開發</h2>")
-        self.assertIn("<li>由在台灣執業的聽力師設計與審定內容</li>", trust)
-        self.assertIn("<li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>", trust)
-        self.assertNotIn("出處都列在說明頁", main)
-        self.assertNotIn("本網站由執業聽力師開發", main)
+        line = self._between(main, 'class="home-credential"', "</p>")
+        self.assertIn('<span class="home-credential-icon"><svg', line)
+        self.assertIn('aria-hidden="true"', line)
+        self.assertIn("內容由台灣執業聽力師設計與審定。", line)
+        self.assertEqual(main.count("內容由台灣執業聽力師設計與審定。"), 1)
+        gone_texts = (
+            "由聽力師開發",
+            "HHIE-S、IOI-HA",
+            "出處都列在說明頁",
+            "本網站由執業聽力師開發",
+            # Dropped in round 3: it repeated the top's 聽力變化很慢 line.
+            "很多人在察覺聽力問題好幾年後",
+        )
+        for gone in gone_texts:
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, main)
 
     # 7
     def test_band_backgrounds(self):
         main = self._main()
         bands = re.findall(r'<section class="home-band[^"]*">(.*?)</section>', main, re.S)
-        self.assertEqual(len(bands), 2)
+        # The trust band became the one-line badge card (brand refresh), so one band is left.
+        self.assertEqual(len(bands), 1)
         self.assertIn("home-illustration", bands[0])
-        self.assertIn("由聽力師開發", bands[1])
         for band in bands:
             self.assertNotIn("step-cards", band)
             self.assertNotIn("result-preview", band)

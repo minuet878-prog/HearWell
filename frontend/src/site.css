@@ -59,8 +59,11 @@
   --radius-medium: 0.75rem;
   --radius-pill: 999px;
   --color-gradient-start: #1f4e8c;
-  --color-gradient-end: #3a6bb0;
+  /* Brand refresh: a blue teal, still blue under ADR 0007; white text keeps 5.5:1 on it. */
+  --color-gradient-end: #1d6f99;
   --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
+  /* The logo: a wave drawn as a W, used as a mask so it takes the colour around it. */
+  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22' fill='none' stroke='black' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
@@ -272,20 +275,6 @@
     --btn-disabled-bg: transparent;
     --btn-disabled-border-color: #dc3545;
   }
-  .btn-outline-light {
-    --btn-color: #f8f9fa;
-    --btn-border-color: #f8f9fa;
-    --btn-hover-color: #000;
-    --btn-hover-bg: #f8f9fa;
-    --btn-hover-border-color: #f8f9fa;
-    --btn-focus-ring: rgba(248, 249, 250, 0.5);
-    --btn-active-color: #000;
-    --btn-active-bg: #f8f9fa;
-    --btn-active-border-color: #f8f9fa;
-    --btn-disabled-color: #f8f9fa;
-    --btn-disabled-bg: transparent;
-    --btn-disabled-border-color: #f8f9fa;
-  }
   /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
      never overrode it. */
   .btn-link {
@@ -324,13 +313,13 @@
      movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
      ring (owner's choice after #139 review); with both, the ring stays next to the button. */
   .btn-primary {
-    --btn-glow: rgba(58, 107, 176, 0.45);
+    --btn-glow: rgba(29, 111, 153, 0.45);
     background-image: var(--gradient-brand);
     background-origin: border-box;
   }
   .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
   .btn-primary:active {
-    background-image: linear-gradient(var(--color-primary-hover), #2f5c9c);
+    background-image: linear-gradient(var(--color-primary-hover), #185f83);
     box-shadow: none;
   }
   .btn-primary:focus-visible:hover {
@@ -541,12 +530,13 @@
     border: 0.125rem solid currentColor;
   }
 
-  /* Header: a blue gradient, top colour the same as the app's status bar (#138). */
+  /* Header: white since the brand refresh, the same as the app's status bar (theme-color, #138). */
   .site-header {
     position: relative;
     overflow: hidden;
-    background-image: var(--gradient-brand);
-    color: #fff;
+    background-color: #fff;
+    border-bottom: 1px solid var(--color-border-warm);
+    color: var(--color-primary);
   }
 
   .site-header-bar {
@@ -556,8 +546,7 @@
   /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
      soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
      is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
-     At 8% white, text over a bar keeps 4.57:1; while the light passes over a bar it dips to 3.3:1
-     for a moment (accepted in #136). */
+     On the white header the bars are 8% brand blue, so blue text over them stays above 7:1. */
   .site-wave {
     position: absolute;
     inset: 0;
@@ -572,7 +561,7 @@
     flex: 1;
     height: 22%;
     border-radius: 4px 4px 0 0;
-    background-color: #fff;
+    background-color: var(--color-primary);
     opacity: 0.08;
     transform-origin: bottom;
     animation: wave-jump 3.5s ease-in-out var(--wave-delay, 0s) both;
@@ -596,7 +585,7 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background-image: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.18) 50%, transparent 70%);
+    background-image: linear-gradient(105deg, transparent 30%, rgba(31, 78, 140, 0.1) 50%, transparent 70%);
     animation: wave-sweep 2.5s ease-in-out 1s both;
   }
 
@@ -645,9 +634,47 @@
     font-weight: 700;
   }
 
+  /* At double text size on a phone the wordmark wraps under the logo instead of being cut off. */
   .site-brand a {
-    color: #fff;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-primary);
     text-decoration: none;
+  }
+
+  /* In the home-screen app the back button needs the logo's room so logout stays on the first
+     line (#118); the app's own icon already shows the logo there. */
+  @media (max-width: 47.99em) {
+    .site-header-bar:has(.site-back:not([hidden])) .site-logo {
+      display: none;
+    }
+  }
+
+  /* Wordmark in two colours: "Hear" in the primary blue, "Well" in the gradient's teal end. */
+  .site-wordmark-tint {
+    color: var(--color-gradient-end);
+  }
+
+  /* The logo chosen in the design picker: the wave-W in white on a gradient pebble. */
+  .site-logo {
+    position: relative;
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+    background-image: linear-gradient(135deg, var(--color-gradient-start), var(--color-gradient-end));
+  }
+
+  .site-logo::after {
+    content: "";
+    position: absolute;
+    inset: 18%;
+    background-color: #fff;
+    /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
   }
 
   /* Home-screen app only (spec phase10_pwa_back_refresh.md): pwa-nav.js reveals both. */
@@ -716,8 +743,12 @@
   }
 
   @media (min-width: 48em) {
+    /* Design picker round 2: white like the header, parted from it by a soft shadow along the
+       top; the padding keeps the current-page pill inside the bar instead of filling it. */
     .site-nav {
+      padding-block: 0.375rem;
       border-bottom: 1px solid var(--color-border-strong);
+      box-shadow: inset 0 0.4rem 0.5rem -0.4rem rgba(20, 30, 50, 0.25);
     }
 
     .site-nav ul {
@@ -1005,7 +1036,8 @@
     font-weight: 700;
   }
 
-  /* Home (spec phase9_ui_refresh_4a_home.md): pale brand bands around the top and the trust block. */
+  /* Home (spec phase9_ui_refresh_4a_home.md): a pale brand band; the first-visit top overrides it
+     with the white card below. */
   .home-band {
     background-color: var(--color-brand-soft);
     border-radius: var(--radius-large);
@@ -1023,6 +1055,167 @@
     stroke-width: 4;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* Brand refresh (design picker): the first-visit top is a white card, not a pale band. It is
+     not a link, so it has no hover or press effect (ADR 0006). */
+  .home-hero {
+    background-color: #fff;
+    border: 1px solid var(--color-border-warm);
+    box-shadow: var(--shadow-warm);
+  }
+
+  .home-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .home-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.875rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .home-chip svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The smiling elder: blue lines, a white face, grey hair, teal cheeks and sound. */
+  .home-hero .home-illustration {
+    max-width: 14rem;
+  }
+
+  .home-illustration .ill-solid {
+    fill: var(--color-primary);
+    stroke: none;
+  }
+
+  .home-illustration .ill-face {
+    fill: #fff;
+  }
+
+  .home-illustration .ill-hair {
+    stroke: var(--color-border-strong);
+    stroke-width: 9;
+  }
+
+  .home-illustration .ill-cheek {
+    fill: var(--color-gradient-end);
+    stroke: none;
+    opacity: 0.3;
+  }
+
+  .home-illustration .ill-accent {
+    stroke: var(--color-gradient-end);
+    stroke-width: 5;
+  }
+
+  .home-illustration .ill-faint {
+    opacity: 0.5;
+  }
+
+  /* Start button: the logo before the words, and one ring sent out once (ADR 0006). The ring is
+     its own layer, so the button itself never moves. */
+  .btn-start {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-start::before {
+    content: "";
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    background-color: currentColor;
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
+  }
+
+  .btn-start::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .home-hero .home-illustration {
+      transform-origin: 50% 85%;
+      animation: home-sway 2.6s ease-in-out both;
+    }
+
+    .btn-start::after {
+      animation: start-ring 2s ease-out 1.2s both;
+    }
+  }
+
+  /* The audiologist line at the bottom (design picker round 3): a white card with a gradient
+     shield. Not a link, so no hover or press effect (ADR 0006). */
+  .home-credential {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+    box-shadow: var(--shadow-warm);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .home-credential-icon {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background-image: var(--gradient-brand);
+  }
+
+  /* On a phone the line wraps into two even halves, not one word alone on the second line. */
+  .home-credential-text {
+    text-wrap: balance;
+  }
+
+  .home-credential-icon svg {
+    width: 1.375rem;
+    height: 1.375rem;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The login link under the start button: a full touch target, still a plain link. */
+  .home-login {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 700;
   }
 
   /* Four steps: two across when they fit (never 3 + 1), otherwise one per row. */
@@ -1069,27 +1262,72 @@
     stroke-linejoin: round;
   }
 
-  /* A shrunken result card, clearly marked as an example. */
+  /* A shrunken result card, clearly marked as an example: a white card with the result page's
+     score bar since design picker round 2. Not a link, so no hover or press effect (ADR 0006). */
   .result-preview {
     position: relative;
-    padding: 2.5rem 1rem 1rem;
-    border: 0.125rem dashed var(--color-border-strong);
+    padding: 1rem;
+    border: 1px solid var(--color-border-warm);
     border-radius: var(--radius-large);
+    background-color: #fff;
+    box-shadow: var(--shadow-warm);
     margin-bottom: 1.5rem;
+  }
+
+  /* What the result page tells you, instead of advice cut off mid-sentence. */
+  .result-preview-tells {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .result-preview-tells li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .result-preview-tells svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .result-preview figcaption {
+    margin-top: 0.75rem;
+    color: var(--color-body);
   }
 
   .result-preview .result-level {
     font-size: 1.5rem;
   }
 
+  /* Round 4: the title and the 示意圖 tag share the card's top row. */
+  .result-preview-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
   .preview-tag {
-    position: absolute;
-    top: 0.5rem;
-    left: 0.75rem;
+    flex: none;
     padding: 0 0.5rem;
     border-radius: var(--radius-badge);
-    background-color: var(--color-body);
-    color: #fff;
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
     font-weight: 700;
   }
 
@@ -1311,7 +1549,8 @@
     margin-bottom: 0.5rem;
   }
 
-  /* Score position bar on the result page (ticket #158): no fill or entrance animation (ADR 0006). */
+  /* Score position bar (ticket #158), on the result page and the home page's example: no fill or
+     entrance animation (ADR 0006). Since round 4 each pale segment has a level-coloured lower edge. */
   .score-bar {
     position: relative;
     margin: 1rem 0 0.5rem;
@@ -1335,14 +1574,17 @@
 
   .score-bar-segment-normal {
     background-color: var(--color-normal-bg);
+    box-shadow: inset 0 -0.25rem 0 var(--color-normal);
   }
 
   .score-bar-segment-mild_to_moderate {
     background-color: var(--color-mild-bg);
+    box-shadow: inset 0 -0.25rem 0 var(--color-mild);
   }
 
   .score-bar-segment-severe {
     background-color: var(--color-severe-bg);
+    box-shadow: inset 0 -0.25rem 0 var(--color-severe);
   }
 
   .score-bar-marker {
@@ -1357,12 +1599,22 @@
     transform: translateX(calc(-1 * var(--position)));
   }
 
+  /* Round 4: each label under its own segment (widths from the template); this score's in bold. */
   .score-bar-labels {
     display: flex;
-    justify-content: space-between;
     margin-top: 0.25rem;
     font-size: 0.875rem;
+    line-height: 1.3;
     color: var(--color-body);
+  }
+
+  .score-bar-labels span {
+    text-align: center;
+  }
+
+  .score-bar-labels .score-bar-label-current {
+    color: var(--color-heading);
+    font-weight: 700;
   }
 
   /* "Loading" or "cannot show" in the middle of the chart's empty box. */
@@ -1742,13 +1994,13 @@
     border-top: 0.125rem solid var(--color-severe);
   }
 
-  /* The account link sits on the dark header. */
+  /* The account link sits on the white header. */
   .site-account {
-    color: #fff;
+    color: var(--color-primary);
   }
 
   .site-account:hover {
-    color: #fff;
+    color: var(--color-primary-hover);
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1). */
@@ -1779,7 +2031,7 @@
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    box-shadow: 0 0 0 0.25rem rgba(58, 107, 176, 0.4);
+    box-shadow: 0 0 0 0.25rem rgba(29, 111, 153, 0.4);
     opacity: 0;
   }
 
@@ -1889,4 +2141,15 @@
 @keyframes icon-ripple {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(1.6); }
+}
+
+/* First-visit home (brand refresh): the picture sways once, the start button rings once. */
+@keyframes home-sway {
+  25% { transform: rotate(-3deg); }
+  75% { transform: rotate(3deg); }
+}
+
+@keyframes start-ring {
+  from { box-shadow: 0 0 0 0 rgba(29, 111, 153, 0.55); }
+  to { box-shadow: 0 0 0 1rem rgba(29, 111, 153, 0); }
 }

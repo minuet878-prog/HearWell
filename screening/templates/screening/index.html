@@ -4,24 +4,33 @@
 
 {% block body %}
 {% if user_state.is_new %}
-{# Layout per spec phase9_ui_refresh_4a_home.md 4.1; pictures are decorative, the words carry the meaning. #}
-<section class="home-band mt-2">
-    <svg class="home-illustration" viewBox="0 0 240 140" aria-hidden="true" focusable="false">
-        <path d="M92 104a14 14 0 0 0 22-6c3-8 12-14 17-23a32 32 0 1 0-58-19"/>
-        <path d="M106 60a11 11 0 1 1 16 9c-5 3-8 7-8 12"/>
-        <path d="M150 46c8 8 12 18 12 29s-4 21-12 29" opacity=".9"/>
-        <path d="M168 32c12 12 19 27 19 43s-7 31-19 43" opacity=".6"/>
-        <path d="M186 20c15 15 24 34 24 55s-9 40-24 55" opacity=".35"/>
+{# Layout per spec phase9_ui_refresh_4a_home.md 4.1, restyled as a white card in the brand refresh; pictures are decorative, the words carry the meaning. #}
+<section class="home-band home-hero mt-2">
+    <div class="home-chips">
+        <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>約 3 分鐘</span>
+        <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h5"/></svg>國際標準量表</span>
+    </div>
+    <svg class="home-illustration" viewBox="0 0 240 150" aria-hidden="true" focusable="false">
+        <path class="ill-solid" d="M68 150c4-22 26-32 52-32s48 10 52 32z"/>
+        <circle class="ill-face" cx="120" cy="72" r="44"/>
+        <path class="ill-hair" d="M86 54c7-18 19-26 34-26s27 8 34 26"/>
+        <path d="M77 64c-9 0-11 16-1 19M163 64c9 0 11 16 1 19M106 96q14 12 28 0"/>
+        <g stroke-width="3.5"><circle cx="104" cy="74" r="10"/><circle cx="136" cy="74" r="10"/><path d="M114 74h12"/></g>
+        <path stroke-width="3" d="M100 76q4-4 8 0M132 76q4-4 8 0"/>
+        <circle class="ill-cheek" cx="96" cy="92" r="6"/>
+        <circle class="ill-cheek" cx="144" cy="92" r="6"/>
+        <path class="ill-accent" d="M180 60a14 14 0 0 1 0 26"/>
+        <path class="ill-accent ill-faint" d="M192 52a24 24 0 0 1 0 42"/>
     </svg>
-    <h1 class="h3 text-center">了解聽力對您生活的影響</h1>
+    <h1 class="h2 text-center">了解聽力對您生活的影響</h1>
     <p class="text-center">聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
     {% url 'questionnaire_list' as list_url %}
     {% if user.is_authenticated %}
-    <a class="btn btn-primary btn-lg w-full" href="{{ list_url }}">開始篩檢</a>
+    <a class="btn btn-primary btn-lg btn-start w-full" href="{{ list_url }}">開始篩檢</a>
     {% else %}
     {# Spec #148: first-time visitors register first, then come back to choose a questionnaire. #}
-    <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
-    <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a>
+    <a class="btn btn-primary btn-lg btn-start w-full" href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
+    <p class="text-center mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
     {% endif %}
 </section>
 <ol class="step-cards" role="list">
@@ -46,24 +55,26 @@
         <span>隔一段時間再做一次，在「我的紀錄」看分數的變化。</span>
     </li>
 </ol>
-<h2 class="h4">結果長這樣</h2>
+{# Brand refresh round 4 ("結果頁會告訴您"): the title in the card, three checks instead of cut-off advice. #}
 <figure class="result-preview">
-    <span class="preview-tag">示意圖</span>
+    <div class="result-preview-head">
+        <h2 class="h4 mb-0">結果長這樣</h2>
+        <span class="preview-tag">示意圖</span>
+    </div>
     <div class="result-banner result-banner-{{ preview_level }}">
         <div class="result-level">{{ preview_text }}</div>
         <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
     </div>
-    <p class="mt-2 mb-2">{{ preview_advice|slice:":40" }}……</p>
+    {% include "screening/score_bar.html" with bar=preview_score_bar %}
+    <ul class="result-preview-tells" role="list">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>聽力對生活的影響程度</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>分數落在哪一段</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>接下來可以怎麼做</li>
+    </ul>
     <figcaption>實際結果依您的回答而定。</figcaption>
 </figure>
-<p>很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。</p>
-<section class="home-band home-trust">
-    <h2 class="h4">由聽力師開發</h2>
-    <ul class="mb-0">
-        <li>由在台灣執業的聽力師設計與審定內容</li>
-        <li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>
-    </ul>
-</section>
+{# Brand refresh, design picker round 3: one line in a badge card; the scales are in the top label. #}
+<p class="home-credential"><span class="home-credential-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="home-credential-text">內容由台灣執業聽力師設計與審定。</span></p>
 {% else %}
 {# Spec #148 batch 2, ticket #159 (ADR 0010): a returning user sees their last result and whether a retest is due. #}
 <h1 class="h3 mt-2">歡迎回來</h1>

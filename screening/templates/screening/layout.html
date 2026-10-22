@@ -14,7 +14,10 @@
         rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
     <link rel="manifest" href="{% static 'screening/pwa/manifest.json' %}">
-    <meta name="theme-color" content="#1f4e8c">
+    <meta name="theme-color" content="#ffffff">
+    {# Browser tab icon: browsers that read SVG take the last one; the rest use the PNG. #}
+    <link rel="icon" href="{% static 'screening/pwa/favicon-32.png' %}" sizes="32x32">
+    <link rel="icon" href="{% static 'screening/pwa/favicon.svg' %}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
     <meta name="apple-mobile-web-app-title" content="HearWell">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -45,16 +48,16 @@
         <div class="container site-header-bar py-2">
             <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
-                <button id="pwa-back" class="btn btn-outline-light site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
+                <button id="pwa-back" class="btn btn-outline-primary site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
                 {% endif %}
-                <p class="site-brand"><a href="{% url 'index' %}">HearWell</a></p>
+                <p class="site-brand"><a href="{% url 'index' %}"><span class="site-logo" aria-hidden="true"></span><span>Hear<span class="site-wordmark-tint">Well</span></span></a></p>
             </div>
             {% if user.is_authenticated %}
             {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}
             <a class="site-account wrap-anywhere" href="{% url 'account_settings' %}" aria-label="目前登入：{{ user.username }}，帳號設定">目前登入：<strong>{{ user.username }}</strong></a>
             <form id="logout-form" action="{% url 'logout' %}" method="post">
                 {% csrf_token %}
-                <button class="btn btn-outline-light" type="submit">登出</button>
+                <button class="btn btn-outline-primary" type="submit">登出</button>
             </form>
             {% endif %}
         </div>

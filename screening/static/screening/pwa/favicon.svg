@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- HearWell logo (brand refresh): the wave-W on a gradient pebble. favicon-32.png is exported from this file. -->
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1f4e8c"/>
+      <stop offset="1" stop-color="#1d6f99"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#brand)" d="M26.88 0A37.12 26.88 0 0 1 64 26.88A35.2 37.12 0 0 1 28.8 64A28.8 33.28 0 0 1 0 30.72A26.88 30.72 0 0 1 26.88 0Z"/>
+  <path d="M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22" transform="translate(32 32) scale(0.78) translate(-32 -31)" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

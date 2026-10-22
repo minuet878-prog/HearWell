@@ -750,6 +750,15 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
         centre = marker["x"] + marker["width"] / 2
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
+        # Brand refresh round 4: each label sits under its own segment, this score's in bold.
+        for level in ("normal", "mild_to_moderate", "severe"):
+            segment = self.page.locator(f".score-bar-segment-{level}").bounding_box()
+            label = self.page.locator(f".score-bar-label-{level}").bounding_box()
+            self.assertAlmostEqual(label["x"], segment["x"], delta=1)
+            self.assertAlmostEqual(label["width"], segment["width"], delta=1)
+        current = self.page.locator(".score-bar-label-current")
+        expect(current).to_have_text("輕度到中度影響")
+        self.assertEqual(current.evaluate("el => getComputedStyle(el).fontWeight"), "700")
 
     def step5_home_shows_the_next_date(self):
         self.main().get_by_role("link", name="回首頁").click()
@@ -1486,11 +1495,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     WARM_FOOTER = "rgb(243, 237, 227)"
     WARM_BORDER = "rgb(239, 230, 216)"
     WHITE = "rgb(255, 255, 255)"
-    # #138-#140 (2a): the brand gradient; #139: the primary button's states (choice C in #136,
-    # with a soft glow so it never looks like the keyboard ring).
-    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(58, 107, 176))"
-    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(47, 92, 156))"
-    GLOW = "rgba(58, 107, 176, 0.45) 0px 0px 16.2px 3.6px"
+    # #138-#140 (2a): the brand gradient, its lighter end a blue teal since the brand refresh
+    # (ADR 0007 keeps it blue); #139: the primary button's states (choice C in #136, with a soft
+    # glow so it never looks like the keyboard ring).
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(24, 95, 131))"
+    GLOW = "rgba(29, 111, 153, 0.45) 0px 0px 16.2px 3.6px"
     FOCUS_RING = "rgba(31, 78, 140, 0.5) 0px 0px 0px 4.5px"
     # (level, scores, background, text colour)
     BANNERS = (
@@ -1595,7 +1605,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             "--radius-medium": "0.75rem",
             "--radius-pill": "999px",
             "--color-gradient-start": "#1f4e8c",
-            "--color-gradient-end": "#3a6bb0",
+            "--color-gradient-end": "#1d6f99",
         }
         # The CSS minifier rewrites .5rem and rgba() to shorter equivalent values. Let the
         # browser resolve both independent literals and tokens through the same CSS property.
@@ -1698,13 +1708,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 True,
                 "button",
                 "登出",
+                # A blue outline on the white header since the brand refresh.
                 {
                     **regular,
                     "backgroundColor": clear,
-                    "color": "rgb(248, 249, 250)",
-                    "borderTopColor": "rgb(248, 249, 250)",
+                    "color": self.PRIMARY,
+                    "borderTopColor": self.PRIMARY,
                 },
-                "rgba(248, 249, 250, 0.5)",
+                "rgba(31, 78, 140, 0.5)",
             ),
             (
                 "/account/delete",
@@ -2477,17 +2488,80 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.assertEqual(len(heights), 28)
         self.assertEqual(len(set(heights)), 1)
 
-    def test_header_is_a_blue_gradient_with_a_hidden_wave(self):
+    # Brand refresh: a white header with the wave-W logo on a gradient; the wave stays, pale blue.
+    LOGO_GRADIENT = "linear-gradient(135deg, rgb(31, 78, 140), rgb(29, 111, 153))"
+
+    def mask(self, locator, pseudo):
+        return locator.evaluate(f"el => getComputedStyle(el, '{pseudo}').maskImage")
+
+    def test_header_is_white_with_the_logo_and_a_hidden_wave(self):
         self.open()
         with self.saving_artifacts():
             for path in ("/", "/questionnaire_list"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     header = self.page.locator(".site-header")
-                    self.assertEqual(self.style(header, "backgroundImage"), self.GRADIENT)
+                    self.assertEqual(self.style(header, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(header, "backgroundImage"), "none")
+                    brand = header.locator(".site-brand a")
+                    self.assertEqual(self.style(brand, "color"), self.PRIMARY)
+                    tint = brand.locator(".site-wordmark-tint")
+                    self.assertEqual(self.style(tint, "color"), "rgb(29, 111, 153)")
+                    logo = brand.locator(".site-logo")
+                    self.assertEqual(self.style(logo, "backgroundImage"), self.LOGO_GRADIENT)
+                    # The pebble: uneven corners, not a circle.
+                    self.assertEqual(self.style(logo, "borderTopLeftRadius"), "42% 48%")
+                    self.assertIn("data:image/svg+xml", self.mask(logo, "::after"))
+                    texts = (
+                        brand.locator(".site-wordmark-tint"),
+                        header.get_by_role("link", name="目前登入：style_e2e，帳號設定"),
+                        header.get_by_role("button", name="登出"),
+                    )
+                    for text in texts:
+                        colour = self.style(text, "color")
+                        self.assertGreaterEqual(self.lowest_contrast(colour, self.WHITE), 4.5)
                     wave = header.locator(".site-wave")
                     self.assertEqual(wave.get_attribute("aria-hidden"), "true")
                     expect(wave.locator("span")).to_have_count(28)
+
+    # Brand refresh: the first-visit home is a white card; its illustration sways once and the
+    # start button sends out one ring, inside ADR 0006's four seconds. Reduced motion keeps both
+    # still (test_reduced_motion_keeps_the_header_still counts every animation on "/").
+    def test_first_visit_home_card_plays_two_animations_once(self):
+        self.open(signed_in=False, motion=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            hero = self.page.locator(".home-hero")
+            self.assertEqual(self.style(hero, "backgroundColor"), self.WHITE)
+            # Design picker round 2: the result example is a white card with the score bar.
+            preview = self.page.locator(".result-preview")
+            self.assertEqual(self.style(preview, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(preview, "borderTopStyle"), "solid")
+            expect(preview.locator(".score-bar-marker")).to_be_visible()
+            animations = self.page.evaluate(
+                """() => document.getAnimations()
+                    .filter(a => a.effect.target.closest('.home-hero'))
+                    .map(a => ({ name: a.animationName, pseudo: a.effect.pseudoElement,
+                                 iterations: a.effect.getComputedTiming().iterations,
+                                 end: a.effect.getComputedTiming().endTime }))"""
+            )
+            self.assertEqual(
+                sorted((a["name"], a["pseudo"]) for a in animations),
+                [("home-sway", None), ("start-ring", "::after")],
+            )
+            for animation in animations:
+                with self.subTest(animation=animation["name"]):
+                    self.assertEqual(animation["iterations"], 1)
+                    self.assertLessEqual(animation["end"], 4000)
+
+            start = hero.get_by_role("link", name="開始篩檢")
+            self.assertEqual(self.style(start, "borderTopLeftRadius"), "999px")
+            self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
+            self.assertGreaterEqual(self.text_contrast(start), 4.5)
+            login = hero.get_by_role("link", name="我已經有帳號，登入")
+            self.assertEqual(self.style(login, "backgroundImage"), "none")
+            self.assertEqual(self.style(login, "textDecorationLine"), "underline")
+            self.assertGreaterEqual(login.bounding_box()["height"], 44)
 
     def test_header_wave_plays_on_a_tabs_first_page_only(self):
         self.open(motion=True)
@@ -2659,7 +2733,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             button.hover()
             self.assertEqual(
                 self.style(button, "boxShadow"),
-                f"{self.FOCUS_RING}, rgba(58, 107, 176, 0.45) 0px 0px 16.2px 8.1px",
+                f"{self.FOCUS_RING}, rgba(29, 111, 153, 0.45) 0px 0px 16.2px 8.1px",
             )
             # Pressed from the keyboard: no glow, the ring stays.
             self.page.keyboard.down("Space")
@@ -2685,6 +2759,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             # Shape as well as colour: only the current page is a pill.
             self.assertEqual(self.style(current, "borderTopLeftRadius"), "999px")
             self.assertEqual(self.style(current, "boxShadow"), "none")
+            # Design picker round 2: a shadow along the top parts the white bar from the white
+            # header, and the pill sits inside the bar instead of filling its height.
+            self.assertIn("inset", self.style(nav, "boxShadow"))
+            bar, pill = nav.bounding_box(), current.bounding_box()
+            self.assertGreaterEqual(pill["y"] - bar["y"], 4)
+            self.assertGreaterEqual(bar["y"] + bar["height"] - pill["y"] - pill["height"], 4)
+            self.assertGreaterEqual(pill["height"], 44)
             for other in others.all():
                 self.assertEqual(self.style(other, "backgroundImage"), "none")
 
