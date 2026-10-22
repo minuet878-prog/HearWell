@@ -272,6 +272,8 @@ def questionnaire_list(request):
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=_also_suggest(by_code, questionnaires) if wearing else [],
+        # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
+        offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
     )

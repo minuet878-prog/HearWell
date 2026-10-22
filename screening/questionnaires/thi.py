@@ -172,6 +172,7 @@ DEFINITION = Definition(
     level_colors=LEVEL_COLORS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
+    wizard_offer="如果您有耳鳴：耳鳴障礙量表（THI）",
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
 )

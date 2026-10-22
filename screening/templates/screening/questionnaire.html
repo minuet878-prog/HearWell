@@ -24,6 +24,7 @@
 <h2 class="h4">也可以做</h2>
 {% for questionnaire in also %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% endif %}
+{% for questionnaire in offers %}<p class="mt-4"><a href="{% url 'screening' questionnaire.pk %}">{{ questionnaire.definition.wizard_offer }}</a></p>{% endfor %}
 <p class="mt-6"><a class="btn btn-outline-primary btn-lg" href="{{ back_url }}">上一步</a></p>
 <details class="mt-4">
     <summary>看其他問卷</summary>

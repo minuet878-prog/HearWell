@@ -50,6 +50,9 @@ class Definition:
     # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded
     # is not enough: a graded questionnaire about something else (THI) is not one.
     life_impact: bool = False
+    # A line every wizard result shows, whatever it recommends, linking to this questionnaire:
+    # who it is for is said here rather than asked as a wizard step (spec #208 Q3). "": none.
+    wizard_offer: str = ""
     trend_chart: bool = False  # the history page draws a score trend chart
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.
