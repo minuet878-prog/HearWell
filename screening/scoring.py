@@ -2,8 +2,17 @@ import logging
 
 from screening import questionnaires
 from screening.questionnaires import hhie_s
+from screening.questionnaires.definition import RETEST_MONTHS
 
 logger = logging.getLogger(__name__)
+
+# The home page's retest reminder (ADR 0010, ticket #159).
+RETEST_DUE_TEXT = f"距離上次的生活影響評估已經滿 {RETEST_MONTHS} 個月，建議再做一次追蹤。"
+
+
+def retest_next_text(day):
+    return f"下次建議 {day:%Y/%m/%d} 再做"
+
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 UNKNOWN_ADVICE = (

@@ -33,6 +33,7 @@ from screening.forms import (
     WearingNowForm,
     answer_choices,
 )
+from screening.main_flow import NEW_USER_STATE, get_user_state
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
@@ -70,7 +71,18 @@ HOME_PREVIEW_SCORE = 18
 
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
-    return render(
+    user_state = (
+        get_user_state(request.user, today=timezone.localdate())
+        if request.user.is_authenticated
+        else NEW_USER_STATE
+    )
+    last = user_state.last_result
+    last_ioi_ha = (
+        _ioi_ha_summary(last.submission)
+        if last and last.submission.questionnaire.definition.result == NORM
+        else None
+    )
+    response = render(
         request,
         "screening/index.html",
         {
@@ -79,8 +91,14 @@ def index(request):
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_advice": get_advice(preview["level"]),
+            "user_state": user_state,
+            "last_ioi_ha": last_ioi_ha,
         },
     )
+    if request.user.is_authenticated:
+        # The home page shows this account's own records (ticket #159): never cached.
+        add_never_cache_headers(response)
+    return response
 
 
 def family_guide(request):
@@ -563,6 +581,14 @@ def my_hearing(request):
     # (spec phase9_ui_refresh_2_data.md 4.3).
     per_day = Counter(timezone.localdate(s.created_at) for s in records)
     same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
+    comparison = current.definition.comparison
+    show_comparison = False
+    if comparison is not None:
+        comparable = comparison.records(request.user.submissions.filter(questionnaire=current))
+        show_comparison = (
+            comparable.filter(wearing_hearing_aid=True).exists()
+            and comparable.filter(wearing_hearing_aid=False).exists()
+        )
     return render(
         request,
         "screening/my_hearing.html",
@@ -571,6 +597,7 @@ def my_hearing(request):
             "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
+            "show_comparison": show_comparison,
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")
             .first(),
@@ -784,15 +811,7 @@ def _report_context(user):
     }
     ioi_ha = next((s for s in submissions if s.questionnaire.definition.result == NORM), None)
     if ioi_ha:
-        answers = ioi_ha.answers.select_related("question").order_by("question__question_number")
-        items, grouped = _ioi_ha_items(ioi_ha, answers)
-        context["ioi_ha"] = {
-            "submission": ioi_ha,
-            "items": items,
-            "grouped": grouped,
-            "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
-            "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
-        }
+        context["ioi_ha"] = _ioi_ha_summary(ioi_ha)
     audiogram = user.audiograms.prefetch_related("points").first()
     if audiogram:
         context.update(_audiogram_context(audiogram))
@@ -869,6 +888,22 @@ def shared_report(request, token):
     return _family_page(request, "screening/shared_report.html", context)
 
 
+def _score_bar(submission, classified_score):
+    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
+    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+    thresholds = submission.questionnaire.definition.thresholds
+    if classified_score["level"] == "unknown" or not thresholds:
+        return None
+    ceiling = thresholds[-1][0]
+    segments = []
+    start = 0
+    for upper, text, level in thresholds:
+        segments.append({"level": level, "text": text, "width": (upper - start) / ceiling * 100})
+        start = upper
+    position = max(0, min(100, submission.total_answer_score / ceiling * 100))
+    return {"segments": segments, "position": position}
+
+
 @login_required
 def submission_result(request, submission_id):
     submission = get_object_or_404(
@@ -900,6 +935,10 @@ def submission_result(request, submission_id):
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
+            "score_bar": _score_bar(submission, classified_score),
+            "next_steps": submission.questionnaire.definition.next_steps.get(
+                classified_score["level"], ()
+            ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
@@ -930,6 +969,19 @@ def _ioi_ha_items(submission, answers):
             }
         )
     return items, grouped
+
+
+def _ioi_ha_summary(submission):
+    # One IOI-HA record against the norms, for the report and the home page's last result.
+    answers = submission.answers.select_related("question").order_by("question__question_number")
+    items, grouped = _ioi_ha_items(submission, answers)
+    return {
+        "submission": submission,
+        "items": items,
+        "grouped": grouped,
+        "below": sum(item["comparison"] == NORM_COMPARISON_TEXT["below"] for item in items),
+        "above": sum(item["comparison"] == NORM_COMPARISON_TEXT["above"] for item in items),
+    }
 
 
 def _ioi_ha_result(request, submission, answers):

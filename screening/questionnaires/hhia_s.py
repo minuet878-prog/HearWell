@@ -1,5 +1,5 @@
 from screening.questionnaires.comparison import TotalComparison
-from screening.questionnaires.definition import LEVEL, Definition
+from screening.questionnaires.definition import LEVEL, RETEST_STEP, Definition
 
 CODE = "hhia-s"
 
@@ -48,6 +48,37 @@ ADVICE = {
     for level, text in _LEVEL_ADVICE.items()
 }
 
+# Draft reviewed and finalized by the audiologist, issue #156.
+NEXT_STEPS = {
+    "normal": (
+        {"text": "您這次回報的生活影響較少。"},
+        {
+            "text": "如果您仍覺得聽不清楚，建議安排聽力評估。",
+            "action_label": "記錄聽力圖",
+            "action_url": "audiogram_new",
+        },
+        RETEST_STEP,
+    ),
+    "mild_to_moderate": (
+        {"text": "您回報的聽力困擾已經影響部分日常生活。"},
+        {
+            "text": "建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        RETEST_STEP,
+    ),
+    "severe": (
+        {"text": "您回報的聽力困擾對生活有顯著影響。"},
+        {
+            "text": "建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。",
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        RETEST_STEP,
+    ),
+}
+
 DEFINITION = Definition(
     code=CODE,
     name="HHIA-S",
@@ -62,5 +93,6 @@ DEFINITION = Definition(
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
+    next_steps=NEXT_STEPS,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

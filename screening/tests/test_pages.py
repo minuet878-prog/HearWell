@@ -22,6 +22,7 @@ from screening.models import (
     Submission,
     User,
 )
+from screening.questionnaires import hhie_s
 from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_history
 from screening.tests.helpers import consented_user, fake_definition, register
@@ -584,25 +585,31 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
+        # Ticket #157 (ADR 0010): numbered next steps, then the full advice, then the
+        # collapsed score detail, with the secondary buttons last.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
+        steps = hhie_s.NEXT_STEPS["mild_to_moderate"]
         self._assert_in_order(
             main,
             (
                 f"{day} 作答",
                 "輕度到中度影響",
                 "總分 12 分（滿分 40）",
-                "建議",
+                "接下來建議您",
+                steps[0]["text"],
+                steps[1]["text"],
+                steps[2]["text"],
+                "完整建議",
                 get_advice("mild_to_moderate"),
-                "看我的紀錄與趨勢",
-                "回首頁",
-                "分數細節",
+                "<details",
+                "分數細節與作答明細",
                 "情緒分數：12",
                 "社交分數：0",
                 "助聽器：未記錄",
-                "<details",
-                "查看我的 10 題作答",
+                "看我的紀錄與趨勢",
+                "回首頁",
             ),
         )
 
@@ -622,7 +629,7 @@ class PageFlowTests(TestCase):
         self.assertIsNotNone(details)
         self.assertNotIn("open", details.group(1) or "")
         body = details.group(2)
-        self.assertRegex(body, r"<summary[^>]*>\s*查看我的 10 題作答\s*</summary>")
+        self.assertRegex(body, r"<summary[^>]*>\s*分數細節與作答明細\s*</summary>")
         self._assert_in_order(body, [f"題目內容{i:02d}" for i in range(1, 11)])
         for i, answer in ((1, "常常"), (2, "有時"), (3, "從未"), (10, "常常")):
             with self.subTest(question=i):
@@ -1079,25 +1086,8 @@ class HomeTests(TestCase):
         self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
         self.assertIn(get_advice(classified["level"])[:40] + "……", preview)
 
-    # 5
-    def test_shows_no_user_data(self):
-        user = consented_user(username="homeowner_a")
-        questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        submission = Submission.objects.create(user=user, questionnaire=questionnaire)
-        for number, score in enumerate((4, 4, 4, 4, 4, 4, 4, 2, 0, 0), start=1):
-            question = Question.objects.create(
-                questionnaire=questionnaire,
-                question_text=f"題目{number}",
-                question_number=number,
-                category=Category.SOCIAL,
-            )
-            Answer.objects.create(submission=submission, question=question, score=score)
-        self.client.force_login(user)
-        main = self._main()
-        self.assertNotIn("homeowner_a", main)
-        self.assertNotIn("總分 30", main)
-        self.assertNotIn(classify(30, "hhie-s")["text"], main)
-        self.assertNotIn(timezone.localdate(submission.created_at).strftime("%Y/%m/%d"), main)
+    # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
+    # A returning user's home page now shows their own last result on purpose.
 
     # 6
     def test_trust_block(self):

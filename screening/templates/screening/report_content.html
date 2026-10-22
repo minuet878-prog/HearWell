@@ -11,7 +11,7 @@
         {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
         {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{{ comparison.summary }}</li>{% endfor %}
         {% if ioi_ha %}
-        <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}</li>
+        <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% include "screening/ioi_ha_summary.html" %}</li>
         {% endif %}
     </ul>
 </section>
@@ -61,7 +61,7 @@
 <section id="report-ssq12" aria-labelledby="ssq-title">
 <h3 id="ssq-title" class="h5">SSQ12-TW</h3>
 <p>最近一次 {{ ssq_latest.created_at|date:"Y/m/d H:i" }}，助聽器：{{ ssq_latest.get_wearing_hearing_aid_display }}。</p>
-<p>{% if ssq_latest.ssq_average is not None %}整體平均：{{ ssq_latest.ssq_average }}／10{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</p>
+<p>{% include "screening/ssq_average.html" with submission=ssq_latest %}</p>
 <p>分數越高，代表您回報的聆聽能力越好；不代表聽損程度或助聽器效益合格與否。</p>
 <details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ ssq_recent|length }} 次紀錄：</p>

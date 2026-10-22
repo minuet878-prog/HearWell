@@ -1287,6 +1287,75 @@
     background-color: var(--color-severe-bg);
   }
 
+  /* Numbered "接下來建議您" steps on the result page (ticket #157). */
+  .next-steps {
+    margin: 0.5rem 0 0;
+    padding-left: 1.5rem;
+  }
+
+  .next-steps li {
+    margin-bottom: 1rem;
+  }
+
+  .next-steps li > span {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Score position bar on the result page (ticket #158): no fill or entrance animation (ADR 0006). */
+  .score-bar {
+    position: relative;
+    margin: 1rem 0 0.5rem;
+  }
+
+  .score-bar-track {
+    position: relative;
+  }
+
+  /* Rounded and clipped on their own, so the taller marker above them is not cut off. */
+  .score-bar-segments {
+    display: flex;
+    height: 0.75rem;
+    border-radius: var(--radius-small);
+    overflow: hidden;
+  }
+
+  .score-bar-segment {
+    height: 100%;
+  }
+
+  .score-bar-segment-normal {
+    background-color: var(--color-normal-bg);
+  }
+
+  .score-bar-segment-mild_to_moderate {
+    background-color: var(--color-mild-bg);
+  }
+
+  .score-bar-segment-severe {
+    background-color: var(--color-severe-bg);
+  }
+
+  .score-bar-marker {
+    position: absolute;
+    top: -0.25rem;
+    width: 0.25rem;
+    height: 1.25rem;
+    background-color: var(--color-heading);
+    border-radius: var(--radius-small);
+    /* Shifted by its own width in proportion, so 0 and full marks sit flush inside the bar. */
+    left: var(--position);
+    transform: translateX(calc(-1 * var(--position)));
+  }
+
+  .score-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-body);
+  }
+
   /* "Loading" or "cannot show" in the middle of the chart's empty box. */
   .trend-plot-message {
     display: flex;

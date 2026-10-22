@@ -3,6 +3,7 @@
 {% block title %}HearWell 聽力自我照護{% endblock %}
 
 {% block body %}
+{% if user_state.is_new %}
 {# Layout per spec phase9_ui_refresh_4a_home.md 4.1; pictures are decorative, the words carry the meaning. #}
 <section class="home-band mt-2">
     <svg class="home-illustration" viewBox="0 0 240 140" aria-hidden="true" focusable="false">
@@ -63,4 +64,42 @@
         <li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>
     </ul>
 </section>
+{% else %}
+{# Spec #148 batch 2, ticket #159 (ADR 0010): a returning user sees their last result and whether a retest is due. #}
+<h1 class="h3 mt-2">歡迎回來</h1>
+{% with submission=user_state.last_result.submission %}
+<p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+{% if user_state.last_result.is_life_impact %}
+{% with classified=submission.classified %}
+<div class="result-banner result-banner-{{ classified.level }}">
+    <div>上次結果</div>
+    <h2 class="result-level mb-0">{{ classified.text }}</h2>
+    <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ submission.total_answer_score }} 分</div>
+</div>
+{% endwith %}
+{% else %}
+<div class="result-banner result-banner-unknown">
+    <div>上次結果</div>
+    <h2 class="result-level mb-0">{{ submission.questionnaire.definition.topic }}（{{ submission.questionnaire.questionnaire_name }}）</h2>
+    {% if last_ioi_ha %}
+    <div>{% include "screening/ioi_ha_summary.html" with ioi_ha=last_ioi_ha %}</div>
+    {% elif submission.questionnaire.definition.averaged %}
+    <div>{% include "screening/ssq_average.html" %}</div>
+    {% endif %}
+</div>
+{% endif %}
+<p class="mt-2"><a href="{% url 'result' submission.id %}">看這次結果</a></p>
+{% endwith %}
+{% if user_state.reminder %}
+<p class="mt-4">{{ user_state.reminder }}</p>
+{% endif %}
+{% if user_state.retest_due %}
+<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次（大約 3 分鐘）</a>
+{% else %}
+<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
+{% if user_state.retest_questionnaire %}
+<a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次</a>
+{% endif %}
+{% endif %}
+{% endif %}
 {% endblock %}
