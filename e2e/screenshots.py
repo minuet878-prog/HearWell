@@ -15,8 +15,9 @@ with e2e/compare_shots.py.
 Each capture also writes styles.json: the font family and root font size every page asks for,
 since the screenshots themselves cannot show a lost web font.
 
-The site's clock and the browser's clock are both fixed, and Google Fonts is blocked (the
-system font stands in), so two captures of the same commit match. Font loading itself is
+The site's clock and the browser's clock are both fixed, the browser asks for reduced motion
+(the header wave stays still), and Google Fonts is blocked (the system font stands in), so two
+captures of the same commit match. Font loading itself is
 therefore not compared. Capture the baseline on main and the new set on your branch.
 """
 
@@ -284,8 +285,13 @@ class Screenshots(StaticLiveServerTestCase):
         return shots
 
     def open(self, shot, width, standalone=False):
+        # Reduced motion keeps the header wave still: Chromium layers a page differently while the
+        # wave plays than after it ends (about 3.7 s), so pages captured near its end, like the
+        # charts after SETTLE_MS, differed between captures by a few anti-aliased pixels.
         context = self.browser.new_context(
-            viewport={"width": width, "height": 900}, java_script_enabled=shot.javascript
+            viewport={"width": width, "height": 900},
+            java_script_enabled=shot.javascript,
+            reduced_motion="reduce",
         )
         # Google Fonts loads Noto Sans TC in slices whose timing moves Latin glyphs between
         # captures; the system font keeps every capture alike (the font itself is not compared).

@@ -46,7 +46,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 問卷由程式定義 | #99–#105：每份問卷一個定義檔，選項、門檻、計分、比較、目錄都向定義查；admin 問卷與題目唯讀；`seed_questionnaires`；寫死代碼的自動檢查與假問卷全流程測試（ADR 0005） |
 | 遷移 Tailwind | #119、#122–#131：Bootstrap 換成 Tailwind CSS v4（官方 Vite 外掛），畫面不變；截圖比對、瀏覽器量樣式的 e2e（ADR 0008、0009） |
 | 2a 共用外殼 | #120、#136–#143：米白底與白色卡片、頁首漸層與只播一次的聲波、漸層按鈕與目前頁、三層圓角、可點的卡片浮起與下沉；改版前後全站對照與圖表裁切比對（ADR 0006、0007） |
-| 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)） |
+| 「我的紀錄」不跳動 | 趨勢圖的標題、摘要、圖例改由 Django 產生，React 只在固定高度的框裡畫圖，載入時紀錄卡片不再被推走（[驗證紀錄](verification/trend-chart-layout-shift.md)） |
+| 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
 ---
 
@@ -57,7 +58,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - **健康資料頁面加 `never_cache`**：共用電腦登出後按上一頁仍看得到快取（報告、我的紀錄、結果頁）。
 - **HHIE-S 出處頁**：目前只有 IOI-HA 有出處；需本人提供原文與中文版出處。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。
-- **趨勢圖只讀 API 最新 20 筆**。
+- **趨勢圖只讀 API 最新 20 筆**。最新 20 筆都不是 HHIE-S 時，摘要照常顯示（Django 看全部紀錄），圖框卻是空的；可讓 API 依問卷篩選。
 - **開放 IOI-HA 寫入 API 時**：補「答案倒序送出、每題選項不同」的測試（目前依題號排序沒有測試保護）。
 - **有人寄信要求刪除帳號時**：真的有人寄信再做管理指令，直接呼叫 `User.delete_with_data()`。
 - **待確認**：Render build log 的 Node 版本是不是 `.node-version` 的 24.21.0。

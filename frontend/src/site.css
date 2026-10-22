@@ -1262,6 +1262,42 @@
     border-radius: var(--radius-small);
   }
 
+  /* Each level's name in its colour, its swatch in its band's fill (same pairs as the chart). */
+  .trend-band-normal {
+    color: var(--color-normal);
+  }
+
+  .trend-band-normal .trend-band-swatch {
+    background-color: var(--color-normal-bg);
+  }
+
+  .trend-band-mild_to_moderate {
+    color: var(--color-mild);
+  }
+
+  .trend-band-mild_to_moderate .trend-band-swatch {
+    background-color: var(--color-mild-bg);
+  }
+
+  .trend-band-severe {
+    color: var(--color-severe);
+  }
+
+  .trend-band-severe .trend-band-swatch {
+    background-color: var(--color-severe-bg);
+  }
+
+  /* "Loading" or "cannot show" in the middle of the chart's empty box. */
+  .trend-plot-message {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-body);
+  }
+
   /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
   .ioi-columns {
     display: grid;

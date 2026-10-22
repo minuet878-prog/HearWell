@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chartDays, selectPoints, summarize } from "./trend.js";
+import { chartDays, selectPoints } from "./trend.js";
 
 function submission(
   id,
@@ -134,60 +134,5 @@ describe("chartDays", () => {
     const [day] = chartDays([point("2026/10/15", "09:00", true, 0)]);
     expect(day.aided).toBe(0);
     expect(day.unaided).toBeNull();
-  });
-});
-
-describe("summarize", () => {
-  // Spec 4.2: compare only with the previous record of the same hearing aid status.
-  const point = (total, wearing, date, levelText = "輕度到中度影響") => ({ total, wearing, date, levelText });
-
-  it("names the latest status and keeps the API's score and level", () => {
-    const summary = summarize([point(0, true, "2026/10/14", "無/極輕微影響")]);
-    expect(summary).toMatchObject({ date: "2026/10/14", statusText: "有戴助聽器", total: 0, levelText: "無/極輕微影響" });
-    expect(summarize([point(5, false, "2026/10/14")]).statusText).toBe("沒戴助聽器");
-    expect(summarize([point(5, null, "2026/10/14")]).statusText).toBe("助聽器未記錄");
-  });
-
-  it("explains how to see a change when there is only one record", () => {
-    expect(summarize([point(18, false, "2026/10/14")]).change).toBe("再做一次篩檢，就能看到分數的變化。");
-  });
-
-  it("finds the previous record of the status even before the chart's five days (acceptance 17)", () => {
-    const points = [point(14, true, "2026/09/01")];
-    for (const day of [2, 3, 4, 5, 6, 7]) points.push(point(20, false, `2026/10/0${day}`));
-    points.push(point(10, true, "2026/10/08"));
-    expect(summarize(points).change).toBe("比上一次有戴助聽器（2026/09/01）減少 4 分。");
-  });
-
-  it("skips records of the other status (acceptance 5)", () => {
-    const points = [point(14, true, "2026/10/01"), point(20, false, "2026/10/15"), point(10, true, "2026/10/16")];
-    expect(summarize(points).change).toBe("比上一次有戴助聽器（2026/10/01）減少 4 分。");
-  });
-
-  it("reports an increase, down to 0, and no change", () => {
-    expect(summarize([point(12, false, "2026/09/01"), point(18, false, "2026/10/14")]).change).toBe(
-      "比上一次沒戴助聽器（2026/09/01）增加 6 分。",
-    );
-    expect(summarize([point(18, false, "2026/09/01"), point(0, false, "2026/10/14")]).change).toBe(
-      "比上一次沒戴助聽器（2026/09/01）減少 18 分。",
-    );
-    expect(summarize([point(18, true, "2026/09/01"), point(18, true, "2026/10/14")]).change).toBe(
-      "和上一次有戴助聽器（2026/09/01）相同。",
-    );
-  });
-
-  it("says it is the first of its status when only the other status came before (acceptance 6)", () => {
-    expect(summarize([point(20, false, "2026/09/01"), point(10, true, "2026/10/14")]).change).toBe(
-      "這是第一筆有戴助聽器的紀錄。",
-    );
-    expect(summarize([point(10, true, "2026/09/01"), point(20, false, "2026/10/14")]).change).toBe(
-      "這是第一筆沒戴助聽器的紀錄。",
-    );
-  });
-
-  it("does not compare an unrecorded record (acceptance 7)", () => {
-    expect(summarize([point(10, null, "2026/09/01"), point(20, null, "2026/10/14")]).change).toBe(
-      "這筆沒有記錄助聽器，不和其他紀錄比較。",
-    );
   });
 });

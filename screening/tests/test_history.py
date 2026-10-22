@@ -1,7 +1,9 @@
 import re
 from datetime import timedelta
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -427,3 +429,158 @@ class HistoryTabsTests(TestCase):
         main = self._main(self.client.get(self.url))
         self.assertEqual(self._current_tab(self._tabs(main)), "IOI-HA")
         self.assertIn("使用時間：最近一次 4 分，上一次 2 分", self._chart(main))
+
+    # The trend chart's text parts, drawn by Django so the record cards below stay put while
+    # React draws the chart (docs/verification/trend-chart-layout-shift.md).
+    def _trend(self):
+        main = self._main(self.client.get(self._tab_url("hhie-s")))
+        return main[main.index('id="trend-chart"') : main.index('class="link-card"')]
+
+    def _texts(self, html):
+        return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", item)).strip() for item in html]
+
+    def _summary(self, trend):
+        box = re.search(r'class="trend-summary[^"]*">(.*?)</div>', trend, re.DOTALL).group(1)
+        return self._texts(re.findall(r"<p[^>]*>(.*?)</p>", box, re.DOTALL))
+
+    def _legend(self, trend):
+        legend = re.search(r'class="trend-legend">(.*?)</ul>', trend, re.DOTALL).group(1)
+        return re.findall(r"<li>(.*?)</li>", legend, re.DOTALL)
+
+    def test_trend_summary_compares_with_the_same_status_only(self):
+        # phase9_ui_refresh_2_data.md acceptance 5: unaided 26, 24, 20 and aided 14, 10.
+        self._hhie_s(26, False, days_ago=30)
+        self._hhie_s(24, False, days_ago=20)
+        aided = self._hhie_s(14, True, days_ago=10)
+        self._hhie_s(20, False, days_ago=5)
+        latest = self._hhie_s(10, True, days_ago=1)
+        trend = self._trend()
+        self.assertEqual(
+            self._summary(trend),
+            [
+                f"最近一次（{self._date(latest)}，有戴助聽器）",
+                "10 分 輕度到中度影響",
+                f"比上一次有戴助聽器（{self._date(aided)}）減少 4 分。",
+            ],
+        )
+        self.assertIn("<strong>10 分</strong>", trend)
+
+    def test_trend_summary_increase_no_change_and_down_to_0(self):
+        first = self._hhie_s(12, False, days_ago=10)
+        second = self._hhie_s(18, False, days_ago=5)
+        self.assertEqual(
+            self._summary(self._trend())[2], f"比上一次沒戴助聽器（{self._date(first)}）增加 6 分。"
+        )
+        third = self._hhie_s(18, False, days_ago=3)
+        self.assertEqual(
+            self._summary(self._trend())[2], f"和上一次沒戴助聽器（{self._date(second)}）相同。"
+        )
+        self._hhie_s(0, False, days_ago=1)
+        summary = self._summary(self._trend())
+        self.assertEqual(summary[1], "0 分 無/極輕微影響")
+        self.assertEqual(summary[2], f"比上一次沒戴助聽器（{self._date(third)}）減少 18 分。")
+
+    def test_trend_summary_finds_the_previous_status_before_the_charts_five_days(self):
+        # Acceptance 17: the chart draws five days, the summary looks further back.
+        aided = self._hhie_s(8, True, days_ago=10)
+        for days_ago in range(6, 1, -1):
+            self._hhie_s(20, False, days_ago=days_ago)
+        self._hhie_s(12, True, days_ago=1)
+        self.assertEqual(
+            self._summary(self._trend())[2], f"比上一次有戴助聽器（{self._date(aided)}）增加 4 分。"
+        )
+
+    def test_trend_summary_with_one_record_and_a_score_of_0(self):
+        latest = self._hhie_s(0, False, days_ago=1)
+        self.assertEqual(
+            self._summary(self._trend()),
+            [
+                f"最近一次（{self._date(latest)}，沒戴助聽器）",
+                "0 分 無/極輕微影響",
+                "再做一次篩檢，就能看到分數的變化。",
+            ],
+        )
+
+    def test_trend_summary_first_of_its_status(self):
+        # Acceptance 6: only the other status came before.
+        self._hhie_s(12, False, days_ago=5)
+        self._hhie_s(10, True, days_ago=3)
+        self.assertEqual(self._summary(self._trend())[2], "這是第一筆有戴助聽器的紀錄。")
+        # And the other way round, for another user.
+        self._hhie_s(10, True, days_ago=3, user=self.other)
+        self._hhie_s(20, False, days_ago=1, user=self.other)
+        self.client.force_login(self.other)
+        self.assertEqual(self._summary(self._trend())[2], "這是第一筆沒戴助聽器的紀錄。")
+
+    def test_trend_summary_does_not_compare_an_unrecorded_record(self):
+        # Acceptance 7.
+        self._hhie_s(12, False, days_ago=5)
+        latest = self._hhie_s(14, None, days_ago=1)
+        summary = self._summary(self._trend())
+        self.assertEqual(summary[0], f"最近一次（{self._date(latest)}，助聽器未記錄）")
+        self.assertEqual(summary[2], "這筆沒有記錄助聽器，不和其他紀錄比較。")
+
+    def test_trend_legend_lists_only_the_statuses_that_appear(self):
+        self._hhie_s(10, False, days_ago=3)
+        legend = self._legend(self._trend())
+        self.assertEqual(self._texts(legend), ["沒戴助聽器"])
+        self._hhie_s(12, True, days_ago=2)
+        self._hhie_s(14, None, days_ago=1)
+        legend = self._legend(self._trend())
+        self.assertEqual(self._texts(legend), ["沒戴助聽器", "有戴助聽器", "未記錄"])
+        # Unaided solid with a filled circle, aided dashed with a hollow square, unrecorded a
+        # hollow triangle without a line (spec 4b and phase9_ui_refresh_2_data.md 4.1).
+        unaided, aided, unrecorded = legend
+        self.assertNotIn("stroke-dasharray", unaided)
+        self.assertRegex(unaided, r'<circle[^>]*fill="#1f4e8c"')
+        self.assertIn('stroke-dasharray="8 6"', aided)
+        self.assertRegex(aided, r'<rect[^>]*fill="#fff"')
+        self.assertNotIn("<line", unrecorded)
+        self.assertRegex(unrecorded, r'<polygon[^>]*fill="#fff"')
+
+    def test_trend_names_the_levels_top_band_first(self):
+        # phase9_ui_refresh_3_structure.md 4.5, in each level's colours.
+        self._hhie_s(10, False, days_ago=1)
+        bands = re.search(r'class="trend-bands">(.*?)</ul>', self._trend(), re.DOTALL).group(1)
+        items = re.findall(r'<li class="trend-band-(\w+)">(.*?)</li>', bands, re.DOTALL)
+        self.assertEqual(
+            [(level, self._texts([text])[0]) for level, text in items],
+            [
+                ("severe", "顯著影響"),
+                ("mild_to_moderate", "輕度到中度影響"),
+                ("normal", "無/極輕微影響"),
+            ],
+        )
+
+    def test_trend_text_comes_before_the_chart_box(self):
+        self._hhie_s(10, False, days_ago=1)
+        trend = self._trend()
+        self.assertRegex(trend, r"<h2[^>]*>\s*HHIE-S 總分變化\s*</h2>")
+        order = ["<h2", self.NOTE, 'class="trend-summary', 'class="card"', 'id="trend-plot"']
+        positions = [trend.index(part) for part in order]
+        self.assertEqual(positions, sorted(positions))
+        # React draws only inside the box; it says it is loading until then. Screen readers skip
+        # that line, as they skip the chart; the box itself is not hidden, so they hear errors.
+        plot = re.search(r'<div id="trend-plot"([^>]*)>(.*?)</div>', trend, re.DOTALL)
+        self.assertIn('data-questionnaire="hhie-s"', plot.group(1))
+        self.assertNotIn("aria-hidden", plot.group(1))
+        self.assertRegex(plot.group(2), r'<p[^>]*aria-hidden="true"[^>]*>趨勢圖載入中…</p>')
+
+    def test_trend_chart_card_hidden_without_javascript(self):
+        # The summary stays; the chart box would only say it is loading, forever.
+        self._hhie_s(10, False, days_ago=1)
+        response = self.client.get(self._tab_url("hhie-s"))
+        hidden = r"<style>\s*#trend-chart \.card \{ display: none; \}\s*</style>"
+        self.assertRegex(response.content.decode(), rf"<noscript>\s*{hidden}\s*</noscript>")
+
+    def test_trend_summary_queries_do_not_grow_with_records(self):
+        # CODING_STANDARDS 15: the summary reads every record, all from the one listing query.
+        self._hhie_s(10, False, days_ago=6)
+        self._hhie_s(12, True, days_ago=5)
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(self._tab_url("hhie-s"))
+        for days_ago in range(4, 0, -1):
+            self._hhie_s(14, None, days_ago=days_ago)
+        with CaptureQueriesContext(connection) as six:
+            self.client.get(self._tab_url("hhie-s"))
+        self.assertEqual(len(six), len(two))
