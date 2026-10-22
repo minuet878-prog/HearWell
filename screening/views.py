@@ -844,7 +844,9 @@ def account_settings(request):
     consent = (
         user.consents.filter(version__gte=models.CONSENT_VERSION).order_by("-agreed_at").first()
     )
-    return render(request, "screening/account.html", {"consent": consent})
+    # #195: the share status reads only request.user's own live link.
+    share = user.report_shares.active().first()
+    return render(request, "screening/account.html", {"consent": consent, "share": share})
 
 
 @login_required

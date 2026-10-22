@@ -1,15 +1,20 @@
 import re
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from screening import models
-from screening.models import Consent
+from screening.models import Consent, ReportShare
 from screening.tests import test_layout, test_report
 from screening.tests.helpers import consented_user
 
 ACCOUNT_LINK = re.compile(r'<a[^>]*href="/account"[^>]*>')
+TAIPEI = ZoneInfo("Asia/Taipei")
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 class AccountSettingsTests(TestCase):
@@ -154,3 +159,100 @@ class AccountSettingsTests(TestCase):
                 self.assertEqual(positions, sorted(positions))
                 self.assertNotIn("可達 10 年", text)
                 self.assertNotIn("結果僅供參考", text)
+
+
+class GroupedAccountSettingsTests(TestCase):
+    """#195 (spec #183 stories 62-70): four groups, share status, ROC birth year."""
+
+    def setUp(self):
+        self.url = reverse("account_settings")
+        self.user = consented_user(username="grouped_a", email="a@example.com", birth_year=1955)
+        self.client.force_login(self.user)
+
+    def _main(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _share(self, user, **fields):
+        share = ReportShare.objects.create(user=user)
+        ReportShare.objects.filter(pk=share.pk).update(
+            expires_at=datetime(2099, 10, 29, 14, 30, tzinfo=TAIPEI), **fields
+        )
+
+    def _share_row(self, main):
+        link = re.search(rf'<a [^>]*href="{reverse("share_report")}"[^>]*>(.*?)</a>', main, re.S)
+        self.assertIsNotNone(link)
+        return test_layout._text(link.group(1))
+
+    def test_four_groups_in_order_under_the_same_title(self):
+        main = self._main()
+        self.assertIn("帳號設定</h1>", main)
+        headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
+        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私", "刪除帳號"])
+
+    def test_active_share_says_until_when_and_links_to_share_page(self):
+        self._share(self.user)
+        self.assertIn("分享中，10 月 29 日到期", self._share_row(self._main()))
+
+    def test_no_share_or_only_ended_ones_say_not_sharing(self):
+        self.assertIn("目前沒有分享", self._share_row(self._main()))
+        self._share(self.user, revoked_at=datetime(2026, 10, 1, tzinfo=TAIPEI))
+        ended = ReportShare.objects.create(user=self.user)
+        ReportShare.objects.filter(pk=ended.pk).update(
+            expires_at=datetime(2026, 10, 1, tzinfo=TAIPEI)
+        )
+        self.assertIn("目前沒有分享", self._share_row(self._main()))
+
+    def test_someone_elses_share_does_not_count(self):
+        other = consented_user(username="grouped_b")
+        self._share(other)
+        row = self._share_row(self._main())
+        self.assertIn("目前沒有分享", row)
+        self.assertNotIn("分享中", row)
+
+    def test_birth_year_in_roc_and_ad(self):
+        self.assertIn("民國 44 年（1955）", test_layout._text(self._main()))
+        self.user.birth_year = None
+        self.user.save()
+        self.assertNotIn("民國", test_layout._text(self._main()))
+
+    def test_family_and_phone_group_links(self):
+        main = self._main()
+        group = main[main.index("家人與手機") : main.index("資料與隱私")]
+        self.assertIn(f'href="{reverse("family_guide")}"', group)
+        # Hidden in the home-screen app by pwa-nav.js, as on the home page (#160).
+        add_to_home = re.search(rf'<li([^>]*)>\s*<a [^>]*href="{reverse("add_to_home")}"', group)
+        self.assertIsNotNone(add_to_home)
+        self.assertIn("data-hide-in-app", add_to_home.group(1))
+
+    def test_download_row_has_download_icon_and_no_arrow(self):
+        main = self._main()
+        link = re.search(
+            rf'<a [^>]*href="{reverse("download_my_data")}"[^>]*>(.*?)</a>', main, re.S
+        ).group(1)
+        self.assertIn('class="settings-icon"', link)
+        self.assertNotIn("settings-row-arrow", link)
+        privacy = re.search(rf'<a [^>]*href="{reverse("privacy")}"[^>]*>(.*?)</a>', main, re.S)
+        self.assertIn(
+            '<span class="settings-row-arrow" aria-hidden="true">\u203a</span>', privacy.group(1)
+        )
+
+    def test_account_rows_are_not_links(self):
+        main = self._main()
+        group = main[main.index("我的帳號") : main.index("家人與手機")]
+        self.assertNotIn("<a ", group)
+        for value in ("grouped_a", "a@example.com", "民國 44 年（1955）"):
+            self.assertIn(value, test_layout._text(group))
+
+    def test_only_link_rows_change_on_hover_and_press(self):
+        css = SITE_CSS.read_text()
+        for state in ("hover", "active"):
+            with self.subTest(state=state):
+                # Rows share one card, so they change colour only and never move (ADR 0006).
+                block = re.search(rf"\.settings-row-link:{state}\s*\{{([^}}]*)\}}", css)
+                self.assertIn("background-color", block.group(1))
+                self.assertNotIn("transform", block.group(1))
+                # The account rows are not links, so nothing changes on them.
+                self.assertNotRegex(css, rf"\.settings-(row|group)[\w-]*(?<!-link):{state}")
