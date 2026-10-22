@@ -2,6 +2,8 @@
 
 import re
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -157,3 +159,35 @@ class ThiExportTests(ThiReportTestCase):
         thi = self.client.get(reverse("download_my_data")).json()["submissions"][0]
         self.assertIsNone(thi["emotional_score"])
         self.assertIsNone(thi["social_score"])
+
+
+class ThiQueryCountTests(ThiReportTestCase):
+    # CODING_STANDARDS.md rule 15: THI records add no query per record.
+    def _thi(self, count):
+        for _ in range(count):
+            submission = Submission.objects.create(
+                user=self.user, questionnaire=self.thi, wearing_hearing_aid=False
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=submission, question=question, score=score)
+                for question, score in zip(
+                    self.thi.questions.all(), test_thi.scores_for(38), strict=True
+                )
+            )
+
+    def _query_counts(self, url):
+        self._thi(2)
+        with CaptureQueriesContext(connection) as few:
+            self.assertEqual(self.client.get(url).status_code, 200)
+        self._thi(18)
+        with CaptureQueriesContext(connection) as many:
+            self.assertEqual(self.client.get(url).status_code, 200)
+        return len(few), len(many)
+
+    def test_report_query_count_does_not_grow_with_thi_records(self):
+        few, many = self._query_counts(reverse("health_report"))
+        self.assertEqual(many, few)
+
+    def test_export_query_count_does_not_grow_with_thi_records(self):
+        few, many = self._query_counts(reverse("download_my_data"))
+        self.assertEqual(many, few)
