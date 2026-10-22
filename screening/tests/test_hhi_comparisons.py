@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from screening.models import Answer, Question, Questionnaire, Submission
 from screening.tests.helpers import consented_user
@@ -257,3 +258,63 @@ class HhiComparisonRadioCardTests(TestCase):
         self.assertContains(response, '<div id="id_aided_error">', status_code=400)
         self.assertIn(("2026/04/20・40 分", True), radio_cards(response, "unaided"))
         self.assertFalse(self.user.report_comparisons.exists())
+
+
+class WearingComparisonEntryTests(TestCase):
+    """One 「比較戴與不戴助聽器」 entry on 我的紀錄 and the result pages (#186)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="entry_user")
+        self.client.force_login(self.user)
+
+    def record(self, questionnaire, wearing, score):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=score)
+            for q in questionnaire.questions.all()
+        )
+        return record
+
+    def main(self, url):
+        content = self.client.get(url).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def entries(self, questionnaire, result):
+        """How many 「比較戴與不戴助聽器」 links its 我的紀錄 tab and a result page show."""
+        button = (
+            f'href="{reverse("hhi_comparison", args=[questionnaire.pk])}">比較戴與不戴助聽器</a>'
+        )
+        pages = {
+            "我的紀錄": f"{reverse('my_hearing')}?questionnaire={questionnaire.code}",
+            "結果頁": reverse("result", args=[result.pk]),
+        }
+        return {name: self.main(url).count(button) for name, url in pages.items()}
+
+    def test_entry_shows_only_once_a_questionnaire_has_both_wearing_statuses(self):
+        hhie_s = self.record(self.hhie_s, False, 2)
+        ssq12 = self.record(self.ssq12, False, 6)
+        none = {"我的紀錄": 0, "結果頁": 0}
+        one = {"我的紀錄": 1, "結果頁": 1}
+        self.assertEqual(self.entries(self.hhie_s, hhie_s), none)
+        self.assertEqual(self.entries(self.ssq12, ssq12), none)
+        # An aided HHIE-S brings HHIE-S's entry only: the condition is per questionnaire.
+        self.record(self.hhie_s, True, 0)
+        self.assertEqual(self.entries(self.hhie_s, hhie_s), one)
+        self.assertEqual(self.entries(self.ssq12, ssq12), none)
+        self.record(self.ssq12, True, 8)
+        self.assertEqual(self.entries(self.ssq12, ssq12), one)
+        for url in (reverse("result", args=[hhie_s.pk]), reverse("result", args=[ssq12.pk])):
+            self.assertNotIn("選擇或管理配戴狀態比較", self.main(url))
+
+    def test_ssq12_result_page_has_no_choose_questionnaire_button(self):
+        ssq12 = self.record(self.ssq12, False, 6)
+        main = self.main(reverse("result", args=[ssq12.pk]))
+        self.assertNotIn("選擇問卷", main)
+        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main)

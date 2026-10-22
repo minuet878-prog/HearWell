@@ -39,8 +39,7 @@
     <summary>看全部 {{ answers|length }} 題的回答</summary>
     <ol>{% for answer in answers %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
 </details>
-<p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">選擇或管理配戴狀態比較</a></p>
+{% if show_comparison %}<p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">比較戴與不戴助聽器</a></p>{% endif %}
 <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
-<a class="btn btn-outline-primary btn-lg" href="{% url 'questionnaire_list' %}">選擇問卷</a>
 <p class="mt-6">這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。</p>
 {% endblock %}

@@ -596,6 +596,19 @@ def _trend_chart(records, since_last):
     }
 
 
+def _shows_wearing_comparison(user, questionnaire):
+    # The 「比較戴與不戴助聽器」 entry on 我的紀錄 and the result pages (ticket #186): only once
+    # this questionnaire has comparable records both with and without a hearing aid.
+    comparison = questionnaire.definition.comparison
+    if comparison is None:
+        return False
+    comparable = comparison.records(user.submissions.filter(questionnaire=questionnaire))
+    return (
+        comparable.filter(wearing_hearing_aid=True).exists()
+        and comparable.filter(wearing_hearing_aid=False).exists()
+    )
+
+
 @login_required
 @health_data_page
 def my_hearing(request):
@@ -636,14 +649,6 @@ def my_hearing(request):
                 "previous": previous,
                 "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
             }
-    comparison = current.definition.comparison
-    show_comparison = False
-    if comparison is not None:
-        comparable = comparison.records(request.user.submissions.filter(questionnaire=current))
-        show_comparison = (
-            comparable.filter(wearing_hearing_aid=True).exists()
-            and comparable.filter(wearing_hearing_aid=False).exists()
-        )
     return render(
         request,
         "screening/my_hearing.html",
@@ -654,7 +659,7 @@ def my_hearing(request):
             "current": current,
             "user_state": user_state,
             "since_last": since_last,
-            "show_comparison": show_comparison,
+            "show_comparison": _shows_wearing_comparison(request.user, current),
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")
             .first(),
@@ -1009,6 +1014,9 @@ def submission_result(request, submission_id):
                 "submission": submission,
                 "answers": answers,
                 "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
+                "show_comparison": _shows_wearing_comparison(
+                    request.user, submission.questionnaire
+                ),
             },
         )
     if result == NORM:
@@ -1043,6 +1051,7 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "show_comparison": _shows_wearing_comparison(request.user, submission.questionnaire),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
