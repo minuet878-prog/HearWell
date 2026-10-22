@@ -1442,6 +1442,37 @@
     color: var(--color-primary);
   }
 
+  /* add_to_home: one block per phone, closed until the user picks theirs (#196). The summary is
+     the tap target; hover and press change colour only, never position (ADR 0006). */
+  .phone-choice {
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .phone-choice > summary {
+    min-height: var(--spacing-touch);
+    padding: 0.5rem 1rem;
+    border-radius: inherit;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .phone-choice > summary:hover {
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary-hover);
+    }
+  }
+
+  .phone-choice > summary:active {
+    background-color: var(--color-brand-selected);
+    color: var(--color-primary-active);
+  }
+
+  .phone-choice > ol,
+  .phone-choice > p {
+    margin: 0 1rem 1rem;
+  }
+
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
   /* Separate pills that wrap, so any number of questionnaires fits a phone
      (spec phase9_ui_refresh_3_structure.md 4.3); smaller than the main navigation. */
