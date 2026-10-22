@@ -675,7 +675,7 @@ class WebDoubleSubmitTests(TestCase):
                 self.assertRedirects(response, self._result_url(Submission.objects.latest("id")))
         self.assertEqual(Submission.objects.count(), 3)
 
-    # 10: the page parts submit-button.js needs, on every web questionnaire (IOI-HA has no React).
+    # 10: the page parts submit-button.js needs, on every web questionnaire's fallback form.
     def test_submit_feedback_markup(self):
         for code in ("hhie-s", "ioi-ha"):
             with self.subTest(code=code):
