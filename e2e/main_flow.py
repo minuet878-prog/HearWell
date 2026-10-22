@@ -1229,6 +1229,70 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertLessEqual(account["x"] + account["width"], logout["x"])
 
 
+class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+    """Ticket #160 acceptance 2 and 3: the home page's "您還可以" in and out of the app."""
+
+    fixtures = ("questions_fixture.json",)
+    CARDS = ("記錄醫院的聽力圖", "印聽力報告給醫師看", "分享報告給家人", "加到手機主畫面")
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="more_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open_home(self, standalone, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": 412, "height": 900}, java_script_enabled=javascript
+        )
+        self.context.add_cookies([self.cookie])
+        if standalone:
+            self.context.add_init_script(PwaNavTest.STANDALONE)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/")
+        self.page.wait_for_load_state("networkidle")
+        return self.page.get_by_role("region", name="您還可以").get_by_role("link")
+
+    def test_home_screen_app_hides_add_to_home(self):
+        cards = self.open_home(standalone=True)
+        with self.saving_artifacts():
+            # Role locators skip hidden elements, so only three cards are left.
+            expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:3]))
+            expect(self.page.locator("main [data-hide-in-app]")).to_be_hidden()
+
+    def test_browser_tab_and_no_javascript_show_all_four(self):
+        for standalone, javascript in ((False, True), (True, False)):
+            with self.subTest(standalone=standalone, javascript=javascript):
+                cards = self.open_home(standalone=standalone, javascript=javascript)
+                with self.saving_artifacts():
+                    expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS))
+
+
 class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """#123: style rules measured as the browser computes them, whatever produced the CSS."""
 
