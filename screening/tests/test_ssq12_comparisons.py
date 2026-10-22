@@ -1,5 +1,6 @@
 """SSQ12 saved comparison public pages (#83)."""
 
+from datetime import datetime
 from io import StringIO
 
 from django.core.management import call_command
@@ -9,6 +10,7 @@ from django.test.utils import CaptureQueriesContext
 
 from screening.models import Answer, Question, Questionnaire, Submission
 from screening.questionnaires.definition import AVERAGE
+from screening.tests import test_hhi_comparisons
 from screening.tests.helpers import consented_user, fake_definition, register
 
 
@@ -164,3 +166,34 @@ class SsqComparisonTests(TestCase):
         with CaptureQueriesContext(connection) as many:
             self.client.get(self.url)
         self.assertEqual(len(many), len(few))
+
+
+class Ssq12ComparisonRadioCardTests(TestCase):
+    """SSQ12 radio cards show the average, or why there is none (#190)."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="ssq_radio")
+        self.client.force_login(self.user)
+        self.url = f"/comparisons/{self.questionnaire.pk}"
+
+    def record(self, wearing, scores, when):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=q, score=s)
+            for q, s in zip(self.questionnaire.questions.all(), scores, strict=True)
+        )
+        Submission.objects.filter(pk=record.pk).update(created_at=when)
+        return record
+
+    def test_cards_show_average_or_not_calculated(self):
+        taipei = test_hhi_comparisons.TAIPEI
+        self.record(False, [4] * 11 + [8], datetime(2026, 4, 20, 10, 30, tzinfo=taipei))
+        self.record(True, [6] * 11 + [None], datetime(2026, 9, 2, 9, 0, tzinfo=taipei))
+        page = self.client.get(self.url)
+        cards = test_hhi_comparisons.radio_cards
+        self.assertEqual(cards(page, "unaided"), [("2026/04/20・平均 4.3 分", False)])
+        self.assertEqual(cards(page, "aided"), [("2026/09/02・未計算：包含不適用題目", False)])

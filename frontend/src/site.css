@@ -1014,6 +1014,17 @@
     outline-offset: 2px;
   }
 
+  /* Comparison page radio cards (#190): one full-width card per record, stacked; the states
+     above still only change colour (ADR 0006). */
+  div.choice-group.choice-stack {
+    flex-direction: column;
+  }
+
+  /* A long date wraps rather than widening a phone page at large text sizes. */
+  div.choice-group.choice-stack label {
+    overflow-wrap: anywhere;
+  }
+
   /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. */
   .trend-summary {
     padding: 1.25rem 1.5rem;

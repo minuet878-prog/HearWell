@@ -299,14 +299,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             # rendered before the aided record above, so reload to see it.
             self.page.reload()
             self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True).click()
-            self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(unaided.pk))
-            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
+            self.page.locator(f'input[name="unaided"][value="{unaided.pk}"]').check()
+            self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
             self.main().get_by_role("button", name="查看比較", exact=True).focus()
             self.page.keyboard.press("Enter")
             expect(self.main().get_by_text("+1.8 分", exact=False)).to_be_visible()
-            self.main().get_by_role("button", name="保留到報告", exact=True).focus()
+            self.main().get_by_role("button", name="放進聽力報告", exact=True).focus()
             self.page.keyboard.press("Enter")
-            expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+            expect(self.main().get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
             call_command("seed_questionnaires", verbosity=0)
             for hhi in Questionnaire.objects.filter(code__in=("hhie-s", "hhia-s")):
                 pair = []
@@ -319,11 +319,13 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                     )
                     pair.append(record)
                 self.page.goto(f"{self.live_server_url}/comparisons/{hhi.pk}")
-                self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(pair[0].pk))
-                self.page.get_by_label("配戴紀錄", exact=True).select_option(str(pair[1].pk))
+                self.page.locator(f'input[name="unaided"][value="{pair[0].pk}"]').check()
+                self.page.locator(f'input[name="aided"][value="{pair[1].pk}"]').check()
                 self.main().get_by_role("button", name="查看比較", exact=True).click()
-                self.main().get_by_role("button", name="保留到報告", exact=True).click()
-                expect(self.main().get_by_role("button", name="更換報告保留組合")).to_be_visible()
+                self.main().get_by_role("button", name="放進聽力報告", exact=True).click()
+                expect(
+                    self.main().get_by_text("這一組已經在聽力報告裡", exact=True)
+                ).to_be_visible()
             self.page.goto(f"{self.live_server_url}/report")
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
             self.page.set_viewport_size({"width": 320, "height": 800})
@@ -975,25 +977,30 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/comparisons/{questionnaire.pk}")
             self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
-            first = self.page.get_by_label("未配戴紀錄", exact=True)
+            # #190: radio cards, chosen with the keyboard.
+            first = self.page.locator(f'input[name="unaided"][value="{unaided.pk}"]')
             first.focus()
-            # Headless Chromium supports select type-ahead but ignores arrow selection.
-            first.press(str(unaided.created_at.year)[0])
-            self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
-            expect(first).to_have_value(str(unaided.pk))
+            self.page.keyboard.press("Space")
+            self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
+            expect(first).to_be_checked()
             self.page.get_by_role("button", name="查看比較", exact=True).click()
             expect(self.page.get_by_role("heading", name="目前查看的兩筆")).to_be_visible()
             expect(self.page.get_by_text("-20 分", exact=False)).to_be_visible()
-            self.page.get_by_role("button", name="保留到報告", exact=True).focus()
-            self.page.keyboard.press("Enter")
-            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
             # Submit a stale/foreign id through the actual form to check server-side errors.
-            self.page.locator('input[name="aided"]').evaluate("el => el.value = '999999'")
-            self.page.get_by_role("button", name="更換報告保留組合").click()
+            self.page.locator('input[type="hidden"][name="aided"]').evaluate(
+                "el => el.value = '999999'"
+            )
+            self.page.get_by_role("button", name="放進聽力報告", exact=True).click()
             expect(self.page.locator("#comparison-errors")).to_be_focused()
-            expect(self.page.get_by_role("button", name="移除報告保留組合")).to_be_visible()
-            self.page.get_by_role("button", name="移除報告保留組合").click()
-            expect(self.page.get_by_text("尚未保留比較組合。", exact=True)).to_be_visible()
+            expect(self.page.get_by_role("heading", name="聽力報告裡的組合")).to_have_count(0)
+            self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
+            self.page.get_by_role("button", name="查看比較", exact=True).click()
+            self.page.get_by_role("button", name="放進聽力報告", exact=True).focus()
+            self.page.keyboard.press("Enter")
+            expect(self.page.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
+            self.page.get_by_role("button", name="從報告移除", exact=True).click()
+            expect(self.page.get_by_role("heading", name="聽力報告裡的組合")).to_have_count(0)
+            expect(self.page.get_by_role("button", name="從報告移除")).to_have_count(0)
 
     def test_ioi_discloses_hhia_basis_before_saving(self):
         """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
@@ -2874,6 +2881,31 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(choice, "transform"), "none")
             self.page.mouse.move(0, 0)
             self.page.mouse.up()
+
+    def test_comparison_radio_cards_only_change_colour(self):
+        # #190 (ADR 0006): the comparison page's radio cards turn blue on hover and when chosen,
+        # and never move.
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(self.hhie_s, [0] * 10, wearing=True)
+        self.open(motion=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/comparisons/{self.hhie_s.pk}")
+            card = self.page.locator("div.choice-group label").first
+            card.scroll_into_view_if_needed()
+            before = card.bounding_box()
+            self.assertEqual(self.style(card, "borderTopColor"), "rgb(206, 212, 218)")
+            card.hover()
+            self.assertEqual(self.settled(card).bounding_box(), before)
+            self.assertEqual(self.style(card, "borderTopColor"), self.PRIMARY)
+            self.page.mouse.down()
+            self.assertEqual(self.settled(card).bounding_box(), before)
+            self.assertEqual(self.style(card, "transform"), "none")
+            self.page.mouse.up()
+            self.page.mouse.move(0, 0)
+            # Chosen: blue fill, same place and size.
+            self.assertEqual(self.settled(card).bounding_box(), before)
+            self.assertEqual(self.style(card, "backgroundColor"), "rgb(232, 238, 247)")
+            self.assertEqual(self.style(card, "transform"), "none")
 
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
     CARD_PAGES = ("/questionnaire_list?choose=self", "/my_hearing", "/audiograms")

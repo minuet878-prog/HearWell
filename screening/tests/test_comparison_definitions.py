@@ -75,8 +75,10 @@ class ComparisonFromDefinitionTests(TestCase):
         self.assertNotContains(self.client.get(reverse("my_hearing")), "配戴狀態比較")
 
     def _options(self, page, field):
-        select = re.search(rf'<select name="{field}".*?</select>', page, re.S).group(0)
-        return re.findall(r'<option value="(\d+)"[^>]*>(.*?)</option>', select)
+        # #190: one radio card per record.
+        return re.findall(
+            rf'<input type="radio" name="{field}" value="(\d+)"[^>]*>\s*(.*?)</label>', page, re.S
+        )
 
     def _when(self, record):
         return timezone.localtime(record.created_at).strftime("%Y/%m/%d %H:%M")
@@ -90,11 +92,11 @@ class ComparisonFromDefinitionTests(TestCase):
         page = self.client.get(reverse("hhi_comparison", args=[hhia.pk])).content.decode()
         self.assertEqual(
             self._options(page, "unaided"),
-            [(str(unaided.pk), f"{self._when(unaided)}，沒戴，40 分（紀錄 {unaided.pk}）")],
+            [(str(unaided.pk), f"{self._when(unaided)}・40 分")],
         )
         self.assertEqual(
             self._options(page, "aided"),
-            [(str(aided.pk), f"{self._when(aided)}，有戴，18 分（紀錄 {aided.pk}）")],
+            [(str(aided.pk), f"{self._when(aided)}・18 分")],
         )
 
     def test_ssq12_choices_list_records_with_all_twelve_answers(self):
@@ -107,22 +109,13 @@ class ComparisonFromDefinitionTests(TestCase):
         self.assertEqual(
             self._options(page, "unaided"),
             [
-                (
-                    str(not_applicable.pk),
-                    f"{self._when(not_applicable)}，沒戴，未計算：沒有可用數值回答"
-                    f"（紀錄 {not_applicable.pk}）",
-                ),
-                (str(unaided.pk), f"{self._when(unaided)}，沒戴，平均 4.3 分（紀錄 {unaided.pk}）"),
+                (str(not_applicable.pk), f"{self._when(not_applicable)}・未計算：沒有可用數值回答"),
+                (str(unaided.pk), f"{self._when(unaided)}・平均 4.3 分"),
             ],
         )
         self.assertEqual(
             self._options(page, "aided"),
-            [
-                (
-                    str(aided.pk),
-                    f"{self._when(aided)}，有戴，未計算：包含不適用題目（紀錄 {aided.pk}）",
-                )
-            ],
+            [(str(aided.pk), f"{self._when(aided)}・未計算：包含不適用題目")],
         )
 
     def test_ssq12_report_summary_shows_the_average_difference_only(self):

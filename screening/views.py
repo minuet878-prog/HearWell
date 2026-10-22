@@ -455,7 +455,7 @@ def hhi_comparison(request, questionnaire_id):
     if request.method == "POST" and request.POST.get("action") == "remove":
         if saved:
             saved.delete()
-        messages.success(request, "已移除報告保留組合，原始作答保持不變。")
+        messages.success(request, "已從報告移除這一組，原始作答保持不變。")
         return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
     data = (
         request.POST
@@ -481,7 +481,7 @@ def hhi_comparison(request, questionnaire_id):
             request.user.report_comparisons.update_or_create(
                 questionnaire=questionnaire, defaults=form.cleaned_data
             )
-            messages.success(request, "已保留這組比較，新增作答不會自動換組。")
+            messages.success(request, "已放進聽力報告，新增作答不會自動換組。")
             return redirect("hhi_comparison", questionnaire_id=questionnaire.pk)
     return render(
         request,
@@ -491,6 +491,10 @@ def hhi_comparison(request, questionnaire_id):
             "form": form,
             "saved": saved,
             "preview": preview,
+            # The pair on screen is the one in the report: no button to save it again (#190).
+            "preview_is_saved": saved is not None
+            and preview is not None
+            and (preview.unaided_id, preview.aided_id) == (saved.unaided_id, saved.aided_id),
         },
         status=400 if request.method == "POST" else 200,
     )
