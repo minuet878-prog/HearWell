@@ -180,6 +180,7 @@ DEFINITION = Definition(
     advice=ADVICE,
     next_steps=NEXT_STEPS,
     wizard_offer="如果您有耳鳴：耳鳴障礙量表（THI）",
+    trend_chart=True,
     # The hospital form's numbering (not the English original's): 5 絕望, 11 憂鬱, 23 無法忍受,
     # answered 經常, whatever the total (spec #208 Q6).
     support_items=(5, 11, 23),
