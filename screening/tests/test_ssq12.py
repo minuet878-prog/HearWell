@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Questionnaire, Submission
+from screening.questionnaires import ssq12_tw
 from screening.tests.helpers import consented_user
 
 
@@ -341,3 +342,60 @@ class Ssq12ResultRedesignTests(TestCase):
             self.questionnaire.questions.get(question_number=12).question_text, folded.group(1)
         )
         self.assertTrue(text.endswith("這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。"))
+
+
+class Ssq12LowestItemsTests(TestCase):
+    """The SSQ12-TW result page's 「分數最低的 n 題」 (#189)."""
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.questionnaire = Questionnaire.objects.get(code="ssq12-tw")
+        self.user = consented_user(username="ssq_lowest")
+        self.client.force_login(self.user)
+
+    def lowest(self, scores):
+        """The page's lowest-items section for a record with these 12 scores (None: 不適用)."""
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire, wearing_hearing_aid=False
+        )
+        # Answers saved last item first, so their ids do not follow the item numbers.
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in reversed(
+                list(zip(self.questionnaire.questions.all(), scores, strict=True))
+            )
+        )
+        self.page = self.client.get(reverse("result", args=[submission.id])).content.decode()
+        found = re.search(
+            r'<section [^>]*aria-labelledby="ssq-lowest-title">(.*?)</section>', self.page, re.S
+        )
+        return found.group(1) if found else None
+
+    def items(self, section):
+        """(question text, score) of each listed item, in page order."""
+        return re.findall(r"<li[^>]*>(.*?)<br><strong>(.*?)</strong></li>", section, re.S)
+
+    def test_lists_the_three_lowest_scored_items_by_score_then_item_number(self):
+        # Items 1 and 5 不適用; items 3 and 4 tie for third place at 4.
+        scores = [None, 3, 4, 4, None, 2, 8, 8, 8, 8, 8, 8]
+        section = self.lowest(scores)
+        self.assertIn("分數最低的 3 題", section)
+        self.assertEqual(
+            self.items(section),
+            [
+                (ssq12_tw.QUESTIONS[5], "2 分"),
+                (ssq12_tw.QUESTIONS[1], "3 分"),
+                (ssq12_tw.QUESTIONS[2], "4 分"),
+            ],
+        )
+
+    def test_heading_counts_the_items_listed_when_fewer_than_three_have_a_score(self):
+        section = self.lowest([None] * 5 + [7] + [None] * 5 + [5])
+        self.assertIn("分數最低的 2 題", section)
+        self.assertEqual(
+            self.items(section), [(ssq12_tw.QUESTIONS[11], "5 分"), (ssq12_tw.QUESTIONS[5], "7 分")]
+        )
+
+    def test_no_section_when_every_item_is_not_applicable(self):
+        self.assertIsNone(self.lowest([None] * 12))
+        self.assertNotIn("分數最低的", self.page)

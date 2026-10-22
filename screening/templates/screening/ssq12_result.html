@@ -27,6 +27,14 @@
     {% endif %}
 </section>
 {% endwith %}
+{% with lowest=submission.ssq_lowest_answers %}
+{% if lowest %}
+<section class="mb-6" aria-labelledby="ssq-lowest-title">
+    <h2 id="ssq-lowest-title" class="h4">分數最低的 {{ lowest|length }} 題</h2>
+    <ul>{% for answer in lowest %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.score }} 分</strong></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endwith %}
 <details class="mb-4">
     <summary>看全部 {{ answers|length }} 題的回答</summary>
     <ol>{% for answer in answers %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>

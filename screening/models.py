@@ -330,6 +330,18 @@ class Submission(models.Model):
         return "未計算：包含不適用題目"
 
     @cached_property
+    def ssq_lowest_answers(self):
+        # SSQ12-TW's 「分數最低的 n 題」 (ticket #189): up to 3 answers with a score, lowest first,
+        # ties by item number; 不適用 is left out, and there is no threshold.
+        if self.questionnaire.definition.result != AVERAGE:
+            return []
+        return list(
+            self.answers.filter(score__isnull=False)
+            .select_related("question")
+            .order_by("score", "question__question_number")[:3]
+        )
+
+    @cached_property
     def satisfaction(self):
         # The only scoring path for subscale questionnaires (SADL). Callers prefetch the answers
         # with their questions, so a list scores every record from one query.
