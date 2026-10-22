@@ -2,3 +2,4 @@
 django-debug-toolbar==8.0.0
 ruff==0.16.1
 playwright==1.64.0
+tblib==3.2.2
