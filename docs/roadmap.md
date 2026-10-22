@@ -22,12 +22,11 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
-  - 助聽器選配指引（母規格 #218，ADR 0017）：拷問 14 題（[拷問決定](planning/hearing-aid-guide/grill-decisions.md)、
-    [法規與補助研究](planning/hearing-aid-guide/research.md)），拆成 #220–#231；#220 新句子已定稿。#221 章節版型、
-    目錄與「去找聽力師之前」已合併（PR #236）。第二批 #222–#225、#228、#229（其餘五章、首頁與問卷結果頁入口）
-    已合併（PR #238，[驗證紀錄](verification/issues-222-229.md)）。#226 判讀函式與摘要頁鑑定門檻格已合併（PR #242，
-    [驗證紀錄](verification/issue-226.md)）。#227 摘要頁其餘狀態、#230 聽力圖結果頁入口在功能分支
-    `feat/218-guide-batch3`（本人跳過交叉審查，[驗證紀錄](verification/issues-227-230.md)）；還欠 #231 收尾。合併上線前本人判斷是否就廣告法規諮詢食藥署或律師。
+  - 助聽器選配指引（母規格 #218，ADR 0017；[拷問決定](planning/hearing-aid-guide/grill-decisions.md)、
+    [法規與補助研究](planning/hearing-aid-guide/research.md)）：#220–#231 全部做完（PR #236、#238、#242、#244，#231 收尾；
+    [#222–#229](verification/issues-222-229.md)、[#226](verification/issue-226.md)、[#227、#230](verification/issues-227-230.md)、
+    [#231](verification/issue-231.md)）。**只剩本人判斷是否就廣告法規（醫療器材管理法第 40 條、施行細則第 2–4 條）
+    諮詢食藥署或律師**；判斷完移到「已完成」，關閉 #218。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
 - 等時間：見下方「時間型待辦」。
@@ -38,6 +37,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   上線 1 週沒問題（約 2026-10-29）改 604800（1 週）→ 再 1 週改 31536000（1 年）。
 - **e2e 列為必要檢查**：觀察到 2026-10-30 左右沒有偶發失敗，就把 `e2e` 加進 GitHub ruleset 的必要檢查。
   改 CI job 名稱時要同時改 ruleset，不然 PR 會卡在「等待檢查」。
+- **每年查核一次助聽器選配指引的內容與鑑定醫院名冊**（下次約 2027-10）：六個章節的法規、金額、年限、
+  輔具中心聯絡方式，對照各章頁尾的官方來源；衛福部鑑定醫院名冊（目前版本 1150717）有新版就重新擷取
+  `screening/data/assessment_hospitals.json`。改完更新各章的「本頁資料查核於」日期。
 
 ---
 

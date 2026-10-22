@@ -200,12 +200,24 @@ class GuideSummaryTests(TestCase):
             "reached": ((PTA_55, PTA_55), {}),
             "not_reached": ((PTA_53_75, PTA_60), {}),
             "uncertain": (((40,) * 4, (80,) * 4), {"no_response_at": ("left", 4000)}),
+            # 75.0% and 100%: what the assessment would call level 2 and level 3.
+            "level 2 ratio": (((75,) * 4, (75,) * 4), {}),
+            "level 3 ratio": (((100,) * 4, (100,) * 4), {}),
         }
+        levels = (
+            *(f"第 {n} 級" for n in (1, 2, 3)),
+            *(f"第{n}級" for n in (1, 2, 3)),
+            *(f"{n} 級" for n in (1, 2, 3)),
+            "輕度",
+            "中度",
+            "重度",
+            "等級",
+        )
         for status, (ears, options) in cases.items():
             Audiogram.objects.filter(user=self.user).delete()
             self.make(*ears, **options)
             text = self.text()
-            for level in ("第 1 級", "第1級", "1 級", "輕度", "中度", "重度", "等級"):
+            for level in levels:
                 with self.subTest(status=status, level=level):
                     self.assertNotIn(level, text)
 
