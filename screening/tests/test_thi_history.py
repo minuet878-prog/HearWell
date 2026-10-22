@@ -151,3 +151,18 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         trend = self._trend(self._main())
         self.assertIn("分數越低，耳鳴對生活的影響越小。", trend)
         self.assertNotIn("聽力對生活的影響", trend)
+
+    def test_trend_chart_levels_from_the_api_top_out_at_100(self):
+        # TrendChart.jsx draws its y axis up to the last level's max: THI's 滿分 100.
+        questionnaires = self.client.get(reverse("api:questionnaires")).json()
+        thi = next(q for q in questionnaires if q["code"] == "thi")
+        self.assertEqual(
+            [(level["code"], level["max"]) for level in thi["levels"]],
+            [
+                ("none_or_slight", 16),
+                ("mild", 36),
+                ("moderate", 56),
+                ("severe", 76),
+                ("catastrophic", 100),
+            ],
+        )
