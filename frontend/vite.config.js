@@ -8,7 +8,11 @@ import { defineConfig } from "vite";
 export default defineConfig({
   // Keep token alpha values exact through both Tailwind and Vite.
   plugins: [tailwindcss({ optimize: false }), react()],
+  // Asset URLs in site.css (the font files, #181) point next to it, under Django's static URL.
+  base: "./",
   build: {
+    // Font slices stay separate files, so a page downloads only the characters it shows.
+    assetsInlineLimit: 0,
     outDir: "../screening/static/screening/frontend",
     emptyOutDir: true,
     // Preserve exact alpha values in design tokens (hex alpha rounds 0.5 to 128/255).

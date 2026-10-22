@@ -7,11 +7,6 @@
     <title>{% block title %}HearWell{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
-    {# Chinese-friendly body font; CDN down or blocked falls back to the system font in site.css. #}
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
     <link rel="manifest" href="{% static 'screening/pwa/manifest.json' %}">
     <meta name="theme-color" content="#ffffff">
