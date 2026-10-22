@@ -16,19 +16,14 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   驗證見 `docs/verification/brand-refresh.md`）、字型改由網站自己提供並修正隱私權說明（#181，ADR 0014）、健康資料頁面
   禁止快取（#182）、成人問卷第三批 THI 耳鳴障礙量表（母規格 #208，#210–#217，ADR 0015、0016）、2c 支線改版三批
   （母規格 #183，#185–#204，ADR 0013；PR #219、#235、#237、#239）、家人溝通頁改成分段卡片（#240，驗證見
-  `docs/verification/issue-240.md`）、頁尾改圖示＋文字、標題加藍條、老使用者首頁白卡片、作答頁與問卷介紹整理
+  `docs/verification/issue-240.md`）、IOI-HA 改用 React 作答頁（#245，驗證見 `docs/verification/issue-245.md`）、助聽器選配指引（母規格 #218，
+  #220–#231，ADR 0017）、頁尾改圖示＋文字、標題加藍條、老使用者首頁白卡片、作答頁與問卷介紹整理
   （驗證見 `docs/verification/footer-headings-answer-page.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
-  - 助聽器選配指引（母規格 #218，ADR 0017）：拷問 14 題（[拷問決定](planning/hearing-aid-guide/grill-decisions.md)、
-    [法規與補助研究](planning/hearing-aid-guide/research.md)），拆成 #220–#231；#220 新句子已定稿。#221 章節版型、
-    目錄與「去找聽力師之前」已合併（PR #236）。第二批 #222–#225、#228、#229（其餘五章、首頁與問卷結果頁入口）
-    已合併（PR #238，[驗證紀錄](verification/issues-222-229.md)）。#226 判讀函式與摘要頁鑑定門檻格已合併（PR #242，
-    [驗證紀錄](verification/issue-226.md)）。#227 摘要頁其餘狀態、#230 聽力圖結果頁入口在功能分支
-    `feat/218-guide-batch3`（本人跳過交叉審查，[驗證紀錄](verification/issues-227-230.md)）；還欠 #231 收尾。合併上線前本人判斷是否就廣告法規諮詢食藥署或律師。
 - 下一步：文字多的頁面整理（選配指引六章、結果頁、聽力圖結果頁說明，見
   `docs/verification/footer-headings-answer-page.md` 的「留給下一個分支」）。SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
@@ -76,6 +71,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 2c 第三批「聽力圖」 | #183 的第三批、#199–#204：新增／修改聽力圖分四步加確認頁、結果頁兩耳摘要卡與「接下來」、比較頁舊／新兩列與「換一張」、膠囊式左右耳切換、比較摘要與差最多的頻率（規則在聽力圖模組）；圖表元件不變（ADR 0013，[驗證紀錄](verification/issues-199-204.md)） |
 | 2c 第二批「分享、帳號、隱私權」 | #183 的第二批、#193–#198：分享獨立頁、家人報告的重點與幫忙卡、加到主畫面選手機、帳號設定分四組與分享狀態、隱私權「先看重點」與聯絡卡；列印版跟改版前相同（ADR 0013，[驗證紀錄](verification/issues-193-196.md)、[#195、#197、#198](verification/issues-195-198.md)） |
 | 2c 第一批「比較與結果頁」 | #183 的第一批、#186–#192：三個配戴比較入口統一、IOI-HA 結果頁依常模分組、SSQ12 結果版面與「比上一次」、分數最低的題目、配戴狀態比較頁的單選卡與新結果卡（ADR 0013，[驗證紀錄](verification/issues-186-192.md)） |
+| 助聽器選配指引 | #218、#220–#231：「我的選配指引」摘要頁（問卷、聽力圖、要不要找聽力師評估、身障鑑定門檻估算與「怎麼算的」）、六個不用登入的章節（鑑定醫院依縣市查詢、九號表、類型與價格、二十五號表、選配之後）、首頁與問卷／聽力圖結果頁入口、一條 e2e 路線；只在有依據時判斷（ADR 0017，[拷問決定](planning/hearing-aid-guide/grill-decisions.md)、[法規與補助研究](planning/hearing-aid-guide/research.md)，[#222–#229](verification/issues-222-229.md)、[#226](verification/issue-226.md)、[#227、#230](verification/issues-227-230.md)、[#231](verification/issue-231.md)） |
 | 家人溝通頁分段卡片 | #240：`/family` 照設計比較頁第 15 列 A 改成分段卡片，文字不動，就醫卡改藍色系（ADR 0007，[驗證紀錄](verification/issue-240.md)） |
 | IOI-HA 改用 React 作答頁 | #245：API 開放 IOI-HA 讀題目與送出（帶作答頁的常模 token，跟網頁版共用驗證），作答頁一題一頁、不問戴助聽器、第 1 題完整顯示常模依據（ADR 0002，[驗證紀錄](verification/issue-245.md)） |
 | 成人問卷第三批 THI | #208、#210–#217：耳鳴障礙量表（醫院現用中文版，25 題、五級），算「耳鳴問卷」不算生活影響問卷、不影響重測提醒；情緒題答「經常」顯示 1925；我的紀錄趨勢圖、報告「耳鳴」區、精靈入口（ADR 0015、0016，[驗證紀錄](verification/issue-208-thi.md)） |
@@ -91,6 +87,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。
 - **趨勢圖只讀 API 最新 20 筆**。最新 20 筆都不是 HHIE-S 時，摘要照常顯示（Django 看全部紀錄），圖框卻是空的；可讓 API 依問卷篩選。
 - **有人寄信要求刪除帳號時**：真的有人寄信再做管理指令，直接呼叫 `User.delete_with_data()`。
+- **助聽器選配指引的廣告法規諮詢**：醫療器材管理法第 40 條、施行細則第 2–4 條要不要問食藥署或律師。
+  本人 2026-10-23 決定先結案 #218、之後再諮詢；研究代理的判讀只是推論，不是法律意見（見[法規與補助研究](planning/hearing-aid-guide/research.md)）。
 - **待確認**：Render build log 的 Node 版本是不是 `.node-version` 的 24.21.0。
 
 ---
