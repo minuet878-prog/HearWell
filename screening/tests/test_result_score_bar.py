@@ -21,6 +21,16 @@ class ScoreBarTests(TestCase):
             )
             for i in range(1, 11)
         )
+        cls.hhia_s = Questionnaire.objects.create(questionnaire_name="HHIA-S", code="hhia-s")
+        cls.hhia_questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.hhia_s,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
         cls.unknown = Questionnaire.objects.create(
             questionnaire_name="未設定門檻問卷", code="unconfigured"
         )
@@ -60,6 +70,14 @@ class ScoreBarTests(TestCase):
         )
         self.assertIn(
             'class="score-bar-segment score-bar-segment-severe" style="width: 40.00%"', page
+        )
+        self.assertIn('class="score-bar-marker" style="left: 30.00%"', page)
+
+    def test_hhia_s_uses_its_own_thresholds(self):
+        # HHIA-S's own definition, not HHIE-S's (same numbers, but read independently).
+        page = self._get(self._submit(self.hhia_s, self.hhia_questions, [4, 4, 2, 2] + [0] * 6))
+        self.assertIn(
+            'class="score-bar-segment score-bar-segment-normal" style="width: 20.00%"', page
         )
         self.assertIn('class="score-bar-marker" style="left: 30.00%"', page)
 

@@ -102,8 +102,11 @@ class UserStateTests(TestCase):
         self.assertEqual(state.next_suggested_date, date(2027, 3, 22))
 
     def test_retake_opens_the_same_questionnaire(self):
-        self._hhi(self.hhia_s, self.hhia_questions, days_ago=1)
-        state = get_user_state(self.user, today=date(2026, 10, 22))
+        # Even once the user has turned 65 (who the wizard would now route to HHIE-S), "再做
+        # 一次" reopens the questionnaire the record itself belongs to.
+        older = consented_user(username="turned_65", birth_year=date.today().year - 65)
+        self._hhi(self.hhia_s, self.hhia_questions, days_ago=1, user=older)
+        state = get_user_state(older, today=date(2026, 10, 22))
         self.assertEqual(state.retest_questionnaire, self.hhia_s)
 
     def test_only_the_given_user_is_considered(self):
