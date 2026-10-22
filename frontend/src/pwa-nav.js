@@ -56,6 +56,8 @@ function setUpPullToRefresh(win) {
 
 export function setUpPwaNav(win = window) {
   if (!isStandalone(win)) return;
+  // Ticket #160: e.g. the home page's "加到手機主畫面"; without JavaScript they stay.
+  for (const item of win.document.querySelectorAll("[data-hide-in-app]")) item.hidden = true;
   const back = win.document.getElementById("pwa-back");
   if (back) {
     back.hidden = false;

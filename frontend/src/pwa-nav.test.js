@@ -61,6 +61,25 @@ describe("outside the home-screen app", () => {
   });
 });
 
+// Ticket #160: the home page's "加到手機主畫面" card is pointless inside the app.
+describe("items marked data-hide-in-app", () => {
+  const item = () => document.querySelector("[data-hide-in-app]");
+  beforeEach(() => page('<ul><li>記錄聽力圖</li><li data-hide-in-app>加到手機主畫面</li></ul>'));
+
+  it.each([
+    ["iPhone", { iphone: true }],
+    ["Android", { iphone: false, android: true }],
+  ])("are hidden in the %s home-screen app", (_, options) => {
+    setUpPwaNav(fakeWindow(options));
+    expect(item().hidden).toBe(true);
+  });
+
+  it("stay visible in a browser tab", () => {
+    setUpPwaNav(fakeWindow({ iphone: false }));
+    expect(item().hidden).toBe(false);
+  });
+});
+
 describe("back button", () => {
   afterEach(() => vi.useRealTimers());
 
