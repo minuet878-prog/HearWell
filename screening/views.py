@@ -987,7 +987,13 @@ def submission_result(request, submission_id):
     result = submission.questionnaire.definition.result
     if result == AVERAGE:
         return render(
-            request, "screening/ssq12_result.html", {"submission": submission, "answers": answers}
+            request,
+            "screening/ssq12_result.html",
+            {
+                "submission": submission,
+                "answers": answers,
+                "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
+            },
         )
     if result == NORM:
         return _ioi_ha_result(request, submission, answers)
