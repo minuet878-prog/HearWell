@@ -1,10 +1,10 @@
 {# A graded questionnaire's part of the report (report_content.html); only a life-impact one (ADR 0016) shows subscores and answers. #}
 <section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
     <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
-    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
+    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span></p>
     <p>{% if section.questionnaire.definition.life_impact %}情緒 {{ latest.emotional_score }}、社交 {{ latest.social_score }}（分項僅供參考）　{% endif %}助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
     <p>{{ section.advice }}</p>{% if section.questionnaire.definition.life_impact %}
-    <details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>{% endif %}
+    <details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>{% endif %}
     <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
     <table class="table">
         <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>

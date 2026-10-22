@@ -6,7 +6,7 @@
         <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}</li>
         {% endif %}
         {% for section in sections|add:tinnitus_sections %}{% with latest=section.latest %}
-        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
+        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
         {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
         {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.satisfaction.overall }}</li>{% endif %}
@@ -54,7 +54,7 @@
 <p>最近一次 {{ ssq_latest.created_at|date:"Y/m/d H:i" }}，助聽器：{{ ssq_latest.get_wearing_hearing_aid_display }}。</p>
 <p>{% include "screening/ssq_average.html" with submission=ssq_latest %}</p>
 <p>分數越高，代表您回報的聆聽能力越好；不代表聽損程度或助聽器效益合格與否。</p>
-<details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
+<details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ ssq_recent|length }} 次紀錄：</p>
 <ul>{% for record in ssq_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：{% if record.ssq_average is not None %}平均 {{ record.ssq_average }} 分{% else %}{{ record.ssq_unavailable_reason }}{% endif %}</li>{% endfor %}</ul>
 </section>
@@ -73,7 +73,7 @@
 {% if satisfaction.not_applicable %}
 <p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
 {% endif %}
-<details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in sadl_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
+<details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in sadl_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ sadl_recent|length }} 次紀錄：</p>
 <ul>{% for record in sadl_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：整體滿意度 {{ record.satisfaction.overall }}</li>{% endfor %}</ul>
 </section>

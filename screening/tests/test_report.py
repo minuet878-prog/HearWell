@@ -245,7 +245,10 @@ class HealthReportTests(TestCase):
         self.assertIn('id="print-button"', content)
         self.assertIn("screening/print-button.js", content)
         # The level is written out in a bordered label, not shown by colour alone.
-        self.assertIn('<span class="report-level">輕度到中度影響</span>', content)
+        self.assertIn(
+            '<span class="report-level report-level-mild_to_moderate">輕度到中度影響</span>',
+            content,
+        )
 
     # 9
     def test_query_count_does_not_grow_with_records(self):

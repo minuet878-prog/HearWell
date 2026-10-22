@@ -27,7 +27,8 @@
 </div>
 <p class="report-handwrite mt-2">姓名：<span></span></p>
 
-{% if comparisons %}<nav class="no-print" aria-label="管理報告比較"><ul>{% for comparison in comparisons %}<li><a href="{% url 'hhi_comparison' comparison.questionnaire_id %}">更換或移除 {{ comparison.questionnaire }} 比較</a></li>{% endfor %}</ul></nav>{% endif %}
+{# Pages tidy-up: buttons, not a one-item bullet list; screen only, as before. #}
+{% if comparisons %}<nav class="no-print flex flex-wrap gap-2 mt-4" aria-label="管理報告比較">{% for comparison in comparisons %}<a class="btn btn-outline-primary" href="{% url 'hhi_comparison' comparison.questionnaire_id %}">更換或移除 {{ comparison.questionnaire }} 比較</a>{% endfor %}</nav>{% endif %}
 {% include "screening/report_content.html" %}
 {% endif %}
 </article>

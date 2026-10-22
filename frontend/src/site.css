@@ -1247,7 +1247,7 @@
   }
 
   /* On a phone the line wraps into two even halves, not one word alone on the second line;
-     「聽力師」 stays whole (the template keeps it on one line). */
+     「聽力師」 stays whole unless it alone is wider than the card (keep-all, wrap anywhere). */
   .home-credential-text {
     text-wrap: balance;
   }
@@ -1282,9 +1282,11 @@
     gap: 0.75rem;
   }
 
-  /* Number, icon and words in one row (pages tidy-up), so each card is half as tall. */
+  /* Number, icon and words in one row (pages tidy-up), so each card is half as tall; at large
+     text sizes the words drop under the number and icon instead of widening the page. */
   .step-cards li {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
@@ -1306,6 +1308,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .step-cards li > span:last-child {
+    flex: 1 1 10rem;
+    min-width: 0;
   }
 
   .step-icon {
@@ -1773,6 +1780,12 @@
 
   .dropdown-box > :not(summary):last-child {
     margin-bottom: 1rem;
+  }
+
+  /* Tables and grouped fields run to the box's edges: at double text size on a phone the side
+     margins would leave them too little room. */
+  .dropdown-box > :is(table, fieldset, div) {
+    margin-inline: 0;
   }
 
   .answer-about > div > div {
@@ -2562,6 +2575,83 @@
     margin-top: 1.5rem;
   }
 
+  /* The report on screen (pages tidy-up): the summary in the brand-blue card, each part's
+     questionnaire, the audiogram and a kept comparison in a card, levels in the site's coloured
+     labels, scores as tags, the answers in the dropdown box, the handwriting line on paper only.
+     Screen only: the printed report stays as it was (the print block below undoes the box). */
+  @media screen {
+    .health-report .report-summary {
+      border: 0.125rem solid var(--color-primary);
+      border-radius: var(--radius-large);
+      background-color: #fff;
+      padding: 1rem;
+    }
+
+    /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
+    .health-report:has(#family-highlights) .report-summary {
+      display: none;
+    }
+
+    .health-report .report-part > section,
+    .health-report #report-audiogram {
+      padding: 1rem;
+      border: 1px solid var(--color-border-warm);
+      border-radius: var(--radius-large);
+      background-color: #fff;
+      box-shadow: var(--shadow-warm);
+    }
+
+    /* The audiogram's card is not a .card, so its title loses the page-title bar here, on
+       screen only (on paper it keeps the bar, as before). */
+    .health-report #report-audiogram > h2 {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .report-handwrite {
+      display: none;
+    }
+
+    .health-report .report-level {
+      border-radius: var(--radius-badge);
+      padding: 0 0.5rem;
+    }
+
+    .report-level-normal {
+      background-color: var(--color-normal-bg);
+      color: var(--color-normal);
+    }
+
+    .report-level-mild_to_moderate {
+      background-color: var(--color-mild-bg);
+      color: var(--color-mild);
+    }
+
+    .report-level-severe {
+      background-color: var(--color-severe-bg);
+      color: var(--color-severe);
+    }
+
+    .report-level-unknown {
+      background-color: var(--color-surface);
+      color: var(--color-heading);
+    }
+
+    .report-score {
+      display: inline-block;
+      padding: 0 0.6rem;
+      border-radius: var(--radius-pill);
+      background-color: var(--color-brand-soft);
+      color: var(--color-primary);
+      font-size: 1.5rem;
+    }
+
+    .report-disclaimer,
+    .health-report #report-audiogram > p:last-child {
+      font-size: 0.875rem;
+    }
+  }
+
   @media print {
     /* No new shadows on paper, whichever shared class ends up inside the report. */
     .health-report * {
@@ -2913,6 +3003,26 @@
 
     .health-report .report-answers::details-content {
       content-visibility: visible;
+    }
+
+    /* On paper the answers read as before the pages tidy-up: no box, the browser's own marker. */
+    .health-report .report-answers.dropdown-box {
+      border: 0;
+      background: none;
+    }
+
+    .health-report .report-answers.dropdown-box > summary {
+      display: list-item;
+      padding: 0.5rem 0;
+      list-style: revert;
+    }
+
+    .health-report .report-answers.dropdown-box > summary::after {
+      content: none;
+    }
+
+    .health-report .report-answers.dropdown-box > :not(summary) {
+      margin-inline: 0;
     }
   }
 }
