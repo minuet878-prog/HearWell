@@ -37,6 +37,30 @@
     <p class="mb-0">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
 </section>
 {% endif %}
+{# Plain links to the public guide: no share token in them, and this page sends no referrer. #}
+<section id="family-help" class="card card-body mb-4 no-print" aria-labelledby="help-title">
+    <h2 id="help-title" class="h4">您可以怎麼幫忙</h2>
+    <ul class="list-unstyled mb-0">
+        <li><a class="link-card" href="{% url 'family_guide' %}#talk-title">
+            <span class="link-card-body">
+                <span class="link-card-title">怎麼跟聽損的家人說話</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="{% url 'family_guide' %}#aid-title">
+            <span class="link-card-body">
+                <span class="link-card-title">陪伴配戴助聽器</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="{% url 'family_guide' %}#urgent-title">
+            <span class="link-card-body">
+                <span class="link-card-title">什麼時候要馬上就醫</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</section>
 {% if not has_records %}
 <p>這份報告目前沒有紀錄。</p>
 {% else %}

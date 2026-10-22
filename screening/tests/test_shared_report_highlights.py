@@ -86,3 +86,83 @@ class SharedReportHighlightsTests(TestCase):
         self.assertIn("2026/10/20 作答", highlights)
         self.assertRegex(highlights, r"右耳：\s*中度\s+左耳：\s*輕度")
         self.assertIn(DISCLAIMER, highlights)
+
+    # Acceptance 17
+    def test_only_an_audiogram_lists_only_the_two_ears(self):
+        self._right_moderate_left_mild()
+        highlights = _text(_card(self._shared(), "family-highlights"))
+        self.assertRegex(highlights, r"右耳：\s*中度\s+左耳：\s*輕度")
+        self.assertNotIn("聽力對生活的影響", highlights)
+        self.assertNotIn("作答", highlights)
+
+    def test_only_life_impact_lists_no_ears(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        highlights = _text(_card(self._shared(), "family-highlights"))
+        self.assertIn("聽力對生活的影響", highlights)
+        self.assertNotIn("右耳", highlights)
+        self.assertNotIn("聽力圖", highlights)
+
+    # Acceptance 17
+    def test_no_life_impact_and_no_audiogram_hides_the_card(self):
+        self._ioi_ha(self.user, basis=None)
+        content = self._shared()
+        self.assertIn("IOI-HA", content)  # the full report still shows
+        self.assertNotIn("family-highlights", content)
+        self.assertNotIn("先看重點", content)
+
+    def test_life_impact_is_the_latest_one_as_on_the_home_page(self):
+        # Newer records of other questionnaires do not replace the latest life-impact one.
+        self._on(self._hhie_s(self.user, [0] * 10, wearing=False, days_ago=9), 10)  # 0
+        self._on(self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=5), 15)
+        self._on(self._ioi_ha(self.user, basis=None), 20)
+        highlights = _text(_card(self._shared(), "family-highlights"))
+        self.assertIn("2026/10/15 作答", highlights)
+        self.assertIn("顯著影響", highlights)  # 26
+        self.assertNotIn("2026/10/10", highlights)
+        self.assertNotIn("2026/10/20", highlights)
+
+    def test_highlights_use_the_latest_audiogram(self):
+        self._audiogram(
+            self.user, date(2026, 5, 1), right_air=(10, 10, 10, 10), left_air=(10, 10, 10, 10)
+        )
+        self._right_moderate_left_mild()  # 2026/09/28
+        highlights = _text(_card(self._shared(), "family-highlights"))
+        self.assertIn("聽力圖（2026/09/28）", highlights)
+        self.assertNotIn("正常", highlights)
+
+    def test_an_ear_without_enough_points_says_it_cannot_be_read(self):
+        # Q21: an ear without its four-frequency average is written as on the audiogram card.
+        self._audiogram(self.user, date(2026, 9, 28), right_air=(40, 45, 50, 45), left_air=(30,))
+        highlights = _text(_card(self._shared(), "family-highlights"))
+        self.assertRegex(highlights, r"右耳：\s*中度\s+左耳：\s*資料不足，無法判讀")
+
+    # Acceptance 16 (ticket #194 acceptance 4)
+    def test_help_cards_link_to_the_three_family_guide_sections(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        help_card = _card(self._shared(), "family-help")
+        self.assertIn("您可以怎麼幫忙", _text(help_card))
+        links = re.findall(r'<a class="link-card" href="([^"]+)">(.*?)</a>', help_card, re.S)
+        self.assertEqual(
+            [(href, _text(body).rstrip("› ")) for href, body in links],
+            [
+                ("/family#talk-title", "怎麼跟聽損的家人說話"),
+                ("/family#aid-title", "陪伴配戴助聽器"),
+                ("/family#urgent-title", "什麼時候要馬上就醫"),
+            ],
+        )
+        guide = self.client.get(reverse("family_guide")).content.decode()
+        for anchor, title in (
+            ("talk-title", "怎麼跟聽損的家人說話"),
+            ("aid-title", "陪伴配戴助聽器"),
+            ("urgent-title", "什麼時候要馬上就醫"),
+        ):
+            with self.subTest(anchor=anchor):
+                self.assertRegex(guide, rf'id="{anchor}"[^>]*>{title}<')
+
+    def test_help_links_carry_no_share_token_and_the_page_sends_no_referrer(self):
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        response = self.client.get(reverse("shared_report", args=[self.share.token]))
+        self.assertEqual(response["Referrer-Policy"], "no-referrer")
+        help_card = _card(response.content.decode(), "family-help")
+        self.assertEqual(len(re.findall(r"<a ", help_card)), 3)
+        self.assertNotIn(self.share.token, help_card)
