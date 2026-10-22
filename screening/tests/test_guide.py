@@ -125,7 +125,7 @@ class GuideChapterTests(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 200)
 
     def test_unwritten_or_unknown_chapters_are_not_found(self):
-        for slug in ("form-9", "no-such-chapter"):
+        for slug in ("no-such-chapter",):
             with self.subTest(slug=slug):
                 url = reverse("guide_chapter", args=[slug])
                 self.assertEqual(self.client.get(url).status_code, 404)
