@@ -9,6 +9,10 @@ const LIMIT = 80 * 1024;
 // Before the migration every page loaded the framework CSS (22,970 bytes) and the old
 // styles.css (5,489 bytes), measured brotli in the same way as below (#124).
 const CSS_LIMIT = 22_970 + 5_489;
+// Until #181 every page also loaded Google Fonts' Noto Sans TC stylesheet, 20,405 bytes measured
+// the same way; its @font-face rules now ship inside site.css (ADR 0014).
+const FONT_CSS_LIMIT = 20_405;
+const FONT_FACE = /@font-face\s*\{[^}]*\}/g;
 
 async function buildOutput() {
   const root = fileURLToPath(new URL("..", import.meta.url));
@@ -49,10 +53,13 @@ for (const name of ["answer", "audiogram-input", "audiogram-view"]) {
   }, 60_000);
 }
 
-// Every page loads the site's CSS on its first visit.
-it("the site's CSS is built and costs no more than the pre-migration CSS (brotli)", async () => {
+// Every page loads the site's CSS on its first visit: its own rules cost no more than the
+// pre-migration CSS, and the font's rules no more than the Google Fonts stylesheet they replace.
+it("the site's CSS is built and costs no more than the CSS it replaced (brotli)", async () => {
   const css = (await buildOutput()).filter((o) => o.fileName.endsWith(".css"));
   expect(css.map((o) => o.fileName)).toContain("site.css");
-  const size = css.reduce((sum, o) => sum + brotliCompressSync(o.source).length, 0);
-  expect(size).toBeLessThanOrEqual(CSS_LIMIT);
+  const source = css.map((o) => o.source).join("\n");
+  const brotli = (text) => brotliCompressSync(text).length;
+  expect(brotli(source.replace(FONT_FACE, ""))).toBeLessThanOrEqual(CSS_LIMIT);
+  expect(brotli((source.match(FONT_FACE) ?? []).join("\n"))).toBeLessThanOrEqual(FONT_CSS_LIMIT);
 }, 60_000);

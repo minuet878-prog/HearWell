@@ -58,7 +58,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 NOW = datetime(2026, 10, 1, 10, 0, tzinfo=ZoneInfo("Asia/Taipei"))
 WIDTHS = (390, 1024)
-GOOGLE_FONTS = re.compile(r"https://fonts\.(googleapis|gstatic)\.com/.*")
+BODY_FONT_FILES = re.compile(r".*/noto-sans-tc-[^/]*\.woff2?$")
 GROUPS = ("public", "answering", "history", "report", "chrome", "parts")
 # Page -> the parts cropped from it; each crop holds only the drawing, not the frame around it.
 PARTS = {
@@ -293,9 +293,9 @@ class Screenshots(StaticLiveServerTestCase):
             java_script_enabled=shot.javascript,
             reduced_motion="reduce",
         )
-        # Google Fonts loads Noto Sans TC in slices whose timing moves Latin glyphs between
-        # captures; the system font keeps every capture alike (the font itself is not compared).
-        context.route(GOOGLE_FONTS, lambda route: route.abort())
+        # Noto Sans TC loads in slices whose timing moves Latin glyphs between captures; the
+        # system font keeps every capture alike (the font itself is not compared).
+        context.route(BODY_FONT_FILES, lambda route: route.abort())
         if self.cookies[shot.who]:
             context.add_cookies([self.cookies[shot.who]])
         if standalone:
