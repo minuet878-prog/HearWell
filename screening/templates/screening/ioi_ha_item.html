@@ -1,0 +1,9 @@
+{# One IOI-HA item on the result page (#187); the words carry the comparison and the answer, the scale only shows them. #}
+<li class="ioi-item">
+    <h3 class="ioi-item-name">{{ item.name }}</h3>
+    {% if item.versus %}<p class="{% if hide_versus %}visually-hidden{% else %}ioi-versus{% endif %}">{{ item.versus }}</p>{% endif %}
+    <p class="mb-1">{{ item.text }}</p>
+    <p class="font-bold mb-0">您的回答：{{ item.label }}</p>
+    <div class="ioi-scale" aria-hidden="true">{% for cell in item.cells %}<span class="ioi-cell{% if cell.band %} ioi-cell-band{% endif %}">{% if cell.mine %}<i class="ioi-dot ioi-dot-latest"></i>{% endif %}</span>{% endfor %}</div>
+    {% if item.note %}<p class="ioi-note">{{ item.note }}</p>{% endif %}
+</li>

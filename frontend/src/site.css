@@ -1727,6 +1727,64 @@
     overflow-wrap: anywhere;
   }
 
+  /* IOI-HA result (#187): one white card per item; nothing here is a link, so no hover (ADR 0006). */
+  .ioi-below,
+  .ioi-others {
+    margin-bottom: 1.5rem;
+  }
+
+  .ioi-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ioi-item {
+    padding: 1rem;
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+    box-shadow: var(--shadow-warm);
+  }
+
+  .ioi-item-name {
+    margin-bottom: 0.25rem;
+    font-size: 1.25rem;
+  }
+
+  .ioi-versus {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  /* Scores 1-5 left to right: grey cells are the norm, the blue dot is the answer. The words
+     above say the same for screen readers. */
+  .ioi-scale {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+    max-width: 20rem;
+    margin-top: 0.75rem;
+  }
+
+  .ioi-cell {
+    display: grid;
+    place-items: center;
+    height: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  .ioi-cell-band {
+    border-color: var(--color-input-border);
+    background-color: var(--color-border);
+  }
+
   /* Audiogram input and view (spec phase5_audiogram.md). */
   /* White frame around a chart (#137). Its side padding and border are pushed out by an equal
      negative margin, so the chart keeps its width and its crop stays pixel-identical (#143); on a

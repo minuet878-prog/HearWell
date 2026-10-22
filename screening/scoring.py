@@ -108,6 +108,8 @@ def ioi_ha_group(unaided_hhie_s_total):
 
 
 NORM_COMPARISON_TEXT = {"below": "低於常模", "within": "在範圍內", "above": "高於常模"}
+# The same comparisons in the IOI-HA result page's words (#183).
+NORM_VERSUS_TEXT = {"below": "比一般使用者低", "within": "在一般範圍內", "above": "比一般使用者好"}
 
 
 def compare_to_norm(group, item_number, score):
