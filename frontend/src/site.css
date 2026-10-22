@@ -2002,6 +2002,32 @@
     gap: 0.5rem;
   }
 
+  /* #201: both ears' degrees side by side, each kept whole when they wrap. */
+  .audiogram-summary-ear {
+    display: inline-block;
+    margin-right: 1.5rem;
+  }
+
+  /* Edit and delete under the result: quiet, centred text links, still a full touch target. */
+  .quiet-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 1.5rem;
+  }
+
+  .quiet-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0 0.5rem;
+    font-weight: 700;
+  }
+
+  .quiet-links .quiet-link-danger {
+    color: var(--color-severe);
+  }
+
   .ear-results {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

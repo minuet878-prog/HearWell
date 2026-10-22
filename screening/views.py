@@ -1263,7 +1263,17 @@ def _own_audiogram(request, audiogram_id):
 @health_data_page
 def audiogram_detail(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
-    return render(request, "screening/audiogram_detail.html", _audiogram_context(audiogram))
+    context = _audiogram_context(audiogram)
+    # #201: the report holds the latest audiogram; the compare button picks this one and the one
+    # before it (the next newer when this is the oldest), in the model's newest-first order.
+    rows = list(request.user.audiograms.values_list("id", "tested_on"))
+    ids = [audiogram_id for audiogram_id, _ in rows]
+    here = ids.index(audiogram.id)
+    if here > 0:
+        context["latest_tested_on"] = rows[0][1]
+    if len(ids) > 1:
+        context["compare_with"] = ids[here + 1] if here + 1 < len(ids) else ids[here - 1]
+    return render(request, "screening/audiogram_detail.html", context)
 
 
 def _audiogram_context(audiogram):

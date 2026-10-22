@@ -2,6 +2,7 @@ import json
 import re
 import uuid
 from datetime import date, timedelta
+from pathlib import Path
 from unittest import mock
 
 from django.db import DatabaseError, connection
@@ -12,6 +13,8 @@ from django.utils import timezone
 
 from screening.tests import test_answering, test_pages
 from screening.tests.helpers import consented_user
+
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 def _point(conduction, ear, frequency, db, no_response):
@@ -540,6 +543,99 @@ class AudiogramPageTests(TestCase):
 
 def _masked(point):
     return {**point, "masked": True}
+
+
+class AudiogramResultPageTests(TestCase):
+    """#201 (spec #183 stories 94-105): the summary card, the chart in sight, what comes next."""
+
+    _make = AudiogramPageTests._make
+    _main = AudiogramPageTests._main
+    MILD_RIGHT = _four(_air, "right", (30, 35, 40, 40))  # 36.25 dB HL, 輕度
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="audiogram_result")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _page(self, audiogram):
+        response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
+        self.assertEqual(response.status_code, 200)
+        return self._main(response)
+
+    def _section(self, main, attribute):
+        return re.search(rf"<section[^>]*{attribute}[^>]*>(.*?)</section>", main, re.S).group(1)
+
+    def test_summary_card_lists_both_ears_and_the_chart_follows(self):
+        # Left ear: only three of the four average frequencies.
+        points = self.MILD_RIGHT + [_air("left", f, 50) for f in (500, 1000, 2000)]
+        main = self._page(self._make(points))
+        summary = self._section(main, "audiogram-summary")
+        badge = r'\s*<span class="level-badge level-badge-{}">{}</span>'
+        self.assertRegex(summary, "右耳：" + badge.format("mild_to_moderate", "輕度"))
+        self.assertRegex(summary, "左耳：" + badge.format("unknown", "資料不足，無法判讀"))
+        self.assertNotIn("兩耳", summary)
+        # The chart comes right after the summary, not folded away.
+        after = main[main.index("audiogram-summary") :]
+        self.assertLess(after.index('id="audiogram-chart"'), after.index("ear-results"))
+        self.assertNotRegex(main, r"<details[^>]*>(?:(?!</details>).)*id=\"audiogram-chart\"")
+        self.assertIn("四頻平均：36.25 dB HL", self._section(main, 'data-ear="right"'))
+        self.assertIn("dB 數字越大，代表要越大聲才聽得到。", main)
+
+    def test_one_small_note_says_which_four_and_that_it_is_a_reference(self):
+        main = self._page(self._make(self.MILD_RIGHT))
+        self.assertIn(
+            "四頻平均是 500、1000、2000、4000 Hz 的平均。"
+            "這是依固定規則算出的參考結果，不能取代聽力師的判讀。",
+            main,
+        )
+
+    def test_next_links_to_the_report_and_says_which_audiogram_it_holds(self):
+        older = self._make(self.MILD_RIGHT, tested_on=date(2026, 9, 1))
+        self._make(self.MILD_RIGHT, tested_on=date(2026, 10, 5))
+        main = self._page(older)
+        self.assertIn(f'href="{reverse("health_report")}"', main)
+        self.assertIn("看／印聽力報告", main)
+        self.assertIn("聽力報告放的是最新一張（2026/10/05）", main)
+        latest = self.user.audiograms.first()
+        self.assertNotIn("聽力報告放的是最新一張", self._page(latest))
+
+    def test_compare_only_with_two_or_more_and_picks_this_and_the_one_before(self):
+        only = self._make(self.MILD_RIGHT, tested_on=date(2026, 9, 1))
+        self.assertNotIn("和以前的聽力圖比較", self._page(only))
+        middle = self._make(self.MILD_RIGHT, tested_on=date(2026, 9, 15))
+        newest = self._make(self.MILD_RIGHT, tested_on=date(2026, 10, 1))
+        compare = reverse("audiogram_compare")
+        for this, before in ((newest, middle), (middle, only), (only, middle)):
+            with self.subTest(tested_on=this.tested_on):
+                main = self._page(this)
+                link = re.search(r'<a [^>]*href="([^"]*)"[^>]*>和以前的聽力圖比較</a>', main)
+                self.assertEqual(link.group(1), f"{compare}?a={this.id}&amp;b={before.id}")
+                # The pair opens on the compare page.
+                page = self.client.get(f"{compare}?a={this.id}&b={before.id}")
+                self.assertEqual(page.status_code, 200)
+
+    def test_edit_and_delete_are_quiet_links_and_delete_still_asks(self):
+        audiogram = self._make(self.MILD_RIGHT)
+        main = self._page(audiogram)
+        quiet = re.search(r'<p class="quiet-links">(.*?)</p>', main, re.S).group(1)
+        edit = reverse("audiogram_edit", args=[audiogram.id])
+        delete = reverse("audiogram_delete", args=[audiogram.id])
+        self.assertIn(f'<a href="{edit}">修改這張</a>', quiet)
+        self.assertIn(f'<a class="quiet-link-danger" href="{delete}">刪除這張</a>', quiet)
+        self.assertNotIn("回聽力圖清單", main)
+        # The delete link opens the confirm page; nothing is deleted on GET.
+        response = self.client.get(reverse("audiogram_delete", args=[audiogram.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.user.audiograms.filter(pk=audiogram.pk).exists())
+
+    def test_quiet_links_are_tall_enough_to_tap_and_delete_is_red(self):
+        css = SITE_CSS.read_text(encoding="utf-8")
+        rule = re.search(r"\.quiet-links a \{([^}]*)\}", css).group(1)
+        self.assertIn("min-height: var(--spacing-touch)", rule)
+        danger = re.search(r"\.quiet-links \.quiet-link-danger \{([^}]*)\}", css).group(1)
+        self.assertIn("color: var(--color-severe)", danger)
 
 
 class AudiogramCompareRuleTests(SimpleTestCase):
