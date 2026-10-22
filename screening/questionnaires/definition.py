@@ -7,6 +7,7 @@ from screening.questionnaires.comparison import AverageComparison, TotalComparis
 LEVEL = "level"  # total score graded by thresholds, with advice (HHIE-S, HHIA-S)
 AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
 NORM = "norm"  # each item against the norms, no total (IOI-HA)
+SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SADL)
 
 # The retest reminder (ADR 0010): months after the latest life-impact record, and the last
 # next step of every life-impact questionnaire, the one step not traced to its advice.
@@ -45,6 +46,16 @@ class Definition:
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.
     comparison: TotalComparison | AverageComparison | None = None
+    # False until the copyright holders agree in writing (ADR 0011): offered only under DEBUG.
+    listed: bool = True
+    # Answered about the hearing aids worn now or lately: wearing is not asked, saved as worn.
+    always_aided: bool = False
+    # Copyright credit shown at the bottom of the answer page; "" when the intro already has it.
+    source_template: str = ""
+    # SUBSCALES only: how to read the scores, in place of norms or grades.
+    result_note: str = ""
+    # SUBSCALES only: item number -> value or None (不適用) in, overall and subscales out.
+    score: Callable[[dict], dict] | None = None
 
     @property
     def averaged(self):  # for templates, which cannot see the constants above

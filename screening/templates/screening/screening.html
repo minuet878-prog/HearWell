@@ -94,4 +94,5 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     </form>
 </div>
 {% if is_ioi_ha %}{% include "screening/ioi_ha_source.html" %}{% endif %}
+{% if questionnaire.definition.source_template %}{% include questionnaire.definition.source_template %}{% endif %}
 {% endblock %}

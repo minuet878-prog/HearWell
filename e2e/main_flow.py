@@ -438,6 +438,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def assert_fits_a_phone_at_double_text_size(self, where):
         # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
         # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
+        # Wait for the stylesheet first: a click only waits until the new page starts, and an
+        # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
+        self.page.wait_for_load_state("load")
         self.page.locator("html").evaluate(
             "html => html.style.setProperty('font-size', '225%', 'important')"
         )

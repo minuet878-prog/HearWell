@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Prefetch
+from django.db.models import Count, F, Prefetch, prefetch_related_objects
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -35,7 +35,7 @@ from screening.forms import (
 )
 from screening.main_flow import NEW_USER_STATE, get_user_state
 from screening.questionnaires import hhia_s, hhie_s
-from screening.questionnaires.definition import AVERAGE, LEVEL, NORM
+from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -299,10 +299,13 @@ def screening(request, questionnaire_id):
         questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
         is_ioi_ha = questionnaire.code == IOI_HA
+        always_aided = questionnaire.definition.always_aided
         norm = _ioi_ha_norm(request.user) if is_ioi_ha else None
         # Set by the wizard when catching up an unaided record (#154): only where the hearing aid
         # question starts, so the POST still takes whatever the user chose.
-        preselect_unaided = not is_ioi_ha and request.GET.get("preselect") == "unaided"
+        preselect_unaided = (
+            not is_ioi_ha and not always_aided and request.GET.get("preselect") == "unaided"
+        )
         hearing_aid_initial = {"wearing_hearing_aid": False} if preselect_unaided else None
         questions = questionnaire.questions.all()
         formset = AnswerFormSet(
@@ -318,13 +321,14 @@ def screening(request, questionnaire_id):
                 "questionnaire": questionnaire,
                 "formset": formset,
                 "hearing_aid_form": None
-                if is_ioi_ha
+                if is_ioi_ha or always_aided
                 else HearingAidForm(initial=hearing_aid_initial),
                 "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
                 "norm_token": _norm_token(request.user, norm) if norm else None,
-                "use_react": not is_ioi_ha,
+                # The React page always asks about wearing, so always-aided ones keep this form.
+                "use_react": not is_ioi_ha and not always_aided,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },
@@ -332,6 +336,7 @@ def screening(request, questionnaire_id):
     if request.method == "POST":
         questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
         is_ioi_ha = questionnaire.code == IOI_HA
+        always_aided = questionnaire.definition.always_aided
         questions = questionnaire.questions.all()
         if not questions:
             return redirect("questionnaire_list")
@@ -354,13 +359,15 @@ def screening(request, questionnaire_id):
         except signing.BadSignature:
             return HttpResponseBadRequest("常模依據無法確認，請重新開啟問卷。")
         formset = AnswerFormSet(questions=questions, data=request.POST)
-        hearing_aid_form = None if is_ioi_ha else HearingAidForm(data=request.POST)
+        hearing_aid_form = None if is_ioi_ha or always_aided else HearingAidForm(data=request.POST)
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
         # ，所以不能用 strict=True
         question_form = list(zip(questions, formset, strict=False))
         if formset.is_valid() and (hearing_aid_form is None or hearing_aid_form.is_valid()):
             if is_ioi_ha:
                 extra = norm
+            elif always_aided:
+                extra = {"wearing_hearing_aid": True}
             else:
                 extra = {
                     "wearing_hearing_aid": hearing_aid_form.cleaned_data["wearing_hearing_aid"]
@@ -919,6 +926,11 @@ def submission_result(request, submission_id):
         )
     if result == NORM:
         return _ioi_ha_result(request, submission, answers)
+    if result == SUBSCALES:
+        prefetch_related_objects(
+            [submission], Prefetch("answers", queryset=Answer.objects.select_related("question"))
+        )
+        return render(request, "screening/sadl_result.html", {"submission": submission})
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
     social = submission.social_score

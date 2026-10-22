@@ -1,6 +1,7 @@
 import secrets
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from functools import cached_property
 
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
@@ -10,7 +11,7 @@ from django.utils import timezone
 from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
 from screening.questionnaires import hhia_s, hhie_s
-from screening.questionnaires.definition import AVERAGE, LEVEL
+from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
 from screening.scoring import classify
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
@@ -103,7 +104,7 @@ class ReportShare(models.Model):
 class QuestionnaireQuerySet(models.QuerySet):
     def defined(self):
         # Only questionnaires with a definition are offered (ADR 0005).
-        return self.filter(code__in=questionnaires.DEFINITIONS)
+        return self.filter(code__in=questionnaires.offered())
 
 
 class Questionnaire(models.Model):
@@ -185,7 +186,7 @@ class NormGroup(models.TextChoices):
 class SubmissionQuerySet(models.QuerySet):
     def defined(self):
         # Records of a questionnaire without a definition are not shown (ADR 0005).
-        return self.filter(questionnaire__code__in=questionnaires.DEFINITIONS)
+        return self.filter(questionnaire__code__in=questionnaires.offered())
 
     def valid_hhi(self):
         # Basis for the IOI-HA norm group: a complete HHIA-S or HHIE-S.
@@ -288,6 +289,15 @@ class Submission(models.Model):
         if self._calculate_scores()["numeric_count"] == 0:
             return "未計算：沒有可用數值回答"
         return "未計算：包含不適用題目"
+
+    @cached_property
+    def satisfaction(self):
+        # The only scoring path for subscale questionnaires (SADL). Callers prefetch the answers
+        # with their questions, so a list scores every record from one query.
+        definition = self.questionnaire.definition
+        if definition.result != SUBSCALES:
+            return None
+        return definition.score({a.question.question_number: a.score for a in self.answers.all()})
 
     @property
     def classified(self):

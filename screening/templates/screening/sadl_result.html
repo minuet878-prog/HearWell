@@ -1,0 +1,18 @@
+{% extends "screening/layout.html" %}
+{% block title %}助聽器滿意度結果｜HearWell{% endblock %}
+{% block body %}
+{% with satisfaction=submission.satisfaction %}
+<h1 class="h3 mt-2">助聽器滿意度（SADL）</h1>
+<p>{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+<p class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold">整體滿意度：{{ satisfaction.overall }}</p>
+<p>{{ submission.questionnaire.definition.result_note }}</p>
+<h2 class="h4">四個面向</h2>
+<ul>{% for subscale in satisfaction.subscales %}<li class="mb-2"><strong>{{ subscale.name }}：{{ subscale.score }}</strong><br>{{ subscale.explanation }}</li>{% endfor %}</ul>
+{% if satisfaction.not_applicable %}
+<p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
+{% endif %}
+{% endwith %}
+<a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
+<a class="btn btn-outline-primary btn-lg" href="{% url 'questionnaire_list' %}">選擇問卷</a>
+{% include submission.questionnaire.definition.source_template %}
+{% endblock %}

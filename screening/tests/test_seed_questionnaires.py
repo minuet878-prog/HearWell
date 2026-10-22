@@ -70,7 +70,7 @@ class SeedQuestionnairesTests(TestCase):
 
         _seed()
 
-        self.assertEqual(sorted(before), ["hhia-s", "hhie-s", "ioi-ha", "ssq12-tw"])
+        self.assertEqual(sorted(before), ["hhia-s", "hhie-s", "ioi-ha", "sadl", "ssq12-tw"])
         after = {
             questionnaire.code: (questionnaire.pk, questionnaire.questionnaire_name)
             for questionnaire in Questionnaire.objects.all()

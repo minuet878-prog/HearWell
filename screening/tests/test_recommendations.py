@@ -67,7 +67,7 @@ class WizardTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         call_command("seed_questionnaires", stdout=StringIO())
-        cls.by_code = {q.code: q for q in Questionnaire.objects.all()}
+        cls.by_code = {q.code: q for q in Questionnaire.objects.defined()}
 
     def login_age(self, age):
         # age None: no birth year. Subtests log in more than one user per test.
