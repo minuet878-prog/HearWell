@@ -1209,6 +1209,7 @@ def submission_result(request, submission_id):
         {
             "submission": submission,
             "answers": answers,
+            "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
             "total_score": total_score,
             "emotional": emotional,
             "social": social,

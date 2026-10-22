@@ -11,7 +11,8 @@
     <p class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold">{{ submission.ssq_unavailable_reason }}</p>
     {% endif %}
     {% if since_last %}<p class="font-bold">{{ since_last.text }}</p>{% endif %}
-    <p class="mb-0">分數越高，代表您回報的聆聽能力越好。</p>
+    {# 「比上一次」's line already says 分數越高越好. #}
+    {% if not since_last %}<p class="mb-0">分數越高，代表您回報的聆聽能力越好。</p>{% endif %}
     {% if submission.ssq_average is not None %}
     {# Ticket #188: 0 to 10, this record and, when comparable, the previous one (ADR 0007: blue). #}
     <div class="ssq-bar" aria-hidden="true">
@@ -37,11 +38,11 @@
 </section>
 {% endif %}
 {% endwith %}
-<details class="mb-4">
+<details class="phone-choice mb-4">
     <summary>看全部 {{ answers|length }} 題的回答</summary>
     <ol>{% for answer in answers %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.get_answer_display }}</strong></li>{% endfor %}</ol>
 </details>
 {% if show_comparison %}<p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">比較戴與不戴助聽器</a></p>{% endif %}
-<a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
-<p class="mt-6">這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。</p>
+{% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
+<p>這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。</p>
 {% endblock %}

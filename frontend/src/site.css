@@ -2217,6 +2217,16 @@
     margin-top: 0.75rem;
   }
 
+  /* The scale's two ends, under its first and last cells (result pages tidy-up). */
+  .ioi-scale-ends {
+    display: flex;
+    justify-content: space-between;
+    max-width: 20rem;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-body);
+  }
+
   .ioi-cell {
     display: grid;
     place-items: center;
