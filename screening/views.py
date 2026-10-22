@@ -663,17 +663,19 @@ def _export_submission(submission):
             str(submission.ssq_average) if submission.ssq_average is not None else None
         )
         data["average_unavailable_reason"] = submission.ssq_unavailable_reason
-        for answer in data["answers"]:
-            if answer["score"] is None:
-                answer["choice"] = "不適用"
+        _mark_not_applicable_answers(data)
     if result == SUBSCALES:
         satisfaction = submission.satisfaction
         data["overall_score"] = str(satisfaction["overall"])
         data["subscale_scores"] = {s["name"]: str(s["score"]) for s in satisfaction["subscales"]}
-        for answer in data["answers"]:
-            if answer["score"] is None:
-                answer["choice"] = "不適用"
+        _mark_not_applicable_answers(data)
     return data
+
+
+def _mark_not_applicable_answers(data):
+    for answer in data["answers"]:
+        if answer["score"] is None:
+            answer["choice"] = "不適用"
 
 
 @login_required
