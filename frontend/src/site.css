@@ -1520,6 +1520,63 @@
     font-size: 0.875rem;
   }
 
+  /* A reminder or a short explanation on a text-heavy page (guide chapters, audiogram result):
+     light blue with the brand bar, no shadow, so it does not read as a card to tap. */
+  .tip-box {
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    border-left: 0.3rem solid var(--color-primary);
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .tip-box > :last-child {
+    margin-bottom: 0;
+  }
+
+  .tip-box-title {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* Guide chapters: each part in a card; sources and the check date in small print. */
+  .guide-chapter .card > :last-child {
+    margin-bottom: 0;
+  }
+
+  .guide-source,
+  .guide-checked {
+    font-size: 0.875rem;
+  }
+
+  /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */
+  .score-card-head {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+    color: var(--color-heading);
+  }
+
+  .score-chip {
+    flex: none;
+    padding: 0 0.6rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* A questionnaire's source line under a result: small print, after the content. */
+  .source-note {
+    font-size: 0.875rem;
+  }
+
   .answer-autosave {
     display: flex;
     gap: 0.5rem;
@@ -1666,32 +1723,42 @@
   }
 
   .phone-choice > ol,
+  .phone-choice > ul,
   .phone-choice > p,
   .answer-about > div > div {
     margin: 0 1rem 1rem;
   }
 
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
-  /* Separate pills that wrap, so any number of questionnaires fits a phone
-     (spec phase9_ui_refresh_3_structure.md 4.3); smaller than the main navigation. */
+  /* A grid of two (or more, on wider screens) so five questionnaires take three rows on a phone
+     instead of five (text-heavy pages tidy-up); the topic on top, its code small underneath. At
+     double text size the columns drop to one rather than widen the page. */
   .history-tabs {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
     gap: 0.5rem;
     margin: 0.5rem 0 1.5rem;
   }
 
   .history-tabs a {
-    display: inline-flex;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     min-height: var(--spacing-touch);
-    padding: 0 1rem;
+    padding: 0.35rem 0.6rem;
     border: 0.125rem solid var(--color-primary);
-    border-radius: var(--radius-tab);
+    border-radius: var(--radius-medium);
+    font-size: 0.9rem; /* the longest topic, eight characters, fits a phone's half width */
+    line-height: 1.3;
     background-color: #fff;
     color: var(--color-primary);
     font-weight: 600;
     text-decoration: none;
+  }
+
+  .history-tab-code {
+    font-size: 0.75rem;
+    font-weight: 400;
   }
 
   .history-tabs a[aria-current="page"] {
@@ -1844,22 +1911,30 @@
     transform: translateX(calc(-1 * var(--position)));
   }
 
-  /* Round 4: each label under its own segment (widths from the template); this score's in bold. */
-  .score-bar-labels {
-    display: flex;
+  /* Text-heavy pages tidy-up: this score's level under the marker, placed and shifted like the
+     marker so it stays inside the bar at either end; then 0 and the top score. */
+  .score-bar-current {
+    position: relative;
+    height: 1.5rem;
     margin-top: 0.25rem;
     font-size: 0.875rem;
-    line-height: 1.3;
-    color: var(--color-body);
+    line-height: 1.5rem;
   }
 
-  .score-bar-labels span {
-    text-align: center;
-  }
-
-  .score-bar-labels .score-bar-label-current {
+  .score-bar-current span {
+    position: absolute;
+    left: var(--position);
+    transform: translateX(calc(-1 * var(--position)));
     color: var(--color-heading);
     font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .score-bar-ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--color-body);
   }
 
   /* SSQ12-TW's 0–10 position bar (ticket #188): blue only, as SSQ12 has no levels (ADR 0007), and

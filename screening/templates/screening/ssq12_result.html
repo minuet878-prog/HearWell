@@ -31,7 +31,9 @@
 {% if lowest %}
 <section class="mb-6" aria-labelledby="ssq-lowest-title">
     <h2 id="ssq-lowest-title" class="h4">分數最低的 {{ lowest|length }} 題</h2>
-    <ul>{% for answer in lowest %}<li class="mb-4">{{ answer.question.question_text }}<br><strong>{{ answer.score }} 分</strong></li>{% endfor %}</ul>
+    <ul class="list-unstyled">{% for answer in lowest %}
+        <li class="card card-body mb-3"><div class="score-card-head"><span>{{ answer.question.question_text }}</span><span class="score-chip">{{ answer.score }} 分</span></div></li>{% endfor %}
+    </ul>
 </section>
 {% endif %}
 {% endwith %}
