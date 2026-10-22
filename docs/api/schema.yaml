@@ -520,6 +520,25 @@ components:
       required:
       - code
       - name
+    Satisfaction:
+      type: object
+      properties:
+        overall:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,1})?$
+        subscales:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscale'
+        not_applicable:
+          type: array
+          items:
+            type: integer
+      required:
+      - not_applicable
+      - overall
+      - subscales
     Scale:
       type: object
       properties:
@@ -574,6 +593,10 @@ components:
         average_unavailable_reason:
           type: string
           nullable: true
+        satisfaction:
+          allOf:
+          - $ref: '#/components/schemas/Satisfaction'
+          nullable: true
       required:
       - created_at
       - id
@@ -627,6 +650,10 @@ components:
         average_unavailable_reason:
           type: string
           nullable: true
+        satisfaction:
+          allOf:
+          - $ref: '#/components/schemas/Satisfaction'
+          nullable: true
         advice:
           type: string
           nullable: true
@@ -644,6 +671,18 @@ components:
       - questionnaire
       - scores
       - wearing_hearing_aid
+    Subscale:
+      type: object
+      properties:
+        name:
+          type: string
+        score:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,1})?$
+      required:
+      - name
+      - score
   securitySchemes:
     cookieAuth:
       type: apiKey

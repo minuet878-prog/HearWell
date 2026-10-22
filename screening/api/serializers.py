@@ -20,7 +20,7 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.questionnaires.definition import AVERAGE, LEVEL
+from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import get_advice
 
@@ -108,7 +108,19 @@ class LevelSerializer(serializers.Serializer):
     text = serializers.CharField()
 
 
+class SubscaleSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    score = serializers.DecimalField(max_digits=2, decimal_places=1)
+
+
+class SatisfactionSerializer(serializers.Serializer):
+    overall = serializers.DecimalField(max_digits=2, decimal_places=1)
+    subscales = SubscaleSerializer(many=True)
+    not_applicable = serializers.ListField(child=serializers.IntegerField())
+
+
 class SubmissionSerializer(serializers.ModelSerializer):
+    satisfaction = SatisfactionSerializer(allow_null=True, required=False)
     average_score = serializers.DecimalField(
         source="ssq_average", max_digits=3, decimal_places=1, allow_null=True, required=False
     )
@@ -132,15 +144,19 @@ class SubmissionSerializer(serializers.ModelSerializer):
             "level",
             "average_score",
             "average_unavailable_reason",
+            "satisfaction",
         )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if instance.questionnaire.definition.result == AVERAGE:
+        result = instance.questionnaire.definition.result
+        if result in (AVERAGE, SUBSCALES):
             data["scores"] = None
-        else:
+        if result != AVERAGE:
             data.pop("average_score")
             data.pop("average_unavailable_reason")
+        if result != SUBSCALES:
+            data.pop("satisfaction")
         return data
 
 

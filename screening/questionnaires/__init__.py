@@ -3,7 +3,9 @@
 A questionnaire in the database without a definition is not offered to anyone.
 """
 
-from screening.questionnaires import hhia_s, hhie_s, ioi_ha, ssq12_tw
+from django.conf import settings
+
+from screening.questionnaires import hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw
 
 DEFINITIONS = {
     definition.code: definition
@@ -12,9 +14,15 @@ DEFINITIONS = {
         ioi_ha.DEFINITION,
         hhia_s.DEFINITION,
         ssq12_tw.DEFINITION,
+        sadl.DEFINITION,
     )
 }
 
 
 def get(code):
     return DEFINITIONS.get(code)
+
+
+def offered():
+    # An unlisted questionnaire (ADR 0011) is only offered on a local DEBUG site.
+    return [code for code, definition in DEFINITIONS.items() if definition.listed or settings.DEBUG]
