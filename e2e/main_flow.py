@@ -27,6 +27,7 @@ from screening.models import (
     NormGroup,
     Question,
     Questionnaire,
+    ReportComparison,
     ReportShare,
     Submission,
     User,
@@ -795,7 +796,7 @@ def six_months_after(day):
     return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
 
 
-class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec phase9_ui_refresh_1_shared.md acceptance 1, 2 and 11: only a browser lays pages out."""
 
     fixtures = ("questions_fixture.json",)
@@ -869,6 +870,21 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
+
+    def record(self, code, score, wearing, when):
+        """A record of code with every item scored score, made at when (Taipei) for a fixed date."""
+        questionnaire = Questionnaire.objects.get(code=code)
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question in questionnaire.questions.all()
+        )
+        Submission.objects.filter(pk=record.pk).update(
+            created_at=datetime(*when, tzinfo=ZoneInfo("Asia/Taipei"))
+        )
+        return record
 
     def test_result_level_is_exposed_as_a_heading(self):
         self.open(390)
@@ -1167,6 +1183,124 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 "html => html.style.setProperty('font-size', '225%', 'important')"
             )
             self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+
+    # #192 (#183 接縫 3): batch 1's route, 結果頁 → 比較 → 放進聽力報告 → 聽力報告, for HHIE-S
+    # and SSQ12-TW, each with two unaided records to choose from and one aided.
+    def test_wearing_comparison_route_from_result_page_to_report(self):
+        call_command("seed_questionnaires", verbosity=0)
+        # setUp's unaided HHIE-S (20 points) gets a fixed date like the others.
+        self.user.submissions.filter(questionnaire__code="hhie-s").update(
+            created_at=datetime(2026, 9, 1, 10, 0, tzinfo=ZoneInfo("Asia/Taipei"))
+        )
+        self.record("hhie-s", 4, False, (2026, 8, 1, 10, 0))
+        self.record("ssq12-tw", 3, False, (2026, 8, 2, 10, 0))
+        self.record("ssq12-tw", 5, False, (2026, 9, 2, 10, 0))
+        routes = (
+            (
+                self.record("hhie-s", 0, True, (2026, 10, 1, 10, 0)),
+                ("2026/09/01・20 分", "2026/10/01・0 分"),
+                ("20 分", "0 分", "有戴比沒戴少 20 分（分數越低越好）"),
+                "report-difference",
+                ("未配戴：2026/09/01 10:00，20 分", "配戴：2026/10/01 10:00，0 分"),
+            ),
+            (
+                self.record("ssq12-tw", 7, True, (2026, 10, 2, 10, 0)),
+                ("2026/09/02・平均 5.0 分", "2026/10/02・平均 7.0 分"),
+                ("平均 5.0 分", "平均 7.0 分", "有戴比沒戴多 2.0 分（分數越高越好）"),
+                "report-comparison-ssq12-tw",
+                ("未配戴：2026/09/02 10:00，平均 5.0 分", "配戴：2026/10/02 10:00，平均 7.0 分"),
+            ),
+        )
+        self.open(390)
+        with self.saving_artifacts():
+            for aided, (unaided_card, aided_card), card_texts, section, report_texts in routes:
+                with self.subTest(questionnaire=aided.questionnaire.code):
+                    self.page.goto(f"{self.live_server_url}/submission/{aided.pk}")
+                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True).click()
+                    expect(self.page).to_have_url(
+                        re.compile(rf"/comparisons/{aided.questionnaire_id}$")
+                    )
+                    # Nothing kept yet, so no card is chosen (ADR 0003).
+                    expect(self.main().get_by_role("radio", checked=True)).to_have_count(0)
+                    choices = (("沒戴助聽器時", unaided_card), ("戴助聽器時", aided_card))
+                    for legend, card in choices:
+                        self.main().get_by_role("group", name=legend, exact=True).get_by_label(
+                            card, exact=True
+                        ).check()
+                    self.main().get_by_role("button", name="查看比較", exact=True).click()
+                    result = self.main().get_by_role("region", name="目前查看的兩筆")
+                    for text in card_texts:
+                        expect(result.get_by_text(text, exact=True)).to_be_visible()
+                    expect(
+                        result.get_by_text("差值不能單獨判定助聽器效益。", exact=True)
+                    ).to_be_visible()
+                    result.get_by_role("button", name="放進聽力報告", exact=True).click()
+                    expect(self.main()).to_contain_text(
+                        "已放進聽力報告，新增紀錄不會自動換掉這一組。"
+                    )
+                    result = self.main().get_by_role("region", name="目前查看的兩筆")
+                    expect(result.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
+                    saved = self.main().get_by_role("region", name="聽力報告裡的組合")
+                    expect(saved.get_by_text(card_texts[2], exact=True)).to_be_visible()
+                    self.page.goto(f"{self.live_server_url}/report")
+                    for text in report_texts:
+                        expect(self.page.locator(f"#{section}")).to_contain_text(text)
+
+    # #192 (#183 acceptance 31): batch 1's new and redesigned pages, 320px wide at 200% text,
+    # with every fold open: the IOI-HA and SSQ12-TW results, the HHIE-S result's comparison
+    # entry, and the comparison page with its result card and the card of the kept pair.
+    def test_batch1_pages_fit_a_phone_at_double_text_size(self):
+        call_command("seed_questionnaires", verbosity=0)
+        hhie_s = self.user.submissions.get(questionnaire__code="hhie-s")
+        hhie_aided = self.record("hhie-s", 0, True, (2026, 10, 1, 10, 0))
+        ssq_unaided = self.record("ssq12-tw", 5, False, (2026, 9, 2, 10, 0))
+        self.record("ssq12-tw", 7, True, (2026, 10, 2, 10, 0))
+        ssq_latest = self.record("ssq12-tw", 6, True, (2026, 10, 12, 10, 0))
+        ReportComparison.objects.create(
+            user=self.user, questionnaire=hhie_s.questionnaire, unaided=hhie_s, aided=hhie_aided
+        )
+        hhie_other = self.record("hhie-s", 2, True, (2026, 10, 5, 10, 0))
+        ioi = self.user.submissions.filter(questionnaire__code="ioi-ha").latest("pk")
+        self.open(320, 640)
+        with self.saving_artifacts():
+            with self.subTest(page="IOI-HA result"):
+                self.page.goto(f"{self.live_server_url}/submission/{ioi.pk}")
+                self.main().get_by_text(re.compile(r"^其他 \d+ 項$")).click()
+                expect(self.main().locator(".ioi-others .ioi-item").first).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("IOI-HA result")
+            with self.subTest(page="SSQ12-TW result"):
+                self.page.goto(f"{self.live_server_url}/submission/{ssq_latest.pk}")
+                expect(self.main()).to_contain_text("比上一次（2026/10/02，7.0 分）少 1.0 分")
+                expect(self.main().get_by_role("heading", name="分數最低的 3 題")).to_be_visible()
+                self.main().get_by_text("看全部 12 題的回答", exact=True).click()
+                expect(
+                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True)
+                ).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("SSQ12-TW result")
+            with self.subTest(page="HHIE-S result"):
+                self.page.goto(f"{self.live_server_url}/submission/{hhie_aided.pk}")
+                expect(
+                    self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True)
+                ).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("HHIE-S result")
+            with self.subTest(page="HHIE-S comparison"):
+                self.page.goto(
+                    f"{self.live_server_url}/comparisons/{hhie_s.questionnaire_id}"
+                    f"?unaided={hhie_s.pk}&aided={hhie_other.pk}&action=preview"
+                )
+                expect(
+                    self.main().get_by_role("button", name="改放這一組到報告", exact=True)
+                ).to_be_visible()
+                expect(self.main().get_by_role("region", name="聽力報告裡的組合")).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("HHIE-S comparison")
+            with self.subTest(page="SSQ12-TW comparison"):
+                self.page.goto(
+                    f"{self.live_server_url}/comparisons/{ssq_latest.questionnaire_id}"
+                    f"?unaided={ssq_unaided.pk}&aided={ssq_latest.pk}&action=preview"
+                )
+                self.main().get_by_text("看每一題的回答", exact=True).click()
+                expect(self.main().locator(".comparison-items li").first).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("SSQ12-TW comparison")
 
     # phase9_ui_refresh_3_structure.md acceptance 11: more questionnaires wrap, nothing off screen
     def test_many_questionnaires_wrap_on_a_phone(self):
@@ -3070,11 +3204,21 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_boxes_that_cannot_be_clicked_stay_still(self):
         record = self.submission(self.hhie_s, [2] * 10)
+        aided = self.submission(self.hhie_s, [0] * 10, wearing=True)
+        ioi = self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7, wearing=True)
+        Submission.objects.filter(pk=ioi.pk).update(norm_group=NormGroup.UNGROUPED)
         # #159: the step cards are the new-user home's own elements, so check them signed out.
         home_cases = (("/", ".step-cards li"),)
         cases = (
-            ("/my_hearing", ".trend-summary"),
+            ("/my_hearing?questionnaire=hhie-s", ".trend-summary"),
             (f"/submission/{record.pk}", ".result-banner"),
+            # #192: batch 1's new boxes, an IOI-HA item and the comparison page's result card.
+            (f"/submission/{ioi.pk}", ".ioi-item"),
+            (
+                f"/comparisons/{self.hhie_s.pk}?unaided={record.pk}&aided={aided.pk}"
+                "&action=preview",
+                '[aria-labelledby="preview-title"]',
+            ),
         )
         every_style = """el => Object.fromEntries(
             [...getComputedStyle(el)].map(p => [p, getComputedStyle(el).getPropertyValue(p)])
