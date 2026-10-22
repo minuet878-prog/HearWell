@@ -1,5 +1,6 @@
 import re
-from datetime import timedelta
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
 from django.db import connection
 from django.test import TestCase
@@ -613,3 +614,215 @@ class HistoryTabsTests(TestCase):
         with CaptureQueriesContext(connection) as six:
             self.client.get(self._tab_url("hhie-s"))
         self.assertEqual(len(six), len(two))
+
+
+# Ticket #162 (ADR 0010): the page states numbers and direction, never a verdict.
+VERDICT_WORDS = ("變好", "變差", "影響變小", "影響變大", "改善", "惡化", "進步", "退步")
+
+
+class HistoryRetestTests(TestCase):
+    """Spec #148 batch 2, ticket #162: the retest reminder and 「和上一次比」 on 我的紀錄."""
+
+    # "Today" and every record's time are fixed, never the real clock.
+    TODAY = date(2026, 10, 22)
+    NOON = timezone.make_aware(datetime(2026, 10, 22, 12))
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="retest_user")
+        cls.questions = {}
+        for name, code, count in (
+            ("HHIE-S", "hhie-s", 10),
+            ("HHIA-S", "hhia-s", 10),
+            ("IOI-HA", "ioi-ha", 7),
+        ):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=name, code=code)
+            cls.questions[code] = Question.objects.bulk_create(
+                Question(
+                    questionnaire=questionnaire,
+                    question_text=f"{name}題{i}",
+                    question_number=i,
+                    category=(
+                        (Category.EMOTIONAL if i <= 5 else Category.SOCIAL)
+                        if code.startswith("hhi")
+                        else Category.NONE
+                    ),
+                )
+                for i in range(1, count + 1)
+            )
+        cls.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.get(code="hhia-s")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        real_localdate = timezone.localdate
+
+        def localdate(value=None, timezone=None):
+            return self.TODAY if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+
+    def _submit(self, code, scores, days_ago, user=None, **fields):
+        questionnaire = Questionnaire.objects.get(code=code)
+        submission = Submission.objects.create(
+            user=user or self.user, questionnaire=questionnaire, **fields
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questions[code], scores, strict=True)
+        )
+        Submission.objects.filter(pk=submission.pk).update(
+            created_at=self.NOON - timedelta(days=days_ago)
+        )
+        return submission
+
+    def _main(self, url=None):
+        content = self.client.get(url or reverse("my_hearing")).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _retake_url(self, questionnaire):
+        return reverse("screening", args=[questionnaire.pk])
+
+    def _reminder(self, main):
+        match = re.search(r'<section id="retest-reminder"[^>]*>(.*?)</section>', main, re.S)
+        return None if match is None else match.group(1)
+
+    def test_due_reminder_and_retake_button_at_the_top(self):
+        # 2026/04/22 is exactly six months before "today" (2026/10/22).
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        main = self._main()
+        reminder = self._reminder(main)
+        self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
+        retake = self._retake_url(self.hhie_s)
+        self.assertIn(f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次</a>', reminder)
+        # At the top: right under the page title, before any record.
+        self.assertLess(main.index('id="retest-reminder"'), main.index('class="link-card"'))
+        self.assertLess(main.index("<h1"), main.index('id="retest-reminder"'))
+
+    def test_no_reminder_before_six_months(self):
+        # 2026/04/23: one day short of six months.
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=182)
+        main = self._main()
+        self.assertIsNone(self._reminder(main))
+        self.assertNotIn("滿 6 個月", main)
+        self.assertNotIn(self._retake_url(self.hhie_s), main)
+
+    def _since_last(self, main):
+        match = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S)
+        if match is None:
+            return None
+        lines = re.findall(r"<(?:h2|p)[^>]*>(.*?)</(?:h2|p)>", match.group(1), re.S)
+        return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", line)).strip() for line in lines]
+
+    def test_since_last_says_how_many_points_fewer(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 16, 2026/09/12
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, 2026/10/12
+        main = self._main()
+        self.assertEqual(
+            self._since_last(main),
+            [
+                "和上一次比",
+                "上一次（2026/09/12）：16 分",
+                "最近一次（2026/10/12）：12 分",
+                "比上一次少 4 分（分數越低越好）",
+            ],
+        )
+        # Above the trend chart.
+        self.assertLess(main.index('id="since-last"'), main.index('id="trend-chart"'))
+
+    def test_since_last_says_the_same(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
+        self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently
+        self.assertEqual(self._since_last(self._main())[3], "和上一次一樣")
+
+    def test_since_last_says_how_many_points_more(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
+        self._submit("hhie-s", [4, 4, 4, 4, 4, 2] + [0] * 4, days_ago=10)  # 22
+        self.assertEqual(self._since_last(self._main())[3], "比上一次多 10 分（分數越低越好）")
+
+    def test_no_since_last_with_one_record(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)
+        main = self._main()
+        self.assertIsNone(self._since_last(main))
+        self.assertNotIn("和上一次比", main)
+
+    def test_no_verdict_words_on_the_page(self):
+        for name, newest in (
+            ("fewer", [4, 4] + [0] * 8),  # 8
+            ("more", [4] * 10),  # 40
+            ("same", [4, 4, 4, 4] + [0] * 6),  # 16
+        ):
+            with self.subTest(name):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=200)  # 16, due
+                self._submit("hhie-s", newest, days_ago=190)
+                main = self._main()
+                self.assertIsNotNone(self._since_last(main))
+                self.assertIsNotNone(self._reminder(main))
+                for word in VERDICT_WORDS:
+                    self.assertNotIn(word, main)
+
+    def test_hhia_s_tab_compares_too(self):
+        # HHIA-S is also a life-impact questionnaire, though it has no trend chart.
+        self._submit("hhia-s", [4] * 5 + [0] * 5, days_ago=40)  # 20
+        self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
+        main = self._main()
+        self.assertNotIn('id="trend-chart"', main)
+        self.assertEqual(self._since_last(main)[3], "比上一次少 6 分（分數越低越好）")
+        self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
+
+    def test_other_questionnaires_do_not_compare(self):
+        self._submit("ioi-ha", [3] * 7, days_ago=40, norm_group="mild_moderate")
+        self._submit("ioi-ha", [4] * 7, days_ago=10, norm_group="mild_moderate")
+        self.assertIsNone(self._since_last(self._main()))
+
+    def test_since_last_takes_the_newest_two_whatever_was_worn(self):
+        # Spec #148 as written: the newest two records of the tab, aided or not.
+        self._submit("hhie-s", [4] * 5 + [0] * 5, days_ago=60, wearing_hearing_aid=False)  # 20
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40, wearing_hearing_aid=False)
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
+        self.assertEqual(
+            self._since_last(self._main())[1:],
+            [
+                "上一次（2026/09/12）：16 分",
+                "最近一次（2026/10/12）：8 分",
+                "比上一次少 8 分（分數越低越好）",
+            ],
+        )
+
+    def test_only_the_logged_in_user_s_records_count(self):
+        # This user: 16 then 12, the newer one 2026/04/22, so a retest is due.
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=213)
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        # Someone else: a newer record, which would end the reminder and change the comparison.
+        other = consented_user(username="retest_other")
+        self._submit("hhie-s", [4] * 10, days_ago=1, user=other)  # 40
+        main = self._main()
+        self.assertIsNotNone(self._reminder(main))
+        self.assertEqual(
+            self._since_last(main)[1:],
+            [
+                "上一次（2026/03/23）：16 分",
+                "最近一次（2026/04/22）：12 分",
+                "比上一次少 4 分（分數越低越好）",
+            ],
+        )
+        # And the other way round: their one record, none of this user's.
+        self.client.force_login(other)
+        main = self._main()
+        self.assertIsNone(self._reminder(main))
+        self.assertIsNone(self._since_last(main))
+
+    def test_queries_do_not_grow_with_records(self):
+        # CODING_STANDARDS 15: the reminder and the comparison add no query per record.
+        self._submit("hhie-s", [4] * 10, days_ago=200)
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=190)
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(reverse("my_hearing"))
+        for days_ago in range(189, 184, -1):
+            self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=days_ago)
+        with CaptureQueriesContext(connection) as seven:
+            response = self.client.get(reverse("my_hearing"))
+        self.assertIsNotNone(self._reminder(response.content.decode()))
+        self.assertEqual(len(seven), len(two))
