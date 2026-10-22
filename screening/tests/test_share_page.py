@@ -25,21 +25,26 @@ CREATE_BUTTON = "我知道了，產生連結"
 TAIPEI = ZoneInfo("Asia/Taipei")
 
 
+def _hhie_s_questionnaire():
+    questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+    questions = Question.objects.bulk_create(
+        Question(
+            questionnaire=questionnaire,
+            question_text=f"假 HHIE 題{i}",
+            question_number=i,
+            category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+        )
+        for i in range(1, 11)
+    )
+    return questionnaire, questions
+
+
 class SharePageTests(TestCase):
     _hhie_s = test_report.HealthReportTests._hhie_s
 
     @classmethod
     def setUpTestData(cls):
-        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
-        cls.hhie_questions = Question.objects.bulk_create(
-            Question(
-                questionnaire=cls.hhie_s,
-                question_text=f"假 HHIE 題{i}",
-                question_number=i,
-                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
-            )
-            for i in range(1, 11)
-        )
+        cls.hhie_s, cls.hhie_questions = _hhie_s_questionnaire()
 
     def setUp(self):
         self.user = consented_user(username="share_page_a", birth_year=1955)
@@ -199,3 +204,48 @@ class SharePageTests(TestCase):
         content = self._page().content.decode()
         self.assertIn(reverse("report_share_cancel", args=[share.pk]), content)
         self.assertIn("家人打開過 0 次", content)
+
+
+class SharePageEntryTests(TestCase):
+    """Spec #183 stories 52-53: the report and the home page both lead to the share page."""
+
+    _hhie_s = test_report.HealthReportTests._hhie_s
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s, cls.hhie_questions = _hhie_s_questionnaire()
+
+    def setUp(self):
+        self.user = consented_user(username="share_entry")
+        self.client.force_login(self.user)
+        self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=30)
+
+    def test_report_has_one_button_to_the_share_page_instead_of_the_block(self):
+        content = self.client.get(reverse("health_report")).content.decode()
+        button = re.search(r'<a[^>]*href="/share"[^>]*>分享報告給家人</a>', content)
+        self.assertIsNotNone(button)
+        self.assertIn("btn", button.group(0))
+        self.assertLess(button.start(), content.index('id="report-summary"'))
+        # Beside the print button, in the row the printout leaves out.
+        row = re.search(r'<p class="no-print[^"]*">(.*?)</p>', content, re.S)
+        self.assertIn(button.group(0), row.group(1))
+        self.assertIn('id="print-button"', row.group(1))
+        for old in ("產生分享連結", "確認產生", "share-button.js"):
+            with self.subTest(old=old):
+                self.assertNotIn(old, content)
+
+    def test_report_with_a_live_link_shows_no_link_details(self):
+        self.client.post(reverse("report_share_create"), {"confirm": "1"})
+        share = ReportShare.objects.active().get(user=self.user)
+        content = self.client.get(reverse("health_report")).content.decode()
+        self.assertNotIn(share.token, content)
+        self.assertIn('href="/share"', content)
+
+    def test_home_share_card_goes_to_the_share_page(self):
+        content = self.client.get(reverse("index")).content.decode()
+        self.assertRegex(
+            content,
+            r'<a class="link-card" href="/share">\s*<span class="link-card-body">\s*'
+            r'<span class="link-card-title">分享報告給家人</span>',
+        )
+        self.assertNotIn("#report-share", content)

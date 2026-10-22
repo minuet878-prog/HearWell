@@ -909,7 +909,6 @@ def _report_context(user):
 def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
-    context["share"] = request.user.report_shares.active().first()
     return render(request, "screening/health_report.html", context)
 
 
