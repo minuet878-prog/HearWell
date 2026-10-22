@@ -11,6 +11,11 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
 <article class="privacy wrap-anywhere">
     <h1 class="h3 mt-2">隱私權說明</h1>
     <p class="text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
+    {# #197: the consent page's four highlights first; the full text below stays open. #}
+    <section class="card card-body privacy-highlights mb-6" aria-labelledby="highlights-title">
+        <h2 id="highlights-title" class="h4">先看重點</h2>
+        {% include "screening/consent_highlights.html" with class="mb-0" %}
+    </section>
     <p>HearWell 會保存您的聽力篩檢結果，這些屬於法律上特別保護的「健康資料」。這一頁用白話說明我們怎麼處理您的資料。</p>
 
     <h2 class="h4 mt-6">誰在蒐集</h2>
@@ -52,7 +57,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     <p>本站只用登入需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
 
     <h2 class="h4 mt-6">您主動分享時</h2>
-    <p>您可以主動把聽力報告分享給別人：在「聽力報告」頁產生分享連結後，拿到連結的人不用登入就看得到這份報告（不含您的使用者名稱與出生年）。連結 7 天後失效，您也可以隨時取消。網站只記錄連結被打開的次數和最後一次的時間，不記錄是誰打開的。</p>
+    <p>您可以主動把聽力報告分享給別人：在「分享報告給家人」頁產生分享連結後，拿到連結的人不用登入就看得到這份報告（不含您的使用者名稱與出生年）。連結 7 天後失效，您也可以隨時取消。網站只記錄連結被打開的次數和最後一次的時間，不記錄是誰打開的。</p>
 
     <h2 class="h4 mt-6">您可以要求什麼</h2>
     <p>依照個人資料保護法，您可以要求：</p>
@@ -73,5 +78,11 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
 
     <h2 class="h4 mt-6">說明改版</h2>
     <p>如果蒐集的資料、用途或經手的服務有改變，我們會更新這一頁，並在您下次使用時請您再看一次、再同意一次。只改錯字或排版時，只會更新上面的日期。</p>
+
+    {# .card resets overflow-wrap to break-word, so the address would not wrap at 200% text. #}
+    <section class="card card-body wrap-anywhere mt-6" aria-labelledby="contact-title">
+        <h2 id="contact-title" class="h5">有問題或要刪除資料？</h2>
+        <p class="mb-0">寫信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
+    </section>
 </article>
 {% endblock %}
