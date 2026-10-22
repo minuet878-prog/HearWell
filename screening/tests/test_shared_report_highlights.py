@@ -141,9 +141,13 @@ class SharedReportHighlightsTests(TestCase):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
         help_card = _card(self._shared(), "family-help")
         self.assertIn("您可以怎麼幫忙", _text(help_card))
-        links = re.findall(r'<a class="link-card" href="([^"]+)">(.*?)</a>', help_card, re.S)
+        links = re.findall(
+            r'<a class="link-card" href="([^"]+)">.*?class="link-card-title">([^<]+)<',
+            help_card,
+            re.S,
+        )
         self.assertEqual(
-            [(href, _text(body).rstrip("› ")) for href, body in links],
+            links,
             [
                 ("/family#talk-title", "怎麼跟聽損的家人說話"),
                 ("/family#aid-title", "陪伴配戴助聽器"),
