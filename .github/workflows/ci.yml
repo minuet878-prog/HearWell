@@ -126,8 +126,8 @@ jobs:
       - run: npm ci --prefix frontend
       - run: npm run build --prefix frontend
       - run: python -m playwright install --with-deps chromium
-      # One process per test class, each with its own live server and test database. The
-      # runner has 4 cores; 140 s one by one came down to 56 s locally. Failures need tblib.
+      # The runner's 4 cores share out the test classes, each process with its own live server
+      # and test database. tblib carries a failure's traceback back to the main process.
       - name: End-to-end test
         run: python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4
       # Screenshot and trace of the failing moment; open the trace at https://trace.playwright.dev
