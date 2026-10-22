@@ -50,6 +50,7 @@ from screening.scoring import (
     get_advice,
     ioi_ha_group,
     max_score,
+    since_last_text,
 )
 
 from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
@@ -588,6 +589,17 @@ def my_hearing(request):
     # (spec phase9_ui_refresh_2_data.md 4.3).
     per_day = Counter(timezone.localdate(s.created_at) for s in records)
     same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
+    # Ticket #162: the same retest reminder as the home page (ADR 0010).
+    user_state = get_user_state(request.user, today=timezone.localdate())
+    # Ticket #162: a life-impact tab compares its newest two records, whatever was worn.
+    since_last = None
+    if current.definition.result == LEVEL and len(records) >= 2:
+        latest, previous = records[:2]
+        since_last = {
+            "latest": latest,
+            "previous": previous,
+            "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+        }
     comparison = current.definition.comparison
     show_comparison = False
     if comparison is not None:
@@ -604,6 +616,8 @@ def my_hearing(request):
             "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
+            "user_state": user_state,
+            "since_last": since_last,
             "show_comparison": show_comparison,
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")

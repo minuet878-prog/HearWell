@@ -14,6 +14,15 @@ def retest_next_text(day):
     return f"下次建議 {day:%Y/%m/%d} 再做"
 
 
+def since_last_text(difference):
+    # 我的紀錄's 「和上一次比」 (ticket #162): numbers and direction only, no verdict (ADR 0010).
+    if difference < 0:
+        return f"比上一次少 {-difference} 分（分數越低越好）"
+    if difference > 0:
+        return f"比上一次多 {difference} 分（分數越低越好）"
+    return "和上一次一樣"
+
+
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}
 UNKNOWN_ADVICE = (
     "這次的作答結果無法判讀分級，可能是資料有誤。建議重新作答一次；"
