@@ -88,6 +88,10 @@ class HistoryTabsTests(TestCase):
     CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"
     UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
+    # Ticket #161: tabs read 「主題（代碼）」.
+    HHIE_S_TAB = "聽力對生活的影響（HHIE-S）"
+    HHIA_S_TAB = "聽力對生活的影響（HHIA-S）"
+    IOI_HA_TAB = "助聽器使用成效（IOI-HA）"
 
     @classmethod
     def setUpTestData(cls):
@@ -169,10 +173,10 @@ class HistoryTabsTests(TestCase):
         main = self._main(self.client.get(self.url))
         tabs = self._tabs(main)
         labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", tabs)
-        self.assertEqual(labels, ["HHIE-S", "IOI-HA"])
+        self.assertEqual(labels, [self.HHIE_S_TAB, self.IOI_HA_TAB])
         self.assertIn(f'href="{self._tab_url("hhie-s")}"', tabs)
         self.assertIn(f'href="{self._tab_url("ioi-ha")}"', tabs)
-        self.assertEqual(self._current_tab(tabs), "IOI-HA")
+        self.assertEqual(self._current_tab(tabs), self.IOI_HA_TAB)
         self.assertIn(reverse("result", args=[ioi.id]), main)
         self.assertNotIn(reverse("result", args=[hhie.id]), main)
         self.assertNotIn("trend-chart", main)
@@ -181,7 +185,7 @@ class HistoryTabsTests(TestCase):
         hhie, ioi = self._both(newest="hhie-s")
         response = self.client.get(self.url)
         main = self._main(response)
-        self.assertEqual(self._current_tab(self._tabs(main)), "HHIE-S")
+        self.assertEqual(self._current_tab(self._tabs(main)), self.HHIE_S_TAB)
         self.assertIn(reverse("result", args=[hhie.id]), main)
         self.assertNotIn(reverse("result", args=[ioi.id]), main)
         self.assertContains(response, self.CHART_JS)
@@ -191,7 +195,7 @@ class HistoryTabsTests(TestCase):
         hhie, ioi = self._both(newest="ioi-ha")
         response = self.client.get(self._tab_url("hhie-s"))
         main = self._main(response)
-        self.assertEqual(self._current_tab(self._tabs(main)), "HHIE-S")
+        self.assertEqual(self._current_tab(self._tabs(main)), self.HHIE_S_TAB)
         self.assertIn(reverse("result", args=[hhie.id]), main)
         self.assertNotIn(reverse("result", args=[ioi.id]), main)
         self.assertContains(response, self.CHART_JS)
@@ -297,6 +301,22 @@ class HistoryTabsTests(TestCase):
         self.assertNotIn("少了 16 分", main)
         self.assertNotContains(self.client.get("/report"), 'id="report-difference"')
 
+    def test_difference_lives_in_the_for_doctor_card(self):
+        # Ticket #161: moved to the bottom, alongside the health report button.
+        self._hhie_s(28, False, days_ago=2)
+        self._hhie_s(12, True, days_ago=1)
+        main = self._main(self.client.get(self.url))
+        self.assertLess(main.index("要給醫師或家人看"), main.index("配戴狀態比較"))
+        self.assertLess(main.index("聽力報告"), main.index("配戴狀態比較"))
+
+    def test_difference_hidden_without_both_statuses(self):
+        # Ticket #161: only shown when this questionnaire has both an aided and unaided record.
+        self._hhie_s(28, False, days_ago=2)
+        self._hhie_s(30, False, days_ago=1)
+        main = self._main(self.client.get(self.url))
+        self.assertNotIn("配戴狀態比較", main)
+        self.assertIsNone(self._difference(main))
+
     # IOI-HA chart (15-18)
     def _chart(self, main):
         start = main.index('class="ioi-chart')
@@ -359,7 +379,7 @@ class HistoryTabsTests(TestCase):
         self._both(newest="ioi-ha")
         tabs = self._tabs(self._main(self.client.get(self._tab_url("hhie-s"))))
         self.assertEqual(tabs.count('aria-current="page"'), 1)
-        self.assertEqual(self._current_tab(tabs), "HHIE-S")
+        self.assertEqual(self._current_tab(tabs), self.HHIE_S_TAB)
 
     def test_chart_text_alternatives(self):
         self._hhie_s(10, False, days_ago=3)
@@ -415,7 +435,7 @@ class HistoryTabsTests(TestCase):
         Answer.objects.create(submission=submission, question=question, score=4)
         response = self.client.get(self._tab_url("hhia-s"))
         main = self._main(response)
-        self.assertEqual(self._current_tab(self._tabs(main)), "HHIA-S")
+        self.assertEqual(self._current_tab(self._tabs(main)), self.HHIA_S_TAB)
         self.assertIn(reverse("result", args=[submission.id]), main)
         self.assertNotIn("trend-chart", main)
         self.assertNotContains(response, self.CHART_JS)
@@ -427,7 +447,7 @@ class HistoryTabsTests(TestCase):
         same = Submission.objects.get(pk=hhie.pk).created_at
         Submission.objects.filter(pk__in=[older_ioi.pk, newer_ioi.pk]).update(created_at=same)
         main = self._main(self.client.get(self.url))
-        self.assertEqual(self._current_tab(self._tabs(main)), "IOI-HA")
+        self.assertEqual(self._current_tab(self._tabs(main)), self.IOI_HA_TAB)
         self.assertIn("使用時間：最近一次 4 分，上一次 2 分", self._chart(main))
 
     # The trend chart's text parts, drawn by Django so the record cards below stay put while
