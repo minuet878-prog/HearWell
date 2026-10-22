@@ -96,12 +96,42 @@
 <p class="mt-4">{{ user_state.reminder }}</p>
 {% endif %}
 {% if user_state.retest_due %}
-<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次（大約 3 分鐘）</a>
+<a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
 {% else %}
 <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
 {% if user_state.retest_questionnaire %}
 <a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'screening' user_state.retest_questionnaire.pk %}">再做一次</a>
 {% endif %}
 {% endif %}
+{# Ticket #160: pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript all four show. #}
+<section class="mt-6" aria-labelledby="more-title">
+    <h2 id="more-title" class="h4">您還可以</h2>
+    <ul class="list-unstyled">
+        <li><a class="link-card" href="{% url 'audiogram_new' %}">
+            <span class="link-card-body">
+                <span class="link-card-title">記錄醫院的聽力圖</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="{% url 'health_report' %}">
+            <span class="link-card-body">
+                <span class="link-card-title">印聽力報告給醫師看</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="{% url 'health_report' %}#report-share">
+            <span class="link-card-body">
+                <span class="link-card-title">分享報告給家人</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li data-hide-in-app><a class="link-card" href="{% url 'add_to_home' %}">
+            <span class="link-card-body">
+                <span class="link-card-title">加到手機主畫面</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</section>
 {% endif %}
 {% endblock %}

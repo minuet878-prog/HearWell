@@ -13,6 +13,13 @@
 
 {% block body %}
 <h1 class="h3 mt-2">我的紀錄</h1>
+{# Ticket #162: the home page's retest reminder, shown here only once it is due. #}
+{% if user_state.retest_due %}
+<section id="retest-reminder" class="bg-brand-soft rounded-large p-6 mb-6">
+    <p>{{ user_state.reminder }}</p>
+    <a class="btn btn-primary btn-lg" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
+</section>
+{% endif %}
 {% if questionnaires|length > 1 %}
 {# Each tab is its own URL, so reload and the back button keep the tab. #}
 <nav class="history-tabs" aria-label="問卷">
@@ -20,6 +27,16 @@
     <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}（{{ questionnaire.questionnaire_name }}）</a>
     {% endfor %}
 </nav>
+{% endif %}
+{% if since_last %}
+<section id="since-last" class="mb-6 wrap-anywhere" aria-labelledby="since-last-title">
+    <h2 id="since-last-title" class="h4">和上一次比</h2>
+    {% with previous=since_last.previous latest=since_last.latest %}
+    <p class="mb-1">上一次（{{ previous.created_at|date:"Y/m/d" }}{% if previous.id in same_day %} {{ previous.created_at|date:"H:i" }}{% endif %}）：{{ previous.total_answer_score }} 分</p>
+    <p class="mb-1">最近一次（{{ latest.created_at|date:"Y/m/d" }}{% if latest.id in same_day %} {{ latest.created_at|date:"H:i" }}{% endif %}）：{{ latest.total_answer_score }} 分</p>
+    {% endwith %}
+    <p class="mb-0"><strong>{{ since_last.text }}</strong></p>
+</section>
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}

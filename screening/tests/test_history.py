@@ -1,5 +1,6 @@
 import re
-from datetime import timedelta
+from datetime import date, datetime, timedelta
+from unittest.mock import patch
 
 from django.db import connection
 from django.test import TestCase
@@ -144,7 +145,7 @@ class HistoryTabsTests(TestCase):
         )
         return self._at(submission, days_ago)
 
-    def _main(self, response):
+    def _main_html(self, response):
         content = response.content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
@@ -170,7 +171,7 @@ class HistoryTabsTests(TestCase):
     # Tabs (1-8)
     def test_default_tab_is_newest_ioi_ha(self):
         hhie, ioi = self._both(newest="ioi-ha")
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         tabs = self._tabs(main)
         labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", tabs)
         self.assertEqual(labels, [self.HHIE_S_TAB, self.IOI_HA_TAB])
@@ -184,7 +185,7 @@ class HistoryTabsTests(TestCase):
     def test_default_tab_is_newest_hhie_s(self):
         hhie, ioi = self._both(newest="hhie-s")
         response = self.client.get(self.url)
-        main = self._main(response)
+        main = self._main_html(response)
         self.assertEqual(self._current_tab(self._tabs(main)), self.HHIE_S_TAB)
         self.assertIn(reverse("result", args=[hhie.id]), main)
         self.assertNotIn(reverse("result", args=[ioi.id]), main)
@@ -194,7 +195,7 @@ class HistoryTabsTests(TestCase):
     def test_tab_url_shows_that_questionnaire(self):
         hhie, ioi = self._both(newest="ioi-ha")
         response = self.client.get(self._tab_url("hhie-s"))
-        main = self._main(response)
+        main = self._main_html(response)
         self.assertEqual(self._current_tab(self._tabs(main)), self.HHIE_S_TAB)
         self.assertIn(reverse("result", args=[hhie.id]), main)
         self.assertNotIn(reverse("result", args=[ioi.id]), main)
@@ -211,13 +212,13 @@ class HistoryTabsTests(TestCase):
 
     def test_single_questionnaire_has_no_tabs(self):
         self._hhie_s(10, False, days_ago=1)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         self.assertIsNone(self._tabs(main))
         self.assertIn('data-questionnaire="hhie-s"', main)
 
     def test_no_records(self):
         response = self.client.get(self.url)
-        main = self._main(response)
+        main = self._main_html(response)
         self.assertIn("您還沒有做過篩檢紀錄", main)
         self.assertIsNone(self._tabs(main))
         self.assertNotIn("trend-chart", main)
@@ -231,7 +232,7 @@ class HistoryTabsTests(TestCase):
         theirs_ioi = self._ioi_ha((1,) * 7, "moderately_severe", days_ago=0, user=self.other)
         for url in (self.url, self._tab_url("hhie-s"), self._tab_url("ioi-ha")):
             with self.subTest(url=url):
-                main = self._main(self.client.get(url))
+                main = self._main_html(self.client.get(url))
                 self.assertIsNone(self._tabs(main))
                 self.assertNotIn("配戴前後比較", main)
                 self.assertNotIn("ioi-chart", main)
@@ -268,7 +269,7 @@ class HistoryTabsTests(TestCase):
         self._retain(unaided, aided)
         self._hhie_s(40, False, days_ago=1)
         self._hhie_s(40, True, days_ago=1)
-        text = self._difference(self._main(self.client.get(self.url)))
+        text = self._difference(self._main_html(self.client.get(self.url)))
         self.assertIn("配戴狀態比較", text)
         self.assertIn(f"未配戴 {self._date(unaided)}，28 分", text)
         self.assertIn(f"配戴 {self._date(aided)}，12 分", text)
@@ -279,16 +280,16 @@ class HistoryTabsTests(TestCase):
         aided = self._hhie_s(12, True, days_ago=10)
         unaided = self._hhie_s(28, False, days_ago=1)
         self._retain(unaided, aided)
-        self.assertIn("少了 16 分", self._difference(self._main(self.client.get(self.url))))
+        self.assertIn("少了 16 分", self._difference(self._main_html(self.client.get(self.url))))
 
     def test_difference_of_zero_is_no_change(self):
         self._retain(self._hhie_s(20, False, days_ago=2), self._hhie_s(20, True, days_ago=1))
-        text = self._difference(self._main(self.client.get(self.url)))
+        text = self._difference(self._main_html(self.client.get(self.url)))
         self.assertIn("沒有變化", text)
 
     def test_difference_increase_has_no_verdict(self):
         self._retain(self._hhie_s(10, False, days_ago=2), self._hhie_s(16, True, days_ago=1))
-        text = self._difference(self._main(self.client.get(self.url)))
+        text = self._difference(self._main_html(self.client.get(self.url)))
         self.assertIn("多了 6 分", text)
         for word in ("改善", "變差", "有效", "無效", "建議"):
             self.assertNotIn(word, text)
@@ -296,7 +297,7 @@ class HistoryTabsTests(TestCase):
     def test_no_automatic_difference_even_with_both_statuses(self):
         self._hhie_s(28, False, days_ago=2)
         self._hhie_s(12, True, days_ago=1)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         self.assertIn("尚未保留比較組合", main)
         self.assertNotIn("少了 16 分", main)
         self.assertNotContains(self.client.get("/report"), 'id="report-difference"')
@@ -305,7 +306,7 @@ class HistoryTabsTests(TestCase):
         # Ticket #161: moved to the bottom, alongside the health report button.
         self._hhie_s(28, False, days_ago=2)
         self._hhie_s(12, True, days_ago=1)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         self.assertLess(main.index("要給醫師或家人看"), main.index("配戴狀態比較"))
         self.assertLess(main.index("聽力報告"), main.index("配戴狀態比較"))
         # Acceptance 4: the entry reads 「比較戴與不戴助聽器」, inside the bottom card.
@@ -319,7 +320,7 @@ class HistoryTabsTests(TestCase):
         # Ticket #161: only shown when this questionnaire has both an aided and unaided record.
         self._hhie_s(28, False, days_ago=2)
         self._hhie_s(30, False, days_ago=1)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         self.assertNotIn("配戴狀態比較", main)
         self.assertIsNone(self._difference(main))
 
@@ -330,7 +331,7 @@ class HistoryTabsTests(TestCase):
 
     def test_chart_bands_follow_latest_group(self):
         self._ioi_ha((5, 4, 3, 2, 4, 3, 4), "moderately_severe", days_ago=1)
-        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
         self.assertEqual(chart.count('class="ioi-band"'), 7)
         self.assertEqual(chart.count("ioi-dot-latest"), 7)
         self.assertEqual(chart.count("ioi-dot-previous"), 0)
@@ -354,7 +355,7 @@ class HistoryTabsTests(TestCase):
                 Submission.objects.all().delete()
                 self._ioi_ha((2,) * 7, previous_group, days_ago=5)
                 self._ioi_ha((4,) * 7, "moderately_severe", days_ago=1)
-                chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+                chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
                 self.assertEqual(chart.count("ioi-dot-previous"), expected)
                 if expected:
                     self.assertIn("使用時間：最近一次 4 分，上一次 2 分", chart)
@@ -363,7 +364,7 @@ class HistoryTabsTests(TestCase):
     def test_ungrouped_latest_has_no_bands(self):
         self._ioi_ha((2,) * 7, "mild_moderate", days_ago=5)
         self._ioi_ha((4,) * 7, "ungrouped", days_ago=1)
-        main = self._main(self.client.get(self._tab_url("ioi-ha")))
+        main = self._main_html(self.client.get(self._tab_url("ioi-ha")))
         chart = self._chart(main)
         self.assertEqual(chart.count('class="ioi-band"'), 0)
         self.assertEqual(chart.count("ioi-dot-latest"), 7)
@@ -375,7 +376,7 @@ class HistoryTabsTests(TestCase):
 
     def test_ioi_ha_result_links_to_ioi_ha_tab(self):
         submission = self._ioi_ha((3,) * 7, "ungrouped", days_ago=1)
-        main = self._main(self.client.get(reverse("result", args=[submission.id])))
+        main = self._main_html(self.client.get(reverse("result", args=[submission.id])))
         self.assertRegex(
             main, rf'<a[^>]*href="{re.escape(self._tab_url("ioi-ha"))}"[^>]*>\s*看我的紀錄'
         )
@@ -383,7 +384,7 @@ class HistoryTabsTests(TestCase):
     # Accessibility (19)
     def test_current_tab_marked_for_screen_readers(self):
         self._both(newest="ioi-ha")
-        tabs = self._tabs(self._main(self.client.get(self._tab_url("hhie-s"))))
+        tabs = self._tabs(self._main_html(self.client.get(self._tab_url("hhie-s"))))
         self.assertEqual(tabs.count('aria-current="page"'), 1)
         self.assertEqual(self._current_tab(tabs), self.HHIE_S_TAB)
 
@@ -391,12 +392,12 @@ class HistoryTabsTests(TestCase):
         self._hhie_s(10, False, days_ago=3)
         self._hhie_s(12, True, days_ago=2)
         self._hhie_s(14, None, days_ago=1)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         # The trend chart is drawn by React; its text equivalent is the record list.
         for status in ("助聽器：沒戴", "助聽器：有戴", "助聽器：未記錄"):
             self.assertIn(status, main)
         self._ioi_ha((3,) * 7, "mild_moderate", days_ago=0)
-        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
         self.assertEqual(chart.count('class="visually-hidden"'), 7)
         self.assertRegex(chart, r'<div[^>]*class="ioi-grid"[^>]*aria-hidden="true"')
 
@@ -410,7 +411,7 @@ class HistoryTabsTests(TestCase):
         # Rows: score 5 is row 1, score 1 is row 5. moderately_severe Use is 4-5.
         self._ioi_ha((2,) * 7, "moderately_severe", days_ago=5)
         self._ioi_ha((5,) * 7, "moderately_severe", days_ago=1)
-        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
         use = self._columns(chart)[0]
         self.assertIn("使用時間", use)
         self.assertRegex(use, r'class="ioi-band" style="grid-row: 1 / 3"')
@@ -420,7 +421,7 @@ class HistoryTabsTests(TestCase):
     def test_previous_point_has_another_shape(self):
         self._ioi_ha((2,) * 7, "mild_moderate", days_ago=5)
         self._ioi_ha((4,) * 7, "mild_moderate", days_ago=1)
-        chart = self._chart(self._main(self.client.get(self._tab_url("ioi-ha"))))
+        chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
         previous = re.findall(r'class="([^"]*ioi-dot-previous[^"]*)"', chart)
         latest = re.findall(r'class="([^"]*ioi-dot-latest[^"]*)"', chart)
         self.assertEqual(len(previous), 7)
@@ -440,7 +441,7 @@ class HistoryTabsTests(TestCase):
         submission = Submission.objects.create(user=self.user, questionnaire=hhia_s)
         Answer.objects.create(submission=submission, question=question, score=4)
         response = self.client.get(self._tab_url("hhia-s"))
-        main = self._main(response)
+        main = self._main_html(response)
         # Acceptance 2 of #161: both tabs, told apart by their names.
         labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", self._tabs(main))
         self.assertEqual(labels, [self.HHIE_S_TAB, self.HHIA_S_TAB])
@@ -455,14 +456,14 @@ class HistoryTabsTests(TestCase):
         newer_ioi = self._ioi_ha((4,) * 7, "mild_moderate", days_ago=1)
         same = Submission.objects.get(pk=hhie.pk).created_at
         Submission.objects.filter(pk__in=[older_ioi.pk, newer_ioi.pk]).update(created_at=same)
-        main = self._main(self.client.get(self.url))
+        main = self._main_html(self.client.get(self.url))
         self.assertEqual(self._current_tab(self._tabs(main)), self.IOI_HA_TAB)
         self.assertIn("使用時間：最近一次 4 分，上一次 2 分", self._chart(main))
 
     # The trend chart's text parts, drawn by Django so the record cards below stay put while
     # React draws the chart (docs/verification/trend-chart-layout-shift.md).
     def _trend(self):
-        main = self._main(self.client.get(self._tab_url("hhie-s")))
+        main = self._main_html(self.client.get(self._tab_url("hhie-s")))
         return main[main.index('id="trend-chart"') : main.index('class="link-card"')]
 
     def _texts(self, html):
@@ -476,48 +477,47 @@ class HistoryTabsTests(TestCase):
         legend = re.search(r'class="trend-legend">(.*?)</ul>', trend, re.DOTALL).group(1)
         return re.findall(r"<li>(.*?)</li>", legend, re.DOTALL)
 
-    def test_trend_summary_compares_with_the_same_status_only(self):
-        # phase9_ui_refresh_2_data.md acceptance 5: unaided 26, 24, 20 and aided 14, 10.
+    def _since_last_html(self, main):
+        return re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
+
+    def test_trend_summary_leaves_the_comparison_to_since_last(self):
+        # phase9_ui_refresh_2_data.md acceptance 5 (unaided 26, 24, 20 and aided 14, 10), now
+        # compared in 「和上一次比」 instead of the summary (decision 2026-10-22, #162).
         self._hhie_s(26, False, days_ago=30)
         self._hhie_s(24, False, days_ago=20)
         aided = self._hhie_s(14, True, days_ago=10)
         self._hhie_s(20, False, days_ago=5)
         latest = self._hhie_s(10, True, days_ago=1)
+        main = self._main_html(self.client.get(self._tab_url("hhie-s")))
         trend = self._trend()
         self.assertEqual(
             self._summary(trend),
-            [
-                f"最近一次（{self._date(latest)}，有戴助聽器）",
-                "10 分 輕度到中度影響",
-                f"比上一次有戴助聽器（{self._date(aided)}）減少 4 分。",
-            ],
+            [f"最近一次（{self._date(latest)}，有戴助聽器）", "10 分 輕度到中度影響"],
         )
         self.assertIn("<strong>10 分</strong>", trend)
+        since_last = self._since_last_html(main)
+        self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
+        self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
 
-    def test_trend_summary_increase_no_change_and_down_to_0(self):
-        first = self._hhie_s(12, False, days_ago=10)
-        second = self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"比上一次沒戴助聽器（{self._date(first)}）增加 6 分。"
-        )
-        third = self._hhie_s(18, False, days_ago=3)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"和上一次沒戴助聽器（{self._date(second)}）相同。"
-        )
+    def test_trend_summary_has_no_comparison_line_down_to_0(self):
+        self._hhie_s(12, False, days_ago=10)
+        self._hhie_s(18, False, days_ago=5)
+        self.assertEqual(len(self._summary(self._trend())), 2)
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary(self._trend())
-        self.assertEqual(summary[1], "0 分 無/極輕微影響")
-        self.assertEqual(summary[2], f"比上一次沒戴助聽器（{self._date(third)}）減少 18 分。")
+        self.assertEqual(summary[1:], ["0 分 無/極輕微影響"])
 
-    def test_trend_summary_finds_the_previous_status_before_the_charts_five_days(self):
-        # Acceptance 17: the chart draws five days, the summary looks further back.
+    def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
+        # Acceptance 17: the chart draws five days, the comparison looks further back.
         aided = self._hhie_s(8, True, days_ago=10)
         for days_ago in range(6, 1, -1):
             self._hhie_s(20, False, days_ago=days_ago)
         self._hhie_s(12, True, days_ago=1)
-        self.assertEqual(
-            self._summary(self._trend())[2], f"比上一次有戴助聽器（{self._date(aided)}）增加 4 分。"
+        since_last = self._since_last_html(
+            self._main_html(self.client.get(self._tab_url("hhie-s")))
         )
+        self.assertIn(f"上一次（{self._date(aided)}）：8 分", since_last)
+        self.assertIn("比上一次多 4 分（分數越低越好）", since_last)
 
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
@@ -613,3 +613,263 @@ class HistoryTabsTests(TestCase):
         with CaptureQueriesContext(connection) as six:
             self.client.get(self._tab_url("hhie-s"))
         self.assertEqual(len(six), len(two))
+
+
+# Ticket #162 (ADR 0010): the page states numbers and direction, never a verdict.
+VERDICT_WORDS = ("變好", "變差", "影響變小", "影響變大", "改善", "惡化", "進步", "退步")
+
+
+class HistoryRetestTests(TestCase):
+    """Spec #148 batch 2, ticket #162: the retest reminder and 「和上一次比」 on 我的紀錄."""
+
+    # "Today" and every record's time are fixed, never the real clock.
+    TODAY = date(2026, 10, 22)
+    NOON = timezone.make_aware(datetime(2026, 10, 22, 12))
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="retest_user")
+        cls.questions = {}
+        for name, code, count in (
+            ("HHIE-S", "hhie-s", 10),
+            ("HHIA-S", "hhia-s", 10),
+            ("IOI-HA", "ioi-ha", 7),
+        ):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=name, code=code)
+            cls.questions[code] = Question.objects.bulk_create(
+                Question(
+                    questionnaire=questionnaire,
+                    question_text=f"{name}題{i}",
+                    question_number=i,
+                    category=(
+                        (Category.EMOTIONAL if i <= 5 else Category.SOCIAL)
+                        if code.startswith("hhi")
+                        else Category.NONE
+                    ),
+                )
+                for i in range(1, count + 1)
+            )
+        cls.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        cls.hhia_s = Questionnaire.objects.get(code="hhia-s")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        real_localdate = timezone.localdate
+
+        def localdate(value=None, timezone=None):
+            return self.TODAY if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+
+    def _submit(self, code, scores, days_ago, user=None, **fields):
+        # 沒戴 unless a test says otherwise: 「和上一次比」 needs a recorded hearing aid status.
+        fields.setdefault("wearing_hearing_aid", False)
+        questionnaire = Questionnaire.objects.get(code=code)
+        submission = Submission.objects.create(
+            user=user or self.user, questionnaire=questionnaire, **fields
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questions[code], scores, strict=True)
+        )
+        Submission.objects.filter(pk=submission.pk).update(
+            created_at=self.NOON - timedelta(days=days_ago)
+        )
+        return submission
+
+    def _fetch_main_html(self, url=None):
+        content = self.client.get(url or reverse("my_hearing")).content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def _retake_url(self, questionnaire):
+        return reverse("screening", args=[questionnaire.pk])
+
+    def _reminder(self, main):
+        match = re.search(r'<section id="retest-reminder"[^>]*>(.*?)</section>', main, re.S)
+        return None if match is None else match.group(1)
+
+    def test_due_reminder_and_retake_button_at_the_top(self):
+        # 2026/04/22 is exactly six months before "today" (2026/10/22).
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        main = self._fetch_main_html()
+        reminder = self._reminder(main)
+        self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
+        retake = self._retake_url(self.hhie_s)
+        # The home page's button text (decision 2026-10-22).
+        self.assertIn(
+            f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次（大約 3 分鐘）</a>',
+            reminder,
+        )
+        # At the top: right under the page title, before any record.
+        self.assertLess(main.index('id="retest-reminder"'), main.index('class="link-card"'))
+        self.assertLess(main.index("<h1"), main.index('id="retest-reminder"'))
+
+    def test_due_reminder_at_the_top_of_a_tab_that_is_not_the_default(self):
+        # The HHIE-S is the newest record, so its tab is the default; open IOI-HA's instead.
+        self._submit("ioi-ha", [3] * 7, days_ago=300, norm_group="mild_moderate")
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        main = self._fetch_main_html(f"{reverse('my_hearing')}?questionnaire=ioi-ha")
+        self.assertRegex(main, r'<a[^>]*aria-current="page"[^>]*>助聽器使用成效（IOI-HA）</a>')
+        reminder = self._reminder(main)
+        self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
+        retake = self._retake_url(self.hhie_s)
+        self.assertIn(
+            f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次（大約 3 分鐘）</a>',
+            reminder,
+        )
+        # At the top: right under the page title, above the tabs and the IOI-HA record.
+        self.assertLess(main.index("<h1"), main.index('id="retest-reminder"'))
+        self.assertLess(main.index('id="retest-reminder"'), main.index('aria-label="問卷"'))
+        self.assertLess(main.index('id="retest-reminder"'), main.index('class="link-card"'))
+
+    def test_no_reminder_before_six_months(self):
+        # 2026/04/23: one day short of six months.
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=182)
+        main = self._fetch_main_html()
+        self.assertIsNone(self._reminder(main))
+        self.assertNotIn("滿 6 個月", main)
+        self.assertNotIn(self._retake_url(self.hhie_s), main)
+
+    def _since_last_lines(self, main):
+        match = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S)
+        if match is None:
+            return None
+        lines = re.findall(r"<(?:h2|p)[^>]*>(.*?)</(?:h2|p)>", match.group(1), re.S)
+        return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", line)).strip() for line in lines]
+
+    def test_since_last_says_how_many_points_fewer(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 16, 2026/09/12
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, 2026/10/12
+        main = self._fetch_main_html()
+        self.assertEqual(
+            self._since_last_lines(main),
+            [
+                "和上一次比",
+                "上一次（2026/09/12）：16 分",
+                "最近一次（2026/10/12）：12 分",
+                "比上一次少 4 分（分數越低越好）",
+            ],
+        )
+        # Above the trend chart.
+        self.assertLess(main.index('id="since-last"'), main.index('id="trend-chart"'))
+
+    def test_since_last_says_the_same(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
+        self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[3], "和上一次一樣")
+
+    def test_since_last_says_how_many_points_more(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
+        self._submit("hhie-s", [4, 4, 4, 4, 4, 2] + [0] * 4, days_ago=10)  # 22
+        self.assertEqual(
+            self._since_last_lines(self._fetch_main_html())[3], "比上一次多 10 分（分數越低越好）"
+        )
+
+    def test_no_since_last_with_one_record(self):
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)
+        main = self._fetch_main_html()
+        self.assertIsNone(self._since_last_lines(main))
+        self.assertNotIn("和上一次比", main)
+
+    def test_no_verdict_words_on_the_page(self):
+        for name, newest in (
+            ("fewer", [4, 4] + [0] * 8),  # 8
+            ("more", [4] * 10),  # 40
+            ("same", [4, 4, 4, 4] + [0] * 6),  # 16
+        ):
+            with self.subTest(name):
+                Answer.objects.all().delete()
+                Submission.objects.all().delete()
+                self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=200)  # 16, due
+                self._submit("hhie-s", newest, days_ago=190)
+                main = self._fetch_main_html()
+                self.assertIsNotNone(self._since_last_lines(main))
+                self.assertIsNotNone(self._reminder(main))
+                for word in VERDICT_WORDS:
+                    self.assertNotIn(word, main)
+
+    def test_hhia_s_tab_compares_too(self):
+        # HHIA-S is also a life-impact questionnaire, though it has no trend chart.
+        self._submit("hhia-s", [4] * 5 + [0] * 5, days_ago=40)  # 20
+        self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
+        main = self._fetch_main_html()
+        self.assertNotIn('id="trend-chart"', main)
+        self.assertEqual(self._since_last_lines(main)[3], "比上一次少 6 分（分數越低越好）")
+        self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
+
+    def test_other_questionnaires_do_not_compare(self):
+        self._submit("ioi-ha", [3] * 7, days_ago=40, norm_group="mild_moderate")
+        self._submit("ioi-ha", [4] * 7, days_ago=10, norm_group="mild_moderate")
+        self.assertIsNone(self._since_last_lines(self._fetch_main_html()))
+
+    def test_since_last_compares_with_the_same_hearing_aid_status(self):
+        # Decision 2026-10-22: the newest record against the one before it worn the same way,
+        # even with a record worn the other way in between.
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16, 2026/09/12
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=20, wearing_hearing_aid=True)  # 8
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 沒戴 12, 2026/10/12
+        main = self._fetch_main_html()
+        self.assertEqual(
+            self._since_last_lines(main)[1:],
+            [
+                "上一次（2026/09/12）：16 分",
+                "最近一次（2026/10/12）：12 分",
+                "比上一次少 4 分（分數越低越好）",
+            ],
+        )
+        # The trend summary leaves the comparison to 「和上一次比」, so it is said once.
+        summary = re.search(r'class="trend-summary[^"]*">(.*?)</div>', main, re.S).group(1)
+        self.assertEqual(len(re.findall(r"<p[^>]*>", summary)), 2)
+        self.assertNotIn("上一次沒戴助聽器", main)
+
+    def test_no_since_last_when_the_newest_status_is_unrecorded(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=20)  # 沒戴 12
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=None)  # 8
+        main = self._fetch_main_html()
+        self.assertIsNone(self._since_last_lines(main))
+        # The trend summary still explains why there is no comparison.
+        self.assertIn("這筆沒有記錄助聽器，不和其他紀錄比較。", main)
+
+    def test_no_since_last_for_the_first_record_of_its_status(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 沒戴 16
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=10, wearing_hearing_aid=True)  # 8
+        main = self._fetch_main_html()
+        self.assertIsNone(self._since_last_lines(main))
+        self.assertIn("這是第一筆有戴助聽器的紀錄。", main)
+
+    def test_only_the_logged_in_user_s_records_count(self):
+        # This user: 16 then 12, the newer one 2026/04/22, so a retest is due.
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=213)
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
+        # Someone else: a newer record, which would end the reminder and change the comparison.
+        other = consented_user(username="retest_other")
+        self._submit("hhie-s", [4] * 10, days_ago=1, user=other)  # 40
+        main = self._fetch_main_html()
+        self.assertIsNotNone(self._reminder(main))
+        self.assertEqual(
+            self._since_last_lines(main)[1:],
+            [
+                "上一次（2026/03/23）：16 分",
+                "最近一次（2026/04/22）：12 分",
+                "比上一次少 4 分（分數越低越好）",
+            ],
+        )
+        # And the other way round: their one record, none of this user's.
+        self.client.force_login(other)
+        main = self._fetch_main_html()
+        self.assertIsNone(self._reminder(main))
+        self.assertIsNone(self._since_last_lines(main))
+
+    def test_queries_do_not_grow_with_records(self):
+        # CODING_STANDARDS 15: the reminder and the comparison add no query per record.
+        self._submit("hhie-s", [4] * 10, days_ago=200)
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=190)
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(reverse("my_hearing"))
+        for days_ago in range(189, 184, -1):
+            self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=days_ago)
+        with CaptureQueriesContext(connection) as seven:
+            response = self.client.get(reverse("my_hearing"))
+        self.assertIsNotNone(self._reminder(response.content.decode()))
+        self.assertEqual(len(seven), len(two))
