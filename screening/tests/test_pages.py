@@ -471,8 +471,7 @@ class PageFlowTests(TestCase):
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
         "結果長這樣",
         "示意圖",
-        "很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。",
-        "由聽力師開發",
+        "內容由台灣執業聽力師設計與審定。",
     )
 
     @classmethod
@@ -1141,23 +1140,34 @@ class HomeTests(TestCase):
     # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
     # A returning user's home page now shows their own last result on purpose.
 
-    # 6
+    # 6, changed in the brand refresh (design picker round 3): the "由聽力師開發" block repeated
+    # the top's 國際標準量表 label, so it became one line in a badge card.
     def test_trust_block(self):
         main = self._main()
-        trust = self._between(main, "home-trust", "</section>")
-        self.assertRegex(trust, r"<h2[^>]*>由聽力師開發</h2>")
-        self.assertIn("<li>由在台灣執業的聽力師設計與審定內容</li>", trust)
-        self.assertIn("<li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>", trust)
-        self.assertNotIn("出處都列在說明頁", main)
-        self.assertNotIn("本網站由執業聽力師開發", main)
+        line = self._between(main, 'class="home-credential"', "</p>")
+        self.assertIn('<span class="home-credential-icon"><svg', line)
+        self.assertIn('aria-hidden="true"', line)
+        self.assertIn("內容由台灣執業聽力師設計與審定。", line)
+        self.assertEqual(main.count("內容由台灣執業聽力師設計與審定。"), 1)
+        gone_texts = (
+            "由聽力師開發",
+            "HHIE-S、IOI-HA",
+            "出處都列在說明頁",
+            "本網站由執業聽力師開發",
+            # Dropped in round 3: it repeated the top's 聽力變化很慢 line.
+            "很多人在察覺聽力問題好幾年後",
+        )
+        for gone in gone_texts:
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, main)
 
     # 7
     def test_band_backgrounds(self):
         main = self._main()
         bands = re.findall(r'<section class="home-band[^"]*">(.*?)</section>', main, re.S)
-        self.assertEqual(len(bands), 2)
+        # The trust band became the one-line badge card (brand refresh), so one band is left.
+        self.assertEqual(len(bands), 1)
         self.assertIn("home-illustration", bands[0])
-        self.assertIn("由聽力師開發", bands[1])
         for band in bands:
             self.assertNotIn("step-cards", band)
             self.assertNotIn("result-preview", band)

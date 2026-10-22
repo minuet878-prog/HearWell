@@ -143,8 +143,7 @@ class AccountSettingsTests(TestCase):
             "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
             "開始篩檢",
             "回答問題，大約 3 分鐘。",
-            "很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。",
-            "由聽力師開發",  # replaced the old one-line claim (phase9_ui_refresh_4a_home.md 4.1)
+            "內容由台灣執業聽力師設計與審定。",  # one line in a badge card since the brand refresh
         )
         for logged_in in (True, False):
             if not logged_in:

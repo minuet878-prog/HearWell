@@ -66,14 +66,8 @@
     <p class="mt-2 mb-2">{{ preview_advice|slice:":40" }}……</p>
     <figcaption>實際結果依您的回答而定。</figcaption>
 </figure>
-<p>很多人在察覺聽力問題好幾年後，才尋求協助。及早了解，才能及早處理。</p>
-<section class="home-band home-trust">
-    <h2 class="h4">由聽力師開發</h2>
-    <ul class="mb-0">
-        <li>由在台灣執業的聽力師設計與審定內容</li>
-        <li>使用國際通用的標準化量表：HHIE-S、IOI-HA</li>
-    </ul>
-</section>
+{# Brand refresh, design picker round 3: one line in a badge card; the scales are in the top label. #}
+<p class="home-credential"><span class="home-credential-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="home-credential-text">內容由台灣執業聽力師設計與審定。</span></p>
 {% else %}
 {# Spec #148 batch 2, ticket #159 (ADR 0010): a returning user sees their last result and whether a retest is due. #}
 <h1 class="h3 mt-2">歡迎回來</h1>
