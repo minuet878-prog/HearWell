@@ -259,7 +259,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.main().get_by_role("button", name="送出").click()
             expect(self.page.get_by_text("總分 20 分")).to_be_visible()
             expect(self.page.locator(".result-banner").get_by_text("輕至中度影響")).to_be_visible()
-            expect(self.page.get_by_text("不能判定聽損程度", exact=False)).to_be_visible()
+            # Text-heavy pages tidy-up: said under the steps, outside the folded full advice.
+            expect(self.main().locator(".source-note")).to_contain_text("不能判定聽損程度")
+            expect(self.main().locator(".source-note")).to_be_visible()
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
                 "link", name="我的紀錄"
             ).click()
@@ -835,10 +837,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(steps.nth(1).get_by_role("link", name="看／印聽力報告")).to_be_visible()
         expect(steps.nth(2)).to_have_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
-        # (9-24 of 0-40), with every level named below it.
-        expect(self.page.locator(".score-bar-labels > span")).to_have_text(
-            ["無/極輕微影響", "輕度到中度影響", "顯著影響"]
-        )
+        # (9-24 of 0-40).
         bar = self.page.locator(".score-bar-segments").bounding_box()
         marker = self.page.locator(".score-bar-marker").bounding_box()
         self.assertAlmostEqual(
@@ -847,15 +846,14 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
         centre = marker["x"] + marker["width"] / 2
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
-        # Brand refresh round 4: each label sits under its own segment, this score's in bold.
-        for level in ("normal", "mild_to_moderate", "severe"):
-            segment = self.page.locator(f".score-bar-segment-{level}").bounding_box()
-            label = self.page.locator(f".score-bar-label-{level}").bounding_box()
-            self.assertAlmostEqual(label["x"], segment["x"], delta=1)
-            self.assertAlmostEqual(label["width"], segment["width"], delta=1)
-        current = self.page.locator(".score-bar-label-current")
+        # Text-heavy pages tidy-up: only this score's level, in bold under the marker, and the
+        # two ends, 0 and 40.
+        current = self.page.locator(".score-bar-current span")
         expect(current).to_have_text("輕度到中度影響")
         self.assertEqual(current.evaluate("el => getComputedStyle(el).fontWeight"), "700")
+        label = current.bounding_box()
+        self.assertTrue(label["x"] < centre < label["x"] + label["width"])
+        expect(self.page.locator(".score-bar-ends > span")).to_have_text(["0", "40"])
 
     def step5_home_shows_the_next_date(self):
         self.main().get_by_role("link", name="回首頁").click()
@@ -1646,6 +1644,10 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.assertGreater(len({round(box["y"]) for box in boxes}), 1)  # more than one row
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
+            # Text-heavy pages tidy-up: on a common phone the five tabs share two columns.
+            self.page.set_viewport_size({"width": 390, "height": 800})
+            columns = {round(tab.bounding_box()["x"]) for tab in tabs.all()}
+            self.assertEqual(len(columns), 2)
 
     # phase9_ui_refresh_4b_questionnaire_cards.md review A: the icon's circle stays visible on hover
     def test_icon_circle_stays_visible_on_hover(self):

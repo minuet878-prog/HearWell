@@ -161,8 +161,14 @@ class HistoryTabsTests(TestCase):
         match = re.search(r'<nav[^>]*aria-label="問卷"[^>]*>(.*?)</nav>', main, re.DOTALL)
         return None if match is None else match.group(1)
 
+    def _tab_labels(self, tabs):
+        tabs = re.findall(r"<a[^>]*>(.*?)</a>", tabs, re.S)
+        return [re.sub(r"<[^>]+>", "", tab).strip() for tab in tabs]
+
     def _current_tab(self, tabs):
-        return re.search(r'<a[^>]*aria-current="page"[^>]*>\s*([^<]+?)\s*</a>', tabs).group(1)
+        # The code is in its own span (text-heavy pages tidy-up); the tab's text is unchanged.
+        tab = re.search(r'<a[^>]*aria-current="page"[^>]*>(.*?)</a>', tabs, re.S).group(1)
+        return re.sub(r"<[^>]+>", "", tab).strip()
 
     def _date(self, submission):
         submission.refresh_from_db()
@@ -178,7 +184,7 @@ class HistoryTabsTests(TestCase):
         hhie, ioi = self._both(newest="ioi-ha")
         main = self._main_html(self.client.get(self.url))
         tabs = self._tabs(main)
-        labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", tabs)
+        labels = self._tab_labels(tabs)
         self.assertEqual(labels, [self.HHIE_S_TAB, self.IOI_HA_TAB])
         self.assertIn(f'href="{self._tab_url("hhie-s")}"', tabs)
         self.assertIn(f'href="{self._tab_url("ioi-ha")}"', tabs)
@@ -448,7 +454,7 @@ class HistoryTabsTests(TestCase):
         response = self.client.get(self._tab_url("hhia-s"))
         main = self._main_html(response)
         # Acceptance 2 of #161: both tabs, told apart by their names.
-        labels = re.findall(r"<a[^>]*>\s*([^<]+?)\s*</a>", self._tabs(main))
+        labels = self._tab_labels(self._tabs(main))
         self.assertEqual(labels, [self.HHIE_S_TAB, self.HHIA_S_TAB])
         self.assertEqual(self._current_tab(self._tabs(main)), self.HHIA_S_TAB)
         self.assertIn(reverse("result", args=[submission.id]), main)
@@ -714,7 +720,9 @@ class HistoryRetestTests(TestCase):
         self._submit("ioi-ha", [3] * 7, days_ago=300, norm_group="mild_moderate")
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
         main = self._fetch_main_html(f"{reverse('my_hearing')}?questionnaire=ioi-ha")
-        self.assertRegex(main, r'<a[^>]*aria-current="page"[^>]*>助聽器使用成效（IOI-HA）</a>')
+        # The tab's code sits in its own span (text-heavy pages tidy-up).
+        current = re.search(r'<a[^>]*aria-current="page"[^>]*>(.*?)</a>', main, re.S).group(1)
+        self.assertEqual(re.sub(r"<[^>]+>", "", current), "助聽器使用成效（IOI-HA）")
         reminder = self._reminder(main)
         self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
         retake = self._retake_url(self.hhie_s)

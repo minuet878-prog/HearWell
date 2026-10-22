@@ -4,10 +4,18 @@
 {% with satisfaction=submission.satisfaction %}
 <h1 class="h3 mt-2">助聽器滿意度（SADL）</h1>
 <p>{{ submission.created_at|date:"Y/m/d" }} 作答</p>
-<p class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold">整體滿意度：{{ satisfaction.overall }}</p>
-<p>{{ submission.questionnaire.definition.result_note }}</p>
+{# Text-heavy pages tidy-up: SADL has no levels, so the blue summary box SSQ12-TW uses (ADR 0007). #}
+<section class="trend-summary mb-6" aria-label="整體滿意度">
+    <p class="ssq-average">整體滿意度：<strong>{{ satisfaction.overall }}</strong> 分（滿分 7）</p>
+    <p class="mb-0">{{ submission.questionnaire.definition.result_note }}</p>
+</section>
 <h2 class="h4">四個面向</h2>
-<ul>{% for subscale in satisfaction.subscales %}<li class="mb-2"><strong>{{ subscale.name }}：{{ subscale.score }}</strong><br>{{ subscale.explanation }}</li>{% endfor %}</ul>
+<ul class="list-unstyled">{% for subscale in satisfaction.subscales %}
+    <li class="card card-body mb-3">
+        <div class="score-card-head"><h3 class="h5 mb-0">{{ subscale.name }}</h3><span class="score-chip">{{ subscale.score }} 分</span></div>
+        <p class="mb-0">{{ subscale.explanation }}</p>
+    </li>{% endfor %}
+</ul>
 {% if satisfaction.not_applicable %}
 <p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
 {% endif %}
