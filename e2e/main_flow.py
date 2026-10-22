@@ -72,6 +72,16 @@ class SavesFailureArtifacts:
             yield
 
 
+AUDIOGRAM_FORWARD = re.compile("^下一步：標右耳$|換左耳$|確認存檔$")
+
+
+def audiogram_step(page, live_server_url, step):
+    """#199: the new-audiogram page opens on the date; walk on to step (2: 標右耳, 4: 確認存檔)."""
+    page.goto(f"{live_server_url}/audiograms/new")
+    for _ in range(step - 1):
+        page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+
+
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
@@ -1350,6 +1360,113 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 self.main().get_by_role("link", name=re.compile("^分享報告給家人"))
             ).to_contain_text(f"分享中，{expires.month} 月 {expires.day} 日到期")
 
+    # #204 (#183 batch 3 route): a new audiogram in four steps -> its result -> compared with the
+    # one from setUp (2026/09/28, 40 dB at the four average frequencies in both ears).
+    def test_audiogram_route_in_four_steps_to_result_and_compare(self):
+        self.open(390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            main = self.main()
+            expect(main.get_by_text("第 1 步／共 4 步：檢查日期", exact=True)).to_be_visible()
+            main.get_by_label("檢查日期").fill("2026-10-01")
+            main.get_by_role("button", name="下一步：標右耳", exact=True).click()
+            for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
+                expect(main.get_by_role("button", name=re.compile(f"^{ear}氣導"))).to_be_visible()
+                # Opened on the right ear's step, the table stays open on the left ear's.
+                if ear == "右耳":
+                    main.get_by_text("用數值輸入（鍵盤或螢幕閱讀器）").click()
+                for frequency in (500, 1000, 2000, 4000):
+                    main.get_by_label(f"{ear}氣導 {frequency} Hz", exact=True).select_option("50")
+                count = f"{ear}已標：氣導 4 個、骨導 0 個"
+                expect(main.locator(".audiogram-count")).to_have_text(count)
+                main.get_by_role("button", name=button, exact=True).click()
+            expect(main.get_by_text("檢查日期：2026/10/01", exact=True)).to_be_visible()
+            expect(main.get_by_text("右耳：氣導 4 個、骨導 0 個", exact=True)).to_be_visible()
+            expect(main.get_by_text("中度")).to_have_count(0)
+            main.get_by_role("button", name="存檔", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+
+            summary = main.get_by_role("region", name="兩耳程度")
+            expect(summary).to_have_text(re.compile(r"右耳：\s*中度\s*左耳：\s*中度"))
+            expect(main.locator(".audiogram-plot svg")).to_be_visible()
+            main.get_by_role("link", name="和以前的聽力圖比較", exact=True).click()
+
+            expect(main.locator(".compare-pick summary").nth(0)).to_have_text(
+                re.compile(r"舊\s*2026/09/28\s*換一張")
+            )
+            expect(main.locator(".compare-pick summary").nth(1)).to_have_text(
+                re.compile(r"新\s*2026/10/01\s*換一張")
+            )
+            card = main.get_by_role("region", name="右耳的比較")
+            expect(card).to_contain_text("右耳四頻平均：舊 40 → 新 50 dB HL，多 10 dB")
+            expect(card).to_contain_text("程度：舊 輕度，新 中度")
+            expect(card).to_contain_text("差最多的頻率：500、1000、2000、4000 Hz，各多 10 dB")
+            expect(card.locator(".audiogram-plot svg")).to_be_visible()
+            main.get_by_role("link", name="左耳", exact=True).click()
+            expect(main.get_by_role("region", name="左耳的比較")).to_contain_text(
+                "左耳四頻平均：舊 40 → 新 50 dB HL"
+            )
+
+    # #204: without JavaScript the compare page still changes an audiogram.
+    def test_audiogram_compare_changes_one_without_javascript(self):
+        older = Audiogram.objects.create(user=self.user, tested_on=date(2026, 6, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=older, ear="right", conduction="air", frequency=f, db=20)
+            for f in (500, 1000, 2000, 4000)
+        )
+        newest = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=newest, ear="right", conduction="air", frequency=f, db=50)
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 900}, java_script_enabled=False
+        )
+        self.addCleanup(self.context.close)
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            rows = self.main().locator(".compare-pick")
+            expect(rows.nth(0).locator("summary")).to_contain_text("2026/09/28")
+            rows.nth(0).locator("summary").click()
+            rows.nth(0).get_by_label("2026/06/01", exact=True).check()
+            rows.nth(0).get_by_role("button", name="比較", exact=True).click()
+            expect(rows.nth(0).locator("summary")).to_contain_text("2026/06/01")
+            expect(rows.nth(1).locator("summary")).to_contain_text("2026/10/01")
+            expect(self.main()).to_contain_text("右耳四頻平均：舊 20 → 新 50 dB HL，多 30 dB")
+
+    # #204 (#183 acceptance 31): batch 3's pages, 320px wide at 200% text, every fold open.
+    def test_batch3_pages_fit_a_phone_at_double_text_size(self):
+        newer = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=newer, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000, 8000)
+        )
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            for step in ("檢查日期", "標右耳", "標左耳", "確認存檔"):
+                with self.subTest(step=step):
+                    expect(self.main()).to_contain_text(f"共 4 步：{step}")
+                    for summary in self.main().locator("details > summary").all():
+                        summary.click()
+                    self.assert_fits_a_phone_at_double_text_size(f"new audiogram, {step}")
+                    forward = self.main().get_by_role(
+                        "button", name=re.compile("^下一步：標右耳$|換左耳$|確認存檔$")
+                    )
+                    if forward.count():
+                        forward.click()
+            for path in (f"/audiograms/{newer.pk}", "/audiograms/compare"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.locator(".audiogram-plot svg").wait_for()
+                    for summary in self.main().locator("details > summary").all():
+                        summary.click()
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
     # #198: without JavaScript the address is there to copy by hand and the phone blocks open.
     def test_share_page_and_add_to_home_without_javascript(self):
         ReportShare.objects.create(user=self.user)
@@ -1488,9 +1605,10 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         for width in (390, 1024):
             self.open(width)
             with self.saving_artifacts():
-                self.page.goto(f"{self.live_server_url}/audiograms/new")
                 main = self.page.get_by_role("main")
-                for name in ("遮蔽：關", "清除剛標的點", "存檔"):
+                # #199: the ear steps hold masking and clear; saving is on the confirm step.
+                for step, name in ((2, "遮蔽：關"), (2, "清除剛標的點"), (4, "存檔")):
+                    audiogram_step(self.page, self.live_server_url, step)
                     with self.subTest(width=width, button=name):
                         widths = main.get_by_role("button", name=name).evaluate(
                             """el => {
@@ -2018,7 +2136,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_buttons_keep_their_colours_size_and_focus_ring(self):
         # #125: The pre-migration values with the site's overrides, on the 18px root; since #139
         # every button is a pill, and the primary button's gradient covers its border.
-        audiogram = self.audiogram(date(2026, 9, 28))
         large = {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "999px"}
         regular = {"padding": "6.75px 13.5px", "fontSize": "18px", "borderTopLeftRadius": "999px"}
         clear = "rgba(0, 0, 0, 0)"
@@ -2092,19 +2209,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 "rgba(49, 132, 253, 0.5)",
             ),
             (
-                f"/audiograms/{audiogram.pk}",
-                True,
-                "link",
-                "刪除這張聽力圖",
-                {
-                    **regular,
-                    "backgroundColor": clear,
-                    "color": "rgb(220, 53, 69)",
-                    "borderTopColor": "rgb(220, 53, 69)",
-                },
-                "rgba(220, 53, 69, 0.5)",
-            ),
-            (
                 "/audiograms/new",
                 True,
                 "button",
@@ -2124,7 +2228,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for path, signed_in, role, name, expected, ring in cases:
                 with self.subTest(button=name):
                     self.open(signed_in=signed_in)
-                    self.page.goto(f"{self.live_server_url}{path}")
+                    if path == "/audiograms/new":
+                        audiogram_step(self.page, self.live_server_url, 2)
+                    else:
+                        self.page.goto(f"{self.live_server_url}{path}")
                     area = self.page if name == "登出" else self.page.get_by_role("main")
                     button = area.get_by_role(role, name=name, exact=True)
                     self.assertEqual(self.styles(button, *expected), expected)
@@ -2220,7 +2327,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual({self.size(part)[1] for part in (year, field, unit)}, {42.5})
 
             self.open()
-            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            audiogram_step(self.page, self.live_server_url, 2)
             self.page.get_by_text("用數值輸入").click()
             select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
             self.assertEqual(self.size(select)[1], 42.5)
@@ -2242,6 +2349,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(mask, "boxShadow"), field_focus_ring)
             mask.check()
             self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
+            # #199: the date is step 1.
+            self.page.get_by_role("button", name="上一步").click()
             date_field = self.page.get_by_label("檢查日期")
             self.assertEqual(
                 self.styles(date_field, "padding", "fontSize", "borderTopLeftRadius"),
@@ -2249,18 +2358,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             )
             self.assertGreaterEqual(self.size(date_field)[1], 44)
 
+            # #202: the compare page picks with radio cards in 舊 and 新 rows, not selects; each
+            # row is a full touch target.
             self.audiogram(date(2026, 10, 5))
             self.page.goto(f"{self.live_server_url}/audiograms/compare")
-            first = self.page.get_by_label("第一張")
-            self.assertEqual(
-                self.styles(first, "padding", "fontSize", "borderTopLeftRadius"),
-                {
-                    "padding": "9px 40.5px 9px 18px",
-                    "fontSize": "22.5px",
-                    "borderTopLeftRadius": "13.5px",
-                },
-            )
-            self.assertGreaterEqual(self.size(first)[1], 44)
+            for row in self.page.locator(".compare-pick > summary").all():
+                self.assertGreaterEqual(self.size(row)[1], 44)
 
     def test_cards_tables_alerts_and_lists_look_as_before(self):
         first = self.audiogram(date(2026, 9, 28))
@@ -2326,7 +2429,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 },
             )
 
-            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            audiogram_step(self.page, self.live_server_url, 4)
             self.page.get_by_role("button", name="存檔").click()
             danger = self.page.get_by_role("alert").filter(has_text="請至少標記一個點")
             self.assertEqual(
@@ -2679,7 +2782,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for path, selector, colour in cases:
                 with self.subTest(path=path, selector=selector):
                     self.open(javascript=not path.startswith("/questionnaire/"))
-                    self.page.goto(f"{self.live_server_url}{path}")
+                    if path == "/audiograms/new" and selector != "#tested-on":
+                        audiogram_step(self.page, self.live_server_url, 2)
+                    else:
+                        self.page.goto(f"{self.live_server_url}{path}")
                     found = self.page.locator(selector).first
                     expect(found).to_be_attached()
                     self.assertEqual(self.style(found, "backgroundColor"), colour)
@@ -2764,7 +2870,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.open()
             for path, selector, radius in cases:
                 with self.subTest(path=path, selector=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
+                    if path == "/audiograms/new" and selector != "#tested-on":
+                        audiogram_step(self.page, self.live_server_url, 2)
+                    else:
+                        self.page.goto(f"{self.live_server_url}{path}")
                     found = self.page.locator(selector).first
                     expect(found).to_be_attached()
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
@@ -2805,7 +2914,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # ADR 0007: the masking switch is one of the few non-level colours kept (#137 acceptance 4).
         self.open()
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/audiograms/new")
+            audiogram_step(self.page, self.live_server_url, 2)
             self.page.get_by_role("button", name="遮蔽：關").click()
             switch = self.page.get_by_role("button", name="遮蔽：開（△ □ [ ]）")
             self.assertEqual(
@@ -3015,12 +3124,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_buttons_are_pills_and_only_change_colour(self):
         # Except the audiogram symbol buttons, which #120 lists at the medium radius
         # (test_three_radius_levels).
-        audiogram = self.audiogram(date(2026, 9, 28))
         cases = (
             (False, "/login", "button", "登入"),
             (False, "/login", "link", "註冊"),
             (True, "/", "button", "登出"),
-            (True, f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖"),
             (True, "/account/delete", "button", "刪除帳號"),
         )
         with self.saving_artifacts():
@@ -3050,7 +3157,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         cases = (
             ("/account/delete", "button", "刪除帳號", "backgroundColor"),
             (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", "backgroundColor"),
-            (f"/audiograms/{audiogram.pk}", "link", "刪除這張聽力圖", "color"),
             ("/share", "button", "取消分享", "color"),
         )
         self.open()
@@ -3061,6 +3167,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     button = self.page.get_by_role(role, name=name, exact=True)
                     self.assertEqual(self.style(button, prop), red)
                     self.assertEqual(self.style(button, "borderTopColor"), red)
+            # #201: the result page's delete is a red text link on the warm page, darker than
+            # the button red (4.24:1 there) to keep 4.5:1, and still a full touch target.
+            with self.subTest(button="刪除這張"):
+                self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
+                link = self.page.get_by_role("link", name="刪除這張", exact=True)
+                self.assertEqual(self.style(link, "color"), self.ERROR)
+                self.assertGreaterEqual(self.lowest_contrast(self.ERROR, self.WARM_PAGE), 4.5)
+                self.assertGreaterEqual(self.size(link)[1], 44)
 
     def test_keyboard_focus_ring_stays_beside_the_glow(self):
         self.open(signed_in=False)

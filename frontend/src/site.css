@@ -2021,9 +2021,10 @@
     color: var(--color-severe);
   }
 
+  /* min(): at 200% text 14rem is wider than a phone, so a card never asks for more than the row. */
   .ear-results {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
     gap: 0.75rem;
   }
 
@@ -2134,6 +2135,16 @@
 
   .compare-pick > button {
     margin-bottom: 1rem;
+  }
+
+  /* #204: at 200% text the four-column number tables scroll in their own box, not the page. */
+  .compare-table-scroll {
+    overflow-x: auto;
+  }
+
+  .compare-table-scroll:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
   }
 
   /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202). */

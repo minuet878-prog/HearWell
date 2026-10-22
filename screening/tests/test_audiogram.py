@@ -1365,6 +1365,14 @@ class AudiogramComparePickerTests(TestCase):
         self.assertIn('aria-current="true"', links[0][0])
         self.assertIn("href=", links[1][0])
 
+    def test_each_number_table_scrolls_in_a_named_focusable_box(self):
+        # #204: at 200% text a four-column table is wider than a phone; only its box scrolls.
+        oldest, _, latest = self._three()
+        main = self._main(self._get(a=latest.id, b=oldest.id))
+        boxes = re.findall(r'<div class="compare-table-scroll"([^>]*)>\s*<table', main)
+        self.assertEqual(len(boxes), main.count("<table"))
+        self.assertIn('role="region" aria-label="右耳 四頻平均" tabindex="0"', boxes[0])
+
     def test_numbers_fold_under_their_own_heading_and_the_note_stays(self):
         oldest, _, latest = self._three()
         main = self._main(self._get(a=latest.id, b=oldest.id))

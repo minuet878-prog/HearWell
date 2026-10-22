@@ -8,7 +8,8 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-4">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h1>
+{# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
+<h1 class="h3 mt-4 wrap-anywhere">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h1>
 {# #201 (spec #183 stories 94-105): both ears at a glance, the chart right under them. #}
 <section class="card card-body audiogram-summary mb-4" aria-label="兩耳程度">
     <p class="mb-0">{% for ear, label, result in ears %}<span class="audiogram-summary-ear">{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}</span>{% endfor %}</p>
