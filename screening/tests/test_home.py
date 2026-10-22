@@ -309,3 +309,53 @@ class ReturningUserHomeTests(TestCase):
                     self._submit("ioi-ha", [3] * 7, days_ago=9, norm_group="mild_moderate")
                     self._submit("ssq12-tw", [6] * 12, days_ago=10)
                 self.assertEqual(self._count_queries(), two)
+
+    # Ticket #160: "您還可以" on the returning-user home.
+    def _more_section(self, main):
+        found = re.search(
+            r'<section[^>]*aria-labelledby="more-title".*?</section>', main, re.DOTALL
+        )
+        self.assertIsNotNone(found, "no 您還可以 section")
+        return found.group(0)
+
+    def test_more_you_can_do_links_four_cards_to_their_pages(self):
+        # Acceptance 1: sharing goes straight to the report's sharing block.
+        self._hhie_s(days_ago=30)
+        section = self._more_section(self._main())
+        self.assertIn('<h2 id="more-title" class="h4">您還可以</h2>', section)
+        cards = re.findall(
+            r'<a class="link-card" href="([^"]*)">\s*<span class="link-card-body">\s*'
+            r'<span class="link-card-title">([^<]*)</span>',
+            section,
+        )
+        self.assertEqual(
+            cards,
+            [
+                ("/audiograms/new", "記錄醫院的聽力圖"),
+                ("/report", "印聽力報告給醫師看"),
+                ("/report#report-share", "分享報告給家人"),
+                ("/add_to_home", "加到手機主畫面"),
+            ],
+        )
+
+    def test_share_card_target_is_the_report_sharing_block(self):
+        self._hhie_s(days_ago=30)
+        report = self.client.get(reverse("health_report")).content.decode()
+        self.assertIn('<section id="report-share"', report)
+
+    def test_more_you_can_do_shows_all_four_cards_without_javascript(self):
+        # Acceptance 3: only the script hides "加到手機主畫面", so the page itself hides nothing.
+        self._hhie_s(days_ago=30)
+        section = self._more_section(self._main())
+        self.assertEqual(section.count('class="link-card"'), 4)
+        self.assertNotRegex(section, r"\shidden[\s=>]")  # the HTML attribute, not aria-hidden
+        items = re.findall(r"<li([^>]*)>", section)
+        self.assertEqual(items, ["", "", "", " data-hide-in-app"])
+
+    def test_new_user_home_has_no_more_you_can_do(self):
+        # Acceptance 4: no records (and an anonymous visitor) see the new-user home only.
+        main = self._main()
+        self.assertIn("開始篩檢", main)
+        self.assertNotIn("您還可以", main)
+        self.client.logout()
+        self.assertNotIn("您還可以", self._main())
