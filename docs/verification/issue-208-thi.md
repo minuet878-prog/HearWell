@@ -51,9 +51,9 @@
 
 | 項目 | 結果 |
 |---|---|
-| Django 全部 | 864 個通過 |
+| Django 全部 | 896 個通過（合進 #219 後的 `main` 再跑；合併前 864 個） |
 | 前端（Vitest） | 203 個通過；`npm run build` 成功 |
-| e2e `e2e.main_flow` 全套 | 83 個通過 |
+| e2e `e2e.main_flow` 全套 | 87 個通過（合進 `main` 後；合併前 83 個） |
 | Ruff | 通過 |
 | API schema | `docs/api/schema.yaml` 與程式重新產生的一致 |
 
