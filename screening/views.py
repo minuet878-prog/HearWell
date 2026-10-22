@@ -210,7 +210,7 @@ def questionnaire_list(request):
             )
         age_group = age_form.cleaned_data["age_group"]
     else:
-        age_group = "older" if age > 65 else "adult"
+        age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
     wearing_form = WearingNowForm(request.GET if "hearing_aid" in request.GET else None)
     if not wearing_form.is_valid():
         return _wizard_step(
@@ -221,8 +221,8 @@ def questionnaire_list(request):
             age_group=age_group if ask_age else None,
             back_url=wizard_url if ask_age else reverse("index"),
         )
-    life_impact = by_code[hhie_s.CODE if age_group == "older" else hhia_s.CODE]
-    wearing = wearing_form.cleaned_data["hearing_aid"] == "yes"
+    life_impact = by_code[hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE]
+    wearing = wearing_form.cleaned_data["hearing_aid"]
     if not wearing:
         recommended, reason = life_impact, "unaided"
     elif _norm_bases(request.user).exists():

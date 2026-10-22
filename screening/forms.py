@@ -159,9 +159,11 @@ AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
 
 
 class AgeGroupForm(forms.Form):
+    # The answers' values, also used when the birth year already tells the age (#152).
+    ADULT, OLDER = "adult", "older"
     age_group = forms.ChoiceField(
         label="您目前的實際年齡？",
-        choices=(("adult", "18–64 歲"), ("older", "65 歲以上")),
+        choices=((ADULT, "18–64 歲"), (OLDER, "65 歲以上")),
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={"required": "請選擇您的年齡區間"},
     )
@@ -169,9 +171,10 @@ class AgeGroupForm(forms.Form):
 
 class WearingNowForm(forms.Form):
     # The wizard's second question (#152); the answer page still asks about this answering.
-    hearing_aid = forms.ChoiceField(
+    hearing_aid = forms.TypedChoiceField(
         label="您現在有戴助聽器嗎？",
         choices=(("no", "沒有戴"), ("yes", "有戴")),
+        coerce=lambda value: value == "yes",
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={"required": "請選擇您現在有沒有戴助聽器"},
     )

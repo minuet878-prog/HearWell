@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.forms import WearingNowForm
 from screening.models import Answer, Question, Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
 
@@ -237,6 +238,14 @@ class WizardTests(TestCase):
         self.client.force_login(other)
         page = self.wizard(age_group="older", hearing_aid="yes")
         self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
+
+    def test_hearing_aid_answer_comes_out_as_true_or_false(self):
+        # The address keeps no / yes; the view gets the answer itself.
+        for value, wearing in (("no", False), ("yes", True)):
+            with self.subTest(value=value):
+                form = WearingNowForm({"hearing_aid": value})
+                self.assertTrue(form.is_valid())
+                self.assertIs(form.cleaned_data["hearing_aid"], wearing)
 
     def test_invalid_hearing_aid_answer_stays_on_that_step(self):
         self.login_age(66)
