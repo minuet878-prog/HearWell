@@ -172,5 +172,4 @@ class SadlScoringTests(SadlTestCase):
         page = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
         for name, text in approved.items():
             with self.subTest(name=name):
-                self.assertContains(page, f"{name}：4.0")
-                self.assertContains(page, text)
+                self.assertContains(page, f"<strong>{name}：4.0</strong><br>{text}")
