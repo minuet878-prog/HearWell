@@ -218,11 +218,12 @@ class WizardTests(TestCase):
         self.assertEqual(page.context["reason"], "has_norm_basis")
 
     def assert_ssq12_also(self, page):
+        # SADL is listed (#166), so it joins SSQ12 here (#174).
         main = page.content.decode()
         also = main[main.index("也可以做") : main.index("看其他問卷")]
-        ssq12 = self.by_code["ssq12-tw"]
-        self.assertIn(f'href="{reverse("screening", args=[ssq12.pk])}"', also)
-        self.assertEqual(also.count("questionnaire-card"), 1)
+        for code in ("ssq12-tw", "sadl"):
+            self.assertIn(f'href="{reverse("screening", args=[self.by_code[code].pk])}"', also)
+        self.assertEqual(also.count("questionnaire-card"), 2)
 
     def test_only_records_that_set_the_ioi_ha_norm_group_count(self):
         # Same records as the IOI-HA norm basis: the user's own, unaided, complete HHI.
