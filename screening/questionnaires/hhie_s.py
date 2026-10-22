@@ -1,5 +1,5 @@
 from screening.questionnaires.comparison import TotalComparison
-from screening.questionnaires.definition import LEVEL, RETEST_STEP, Definition
+from screening.questionnaires.definition import GUIDE_ACTION, LEVEL, RETEST_STEP, Definition
 
 CODE = "hhie-s"
 
@@ -54,6 +54,7 @@ NEXT_STEPS = {
             ),
             "action_label": "記錄聽力圖",
             "action_url": "audiogram_new",
+            **GUIDE_ACTION,
         },
         RETEST_STEP,
     ),
@@ -71,6 +72,7 @@ NEXT_STEPS = {
             ),
             "action_label": "看／印聽力報告",
             "action_url": "health_report",
+            **GUIDE_ACTION,
         },
         RETEST_STEP,
     ),
@@ -82,6 +84,7 @@ NEXT_STEPS = {
             ),
             "action_label": "看／印聽力報告",
             "action_url": "health_report",
+            **GUIDE_ACTION,
         },
         {
             "text": (
