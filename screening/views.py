@@ -43,6 +43,7 @@ from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
+    RECOMMENDATION_REASONS,
     classify,
     compare_to_norm,
     get_advice,
@@ -169,17 +170,6 @@ def consent(request):
 
 def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
-
-
-# Why the wizard recommends a questionnaire (#152), word for word as the site owner reviewed it.
-RECOMMENDATION_REASONS = {
-    "unaided": "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。",
-    "needs_norm_basis": (
-        "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
-        "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
-    ),
-    "has_norm_basis": "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。",
-}
 
 
 def _wizard_step(request, step, total, **context):
