@@ -6,7 +6,7 @@ from datetime import date
 
 from django.utils import timezone
 
-from screening.questionnaires.definition import LEVEL, RETEST_MONTHS
+from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import RETEST_BUTTON_TEXT, RETEST_DUE_TEXT, retest_next_text
 
 
@@ -50,7 +50,7 @@ def get_user_state(user, today):
     )  # newest first
     if not submissions:
         return NEW_USER_STATE
-    life_impact = [s for s in submissions if s.questionnaire.definition.result == LEVEL]
+    life_impact = [s for s in submissions if s.questionnaire.definition.life_impact]
     if life_impact:
         latest = life_impact[0]
         next_date = _add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)

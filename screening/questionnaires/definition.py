@@ -42,6 +42,10 @@ class Definition:
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
     # that takes no arguments). Every clause but the retest reminder traces back to `advice`.
     next_steps: dict = field(default_factory=dict)
+    # A life-impact questionnaire (GLOSSARY, ADR 0016): the home page's last result and retest
+    # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded
+    # is not enough: a graded questionnaire about something else (THI) is not one.
+    life_impact: bool = False
     trend_chart: bool = False  # the history page draws a score trend chart
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.

@@ -624,7 +624,7 @@ def my_hearing(request):
     # Ticket #162: a life-impact tab compares its newest record with the one before it worn
     # the same way, as the trend chart does (decision 2026-10-22).
     since_last = None
-    if current.definition.result == LEVEL:
+    if current.definition.life_impact:
         latest = records[0]
         previous = _previous_same_wearing(records)
         if previous is not None:
