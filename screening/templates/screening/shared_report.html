@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load static %}
+{% load static custom_filters %}
 
 {% block title %}HearWell 聽力報告{% endblock %}
 
@@ -12,8 +12,31 @@
 {% block body %}
 {# Spec phase8_c1_family_share.md 4.2: the owner's report without name or birth year. #}
 <article class="health-report">
+{# Ticket #194: the line and both cards are for the screen only; the printed report is unchanged. #}
+<p class="no-print mt-4 mb-0">這是您的家人在 HearWell 自己作答與輸入的自我篩檢結果。</p>
 <h1 class="h3 mt-4">HearWell 聽力報告</h1>
 <p class="font-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"n月j日" }}。</p>
+{% if life_impact or audiogram %}
+<section id="family-highlights" class="card card-body mb-4 no-print" aria-labelledby="highlights-title">
+    <h2 id="highlights-title" class="h4">先看重點</h2>
+    <ul class="list-unstyled">
+        {% if life_impact %}{% with classified=life_impact.classified %}
+        <li class="mb-2">
+            <span class="font-bold">{{ life_impact.questionnaire.definition.topic }}</span>
+            {% include "screening/level_badge.html" with text=classified.text level=classified.level %}
+            <br>{{ life_impact.created_at|date:"Y/m/d" }} 作答
+        </li>
+        {% endwith %}{% endif %}
+        {% if audiogram %}
+        <li class="mb-2">
+            <span class="font-bold">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</span>
+            <br>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" level=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}
+        </li>
+        {% endif %}
+    </ul>
+    <p class="mb-0">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+</section>
+{% endif %}
 {% if not has_records %}
 <p>這份報告目前沒有紀錄。</p>
 {% else %}
