@@ -2206,6 +2206,7 @@
     box-shadow: var(--shadow-warm);
   }
 
+  /* At 200% text a date or an address wraps instead of being cut off by the card. */
   .settings-row {
     display: flex;
     align-items: center;
@@ -2214,6 +2215,7 @@
     padding: 0.75rem 1.125rem;
     color: inherit;
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
 
   .settings-group > * + * {
@@ -2242,7 +2244,6 @@
   .settings-row-title {
     color: var(--color-heading);
     font-weight: 700;
-    overflow-wrap: anywhere;
   }
 
   .settings-row-link .settings-row-title {

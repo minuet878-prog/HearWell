@@ -79,7 +79,8 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     <h2 class="h4 mt-6">說明改版</h2>
     <p>如果蒐集的資料、用途或經手的服務有改變，我們會更新這一頁，並在您下次使用時請您再看一次、再同意一次。只改錯字或排版時，只會更新上面的日期。</p>
 
-    <section class="card card-body mt-6" aria-labelledby="contact-title">
+    {# .card resets overflow-wrap to break-word, so the address would not wrap at 200% text. #}
+    <section class="card card-body wrap-anywhere mt-6" aria-labelledby="contact-title">
         <h2 id="contact-title" class="h5">有問題或要刪除資料？</h2>
         <p class="mb-0">寫信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
     </section>

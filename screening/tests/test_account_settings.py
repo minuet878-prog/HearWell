@@ -164,21 +164,18 @@ class AccountSettingsTests(TestCase):
 class GroupedAccountSettingsTests(TestCase):
     """#195 (spec #183 stories 62-70): four groups, share status, ROC birth year."""
 
+    _main = AccountSettingsTests._main
+
     def setUp(self):
         self.url = reverse("account_settings")
         self.user = consented_user(username="grouped_a", email="a@example.com", birth_year=1955)
         self.client.force_login(self.user)
 
-    def _main(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 200)
-        content = response.content.decode()
-        return content[content.index("<main") : content.index("</main>")]
-
     def _share(self, user, **fields):
+        # 06:30 in Taipei is still 28 October in UTC, so the date shown must be Taiwan's.
         share = ReportShare.objects.create(user=user)
         ReportShare.objects.filter(pk=share.pk).update(
-            expires_at=datetime(2099, 10, 29, 14, 30, tzinfo=TAIPEI), **fields
+            expires_at=datetime(2099, 10, 29, 6, 30, tzinfo=TAIPEI), **fields
         )
 
     def _share_row(self, main):

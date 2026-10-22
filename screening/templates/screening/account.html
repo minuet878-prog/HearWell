@@ -20,7 +20,7 @@
         </div>
         <div class="settings-row settings-row-data">
             <dt class="settings-row-note">出生年</dt>
-            <dd class="settings-row-title">{% if user.birth_year %}民國 {{ user.birth_year|add:"-1911" }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
+            <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
         </div>
     </dl>
 </section>
