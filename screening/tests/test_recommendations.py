@@ -9,7 +9,8 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import Answer, Question, Questionnaire, Submission, User
+from screening.forms import WearingNowForm
+from screening.models import Answer, Consent, Question, Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
 
 
@@ -165,7 +166,12 @@ class WizardTests(TestCase):
                 _, params = self.recommendation(age, "yes")
                 page = self.wizard(**params)
                 self.assertEqual(page.context["recommended"], self.by_code[code])
-                self.assertContains(page, "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較")
+                self.assertContains(
+                    page,
+                    "<p><strong>為什麼推薦：</strong>"
+                    "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+                    "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
+                )
                 self.assert_ssq12_also(page)
 
     def test_catching_up_an_unaided_record_opens_the_answer_page_preselected(self):
@@ -233,6 +239,29 @@ class WizardTests(TestCase):
         page = self.wizard(age_group="older", hearing_aid="yes")
         self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
 
+    def test_an_unaided_ssq12_record_is_no_norm_basis(self):
+        # IOI-HA's norm group comes from HHIA-S or HHIE-S only, so SSQ12 does not count.
+        user, params = self.recommendation("older", "yes")
+        ssq12 = self.by_code["ssq12-tw"]
+        submission = Submission.objects.create(
+            user=user, questionnaire=ssq12, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=5)
+            for question in ssq12.questions.all()
+        )
+        page = self.wizard(**params)
+        self.assertEqual(page.context["recommended"], self.by_code["hhie-s"])
+        self.assertEqual(page.context["reason"], "needs_norm_basis")
+
+    def test_hearing_aid_answer_comes_out_as_true_or_false(self):
+        # The address keeps no / yes; the view gets the answer itself.
+        for value, wearing in (("no", False), ("yes", True)):
+            with self.subTest(value=value):
+                form = WearingNowForm({"hearing_aid": value})
+                self.assertTrue(form.is_valid())
+                self.assertIs(form.cleaned_data["hearing_aid"], wearing)
+
     def test_invalid_hearing_aid_answer_stays_on_that_step(self):
         self.login_age(66)
         page = self.wizard(hearing_aid="maybe")
@@ -289,15 +318,59 @@ class WizardTests(TestCase):
         self.login_age(None)
         self.assertNotContains(self.wizard(**{"from": "consent", "age_group": "older"}), greeting)
 
-    def test_agreeing_on_the_consent_page_marks_the_way_into_the_wizard(self):
+    def register_and_agree(self, next_url):
+        # A brand-new account, then 「我同意，開始篩檢」 on the consent page that follows.
+        password = "Xk9#mPq2vLw"
+        self.client.post(
+            reverse("register"),
+            {
+                "username": f"new_{uuid.uuid4().hex[:8]}",
+                "email": "new@example.com",
+                "password1": password,
+                "password2": password,
+                "next": next_url,
+            },
+        )
+        return self.client.post(reverse("consent"), {"agree": "", "next": next_url})
+
+    def test_agreeing_right_after_registering_marks_the_way_into_the_wizard(self):
+        wizard = reverse("questionnaire_list")
+        response = self.register_and_agree(wizard)
+        self.assertRedirects(response, f"{wizard}?from=consent")
+        self.assertContains(self.client.get(response.url), "帳號建好了")
+
+    def test_an_older_account_agreeing_for_the_first_time_gets_no_greeting(self):
+        # Made before the consent page existed (or asked again later): not a new account.
         user = User.objects.create_user(username="brand_new")
         self.client.force_login(user)
         wizard = reverse("questionnaire_list")
         response = self.client.post(reverse("consent"), {"agree": "", "next": wizard})
-        self.assertRedirects(response, f"{wizard}?from=consent")
-        self.assertContains(self.client.get(response.url), "帳號建好了")
+        self.assertRedirects(response, wizard)
+        self.assertNotContains(self.client.get(response.url), "帳號建好了")
+
+    def test_agreeing_keeps_the_query_string_of_next(self):
+        choose = f"{reverse('questionnaire_list')}?choose=self"
+        response = self.register_and_agree(choose)
+        self.assertRedirects(response, f"{choose}&from=consent")
+        self.assertContains(self.client.get(response.url), "自行選擇問卷")
+
+    def test_a_new_account_with_an_outside_next_still_goes_home(self):
+        for bad in ("https://evil.example.com/questionnaire_list", "//evil.example.com"):
+            with self.subTest(next=bad):
+                self.client.logout()
+                self.assertRedirects(
+                    self.register_and_agree(bad), reverse("index"), fetch_redirect_response=False
+                )
+
+    def test_the_greeting_comes_once_per_new_account(self):
+        wizard = reverse("questionnaire_list")
+        self.register_and_agree(wizard)
         # Already agreed: coming back through the consent page is no new account.
         response = self.client.get(reverse("consent"), {"next": wizard})
+        self.assertRedirects(response, wizard)
+        # Asked to agree again later (a new privacy notice) in the same session: still no greeting.
+        Consent.objects.all().delete()
+        response = self.client.post(reverse("consent"), {"agree": "", "next": wizard})
         self.assertRedirects(response, wizard)
 
     def submit_choice(self, page, value):

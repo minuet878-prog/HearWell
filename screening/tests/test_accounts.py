@@ -475,6 +475,34 @@ class RegisterPageGuidanceTests(TestCase):
             with self.subTest(text=text):
                 self.assertNotContains(response, text)
 
+    def test_username_help_is_plain_and_django_text_is_gone(self):
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            '<div id="id_username_helptext" class="text-black mt-1">'
+            "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</div>",
+            html=True,
+        )
+        self.assertNotContains(response, str(User._meta.get_field("username").help_text))
+
+    def test_username_rules_are_still_checked(self):
+        # The help text changed, the validators did not.
+        for username in ("has space", "x" * 151):
+            with self.subTest(username=username):
+                response = self.client.post(
+                    self.url,
+                    {
+                        "username": username,
+                        "email": "senior@example.com",
+                        "password1": "Xk9#mPq2vLw",
+                        "password2": "Xk9#mPq2vLw",
+                        "next": self.target,
+                    },
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(User.objects.exists())
+                self.assertTrue(response.context["form"].errors["username"])
+
     def test_show_password_buttons_wait_for_javascript(self):
         # The script reveals the buttons; the toggling itself is covered end to end (#155).
         response = self.client.get(self.url)

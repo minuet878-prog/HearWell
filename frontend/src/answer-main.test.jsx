@@ -111,12 +111,14 @@ describe("React entry", () => {
     expect(app().textContent).toContain("第 1 題／共 1 題・還剩大約 3 分鐘");
   });
 
-  it("starts on 沒戴 when the page says so (#154)", async () => {
+  it("starts on 沒戴 when the page says so, with the page's own hint (#154)", async () => {
     app().dataset.preselectUnaided = "";
+    // The Django form's hint is the only copy of the sentence; React shows whatever it says.
+    form().insertAdjacentHTML("afterbegin", '<p id="hearing-aid-hint">頁面上的說明句</p>');
     runInline();
     respondWith(ok);
     await startReact();
-    await waitFor(() => expect(app().textContent).toContain("請想沒戴助聽器時的情況來回答"));
+    await waitFor(() => expect(app().textContent).toContain("頁面上的說明句"));
     const unaided = [...app().querySelectorAll("label")].find((l) => l.textContent === "沒戴");
     expect(unaided.querySelector("input").checked).toBe(true);
   });

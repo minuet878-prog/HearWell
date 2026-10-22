@@ -1,7 +1,7 @@
 import json
 import uuid
 from collections import Counter
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -103,6 +103,10 @@ def logout_view(request):
     return HttpResponseRedirect(reverse("index"))
 
 
+# Set when an account is made; only then does agreeing on the consent page greet the user (#152).
+NEW_ACCOUNT = "screening.new_account"
+
+
 @require_http_methods(["GET", "POST"])
 def register(request):
     next_url = _safe_next(request)
@@ -119,6 +123,7 @@ def register(request):
                 form.add_error("username", form.instance.unique_error_message(User, ["username"]))
             else:
                 login(request, user)
+                request.session[NEW_ACCOUNT] = True
                 # New accounts agree to the privacy notice before anything else.
                 if next_url:
                     return redirect_to_login(next_url, reverse("consent"))
@@ -149,10 +154,14 @@ def consent(request):
         return redirect("index")
     if request.method == "POST" and "agree" in request.POST and not request.user.has_consented():
         request.user.give_consent()
-        # Into the wizard: its first screen then says the account is ready (#152).
-        wizard_url = reverse("questionnaire_list")
-        if urlsplit(next_url).path == wizard_url:
-            return HttpResponseRedirect(f"{wizard_url}?from=consent")
+        # Right after registering, into the wizard: its first screen then says the account is
+        # ready (#152). Popped on any agreeing, so agreeing again later says nothing.
+        parts = urlsplit(next_url)
+        if request.session.pop(NEW_ACCOUNT, False) and parts.path == reverse("questionnaire_list"):
+            query = urlencode(
+                [*parse_qsl(parts.query, keep_blank_values=True), ("from", "consent")]
+            )
+            return HttpResponseRedirect(urlunsplit(parts._replace(query=query)))
     if request.user.has_consented():
         return HttpResponseRedirect(next_url or reverse("index"))
     return render(request, "screening/consent.html", {"next": next_url})
@@ -160,6 +169,17 @@ def consent(request):
 
 def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
+
+
+# Why the wizard recommends a questionnaire (#152), word for word as the site owner reviewed it.
+RECOMMENDATION_REASONS = {
+    "unaided": "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。",
+    "needs_norm_basis": (
+        "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+        "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
+    ),
+    "has_norm_basis": "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。",
+}
 
 
 def _wizard_step(request, step, total, **context):
@@ -199,7 +219,7 @@ def questionnaire_list(request):
             )
         age_group = age_form.cleaned_data["age_group"]
     else:
-        age_group = "older" if age > 65 else "adult"
+        age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
     wearing_form = WearingNowForm(request.GET if "hearing_aid" in request.GET else None)
     if not wearing_form.is_valid():
         return _wizard_step(
@@ -210,8 +230,8 @@ def questionnaire_list(request):
             age_group=age_group if ask_age else None,
             back_url=wizard_url if ask_age else reverse("index"),
         )
-    life_impact = by_code[hhie_s.CODE if age_group == "older" else hhia_s.CODE]
-    wearing = wearing_form.cleaned_data["hearing_aid"] == "yes"
+    life_impact = by_code[hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE]
+    wearing = wearing_form.cleaned_data["hearing_aid"]
     if not wearing:
         recommended, reason = life_impact, "unaided"
     elif _norm_bases(request.user).exists():
@@ -229,6 +249,7 @@ def questionnaire_list(request):
         total,
         recommended=recommended,
         reason=reason,
+        why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=[by_code[SSQ12]] if wearing else [],
         questionnaires=questionnaires,

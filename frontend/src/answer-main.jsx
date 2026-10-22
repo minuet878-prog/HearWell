@@ -9,6 +9,8 @@ const container = document.getElementById("answer-app");
 const fallback = document.getElementById("answer-form");
 // The questionnaire's intro: React shows it per step (#153), so the page's copy goes once React is in.
 const intro = document.getElementById("answer-intro");
+// Why 沒戴 is already chosen (#154): the Django form's sentence, there only when preselected.
+const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
 const page = document.documentElement.classList;
 
@@ -27,6 +29,7 @@ if (container && fallback) {
       minutes={Number(container.dataset.minutes)}
       introHtml={intro.innerHTML}
       preselectUnaided={"preselectUnaided" in container.dataset}
+      unaidedHint={hint?.textContent}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {
