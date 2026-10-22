@@ -16,7 +16,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   驗證見 `docs/verification/brand-refresh.md`）、字型改由網站自己提供並修正隱私權說明（#181，ADR 0014）、健康資料頁面
   禁止快取（#182）、成人問卷第三批 THI 耳鳴障礙量表（母規格 #208，#210–#217，ADR 0015、0016）、2c 支線改版三批
   （母規格 #183，#185–#204，ADR 0013；PR #219、#235、#237、#239）、家人溝通頁改成分段卡片（#240，驗證見
-  `docs/verification/issue-240.md`）。
+  `docs/verification/issue-240.md`）、IOI-HA 改用 React 作答頁（#245，驗證見 `docs/verification/issue-245.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
@@ -72,6 +72,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 2c 第二批「分享、帳號、隱私權」 | #183 的第二批、#193–#198：分享獨立頁、家人報告的重點與幫忙卡、加到主畫面選手機、帳號設定分四組與分享狀態、隱私權「先看重點」與聯絡卡；列印版跟改版前相同（ADR 0013，[驗證紀錄](verification/issues-193-196.md)、[#195、#197、#198](verification/issues-195-198.md)） |
 | 2c 第一批「比較與結果頁」 | #183 的第一批、#186–#192：三個配戴比較入口統一、IOI-HA 結果頁依常模分組、SSQ12 結果版面與「比上一次」、分數最低的題目、配戴狀態比較頁的單選卡與新結果卡（ADR 0013，[驗證紀錄](verification/issues-186-192.md)） |
 | 家人溝通頁分段卡片 | #240：`/family` 照設計比較頁第 15 列 A 改成分段卡片，文字不動，就醫卡改藍色系（ADR 0007，[驗證紀錄](verification/issue-240.md)） |
+| IOI-HA 改用 React 作答頁 | #245：API 開放 IOI-HA 讀題目與送出（帶作答頁的常模 token，跟網頁版共用驗證），作答頁一題一頁、不問戴助聽器、第 1 題完整顯示常模依據（ADR 0002，[驗證紀錄](verification/issue-245.md)） |
 | 成人問卷第三批 THI | #208、#210–#217：耳鳴障礙量表（醫院現用中文版，25 題、五級），算「耳鳴問卷」不算生活影響問卷、不影響重測提醒；情緒題答「經常」顯示 1925；我的紀錄趨勢圖、報告「耳鳴」區、精靈入口（ADR 0015、0016，[驗證紀錄](verification/issue-208-thi.md)） |
 | 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
@@ -84,7 +85,6 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - **HHIE-S 出處頁**：目前只有 IOI-HA 有出處；需本人提供原文與中文版出處。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。
 - **趨勢圖只讀 API 最新 20 筆**。最新 20 筆都不是 HHIE-S 時，摘要照常顯示（Django 看全部紀錄），圖框卻是空的；可讓 API 依問卷篩選。
-- **開放 IOI-HA 寫入 API 時**：補「答案倒序送出、每題選項不同」的測試（目前依題號排序沒有測試保護）。
 - **有人寄信要求刪除帳號時**：真的有人寄信再做管理指令，直接呼叫 `User.delete_with_data()`。
 - **待確認**：Render build log 的 Node 版本是不是 `.node-version` 的 24.21.0。
 
@@ -96,7 +96,6 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ### 問卷
 - **COSI**：第三批只做了 THI（見已完成），COSI 先不排；要做時先解決自行填答與原施測流程的差異，訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
-- **React 版 IOI-HA**（API 要先開放 IOI-HA 寫入）。
 
 ### 追蹤與紀錄
 - **情境日記**（中）：記錄在哪些情境聽不清楚。
@@ -131,7 +130,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ### 工程面
 - **前端錯誤監控**：要先評估 JS 體積。
-- **e2e 加動線**：聽力圖、IOI-HA、JS 關閉時的表單、WebKit／桌機大小。
+- **e2e 加動線**：聽力圖、JS 關閉時的表單（IOI-HA 網頁表單改走 React 後，真瀏覽器裡沒有測試送它）、WebKit／桌機大小。
 - **分數快取或改存欄位**（中）：要先想清楚何時失效（`_scores_cache` 已經有不會失效的坑）。
 - **匿名統計後台**（中）：看整體分數分布。
 - **上架原生 app**（大）：DRF 加 token 驗證，endpoint 不必重寫。
