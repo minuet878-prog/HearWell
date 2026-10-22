@@ -1135,7 +1135,16 @@ class HomeTests(TestCase):
         self.assertIn(f"result-banner-{classified['level']}", preview)
         self.assertIn(classified["text"], preview)
         self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
-        self.assertIn(get_advice(classified["level"])[:40] + "……", preview)
+        # Brand refresh round 4 ("結果頁會告訴您"): the title sits in the card, and three checks
+        # say what the result page tells you, instead of advice cut off mid-sentence.
+        self.assertRegex(
+            preview, r'<h2 class="h4 mb-0">結果長這樣</h2>\s*<span class="preview-tag">'
+        )
+        items = re.findall(r"<li>.*?</svg>\s*([^<]+?)\s*</li>", preview, re.S)
+        self.assertEqual(items, ["聽力對生活的影響程度", "分數落在哪一段", "接下來可以怎麼做"])
+        self.assertEqual(preview.count('aria-hidden="true"'), preview.count("<svg") + 1)
+        self.assertNotIn(get_advice(classified["level"])[:40], preview)
+        self.assertNotIn("……", preview)
 
     # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
     # A returning user's home page now shows their own last result on purpose.

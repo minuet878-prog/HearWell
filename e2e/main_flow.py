@@ -750,6 +750,15 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         mild = self.page.locator(".score-bar-segment-mild_to_moderate").bounding_box()
         centre = marker["x"] + marker["width"] / 2
         self.assertTrue(mild["x"] < centre < mild["x"] + mild["width"])
+        # Brand refresh round 4: each label sits under its own segment, this score's in bold.
+        for level in ("normal", "mild_to_moderate", "severe"):
+            segment = self.page.locator(f".score-bar-segment-{level}").bounding_box()
+            label = self.page.locator(f".score-bar-label-{level}").bounding_box()
+            self.assertAlmostEqual(label["x"], segment["x"], delta=1)
+            self.assertAlmostEqual(label["width"], segment["width"], delta=1)
+        current = self.page.locator(".score-bar-label-current")
+        expect(current).to_have_text("輕度到中度影響")
+        self.assertEqual(current.evaluate("el => getComputedStyle(el).fontWeight"), "700")
 
     def step5_home_shows_the_next_date(self):
         self.main().get_by_role("link", name="回首頁").click()

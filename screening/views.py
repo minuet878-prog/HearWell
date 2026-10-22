@@ -91,7 +91,6 @@ def index(request):
             "preview_level": preview["level"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
-            "preview_advice": get_advice(preview["level"]),
             "preview_score_bar": _score_bar(
                 hhie_s.THRESHOLDS, HOME_PREVIEW_SCORE, preview["level"]
             ),
@@ -964,7 +963,12 @@ def _score_bar(thresholds, score, level):
     start = 0
     for upper, text, segment_level in thresholds:
         segments.append(
-            {"level": segment_level, "text": text, "width": (upper - start) / ceiling * 100}
+            {
+                "level": segment_level,
+                "text": text,
+                "width": (upper - start) / ceiling * 100,
+                "current": segment_level == level,
+            }
         )
         start = upper
     position = max(0, min(100, score / ceiling * 100))

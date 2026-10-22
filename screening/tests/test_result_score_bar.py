@@ -73,6 +73,18 @@ class ScoreBarTests(TestCase):
         )
         self.assertIn('class="score-bar-marker" style="--position: 30.00%"', page)
 
+    def test_labels_sit_under_their_segments_and_mark_this_score(self):
+        page = self._get(self._hhie_s(12))
+        for level, width, current in (
+            ("normal", 20, ""),
+            ("mild_to_moderate", 40, " score-bar-label-current"),
+            ("severe", 40, ""),
+        ):
+            with self.subTest(level=level):
+                self.assertIn(
+                    f'class="score-bar-label-{level}{current}" style="width: {width}.00%"', page
+                )
+
     def test_hhia_s_uses_its_own_thresholds(self):
         # HHIA-S's own definition, not HHIE-S's (same numbers, but read independently).
         page = self._get(self._submit(self.hhia_s, self.hhia_questions, [4, 4, 2, 2] + [0] * 6))
@@ -103,8 +115,12 @@ class ScoreBarTests(TestCase):
             'class="score-bar-segment score-bar-segment-high" style="width: 50.00%"', page
         )
         self.assertIn('style="--position: 25.00%"', page)
-        self.assertIn('class="score-bar-label-low">低</span>', page)
-        self.assertIn('class="score-bar-label-high">高</span>', page)
+        # Brand refresh round 4: each label sits under its own segment; this score's is marked.
+        self.assertIn(
+            'class="score-bar-label-low score-bar-label-current" style="width: 50.00%">低</span>',
+            page,
+        )
+        self.assertIn('class="score-bar-label-high" style="width: 50.00%">高</span>', page)
 
     def test_no_bar_without_thresholds(self):
         submission = self._submit(self.unknown, [self.unknown_question], [4])

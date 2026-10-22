@@ -10,7 +10,7 @@
     </div>
     <div class="score-bar-labels">
         {% for segment in bar.segments %}
-        <span class="score-bar-label-{{ segment.level }}">{{ segment.text }}</span>
+        <span class="score-bar-label-{{ segment.level }}{% if segment.current %} score-bar-label-current{% endif %}" style="width: {{ segment.width|floatformat:2 }}%">{{ segment.text }}</span>
         {% endfor %}
     </div>
 </div>

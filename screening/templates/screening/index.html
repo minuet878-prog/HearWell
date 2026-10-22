@@ -55,15 +55,22 @@
         <span>隔一段時間再做一次，在「我的紀錄」看分數的變化。</span>
     </li>
 </ol>
-<h2 class="h4">結果長這樣</h2>
+{# Brand refresh round 4 ("結果頁會告訴您"): the title in the card, three checks instead of cut-off advice. #}
 <figure class="result-preview">
-    <span class="preview-tag">示意圖</span>
+    <div class="result-preview-head">
+        <h2 class="h4 mb-0">結果長這樣</h2>
+        <span class="preview-tag">示意圖</span>
+    </div>
     <div class="result-banner result-banner-{{ preview_level }}">
         <div class="result-level">{{ preview_text }}</div>
         <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
     </div>
     {% include "screening/score_bar.html" with bar=preview_score_bar %}
-    <p class="mt-2 mb-2">{{ preview_advice|slice:":40" }}……</p>
+    <ul class="result-preview-tells" role="list">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>聽力對生活的影響程度</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>分數落在哪一段</li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>接下來可以怎麼做</li>
+    </ul>
     <figcaption>實際結果依您的回答而定。</figcaption>
 </figure>
 {# Brand refresh, design picker round 3: one line in a badge card; the scales are in the top label. #}
