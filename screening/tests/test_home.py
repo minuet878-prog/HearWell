@@ -1,10 +1,12 @@
 """Spec #148 batch 1, ticket #150: the new-user home page."""
 
 import re
+from datetime import date
 
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.models import Audiogram
 from screening.tests.helpers import consented_user
 
 
@@ -93,13 +95,18 @@ class NewUserHomeTests(TestCase):
                 self.assertRedirects(response, url)
 
     def test_signed_in_user_without_records_sees_new_user_home(self):
-        self.client.force_login(consented_user(username="no_records"))
-        main = self._main()
-        self.assertEqual(self._link(main, "開始篩檢"), self.list_url)
-        self.assertNotIn("我已經有帳號，登入", main)
-        self.assertEqual(self._steps(main), list(self.STEPS))
-        self.assertNotIn(self.OLD_HINT, main)
-        self.assertNotIn("請先註冊", main)
+        audiogram_only = consented_user(username="audiogram_only")
+        # Spec #148 story 4: an audiogram is not a questionnaire record.
+        Audiogram.objects.create(user=audiogram_only, tested_on=date(2026, 10, 1))
+        for user in (consented_user(username="no_records"), audiogram_only):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+                main = self._main()
+                self.assertEqual(self._link(main, "開始篩檢"), self.list_url)
+                self.assertNotIn("我已經有帳號，登入", main)
+                self.assertEqual(self._steps(main), list(self.STEPS))
+                self.assertNotIn(self.OLD_HINT, main)
+                self.assertNotIn("請先註冊", main)
 
     def test_result_preview_uses_the_result_page_level_style(self):
         # 18 points on HHIE-S is mild to moderate; the result page draws its banner the same way.

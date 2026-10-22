@@ -469,6 +469,13 @@ class ReactAnswerPageTests(TestCase):
                     content.index('id="answer-intro"'), content.index('id="answer-app"')
                 )
                 # Without JS the one-page form keeps its old progress text and has no bar.
+                form = content[content.index('id="answer-form"') :]
+                count = questionnaire.questions.count()
+                for number in range(1, count + 1):
+                    self.assertIn(
+                        f'<span class="question-progress">第 {number} 題／共 {count} 題</span>',
+                        form,
+                    )
                 self.assertNotIn("還剩大約", content)
                 self.assertNotIn("step-progress-bar", content)
 
