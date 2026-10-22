@@ -180,7 +180,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.next()
             self.main().get_by_role("button", name="送出").click()
             expect(self.page.get_by_text("總分 20 分")).to_be_visible()
-            expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
+            expect(self.page.locator(".result-banner").get_by_text("輕至中度影響")).to_be_visible()
             expect(self.page.get_by_text("不能判定聽損程度", exact=False)).to_be_visible()
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
                 "link", name="我的紀錄"
@@ -207,7 +207,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ).check()
         self.main().get_by_role("button", name="送出").click()
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
-        expect(self.page.get_by_text("輕至中度影響")).to_be_visible()
+        expect(self.page.locator(".result-banner").get_by_text("輕至中度影響")).to_be_visible()
 
     def test_ssq12_scale_draft_and_average(self):
         """#79: range input, N/A, zero and draft restoration in a real browser."""
@@ -260,6 +260,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 Answer(submission=aided, question=q, score=8)
                 for q in unaided.questionnaire.questions.all()
             )
+            # #161: the comparison link only shows once both statuses exist; the page was
+            # rendered before the aided record above, so reload to see it.
+            self.page.reload()
             self.main().get_by_role("link", name="選擇或管理比較", exact=False).click()
             self.page.get_by_label("未配戴紀錄", exact=True).select_option(str(unaided.pk))
             self.page.get_by_label("配戴紀錄", exact=True).select_option(str(aided.pk))
@@ -548,7 +551,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
         # Every answer 有時 (2 points) x 10, question 1 counted with its changed answer.
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
-        expect(self.page.get_by_text("輕度到中度影響")).to_be_visible()
+        # The banner only: the score bar below it repeats the level name (ticket #158).
+        expect(self.page.locator(".result-banner").get_by_text("輕度到中度影響")).to_be_visible()
 
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
@@ -658,9 +662,10 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             "/report",
         ]
 
-    def open(self, width, height=900):
+    def open(self, width, height=900, signed_in=True):
         self.context = self.browser.new_context(viewport={"width": width, "height": height})
-        self.context.add_cookies([self.cookie])
+        if signed_in:
+            self.context.add_cookies([self.cookie])
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
@@ -1004,7 +1009,9 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     # phase9_ui_refresh_4a_home.md acceptance 8: step cards stack on a phone
     def test_home_step_cards_stack_on_a_phone(self):
-        self.open(320, 640)
+        # #159: the step cards are the new-user home's own elements; this fixture user has
+        # records, so check signed out.
+        self.open(320, 640, signed_in=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
@@ -1018,7 +1025,7 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     # Spec #148 (ticket #150): four steps sit two by two on a wide screen, never three and one.
     def test_home_step_cards_two_by_two_on_a_wide_screen(self):
-        self.open(1280)
+        self.open(1280, signed_in=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
@@ -1029,7 +1036,7 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     # phase9_ui_refresh_4a_home.md review 1: at 200% text the step cards still fit a phone
     def test_home_step_cards_fit_a_phone_at_double_text_size(self):
-        self.open(320, 640)
+        self.open(320, 640, signed_in=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
@@ -1286,9 +1293,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def style(self, locator, prop):
         return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
 
-    def submission(self, questionnaire, scores):
+    def submission(self, questionnaire, scores, wearing=False):
         record = Submission.objects.create(
-            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
         )
         Answer.objects.bulk_create(
             Answer(submission=record, question=question, score=score)
@@ -2020,6 +2027,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def warm_shell_records(self):
         """A history, an IOI-HA answer below the norm and an audiogram: every surface shows."""
         basis = self.submission(self.hhie_s, [2] * 10)
+        # #161: the comparison card only shows with both an aided and an unaided record.
+        self.submission(self.hhie_s, [0] * 10, wearing=True)
         ioi_ha = Questionnaire.objects.get(code="ioi-ha")
         ioi = Submission.objects.create(
             user=self.user,
@@ -2036,10 +2045,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_page_is_warm_and_surfaces_are_white(self):
         audiogram = self.warm_shell_records()[2]
-        cases = (
+        # #159: these are the new-user home's own elements, so check them signed out.
+        home_cases = (
             ("/", "body", self.WARM_PAGE),
             ("/", ".site-footer", self.WARM_FOOTER),
             ("/", ".step-cards li", self.WHITE),
+        )
+        cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", self.WHITE),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", self.WHITE),
             ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", self.WHITE),
@@ -2050,6 +2062,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             (f"/questionnaire/{self.hhie_s.pk}", "#id_form-0-score label", self.WHITE),
         )
         with self.saving_artifacts():
+            for path, selector, colour in home_cases:
+                with self.subTest(path=path, selector=selector):
+                    self.open(signed_in=False)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "backgroundColor"), colour)
             for path, selector, colour in cases:
                 with self.subTest(path=path, selector=selector):
                     self.open(javascript=not path.startswith("/questionnaire/"))
@@ -2103,10 +2122,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_three_radius_levels(self):
         basis, ioi, audiogram = self.warm_shell_records()
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
-        cases = (
+        # #159: these are the new-user home's own elements, so check them signed out.
+        home_cases = (
             ("/", ".step-cards li", large),
             ("/", ".home-band", large),
             ("/", ".result-preview", large),
+        )
+        cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", large),
             ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
@@ -2124,8 +2146,15 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("/audiograms", ".audiogram-thumbnail", "4.5px"),
             (f"/audiograms/{audiogram.pk}", ".audiogram-svg", "0px"),
         )
-        self.open()
         with self.saving_artifacts():
+            self.open(signed_in=False)
+            for path, selector, radius in home_cases:
+                with self.subTest(path=path, selector=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
+            self.open()
             for path, selector, radius in cases:
                 with self.subTest(path=path, selector=selector):
                     self.page.goto(f"{self.live_server_url}{path}")
@@ -2135,13 +2164,25 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_large_white_blocks_have_warm_borders_and_shadows(self):
         self.submission(self.hhie_s, [2] * 10)
+        # #159: the step cards are the new-user home's own elements, so check them signed out.
+        home_cases = (("/", ".step-cards li"),)
         cases = (
-            ("/", ".step-cards li"),
             ("/questionnaire_list?choose=self", "main a.link-card"),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
         )
-        self.open()
         with self.saving_artifacts():
+            self.open(signed_in=False)
+            for path, selector in home_cases:
+                with self.subTest(path=path, selector=selector):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    found = self.page.locator(selector).first
+                    expect(found).to_be_attached()
+                    self.assertEqual(self.style(found, "borderTopColor"), self.WARM_BORDER)
+                    self.assertEqual(
+                        self.style(found, "boxShadow"),
+                        "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px",
+                    )
+            self.open()
             for path, selector in cases:
                 with self.subTest(path=path, selector=selector):
                     self.page.goto(f"{self.live_server_url}{path}")
@@ -2399,11 +2440,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for other in others.all():
                 self.assertEqual(self.style(other, "backgroundImage"), "none")
 
+            # #159: the step numbers are the new-user home's own elements, so check them signed out.
+            self.open(signed_in=False)
             self.page.goto(f"{self.live_server_url}/")
             number = self.page.locator(".step-number").first
             self.assertEqual(self.style(number, "backgroundImage"), self.GRADIENT)
             self.assertEqual(self.style(number, "color"), self.WHITE)
 
+            self.open()
             self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             icon = self.page.locator(".questionnaire-icon").first
             self.assertEqual(self.style(icon, "backgroundImage"), self.GRADIENT)
@@ -2600,29 +2644,38 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_boxes_that_cannot_be_clicked_stay_still(self):
         record = self.submission(self.hhie_s, [2] * 10)
+        # #159: the step cards are the new-user home's own elements, so check them signed out.
+        home_cases = (("/", ".step-cards li"),)
         cases = (
-            ("/", ".step-cards li"),
             ("/my_hearing", ".trend-summary"),
             (f"/submission/{record.pk}", ".result-banner"),
         )
         every_style = """el => Object.fromEntries(
             [...getComputedStyle(el)].map(p => [p, getComputedStyle(el).getPropertyValue(p)])
         )"""
-        self.open(motion=True)
+
+        def check(path, selector):
+            self.page.goto(f"{self.live_server_url}{path}")
+            box = self.page.locator(selector).first
+            box.scroll_into_view_if_needed()
+            before = (box.bounding_box(), box.evaluate(every_style))
+            box.hover()
+            self.settled(box)
+            self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
+            self.page.mouse.down()
+            self.settled(box)
+            self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
+            self.page.mouse.up()
+
         with self.saving_artifacts():
+            self.open(motion=True, signed_in=False)
+            for path, selector in home_cases:
+                with self.subTest(box=selector):
+                    check(path, selector)
+            self.open(motion=True)
             for path, selector in cases:
                 with self.subTest(box=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    box = self.page.locator(selector).first
-                    box.scroll_into_view_if_needed()
-                    before = (box.bounding_box(), box.evaluate(every_style))
-                    box.hover()
-                    self.settled(box)
-                    self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
-                    self.page.mouse.down()
-                    self.settled(box)
-                    self.assertEqual((box.bounding_box(), box.evaluate(every_style)), before)
-                    self.page.mouse.up()
+                    check(path, selector)
 
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)

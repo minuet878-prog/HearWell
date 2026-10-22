@@ -937,6 +937,9 @@ def submission_result(request, submission_id):
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
             "score_bar": _score_bar(submission, classified_score),
+            "next_steps": submission.questionnaire.definition.next_steps.get(
+                classified_score["level"], ()
+            ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()

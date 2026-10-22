@@ -48,6 +48,38 @@ ADVICE = {
     for level, text in _LEVEL_ADVICE.items()
 }
 
+# Draft reviewed and finalized by the audiologist, issue #156.
+RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
+NEXT_STEPS = {
+    "normal": (
+        {"text": "這次生活影響回報較少，先不需要特別處理。"},
+        {
+            "text": "如果您仍覺得聽不清楚，建議安排聽力評估。",
+            "action_label": "記錄聽力圖",
+            "action_url": "audiogram_new",
+        },
+        RETEST_STEP,
+    ),
+    "mild_to_moderate": (
+        {"text": "您回報的聽力困擾已經影響部分日常生活。"},
+        {
+            "text": "建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        RETEST_STEP,
+    ),
+    "severe": (
+        {"text": "您回報的聽力困擾對生活有顯著影響。"},
+        {
+            "text": "建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。",
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        RETEST_STEP,
+    ),
+}
+
 DEFINITION = Definition(
     code=CODE,
     name="HHIA-S",
@@ -62,5 +94,6 @@ DEFINITION = Definition(
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
+    next_steps=NEXT_STEPS,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

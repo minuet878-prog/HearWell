@@ -6,6 +6,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
+from screening import questionnaires
 from screening.models import (
     Answer,
     Category,
@@ -17,6 +18,19 @@ from screening.models import (
 from screening.questionnaires.definition import AVERAGE, LEVEL
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
+
+
+class NextStepsCoverageTests(TestCase):
+    """Ticket #157: every life-impact questionnaire has next steps for every one of its levels."""
+
+    def test_every_level_questionnaire_has_steps_for_every_threshold_level(self):
+        for definition in questionnaires.DEFINITIONS.values():
+            if definition.result != LEVEL:
+                continue
+            for _, _, level in definition.thresholds:
+                with self.subTest(questionnaire=definition.code, level=level):
+                    self.assertIn(level, definition.next_steps)
+                    self.assertTrue(definition.next_steps[level])
 
 
 class CatalogFromDefinitionTests(TestCase):

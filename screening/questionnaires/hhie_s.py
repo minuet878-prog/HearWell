@@ -38,6 +38,62 @@ ADVICE = {
     ),
 }
 
+# Draft reviewed and finalized by the audiologist, issue #156.
+RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
+NEXT_STEPS = {
+    "normal": (
+        {
+            "text": (
+                "這次結果顯示您的聽覺自覺障礙程度為無或僅有輕微障礙，"
+                "暫時沒有明顯影響情緒與社交活動。"
+            )
+        },
+        {
+            "text": (
+                "不過高齡族群的聽力退化通常不容易自己察覺；如果還沒做過聽力檢查，"
+                "建議至醫院耳鼻喉科安排定期篩檢。"
+            ),
+            "action_label": "記錄聽力圖",
+            "action_url": "audiogram_new",
+        },
+        RETEST_STEP,
+    ),
+    "mild_to_moderate": (
+        {
+            "text": (
+                "聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、"
+                "在吵雜場合感到窘迫而退縮。"
+            )
+        },
+        {
+            "text": (
+                "這次篩檢能讓您體認到聽力對生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查，"
+                "並詢問專業意見。"
+            ),
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        RETEST_STEP,
+    ),
+    "severe": (
+        {
+            "text": (
+                "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
+                "建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。"
+            ),
+            "action_label": "看／印聽力報告",
+            "action_url": "health_report",
+        },
+        {
+            "text": (
+                "聽力喪失不只是聽不到，也會在社交中增加壓力、影響情緒，"
+                "這些都是真實的感受，不用自己忽視。"
+            )
+        },
+        RETEST_STEP,
+    ),
+}
+
 DEFINITION = Definition(
     code=CODE,
     topic="聽力對生活的影響",
@@ -50,6 +106,7 @@ DEFINITION = Definition(
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
+    next_steps=NEXT_STEPS,
     trend_chart=True,
     # The report anchor it had before other questionnaires could be compared.
     comparison=TotalComparison(anchor="report-difference"),

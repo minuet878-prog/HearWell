@@ -129,7 +129,10 @@ class AccountSettingsTests(TestCase):
         main = self._main(f"{reverse('my_hearing')}?questionnaire=hhie-s")
         nav = re.search(r'<nav class="history-tabs"[^>]*>(.*?)</nav>', main, re.S).group(1)
         links = re.findall(r"<a ([^>]*)>([^<]*)</a>", nav)
-        self.assertEqual([text for _, text in links], ["HHIE-S", "IOI-HA"])
+        self.assertEqual(
+            [text for _, text in links],
+            ["聽力對生活的影響（HHIE-S）", "助聽器使用成效（IOI-HA）"],
+        )
         self.assertIn('aria-current="page"', links[0][0])
         self.assertNotIn("aria-current", links[1][0])
 
