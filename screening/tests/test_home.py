@@ -66,7 +66,16 @@ class NewUserHomeTests(TestCase):
         self.assertNotIn("btn", login.group(1))
         self.assertLess(main.index(">開始篩檢<"), login.start())
 
-    def test_start_button_carries_the_logo_and_the_one_time_ring(self):
+    def test_title_is_larger_and_the_picture_is_the_smiling_elder(self):
+        main = self._main()
+        self.assertIn('<h1 class="h2 text-center">了解聽力對您生活的影響</h1>', main)
+        start = main.index('class="home-illustration"')
+        picture = main[start : main.index("</svg>", start)]
+        for part in ("ill-face", "ill-hair", "ill-cheek", "ill-accent"):
+            self.assertIn(part, picture)
+
+    # The logo and the one-time ring are drawn by CSS on btn-start and checked in e2e.
+    def test_start_button_uses_the_btn_start_class(self):
         for logged_in in (False, True):
             if logged_in:
                 self.client.force_login(consented_user(username="startbutton"))

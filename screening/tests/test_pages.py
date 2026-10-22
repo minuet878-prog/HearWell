@@ -830,10 +830,17 @@ class PwaTests(TestCase):
     def test_favicon_png_is_32(self):
         self.assertEqual(self._png_size(self.PWA_DIR / "favicon-32.png"), (32, 32))
 
-    def test_favicon_svg_is_the_logo_mark(self):
-        favicon = (self.PWA_DIR / "favicon.svg").read_text(encoding="utf-8")
-        self.assertIn('viewBox="0 0 64 64"', favicon)
-        self.assertIn("linearGradient", favicon)
+    def test_favicon_app_icon_and_header_draw_the_same_wave_w(self):
+        # ADR 0012: the logo lives in three files; changing one alone fails here.
+        wave = "M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22"
+        css = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
+        for path in (self.PWA_DIR / "favicon.svg", self.PWA_DIR / "icon.svg", css):
+            with self.subTest(path=path.name):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn(wave, text)
+                if path.suffix == ".svg":
+                    self.assertIn('<stop offset="0" stop-color="#1f4e8c"/>', text)
+                    self.assertIn('<stop offset="1" stop-color="#1d6f99"/>', text)
 
     # 21
     def test_pwa_folder_has_only_app_info_and_icons(self):

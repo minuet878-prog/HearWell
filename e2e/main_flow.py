@@ -2496,8 +2496,12 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(header, "backgroundImage"), "none")
                     brand = header.locator(".site-brand a")
                     self.assertEqual(self.style(brand, "color"), self.PRIMARY)
+                    tint = brand.locator(".site-wordmark-tint")
+                    self.assertEqual(self.style(tint, "color"), "rgb(29, 111, 153)")
                     logo = brand.locator(".site-logo")
                     self.assertEqual(self.style(logo, "backgroundImage"), self.LOGO_GRADIENT)
+                    # The pebble: uneven corners, not a circle.
+                    self.assertEqual(self.style(logo, "borderTopLeftRadius"), "42% 48%")
                     self.assertIn("data:image/svg+xml", self.mask(logo, "::after"))
                     texts = (
                         brand.locator(".site-wordmark-tint"),
@@ -2537,6 +2541,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertLessEqual(animation["end"], 4000)
 
             start = hero.get_by_role("link", name="開始篩檢")
+            self.assertEqual(self.style(start, "borderTopLeftRadius"), "999px")
             self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
             self.assertGreaterEqual(self.text_contrast(start), 4.5)
             login = hero.get_by_role("link", name="我已經有帳號，登入")
