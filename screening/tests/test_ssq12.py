@@ -373,7 +373,12 @@ class Ssq12LowestItemsTests(TestCase):
 
     def items(self, section):
         """(question text, score) of each listed item, in page order."""
-        return re.findall(r"<li[^>]*>(.*?)<br><strong>(.*?)</strong></li>", section, re.S)
+        # Each item a card since the text-heavy pages tidy-up: the question, then its score tag.
+        return re.findall(
+            r'<div class="score-card-head"><span>(.*?)</span><span class="score-chip">(.*?)</span>',
+            section,
+            re.S,
+        )
 
     def test_lists_the_three_lowest_scored_items_by_score_then_item_number(self):
         # Items 1 and 5 不適用; items 3 and 4 tie for third place at 4.

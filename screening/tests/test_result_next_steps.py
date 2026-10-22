@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.questionnaires import hhia_s
 from screening.tests.helpers import consented_user, fake_definition, register
 
 RETEST = ("半年後再做一次，時間到了首頁會提醒您。", None)
@@ -187,6 +188,20 @@ class ResultNextStepsTests(TestCase):
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
                     self.assertIn(f"<p>{advice}</p>", main)
+
+    def test_hhia_s_states_its_limits_under_the_steps_outside_the_folded_advice(self):
+        # Text-heavy pages tidy-up: the full advice is folded away, and it was the only place
+        # HHIA-S said what the score cannot tell; the owner chose to show that under the steps.
+        limits = hhia_s.EXPLANATION
+        for level in ("normal", "mild_to_moderate", "severe"):
+            with self.subTest(level=level):
+                main = self._main(self._submit(self.questionnaires["hhia-s"], TOTALS[level]))
+                note = f'<p class="source-note">{limits}</p>'
+                self.assertIn(note, main)
+                self.assertLess(main.index("</ol>"), main.index(note))
+                self.assertLess(main.index(note), main.index("<summary>看完整建議</summary>"))
+        main = self._main(self._submit(self.questionnaires["hhie-s"], TOTALS["normal"]))
+        self.assertNotIn('class="source-note"', main)
 
     def test_no_step_list_when_unclassifiable(self):
         submission = Submission.objects.create(user=self.user, questionnaire=self.unknown)

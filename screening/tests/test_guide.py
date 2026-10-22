@@ -65,7 +65,9 @@ def assert_footer(testcase, response, checked_on, sources):
     footer = content[content.index("<footer") : content.index("</footer>")]
     text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", footer))
     testcase.assertIn(f"本頁資料查核於 {checked_on}。法規、金額如有變動，以官方公告為準。", text)
-    testcase.assertIn("資料來源：", text)
+    # Text-heavy pages tidy-up: the sources sit behind a 「資料來源」 dropdown box.
+    testcase.assertIn('<details class="phone-choice mb-2">', footer)
+    testcase.assertIn("<summary>資料來源</summary>", footer)
     for wording, url in sources:
         with testcase.subTest(url=url):
             testcase.assertIn(f'href="{url}"', footer)

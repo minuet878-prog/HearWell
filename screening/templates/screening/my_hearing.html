@@ -24,7 +24,7 @@
 {# Each tab is its own URL, so reload and the back button keep the tab. #}
 <nav class="history-tabs" aria-label="問卷">
     {% for questionnaire in questionnaires %}
-    <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}（{{ questionnaire.questionnaire_name }}）</a>
+    <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}<span class="history-tab-code"><span class="visually-hidden">（</span>{{ questionnaire.questionnaire_name }}<span class="visually-hidden">）</span></span></a>
     {% endfor %}
 </nav>
 {% endif %}

@@ -20,6 +20,16 @@ from screening.tests import test_report
 from screening.tests.helpers import consented_user, register
 
 
+def _text(html):
+    """The page's text without tags, as a reader sees it."""
+    return re.sub(r"<[^>]+>", "", html)
+
+
+def _facet_head(name, score):
+    """A SADL facet card's title and score tag (text-heavy pages tidy-up)."""
+    return f'<h3 class="h5 mb-0">{name}</h3><span class="score-chip">{score} 分</span>'
+
+
 def sadl_submission(user, questionnaire, *, wearing_hearing_aid=True, score=4):
     """A fully-answered SADL record (15 items, none 「不適用」), owned by the given user."""
     submission = Submission.objects.create(
@@ -159,9 +169,11 @@ class SadlScoringTests(SadlTestCase):
                 self.assertIsNone(data["level"])
                 self.assertNotIn("average_score", data)
                 page = self.client.get(reverse("result", args=[submission.pk]))
-                self.assertContains(page, f"整體滿意度：{overall}")
+                # Since the text-heavy pages tidy-up: the overall score in the summary box, each
+                # facet a card with its name as the title and its score as a tag.
+                self.assertIn(f"整體滿意度：{overall} 分（滿分 7）", _text(page.content.decode()))
                 for name, score in zip(names, subscales, strict=True):
-                    self.assertContains(page, f"{name}：{score}")
+                    self.assertContains(page, _facet_head(name, score))
                 if skipped:
                     self.assertContains(page, "第 11、14 題選了「不適用」，沒有算進分數")
                 else:
@@ -207,7 +219,10 @@ class SadlScoringTests(SadlTestCase):
         page = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
         for name, text in approved.items():
             with self.subTest(name=name):
-                self.assertContains(page, f"<strong>{name}：4.0</strong><br>{text}")
+                self.assertRegex(
+                    page.content.decode(),
+                    rf'{_facet_head(name, "4.0")}</div>\s*<p class="mb-0">{re.escape(text)}</p>',
+                )
 
     def test_the_submission_list_reads_answers_the_same_number_of_times_for_two_or_five(self):
         def list_queries():
@@ -315,7 +330,7 @@ class SadlHistoryTests(SadlTestCase):
         self.answer([1] * 15)
         second = Submission.objects.latest("pk")
         history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
-        self.assertContains(history, "助聽器滿意度（SADL）")
+        self.assertIn("助聽器滿意度（SADL）", _text(history.content.decode()))
         self.assertContains(history, "整體滿意度：4.0")
         self.assertContains(history, "整體滿意度：2.6")
         self.assertContains(history, reverse("result", args=[first.pk]))
@@ -433,7 +448,7 @@ class SadlReportTests(SadlTestCase):
         result = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         section = test_report._section(report, "report-sadl")
         self.assertIn("整體滿意度：2.6", section)
-        self.assertIn("整體滿意度：2.6", result)
+        self.assertIn("整體滿意度：2.6", _text(result))
         names_and_scores = zip(
             ("正面效果", "服務與費用", "負面特徵", "個人形象"),
             ("1.0", "1.0", "5.0", "5.0"),
@@ -442,7 +457,7 @@ class SadlReportTests(SadlTestCase):
         for name, score in names_and_scores:
             with self.subTest(name=name):
                 self.assertIn(f"{name}：{score}", section)
-                self.assertIn(f"{name}：{score}", result)
+                self.assertIn(_facet_head(name, score), result)
 
     def test_no_sadl_records_leaves_the_part_out(self):
         content = self.client.get(reverse("health_report")).content.decode()

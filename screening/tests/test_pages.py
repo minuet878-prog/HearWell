@@ -635,9 +635,9 @@ class PageFlowTests(TestCase):
                 steps[0]["text"],
                 steps[1]["text"],
                 steps[2]["text"],
-                "完整建議",
+                # Text-heavy pages tidy-up: the full advice waits behind its own dropdown.
+                "<summary>看完整建議</summary>",
                 get_advice("mild_to_moderate"),
-                "<details",
                 "分數細節與作答明細",
                 "情緒分數：12",
                 "社交分數：0",
@@ -659,7 +659,12 @@ class PageFlowTests(TestCase):
 
     def test_result_answers_collapsed_in_question_order(self):
         main = self._result(self._submit([4, 2, 0, 4, 2, 0, 4, 2, 0, 4]))
-        details = re.search(r"<details(\s[^>]*)?>(.*?)</details>", main, re.DOTALL)
+        # The answers' dropdown, not the full advice's one above it.
+        details = re.search(
+            r"<details(\s[^>]*)?>(\s*<summary[^>]*>\s*分數細節與作答明細.*?)</details>",
+            main,
+            re.DOTALL,
+        )
         self.assertIsNotNone(details)
         self.assertNotIn("open", details.group(1) or "")
         body = details.group(2)
