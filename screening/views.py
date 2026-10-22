@@ -1,6 +1,7 @@
 import json
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -137,11 +138,20 @@ class GuideChapter:
 # The hearing-aid guide's chapters in reading order (spec #218).
 GUIDE_CHAPTERS = (
     GuideChapter("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
-    GuideChapter("assessment", "身障鑑定與鑑定醫院", None),
+    GuideChapter("assessment", "身障鑑定與鑑定醫院", "screening/guide/assessment.html"),
     GuideChapter("form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html"),
     GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
     GuideChapter("form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html"),
     GuideChapter("after-fitting", "配戴助聽器之後", "screening/guide/after_fitting.html"),
+)
+
+
+# Hearing (b230) assessment hospitals taken from the MOHW roster by
+# scripts/extract_assessment_hospitals.py (#222).
+ASSESSMENT_HOSPITALS = json.loads(
+    (Path(__file__).resolve().parent / "data" / "assessment_hospitals.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 
@@ -156,6 +166,8 @@ def guide_chapter(request, chapter):
     if found is None:
         raise Http404
     context = {"chapter": found}
+    if found.slug == "assessment":
+        context.update(_assessment_hospitals(request.GET.get("county")))
     if found.slug == "after-fitting":
         # #220 H8, H9, then SADL (the owner's addition): what the wizard offers someone who
         # wears hearing aids, IOI-HA and its 「也可以做」, not every listed questionnaire.
@@ -163,6 +175,18 @@ def guide_chapter(request, chapter):
         by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
         context["follow_ups"] = [by_code[IOI_HA], *_also_suggest(by_code, questionnaires)]
     return render(request, found.template, context)
+
+
+def _assessment_hospitals(county):
+    # An unknown county is treated like none chosen: the menu again, not an error.
+    if county not in ASSESSMENT_HOSPITALS["counties"]:
+        county = None
+    return {
+        "roster_version": ASSESSMENT_HOSPITALS["version"],
+        "counties": ASSESSMENT_HOSPITALS["counties"],
+        "county": county,
+        "hospitals": [h for h in ASSESSMENT_HOSPITALS["hospitals"] if h["county"] == county],
+    }
 
 
 class MonitoringTestError(Exception):
