@@ -84,7 +84,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 工作量：小／中／大。
 
 ### 問卷
-- **成人問卷第三批**：COSI、耳鳴量表（第二批的 SADL 進行中，見「目前進度」）。訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
+- **成人問卷第三批**：只做 THI（耳鳴障礙量表），拷問完成、等寫規格（[THI 拷問決定](planning/adult-assessment/thi-grill-decisions.md)，ADR 0015、0016）。COSI 先不排，訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
 - **React 版 IOI-HA**（API 要先開放 IOI-HA 寫入）。
 
 ### 追蹤與紀錄
