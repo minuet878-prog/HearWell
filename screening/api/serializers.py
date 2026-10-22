@@ -40,6 +40,7 @@ class LevelBandSerializer(serializers.Serializer):
     text = serializers.CharField()
     max = serializers.IntegerField()
     color = serializers.CharField()  # one of the three level colours (Definition.level_colors)
+    shade = serializers.CharField()  # "pale" or "deep" (Definition.shade)
 
 
 class QuestionnaireSerializer(QuestionnaireSummarySerializer):
@@ -53,7 +54,13 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
         # Read straight from the definition's thresholds so the chart's bands match classify().
         definition = questionnaire.definition
         return [
-            {"code": level, "text": text, "max": upper, "color": definition.color(level)}
+            {
+                "code": level,
+                "text": text,
+                "max": upper,
+                "color": definition.color(level),
+                "shade": definition.shade(level),
+            }
             for upper, text, level in definition.thresholds
         ]
 

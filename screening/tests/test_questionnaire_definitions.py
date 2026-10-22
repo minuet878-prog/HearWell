@@ -249,8 +249,20 @@ class ResultFromDefinitionTests(TestCase):
         self.assertEqual(
             detail["levels"],
             [
-                {"code": "normal", "text": "假的低分級", "max": 5, "color": "normal"},
-                {"code": "severe", "text": "假的高分級", "max": 12, "color": "severe"},
+                {
+                    "code": "normal",
+                    "text": "假的低分級",
+                    "max": 5,
+                    "color": "normal",
+                    "shade": "pale",
+                },
+                {
+                    "code": "severe",
+                    "text": "假的高分級",
+                    "max": 12,
+                    "color": "severe",
+                    "shade": "pale",
+                },
             ],
         )
         record = self.client.get(reverse("api:submission", args=[self.submission.pk])).json()

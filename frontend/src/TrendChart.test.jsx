@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendChart from "./TrendChart.jsx";
 
 const LEVELS = [
-  { code: "normal", text: "無/極輕微影響", max: 8, color: "normal" },
-  { code: "mild_to_moderate", text: "輕度到中度影響", max: 24, color: "mild_to_moderate" },
-  { code: "severe", text: "顯著影響", max: 40, color: "severe" },
+  { code: "normal", text: "無/極輕微影響", max: 8, color: "normal", shade: "pale" },
+  { code: "mild_to_moderate", text: "輕度到中度影響", max: 24, color: "mild_to_moderate", shade: "pale" },
+  { code: "severe", text: "顯著影響", max: 40, color: "severe", shade: "pale" },
 ];
 
 function submission(
@@ -299,16 +299,43 @@ describe("TrendChart", () => {
       mockApi({
         results: [submission(1, "2026-10-14", 18)],
         levels: [
-          { code: "none", text: "無", max: 16, color: "normal" },
-          { code: "mild", text: "輕度", max: 36, color: "mild_to_moderate" },
-          { code: "moderate", text: "中度", max: 56, color: "mild_to_moderate" },
-          { code: "severe", text: "重度", max: 100, color: "severe" },
+          { code: "none", text: "無", max: 16, color: "normal", shade: "pale" },
+          { code: "mild", text: "輕度", max: 36, color: "mild_to_moderate", shade: "pale" },
+          { code: "moderate", text: "中度", max: 56, color: "mild_to_moderate", shade: "deep" },
+          { code: "severe", text: "重度", max: 100, color: "severe", shade: "pale" },
         ],
       });
       const { container } = render(<TrendChart code="hhie-s" />);
       await chartDrawn(container);
       const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
-      expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#fff4d6", "#feece7"]);
+      expect(bands.map((b) => b.getAttribute("fill"))).toEqual(["#e3f4ec", "#fff4d6", "#f9dd96", "#feece7"]);
+    });
+
+    it("fills the deeper shade where the API says so, white lines between bands (THI's five levels)", async () => {
+      mockApi({
+        results: [submission(1, "2026-10-14", 48)],
+        levels: [
+          { code: "none", text: "無", max: 16, color: "normal", shade: "pale" },
+          { code: "mild", text: "輕度", max: 36, color: "mild_to_moderate", shade: "pale" },
+          { code: "moderate", text: "中度", max: 56, color: "mild_to_moderate", shade: "deep" },
+          { code: "severe", text: "重度", max: 76, color: "severe", shade: "pale" },
+          { code: "catastrophic", text: "極重度", max: 100, color: "severe", shade: "deep" },
+        ],
+      });
+      const { container } = render(<TrendChart code="hhie-s" />);
+      await chartDrawn(container);
+      const bands = [...container.querySelectorAll(".recharts-reference-area-rect")];
+      expect(bands.map((b) => b.getAttribute("fill"))).toEqual([
+        "#e3f4ec",
+        "#fff4d6",
+        "#f9dd96",
+        "#feece7",
+        "#f6c3b3",
+      ]);
+      for (const band of bands) {
+        expect(band.getAttribute("stroke")).toBe("#fff");
+        expect(band.getAttribute("stroke-width")).toBe("2");
+      }
     });
 
     it("writes no level name inside the plot (phase9_ui_refresh_3_structure.md 4.5)", async () => {

@@ -706,7 +706,12 @@ def _trend_chart(records, since_last):
         ],
         # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
         "levels": [
-            {"code": level, "text": text, "color": definition.color(level)}
+            {
+                "code": level,
+                "text": text,
+                "color": definition.color(level),
+                "shade": definition.shade(level),
+            }
             for _, text, level in reversed(definition.thresholds)
         ],
     }
@@ -1148,6 +1153,7 @@ def _score_bar(definition, score, level):
             {
                 "level": segment_level,
                 "color": definition.color(segment_level),
+                "shade": definition.shade(segment_level),
                 "text": text,
                 "width": (upper - start) / ceiling * 100,
                 "current": segment_level == level,

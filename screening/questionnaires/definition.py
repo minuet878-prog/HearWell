@@ -90,6 +90,16 @@ class Definition:
     def color(self, level):
         return self.level_colors.get(level, level)
 
+    def shade(self, level):
+        """ "pale" or "deep": levels sharing a colour alternate from the lowest up, so the score
+        bar and the trend chart's bands stay apart where two touch (THI's five levels)."""
+        levels = [code for _, _, code in self.thresholds]
+        i = levels.index(level)
+        run = 0
+        while i - run > 0 and self.color(levels[i - run - 1]) == self.color(level):
+            run += 1
+        return "deep" if run % 2 else "pale"
+
     def support(self, scores):
         """The support message for these answers (item number -> score), or ""."""
         rule = self.support_message
