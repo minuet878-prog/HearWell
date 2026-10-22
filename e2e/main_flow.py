@@ -609,6 +609,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     fixtures = ("questions_fixture.json",)
     TAIPEI = ZoneInfo("Asia/Taipei")
     REMINDER = "距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。"
+    RETEST_BUTTON = "再做一次（大約 3 分鐘）"
 
     @classmethod
     def setUpClass(cls):
@@ -675,9 +676,18 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_history_fits_a_phone_at_double_text_size(self):
-        """#163 acceptance 3: 我的紀錄 after the retest, with 和上一次比 and the trend chart."""
+        """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the
+        retest, with 和上一次比 and the trend chart."""
         self.open(viewport={"width": 320, "height": 640})
         with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing")
+            reminder = self.page.locator("#retest-reminder")
+            expect(reminder).to_contain_text(self.REMINDER)
+            expect(
+                reminder.get_by_role("link", name=self.RETEST_BUTTON, exact=True)
+            ).to_be_visible()
+            expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("my_hearing, retest due")
             self.page.goto(self.live_server_url)
             self.step3_retest()
             self.page.goto(f"{self.live_server_url}/my_hearing")
@@ -704,7 +714,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main()).to_contain_text(self.REMINDER)
 
     def step3_retest(self):
-        self.main().get_by_role("link", name=re.compile("^再做一次")).click()
+        self.main().get_by_role("link", name=self.RETEST_BUTTON, exact=True).click()
         expect(self.page).to_have_url(re.compile(rf"/questionnaire/{self.hhie_s.pk}$"))
         self.answer("沒戴")
         self.next()
@@ -758,6 +768,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         since_last = self.main().get_by_role("region", name="和上一次比")
         expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分")
         expect(since_last).to_contain_text(f"最近一次（{today}）：20 分")
+        # 40 then 20 points, both 沒戴.
+        expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
 
 
 def six_months_after(day):
