@@ -1093,7 +1093,6 @@
     border-radius: var(--radius-medium);
   }
 
-  /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
   /* Register, consent and wizard steps (#151, #152; step_progress.html) and the answer page's
      question bar (#153, AnswerApp.jsx): the text says the step; the bar only shows it. */
   .step-progress { margin-bottom: 1rem; }
@@ -1107,6 +1106,7 @@
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
 
+  /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
   .question-progress {
     display: block;
     font-size: 1rem;
