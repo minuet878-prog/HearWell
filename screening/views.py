@@ -126,6 +126,31 @@ def family_guide(request):
     return render(request, "screening/family_guide.html")
 
 
+# The hearing-aid guide's chapters in reading order (spec #218): (slug, title, template). A
+# chapter without a template yet is listed on the contents page but not linked.
+GUIDE_CHAPTERS = (
+    ("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
+    ("assessment", "身障鑑定與鑑定醫院", None),
+    ("form-9", "九號表：申請助聽器補助", None),
+    ("types-and-prices", "助聽器的種類與價格", None),
+    ("form-25", "二十五號表：使用效益驗證", None),
+    ("after-fitting", "配戴助聽器之後", None),
+)
+
+
+def guide(request):
+    # Open without logging in (spec #218): the contents are for family too.
+    return render(request, "screening/guide/index.html", {"chapters": GUIDE_CHAPTERS})
+
+
+def guide_chapter(request, chapter):
+    # Like the family guide: the same reviewed content for everyone, no user data.
+    template = next((t for slug, _, t in GUIDE_CHAPTERS if slug == chapter and t), None)
+    if template is None:
+        raise Http404
+    return render(request, template)
+
+
 class MonitoringTestError(Exception):
     """Raised on purpose so an admin can check that error monitoring reaches Sentry."""
 
