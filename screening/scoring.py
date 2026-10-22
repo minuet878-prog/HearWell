@@ -131,15 +131,14 @@ def max_score(questionnaire_code):
 
 
 def classify(total_score, questionnaire_code):
-    thresholds = _thresholds(questionnaire_code)
-    if not thresholds:
+    definition = questionnaires.get(questionnaire_code)
+    if not (definition and definition.thresholds):
         logger.error("No thresholds for questionnaire %r", questionnaire_code)
         return UNKNOWN
     if total_score >= 0:
-        for upper, text, level in thresholds:
+        for upper, text, level in definition.thresholds:
             if total_score <= upper:
-                color = questionnaires.get(questionnaire_code).color(level)
-                return {"text": text, "level": level, "color": color}
+                return {"text": text, "level": level, "color": definition.color(level)}
     logger.error("Score %s out of range for questionnaire %r", total_score, questionnaire_code)
     return UNKNOWN
 
