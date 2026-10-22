@@ -1369,20 +1369,12 @@
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
 
-  /* Share page (#193): each step card's heading starts with its number in a blue circle. */
+  /* Share page (#193): each step card's heading starts with its number in the home page's
+     brand-gradient circle; inside the heading it keeps its size and the body font size. */
   .share-step { display: flex; align-items: center; gap: 0.75rem; }
-  .step-number {
+  .share-step .step-number {
     flex: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    color: #fff;
     font-size: 1.125rem;
-    font-weight: 700;
   }
 
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */

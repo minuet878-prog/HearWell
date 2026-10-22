@@ -2,6 +2,7 @@
 
 import re
 from datetime import date, datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from django.test import TestCase
@@ -23,6 +24,7 @@ WONT_SEE = "不會看到：使用者名稱、出生年"
 LATEST_NOTICE = "連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。"
 CREATE_BUTTON = "我知道了，產生連結"
 TAIPEI = ZoneInfo("Asia/Taipei")
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 def _hhie_s_questionnaire():
@@ -249,3 +251,17 @@ class SharePageEntryTests(TestCase):
             r'<span class="link-card-title">分享報告給家人</span>',
         )
         self.assertNotIn("#report-share", content)
+
+
+class ShareStepCircleStyleTests(TestCase):
+    """The share page reuses the home page's .step-number circle without changing it."""
+
+    def test_share_page_adds_its_differences_only_under_share_step(self):
+        css = SITE_CSS.read_text(encoding="utf-8")
+        selectors = [
+            selector.strip()
+            for selector in re.findall(r"([^{}]*)\{[^{}]*\}", css)
+            if ".step-number" in selector
+        ]
+        # One global rule (the home page's), and the share page's own rule nests under it.
+        self.assertEqual(selectors, [".step-number", ".share-step .step-number"])
