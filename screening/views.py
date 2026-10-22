@@ -67,6 +67,14 @@ def _safe_next(request):
 
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
+def health_data_page(view):
+    """Mark a 健康資料頁面 (GLOSSARY.md): never cached, so after logging out on a shared computer
+    the back button cannot show it again (#182). test_standards checks every logged-in view."""
+    view = never_cache(view)
+    view.health_data_page = True
+    return view
+
+
 HOME_PREVIEW_SCORE = 18
 
 
@@ -209,6 +217,7 @@ def _wizard_step(request, step, total, **context):
 
 
 @login_required
+@health_data_page
 def questionnaire_list(request):
     questionnaires = sorted(
         Questionnaire.objects.defined().annotate(question_count=Count("questions")),
@@ -304,6 +313,7 @@ def _norm_token(user, norm):
 
 @login_required
 @require_http_methods(["GET", "POST"])
+@health_data_page
 def screening(request, questionnaire_id):
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
@@ -442,7 +452,7 @@ def _already_sent(request, submission):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-@never_cache
+@health_data_page
 def hhi_comparison(request, questionnaire_id):
     questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
     if questionnaire.definition.comparison is None:
@@ -584,6 +594,7 @@ def _trend_chart(records, since_last):
 
 
 @login_required
+@health_data_page
 def my_hearing(request):
     # SADL's satisfaction score reads submission.answers directly (models.py), so it needs
     # its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
@@ -704,7 +715,7 @@ def _mark_not_applicable_answers(data):
 
 @login_required
 @require_http_methods(["GET"])
-@never_cache
+@health_data_page
 def download_my_data(request):
     # Spec phase7_data_export.md: everything of request.user, nothing else; no ids in the URL.
     user = request.user
@@ -787,6 +798,7 @@ def download_my_data(request):
 
 @login_required
 @require_http_methods(["GET"])
+@health_data_page
 def account_settings(request):
     # Spec phase9_ui_refresh_3_structure.md 4.1: request.user's own account, to look at only.
     user = request.user
@@ -885,6 +897,7 @@ def _report_context(user):
 
 
 @login_required
+@health_data_page
 def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
@@ -976,6 +989,7 @@ def _score_bar(thresholds, score, level):
 
 
 @login_required
+@health_data_page
 def submission_result(request, submission_id):
     submission = get_object_or_404(
         Submission.objects.defined(), pk=submission_id, user=request.user
@@ -1075,6 +1089,7 @@ def _ioi_ha_result(request, submission, answers):
 
 
 @login_required
+@health_data_page
 def audiogram_list(request):
     audiograms = list(request.user.audiograms.prefetch_related("points"))
     for audiogram in audiograms:
@@ -1107,6 +1122,7 @@ def _own_audiogram(request, audiogram_id):
 
 
 @login_required
+@health_data_page
 def audiogram_detail(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     return render(request, "screening/audiogram_detail.html", _audiogram_context(audiogram))
@@ -1129,6 +1145,7 @@ def _audiogram_context(audiogram):
 
 @login_required
 @require_http_methods(["GET", "POST"])
+@health_data_page
 def audiogram_delete(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     if request.method == "POST":
@@ -1138,6 +1155,7 @@ def audiogram_delete(request, audiogram_id):
 
 
 @login_required
+@health_data_page
 def audiogram_edit(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     initial = {
@@ -1161,6 +1179,7 @@ def _compare_ids(request, audiograms):
 
 
 @login_required
+@health_data_page
 def audiogram_compare(request):
     audiograms = list(request.user.audiograms.all())
     context = {"audiograms": audiograms}

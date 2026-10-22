@@ -111,6 +111,50 @@ class QuestionnaireCodeTests(SimpleTestCase):
         self.assertEqual(questionnaire_code_lines(source, questionnaires.DEFINITIONS), [2])
 
 
+# Logged-in views that show no health data (GLOSSARY.md 健康資料頁面), each with its reason (#182).
+NO_HEALTH_DATA = {
+    "consent": "the privacy summary and the agree button only",
+    "audiogram_new": "an empty input page; a saved audiogram opens in audiogram_edit",
+    "delete_account": "how many records would go, not their answers, scores or audiograms",
+    "report_share_create": "POST only, answers with a redirect",
+    "report_share_cancel": "POST only, answers with a redirect",
+}
+
+
+def unmarked_logged_in_views(source, exceptions):
+    """Names of views behind @login_required with neither @health_data_page nor an exception."""
+    found = []
+    for node in ast.parse(source).body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        names = {getattr(d, "id", None) for d in node.decorator_list}
+        if "login_required" in names and "health_data_page" not in names:
+            if node.name not in exceptions:
+                found.append(node.name)
+    return found
+
+
+class HealthDataPageTests(SimpleTestCase):
+    """#182: every logged-in page is a 健康資料頁面 (never cached) or says why it holds none."""
+
+    def test_every_logged_in_view_is_marked_or_excused(self):
+        source = (BASE_DIR / "screening" / "views.py").read_text()
+        self.assertEqual(
+            unmarked_logged_in_views(source, NO_HEALTH_DATA),
+            [],
+            "add @health_data_page, or list the view in NO_HEALTH_DATA with its reason",
+        )
+
+    def test_an_unmarked_view_is_caught(self):
+        source = (
+            "@login_required\ndef shown(request): ...\n"
+            "@login_required\n@health_data_page\ndef marked(request): ...\n"
+            "def public(request): ...\n"
+        )
+        self.assertEqual(unmarked_logged_in_views(source, {}), ["shown"])
+        self.assertEqual(unmarked_logged_in_views(source, {"shown": "why"}), [])
+
+
 class MigrationsUpToDateTests(TestCase):
     """A model change must ship with its migration."""
 
