@@ -121,6 +121,9 @@ describe("React entry", () => {
     await waitFor(() => expect(app().textContent).toContain("頁面上的說明句"));
     const unaided = [...app().querySelectorAll("label")].find((l) => l.textContent === "沒戴");
     expect(unaided.querySelector("input").checked).toBe(true);
+    // The hidden form keeps its hint, so React's copy needs an id of its own.
+    const ids = [...document.querySelectorAll("[id]")].map((el) => el.id);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
   });
 
   it("brings the form back at once when loading fails (acceptance 3)", async () => {

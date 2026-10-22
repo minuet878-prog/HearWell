@@ -230,7 +230,7 @@ export default function AnswerApp({
       <fieldset
         className="card card-body mb-4"
         disabled={isSending}
-        aria-describedby={showHint ? "hearing-aid-hint" : undefined}
+        aria-describedby={showHint ? "answer-hearing-aid-hint" : undefined}
       >
         <legend ref={legend} tabIndex={-1} className="font-bold text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">
           {!isHearingAid && (
@@ -247,7 +247,8 @@ export default function AnswerApp({
           )}
           {question.text}
         </legend>
-        {showHint && <p id="hearing-aid-hint">{unaidedHint}</p>}
+        {/* Its own id: the hidden Django form keeps #hearing-aid-hint. */}
+        {showHint && <p id="answer-hearing-aid-hint">{unaidedHint}</p>}
         {!isHearingAid && question.scale ? (
           <div className="ssq-scale">
             <p className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold" role="status">{current === undefined ? "未作答" : current === null ? "不適用" : `${current} 分`}</p>

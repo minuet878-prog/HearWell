@@ -261,8 +261,8 @@ describe("catching up an unaided record (#154)", () => {
     expect(radio("沒戴").checked).toBe(true);
     expect(radio("有戴").checked).toBe(false);
     expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
-    expect(group().getAttribute("aria-describedby")).toBe("hearing-aid-hint");
-    expect(document.getElementById("hearing-aid-hint").textContent).toBe(HINT);
+    expect(group().getAttribute("aria-describedby")).toBe("answer-hearing-aid-hint");
+    expect(document.getElementById("answer-hearing-aid-hint").textContent).toBe(HINT);
   });
 
   it("shows the hint only while 沒戴 is chosen (site owner's choice 1.B)", async () => {
@@ -271,8 +271,8 @@ describe("catching up an unaided record (#154)", () => {
     expect(screen.queryByText(HINT)).toBeNull();
     expect(group().hasAttribute("aria-describedby")).toBe(false);
     choose("沒戴");
-    expect(document.getElementById("hearing-aid-hint").textContent).toBe(HINT);
-    expect(group().getAttribute("aria-describedby")).toBe("hearing-aid-hint");
+    expect(document.getElementById("answer-hearing-aid-hint").textContent).toBe(HINT);
+    expect(group().getAttribute("aria-describedby")).toBe("answer-hearing-aid-hint");
   });
 
   it("sends 有戴 when the user changes it", async () => {
