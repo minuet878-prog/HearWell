@@ -114,6 +114,21 @@ class OnAPhone:
     def next(self):
         self.main().get_by_role("button", name="下一題").click()
 
+    def answer_ioi_ha(self):
+        """On IOI-HA's React page: no wearing step, the norm basis told on item 1 (ADR 0002)."""
+        app = self.main().locator(".answer-app")
+        expect(app.get_by_role("group")).to_contain_text("第 1 題／共 7 題")
+        expect(app).to_contain_text("本次常模依據：")
+        expect(app).not_to_contain_text("有沒有戴助聽器")
+        for number in range(1, 8):
+            group = app.get_by_role("group")
+            expect(group).to_contain_text(f"第 {number} 題／共 7 題")
+            group.get_by_role("radio").first.check()
+            if number < 7:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+
 
 class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec 4.1: one method per step, so a failure's traceback names the step."""
@@ -147,6 +162,22 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.step5_submit()
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
+
+    def test_new_user_answers_ioi_ha_on_react_after_an_unaided_hhie_s(self):
+        """#245: the unaided HHIE-S just answered is IOI-HA's norm basis, told on item 1."""
+        with self.saving_artifacts():
+            self.step1_start_goes_to_register()
+            self.step2_register()
+            self.step3_choose_hhie_s()
+            self.step4_answer_and_change_one()
+            self.step5_submit()
+            ioi_ha = Questionnaire.objects.get(code="ioi-ha")
+            self.page.goto(f"{self.live_server_url}/questionnaire/{ioi_ha.pk}")
+            self.answer_ioi_ha()
+            basis = self.page.get_by_text("分組依據：", exact=False)
+            expect(basis).to_contain_text("HHIE-S")
+            expect(basis).to_contain_text("20 分")
+            expect(self.main()).to_contain_text("低於常模")
 
     def test_show_password_with_javascript(self):
         """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
@@ -1079,7 +1110,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expect(self.page.get_by_role("button", name="從報告移除")).to_have_count(0)
 
     def test_ioi_discloses_hhia_basis_before_saving(self):
-        """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
+        """#81: IOI-HA reveals and keeps the chosen adult HHI source."""
         call_command("seed_questionnaires", verbosity=0)
         questionnaire = Questionnaire.objects.get(code="hhia-s")
         basis = Submission.objects.create(
@@ -1092,11 +1123,12 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         ioi = Questionnaire.objects.get(code="ioi-ha")
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{ioi.pk}")
-            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("HHIA-S")
-            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("40 分")
-            for n in range(1, 8):
-                self.page.locator(f"#question-{n}").get_by_role("radio").first.check()
-            self.page.get_by_role("button", name="送出", exact=True).click()
+            # #245: on React; only its copy of the intro shows, the page's own is hidden.
+            told = self.main().locator(".answer-app").get_by_text("本次常模依據：", exact=False)
+            expect(told).to_contain_text("HHIA-S")
+            expect(told).to_contain_text("40 分")
+            self.assert_fits_a_phone_at_double_text_size("IOI-HA answer item 1")
+            self.answer_ioi_ha()
             expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("HHIA-S")
             expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("40 分")
 

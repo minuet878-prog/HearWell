@@ -1,3 +1,4 @@
+from django.core import signing
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -10,6 +11,7 @@ from screening.audiogram import (
     DB_STEP,
 )
 from screening.forms import AnswerFormSet, answer_choices
+from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm
 from screening.models import (
     Answer,
     Audiogram,
@@ -20,7 +22,7 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
+from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import get_advice
 
@@ -154,7 +156,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         result = instance.questionnaire.definition.result
-        if result in (AVERAGE, SUBSCALES):
+        if result in (AVERAGE, SUBSCALES, NORM):
             data["scores"] = None
         if result != AVERAGE:
             data.pop("average_score")
@@ -211,29 +213,46 @@ class AnswerInputSerializer(serializers.Serializer):
 
 
 class SubmissionCreateSerializer(serializers.Serializer):
-    # IOI-HA needs norm grouping and has no API yet (spec phase5_api_submit.md).
     questionnaire = serializers.PrimaryKeyRelatedField(queryset=Questionnaire.objects.none())
     # Not required here: an always-aided questionnaire (e.g. SADL) needs none, enforced below.
     wearing_hearing_aid = WearingField(required=False)
     answers = serializers.ListField(child=AnswerInputSerializer())
+    norm_token = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="IOI-HA only: the answer page's data-norm-token; ignored for the others.",
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Built per request so defined() reads the definitions then, not at import.
-        self.fields["questionnaire"].queryset = Questionnaire.objects.defined().exclude(code=IOI_HA)
+        self.fields["questionnaire"].queryset = Questionnaire.objects.defined()
 
     def validate(self, attrs):
         questionnaire = attrs["questionnaire"]
         definition = questionnaire.definition
-        # Sent but not JSON true/false, or not sent where it is asked: refused as the web form
-        # does, in the words of the questionnaire's own wearing question.
-        sent = "wearing_hearing_aid" in attrs
-        if (sent and attrs["wearing_hearing_aid"] is None) or not (sent or definition.always_aided):
-            raise serializers.ValidationError({"wearing_hearing_aid": definition.wearing_error})
-        # Same rule as the web form (views.screening): always-aided questionnaires are always
-        # saved as worn, no matter what was sent, instead of trusting the caller's own value.
-        if definition.always_aided:
-            attrs["wearing_hearing_aid"] = True
+        if questionnaire.code == IOI_HA:
+            # Same rule as the web form (views.screening): wearing is not asked and stays
+            # unrecorded, and the norm basis is the one the page showed (ADR 0002).
+            attrs["wearing_hearing_aid"] = None
+            try:
+                attrs["norm"] = ioi_ha_norm(
+                    self.context["request"].user, attrs.get("norm_token") or None
+                )
+            except signing.BadSignature:
+                raise serializers.ValidationError({"norm_token": TOKEN_ERROR}) from None
+        else:
+            # Sent but not JSON true/false, or not sent where it is asked: refused as the web
+            # form does, in the words of the questionnaire's own wearing question.
+            sent = "wearing_hearing_aid" in attrs
+            if (sent and attrs["wearing_hearing_aid"] is None) or not (
+                sent or definition.always_aided
+            ):
+                raise serializers.ValidationError({"wearing_hearing_aid": definition.wearing_error})
+            # Same rule as the web form (views.screening): always-aided questionnaires are always
+            # saved as worn, no matter what was sent, instead of trusting the caller's own value.
+            if definition.always_aided:
+                attrs["wearing_hearing_aid"] = True
         # The rules live in the answer formset, shared with the web form; this only feeds it.
         questions = list(questionnaire.questions.all())
         if not questions:
