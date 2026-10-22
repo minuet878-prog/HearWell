@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from screening.models import User
 from screening.tests.helpers import consented_user
+from screening.views import GUIDE_CHAPTERS
 
 # Wording finalised in #220 (draft comment and its follow-up).
 TITLE = "我的選配指引"
@@ -84,9 +85,11 @@ class GuideContentsTests(TestCase):
 
     def test_only_written_chapters_are_linked(self):
         content = self.client.get(self.url).content.decode()
-        before_you_go = reverse("guide_chapter", args=["before-you-go"])
-        self.assertIn(f'href="{before_you_go}"', content)
-        self.assertEqual(content.count('href="/guide/'), 1)
+        for chapter in GUIDE_CHAPTERS:
+            href = f'href="{reverse("guide_chapter", args=[chapter.slug])}"'
+            with self.subTest(chapter=chapter.slug):
+                self.assertEqual(href in content, chapter.template is not None)
+        self.assertIn(f'href="{reverse("guide_chapter", args=["before-you-go"])}"', content)
 
 
 class GuideChapterTests(TestCase):
