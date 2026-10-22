@@ -7,9 +7,13 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management import call_command
-from django.test import SimpleTestCase, TestCase
+from django.test import Client, SimpleTestCase, TestCase
+from django.urls import reverse
+from django.urls.converters import IntConverter
 
 from screening import questionnaires
+from screening import urls as screening_urls
+from screening.views import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
 
@@ -109,6 +113,68 @@ class QuestionnaireCodeTests(SimpleTestCase):
     def test_a_hard_coded_code_is_caught(self):
         source = 'id="report-ioi-ha"\nif questionnaire.code == "ssq12-tw":\n'
         self.assertEqual(questionnaire_code_lines(source, questionnaires.DEFINITIONS), [2])
+
+
+# Logged-in views that show no health data (GLOSSARY.md 健康資料頁面), each with its reason (#182).
+NO_HEALTH_DATA = {
+    "consent": "the privacy summary and the agree button only",
+    "audiogram_new": "an empty input page; a saved audiogram opens in audiogram_edit",
+    "delete_account": "how many records would go, not their answers, scores or audiograms",
+    "report_share_create": "POST only, answers with a redirect",
+    "report_share_cancel": "POST only, answers with a redirect",
+}
+
+
+def logged_in_views():
+    """(URL name, view) for each page in screening's URLs that sends a logged-out visitor to log
+    in, whatever form the login requirement takes (decorator, mixin, other module)."""
+    client = Client()
+    login = reverse("login")
+    for pattern in screening_urls.urlpatterns:
+        kwargs = {
+            name: 1 if isinstance(converter, IntConverter) else "x"
+            for name, converter in pattern.pattern.converters.items()
+        }
+        url = reverse(pattern.name, kwargs=kwargs)
+        if any(
+            client.generic(method, url).get("Location", "").startswith(login)
+            for method in ("GET", "POST")
+        ):
+            yield pattern.name, pattern.callback
+
+
+def unmarked(views, exceptions):
+    """Names of views carrying neither @health_data_page nor an entry in exceptions."""
+    return [
+        name
+        for name, view in views
+        if not getattr(view, "health_data_page", False) and name not in exceptions
+    ]
+
+
+class HealthDataPageTests(TestCase):
+    """#182: every logged-in page is a 健康資料頁面 (never cached) or says why it holds none."""
+
+    def test_every_logged_in_view_is_marked_or_excused(self):
+        views = dict(logged_in_views())
+        # The scan finds logged-in pages and only those.
+        self.assertIn("my_hearing", views)
+        self.assertNotIn("privacy", views)
+        self.assertEqual(
+            unmarked(views.items(), NO_HEALTH_DATA),
+            [],
+            "add @health_data_page, or list the view in NO_HEALTH_DATA with its reason",
+        )
+
+    def test_an_unmarked_view_is_caught(self):
+        def shown(request): ...
+
+        @health_data_page
+        def marked(request): ...
+
+        views = [("shown", shown), ("marked", marked)]
+        self.assertEqual(unmarked(views, {}), ["shown"])
+        self.assertEqual(unmarked(views, {"shown": "why"}), [])
 
 
 class MigrationsUpToDateTests(TestCase):

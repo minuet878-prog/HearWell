@@ -114,6 +114,5 @@ DEFINITION = Definition(
     choices=choices,
     result_note=RESULT_NOTE,
     score=score,
-    listed=False,
     always_aided=True,
 )

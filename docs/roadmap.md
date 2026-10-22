@@ -13,12 +13,16 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   （#119，#122–#131，ADR 0008、0009；2026-10-21 合併回 `main`）、2a 共用外殼（#120，#136–#143，ADR 0006、0007；
   功能分支 `feat/120-warm-shell` 一次合併回 `main`）、2b 主線動線改版兩批（母規格 #148，#149–#163，ADR 0010）、
   品牌改版（波浪 W Logo、分頁籤圖示、白底頁首、新使用者首頁與結果示意；本人在設計選擇器挑選，ADR 0012，
-  驗證見 `docs/verification/brand-refresh.md`）。
+  驗證見 `docs/verification/brand-refresh.md`）、字型改由網站自己提供並修正隱私權說明（#181，ADR 0014）、健康資料頁面
+  禁止快取（#182）。
 - 進行中：
+  - 2c 支線改版（設計比較頁第 8–14 列，母規格 #183，ADR 0013）：拷問 45 題（[拷問決定](planning/branch-pages/grill-decisions.md)），
+    拆成 #185–#204 三批（第 8–9 列 → 第 11–14 列 → 第 10 列）；#185 的新句子等本人定稿。
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
-    老使用者首頁）也已合併（PR #178）。正式站看不到，取得 HARL 與中文版譯者書面同意後另開 PR 上線。
-- 下一步：等 SADL 授權後上線。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
+    老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
+    「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
+- 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
 - 等時間：見下方「時間型待辦」。
 
@@ -56,6 +60,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 2b 第一批「第一次來」 | #148 的第一批、#149–#155：分級顏色加深到 7:1、新使用者首頁、註冊與同意分步、問卷精靈（年齡、助聽器、推薦）、作答頁分段進度、補做生活影響紀錄時預選「沒戴」、第一次來的 e2e（ADR 0010，[驗證紀錄](verification/issues-149-155.md)） |
 | 2b 第二批「重測循環」 | #148 的第二批、#156–#163：結果頁依分級的下一步與分數位置條、老使用者首頁（上次結果、重測提醒或下次建議日期、「您還可以」）、我的紀錄依主題分頁、到期提醒與「和上一次比」（只跟同一種配戴狀態比）、老使用者重測的 e2e（ADR 0010，[驗證紀錄](verification/issues-157-161.md)、[#160、#162、#163](verification/issues-160-163.md)） |
 | 「我的紀錄」不跳動 | 趨勢圖的標題、摘要、圖例改由 Django 產生，React 只在固定高度的框裡畫圖，載入時紀錄卡片不再被推走（[驗證紀錄](verification/trend-chart-layout-shift.md)） |
+| 字型自己提供 | #181：Noto Sans TC 由網站自己提供，不再連 Google Fonts；隱私權說明刪掉 cdnjs，小修不用重新同意（ADR 0014，[驗證紀錄](verification/issue-181.md)） |
+| 健康資料頁面禁止快取 | #182：顯示健康資料的頁面一律不讓瀏覽器存，`test_standards.py` 檢查每個要登入的頁面都有標記或例外理由（`CODING_STANDARDS.md` 第 24 條，[驗證紀錄](verification/issue-182.md)） |
 | 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
 ---
@@ -64,7 +70,6 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 - **200% 字級會左右捲動**：頁尾 email 在 320px 撐到約 394px（每一頁都有）；標題列「HearWell」和底部分頁列「聽力圖」在 Linux 字型下超出畫面；聽力圖結果 `.ear-results` 寫法相同、可能同樣問題。聽力報告頁在 200% 字級寬到約 459px（`main` 裡一個空的 span 撐開）；225% 字級時紀錄卡片（`.link-card-body`）的日期比卡片內文寬（198px 對 127px），沒撐寬頁面但超出卡片。要在 CI 或 Linux 字型下驗，e2e 可沿用 4a 的 `add_style_tag` 放大字級。
 - **無障礙量測剩 7 項**：見 [`accessibility/accessibility_baseline.md`](accessibility/accessibility_baseline.md) 5.4。
-- **健康資料頁面加 `never_cache`**：共用電腦登出後按上一頁仍看得到快取（報告、我的紀錄、結果頁）。
 - **HHIE-S 出處頁**：目前只有 IOI-HA 有出處；需本人提供原文與中文版出處。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。
 - **趨勢圖只讀 API 最新 20 筆**。最新 20 筆都不是 HHIE-S 時，摘要照常顯示（Django 看全部紀錄），圖框卻是空的；可讓 API 依問卷篩選。
