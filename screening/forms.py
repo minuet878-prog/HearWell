@@ -1,4 +1,3 @@
-from collections import Counter
 from datetime import date
 
 from django import forms
@@ -8,7 +7,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import Answer, Question, Submission, User
+from screening.models import Answer, Question, Submission, User, shared_days
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -214,14 +213,9 @@ class HhiComparisonForm(forms.Form):
             "questionnaire"
         )
         records = questionnaire.definition.comparison.records(records)
-        # Same rule as my_hearing: a date two records share shows the time too.
-        per_day = Counter(
-            timezone.localdate(created)
-            for created in records.filter(wearing_hearing_aid__isnull=False).values_list(
-                "created_at", flat=True
-            )
+        days = shared_days(
+            records.filter(wearing_hearing_aid__isnull=False).values_list("created_at", flat=True)
         )
-        shared_days = frozenset(day for day, count in per_day.items() if count > 1)
         for name, wearing in (("unaided", False), ("aided", True)):
             self.fields[name].queryset = records.filter(wearing_hearing_aid=wearing)
-            self.fields[name].shared_days = shared_days
+            self.fields[name].shared_days = days

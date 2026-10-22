@@ -1,7 +1,5 @@
 import logging
 
-from django.utils import timezone
-
 from screening import questionnaires
 from screening.questionnaires import hhie_s
 from screening.questionnaires.definition import RETEST_MONTHS
@@ -18,25 +16,20 @@ def retest_next_text(day):
     return f"下次建議 {day:%Y/%m/%d} 再做"
 
 
-def since_last_text(difference):
-    # 我的紀錄's 「和上一次比」 (ticket #162): numbers and direction only, no verdict (ADR 0010).
-    if difference < 0:
-        return f"比上一次少 {-difference} 分（分數越低越好）"
-    if difference > 0:
-        return f"比上一次多 {difference} 分（分數越低越好）"
-    return "和上一次一樣"
+LOWER_IS_BETTER = "分數越低越好"
+HIGHER_IS_BETTER = "分數越高越好"
 
 
-def ssq_since_last_text(previous, difference):
-    # SSQ12-TW's 「比上一次」 on its result page (ticket #188): numbers and direction only
-    # (ADR 0013); unlike the life-impact questionnaires, a higher score is better.
+def since_last_text(difference, better=LOWER_IS_BETTER, day=None, score=None):
+    # 「和上一次比」: numbers and direction only, no verdict (ADR 0010, ADR 0013). 我的紀錄's
+    # life-impact tabs (ticket #162) use the defaults; SSQ12-TW's result page (ticket #188) also
+    # names the previous record by its Taipei day and score, and there a higher score is better.
     if difference == 0:
         return "和上一次一樣"
-    day = timezone.localdate(previous.created_at)
-    when = f"比上一次（{day:%Y/%m/%d}，{previous.ssq_average} 分）"
+    previous = f"（{day:%Y/%m/%d}，{score} 分）" if day else ""
     if difference < 0:
-        return f"{when}少 {-difference} 分（分數越高越好）"
-    return f"{when}多 {difference} 分（分數越高越好）"
+        return f"比上一次{previous}少 {-difference} 分（{better}）"
+    return f"比上一次{previous}多 {difference} 分（{better}）"
 
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown"}

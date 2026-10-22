@@ -1,6 +1,5 @@
 import json
 import uuid
-from collections import Counter
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -54,7 +53,16 @@ from screening.scoring import (
     since_last_text,
 )
 
-from .models import Answer, AudiogramPoint, Ear, NormGroup, Questionnaire, Submission, User
+from .models import (
+    Answer,
+    AudiogramPoint,
+    Ear,
+    NormGroup,
+    Questionnaire,
+    Submission,
+    User,
+    shared_days,
+)
 
 
 def _safe_next(request):
@@ -554,16 +562,6 @@ TREND_LEGEND = (
 )
 
 
-def _previous_same_wearing(records):
-    # records: one tab's records, newest first. The record the newest one is compared with:
-    # the latest before it worn the same way (records worn otherwise may sit in between).
-    # None when the newest has no hearing aid status or is the first of its status.
-    wearing = records[0].wearing_hearing_aid
-    if wearing is None:
-        return None
-    return next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
-
-
 def _trend_chart(records, since_last):
     # records: this user's HHIE-S, newest first; since_last: the page's 「和上一次比」 or None.
     # React draws only the chart itself, so the text around it is on the page from the start
@@ -622,8 +620,8 @@ def my_hearing(request):
     records = [s for s in submissions if s.questionnaire_id == current.id]
     # Records sharing a Taipei date with another of this tab show their time too
     # (spec phase9_ui_refresh_2_data.md 4.3).
-    per_day = Counter(timezone.localdate(s.created_at) for s in records)
-    same_day = {s.id for s in records if per_day[timezone.localdate(s.created_at)] > 1}
+    days = shared_days(s.created_at for s in records)
+    same_day = {s.id for s in records if timezone.localdate(s.created_at) in days}
     # Ticket #162: the same retest reminder as the home page (ADR 0010).
     user_state = get_user_state(request.user, today=timezone.localdate())
     # Ticket #162: a life-impact tab compares its newest record with the one before it worn
@@ -631,7 +629,7 @@ def my_hearing(request):
     since_last = None
     if current.definition.result == LEVEL:
         latest = records[0]
-        previous = _previous_same_wearing(records)
+        previous = latest.previous_same_wearing(records[1:])
         if previous is not None:
             since_last = {
                 "latest": latest,

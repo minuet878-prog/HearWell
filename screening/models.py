@@ -1,4 +1,5 @@
 import secrets
+from collections import Counter
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
@@ -12,7 +13,7 @@ from screening import questionnaires
 from screening.audiogram import DB_MIN, interpret
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
-from screening.scoring import classify, ssq_since_last_text
+from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
 
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
@@ -214,6 +215,13 @@ class SubmissionQuerySet(models.QuerySet):
         return self.annotate(**_score_expressions()).order_by("-created_at", "-id")
 
 
+def shared_days(moments):
+    # The Taipei dates two or more of these moments fall on: a record made on one shows its time
+    # too (spec phase9_ui_refresh_2_data.md 4.3; 我的紀錄 and the comparison page, #190).
+    per_day = Counter(timezone.localdate(moment) for moment in moments)
+    return frozenset(day for day, count in per_day.items() if count > 1)
+
+
 class Submission(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="submissions"
@@ -282,30 +290,36 @@ class Submission(models.Model):
             Decimal("0.1"), rounding=ROUND_HALF_UP
         )
 
+    def previous_same_wearing(self, earlier):
+        # earlier: this questionnaire's records before this one, newest first. The record this one
+        # is compared with: the latest worn the same way (records worn otherwise may sit in
+        # between). None when this one has no hearing aid status or is the first of its status.
+        if self.wearing_hearing_aid is None:
+            return None
+        return next((r for r in earlier if r.wearing_hearing_aid == self.wearing_hearing_aid), None)
+
     @cached_property
     def ssq_since_last(self):
-        # SSQ12-TW's 「比上一次」 (ticket #188): the latest earlier record of the same questionnaire
-        # worn the same way, shown only when both have an overall average (ADR 0001).
-        if self.ssq_average is None or self.wearing_hearing_aid is None:
+        # SSQ12-TW's 「比上一次」 (ticket #188): the record previous_same_wearing picks, shown only
+        # when both have an overall average (ADR 0001).
+        if self.ssq_average is None:
             return None
-        previous = (
-            Submission.objects.filter(
-                user_id=self.user_id,
-                questionnaire_id=self.questionnaire_id,
-                wearing_hearing_aid=self.wearing_hearing_aid,
-            )
+        earlier = (
+            Submission.objects.filter(user_id=self.user_id, questionnaire_id=self.questionnaire_id)
             .filter(
                 models.Q(created_at__lt=self.created_at)
                 | models.Q(created_at=self.created_at, id__lt=self.id)
             )
             .order_by("-created_at", "-id")
-            .first()
         )
+        previous = self.previous_same_wearing(earlier)
         if previous is None or previous.ssq_average is None:
             return None
         # The difference of the unrounded averages, the same rule as a wearing comparison's.
         difference = self.questionnaire.definition.comparison.difference(previous, self)
-        return {"previous": previous, "text": ssq_since_last_text(previous, difference)}
+        day = timezone.localdate(previous.created_at)
+        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.ssq_average)
+        return {"previous": previous, "text": text}
 
     @property
     def ssq_unavailable_reason(self):
