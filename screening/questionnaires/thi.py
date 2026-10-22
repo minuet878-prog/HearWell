@@ -1,4 +1,4 @@
-from screening.questionnaires.definition import LEVEL, Definition
+from screening.questionnaires.definition import LEVEL, Definition, SupportMessage
 
 CODE = "thi"
 
@@ -183,9 +183,7 @@ DEFINITION = Definition(
     trend_chart=True,
     # The hospital form's numbering (not the English original's): 5 絕望, 11 憂鬱, 23 無法忍受,
     # answered 經常, whatever the total (spec #208 Q6).
-    support_items=(5, 11, 23),
-    support_score=4,
-    support_message=SUPPORT_MESSAGE,
+    support_message=SupportMessage(items=(5, 11, 23), score=4, text=SUPPORT_MESSAGE),
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
     wearing_error="請選擇您現在有沒有配戴助聽器",

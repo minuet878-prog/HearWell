@@ -16,6 +16,15 @@ RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您�
 
 
 @dataclass(frozen=True)
+class SupportMessage:
+    # Shown under the level on the result page alone, whatever the total, when any item
+    # numbered in `items` is answered `score` (spec #208 Q6).
+    items: tuple
+    score: int
+    text: str
+
+
+@dataclass(frozen=True)
 class Definition:
     code: str
     topic: str  # the catalog card reads 「topic（name）」
@@ -53,11 +62,7 @@ class Definition:
     # A line every wizard result shows, whatever it recommends, linking to this questionnaire:
     # who it is for is said here rather than asked as a wizard step (spec #208 Q3). "": none.
     wizard_offer: str = ""
-    # LEVEL only: a message shown under the level on the result page alone, whatever the total,
-    # when any item numbered in `support_items` is answered `support_score` (spec #208 Q6).
-    support_items: tuple = ()
-    support_score: int | None = None
-    support_message: str = ""
+    support_message: SupportMessage | None = None  # LEVEL only
     trend_chart: bool = False  # the history page draws a score trend chart
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.
@@ -82,8 +87,9 @@ class Definition:
 
     def support(self, scores):
         """The support message for these answers (item number -> score), or ""."""
-        if any(scores.get(number) == self.support_score for number in self.support_items):
-            return self.support_message
+        rule = self.support_message
+        if rule and any(scores.get(number) == rule.score for number in rule.items):
+            return rule.text
         return ""
 
     @property
