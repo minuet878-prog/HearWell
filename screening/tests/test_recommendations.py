@@ -239,6 +239,21 @@ class WizardTests(TestCase):
         page = self.wizard(age_group="older", hearing_aid="yes")
         self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
 
+    def test_an_unaided_ssq12_record_is_no_norm_basis(self):
+        # IOI-HA's norm group comes from HHIA-S or HHIE-S only, so SSQ12 does not count.
+        user, params = self.recommendation("older", "yes")
+        ssq12 = self.by_code["ssq12-tw"]
+        submission = Submission.objects.create(
+            user=user, questionnaire=ssq12, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=5)
+            for question in ssq12.questions.all()
+        )
+        page = self.wizard(**params)
+        self.assertEqual(page.context["recommended"], self.by_code["hhie-s"])
+        self.assertEqual(page.context["reason"], "needs_norm_basis")
+
     def test_hearing_aid_answer_comes_out_as_true_or_false(self):
         # The address keeps no / yes; the view gets the answer itself.
         for value, wearing in (("no", False), ("yes", True)):
