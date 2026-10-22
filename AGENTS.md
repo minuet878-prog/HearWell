@@ -118,7 +118,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - 本機套件：`pip install -r requirements-dev.txt`（含 debug-toolbar、ruff、playwright；正式環境只裝 `requirements.txt`）
 - 測試：`python manage.py test --settings=config.test_settings`（不需要先 collectstatic）
 - 前端測試：`npm test --prefix frontend`；前端建置：`npm run build --prefix frontend`
-- 端對端測試：先 `npm run build --prefix frontend`，再 `python manage.py test --settings=config.test_settings e2e.main_flow`（自己開臨時網站與 `test_` 資料庫，不用先啟動伺服器；第一次要先 `python -m playwright install chromium`；平常的「測試」指令不會跑到它；失敗時截圖與 trace 在 `e2e-artifacts/`）
+- 端對端測試：先 `npm run build --prefix frontend`，再 `python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4`（4 個程序分工跑；用 `pdb` 除錯時拿掉 `--parallel`；自己開臨時網站與 `test_` 資料庫，不用先啟動伺服器；第一次要先 `python -m playwright install chromium`；平常的「測試」指令不會跑到它；失敗時截圖與 trace 在 `e2e-artifacts/`）
 - 檢查格式：`ruff check --fix .`
 - Migration：`python manage.py makemigrations screening` → `python manage.py migrate`
 - 部署檢查：`python manage.py check --deploy`（要在 `DEBUG=False` 下跑）
