@@ -36,12 +36,13 @@
     <p class="mb-1">最近一次（{{ latest.created_at|date:"Y/m/d" }}{% if latest.id in same_day %} {{ latest.created_at|date:"H:i" }}{% endif %}）：{{ latest.total_answer_score }} 分</p>
     {% endwith %}
     <p class="mb-0"><strong>{{ since_last.text }}</strong></p>
+    {% if since_last.wearing_change %}<p class="mt-1 mb-0">{{ since_last.wearing_change }}</p>{% endif %}
 </section>
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
 {% elif trend_chart %}
-{# Only HHIE-S has a trend chart; other questionnaires list their records only. #}
+{# Only HHIE-S and THI have a trend chart; other questionnaires list their records only. #}
 {% include "screening/trend_chart.html" with chart=trend_chart questionnaire=current %}
 {% endif %}
 {% for submission in submissions %}

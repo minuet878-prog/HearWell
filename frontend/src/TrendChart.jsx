@@ -120,8 +120,8 @@ export default function TrendChart({ code }) {
       ) : (
         <g key={index} />
       );
-  // HHIE-S totals are even (every answer is 0, 2 or 4), so halfway between two levels is the
-  // lower level's top + 1 (spec 4.4): 9 and 25, never on a score. Only HHIE-S has this chart.
+  // HHIE-S and THI totals are even (every answer is 0, 2 or 4), so halfway between two levels is
+  // the lower level's top + 1 (spec 4.4): 9 and 25, never on a score. Only they have this chart.
   const bandEdge = (i) => (i === levels.length - 1 ? levels[i].max : levels[i].max + 1);
 
   // Score above each point; below it when the point is near the top so it stays inside the chart.
