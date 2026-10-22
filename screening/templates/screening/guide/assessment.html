@@ -23,6 +23,7 @@
     <form method="get" action="{% url 'guide_chapter' 'assessment' %}">
         <label for="county" class="form-label text-xl/normal font-bold">選擇您的縣市，下面會列出可以做聽覺機能鑑定的醫院。</label>
         <select id="county" name="county" class="form-select form-select-lg mb-2">
+            <option value=""{% if not county %} selected{% endif %}>請先選擇縣市</option>
             {% for name in counties %}
             <option value="{{ name }}"{% if name == county %} selected{% endif %}>{{ name }}</option>
             {% endfor %}
@@ -37,8 +38,7 @@
     {% else %}
     <ul id="hospital-list" aria-label="{{ county }}">
         {% for hospital in hospitals %}
-        {# Roster 1150717 has no address or phone columns: left blank, not filled in from elsewhere. #}
-        <li>{{ hospital.name }}{% if hospital.address %}<br>{{ hospital.address }}{% endif %}{% if hospital.phone %}<br>{{ hospital.phone }}{% endif %}</li>
+        <li>{{ hospital.name }}</li>
         {% endfor %}
     </ul>
     {% endif %}

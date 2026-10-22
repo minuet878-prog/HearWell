@@ -11,7 +11,7 @@ Development-only tool; uses the standard library, so nothing is added to any req
 The roster has one visible sheet per county (the hidden 「家數」 sheet is skipped): row 1 holds the
 hospital names, column C the assessment codes, and a "v" marks what a hospital can assess.
 The version is the seven-digit date in the file name. The roster has no address or phone
-columns, so those fields are written empty, as the roster has them (spec #218).
+columns, so only the names are kept (spec #218).
 """
 
 import json
@@ -84,7 +84,7 @@ def main(path):
         for county, part in visible_sheets(book):
             counties.append(county)
             for name in hearing_hospitals(rows_of(book, part, strings)):
-                hospitals.append({"county": county, "name": name, "address": "", "phone": ""})
+                hospitals.append({"county": county, "name": name})
     snapshot = {"version": version, "counties": counties, "hospitals": hospitals}
     OUTPUT.parent.mkdir(exist_ok=True)
     OUTPUT.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

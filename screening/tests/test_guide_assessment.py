@@ -1,11 +1,12 @@
 import json
+from pathlib import Path
 from unittest import mock
 
 from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 
-from screening import views
+from screening import assessment_hospitals
 from screening.tests import test_guide
 
 # Wording finalised in #220: B2–B14 from the draft; B11 rewritten and B11a, B11b added
@@ -31,6 +32,8 @@ ASSESSMENT = (
     "實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。",
 )
 CHOOSE_COUNTY = "請先選擇縣市。"
+# B15 without its full stop, as the menu's blank first option.
+BLANK_OPTION = '<option value="" selected>請先選擇縣市</option>'
 NONE_IN_COUNTY = "這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。"
 SOURCES = (
     ("身心障礙者鑑定作業辦法", "https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020020"),
@@ -91,6 +94,9 @@ class AssessmentChapterTests(TestCase):
             content.index(f'<option value="{county}">{county}</option>') for county in COUNTIES
         ]
         self.assertEqual(options, sorted(options))
+        # Nothing chosen: the blank first option is preselected, no county is.
+        self.assertLess(content.index(BLANK_OPTION), options[0])
+        self.assertEqual(content.count(" selected>"), 1)
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
@@ -122,6 +128,8 @@ class AssessmentChapterTests(TestCase):
         self.assertNotIn("臺北榮民總醫院", text)
         self.assertIn("（1150717）", text)
         self.assertIn('<option value="澎湖縣" selected>澎湖縣</option>', content)
+        self.assertIn('<option value="">請先選擇縣市</option>', content)
+        self.assertEqual(content.count(" selected>"), 1)
         self.assertNotIn(CHOOSE_COUNTY, text)
 
     def test_unknown_or_empty_county_shows_the_menu_without_an_error(self):
@@ -132,30 +140,34 @@ class AssessmentChapterTests(TestCase):
                 content = response.content.decode()
                 self.assertIn(CHOOSE_COUNTY, test_guide.text_of(response))
                 self.assertIn('<option value="臺北市">臺北市</option>', content)
-                self.assertNotIn(" selected>", content)
+                self.assertIn(BLANK_OPTION, content)
+                self.assertEqual(content.count(" selected>"), 1)
                 self.assertNotIn('id="hospital-list"', content)
 
-    def test_address_and_phone_are_shown_when_the_roster_has_them(self):
-        # Roster 1150717 has neither column, so a stand-in snapshot shows what a later one would.
+    def test_county_without_hospitals_says_to_ask_the_health_bureau(self):
+        # Every county of roster 1150717 has one, so a stand-in snapshot shows the empty case.
         snapshot = {
             "version": "1150717",
             "counties": ["臺北市", "連江縣"],
-            "hospitals": [
-                {
-                    "county": "臺北市",
-                    "name": "測試醫院",
-                    "address": "臺北市測試路 1 號",
-                    "phone": "02-0000-0000",
-                },
-            ],
+            "hospitals": [{"county": "臺北市", "name": "測試醫院"}],
         }
-        with mock.patch.dict(views.ASSESSMENT_HOSPITALS, snapshot):
+        with mock.patch.object(assessment_hospitals, "roster", return_value=snapshot):
             text = test_guide.text_of(self.client.get(self.url, {"county": "臺北市"}))
-            self.assertIn("測試醫院 臺北市測試路 1 號 02-0000-0000", text)
+            self.assertIn("測試醫院", text)
             self.assertNotIn(NONE_IN_COUNTY, text)
             text = test_guide.text_of(self.client.get(self.url, {"county": "連江縣"}))
             self.assertIn(NONE_IN_COUNTY, text)
             self.assertNotIn("測試醫院", text)
+
+    def test_the_roster_is_read_once_on_first_use(self):
+        assessment_hospitals.roster.cache_clear()
+        self.addCleanup(assessment_hospitals.roster.cache_clear)
+        with mock.patch.object(
+            Path, "read_text", autospec=True, side_effect=Path.read_text
+        ) as read:
+            self.client.get(self.url)
+            self.client.get(self.url, {"county": "澎湖縣"})
+        self.assertEqual(read.call_count, 1)
 
 
 class AssessmentHospitalSnapshotTests(TestCase):
@@ -171,6 +183,7 @@ class AssessmentHospitalSnapshotTests(TestCase):
         self.assertTrue(self.snapshot["hospitals"])
         for row in self.snapshot["hospitals"]:
             with self.subTest(row=row):
-                self.assertEqual(set(row), {"county", "name", "address", "phone"})
+                # Names only: the roster has no address or phone columns.
+                self.assertEqual(set(row), {"county", "name"})
                 self.assertIn(row["county"], COUNTIES)
                 self.assertTrue(row["name"].strip())
