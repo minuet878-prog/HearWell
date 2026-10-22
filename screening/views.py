@@ -344,7 +344,9 @@ def screening(request, questionnaire_id):
                 "formset": formset,
                 "hearing_aid_form": None
                 if is_ioi_ha or always_aided
-                else HearingAidForm(initial=hearing_aid_initial),
+                else HearingAidForm(
+                    initial=hearing_aid_initial, message=questionnaire.definition.wearing_error
+                ),
                 "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
@@ -382,7 +384,11 @@ def screening(request, questionnaire_id):
         except signing.BadSignature:
             return HttpResponseBadRequest("常模依據無法確認，請重新開啟問卷。")
         formset = AnswerFormSet(questions=questions, data=request.POST)
-        hearing_aid_form = None if is_ioi_ha or always_aided else HearingAidForm(data=request.POST)
+        hearing_aid_form = (
+            None
+            if is_ioi_ha or always_aided
+            else HearingAidForm(data=request.POST, message=questionnaire.definition.wearing_error)
+        )
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
         # ，所以不能用 strict=True
         question_form = list(zip(questions, formset, strict=False))

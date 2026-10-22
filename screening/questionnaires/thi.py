@@ -188,4 +188,5 @@ DEFINITION = Definition(
     support_message=SUPPORT_MESSAGE,
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
+    wearing_error="請選擇您現在有沒有配戴助聽器",
 )

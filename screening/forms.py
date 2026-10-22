@@ -103,11 +103,14 @@ class HearingAidForm(forms.Form):
         choices=((True, "有戴"), (False, "沒戴")),
         coerce=lambda value: value == "True",
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
-        error_messages={
-            "required": "請選擇這次有沒有戴助聽器",
-            "invalid_choice": "請選擇這次有沒有戴助聽器",
-        },
     )
+
+    def __init__(self, *args, message, **kwargs):
+        # message: the questionnaire's own (Definition.wearing_error), asked as its question is.
+        super().__init__(*args, **kwargs)
+        self.fields["wearing_hearing_aid"].error_messages.update(
+            {"required": message, "invalid_choice": message}
+        )
 
 
 class BaseAnswerFormSet(BaseFormSet):

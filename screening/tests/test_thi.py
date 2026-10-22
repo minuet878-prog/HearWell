@@ -111,6 +111,8 @@ QUESTIONS = (
 )
 THI_WEARING = "您現在有沒有配戴助聽器？"
 HHIE_S_WEARING = "這次填答時，您有沒有戴助聽器？"
+THI_WEARING_ERROR = "請選擇您現在有沒有配戴助聽器"
+HHIE_S_WEARING_ERROR = "請選擇這次有沒有戴助聽器"
 THREE_CHOICES = [
     {"value": 4, "label": "經常"},
     {"value": 2, "label": "偶爾"},
@@ -173,6 +175,21 @@ class ThiRequiredAnswersTests(ThiTestCase):
         self.assertContains(response, 'href="#question-hearing-aid">是否戴助聽器</a>')
         self.assertFalse(Submission.objects.exists())
 
+    def test_unanswered_wearing_message_asks_as_the_question_does(self):
+        # The message follows THI's 「您現在有沒有配戴助聽器？」, not HHIE-S's 「這次」.
+        for wearing in (None, "maybe"):
+            with self.subTest(wearing=wearing):
+                content = self.post_web([0] * 25, wearing=wearing).content.decode()
+                self.assertRegex(
+                    content, rf'id="id_wearing_hearing_aid_error">\s*<p[^>]*>{THI_WEARING_ERROR}<'
+                )
+                self.assertNotIn(HHIE_S_WEARING_ERROR, content)
+        for wearing in ({"wearing_hearing_aid": None}, {"wearing_hearing_aid": "yes"}):
+            with self.subTest(api=wearing):
+                response = self.post_api([0] * 25, **wearing)
+                self.assertEqual(response.json(), {"wearing_hearing_aid": [THI_WEARING_ERROR]})
+        self.assertFalse(Submission.objects.exists())
+
     def test_api_refuses_an_unanswered_item_and_saves_nothing(self):
         scores = [0] * 25
         scores[24] = None
@@ -184,7 +201,7 @@ class ThiRequiredAnswersTests(ThiTestCase):
     def test_api_refuses_an_unanswered_wearing_question_and_saves_nothing(self):
         response = self.post_api([0] * 25)
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"wearing_hearing_aid": ["請選擇這次有沒有戴助聽器"]})
+        self.assertEqual(response.json(), {"wearing_hearing_aid": [THI_WEARING_ERROR]})
         self.assertFalse(Submission.objects.exists())
 
     def test_wearing_now_is_saved_as_worn(self):
