@@ -34,24 +34,7 @@
 {% if sections %}
 <section id="report-life-impact" class="report-part" aria-labelledby="life-impact-title">
 <h2 id="life-impact-title" class="h4">生活影響</h2>
-{% for section in sections %}{% with latest=section.latest code=section.questionnaire.code %}
-<section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
-    <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
-    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
-    <p>情緒 {{ latest.emotional_score }}、社交 {{ latest.social_score }}（分項僅供參考）　助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
-    <p>{{ section.advice }}</p>
-    <details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
-    <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
-    <table class="table">
-        <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>
-        <tbody>
-            {% for record in section.recent %}
-            <tr><td>{{ record.created_at|date:"Y/m/d" }}</td><td>{{ record.total_answer_score }}</td><td>{{ record.classified.text }}</td><td>{{ record.get_wearing_hearing_aid_display }}</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-{% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
+{% for section in sections %}{% with latest=section.latest code=section.questionnaire.code %}{% include "screening/report_graded_section.html" %}{% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
 {% endwith %}{% endfor %}
 </section>
 {% endif %}
@@ -59,23 +42,7 @@
 {% if tinnitus_sections %}
 <section id="report-tinnitus" class="report-part" aria-labelledby="tinnitus-title">
 <h2 id="tinnitus-title" class="h4">耳鳴</h2>
-{% for section in tinnitus_sections %}{% with latest=section.latest code=section.questionnaire.code %}
-<section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
-    <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
-    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level">{{ latest.classified.text }}</span></p>
-    <p>助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
-    <p>{{ section.advice }}</p>
-    <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
-    <table class="table">
-        <thead><tr><th scope="col">日期</th><th scope="col">總分</th><th scope="col">分級</th><th scope="col">助聽器</th></tr></thead>
-        <tbody>
-            {% for record in section.recent %}
-            <tr><td>{{ record.created_at|date:"Y/m/d" }}</td><td>{{ record.total_answer_score }}</td><td>{{ record.classified.text }}</td><td>{{ record.get_wearing_hearing_aid_display }}</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</section>
-{% endwith %}{% endfor %}
+{% for section in tinnitus_sections %}{% with latest=section.latest code=section.questionnaire.code %}{% include "screening/report_graded_section.html" %}{% endwith %}{% endfor %}
 </section>
 {% endif %}
 
