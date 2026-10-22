@@ -1,0 +1,10 @@
+{# The comparison page's result card (#191); the reports keep their own fragments. #}
+<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center">
+    <p class="m-0">沒戴<br><strong class="text-2xl/snug text-heading">{{ comparison.unaided_result }}</strong><br><span class="text-base">{{ comparison.unaided.created_at|date:"Y/m/d" }}</span></p>
+    <svg aria-hidden="true" viewBox="0 0 24 24" class="size-9 shrink-0 fill-none stroke-primary stroke-[2.5]" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+    <p class="m-0">有戴<br><strong class="text-2xl/snug text-primary">{{ comparison.aided_result }}</strong><br><span class="text-base">{{ comparison.aided.created_at|date:"Y/m/d" }}</span></p>
+</div>
+<p class="mt-4 text-xl/normal font-bold text-heading">{{ comparison.direction_text }}</p>
+<p>差值不能單獨判定助聽器效益。</p>
+<p class="text-base">兩筆是不同時間填的，不一定是開始戴之前和之後的比較。</p>
+{% block details %}{% endblock %}

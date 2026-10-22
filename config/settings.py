@@ -31,7 +31,7 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     # HSTS starts short and grows in steps (1 hour -> 1 day -> 1 week -> 1 year, see roadmap),
     # so a broken HTTPS setup cannot lock users out for long.
-    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_SECONDS = 86400
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:

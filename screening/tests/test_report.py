@@ -166,7 +166,9 @@ class HealthReportTests(TestCase):
         result_page = self.client.get(
             reverse("result", args=[Submission.objects.get(questionnaire=self.ioi_ha).pk])
         )
-        self.assertContains(result_page, f"{IOI_HA_CHOICES[2][1]}（低於常模）")
+        # The result page says the same comparison in its own words (#187).
+        self.assertContains(result_page, "比一般使用者低的 1 項")
+        self.assertContains(result_page, f"您的回答：{IOI_HA_CHOICES[2][1]}")
         # ⑤ audiogram interpretation, same as the audiogram page
         audiogram = _section(content, "report-audiogram")
         self.assertIn("2026/09/28", audiogram)
