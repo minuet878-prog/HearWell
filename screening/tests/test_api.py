@@ -323,7 +323,6 @@ class ApiQuestionnaireDetailTests(TestCase):
                 question_number=number,
                 category=Category.EMOTIONAL,
             )
-        cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code="ioi-ha")
 
     def setUp(self):
         self.client.force_login(self.user)
@@ -357,10 +356,9 @@ class ApiQuestionnaireDetailTests(TestCase):
             ],
         )
 
-    def test_missing_or_ioi_ha_gets_404(self):
-        for pk in (self.ioi_ha.pk, 9999):
-            with self.subTest(pk=pk):
-                self.assertEqual(self.client.get(self._url(pk)).status_code, 404)
+    def test_missing_gets_404(self):
+        # IOI-HA is served too since #245 (test_ioi_ha_api).
+        self.assertEqual(self.client.get(self._url(9999)).status_code, 404)
 
 
 class ApiSubmitTests(TestCase):
@@ -510,13 +508,6 @@ class ApiSubmitTests(TestCase):
         response = self._post(body)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), {"questionnaire": ["這份問卷沒有題目"]})
-        self.assertNothingSaved()
-
-    def test_ioi_ha_gets_400(self):
-        body = self._body(scores=(3,) * 7, questions=self.ioi_questions, questionnaire=self.ioi_ha)
-        response = self._post(body)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("questionnaire", response.json())
         self.assertNothingSaved()
 
     def test_failure_midway_leaves_nothing(self):

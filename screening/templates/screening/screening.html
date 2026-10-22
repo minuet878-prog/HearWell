@@ -50,7 +50,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
             document.getElementById("answer-loading").textContent = "";
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
         {% csrf_token %}

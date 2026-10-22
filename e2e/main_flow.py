@@ -114,6 +114,21 @@ class OnAPhone:
     def next(self):
         self.main().get_by_role("button", name="下一題").click()
 
+    def answer_ioi_ha(self):
+        """On IOI-HA's React page: no wearing step, the norm basis told on item 1 (ADR 0002)."""
+        app = self.main().locator(".answer-app")
+        expect(app.get_by_role("group")).to_contain_text("第 1 題／共 7 題")
+        expect(app).to_contain_text("本次常模依據：")
+        expect(app).not_to_contain_text("有沒有戴助聽器")
+        for number in range(1, 8):
+            group = app.get_by_role("group")
+            expect(group).to_contain_text(f"第 {number} 題／共 7 題")
+            group.get_by_role("radio").first.check()
+            if number < 7:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+
 
 class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec 4.1: one method per step, so a failure's traceback names the step."""
@@ -147,6 +162,22 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.step5_submit()
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
+
+    def test_new_user_answers_ioi_ha_on_react_after_an_unaided_hhie_s(self):
+        """#245: the unaided HHIE-S just answered is IOI-HA's norm basis, told on item 1."""
+        with self.saving_artifacts():
+            self.step1_start_goes_to_register()
+            self.step2_register()
+            self.step3_choose_hhie_s()
+            self.step4_answer_and_change_one()
+            self.step5_submit()
+            ioi_ha = Questionnaire.objects.get(code="ioi-ha")
+            self.page.goto(f"{self.live_server_url}/questionnaire/{ioi_ha.pk}")
+            self.answer_ioi_ha()
+            basis = self.page.get_by_text("分組依據：", exact=False)
+            expect(basis).to_contain_text("HHIE-S")
+            expect(basis).to_contain_text("20 分")
+            expect(self.main()).to_contain_text("低於常模")
 
     def test_show_password_with_javascript(self):
         """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
@@ -1083,7 +1114,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expect(self.page.get_by_role("button", name="從報告移除")).to_have_count(0)
 
     def test_ioi_discloses_hhia_basis_before_saving(self):
-        """#81: HTML IOI-HA reveals and keeps the chosen adult HHI source."""
+        """#81: IOI-HA reveals and keeps the chosen adult HHI source."""
         call_command("seed_questionnaires", verbosity=0)
         questionnaire = Questionnaire.objects.get(code="hhia-s")
         basis = Submission.objects.create(
@@ -1096,11 +1127,12 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         ioi = Questionnaire.objects.get(code="ioi-ha")
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{ioi.pk}")
-            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("HHIA-S")
-            expect(self.page.get_by_text("本次常模依據：", exact=False)).to_contain_text("40 分")
-            for n in range(1, 8):
-                self.page.locator(f"#question-{n}").get_by_role("radio").first.check()
-            self.page.get_by_role("button", name="送出", exact=True).click()
+            # #245: on React; only its copy of the intro shows, the page's own is hidden.
+            told = self.main().locator(".answer-app").get_by_text("本次常模依據：", exact=False)
+            expect(told).to_contain_text("HHIA-S")
+            expect(told).to_contain_text("40 分")
+            self.assert_fits_a_phone_at_double_text_size("IOI-HA answer item 1")
+            self.answer_ioi_ha()
             expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("HHIA-S")
             expect(self.page.get_by_text("分組依據：", exact=False)).to_contain_text("40 分")
 
@@ -1747,6 +1779,141 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                             or b["y"] + b["height"] <= a["y"] + 1
                         )
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
+
+
+class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #218 (ticket #231): the guide's route, and its pages at 200% text on a phone."""
+
+    fixtures = ("questions_fixture.json",)
+    COUNTY = "花蓮縣"
+    # The 1150717 roster's hearing assessment hospitals in 花蓮縣, as the snapshot lists them.
+    HOSPITALS = (
+        "佛教慈濟醫療財團法人花蓮慈濟醫院",
+        "臺灣基督教門諾會醫療財團法人門諾醫院",
+        "臺中市立老人復健綜合醫院（委託財團法人中國醫藥大學興建經營）",
+    )
+    CHAPTERS = (
+        "before-you-go",
+        "assessment",
+        "form-9",
+        "types-and-prices",
+        "form-25",
+        "after-fitting",
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # A returning user without hearing aids; 55 dB in both ears is a 45.0% ratio, just
+        # reaching the assessment threshold.
+        user = consented_user(username="guide_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width, height=900):
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    # #231: home card -> my guide (an audiogram reaching the threshold) -> the assessment
+    # chapter with a county chosen -> the form 9 chapter.
+    def test_route_from_home_card_to_form_9(self):
+        self.open(390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            more = self.page.get_by_role("region", name="您還可以")
+            more.get_by_role("link", name="了解助聽器選配與補助").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
+            expect(self.main().get_by_role("region", name="聽力圖")).to_contain_text(
+                "依您 2026/10/01 的聽力圖：右耳四頻平均 55 dB HL，左耳四頻平均 55 dB HL。"
+            )
+            threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+            expect(threshold).to_contain_text(
+                "雙耳障礙比率約 45.0%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"
+            )
+            threshold.get_by_role("link", name="找鑑定醫院").click()
+
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("身障鑑定與鑑定醫院")
+            self.main().get_by_label("選擇您的縣市").select_option(self.COUNTY)
+            self.main().get_by_role("button", name="查詢").click()
+            expect(self.page).to_have_url(re.compile(r"/guide/assessment\?county="))
+            hospitals = self.main().get_by_role("list", name=self.COUNTY).get_by_role("listitem")
+            expect(hospitals).to_have_text(list(self.HOSPITALS))
+
+            self.main().get_by_role("link", name="回到我的選配指引").click()
+            self.main().get_by_role("link", name="看九號表的流程").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text(
+                "九號表：申請助聽器補助"
+            )
+            expect(self.main()).to_contain_text("沒核定就先買的不補助")
+
+    # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
+    # with the worked steps open and a county's hospitals listed.
+    def test_pages_fit_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        paths = [
+            "/guide",
+            *(f"/guide/{slug}" for slug in self.CHAPTERS),
+            f"/guide/assessment?county={self.COUNTY}",
+        ]
+        with self.saving_artifacts():
+            for path in paths:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    for summary in self.main().locator("details > summary").all():
+                        summary.click()
+                    expect(self.main().locator("details:not([open])")).to_have_count(0)
+                    self.assert_fits_a_phone_at_double_text_size(path)
+            with self.subTest(path="/guide signed out"):
+                self.context.clear_cookies()
+                self.page.goto(f"{self.live_server_url}/guide")
+                expect(self.main().get_by_role("link", name="登入", exact=True)).to_be_visible()
+                self.assert_fits_a_phone_at_double_text_size("/guide signed out")
+
+    # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
+    def test_form_9_anchors_jump_to_their_sections(self):
+        self.open(390, 640)
+        with self.saving_artifacts():
+            for anchor, heading in (
+                ("reapply", "再次申請（換新機）"),
+                ("without-certificate", "沒有身障證明時"),
+            ):
+                with self.subTest(anchor=anchor):
+                    self.page.goto(f"{self.live_server_url}/guide/form-9#{anchor}")
+                    expect(self.main().get_by_role("heading", name=heading)).to_be_in_viewport()
 
 
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
