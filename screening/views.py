@@ -140,8 +140,8 @@ GUIDE_CHAPTERS = (
     GuideChapter("assessment", "身障鑑定與鑑定醫院", None),
     GuideChapter("form-9", "九號表：申請助聽器補助", None),
     GuideChapter("types-and-prices", "助聽器的種類與價格", None),
-    GuideChapter("form-25", "二十五號表：使用效益驗證", None),
-    GuideChapter("after-fitting", "配戴助聽器之後", None),
+    GuideChapter("form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html"),
+    GuideChapter("after-fitting", "配戴助聽器之後", "screening/guide/after_fitting.html"),
 )
 
 
@@ -155,7 +155,13 @@ def guide_chapter(request, chapter):
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter and c.template), None)
     if found is None:
         raise Http404
-    return render(request, found.template, {"chapter": found})
+    context = {"chapter": found}
+    if found.slug == "after-fitting":
+        # #220 H8, H9 link only IOI-HA and SSQ12, not every listed questionnaire (SADL).
+        context["follow_ups"] = sorted(
+            Questionnaire.objects.defined().filter(code__in=(IOI_HA, SSQ12)), key=list_order
+        )
+    return render(request, found.template, context)
 
 
 class MonitoringTestError(Exception):
