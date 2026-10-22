@@ -2099,6 +2099,15 @@
     margin-top: 1.5rem;
   }
 
+  /* #198: at 200% text on a phone a date like 2026/09/28 cannot break, so headings and list
+     lines run off the screen. Screen only: the printed report stays as it was. Tables keep
+     their column widths. */
+  @media screen {
+    .health-report :is(h1, h2, h3, li) {
+      overflow-wrap: anywhere;
+    }
+  }
+
   .report-meta {
     display: flex;
     flex-wrap: wrap;
@@ -2191,21 +2200,116 @@
     }
   }
 
-  /* Account settings (spec phase9_ui_refresh_3_structure.md 4.1). */
-  .account-details {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 0.625rem 1.25rem;
+  /* Privacy notice (#197): the highlights card on top, framed in the brand blue. */
+  .privacy-highlights {
+    border: 0.125rem solid var(--color-primary);
   }
 
-  .account-details dd {
+  /* Account settings (#195): one white card per group, a divider between rows. */
+  .settings-group {
     margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-large);
+    background-color: #fff;
+    box-shadow: var(--shadow-warm);
+  }
+
+  /* At 200% text a date or an address wraps instead of being cut off by the card. */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    min-height: 4.25rem;
+    padding: 0.75rem 1.125rem;
+    color: inherit;
+    text-decoration: none;
     overflow-wrap: anywhere;
   }
 
+  .settings-group > * + * {
+    border-top: 1px solid var(--color-border-warm);
+  }
+
+  /* The account rows are a list of terms: the value under its label. */
+  .settings-row-data {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .settings-row-data dd {
+    margin: 0;
+  }
+
+  .settings-row-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .settings-row-title {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .settings-row-link .settings-row-title {
+    color: var(--color-primary);
+  }
+
+  .settings-row-note {
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .settings-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .settings-row-arrow {
+    color: var(--color-primary);
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  /* Rows share one card, so they change colour only and never move (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .settings-row-link:hover {
+      background-color: var(--color-brand-soft);
+      color: inherit;
+    }
+  }
+
+  .settings-row-link:active {
+    background-color: var(--color-brand-selected);
+    color: inherit;
+  }
+
+  .settings-row-link:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: -0.25rem;
+  }
+
   /* Deleting the account is set apart from everything above it. */
-  .account-danger {
-    border-top: 0.125rem solid var(--color-severe);
+  .settings-group-danger {
+    border-color: var(--color-severe);
+  }
+
+  .settings-group-danger :is(.settings-row-title, .settings-row-arrow) {
+    color: var(--color-severe);
+  }
+
+  .settings-group-danger .settings-icon {
+    stroke: var(--color-severe);
   }
 
   /* The account link sits on the white header. */

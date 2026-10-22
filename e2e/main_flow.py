@@ -17,6 +17,7 @@ from django.conf import settings
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.core.management import call_command
 from django.test import Client
+from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.models import (
@@ -1306,6 +1307,132 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 expect(self.main().locator(".comparison-items li").first).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("SSQ12-TW comparison")
 
+    # #198 (#183 batch 2 route): report -> share page -> make the link -> copy it -> the
+    # family's cover -> the family's report, then the account page says the link is live.
+    def test_share_route_from_report_to_family_report(self):
+        self.open(390)
+        self.context.grant_permissions(
+            ["clipboard-read", "clipboard-write"], origin=self.live_server_url
+        )
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            self.main().get_by_role("link", name="分享報告給家人", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/share")
+            self.main().get_by_role("button", name="我知道了，產生連結", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/share")
+            share = self.user.report_shares.get()
+            self.main().get_by_role("button", name="複製連結", exact=True).click()
+            expect(self.main().get_by_text("已複製", exact=True)).to_be_visible()
+            copied = self.page.evaluate("navigator.clipboard.readText()")
+            # The site always serves HTTPS; the test server only speaks HTTP, so the family
+            # opens the copied path on it.
+            host = self.page.evaluate("location.host")
+            self.assertEqual(copied, f"https://{host}/shared/{share.token}")
+            # The copy button takes the address's place; it comes back only if copying fails.
+            expect(self.page.locator("#share-url")).to_be_hidden()
+
+            family = self.browser.new_context(viewport={"width": 390, "height": 900})
+            self.addCleanup(family.close)
+            family_page = family.new_page()
+            family_page.goto(copied.replace(f"https://{host}", self.live_server_url))
+            expect(
+                family_page.get_by_role("heading", name="家人分享了一份 HearWell 聽力報告給您")
+            ).to_be_visible()
+            family_page.get_by_role("link", name="打開報告", exact=True).click()
+            expect(family_page).to_have_url(f"{self.live_server_url}/shared/{share.token}/report")
+            highlights = family_page.get_by_role("region", name="先看重點")
+            expect(highlights).to_contain_text("2026/09/28")
+            expect(family_page.get_by_role("region", name="您可以怎麼幫忙")).to_be_visible()
+
+            self.page.goto(f"{self.live_server_url}/account")
+            expires = timezone.localtime(share.expires_at)
+            expect(
+                self.main().get_by_role("link", name=re.compile("^分享報告給家人"))
+            ).to_contain_text(f"分享中，{expires.month} 月 {expires.day} 日到期")
+
+    # #198: without JavaScript the address is there to copy by hand and the phone blocks open.
+    def test_share_page_and_add_to_home_without_javascript(self):
+        ReportShare.objects.create(user=self.user)
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 900}, java_script_enabled=False
+        )
+        self.addCleanup(self.context.close)
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/share")
+            expect(self.page.locator("#share-url")).to_be_visible()
+            expect(self.page.locator("#share-url")).to_contain_text("/shared/")
+            for name in ("複製連結", "再傳一次給家人"):
+                expect(self.main().get_by_role("button", name=name, exact=True)).to_be_hidden()
+            self.page.goto(f"{self.live_server_url}/add_to_home")
+            for phone, step in (("我用 iPhone", "分享"), ("我用 Android", "⋮")):
+                block = self.main().locator("details", has_text=phone)
+                expect(block.locator("ol")).to_be_hidden()
+                block.get_by_text(phone, exact=True).click()
+                expect(block.locator("ol")).to_be_visible()
+                expect(block.locator("ol")).to_contain_text(step)
+
+    # #198 (#183 acceptance 31): batch 2's pages, 320px wide at 200% text, folds open.
+    def test_batch2_pages_fit_a_phone_at_double_text_size(self):
+        share = ReportShare.objects.create(user=self.user)
+        self.open(320, 640)
+        with self.saving_artifacts():
+            for path in ("/share", "/account", "/privacy", "/add_to_home"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    for block in self.main().locator("details").all():
+                        block.locator("summary").click()
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    # The account groups clip their rows, so text too wide would be cut off
+                    # without widening the page.
+                    for group in self.main().locator(".settings-group").all():
+                        self.assertLessEqual(
+                            *group.evaluate("g => [g.scrollWidth, g.clientWidth]"), path
+                        )
+            for path in (f"/shared/{share.token}", f"/shared/{share.token}/report"):
+                with self.subTest(path="family " + path.rsplit("/", 1)[-1]):
+                    family = self.browser.new_context(viewport={"width": 320, "height": 640})
+                    self.addCleanup(family.close)
+                    self.page = family.new_page()
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
+    # #198 (#183 story 121, ADR 0006): the account rows and the phone blocks change colour when
+    # hovered and pressed, and never move.
+    def test_account_rows_and_phone_blocks_only_change_colour(self):
+        self.open(1024)
+        background = "el => getComputedStyle(el).backgroundColor"
+        with self.saving_artifacts():
+            for path, selector in (
+                ("/account", "a.settings-row-link"),
+                ("/add_to_home", ".phone-choice > summary"),
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    target = self.page.locator(selector).first
+                    before = target.bounding_box()
+                    rest = target.evaluate(background)
+                    target.hover()
+                    hovered = target.evaluate(background)
+                    self.assertNotEqual(hovered, rest)
+                    self.assertEqual(target.bounding_box(), before)
+                    self.page.mouse.down()
+                    self.assertNotEqual(target.evaluate(background), rest)
+                    self.assertEqual(target.bounding_box(), before)
+                    self.page.mouse.up()
+            with self.subTest(rows="account details"):
+                # Not links, so hovering or pressing them changes nothing at all.
+                self.page.goto(f"{self.live_server_url}/account")
+                for row in self.page.locator(".settings-row-data").all():
+                    before = (row.bounding_box(), row.evaluate(background))
+                    row.hover()
+                    self.assertEqual((row.bounding_box(), row.evaluate(background)), before)
+                    self.page.mouse.down()
+                    self.assertEqual((row.bounding_box(), row.evaluate(background)), before)
+                    self.page.mouse.up()
+
     # phase9_ui_refresh_3_structure.md acceptance 11: more questionnaires wrap, nothing off screen
     def test_many_questionnaires_wrap_on_a_phone(self):
         self.enterContext(register(*(fake_definition(f"extra-{n}") for n in (4, 5, 6))))
@@ -1651,6 +1778,17 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             # Role locators skip hidden elements, so only three cards are left.
             expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:3]))
             expect(self.page.locator("main [data-hide-in-app]")).to_be_hidden()
+
+    # #195: the account page's "加到手機主畫面" row hides in the app the same way.
+    def test_home_screen_app_hides_add_to_home_on_account_settings(self):
+        self.open_home(standalone=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/account")
+            self.page.wait_for_load_state("networkidle")
+            rows = self.page.get_by_role("region", name="家人與手機").get_by_role("link")
+            expect(rows.locator(".settings-row-title")).to_have_text(
+                ["分享報告給家人", "給家人看：怎麼跟聽損的家人溝通"]
+            )
 
     def test_browser_tab_and_no_javascript_show_all_four(self):
         for standalone, javascript in ((False, True), (True, False)):

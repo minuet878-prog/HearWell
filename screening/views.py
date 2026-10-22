@@ -31,6 +31,7 @@ from screening.api.views import _find_by_key
 from screening.audiogram import compare
 from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
+    ROC_OFFSET,
     AgeGroupForm,
     AnswerFormSet,
     DeleteAccountForm,
@@ -919,7 +920,14 @@ def account_settings(request):
     consent = (
         user.consents.filter(version__gte=models.CONSENT_VERSION).order_by("-agreed_at").first()
     )
-    return render(request, "screening/account.html", {"consent": consent})
+    # #195: the share status reads only request.user's own live link.
+    share = user.report_shares.active().first()
+    roc_birth_year = None if user.birth_year is None else user.birth_year - ROC_OFFSET
+    return render(
+        request,
+        "screening/account.html",
+        {"consent": consent, "share": share, "roc_birth_year": roc_birth_year},
+    )
 
 
 @login_required
