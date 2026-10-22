@@ -1155,7 +1155,12 @@ def _score_bar(definition, score, level):
         )
         start = upper
     position = max(0, min(100, score / ceiling * 100))
-    return {"segments": segments, "position": position}
+    return {
+        "segments": segments,
+        "position": position,
+        "ceiling": ceiling,
+        "current_text": next(segment["text"] for segment in segments if segment["current"]),
+    }
 
 
 @login_required

@@ -81,7 +81,8 @@ class Definition:
     wearing_error: str = "請選擇這次有沒有戴助聽器"
     # Copyright credit shown at the bottom of the answer page; "" when the intro already has it.
     source_template: str = ""
-    # SUBSCALES only: how to read the scores, in place of norms or grades.
+    # How to read the result, shown on the result page: SADL's in place of norms or grades,
+    # HHIA-S's limits under its next steps.
     result_note: str = ""
     # SUBSCALES only: item number -> value or None (不適用) in, overall and subscales out.
     score: Callable[[dict], dict] | None = None

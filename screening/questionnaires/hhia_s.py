@@ -98,5 +98,7 @@ DEFINITION = Definition(
     thresholds=THRESHOLDS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
+    # Under the next steps: the full advice, the only other place it is said, is folded away.
+    result_note=EXPLANATION,
     comparison=TotalComparison(anchor=f"report-comparison-{CODE}"),
 )

@@ -8,9 +8,7 @@
         </div>
         <div class="score-bar-marker" style="--position: {{ bar.position|floatformat:2 }}%"></div>
     </div>
-    <div class="score-bar-labels">
-        {% for segment in bar.segments %}
-        <span class="score-bar-label-{{ segment.level }}{% if segment.current %} score-bar-label-current{% endif %}" style="width: {{ segment.width|floatformat:2 }}%">{{ segment.text }}</span>
-        {% endfor %}
-    </div>
+    {# Text-heavy pages tidy-up: only this score's level under the marker, and the two ends. #}
+    <div class="score-bar-current" style="--position: {{ bar.position|floatformat:2 }}%"><span>{{ bar.current_text }}</span></div>
+    <div class="score-bar-ends"><span>0</span><span>{{ bar.ceiling }}</span></div>
 </div>

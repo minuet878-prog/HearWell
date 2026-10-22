@@ -32,8 +32,14 @@
     {% endfor %}
 </ol>
 {% endif %}
-<h2 class="h4 mt-6">完整建議</h2>
-<p>{{ advice }}</p>
+{% if submission.questionnaire.definition.result_note %}
+<p class="source-note">{{ submission.questionnaire.definition.result_note }}</p>
+{% endif %}
+{# Text-heavy pages tidy-up: the full advice mostly repeats the steps above, so it waits behind a dropdown. #}
+<details class="phone-choice mt-6 mb-4">
+    <summary>看完整建議</summary>
+    <p>{{ advice }}</p>
+</details>
 {% if optional_ssq12 %}
 <p>您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'screening' optional_ssq12.pk %}">了解日常聆聽能力（SSQ12-TW）</a>

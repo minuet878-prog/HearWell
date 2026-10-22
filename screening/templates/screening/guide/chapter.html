@@ -3,15 +3,18 @@
 {% block body %}
 {# Every chapter's wording is finalised in #220; change it only after review (ADR 0013). #}
 <p class="mt-4 mb-0"><a href="{% url 'guide' %}">回到我的選配指引</a></p>
-<article class="wrap-anywhere">
+<article class="guide-chapter wrap-anywhere">
 <h1 class="h3 mt-4">{{ chapter.title }}</h1>
 {% block chapter %}{% endblock %}
 </article>
-<footer class="mt-6" aria-label="資料查核與來源">
-    <p class="mb-1">本頁資料查核於 {% block checked_on %}{% endblock %}。法規、金額如有變動，以官方公告為準。</p>
-    <p class="mb-1">資料來源：</p>
-    <ul>
-        {% block sources %}{% endblock %}
-    </ul>
+{# Sources behind a dropdown box (text-heavy pages tidy-up); the links are unchanged (#218 Q7). #}
+<footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
+    <details class="phone-choice mb-2">
+        <summary>資料來源</summary>
+        <ul>
+            {% block sources %}{% endblock %}
+        </ul>
+    </details>
+    <p class="guide-checked">本頁資料查核於 {% block checked_on %}{% endblock %}。法規、金額如有變動，以官方公告為準。</p>
 </footer>
 {% endblock %}

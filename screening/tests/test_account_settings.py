@@ -133,9 +133,9 @@ class AccountSettingsTests(TestCase):
         self._ioi_ha(self.user, basis, days_ago=1)
         main = self._main(f"{reverse('my_hearing')}?questionnaire=hhie-s")
         nav = re.search(r'<nav class="history-tabs"[^>]*>(.*?)</nav>', main, re.S).group(1)
-        links = re.findall(r"<a ([^>]*)>([^<]*)</a>", nav)
+        links = re.findall(r"<a ([^>]*)>(.*?)</a>", nav)
         self.assertEqual(
-            [text for _, text in links],
+            [re.sub(r"<[^>]+>", "", text) for _, text in links],
             ["聽力對生活的影響（HHIE-S）", "助聽器使用成效（IOI-HA）"],
         )
         self.assertIn('aria-current="page"', links[0][0])
