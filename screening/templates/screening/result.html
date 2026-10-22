@@ -10,6 +10,9 @@
     <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
     <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
+{% if support_message %}
+<p class="card card-body mt-4">{{ support_message }}</p>
+{% endif %}
 {% if score_bar %}
 {% include "screening/score_bar.html" with bar=score_bar %}
 {% endif %}
