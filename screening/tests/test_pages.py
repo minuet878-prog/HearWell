@@ -186,6 +186,32 @@ class AccessibilityTests(TestCase):
         self.assertRegex(response.content.decode(), r'<label for="id_form-0-score_0">\s*<input')
 
 
+class HeaderBrandTests(TestCase):
+    """The white header with the wave-W logo and the two-colour wordmark."""
+
+    def _brand(self, content):
+        return re.search(r'<p class="site-brand">(.*?)</p>', content, re.DOTALL).group(1)
+
+    def test_brand_reads_hearwell_and_the_logo_is_decoration(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(consented_user(username="brandtester"))
+            with self.subTest(logged_in=logged_in):
+                brand = self._brand(self.client.get(reverse("index")).content.decode())
+                self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
+                self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "HearWell")
+                self.assertIn('<span class="site-wordmark-tint">Well</span>', brand)
+
+    def test_header_buttons_are_blue_outlines_on_the_white_header(self):
+        self.client.force_login(consented_user(username="logouttester"))
+        content = self.client.get(reverse("questionnaire_list")).content.decode()
+        self.assertRegex(
+            content, r'<button class="btn btn-outline-primary" type="submit">登出</button>'
+        )
+        self.assertRegex(content, r'id="pwa-back" class="btn btn-outline-primary site-back"')
+        self.assertNotIn("btn-outline-light", content)
+
+
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
     LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄", "聽力圖")
@@ -749,7 +775,16 @@ class PwaTests(TestCase):
         for url, head in heads.items():
             with self.subTest(url=url):
                 self.assertRegex(head, rf'<link rel="manifest" href="{self.STATIC}manifest\.json')
-                self.assertIn('<meta name="theme-color" content="#1f4e8c">', head)
+                # The header turned white, so the phone's status bar matches it (#138's rule).
+                self.assertIn('<meta name="theme-color" content="#ffffff">', head)
+                # Browser tab icon: SVG where supported, a 32px PNG for the rest.
+                self.assertRegex(
+                    head, rf'<link rel="icon" href="{self.STATIC}favicon-32\.png" sizes="32x32">'
+                )
+                self.assertRegex(
+                    head,
+                    rf'<link rel="icon" href="{self.STATIC}favicon\.svg" type="image/svg\+xml">',
+                )
                 self.assertRegex(
                     head, rf'<link rel="apple-touch-icon" href="{self.STATIC}apple-touch-icon\.png'
                 )
@@ -765,7 +800,7 @@ class PwaTests(TestCase):
             "start_url": "/",
             "scope": "/",
             "display": "standalone",
-            "theme_color": "#1f4e8c",
+            "theme_color": "#ffffff",
             "background_color": "#faf7f2",
             "lang": "zh-Hant",
         }
@@ -792,6 +827,14 @@ class PwaTests(TestCase):
     def test_apple_touch_icon_is_180(self):
         self.assertEqual(self._png_size(self.PWA_DIR / "apple-touch-icon.png"), (180, 180))
 
+    def test_favicon_png_is_32(self):
+        self.assertEqual(self._png_size(self.PWA_DIR / "favicon-32.png"), (32, 32))
+
+    def test_favicon_svg_is_the_logo_mark(self):
+        favicon = (self.PWA_DIR / "favicon.svg").read_text(encoding="utf-8")
+        self.assertIn('viewBox="0 0 64 64"', favicon)
+        self.assertIn("linearGradient", favicon)
+
     # 21
     def test_pwa_folder_has_only_app_info_and_icons(self):
         # Allow-list: a service worker added here under any name fails this test.
@@ -799,6 +842,8 @@ class PwaTests(TestCase):
         expected = {
             "manifest.json",
             "icon.svg",
+            "favicon.svg",
+            "favicon-32.png",
             "icon-192.png",
             "icon-512.png",
             "apple-touch-icon.png",

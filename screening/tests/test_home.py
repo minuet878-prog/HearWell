@@ -53,6 +53,29 @@ class NewUserHomeTests(TestCase):
         self.assertEqual(self._steps(main), list(self.STEPS))
         self.assertNotIn(self.OLD_HINT, main)
 
+    def test_hero_labels_sit_above_the_title(self):
+        main = self._main()
+        hero = main[main.index('<section class="home-band home-hero') : main.index("<h1")]
+        chips = re.findall(r'<span class="home-chip">.*?</svg>\s*([^<]+?)\s*</span>', hero, re.S)
+        self.assertEqual(chips, ["約 3 分鐘", "國際標準量表"])
+        self.assertEqual(hero.count('aria-hidden="true"'), hero.count("<svg"))
+
+    def test_login_is_a_text_link_under_the_start_button(self):
+        main = self._main()
+        login = re.search(r"<a([^>]*)>\s*我已經有帳號，登入\s*</a>", main)
+        self.assertNotIn("btn", login.group(1))
+        self.assertLess(main.index(">開始篩檢<"), login.start())
+
+    def test_start_button_carries_the_logo_and_the_one_time_ring(self):
+        for logged_in in (False, True):
+            if logged_in:
+                self.client.force_login(consented_user(username="startbutton"))
+            with self.subTest(logged_in=logged_in):
+                self.assertRegex(
+                    self._main(),
+                    r'<a class="btn btn-primary btn-lg btn-start w-full"[^>]*>開始篩檢</a>',
+                )
+
     def test_login_button_logs_in_then_chooses_a_questionnaire(self):
         consented_user(username="returning", password=self.PASSWORD)
         page = self.client.get(self._link(self._main(), "我已經有帳號，登入"))
