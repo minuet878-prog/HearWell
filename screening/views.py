@@ -259,10 +259,17 @@ def questionnaire_list(request):
         reason=reason,
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
-        also=[by_code[SSQ12]] if wearing else [],
+        also=_also_suggest(by_code, questionnaires) if wearing else [],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
     )
+
+
+def _also_suggest(by_code, questionnaires):
+    # "也可以做": SSQ12-TW, plus a satisfaction-type questionnaire (SADL) when it is visible
+    # (#174). Asks the definition's result, not SADL's code, per CODING_STANDARDS.md rule 9.
+    satisfaction = next((q for q in questionnaires if q.definition.result == SUBSCALES), None)
+    return [q for q in (by_code.get(SSQ12), satisfaction) if q]
 
 
 def _norm_bases(user):

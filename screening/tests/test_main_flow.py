@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from screening.main_flow import get_user_state
@@ -48,6 +48,11 @@ class UserStateTests(TestCase):
             Question(questionnaire=cls.ssq12, question_text=f"SSQ題{i}", question_number=i)
             for i in range(1, 13)
         )
+        cls.sadl = Questionnaire.objects.create(questionnaire_name="SADL", code="sadl")
+        cls.sadl_questions = Question.objects.bulk_create(
+            Question(questionnaire=cls.sadl, question_text=f"SADL題{i}", question_number=i)
+            for i in range(1, 16)
+        )
 
     def _at(self, submission, days_ago):
         when = NOON - timedelta(days=days_ago)
@@ -76,6 +81,16 @@ class UserStateTests(TestCase):
         Answer.objects.bulk_create(
             Answer(submission=submission, question=question, score=3)
             for question in self.ioi_questions
+        )
+        return self._at(submission, days_ago)
+
+    def _sadl(self, days_ago, user=None):
+        submission = Submission.objects.create(
+            user=user or self.user, questionnaire=self.sadl, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=4)
+            for question in self.sadl_questions
         )
         return self._at(submission, days_ago)
 
@@ -141,5 +156,24 @@ class UserStateTests(TestCase):
     def test_only_the_given_user_is_considered(self):
         other = consented_user(username="other")
         self._hhi(self.hhie_s, self.hhie_questions, days_ago=1, user=other)
+        state = get_user_state(self.user, today=TODAY)
+        self.assertTrue(state.is_new)
+
+    @override_settings(DEBUG=True)
+    def test_last_result_falls_back_to_sadl_without_a_retest_reminder(self):
+        # SADL is not a life-impact questionnaire (#166): same shape as the IOI-HA fallback.
+        sadl = self._sadl(days_ago=200)
+        state = get_user_state(self.user, today=TODAY)
+        self.assertEqual(state.last_result.submission, sadl)
+        self.assertFalse(state.last_result.is_life_impact)
+        self.assertFalse(state.retest_due)
+        self.assertIsNone(state.next_suggested_date)
+        self.assertIsNone(state.retest_questionnaire)
+        self.assertIsNone(state.reminder)
+
+    @override_settings(DEBUG=True)
+    def test_another_users_sadl_record_does_not_make_this_user_old(self):
+        other = consented_user(username="other_sadl")
+        self._sadl(days_ago=1, user=other)
         state = get_user_state(self.user, today=TODAY)
         self.assertTrue(state.is_new)
