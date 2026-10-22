@@ -157,10 +157,11 @@ def guide_chapter(request, chapter):
         raise Http404
     context = {"chapter": found}
     if found.slug == "after-fitting":
-        # #220 H8, H9 link only IOI-HA and SSQ12, not every listed questionnaire (SADL).
-        context["follow_ups"] = sorted(
-            Questionnaire.objects.defined().filter(code__in=(IOI_HA, SSQ12)), key=list_order
-        )
+        # #220 H8, H9, then SADL (the owner's addition): what the wizard offers someone who
+        # wears hearing aids, IOI-HA and its 「也可以做」, not every listed questionnaire.
+        questionnaires = list(Questionnaire.objects.defined())
+        by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+        context["follow_ups"] = [by_code[IOI_HA], *_also_suggest(by_code, questionnaires)]
     return render(request, found.template, context)
 
 

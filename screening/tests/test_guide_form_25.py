@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import Questionnaire
-from screening.questionnaires import ioi_ha, sadl, ssq12_tw
+from screening.questionnaires import hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.tests import test_guide
 
 # Wording finalised in #220 (F1-F7).
@@ -84,6 +84,10 @@ class AfterFittingChapterTests(TestCase):
         cls.ioi_ha = Questionnaire.objects.create(questionnaire_name="IOI-HA", code=ioi_ha.CODE)
         cls.ssq12 = Questionnaire.objects.create(questionnaire_name="SSQ12-TW", code=ssq12_tw.CODE)
         cls.sadl = Questionnaire.objects.create(questionnaire_name="SADL", code=sadl.CODE)
+        cls.others = (
+            Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE),
+            Questionnaire.objects.create(questionnaire_name="THI", code=thi.CODE),
+        )
 
     def setUp(self):
         self.url = reverse("guide_chapter", args=["after-fitting"])
@@ -106,16 +110,18 @@ class AfterFittingChapterTests(TestCase):
                 self.assertIn(f'href="{url}"', content)
                 self.assertIn(wording, text)
 
-    def test_links_only_the_follow_up_questionnaires_in_the_finalised_wording(self):
+    def test_links_only_the_follow_up_questionnaires_in_the_catalogue_wording(self):
         # One read of the questionnaire table for their addresses; no user data.
         with self.assertNumQueries(1):
             response = self.client.get(self.url)
         content = response.content.decode()
         text = test_guide.text_of(response)
-        # H8, H9: the catalogue's own wording for each card (topic, name, audience).
+        # H8, H9, then SADL (added by the owner after #220): the catalogue's own wording for
+        # each card (topic, name, audience).
         follow_ups = (
             (self.ioi_ha, "助聽器使用成效（IOI-HA）：適合已配戴助聽器的人。"),
             (self.ssq12, "日常聆聽能力（SSQ12-TW）：了解您目前生活中的聆聽能力。"),
+            (self.sadl, "助聽器滿意度（SADL）：給正在戴或最近戴過助聽器的人。"),
         )
         for questionnaire, wording in follow_ups:
             with self.subTest(questionnaire=questionnaire.questionnaire_name):
@@ -125,5 +131,8 @@ class AfterFittingChapterTests(TestCase):
         self.assertEqual(positions, sorted(positions))
         self.assertLess(text.index(AFTER_FITTING[5]), positions[0])
         self.assertLess(positions[-1], text.index(AFTER_FITTING[6]))
-        # SADL is listed on the live site, but #220 links only IOI-HA and SSQ12.
-        self.assertNotIn(f'href="{reverse("screening", args=[self.sadl.pk])}"', content)
+        # Only these three: not every questionnaire on the site.
+        for questionnaire in self.others:
+            with self.subTest(questionnaire=questionnaire.questionnaire_name):
+                href = f'href="{reverse("screening", args=[questionnaire.pk])}"'
+                self.assertNotIn(href, content)
