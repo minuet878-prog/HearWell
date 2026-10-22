@@ -163,10 +163,14 @@ class LayoutTests(TestCase):
         self.assertEqual(BADGE.findall(full_card), [("severe", "中重度"), ("normal", "正常")])
         self.assertEqual(BADGE.findall(empty_card), [("unknown", "資料不足")] * 2)
 
+        # #201: the summary card on top repeats both ears' badges before the ear cards.
         detail = _main(self._get(reverse("audiogram_detail", args=[full.pk])))
-        self.assertEqual(BADGE.findall(detail), [("severe", "中重度"), ("normal", "正常")])
+        self.assertEqual(BADGE.findall(detail), [("severe", "中重度"), ("normal", "正常")] * 2)
         detail = _main(self._get(reverse("audiogram_detail", args=[empty.pk])))
-        self.assertEqual(BADGE.findall(detail), [("unknown", "資料不足")] * 2)
+        self.assertEqual(
+            BADGE.findall(detail),
+            [("unknown", "資料不足，無法判讀")] * 2 + [("unknown", "資料不足")] * 2,
+        )
 
     # 7: the clinical mapping itself (spec 4.4, the owner's decision Q4 A)
     def test_degree_to_level_mapping(self):
