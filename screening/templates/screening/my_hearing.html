@@ -54,6 +54,9 @@
         {% elif submission.questionnaire.definition.averaged %}
         <span>{% include "screening/ssq_average.html" %}</span>
         <span>助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
+        {% elif submission.satisfaction %}
+        {# SADL: overall satisfaction only, no wearing status (every record is worn) or level badge. #}
+        <span>{% include "screening/sadl_overall.html" %}</span>
         {% else %}
         <span>總分：{{ submission.total_answer_score }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
         {% with classified=submission.classified %}<span>{% include "screening/level_badge.html" with text=classified.text level=classified.level %}</span>{% endwith %}

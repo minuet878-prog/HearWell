@@ -203,12 +203,13 @@ class AnswerInputSerializer(serializers.Serializer):
 class SubmissionCreateSerializer(serializers.Serializer):
     # IOI-HA needs norm grouping and has no API yet (spec phase5_api_submit.md).
     questionnaire = serializers.PrimaryKeyRelatedField(queryset=Questionnaire.objects.none())
+    # Not required here: an always-aided questionnaire (e.g. SADL) needs none, enforced below.
     wearing_hearing_aid = StrictBooleanField(
+        required=False,
         error_messages={
-            "required": WEARING_MESSAGE,
             "null": WEARING_MESSAGE,
             "invalid": WEARING_MESSAGE,
-        }
+        },
     )
     answers = serializers.ListField(child=AnswerInputSerializer())
 
@@ -218,8 +219,15 @@ class SubmissionCreateSerializer(serializers.Serializer):
         self.fields["questionnaire"].queryset = Questionnaire.objects.defined().exclude(code=IOI_HA)
 
     def validate(self, attrs):
+        questionnaire = attrs["questionnaire"]
+        # Same rule as the web form (views.screening): always-aided questionnaires are always
+        # saved as worn, no matter what was sent, instead of trusting the caller's own value.
+        if questionnaire.definition.always_aided:
+            attrs["wearing_hearing_aid"] = True
+        elif "wearing_hearing_aid" not in attrs:
+            raise serializers.ValidationError({"wearing_hearing_aid": WEARING_MESSAGE})
         # The rules live in the answer formset, shared with the web form; this only feeds it.
-        questions = list(attrs["questionnaire"].questions.all())
+        questions = list(questionnaire.questions.all())
         if not questions:
             raise serializers.ValidationError({"questionnaire": "這份問卷沒有題目"})
         # Questions that list 「不適用」 take an empty score as that answer; there, an answer

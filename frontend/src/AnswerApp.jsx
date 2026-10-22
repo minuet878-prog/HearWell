@@ -23,6 +23,8 @@ export default function AnswerApp({
   preselectUnaided = false,
   // Why 沒戴 is already chosen when catching up an unaided record (#154); from screening.html.
   unaidedHint,
+  // Answered wearing hearing aids by definition (#170, e.g. SADL): no wearing step at all.
+  alwaysAided = false,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -38,17 +40,24 @@ export default function AnswerApp({
   const legend = useRef(null);
   // Only where a fresh start begins: a draft keeps the user's own choice, and the preselection
   // by itself is nothing to keep, so opening the page and leaving asks nothing next time.
-  const startWearing = preselectUnaided ? false : null;
-  const newAnswers = () => ({ key: crypto.randomUUID(), wearing: startWearing, answers: {}, step: 0 });
+  const startWearing = alwaysAided ? true : preselectUnaided ? false : null;
+  const newAnswers = () => ({
+    key: crypto.randomUUID(),
+    wearing: startWearing,
+    answers: {},
+    step: alwaysAided ? 1 : 0,
+  });
   const hasAnything = (form) => form.wearing !== startWearing || Object.keys(form.answers).length > 0;
+  // The first step shown: the hearing aid question, or question 1 when there is none (#170).
+  const groundFloor = alwaysAided ? 1 : 0;
 
   // focus: only after the user chose to continue or start over, not on first load.
   // After a reload (or coming back from the result page) the browser still holds this page's entries
-  // for steps 0..here, so reuse them instead of stacking more after them.
+  // for steps groundFloor..here, so reuse them instead of stacking more after them.
   function begin(start, focus) {
     const here = history.state?.answerStep;
-    const from = Number.isInteger(here) ? here : 0;
-    if (!Number.isInteger(here)) history.replaceState({ answerStep: 0 }, "");
+    const from = Number.isInteger(here) ? here : groundFloor;
+    if (!Number.isInteger(here)) history.replaceState({ answerStep: groundFloor }, "");
     if (start.step < from) history.go(start.step - from);
     for (let step = from + 1; step <= start.step; step++) history.pushState({ answerStep: step }, "");
     moved.current = focus;
@@ -127,7 +136,7 @@ export default function AnswerApp({
   }
 
   const { step } = form;
-  const isHearingAid = step === 0;
+  const isHearingAid = !alwaysAided && step === 0;
   const question = isHearingAid ? HEARING_AID : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
@@ -291,7 +300,7 @@ export default function AnswerApp({
       )}
 
       <div className="answer-nav">
-        {!isHearingAid && (
+        {step > groundFloor && (
           <button
             type="button"
             className="btn btn-outline-primary btn-lg"

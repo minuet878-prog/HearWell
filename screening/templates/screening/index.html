@@ -85,6 +85,8 @@
     <div>{% include "screening/ioi_ha_summary.html" with ioi_ha=last_ioi_ha %}</div>
     {% elif submission.questionnaire.definition.averaged %}
     <div>{% include "screening/ssq_average.html" %}</div>
+    {% elif submission.satisfaction %}
+    <div>{% include "screening/sadl_overall.html" %}</div>
     {% endif %}
 </div>
 {% endif %}
