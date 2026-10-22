@@ -5,10 +5,17 @@ from django.contrib.auth.forms import UserCreationForm
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
+from django.utils.html import format_html, format_html_join
 
 from screening.models import Answer, Question, Submission, User
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
+
+# Issue #151: the site's own words for the rules AUTH_PASSWORD_VALIDATORS checks, in the same
+# order; the validators still decide, and their error messages are unchanged.
+PASSWORD_RULES = ("至少 8 個字", "不要全部是數字", "不要跟您的使用者名稱太像", "不要用太常見的密碼")
+# The site's own words in place of Django's username help; its validator and 150 limit stay.
+USERNAME_HELP = "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。"
 
 
 class RegisterForm(UserCreationForm):
@@ -16,7 +23,7 @@ class RegisterForm(UserCreationForm):
     roc_birth_year = forms.CharField(
         label="出生年",
         required=False,
-        help_text="選填。用來推薦適合您年齡的問卷，不會公開。",
+        help_text="選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。",
         widget=forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 3}),
     )
 
@@ -30,6 +37,12 @@ class RegisterForm(UserCreationForm):
             field.widget.attrs.setdefault("class", "form-control")
         if not self.is_bound:
             self.fields["username"].widget.attrs.pop("autofocus", None)
+        self.fields["username"].help_text = USERNAME_HELP
+        self.fields["password1"].help_text = format_html(
+            "設定密碼時，請您注意：<ul>{}</ul>",
+            format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
+        )
+        self.fields["password2"].help_text = "請再輸入一次同樣的密碼。"
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]
@@ -149,11 +162,24 @@ AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
 
 
 class AgeGroupForm(forms.Form):
+    # The answers' values, also used when the birth year already tells the age (#152).
+    ADULT, OLDER = "adult", "older"
     age_group = forms.ChoiceField(
         label="您目前的實際年齡？",
-        choices=(("adult", "18–64 歲"), ("older", "65 歲以上")),
+        choices=((ADULT, "18–64 歲"), (OLDER, "65 歲以上")),
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
         error_messages={"required": "請選擇您的年齡區間"},
+    )
+
+
+class WearingNowForm(forms.Form):
+    # The wizard's second question (#152); the answer page still asks about this answering.
+    hearing_aid = forms.TypedChoiceField(
+        label="您現在有戴助聽器嗎？",
+        choices=(("no", "沒有戴"), ("yes", "有戴")),
+        coerce=lambda value: value == "yes",
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        error_messages={"required": "請選擇您現在有沒有戴助聽器"},
     )
 
 

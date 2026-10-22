@@ -26,7 +26,9 @@ class SadlTestCase(TestCase):
 
 class SadlVisibilityTests(SadlTestCase):
     def test_unlisted_sadl_is_hidden_in_production(self):
-        catalog = self.client.get(reverse("questionnaire_list"))
+        catalog = self.client.get(reverse("questionnaire_list"), {"choose": "self"})
+        # The full list (choose for myself), with the other questionnaires but not SADL.
+        self.assertContains(catalog, "日常聆聽能力（SSQ12-TW）")
         self.assertNotContains(catalog, "SADL")
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
         self.assertEqual(page.status_code, 404)
@@ -35,7 +37,7 @@ class SadlVisibilityTests(SadlTestCase):
 
     @override_settings(DEBUG=True)
     def test_unlisted_sadl_is_offered_on_a_local_debug_site(self):
-        catalog = self.client.get(reverse("questionnaire_list"))
+        catalog = self.client.get(reverse("questionnaire_list"), {"choose": "self"})
         self.assertContains(catalog, "助聽器滿意度（SADL）")
         self.assertContains(catalog, "給正在戴或最近戴過助聽器的人。")
         page = self.client.get(reverse("screening", args=[self.questionnaire.pk]))
@@ -46,7 +48,7 @@ class SadlVisibilityTests(SadlTestCase):
 
     def test_listed_sadl_is_offered_in_production(self):
         with register(replace(sadl.DEFINITION, listed=True)):
-            catalog = self.client.get(reverse("questionnaire_list"))
+            catalog = self.client.get(reverse("questionnaire_list"), {"choose": "self"})
         self.assertContains(catalog, "助聽器滿意度（SADL）")
 
 

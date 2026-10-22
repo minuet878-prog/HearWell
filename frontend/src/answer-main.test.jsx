@@ -28,11 +28,13 @@ const html = () => document.documentElement;
 const status = () => document.getElementById("answer-loading");
 const form = () => document.getElementById("answer-form");
 const app = () => document.getElementById("answer-app");
+const intro = () => document.getElementById("answer-intro");
 
 function page() {
   document.body.innerHTML = `
+    <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
     <p id="answer-loading" role="status"></p>
-    <div id="answer-app" data-questionnaire-id="1" data-user-id="7"></div>
+    <div id="answer-app" data-questionnaire-id="1" data-user-id="7" data-minutes="3"></div>
     <form id="answer-form">
       <input type="hidden" name="csrfmiddlewaretoken" value="token">
       <input type="radio" name="form-0-score" value="4" aria-label="常常">
@@ -97,6 +99,33 @@ describe("React entry", () => {
     expect(status().textContent).toBe("");
   });
 
+  it("moves the page's intro and minutes into React (#153)", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    expect(intro().hidden).toBe(true);
+    expect(app().textContent).toContain("本問卷的目的在幫助您了解自己的聽力。");
+    act(() => app().querySelector("input[type=radio]").click());
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "下一題").click());
+    expect(app().textContent).toContain("第 1 題／共 1 題・還剩大約 3 分鐘");
+  });
+
+  it("starts on 沒戴 when the page says so, with the page's own hint (#154)", async () => {
+    app().dataset.preselectUnaided = "";
+    // The Django form's hint is the only copy of the sentence; React shows whatever it says.
+    form().insertAdjacentHTML("afterbegin", '<p id="hearing-aid-hint">頁面上的說明句</p>');
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("頁面上的說明句"));
+    const unaided = [...app().querySelectorAll("label")].find((l) => l.textContent === "沒戴");
+    expect(unaided.querySelector("input").checked).toBe(true);
+    // The hidden form keeps its hint, so React's copy needs an id of its own.
+    const ids = [...document.querySelectorAll("[id]")].map((el) => el.id);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+  });
+
   it("brings the form back at once when loading fails (acceptance 3)", async () => {
     runInline();
     respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
@@ -104,6 +133,7 @@ describe("React entry", () => {
     await waitFor(() => expect(html().classList.contains("answer-loading")).toBe(false));
     expect(status().textContent).toBe("");
     expect(form().hidden).toBe(false);
+    expect(intro().hidden).toBe(false);
     expect(app().textContent).toBe("");
   });
 
@@ -131,6 +161,7 @@ describe("React entry", () => {
 
     expect(form().hidden).toBe(false);
     expect(form().querySelector("[type=radio]").checked).toBe(true);
+    expect(intro().hidden).toBe(false);
     expect(app().textContent).toBe("");
   });
 });

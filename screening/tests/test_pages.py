@@ -388,9 +388,14 @@ class RedesignLayoutTests(TestCase):
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         wave = "<inline>"
         empty_user = consented_user(username="no_records")
-        for url in (reverse("index"), reverse("login"), reverse("register")):
+        for url in (reverse("index"), reverse("login")):
             with self.subTest(url=url):
                 self.assertEqual(scripts(url), [pwa_js, wave])
+        # The 顯示 button on the password fields (#151).
+        with self.subTest(url="register"):
+            self.assertEqual(
+                scripts(reverse("register")), [pwa_js, "screening/password-toggle.js", wave]
+            )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave])
@@ -424,13 +429,16 @@ class RedesignLayoutTests(TestCase):
 class PageFlowTests(TestCase):
     """Spec docs/specs/phase-04/phase4_ui_flow.md, acceptance 1-14a."""
 
-    HINT = "第一次使用請先註冊，已有帳號請直接登入。"
-    # As changed by phase9_ui_refresh_3_structure.md 4.4 and phase9_ui_refresh_4a_home.md 4.1.
+    # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
+    HINT = "我已經有帳號，登入"
+    # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1
+    # and spec #148 (ticket #150, the account step).
     HOME_ORDER = (
         'class="home-illustration"',
         "了解聽力對您生活的影響",
         "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
         "開始篩檢",
+        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
@@ -491,9 +499,11 @@ class PageFlowTests(TestCase):
         self.client.logout()
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
-        self._assert_in_order(main, ("開始篩檢", self.HINT, "回答問題，大約 3 分鐘。"))
+        self._assert_in_order(main, ("開始篩檢", self.HINT, "建立帳號，大約 1 分鐘。"))
         self.assertNotIn("7–10 年", main)
-        self.assertRegex(main, rf'<a[^>]*href="{reverse("questionnaire_list")}"[^>]*>\s*開始篩檢')
+        # Spec #148 (ticket #150): straight to registering, then back to choosing a questionnaire.
+        start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
+        self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
     def test_home_order_for_logged_in_without_hint(self):
         main = self._main(self.client.get(reverse("index")))
@@ -512,11 +522,11 @@ class PageFlowTests(TestCase):
 
     # Questionnaire list (4-5)
     def test_questionnaire_list_shows_info(self):
-        main = self._main(self.client.get(reverse("questionnaire_list")))
+        main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
         self._assert_in_order(
             main,
             (
-                "請選擇問卷",
+                "自行選擇問卷",
                 "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
                 # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
@@ -532,7 +542,7 @@ class PageFlowTests(TestCase):
 
     def test_question_count_is_not_hard_coded(self):
         with register(fake_definition("short")):
-            main = self._main(self.client.get(reverse("questionnaire_list")))
+            main = self._main(self.client.get(reverse("questionnaire_list") + "?choose=self"))
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
@@ -1021,7 +1031,9 @@ class PwaNavTests(TestCase):
 class HomeTests(TestCase):
     """Spec docs/specs/phase-09/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
 
+    # Spec #148 (ticket #150) adds the account step in front.
     STEPS = (
+        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
@@ -1049,7 +1061,7 @@ class HomeTests(TestCase):
     def test_step_cards(self):
         steps = self._between(self._main(), "step-cards", "</ol>")
         cards = re.findall(r"<li[^>]*>(.*?)</li>", steps, re.S)
-        self.assertEqual(len(cards), 3)
+        self.assertEqual(len(cards), 4)
         for number, (card, text) in enumerate(zip(cards, self.STEPS, strict=True), start=1):
             with self.subTest(step=number):
                 self.assertRegex(card, rf'class="step-number"[^>]*>{number}<')

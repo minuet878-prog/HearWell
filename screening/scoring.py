@@ -41,6 +41,16 @@ IOI_HA_BELOW_NORM_NOTES = {
     "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
 }
 
+# Why the wizard recommends a questionnaire (#152), word for word as the site owner reviewed it.
+RECOMMENDATION_REASONS = {
+    "unaided": "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。",
+    "needs_norm_basis": (
+        "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+        "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
+    ),
+    "has_norm_basis": "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。",
+}
+
 # Middle 50% of each item (Cox, Alexander & Beyer 2003), as (lower, upper) inclusive.
 # Groups match models.NormGroup values.
 IOI_HA_NORMS = {
