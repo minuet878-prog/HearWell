@@ -1139,6 +1139,31 @@ class SharedLayoutTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     for left, right in pairwise(boxes):
                         self.assertGreaterEqual(right["x"] - (left["x"] + left["width"]), 26)
 
+    def test_ssq12_bar_fits_a_phone_at_double_text_size(self):
+        # #188: the 0–10 bar's 「這次」 and 「上次」 sit at its two ends here, at 1rem.
+        call_command("seed_questionnaires", verbosity=0)
+        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        for score in (10, 0):  # the previous record averages 10, this one 0
+            record = Submission.objects.create(
+                user=self.user, questionnaire=ssq12, wearing_hearing_aid=False
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=record, question=question, score=score)
+                for question in ssq12.questions.all()
+            )
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            labels = self.page.locator(".ssq-bar-label")
+            expect(labels).to_have_text(["這次", "上次"])
+            self.assertEqual(labels.first.evaluate("e => getComputedStyle(e).fontSize"), "18px")
+            # 2 x the site's 112.5% base, as OnAPhone.assert_fits_a_phone_at_double_text_size.
+            self.page.wait_for_load_state("load")
+            self.page.locator("html").evaluate(
+                "html => html.style.setProperty('font-size', '225%', 'important')"
+            )
+            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
+
     # phase9_ui_refresh_3_structure.md acceptance 11: more questionnaires wrap, nothing off screen
     def test_many_questionnaires_wrap_on_a_phone(self):
         self.enterContext(register(*(fake_definition(f"extra-{n}") for n in (4, 5, 6))))
