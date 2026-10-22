@@ -28,7 +28,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
-from screening.audiogram import assessment_estimate, compare
+from screening.audiogram import assessment_estimate, compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
     ROC_OFFSET,
@@ -1345,6 +1345,8 @@ def audiogram_detail(request, audiogram_id):
         context["latest_tested_on"] = rows[0][1]
     if len(ids) > 1:
         context["compare_with"] = ids[here + 1] if here + 1 < len(ids) else ids[here - 1]
+    # #230: link the guide when either ear's PTA is over 25 dB; not when that is unknown.
+    context["fitting_guide"] = recommends_fitting_assessment(context["points"])
     return render(request, "screening/audiogram_detail.html", context)
 
 
