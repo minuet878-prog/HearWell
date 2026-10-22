@@ -1,0 +1,104 @@
+"""Spec #148 batch 2, ticket #158: the result page's score position bar."""
+
+from django.test import TestCase
+from django.urls import reverse
+
+from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.tests.helpers import consented_user, fake_definition, register
+
+
+class ScoreBarTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="score_bar_user")
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        cls.hhie_questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.hhie_s,
+                question_text=f"第{i}題",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
+        cls.unknown = Questionnaire.objects.create(
+            questionnaire_name="未設定門檻問卷", code="unconfigured"
+        )
+        cls.unknown_question = Question.objects.create(
+            questionnaire=cls.unknown, question_text="第一題", question_number=1
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+        self.enterContext(register(fake_definition("unconfigured")))
+
+    def _submit(self, questionnaire, questions, scores):
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(questions, scores, strict=True)
+        )
+        return submission
+
+    def _hhie_s(self, total):
+        scores = [4] * (total // 4) + [2] * (total % 4 // 2)
+        scores += [0] * (10 - len(scores))
+        return self._submit(self.hhie_s, self.hhie_questions, scores)
+
+    def _get(self, submission):
+        return self.client.get(reverse("result", args=[submission.id])).content.decode()
+
+    def test_segments_are_proportioned_to_the_thresholds(self):
+        # HHIE-S thresholds 8 / 24 / 40 of 40: segment widths 20%, 40%, 40%.
+        page = self._get(self._hhie_s(12))
+        self.assertIn(
+            'class="score-bar-segment score-bar-segment-normal" style="width: 20.00%"', page
+        )
+        self.assertIn(
+            'class="score-bar-segment score-bar-segment-mild_to_moderate" style="width: 40.00%"',
+            page,
+        )
+        self.assertIn(
+            'class="score-bar-segment score-bar-segment-severe" style="width: 40.00%"', page
+        )
+        self.assertIn('class="score-bar-marker" style="left: 30.00%"', page)
+
+    def test_marker_stays_inside_the_bar_at_both_ends(self):
+        self.assertIn('style="left: 0.00%"', self._get(self._hhie_s(0)))
+        self.assertIn('style="left: 100.00%"', self._get(self._hhie_s(40)))
+
+    def test_uses_the_questionnaire_s_own_thresholds_not_a_fixed_table(self):
+        questionnaire = Questionnaire.objects.create(questionnaire_name="假問卷", code="fake-level")
+        question = Question.objects.create(
+            questionnaire=questionnaire, question_text="第一題", question_number=1
+        )
+        definition = fake_definition(
+            "fake-level",
+            thresholds=((10, "低", "low"), (20, "高", "high")),
+            advice={"low": "低建議", "high": "高建議"},
+        )
+        with register(definition):
+            submission = self._submit(questionnaire, [question], [5])
+            page = self._get(submission)
+        self.assertIn('class="score-bar-segment score-bar-segment-low" style="width: 50.00%"', page)
+        self.assertIn(
+            'class="score-bar-segment score-bar-segment-high" style="width: 50.00%"', page
+        )
+        self.assertIn('style="left: 25.00%"', page)
+        self.assertIn('class="score-bar-label-low">低</span>', page)
+        self.assertIn('class="score-bar-label-high">高</span>', page)
+
+    def test_no_bar_when_unclassifiable(self):
+        submission = self._submit(self.unknown, [self.unknown_question], [4])
+        with self.assertLogs("screening.scoring", "ERROR"):
+            page = self._get(submission)
+        self.assertNotIn("score-bar", page)
+
+    def test_bar_is_hidden_from_assistive_technology(self):
+        page = self._get(self._hhie_s(12))
+        self.assertIn('<div class="score-bar" aria-hidden="true">', page)
+        # The level and score text, read normally, stay outside the hidden bar.
+        self.assertIn(
+            '<h2 class="result-level mb-0" aria-describedby="result-score">輕度到中度影響</h2>',
+            page,
+        )

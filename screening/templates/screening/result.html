@@ -10,6 +10,21 @@
     <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
     <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
+{% if score_bar %}
+<div class="score-bar" aria-hidden="true">
+    <div class="score-bar-track">
+        {% for segment in score_bar.segments %}
+        <div class="score-bar-segment score-bar-segment-{{ segment.level }}" style="width: {{ segment.width|floatformat:2 }}%"></div>
+        {% endfor %}
+        <div class="score-bar-marker" style="left: {{ score_bar.position|floatformat:2 }}%"></div>
+    </div>
+    <div class="score-bar-labels">
+        {% for segment in score_bar.segments %}
+        <span class="score-bar-label-{{ segment.level }}">{{ segment.text }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 <h2 class="h4 mt-6">建議</h2>
 <p>{{ advice }}</p>
 <div class="flex flex-col min-[576px]:flex-row gap-2 my-4">

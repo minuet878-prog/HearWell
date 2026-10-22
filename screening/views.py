@@ -889,6 +889,22 @@ def shared_report(request, token):
     return _family_page(request, "screening/shared_report.html", context)
 
 
+def _score_bar(submission, classified_score):
+    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
+    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+    thresholds = submission.questionnaire.definition.thresholds
+    if classified_score["level"] == "unknown" or not thresholds:
+        return None
+    ceiling = thresholds[-1][0]
+    segments = []
+    start = 0
+    for upper, text, level in thresholds:
+        segments.append({"level": level, "text": text, "width": (upper - start) / ceiling * 100})
+        start = upper
+    position = max(0, min(100, submission.total_answer_score / ceiling * 100))
+    return {"segments": segments, "position": position}
+
+
 @login_required
 def submission_result(request, submission_id):
     submission = get_object_or_404(
@@ -920,6 +936,7 @@ def submission_result(request, submission_id):
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_level": classified_score["level"],
+            "score_bar": _score_bar(submission, classified_score),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
