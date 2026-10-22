@@ -539,21 +539,22 @@ def _previous_same_wearing(records):
     return next((r for r in records[1:] if r.wearing_hearing_aid == wearing), None)
 
 
-def _trend_chart(records):
-    # records: this user's HHIE-S, newest first. React draws only the chart itself, so the
-    # text around it is on the page from the start and nothing below moves when it arrives.
-    # The wording is fixed by spec phase9_ui_refresh_2_data.md 4.2.
+def _trend_chart(records, since_last):
+    # records: this user's HHIE-S, newest first; since_last: the page's 「和上一次比」 or None.
+    # React draws only the chart itself, so the text around it is on the page from the start
+    # and nothing below moves when it arrives. The wording is fixed by spec
+    # phase9_ui_refresh_2_data.md 4.2.
     latest = records[0]
     wearing = latest.wearing_hearing_aid
     status = TREND_STATUS_TEXT[wearing]
-    if len(records) == 1:
+    if since_last is not None:
+        change = None  # 「和上一次比」 above the chart says it (decision 2026-10-22, #162)
+    elif len(records) == 1:
         change = "再做一次篩檢，就能看到分數的變化。"
     elif wearing is None:
         change = "這筆沒有記錄助聽器，不和其他紀錄比較。"
-    elif _previous_same_wearing(records) is None:
-        change = f"這是第一筆{status}的紀錄。"
     else:
-        change = None  # 「和上一次比」 above the chart says it (decision 2026-10-22, #162)
+        change = f"這是第一筆{status}的紀錄。"
     statuses = {r.wearing_hearing_aid for r in records}
     return {
         "latest": latest,
@@ -628,7 +629,9 @@ def my_hearing(request):
             .select_related("unaided", "aided")
             .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
-            "trend_chart": _trend_chart(records) if current.definition.trend_chart else None,
+            "trend_chart": (
+                _trend_chart(records, since_last) if current.definition.trend_chart else None
+            ),
         },
     )
 
