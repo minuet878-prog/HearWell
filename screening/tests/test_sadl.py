@@ -199,3 +199,70 @@ class SadlScoringTests(SadlTestCase):
         for _ in range(3):
             self.answer([4] * 15)
         self.assertEqual(list_queries(), two)
+
+
+@override_settings(DEBUG=True)
+class SadlHistoryTests(SadlTestCase):
+    """我的紀錄的 SADL 分頁 (#171)."""
+
+    def answer(self, values):
+        questions = list(self.questionnaire.questions.all())
+        data = {
+            "idempotency_key": str(uuid.uuid4()),
+            "form-TOTAL_FORMS": len(questions),
+            "form-INITIAL_FORMS": 0,
+        }
+        for index, (question, value) in enumerate(zip(questions, values, strict=True)):
+            data[f"form-{index}-question_id"] = question.pk
+            if value is not None:
+                data[f"form-{index}-score"] = value
+        return self.client.post(reverse("screening", args=[self.questionnaire.pk]), data)
+
+    def test_the_sadl_tab_lists_each_record_by_overall_score_linking_to_its_result(self):
+        # A second questionnaire so the tab nav (and its label) actually renders.
+        Submission.objects.create(
+            user=self.user, questionnaire=Questionnaire.objects.get(code="ssq12-tw")
+        )
+        self.answer([4] * 15)
+        first = Submission.objects.latest("pk")
+        self.answer([1] * 15)
+        second = Submission.objects.latest("pk")
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertContains(history, "助聽器滿意度（SADL）")
+        self.assertContains(history, "整體滿意度：4.0")
+        self.assertContains(history, "整體滿意度：2.6")
+        self.assertContains(history, reverse("result", args=[first.pk]))
+        self.assertContains(history, reverse("result", args=[second.pk]))
+
+    def test_the_sadl_tab_has_no_wearing_comparison_or_trend_chart(self):
+        self.answer([4] * 15)
+        self.answer([1] * 15)
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertNotContains(history, "配戴狀態比較")
+        self.assertNotContains(history, "比較戴與不戴助聽器")
+        self.assertNotIn("trend-chart", history.content.decode())
+        self.assertNotContains(history, "screening/frontend/trend-chart.js")
+
+    def test_another_users_sadl_record_does_not_appear(self):
+        self.answer([4] * 15)
+        other = consented_user(username="sadl_other", password="Test-pass-12345")
+        self.client.force_login(other)
+        self.answer([1] * 15)
+        self.client.force_login(self.user)
+        history = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+        self.assertContains(history, "整體滿意度：4.0")
+        self.assertNotContains(history, "整體滿意度：2.6")
+
+    def test_the_tab_reads_answers_the_same_number_of_times_for_two_or_five_records(self):
+        def list_queries():
+            with CaptureQueriesContext(connection) as ctx:
+                response = self.client.get(reverse("my_hearing"), {"questionnaire": "sadl"})
+            self.assertEqual(response.status_code, 200)
+            return len(ctx.captured_queries)
+
+        for _ in range(2):
+            self.answer([4] * 15)
+        two = list_queries()
+        for _ in range(3):
+            self.answer([4] * 15)
+        self.assertEqual(list_queries(), two)

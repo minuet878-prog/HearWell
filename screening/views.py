@@ -571,8 +571,14 @@ def _trend_chart(records):
 
 @login_required
 def my_hearing(request):
+    # SADL's satisfaction score reads submission.answers directly (models.py), so it needs
+    # its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
+    answers = Answer.objects.select_related("question")
     submissions = list(
-        request.user.submissions.defined().select_related("questionnaire").with_scores()
+        request.user.submissions.defined()
+        .select_related("questionnaire")
+        .prefetch_related(Prefetch("answers", queryset=answers))
+        .with_scores()
     )
     if not submissions:
         return render(request, "screening/my_hearing.html", {"submissions": []})
