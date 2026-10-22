@@ -29,7 +29,7 @@
 </nav>
 {% endif %}
 {% if since_last %}
-<section id="since-last" class="mb-6" aria-labelledby="since-last-title">
+<section id="since-last" class="mb-6 wrap-anywhere" aria-labelledby="since-last-title">
     <h2 id="since-last-title" class="h4">和上一次比</h2>
     {% with previous=since_last.previous latest=since_last.latest %}
     <p class="mb-1">上一次（{{ previous.created_at|date:"Y/m/d" }}{% if previous.id in same_day %} {{ previous.created_at|date:"H:i" }}{% endif %}）：{{ previous.total_answer_score }} 分</p>
