@@ -135,7 +135,16 @@ def assessment_estimate(points):
         status = "reached"
     else:
         status = "uncertain" if no_response else "not_reached"
-    return {**ears, "ratio": ratio, "status": status, "no_response": no_response}
+    return {
+        **ears,
+        "better": better,
+        "worse": worse,
+        # An ear under the normal limit was counted as 0% rather than below it.
+        "zeroed": any(e["pta"] < NORMAL_LIMIT for e in ears.values()),
+        "ratio": ratio,
+        "status": status,
+        "no_response": no_response,
+    }
 
 
 def recommends_fitting_assessment(points):

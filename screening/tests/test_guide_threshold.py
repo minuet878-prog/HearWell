@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
+from screening.audiogram import DB_MAX, assessment_estimate, recommends_fitting_assessment
 from screening.tests import test_audiogram
 
 # Each ear's four PTA frequencies (500, 1k, 2k, 4k) giving the PTA in the name.
@@ -16,8 +17,6 @@ def ear(side, values):
 
 
 def estimate_points(points):
-    from screening.audiogram import assessment_estimate
-
     return assessment_estimate([mock.Mock(**point) for point in points])
 
 
@@ -26,8 +25,11 @@ def estimate(right, left, extra=()):
 
 
 def no_response_at(points, frequency):
-    """The same air points, with the one at frequency marked as no response."""
-    return [{**p, "no_response": p["frequency"] == frequency} for p in points]
+    """The same air points, the one at frequency unheard at the audiometer's limit (120 dB)."""
+    return [
+        {**p, "db": DB_MAX["air"], "no_response": True} if p["frequency"] == frequency else p
+        for p in points
+    ]
 
 
 class AssessmentEstimateTests(SimpleTestCase):
@@ -41,6 +43,8 @@ class AssessmentEstimateTests(SimpleTestCase):
     def test_just_under_rounds_to_44_7_and_does_not_reach(self):
         result = estimate(PTA_53_75, PTA_60)
         self.assertEqual(result["right"]["pta"], 53.75)
+        self.assertEqual((result["better"], result["worse"]), (Decimal("43.125"), Decimal("52.5")))
+        self.assertFalse(result["zeroed"])
         self.assertEqual(result["ratio"], Decimal("44.7"))
         self.assertEqual(result["status"], "not_reached")
 
@@ -56,6 +60,8 @@ class AssessmentEstimateTests(SimpleTestCase):
     def test_an_ear_under_25_counts_as_0_percent(self):
         result = estimate((10, 10, 10, 10), (100, 100, 100, 100))
         self.assertEqual(result["right"]["ratio"], 0)
+        self.assertTrue(result["zeroed"])
+        self.assertEqual((result["better"], result["worse"]), (0, 100))
         self.assertEqual(result["ratio"], Decimal("16.7"))
         self.assertEqual(result["status"], "not_reached")
 
@@ -64,10 +70,11 @@ class AssessmentEstimateTests(SimpleTestCase):
         self.assertEqual(result["right"]["ratio"], 100)
 
     def test_not_reached_with_a_no_response_point_is_uncertain(self):
-        # Marked at 80 dB but unheard: the real threshold can only be worse.
+        # Left 80, 80, 80 and 4 kHz unheard at 120: PTA 90, ratio 35.0%, a lower bound.
         result = estimate_points(
             [*ear("right", (40, 40, 40, 40)), *no_response_at(ear("left", (80, 80, 80, 80)), 4000)]
         )
+        self.assertEqual(result["ratio"], Decimal("35.0"))
         self.assertEqual(result["status"], "uncertain")
         self.assertTrue(result["no_response"])
 
@@ -96,8 +103,6 @@ class AssessmentEstimateTests(SimpleTestCase):
 
 
 def recommends(points):
-    from screening.audiogram import recommends_fitting_assessment
-
     return recommends_fitting_assessment([mock.Mock(**point) for point in points])
 
 

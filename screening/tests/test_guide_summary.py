@@ -3,6 +3,7 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.audiogram import DB_MAX
 from screening.models import Audiogram, AudiogramPoint
 from screening.tests import test_audiogram, test_guide
 from screening.tests.helpers import consented_user
@@ -20,7 +21,7 @@ NOT_REACHED = (
     "實際以鑑定醫院為準。"
 )
 UNCERTAIN = (
-    "依您 2026/10/01 的聽力圖估算，雙耳障礙比率至少約 32.5%。"
+    "依您 2026/10/01 的聽力圖估算，雙耳障礙比率至少約 35.0%。"
     "這張聽力圖有測不到反應的點，無法確定是否達到鑑定門檻，請以鑑定醫院為準。"
 )
 NO_RESPONSE_NOTE = "這張聽力圖有測不到反應的點，實際比率可能更高。"
@@ -70,8 +71,12 @@ class GuideSummaryTests(TestCase):
             *test_audiogram._four(test_audiogram._air, "left", left),
         ]
         if no_response_at:
+            # Unheard at the audiometer's limit, as the input page records it.
             points = [
-                {**p, "no_response": (p["ear"], p["frequency"]) == no_response_at} for p in points
+                {**p, "db": DB_MAX["air"], "no_response": True}
+                if (p["ear"], p["frequency"]) == no_response_at
+                else p
+                for p in points
             ]
         audiogram = Audiogram.objects.create(user=user or self.user, tested_on=tested_on)
         AudiogramPoint.objects.bulk_create(AudiogramPoint(audiogram=audiogram, **p) for p in points)
@@ -115,19 +120,23 @@ class GuideSummaryTests(TestCase):
         self.assertNotIn(CERTIFICATE_FIRST, text)
 
     def test_uncertain_never_says_not_reached(self):
-        # Left 4 kHz unheard at the marked 80 dB: 32.5% is only a lower bound.
+        # Left 4 kHz unheard at 120 dB: 35.0% is only a lower bound.
         self.make((40, 40, 40, 40), (80, 80, 80, 80), no_response_at=("left", 4000))
         response = self.client.get(reverse("guide"))
         text = test_guide.text_of(response)
         self.assertIn(UNCERTAIN, text)
         self.assertNotIn("未達到", text)
-        self.assertContains(response, FIND_HOSPITAL)
-        self.assertContains(response, WITHOUT_CERTIFICATE)
+        self.assertIn(OTHER_SUBSIDIES, text)
+        assessment = reverse("guide_chapter", args=["assessment"])
+        self.assertContains(response, f'<a href="{assessment}">{FIND_HOSPITAL}</a>')
+        without = reverse("guide_chapter", args=["form-9"]) + "#without-certificate"
+        self.assertContains(response, f'<a href="{without}">{WITHOUT_CERTIFICATE}</a>')
 
     def test_reached_with_a_no_response_point_notes_it(self):
+        # Right 55, 55, 55 and 2 kHz unheard at 120: PTA 71.25, so 49.1% at least.
         self.make(PTA_55, PTA_55, no_response_at=("right", 2000))
         text = self.text()
-        self.assertIn(REACHED, text)
+        self.assertIn(REACHED.replace("45.0%", "49.1%"), text)
         self.assertIn(NO_RESPONSE_NOTE, text)
 
     def test_a_missing_frequency_leaves_too_little_data(self):
@@ -159,12 +168,19 @@ class GuideSummaryTests(TestCase):
         self.assertIn(ZERO_EAR, text)
         self.assertIn(ZERO_NOTE, text)
 
-    def test_no_level_is_shown(self):
-        self.make(PTA_55, PTA_55)
-        text = self.text()
-        for level in ("第 1 級", "第1級", "1 級", "輕度", "等級"):
-            with self.subTest(level=level):
-                self.assertNotIn(level, text)
+    def test_no_level_is_shown_whatever_the_result(self):
+        cases = {
+            "reached": ((PTA_55, PTA_55), {}),
+            "not_reached": ((PTA_53_75, PTA_60), {}),
+            "uncertain": (((40,) * 4, (80,) * 4), {"no_response_at": ("left", 4000)}),
+        }
+        for status, (ears, options) in cases.items():
+            Audiogram.objects.filter(user=self.user).delete()
+            self.make(*ears, **options)
+            text = self.text()
+            for level in ("第 1 級", "第1級", "1 級", "輕度", "中度", "重度", "等級"):
+                with self.subTest(status=status, level=level):
+                    self.assertNotIn(level, text)
 
     def test_signed_in_page_is_never_cached_and_reads_only_own_records(self):
         self.make(PTA_55, PTA_55, user=consented_user(username="guide_summary_other"))

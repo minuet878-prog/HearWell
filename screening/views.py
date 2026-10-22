@@ -28,7 +28,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
-from screening.audiogram import NORMAL_LIMIT, assessment_estimate, compare
+from screening.audiogram import assessment_estimate, compare
 from screening.audiogram_thumbnail import thumbnail
 from screening.forms import (
     ROC_OFFSET,
@@ -207,12 +207,10 @@ def _guide_audiogram(audiogram):
     ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
     context = {"audiogram": audiogram, "ears": ears, "threshold": estimate}
     if estimate["ratio"] is not None:
-        ratios = sorted(e["ratio"] for _, e in ears)
         context["worked"] = {
             "ears": [(label, e["pta"], _percent(e["ratio"])) for label, e in ears],
-            "better": _percent(ratios[0]),
-            "worse": _percent(ratios[1]),
-            "zeroed": any(e["pta"] < NORMAL_LIMIT for _, e in ears),
+            "better": _percent(estimate["better"]),
+            "worse": _percent(estimate["worse"]),
         }
     return context
 

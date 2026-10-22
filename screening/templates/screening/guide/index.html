@@ -36,7 +36,7 @@
         <summary>怎麼算的</summary>
         <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
         <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>
-        {% if worked.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
+        {% if threshold.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
         <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（{{ worked.better }} × 5 ＋ {{ worked.worse }}）÷ 6 ＝ {{ threshold.ratio }}%，四捨五入到小數一位。</p>
         <p class="mb-0">3. 身障鑑定門檻是 45.0%。出處：<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a></p>
     </details>
