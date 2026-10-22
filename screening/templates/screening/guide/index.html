@@ -1,0 +1,23 @@
+{% extends "screening/layout.html" %}
+{% block title %}我的選配指引｜HearWell{% endblock %}
+{% block body %}
+{# Wording finalised in #220; change it only after review (ADR 0013). #}
+<h1 class="h3 mt-4">我的選配指引</h1>
+{% if not user.is_authenticated %}
+<p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
+<p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
+{% endif %}
+<section aria-labelledby="contents-title">
+    <h2 id="contents-title" class="h4 mt-6">選配與補助，一步一步看</h2>
+    <ol class="list-unstyled">
+        {% for chapter in chapters %}
+        <li>{% if chapter.template %}<a class="link-card" href="{% url 'guide_chapter' chapter.slug %}">
+            <span class="link-card-body">
+                <span class="link-card-title">{{ chapter.title }}</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a>{% else %}{{ chapter.title }}{% endif %}</li>
+        {% endfor %}
+    </ol>
+</section>
+{% endblock %}

@@ -25,6 +25,10 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
+  - 助聽器選配指引（母規格 #218，ADR 0017）：拷問 14 題（[拷問決定](planning/hearing-aid-guide/grill-decisions.md)、
+    [法規與補助研究](planning/hearing-aid-guide/research.md)），拆成 #220–#231；#220 新句子已定稿。#221 章節版型、
+    目錄與「去找聽力師之前」在 `feat/221-guide-chapters`；之後 #222–#225、#228、#229 可平行，#226 判讀函式要交叉審查，
+    #230 等 2c #201。合併上線前本人判斷是否就廣告法規諮詢食藥署或律師。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
 - 等時間：見下方「時間型待辦」。
