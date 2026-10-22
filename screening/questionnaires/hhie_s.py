@@ -102,6 +102,7 @@ DEFINITION = Definition(
     list_rank=0,
     intro_template="screening/questionnaires/hhie_s_intro.html",
     result=LEVEL,
+    life_impact=True,
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,

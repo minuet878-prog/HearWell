@@ -33,6 +33,16 @@ class NextStepsCoverageTests(TestCase):
                     self.assertTrue(definition.next_steps[level])
 
 
+class LevelColorCoverageTests(TestCase):
+    """Ticket #210: every level is drawn in one of ADR 0007's three colours, none added."""
+
+    def test_every_threshold_level_has_one_of_the_three_colours(self):
+        for definition in questionnaires.DEFINITIONS.values():
+            for _, _, level in definition.thresholds:
+                with self.subTest(questionnaire=definition.code, level=level):
+                    self.assertIn(definition.color(level), ("normal", "mild_to_moderate", "severe"))
+
+
 class CatalogFromDefinitionTests(TestCase):
     """Issue #105: the catalog reads each questionnaire's definition."""
 
@@ -239,8 +249,8 @@ class ResultFromDefinitionTests(TestCase):
         self.assertEqual(
             detail["levels"],
             [
-                {"code": "normal", "text": "假的低分級", "max": 5},
-                {"code": "severe", "text": "假的高分級", "max": 12},
+                {"code": "normal", "text": "假的低分級", "max": 5, "color": "normal"},
+                {"code": "severe", "text": "假的高分級", "max": 12, "color": "severe"},
             ],
         )
         record = self.client.get(reverse("api:submission", args=[self.submission.pk])).json()

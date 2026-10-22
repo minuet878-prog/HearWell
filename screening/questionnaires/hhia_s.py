@@ -90,6 +90,7 @@ DEFINITION = Definition(
     list_rank=2,
     intro_template="screening/questionnaires/hhia_s_intro.html",
     result=LEVEL,
+    life_impact=True,
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,

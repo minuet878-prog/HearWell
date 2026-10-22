@@ -9,7 +9,7 @@ from screening.audiogram import (
     DB_MIN,
     DB_STEP,
 )
-from screening.forms import AnswerFormSet, HearingAidForm, answer_choices
+from screening.forms import AnswerFormSet, answer_choices
 from screening.models import (
     Answer,
     Audiogram,
@@ -37,6 +37,7 @@ class LevelBandSerializer(serializers.Serializer):
     code = serializers.CharField()
     text = serializers.CharField()
     max = serializers.IntegerField()
+    color = serializers.CharField()  # one of the three level colours (Definition.level_colors)
 
 
 class QuestionnaireSerializer(QuestionnaireSummarySerializer):
@@ -48,9 +49,10 @@ class QuestionnaireSerializer(QuestionnaireSummarySerializer):
     @extend_schema_field(LevelBandSerializer(many=True))
     def get_levels(self, questionnaire):
         # Read straight from the definition's thresholds so the chart's bands match classify().
+        definition = questionnaire.definition
         return [
-            {"code": level, "text": text, "max": upper}
-            for upper, text, level in questionnaire.definition.thresholds
+            {"code": level, "text": text, "max": upper, "color": definition.color(level)}
+            for upper, text, level in definition.thresholds
         ]
 
 
@@ -92,9 +94,11 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class QuestionnaireDetailSerializer(QuestionnaireSerializer):
     questions = QuestionSerializer(many=True)
+    # The React answer page asks this, the same words as the web form (screening.html).
+    wearing_question = serializers.CharField(source="definition.wearing_question", read_only=True)
 
     class Meta(QuestionnaireSerializer.Meta):
-        fields = (*QuestionnaireSerializer.Meta.fields, "questions")
+        fields = (*QuestionnaireSerializer.Meta.fields, "wearing_question", "questions")
 
 
 class ScoresSerializer(serializers.Serializer):
@@ -184,15 +188,21 @@ class SubmissionDetailSerializer(SubmissionSerializer):
         return get_advice(submission.classified["level"], submission.questionnaire.code)
 
 
-WEARING_MESSAGE = HearingAidForm.base_fields["wearing_hearing_aid"].error_messages["required"]
-
-
 class StrictBooleanField(serializers.BooleanField):
     # JSON true/false only; DRF's BooleanField also takes 1, "yes", "on" for HTML forms.
     def to_internal_value(self, data):
         if not isinstance(data, bool):
             self.fail("invalid", input=data)
         return data
+
+
+class WearingField(StrictBooleanField):
+    # Sent but not JSON true/false (null included) comes out as None, refused in validate()
+    # with the questionnaire's own message (Definition.wearing_error), not known here.
+    def run_validation(self, data=serializers.empty):
+        if data is serializers.empty or isinstance(data, bool):
+            return super().run_validation(data)
+        return None
 
 
 class AnswerInputSerializer(serializers.Serializer):
@@ -204,13 +214,7 @@ class SubmissionCreateSerializer(serializers.Serializer):
     # IOI-HA needs norm grouping and has no API yet (spec phase5_api_submit.md).
     questionnaire = serializers.PrimaryKeyRelatedField(queryset=Questionnaire.objects.none())
     # Not required here: an always-aided questionnaire (e.g. SADL) needs none, enforced below.
-    wearing_hearing_aid = StrictBooleanField(
-        required=False,
-        error_messages={
-            "null": WEARING_MESSAGE,
-            "invalid": WEARING_MESSAGE,
-        },
-    )
+    wearing_hearing_aid = WearingField(required=False)
     answers = serializers.ListField(child=AnswerInputSerializer())
 
     def __init__(self, *args, **kwargs):
@@ -220,12 +224,16 @@ class SubmissionCreateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         questionnaire = attrs["questionnaire"]
+        definition = questionnaire.definition
+        # Sent but not JSON true/false, or not sent where it is asked: refused as the web form
+        # does, in the words of the questionnaire's own wearing question.
+        sent = "wearing_hearing_aid" in attrs
+        if (sent and attrs["wearing_hearing_aid"] is None) or not (sent or definition.always_aided):
+            raise serializers.ValidationError({"wearing_hearing_aid": definition.wearing_error})
         # Same rule as the web form (views.screening): always-aided questionnaires are always
         # saved as worn, no matter what was sent, instead of trusting the caller's own value.
-        if questionnaire.definition.always_aided:
+        if definition.always_aided:
             attrs["wearing_hearing_aid"] = True
-        elif "wearing_hearing_aid" not in attrs:
-            raise serializers.ValidationError({"wearing_hearing_aid": WEARING_MESSAGE})
         # The rules live in the answer formset, shared with the web form; this only feeds it.
         questions = list(questionnaire.questions.all())
         if not questions:

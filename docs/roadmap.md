@@ -14,7 +14,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   功能分支 `feat/120-warm-shell` 一次合併回 `main`）、2b 主線動線改版兩批（母規格 #148，#149–#163，ADR 0010）、
   品牌改版（波浪 W Logo、分頁籤圖示、白底頁首、新使用者首頁與結果示意；本人在設計選擇器挑選，ADR 0012，
   驗證見 `docs/verification/brand-refresh.md`）、字型改由網站自己提供並修正隱私權說明（#181，ADR 0014）、健康資料頁面
-  禁止快取（#182）。
+  禁止快取（#182）、成人問卷第三批 THI 耳鳴障礙量表（母規格 #208，#210–#217，ADR 0015、0016）。
 - 進行中：
   - 2c 支線改版（設計比較頁第 8–14 列，母規格 #183，ADR 0013）：拷問 45 題（[拷問決定](planning/branch-pages/grill-decisions.md)），
     拆成 #185–#204 三批（第 8–9 列 → 第 11–14 列 → 第 10 列）；#185 新句子已定稿。第一批（#186–#192，功能分支
@@ -63,6 +63,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 「我的紀錄」不跳動 | 趨勢圖的標題、摘要、圖例改由 Django 產生，React 只在固定高度的框裡畫圖，載入時紀錄卡片不再被推走（[驗證紀錄](verification/trend-chart-layout-shift.md)） |
 | 字型自己提供 | #181：Noto Sans TC 由網站自己提供，不再連 Google Fonts；隱私權說明刪掉 cdnjs，小修不用重新同意（ADR 0014，[驗證紀錄](verification/issue-181.md)） |
 | 健康資料頁面禁止快取 | #182：顯示健康資料的頁面一律不讓瀏覽器存，`test_standards.py` 檢查每個要登入的頁面都有標記或例外理由（`CODING_STANDARDS.md` 第 24 條，[驗證紀錄](verification/issue-182.md)） |
+| 成人問卷第三批 THI | #208、#210–#217：耳鳴障礙量表（醫院現用中文版，25 題、五級），算「耳鳴問卷」不算生活影響問卷、不影響重測提醒；情緒題答「經常」顯示 1925；我的紀錄趨勢圖、報告「耳鳴」區、精靈入口（ADR 0015、0016，[驗證紀錄](verification/issue-208-thi.md)） |
 | 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
 ---
@@ -85,7 +86,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 工作量：小／中／大。
 
 ### 問卷
-- **成人問卷第三批**：COSI、耳鳴量表（第二批的 SADL 進行中，見「目前進度」）。訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
+- **COSI**：第三批只做了 THI（見已完成），COSI 先不排；要做時先解決自行填答與原施測流程的差異，訪談與來源見 [questionnaire-comparison.md](planning/adult-assessment/questionnaire-comparison.md)。
 - **React 版 IOI-HA**（API 要先開放 IOI-HA 寫入）。
 
 ### 追蹤與紀錄

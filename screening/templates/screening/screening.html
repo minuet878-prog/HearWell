@@ -62,7 +62,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         <div class="card mb-4">
             <div class="card-body">
                 <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% elif preselect_unaided %} aria-describedby="hearing-aid-hint"{% endif %}>
-                    <legend class="font-bold text-xl/normal">這次填答時，您有沒有戴助聽器？</legend>
+                    <legend class="font-bold text-xl/normal">{{ questionnaire.definition.wearing_question }}</legend>
                     {# Why 沒戴 is already chosen (#154); the only copy, answer-main.jsx reads it for React. #}
                     {% if preselect_unaided %}<p id="hearing-aid-hint">請想沒戴助聽器時的情況來回答</p>{% endif %}
                     {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}

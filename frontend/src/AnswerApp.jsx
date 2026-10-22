@@ -2,14 +2,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
 
-// Same wording as the Django form (forms.HearingAidForm).
-const HEARING_AID = {
-  text: "這次填答時，您有沒有戴助聽器？",
-  choices: [
-    { value: true, label: "有戴" },
-    { value: false, label: "沒戴" },
-  ],
-};
+// Same choices as the Django form (forms.HearingAidForm); the question itself is the
+// questionnaire's own (the API's wearing_question, #212).
+const HEARING_AID_CHOICES = [
+  { value: true, label: "有戴" },
+  { value: false, label: "沒戴" },
+];
 const FAILED = "送出失敗，請再按一次送出";
 
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
@@ -30,6 +28,7 @@ export default function AnswerApp({
   navigate = (url) => window.location.assign(url),
 }) {
   const [questions, setQuestions] = useState(null);
+  const [wearingQuestion, setWearingQuestion] = useState(null);
   const [saved, setSaved] = useState(null);
   const [form, setForm] = useState(null);
   const [status, setStatus] = useState({ type: "idle" });
@@ -73,6 +72,7 @@ export default function AnswerApp({
       })
       .then((data) => {
         const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
+        setWearingQuestion(data.wearing_question);
         setQuestions(data.questions);
         if (draft) setSaved(draft);
         else begin(newAnswers(), false);
@@ -137,7 +137,7 @@ export default function AnswerApp({
 
   const { step } = form;
   const isHearingAid = !alwaysAided && step === 0;
-  const question = isHearingAid ? HEARING_AID : questions[step - 1];
+  const question = isHearingAid ? { text: wearingQuestion, choices: HEARING_AID_CHOICES } : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
   // Only while 沒戴 is chosen: after switching to 有戴 the hint would contradict it (site owner, 1.B).

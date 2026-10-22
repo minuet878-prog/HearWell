@@ -412,8 +412,11 @@ components:
           type: string
         max:
           type: integer
+        color:
+          type: string
       required:
       - code
+      - color
       - max
       - text
     PaginatedSubmissionList:
@@ -498,6 +501,9 @@ components:
           items:
             $ref: '#/components/schemas/LevelBand'
           readOnly: true
+        wearing_question:
+          type: string
+          readOnly: true
         questions:
           type: array
           items:
@@ -508,6 +514,7 @@ components:
       - levels
       - name
       - questions
+      - wearing_question
     QuestionnaireSummary:
       type: object
       properties:

@@ -24,8 +24,8 @@ const FONT = {
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
-// Presentation only; the bands themselves come from the API. The level names under the chart
-// (trend_chart.html) use the same fills.
+// Presentation only, by level colour (ADR 0007's three); the bands and each level's colour come
+// from the API. The level names under the chart (trend_chart.html) use the same fills.
 const BAND_FILLS = {
   normal: "#e3f4ec",
   mild_to_moderate: "#fff4d6",
@@ -120,8 +120,8 @@ export default function TrendChart({ code }) {
       ) : (
         <g key={index} />
       );
-  // HHIE-S totals are even (every answer is 0, 2 or 4), so halfway between two levels is the
-  // lower level's top + 1 (spec 4.4): 9 and 25, never on a score. Only HHIE-S has this chart.
+  // HHIE-S and THI totals are even (every answer is 0, 2 or 4), so halfway between two levels is
+  // the lower level's top + 1 (spec 4.4): 9 and 25, never on a score. Only they have this chart.
   const bandEdge = (i) => (i === levels.length - 1 ? levels[i].max : levels[i].max + 1);
 
   // Score above each point; below it when the point is near the top so it stays inside the chart.
@@ -151,7 +151,7 @@ export default function TrendChart({ code }) {
               key={level.code}
               y1={i === 0 ? 0 : bandEdge(i - 1)}
               y2={bandEdge(i)}
-              fill={BAND_FILLS[level.code] ?? OTHER_BAND_FILL}
+              fill={BAND_FILLS[level.color] ?? OTHER_BAND_FILL}
               fillOpacity={1}
             />
           ))}

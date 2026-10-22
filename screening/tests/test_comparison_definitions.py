@@ -38,7 +38,10 @@ class ComparisonFromDefinitionTests(TestCase):
         self.enterContext(
             register(
                 fake_definition(
-                    "fake-compare", comparison=TotalComparison(anchor="report-fake-anchor")
+                    "fake-compare",
+                    comparison=TotalComparison(anchor="report-fake-anchor"),
+                    # The report shows comparisons in the life-impact part (ADR 0016).
+                    life_impact=True,
                 )
             )
         )

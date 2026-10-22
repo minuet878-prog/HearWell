@@ -105,11 +105,11 @@ def index(request):
         "screening/index.html",
         {
             "preview_score": HOME_PREVIEW_SCORE,
-            "preview_level": preview["level"],
+            "preview_color": preview["color"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
             "preview_score_bar": _score_bar(
-                hhie_s.THRESHOLDS, HOME_PREVIEW_SCORE, preview["level"]
+                hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
             ),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
@@ -281,6 +281,8 @@ def questionnaire_list(request):
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=_also_suggest(by_code, questionnaires) if wearing else [],
+        # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
+        offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
     )
@@ -351,7 +353,9 @@ def screening(request, questionnaire_id):
                 "formset": formset,
                 "hearing_aid_form": None
                 if is_ioi_ha or always_aided
-                else HearingAidForm(initial=hearing_aid_initial),
+                else HearingAidForm(
+                    initial=hearing_aid_initial, message=questionnaire.definition.wearing_error
+                ),
                 "preselect_unaided": preselect_unaided,
                 "is_ioi_ha": is_ioi_ha,
                 "ioi_norm": norm,
@@ -389,7 +393,11 @@ def screening(request, questionnaire_id):
         except signing.BadSignature:
             return HttpResponseBadRequest("常模依據無法確認，請重新開啟問卷。")
         formset = AnswerFormSet(questions=questions, data=request.POST)
-        hearing_aid_form = None if is_ioi_ha or always_aided else HearingAidForm(data=request.POST)
+        hearing_aid_form = (
+            None
+            if is_ioi_ha or always_aided
+            else HearingAidForm(data=request.POST, message=questionnaire.definition.wearing_error)
+        )
         # question_form 只有在驗證沒過的時候才會被用到[拿去重新顯示頁面]，而那時的資料可能是壞的
         # ，所以不能用 strict=True
         question_form = list(zip(questions, formset, strict=False))
@@ -554,6 +562,12 @@ def _ioi_ha_chart(records):
 
 
 TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
+# 「和上一次比」's extra line when the two records were worn differently (ticket #214). A
+# life-impact tab never shows one: it compares records worn the same way.
+WEARING_CHANGE_TEXT = {
+    (False, True): "上次沒戴、這次有戴助聽器。",
+    (True, False): "上次有戴、這次沒戴助聽器。",
+}
 # Legend order, the template's shape for each status (spec 4b) and its name.
 TREND_LEGEND = (
     (False, "unaided", "沒戴助聽器"),
@@ -563,17 +577,20 @@ TREND_LEGEND = (
 
 
 def _trend_chart(records, since_last):
-    # records: this user's HHIE-S, newest first; since_last: the page's 「和上一次比」 or None.
+    # records: one tab's records (HHIE-S, THI), newest first; since_last: the page's
+    # 「和上一次比」 or None.
     # React draws only the chart itself, so the text around it is on the page from the start
     # and nothing below moves when it arrives. The wording is fixed by spec
     # phase9_ui_refresh_2_data.md 4.2.
     latest = records[0]
+    definition = latest.questionnaire.definition
     wearing = latest.wearing_hearing_aid
     status = TREND_STATUS_TEXT[wearing]
     if since_last is not None:
         change = None  # 「和上一次比」 above the chart says it (decision 2026-10-22, #162)
     elif len(records) == 1:
-        change = "再做一次篩檢，就能看到分數的變化。"
+        # THI is not a screening (GLOSSARY: 篩檢問卷 is not every questionnaire).
+        change = f"再做一次{'篩檢' if definition.life_impact else ''}，就能看到分數的變化。"
     elif wearing is None:
         change = "這筆沒有記錄助聽器，不和其他紀錄比較。"
     else:
@@ -590,8 +607,8 @@ def _trend_chart(records, since_last):
         ],
         # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
         "levels": [
-            {"code": level, "text": text}
-            for _, text, level in reversed(latest.questionnaire.definition.thresholds)
+            {"code": level, "text": text, "color": definition.color(level)}
+            for _, text, level in reversed(definition.thresholds)
         ],
     }
 
@@ -638,16 +655,23 @@ def my_hearing(request):
     # Ticket #162: the same retest reminder as the home page (ADR 0010).
     user_state = get_user_state(request.user, today=timezone.localdate())
     # Ticket #162: a life-impact tab compares its newest record with the one before it worn
-    # the same way, as the trend chart does (decision 2026-10-22).
+    # the same way, as the trend chart does (decision 2026-10-22). Ticket #214: another graded
+    # tab (THI) compares it with the record just before, whatever was worn (ADR 0016).
     since_last = None
     if current.definition.result == LEVEL:
         latest = records[0]
-        previous = latest.previous_same_wearing(records[1:])
+        if current.definition.life_impact:
+            previous = latest.previous_same_wearing(records[1:])
+        else:
+            previous = records[1] if len(records) > 1 else None
         if previous is not None:
             since_last = {
                 "latest": latest,
                 "previous": previous,
                 "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+                "wearing_change": WEARING_CHANGE_TEXT.get(
+                    (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
+                ),
             }
     return render(
         request,
@@ -675,11 +699,18 @@ def _taipei(moment):
     return timezone.localtime(moment).isoformat()
 
 
+def _has_subscores(answers):
+    # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
+    # the answers already loaded with their questions, no query of its own.
+    return any(answer.question.category != models.Category.NONE for answer in answers)
+
+
 def _export_submission(submission):
     # Only graded questionnaires have a total, subscales and level (same as their result
     # pages); the others export null, not 0.
     result = submission.questionnaire.definition.result
     not_scored = result != LEVEL
+    has_subscores = not not_scored and _has_subscores(submission.answers.all())
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
@@ -695,8 +726,8 @@ def _export_submission(submission):
             for answer in submission.answers.all()
         ],
         "total_score": None if not_scored else submission.total_answer_score,
-        "emotional_score": None if not_scored else submission.emotional_score,
-        "social_score": None if not_scored else submission.social_score,
+        "emotional_score": submission.emotional_score if has_subscores else None,
+        "social_score": submission.social_score if has_subscores else None,
         "level": None if not_scored else submission.classified["text"],
         "norm_group": submission.get_norm_group_display() or None,
     }
@@ -890,7 +921,10 @@ def _report_context(user):
         "ssq_recent": ssq_records[:REPORT_RECENT],
         "sadl_latest": sadl_records[0] if sadl_records else None,
         "sadl_recent": sadl_records[:REPORT_RECENT],
-        "sections": sections,
+        "sections": [s for s in sections if s["questionnaire"].definition.life_impact],
+        # Graded but not life impact (ADR 0016): THI, in its own part with no subscores,
+        # answers or comparison (spec #208 Q5, Q9).
+        "tinnitus_sections": [s for s in sections if not s["questionnaire"].definition.life_impact],
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),
     }
@@ -974,9 +1008,10 @@ def shared_report(request, token):
     return _family_page(request, "screening/shared_report.html", context)
 
 
-def _score_bar(thresholds, score, level):
+def _score_bar(definition, score, level):
     # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
     # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+    thresholds = definition.thresholds
     if level == "unknown" or not thresholds:
         return None
     ceiling = thresholds[-1][0]
@@ -986,6 +1021,7 @@ def _score_bar(thresholds, score, level):
         segments.append(
             {
                 "level": segment_level,
+                "color": definition.color(segment_level),
                 "text": text,
                 "width": (upper - start) / ceiling * 100,
                 "current": segment_level == level,
@@ -1039,11 +1075,12 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
+            "has_subscores": _has_subscores(answers),
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
-            "classified_score_level": classified_score["level"],
+            "classified_score_color": classified_score["color"],
             "score_bar": _score_bar(
-                submission.questionnaire.definition.thresholds,
+                submission.questionnaire.definition,
                 submission.total_answer_score,
                 classified_score["level"],
             ),
@@ -1051,6 +1088,9 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "support_message": submission.questionnaire.definition.support(
+                {answer.question.question_number: answer.score for answer in answers}
+            ),
             "show_comparison": _shows_wearing_comparison(request.user, submission.questionnaire),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()

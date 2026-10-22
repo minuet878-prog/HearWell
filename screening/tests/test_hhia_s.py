@@ -34,9 +34,14 @@ class HhiaSTests(TestCase):
         self.assertEqual(
             response.json()["levels"],
             [
-                {"code": "normal", "text": "無／極輕微影響", "max": 8},
-                {"code": "mild_to_moderate", "text": "輕至中度影響", "max": 24},
-                {"code": "severe", "text": "顯著影響", "max": 40},
+                {"code": "normal", "text": "無／極輕微影響", "max": 8, "color": "normal"},
+                {
+                    "code": "mild_to_moderate",
+                    "text": "輕至中度影響",
+                    "max": 24,
+                    "color": "mild_to_moderate",
+                },
+                {"code": "severe", "text": "顯著影響", "max": 40, "color": "severe"},
             ],
         )
 

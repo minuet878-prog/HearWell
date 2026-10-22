@@ -5,7 +5,7 @@ A questionnaire in the database without a definition is not offered to anyone.
 
 from django.conf import settings
 
-from screening.questionnaires import hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw
+from screening.questionnaires import hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw, thi
 
 DEFINITIONS = {
     definition.code: definition
@@ -15,6 +15,7 @@ DEFINITIONS = {
         hhia_s.DEFINITION,
         ssq12_tw.DEFINITION,
         sadl.DEFINITION,
+        thi.DEFINITION,
     )
 }
 
