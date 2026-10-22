@@ -177,7 +177,10 @@ class SharedReportHighlightsTests(TestCase):
             ("urgent-title", "什麼時候要馬上就醫"),
         ):
             with self.subTest(anchor=anchor):
-                self.assertRegex(guide, rf'id="{anchor}"[^>]*>{title}<')
+                # #240 put a decorative icon before each title.
+                self.assertRegex(
+                    guide, rf'id="{anchor}"[^>]*>(<svg [^>]*aria-hidden="true".*?</svg>)?{title}<'
+                )
 
     def test_help_links_carry_no_share_token_and_the_page_sends_no_referrer(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)

@@ -478,6 +478,45 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assertEqual(shared["url"], url)
             self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
 
+    def test_family_guide_jumps_to_each_topic_and_marks_the_urgent_one(self):
+        """#240: the jump links reach their topic; the urgent topic and 119 stand out."""
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/family")
+            jumps = self.page.get_by_role("navigation", name="本頁內容").get_by_role("link")
+            expect(jumps).to_have_count(3)
+            topics = (
+                ("talk-title", "怎麼跟聽損的家人說話"),
+                ("aid-title", "陪伴配戴助聽器"),
+                ("urgent-title", "什麼時候要馬上就醫"),
+            )
+            for anchor, name in topics:
+                with self.subTest(name=name):
+                    self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+                    link = jumps.filter(has_text=name)
+                    self.assertGreaterEqual(link.bounding_box()["height"], 44)
+                    link.click()
+                    expect(self.page).to_have_url(re.compile(f"#{anchor}$"))
+                    # The jump lands the heading at the top, not just somewhere on screen; the
+                    # site scrolls smoothly, so wait for it to arrive.
+                    self.page.wait_for_function(
+                        "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
+                        " < 10 && window.scrollY > 0",
+                        arg=anchor,
+                    )
+            urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
+            calm = self.main().locator("section", has=self.page.locator("#talk-title"))
+
+            def style(locator, prop):
+                return locator.evaluate(f"el => getComputedStyle(el).{prop}")
+
+            self.assertNotEqual(style(urgent, "backgroundColor"), style(calm, "backgroundColor"))
+            self.assertNotEqual(style(urgent, "borderTopColor"), style(calm, "borderTopColor"))
+            number = urgent.get_by_text("119", exact=True)
+            body = urgent.get_by_text("如果同時出現", exact=False)
+            self.assertGreater(
+                float(style(number, "fontSize")[:-2]), float(style(body, "fontSize")[:-2])
+            )
+
     def step1_start_goes_to_register(self):
         # Spec #148 (ticket #150): first-time visitors register straight away.
         self.page.goto(self.live_server_url)

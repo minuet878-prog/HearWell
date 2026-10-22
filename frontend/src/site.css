@@ -2294,6 +2294,77 @@
     border: 0.125rem solid var(--color-primary);
   }
 
+  /* Family guide (#240): one card per topic, each tip's point on its own line, the urgent
+     topic framed in the brand blue (ADR 0007) with 119 in large type; the sources at the end. */
+  .family-guide .card > h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .family-guide .topic-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .family-guide .tips {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .family-guide .tips > li {
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border-warm);
+  }
+
+  .family-guide .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .tips > li:last-child {
+    padding-bottom: 0;
+  }
+
+  .family-guide .tip-point {
+    display: block;
+    color: var(--color-heading);
+  }
+
+  .family-guide .family-urgent {
+    border: 0.125rem solid var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  .family-guide .family-urgent .tips > li {
+    border-top-color: var(--color-border);
+  }
+
+  .family-guide .urgent-call {
+    margin-bottom: 0;
+    padding: 0.875rem;
+    border-radius: var(--radius-large);
+    background-color: #fff;
+    color: var(--color-heading);
+  }
+
+  .family-guide .urgent-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+  }
+
+  .family-sources h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+  }
+
   /* Account settings (#195): one white card per group, a divider between rows. */
   .settings-group {
     margin: 0;
