@@ -100,13 +100,7 @@ class AssessmentChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        content = response.content.decode()
-        text = test_guide.text_of(response)
-        self.assertIn(test_guide.CHECKED, text)
-        for wording, url in SOURCES:
-            with self.subTest(url=url):
-                self.assertIn(f'href="{url}"', content)
-                self.assertIn(wording, text)
+        test_guide.assert_footer(self, response, "2026-10-22", SOURCES)
 
     def test_chosen_county_lists_only_its_hearing_assessment_hospitals(self):
         with self.assertNumQueries(0):

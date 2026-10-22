@@ -50,13 +50,7 @@ class Form25ChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        content = response.content.decode()
-        text = test_guide.text_of(response)
-        self.assertIn(test_guide.CHECKED, text)
-        for wording, url in FORM_25_SOURCES:
-            with self.subTest(url=url):
-                self.assertIn(f'href="{url}"', content)
-                self.assertIn(wording, text)
+        test_guide.assert_footer(self, response, "2026-10-22", FORM_25_SOURCES)
 
 
 # Wording finalised in #220 (H2-H7, H10; H8 and H9 come from the questionnaire definitions).
@@ -105,13 +99,7 @@ class AfterFittingChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        content = response.content.decode()
-        text = test_guide.text_of(response)
-        self.assertIn(test_guide.CHECKED, text)
-        for wording, url in AFTER_FITTING_SOURCES:
-            with self.subTest(url=url):
-                self.assertIn(f'href="{url}"', content)
-                self.assertIn(wording, text)
+        test_guide.assert_footer(self, response, "2026-10-22", AFTER_FITTING_SOURCES)
 
     def test_links_only_the_follow_up_questionnaires_in_the_catalogue_wording(self):
         # One read of the questionnaire table for their addresses; no user data.

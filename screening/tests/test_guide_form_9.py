@@ -78,7 +78,7 @@ CENTRES_SAMPLE = (
     "臺南市輔具資源中心 永華中心：(06)209-8938",
     "連江縣輔具資源中心：(0836)25022#302 或 (0836)23050",
 )
-CENTRES_SOURCE = "資料來源： 輔具資源入口網 ，查核於 2026-10-23。"
+CENTRES_SOURCE = "資料來源： 輔具資源入口網"
 
 
 class Form9ChapterTests(TestCase):
@@ -113,12 +113,10 @@ class Form9ChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_every_official_source(self):
         response = self.client.get(self.url)
-        content = response.content.decode()
-        footer = content[content.index("<footer") : content.index("</footer>")]
-        self.assertIn(test_guide.CHECKED, test_guide.text_of(response))
-        for wording, url in (RULES, TABLE, LOW_INCOME_ELDERLY, NEW_TAIPEI, PORTAL):
-            with self.subTest(url=url):
-                self.assertIn(f'<a href="{url}">{wording}</a>', footer)
+        sources = (RULES, TABLE, LOW_INCOME_ELDERLY, NEW_TAIPEI, PORTAL)
+        test_guide.assert_footer(self, response, "2026-10-23", sources)
+        # The footer's date is the page's only check date (the centre list has none of its own).
+        self.assertEqual(test_guide.text_of(response).count("查核於"), 1)
 
     def test_issuer_section_lists_every_county_centre_with_its_source(self):
         response = self.client.get(self.url)
@@ -135,7 +133,7 @@ class Form9ChapterTests(TestCase):
         self.assertIn('<h3 id="centres-title" class="h5 mt-4">各縣市輔具中心</h3>', content)
         self.assertLess(content.index('id="centres-title"'), start)
         self.assertLess(text.index(CENTRES_SOURCE), text.index("基隆市輔具資源中心"))
-        self.assertIn(f'<a href="{PORTAL[1]}">{PORTAL[0]}</a>，查核於 2026-10-23。', content)
+        self.assertIn(f'<p>資料來源：<a href="{PORTAL[1]}">{PORTAL[0]}</a></p>', content)
 
     def test_steps_warn_against_buying_before_approval_and_link_to_form_25(self):
         content = self.client.get(self.url).content.decode()

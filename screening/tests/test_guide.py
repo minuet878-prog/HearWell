@@ -22,7 +22,6 @@ CHAPTERS = (
     "二十五號表：使用效益驗證",
     "配戴助聽器之後",
 )
-CHECKED = "本頁資料查核於 2026-10-22。法規、金額如有變動，以官方公告為準。"
 BACK = "回到我的選配指引"
 BEFORE_YOU_GO = (
     "第一次去評估選配助聽器時，先準備好下面的東西和問題，可以少跑一趟，也比較知道要問什麼。",
@@ -58,6 +57,19 @@ def text_of(response):
     content = response.content.decode()
     main = content[content.index("<main") : content.index("</main>")]
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", main))
+
+
+def assert_footer(testcase, response, checked_on, sources):
+    """The footer every chapter shares: its check date and each (wording, url) source."""
+    content = response.content.decode()
+    footer = content[content.index("<footer") : content.index("</footer>")]
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", footer))
+    testcase.assertIn(f"本頁資料查核於 {checked_on}。法規、金額如有變動，以官方公告為準。", text)
+    testcase.assertIn("資料來源：", text)
+    for wording, url in sources:
+        with testcase.subTest(url=url):
+            testcase.assertIn(f'href="{url}"', footer)
+            testcase.assertIn(wording, text)
 
 
 class GuideContentsTests(TestCase):
@@ -109,15 +121,8 @@ class GuideChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        content = response.content.decode()
-        text = text_of(response)
-        self.assertIn(CHECKED, text)
-        self.assertIn("資料來源：", text)
-        for wording, url in BEFORE_YOU_GO_SOURCES:
-            with self.subTest(url=url):
-                self.assertIn(f'href="{url}"', content)
-                self.assertIn(wording, text)
-        self.assertIn(f'href="{reverse("guide")}">{BACK}</a>', content)
+        assert_footer(self, response, "2026-10-22", BEFORE_YOU_GO_SOURCES)
+        self.assertContains(response, f'href="{reverse("guide")}">{BACK}</a>')
 
     def test_user_without_consent_can_read_it(self):
         self.client.force_login(User.objects.create_user(username="guide_old"))
