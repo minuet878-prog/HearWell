@@ -2295,7 +2295,7 @@
   }
 
   /* Family guide (#240): one card per topic, each tip's point on its own line, the urgent
-     topic framed in amber with 119 in large type; the sources gathered at the end. */
+     topic framed in the brand blue (ADR 0007) with 119 in large type; the sources at the end. */
   .family-guide .card > h2 {
     display: flex;
     align-items: center;
@@ -2339,16 +2339,12 @@
   }
 
   .family-guide .family-urgent {
-    border: 0.125rem solid var(--color-mild);
-    background-color: var(--color-mild-bg);
-  }
-
-  .family-guide .family-urgent .topic-icon {
-    stroke: var(--color-mild);
+    border: 0.125rem solid var(--color-primary);
+    background-color: var(--color-brand-soft);
   }
 
   .family-guide .family-urgent .tips > li {
-    border-top-color: var(--color-mild);
+    border-top-color: var(--color-border);
   }
 
   .family-guide .urgent-call {
