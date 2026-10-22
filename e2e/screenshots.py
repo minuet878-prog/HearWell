@@ -227,6 +227,12 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("public", "account", reverse("account_settings")),
             Shot("public", "account-delete", reverse("delete_account")),
             Shot("answering", "questionnaire-list", reverse("questionnaire_list")),
+            # #152 moved the full list behind the wizard's 自己選問卷.
+            Shot(
+                "answering",
+                "questionnaire-list-self",
+                f"{reverse('questionnaire_list')}?choose=self",
+            ),
             Shot("answering", "comparison-hhie-s", reverse("hhi_comparison", args=[hhie_s.pk])),
         ]
         for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha"):

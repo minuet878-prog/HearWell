@@ -101,6 +101,64 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.step6_history()
             self.step7_report_prints_without_site_chrome()
 
+    def test_show_password_with_javascript(self):
+        """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
+        with self.saving_artifacts():
+            self.step1_start_goes_to_register()
+            password = self.page.get_by_label("密碼：", exact=True)
+            password.fill("Fake-pass-2468")
+            toggle = self.main().locator('button.password-toggle[aria-controls="id_password1"]')
+            expect(toggle).to_have_accessible_name("顯示密碼")
+            toggle.click()
+            expect(password).to_have_attribute("type", "text")
+            expect(toggle).to_have_accessible_name("隱藏密碼")
+            expect(toggle).to_have_text("隱藏")
+            toggle.click()
+            expect(password).to_have_attribute("type", "password")
+            expect(toggle).to_have_accessible_name("顯示密碼")
+
+    def test_first_visit_pages_fit_a_phone_at_double_text_size(self):
+        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%."""
+        self.context.close()
+        self.context = self.browser.new_context(
+            **{**self.playwright.devices["Pixel 7"], "viewport": {"width": 320, "height": 640}}
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            self.assert_fits_a_phone_at_double_text_size("home")
+            self.main().get_by_role("link", name="開始篩檢").click()
+            self.assert_fits_a_phone_at_double_text_size("register")
+            self.fill_register_form()
+            self.main().get_by_role("button", name="註冊").click()
+            self.assert_fits_a_phone_at_double_text_size("consent")
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            expect(self.main().locator(".questionnaire-guide")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard age")
+            self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+                "65 歲以上", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
+            self.assert_fits_a_phone_at_double_text_size("wizard hearing aid")
+            self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
+                "沒有戴", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
+            self.main().get_by_text("看其他問卷", exact=True).click()
+            expect(self.main().locator("details a.link-card").first).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard recommendation")
+            self.main().get_by_role("link", name="開始作答").click()
+            expect(self.page.get_by_role("group")).to_have_count(1)
+            self.assert_fits_a_phone_at_double_text_size("answer hearing aid step")
+            self.answer("沒戴")
+            self.next()
+            self.question(1)
+            self.main().get_by_role("button", name="這份問卷在問什麼？").click()
+            expect(self.page.locator("#answer-intro-text")).to_contain_text("本問卷的目的")
+            self.assert_fits_a_phone_at_double_text_size("answer question 1, intro open")
+
     def test_adult_completes_hhia_s_with_keyboard(self):
         """Issue #78: real React flow, original labels, focus and saved results."""
         call_command("seed_questionnaires", verbosity=0)
@@ -309,6 +367,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
         self.step1_start_goes_to_register()
+        # #151: without JavaScript the 顯示 button could not work, so none shows.
+        expect(self.main().get_by_role("button", name=re.compile("顯示"))).to_have_count(0)
         self.step2_register()
         age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
         age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
@@ -328,6 +388,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
         self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
+        # #155: the wizard ends on the answer page, the server's form starting on 沒戴 (#154).
+        self.main().get_by_role("link", name="開始作答").click()
+        expect(self.page).to_have_url(re.compile(r"/questionnaire/\d+\?preselect=unaided$"))
+        expect(self.page.get_by_role("heading", name="HHIA-S", exact=True)).to_be_visible()
+        hearing_aid = self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
+        expect(hearing_aid.get_by_label("沒戴", exact=True)).to_be_checked()
+        expect(self.page.locator("#hearing-aid-hint")).to_have_text("請想沒戴助聽器時的情況來回答")
+        self.assert_fits_a_phone_at_double_text_size("answer page without javascript")
 
     def test_family_guide_without_share_sheet(self):
         """Spec phase8_c1_family_guide.md acceptance 5: no button, the address is the fallback."""
@@ -359,17 +427,43 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.main().get_by_role("link", name="開始篩檢").click()
         expect(self.page).to_have_url(re.compile(r"/register\?next=/questionnaire_list$"))
 
+    def assert_step_bar(self, done, total):
+        segments = self.main().locator(".step-progress-bar > .step-progress-segment")
+        expect(segments).to_have_count(total)
+        expect(segments.and_(self.page.locator(".is-done"))).to_have_count(done)
+
+    def assert_fits_a_phone_at_double_text_size(self, where):
+        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
+        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
+        self.page.locator("html").evaluate(
+            "html => html.style.setProperty('font-size', '225%', 'important')"
+        )
+        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+        self.assertLessEqual(scroll_width, 320, where)
+
     def step2_register(self):
+        # #151: two numbered steps, register then consent.
+        expect(self.main().locator(".step-progress-text")).to_have_text(
+            "第 1 步／共 2 步：建立帳號"
+        )
+        self.assert_step_bar(1, 2)
+        self.fill_register_form()
+        self.main().get_by_role("button", name="註冊").click()
+        # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
+        expect(self.main().locator(".step-progress-text")).to_have_text(
+            "第 2 步／共 2 步：同意隱私權"
+        )
+        self.assert_step_bar(2, 2)
+        self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+        expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
+        expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
+
+    def fill_register_form(self):
         self.page.get_by_label("使用者名稱").fill("e2e_user")
         self.page.get_by_label("電子郵件").fill("e2e_user@example.com")
         self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
         # Exact: the "顯示密碼確認" toggle button (#151) also has 密碼確認 in its label.
         self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-2468")
-        self.main().get_by_role("button", name="註冊").click()
-        # New accounts agree to the privacy notice first (spec phase7_consent_privacy.md).
-        self.main().get_by_role("button", name="我同意").click()
-        expect(self.page.get_by_text("目前登入：e2e_user")).to_be_visible()
-        expect(self.page).to_have_url(re.compile(r"/questionnaire_list\?from=consent$"))
 
     def choose_self(self):
         # #152: the wizard's way out to every questionnaire's card.
@@ -377,24 +471,59 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def step3_choose_hhie_s(self):
         # #152 wizard: no birth year, so it asks the age, then the hearing aid, then recommends.
+        guide = self.main().locator(".questionnaire-guide")
+        steps = self.main().locator(".step-progress-text")
+        # Coming from consent: the first screen says the account is done, so 第 1 步 is new.
+        expect(guide).to_have_text("帳號建好了\N{FULLWIDTH EXCLAMATION MARK}接下來幫您找適合的問卷")
+        expect(steps).to_have_text("第 1 步／共 3 步")
+        self.assert_step_bar(1, 3)
         self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
             "65 歲以上", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
+        expect(guide).to_have_count(0)
+        expect(steps).to_have_text("第 2 步／共 3 步")
+        self.assert_step_bar(2, 3)
         self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
             "沒有戴", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
+        expect(steps).to_have_text("第 3 步／共 3 步")
+        self.assert_step_bar(3, 3)
+        expect(self.main().get_by_role("heading", name="推薦您做這一份")).to_be_visible()
         expect(self.main().locator("#recommended-title")).to_contain_text("HHIE-S")
+        expect(self.main()).to_contain_text(
+            "為什麼推薦：您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。"
+        )
+        # SSQ12 is only also worth doing for people wearing hearing aids.
+        expect(self.main().get_by_role("heading", name="也可以做")).to_have_count(0)
         self.main().get_by_role("link", name="開始作答").click()
+        # Unaided: no 沒戴 preselection (#154).
+        expect(self.page).to_have_url(re.compile(r"/questionnaire/\d+$"))
         # React took over: only its hearing aid question shows, the Django form is hidden.
         hearing_aid = self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
         expect(hearing_aid).to_be_visible()
         expect(self.page.get_by_role("group")).to_have_count(1)
 
     def step4_answer_and_change_one(self):
+        app = self.main().locator(".answer-app")
+        about = self.main().get_by_role("button", name="這份問卷在問什麼？")
+        progress = self.main().locator(".answer-app .question-progress")
+        # #153: the hearing aid step shows the whole intro and no question count.
+        expect(app).to_contain_text("本問卷的目的在幫助您了解自己的聽力")
+        expect(app).to_contain_text("答案會自動存在這支手機，中途離開也沒關係")
+        expect(about).to_have_count(0)
+        self.assert_step_bar(0, 0)
         self.answer("沒戴")
         self.next()
+        # From question 1 the intro folds away until asked for.
+        expect(app.get_by_text("本問卷的目的", exact=False)).to_have_count(0)
+        expect(about).to_have_attribute("aria-expanded", "false")
+        self.assert_step_bar(0, QUESTION_COUNT)
+        expect(progress).to_have_text("第 1 題／共 10 題・還剩大約 3 分鐘")
+        about.click()
+        expect(about).to_have_attribute("aria-expanded", "true")
+        expect(self.page.locator("#answer-intro-text")).to_contain_text("本問卷的目的")
         self.answer("常常", number=1)
         self.next()
         self.answer("有時", number=2)
@@ -407,6 +536,12 @@ class NewUserScreeningTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         for number in range(3, QUESTION_COUNT + 1):
             self.next()
             self.answer("有時", number=number)
+            if number == 3:
+                # #153 acceptance 1: 3 of 10 segments answered; 3 minutes x 8/10 left, rounded.
+                self.assert_step_bar(3, QUESTION_COUNT)
+                expect(progress).to_have_text("第 3 題／共 10 題・還剩大約 2 分鐘")
+        # Rounded down to none on the last question, but never less than a minute.
+        expect(progress).to_have_text("第 10 題／共 10 題・還剩大約 1 分鐘")
 
     def step5_submit(self):
         self.main().get_by_role("button", name="送出").click()
