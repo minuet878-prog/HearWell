@@ -17,7 +17,7 @@
         <h2 id="recommended-title" class="h4 mb-0">{{ recommended.definition.topic }}<span class="block font-normal">{{ recommended }}</span></h2>
     </div>
     <p class="card-tags">{% include "screening/card_tags.html" with questionnaire=recommended %}</p>
-    <p><strong>為什麼推薦：</strong>{% if reason == "unaided" %}您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。{% elif reason == "needs_norm_basis" %}您有戴助聽器，但還沒有沒戴助聽器時的紀錄。先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。{% else %}您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。{% endif %}</p>
+    <p><strong>為什麼推薦：</strong>{{ why }}</p>
     <a class="btn btn-primary btn-lg" href="{{ start_url }}">開始作答</a>
 </section>
 {% if also %}

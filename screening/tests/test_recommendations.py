@@ -165,7 +165,12 @@ class WizardTests(TestCase):
                 _, params = self.recommendation(age, "yes")
                 page = self.wizard(**params)
                 self.assertEqual(page.context["recommended"], self.by_code[code])
-                self.assertContains(page, "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較")
+                self.assertContains(
+                    page,
+                    "<p><strong>為什麼推薦：</strong>"
+                    "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
+                    "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
+                )
                 self.assert_ssq12_also(page)
 
     def test_catching_up_an_unaided_record_opens_the_answer_page_preselected(self):
