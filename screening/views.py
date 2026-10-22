@@ -272,6 +272,8 @@ def questionnaire_list(request):
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=_also_suggest(by_code, questionnaires) if wearing else [],
+        # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
+        offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,
         back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
     )
@@ -541,6 +543,12 @@ def _ioi_ha_chart(records):
 
 
 TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
+# 「和上一次比」's extra line when the two records were worn differently (ticket #214). A
+# life-impact tab never shows one: it compares records worn the same way.
+WEARING_CHANGE_TEXT = {
+    (False, True): "上次沒戴、這次有戴助聽器。",
+    (True, False): "上次有戴、這次沒戴助聽器。",
+}
 # Legend order, the template's shape for each status (spec 4b) and its name.
 TREND_LEGEND = (
     (False, "unaided", "沒戴助聽器"),
@@ -560,7 +568,8 @@ def _previous_same_wearing(records):
 
 
 def _trend_chart(records, since_last):
-    # records: this user's HHIE-S, newest first; since_last: the page's 「和上一次比」 or None.
+    # records: one tab's records (HHIE-S, THI), newest first; since_last: the page's
+    # 「和上一次比」 or None.
     # React draws only the chart itself, so the text around it is on the page from the start
     # and nothing below moves when it arrives. The wording is fixed by spec
     # phase9_ui_refresh_2_data.md 4.2.
@@ -623,16 +632,23 @@ def my_hearing(request):
     # Ticket #162: the same retest reminder as the home page (ADR 0010).
     user_state = get_user_state(request.user, today=timezone.localdate())
     # Ticket #162: a life-impact tab compares its newest record with the one before it worn
-    # the same way, as the trend chart does (decision 2026-10-22).
+    # the same way, as the trend chart does (decision 2026-10-22). Ticket #214: another graded
+    # tab (THI) compares it with the record just before, whatever was worn (ADR 0016).
     since_last = None
-    if current.definition.life_impact:
+    if current.definition.result == LEVEL:
         latest = records[0]
-        previous = _previous_same_wearing(records)
+        if current.definition.life_impact:
+            previous = _previous_same_wearing(records)
+        else:
+            previous = records[1] if len(records) > 1 else None
         if previous is not None:
             since_last = {
                 "latest": latest,
                 "previous": previous,
                 "text": since_last_text(latest.total_answer_score - previous.total_answer_score),
+                "wearing_change": WEARING_CHANGE_TEXT.get(
+                    (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
+                ),
             }
     comparison = current.definition.comparison
     show_comparison = False
@@ -1049,6 +1065,9 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            "support_message": submission.questionnaire.definition.support(
+                {answer.question.question_number: answer.score for answer in answers}
+            ),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)

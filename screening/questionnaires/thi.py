@@ -156,6 +156,13 @@ NEXT_STEPS = {
     ),
 }
 
+# Draft wording from #211, until the owner finalizes it there. Only on the result page, never
+# in the report, the family page or 我的紀錄 (spec #208 story 20).
+SUPPORT_MESSAGE = (
+    "如果耳鳴讓您覺得心情低落、很難熬，可以撥 1925 安心專線（24 小時免付費），有專人陪您聊聊。"
+    "也可以把這份結果帶給醫師或聽力師，一起討論怎麼減輕耳鳴的困擾。"
+)
+
 DEFINITION = Definition(
     code=CODE,
     name="THI",
@@ -172,6 +179,13 @@ DEFINITION = Definition(
     level_colors=LEVEL_COLORS,
     advice=ADVICE,
     next_steps=NEXT_STEPS,
+    wizard_offer="如果您有耳鳴：耳鳴障礙量表（THI）",
+    trend_chart=True,
+    # The hospital form's numbering (not the English original's): 5 絕望, 11 憂鬱, 23 無法忍受,
+    # answered 經常, whatever the total (spec #208 Q6).
+    support_items=(5, 11, 23),
+    support_score=4,
+    support_message=SUPPORT_MESSAGE,
     # Saved as background only (spec #208 Q4): tinnitus cannot be answered as if unaided.
     wearing_question="您現在有沒有配戴助聽器？",
 )

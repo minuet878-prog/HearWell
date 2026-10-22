@@ -423,6 +423,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(self.page.get_by_role("heading", name="SSQ12-TW", exact=True)).to_be_visible()
         self.page.go_back()
         expect(recommended).to_contain_text("HHIA-S")
+        # #216: the THI line is on every wizard result, so this width check covers it too.
+        tinnitus = self.main().get_by_role("link", name="如果您有耳鳴：耳鳴障礙量表（THI）")
+        expect(tinnitus).to_be_visible()
         self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
         self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
