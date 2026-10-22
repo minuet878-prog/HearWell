@@ -1,5 +1,5 @@
 from screening.questionnaires.comparison import TotalComparison
-from screening.questionnaires.definition import LEVEL, RETEST_STEP, Definition
+from screening.questionnaires.definition import GUIDE_ACTION, LEVEL, RETEST_STEP, Definition
 
 CODE = "hhia-s"
 
@@ -56,6 +56,7 @@ NEXT_STEPS = {
             "text": "如果您仍覺得聽不清楚，建議安排聽力評估。",
             "action_label": "記錄聽力圖",
             "action_url": "audiogram_new",
+            **GUIDE_ACTION,
         },
         RETEST_STEP,
     ),
@@ -65,6 +66,7 @@ NEXT_STEPS = {
             "text": "建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
             "action_label": "看／印聽力報告",
             "action_url": "health_report",
+            **GUIDE_ACTION,
         },
         RETEST_STEP,
     ),
@@ -74,6 +76,7 @@ NEXT_STEPS = {
             "text": "建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。",
             "action_label": "看／印聽力報告",
             "action_url": "health_report",
+            **GUIDE_ACTION,
         },
         RETEST_STEP,
     ),
