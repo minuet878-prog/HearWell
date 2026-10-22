@@ -25,6 +25,9 @@
         {% if step.action_label %}
         <a class="btn btn-outline-primary btn-lg mt-1" href="{% url step.action_url %}">{{ step.action_label }}</a>
         {% endif %}
+        {% if step.second_label %}
+        <a class="btn btn-outline-primary btn-lg mt-1" href="{% url step.second_url %}">{{ step.second_label }}</a>
+        {% endif %}
     </li>
     {% endfor %}
 </ol>
