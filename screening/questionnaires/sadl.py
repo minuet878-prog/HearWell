@@ -39,12 +39,31 @@ def choices(number):
     return options
 
 
-# HARL's manual scoring instructions (SADLScoring.pdf, 2003).
+# Items from HARL's manual scoring instructions (SADLScoring.pdf, 2003); explanations approved
+# by the owner in #168.
 SUBSCALE_ITEMS = (
-    ("正面效果", (1, 3, 5, 6, 9, 10)),
-    ("服務與費用", (12, 14, 15)),
-    ("負面特徵", (2, 7, 11)),
-    ("個人形象", (4, 8, 13)),
+    (
+        "正面效果",
+        (1, 3, 5, 6, 9, 10),
+        "戴助聽器帶來多少好處，例如比較聽得懂別人說話、比較少請人重說、比較有自信、"
+        "聲音聽起來自然。",
+    ),
+    (
+        "服務與費用",
+        (12, 14, 15),
+        "您對幫您調整助聽器的人員、助聽器的價格，以及助聽器耐不耐用，滿意的程度。",
+    ),
+    (
+        "負面特徵",
+        (2, 7, 11),
+        "助聽器帶來的困擾，例如聲音跟預期不同、轉大聲時出現迴音（嘯叫聲），"
+        "以及講電話時幫不幫得上忙。分數越高，代表困擾越少。",
+    ),
+    (
+        "個人形象",
+        (4, 8, 13),
+        "戴助聽器時，您在不在意外觀和別人的眼光。分數越高，代表越不在意、對自己的樣子越滿意。",
+    ),
 )
 REVERSED = {2, 4, 7, 13}
 
@@ -69,8 +88,12 @@ def score(answers):
     return {
         "overall": _average(scored.values()),
         "subscales": [
-            {"name": name, "score": _average([scored[n] for n in items if n in scored])}
-            for name, items in SUBSCALE_ITEMS
+            {
+                "name": name,
+                "score": _average([scored[n] for n in items if n in scored]),
+                "explanation": explanation,
+            }
+            for name, items, explanation in SUBSCALE_ITEMS
         ],
         "not_applicable": sorted(number for number, value in answers.items() if value is None),
     }

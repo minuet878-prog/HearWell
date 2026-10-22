@@ -7,7 +7,7 @@
 <p class="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem] font-bold">整體滿意度：{{ satisfaction.overall }}</p>
 <p>{{ submission.questionnaire.definition.result_note }}</p>
 <h2 class="h4">四個面向</h2>
-<ul>{% for subscale in satisfaction.subscales %}<li class="mb-2">{{ subscale.name }}：{{ subscale.score }}</li>{% endfor %}</ul>
+<ul>{% for subscale in satisfaction.subscales %}<li class="mb-2"><strong>{{ subscale.name }}：{{ subscale.score }}</strong><br>{{ subscale.explanation }}</li>{% endfor %}</ul>
 {% if satisfaction.not_applicable %}
 <p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
 {% endif %}

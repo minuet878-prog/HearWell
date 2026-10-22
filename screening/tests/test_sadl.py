@@ -155,3 +155,22 @@ class SadlScoringTests(SadlTestCase):
             self.client.get(reverse("result", args=[submission.pk]))
         reads = [q for q in ctx.captured_queries if '"screening_question"' in q["sql"]]
         self.assertEqual(len(reads), 1)
+
+    def test_each_subscale_shows_the_owner_approved_explanation(self):
+        # Text approved by the owner in #168.
+        approved = {
+            "正面效果": "戴助聽器帶來多少好處，例如比較聽得懂別人說話、比較少請人重說、"
+            "比較有自信、聲音聽起來自然。",
+            "服務與費用": "您對幫您調整助聽器的人員、助聽器的價格，"
+            "以及助聽器耐不耐用，滿意的程度。",
+            "負面特徵": "助聽器帶來的困擾，例如聲音跟預期不同、轉大聲時出現迴音（嘯叫聲），"
+            "以及講電話時幫不幫得上忙。分數越高，代表困擾越少。",
+            "個人形象": "戴助聽器時，您在不在意外觀和別人的眼光。分數越高，代表越不在意、"
+            "對自己的樣子越滿意。",
+        }
+        self.answer([4] * 15)
+        page = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
+        for name, text in approved.items():
+            with self.subTest(name=name):
+                self.assertContains(page, f"{name}：4.0")
+                self.assertContains(page, text)
