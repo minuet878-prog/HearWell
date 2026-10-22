@@ -9,6 +9,7 @@
         <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
         {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
+        {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.satisfaction.overall }}</li>{% endif %}
         {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{{ comparison.summary }}</li>{% endfor %}
         {% if ioi_ha %}
         <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% include "screening/ioi_ha_summary.html" %}</li>
@@ -70,6 +71,24 @@
 {% if ssq_comparison %}{% include "screening/report_comparison.html" with comparison=ssq_comparison %}{% endif %}
 </section>
 {% endif %}
+
+{% if sadl_latest %}{% with satisfaction=sadl_latest.satisfaction %}
+<section id="report-satisfaction" class="report-part" aria-labelledby="satisfaction-title">
+<h2 id="satisfaction-title" class="h4">助聽器滿意度</h2>
+<section id="report-sadl" aria-labelledby="sadl-title">
+<h3 id="sadl-title" class="h5">SADL</h3>
+<p>最近一次 {{ sadl_latest.created_at|date:"Y/m/d H:i" }}，助聽器：{{ sadl_latest.get_wearing_hearing_aid_display }}。</p>
+<p class="mb-1"><span class="report-score">整體滿意度：{{ satisfaction.overall }}</span></p>
+<ul>{% for subscale in satisfaction.subscales %}<li>{{ subscale.name }}：{{ subscale.score }}</li>{% endfor %}</ul>
+{% if satisfaction.not_applicable %}
+<p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
+{% endif %}
+<details class="report-answers"><summary>最近一次逐題回答</summary><ol>{% for answer in sadl_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
+<p>最近 {{ sadl_recent|length }} 次紀錄：</p>
+<ul>{% for record in sadl_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：整體滿意度 {{ record.satisfaction.overall }}</li>{% endfor %}</ul>
+</section>
+</section>
+{% endwith %}{% endif %}
 
 {% if ioi_ha %}{% with submission=ioi_ha.submission %}
 <section id="report-hearing-aid-outcome" class="report-part" aria-labelledby="outcome-title">
