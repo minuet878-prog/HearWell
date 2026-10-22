@@ -30,10 +30,11 @@ from screening.tests.helpers import consented_user, fake_definition, register
 
 class CopyTests(TestCase):
     LONG_QUESTION = "這是一題為了測試截斷而刻意寫得很長的題目，超過三十個字之後也必須完整顯示嗎？"
+    # Since the intro redesign the three sentences sit in separate groups, word for word.
     INTRO = (
-        "本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。"
-        "已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。"
-        "請在閱讀每項問題後圈選常常、有時或從未。"
+        "本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。",
+        "已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。",
+        "請在閱讀每項問題後圈選常常、有時或從未。",
     )
     ADVICE: ClassVar[dict[str, str]] = {
         "mild_to_moderate": (
@@ -86,7 +87,8 @@ class CopyTests(TestCase):
 
     def test_intro_typo_fixed(self):
         response = self.client.get(self.url)
-        self.assertContains(response, self.INTRO)
+        for sentence in self.INTRO:
+            self.assertContains(response, sentence)
         self.assertNotContains(response, "以選配了助聽器格")
 
     def test_advice_text(self):
@@ -573,12 +575,15 @@ class PageFlowTests(TestCase):
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
         self.assertIn('<span class="card-tag">3 題</span>', card)
-        self.assertIn("共 3 題，", page)
+        self.assertIn("短問卷・共 3 題・", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)
     def _assert_progress(self, page):
-        self.assertIn("共 10 題，大約 3 分鐘。", page)
+        # Answer page tidy-up: the topic is the title, the code and count one line under it.
+        self.assertRegex(
+            page, r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>\s*<p>HHIE-S・共 10 題・大約 3 分鐘</p>"
+        )
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
@@ -896,14 +901,12 @@ class PwaTests(TestCase):
                 steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
                 self.assertEqual(steps, [4, 4])
 
-    # 23, as changed by phase9_ui_refresh_1_shared.md acceptance 5: the link moved to the footer
-    def test_home_links_to_guide_in_footer(self):
+    # 23, as changed by the footer redesign: the guide is linked from the home page's "您還可以"
+    # (test_home) and the account page, no longer from the footer.
+    def test_footer_no_longer_links_to_guide(self):
         content = self.client.get(reverse("index")).content.decode()
         footer = content.split('<footer class="site-footer"', 1)[1]
-        link = re.search(
-            rf'<a[^>]*href="{reverse("add_to_home")}"[^>]*>\s*把 HearWell 加到手機主畫面', footer
-        )
-        self.assertIsNotNone(link)
+        self.assertNotIn(f'href="{reverse("add_to_home")}"', footer)
 
 
 class PwaNavTests(TestCase):

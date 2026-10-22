@@ -439,7 +439,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         recommended = self.main().locator("#recommended-title")
         expect(recommended).to_contain_text("HHIA-S")
         self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
-        expect(self.page.get_by_role("heading", name="SSQ12-TW", exact=True)).to_be_visible()
+        # Answer page tidy-up: the topic is the title, the code is on the line under it.
+        expect(self.page.get_by_role("heading", name="日常聆聽能力", exact=True)).to_be_visible()
         self.page.go_back()
         expect(recommended).to_contain_text("HHIA-S")
         # #216: the THI line is on every wizard result, so this width check covers it too.
@@ -451,7 +452,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         # #155: the wizard ends on the answer page, the server's form starting on 沒戴 (#154).
         self.main().get_by_role("link", name="開始作答").click()
         expect(self.page).to_have_url(re.compile(r"/questionnaire/\d+\?preselect=unaided$"))
-        expect(self.page.get_by_role("heading", name="HHIA-S", exact=True)).to_be_visible()
+        # The topic is the title; HHIA-S shares it with HHIE-S, so the code line tells them apart.
+        title = self.page.get_by_role("heading", name="聽力對生活的影響", exact=True)
+        expect(title).to_be_visible()
+        expect(self.main().get_by_text(re.compile(r"^HHIA-S・共 \d+ 題"))).to_be_visible()
         hearing_aid = self.page.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
         expect(hearing_aid.get_by_label("沒戴", exact=True)).to_be_checked()
         expect(self.page.locator("#hearing-aid-hint")).to_have_text("請想沒戴助聽器時的情況來回答")
@@ -2145,23 +2149,39 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.assertEqual(self.style(self.page.locator("main"), "maxWidth"), "720px")
 
     def test_heading_classes_and_muted_text_look_as_before(self):
-        # #124: The pre-migration .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, weight 500,
-        # line height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body
-        # text colour.
+        # #124: The pre-migration .h3 at 1024px is calc(1.3rem + .6vw) on an 18px root, line
+        # height 1.2 and a .5rem bottom margin; its .text-muted (now .text-body) was the body text
+        # colour. Since the heading refresh a page title (h1.h3) is bold and dark with a blue bar.
         self.open(javascript=False)
         with self.saving_artifacts():
-            for path, selector in (
-                ("/questionnaire_list", "h1.h3"),
-                (f"/questionnaire/{self.hhie_s.pk}", "p.h3.text-body"),
-            ):
-                with self.subTest(selector=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    element = self.page.locator(selector)
-                    self.assertEqual(self.style(element, "fontSize"), "29.544px")
-                    self.assertEqual(self.style(element, "fontWeight"), "500")
-                    self.assertEqual(self.style(element, "lineHeight"), "35.4528px")
-                    self.assertEqual(self.style(element, "marginBottom"), "9px")
-                    self.assertEqual(self.style(element, "color"), self.TEXT)
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            title = self.page.locator("h1.h3")
+            self.assertEqual(
+                self.styles(title, "fontSize", "lineHeight", "marginBottom"),
+                {"fontSize": "29.544px", "lineHeight": "35.4528px", "marginBottom": "9px"},
+            )
+            self.assertEqual(
+                self.styles(title, "fontWeight", "color", "borderLeftColor", "paddingLeft"),
+                {
+                    "fontWeight": "700",
+                    "color": "rgb(33, 37, 41)",
+                    "borderLeftColor": self.PRIMARY,
+                    "paddingLeft": "13.5px",
+                },
+            )
+            self.page.goto(f"{self.live_server_url}/privacy")
+            self.assertEqual(self.style(self.page.locator("p.text-body"), "color"), self.TEXT)
+            # A section title on the page has the bar; one inside a card does not.
+            self.assertEqual(
+                self.style(self.page.locator("h2.h4", has_text="誰在蒐集"), "borderLeftWidth"),
+                "5px",  # 0.3rem, drawn in whole pixels
+            )
+            self.assertEqual(
+                self.style(
+                    self.page.locator(".card h2.h4", has_text="先看重點"), "borderLeftWidth"
+                ),
+                "0px",
+            )
 
     def styles(self, locator, *props):
         return {prop: self.style(locator, prop) for prop in props}
@@ -2695,7 +2715,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             expect(levels).to_have_text("顯著影響")
             self.assert_framed_in_its_text_colour(levels)
 
-    def test_answer_choices_are_large_buttons_in_a_row(self):
+    # Answer page tidy-up: one option per row, each as wide as the others.
+    def test_answer_choices_are_large_buttons_one_per_row(self):
         self.open(javascript=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
@@ -2703,8 +2724,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             first, second = labels.nth(0).bounding_box(), labels.nth(1).bounding_box()
             self.assertGreaterEqual(first["height"], 3 * 18)  # 3rem at the 18px base
             self.assertGreaterEqual(first["width"], 44)  # #119 acceptance 6
-            self.assertEqual(first["y"], second["y"])
-            self.assertLess(first["x"], second["x"])
+            self.assertEqual(first["x"], second["x"])
+            self.assertEqual(first["width"], second["width"])
+            self.assertGreater(second["y"], first["y"])
 
     # #119 acceptance 6: link cards and navigation items, like buttons, are at least 44 x 44.
     def test_link_cards_and_navigation_items_are_large_enough_to_tap(self):

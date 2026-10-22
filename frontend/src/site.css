@@ -108,6 +108,15 @@
   h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
   h5, .h5 { font-size: 1.25rem; }
   h6, .h6 { font-size: 1rem; }
+  /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
+     a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
+     inside a card or the report's summary box has none; the box already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
+    padding-left: 0.75rem;
+    border-left: 0.3rem solid var(--color-primary);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
   @media (min-width: 1200px) {
     h1, .h1 { font-size: 2.5rem; }
     h2, .h2 { font-size: 2rem; }
@@ -813,6 +822,7 @@
     padding: 1.5rem 0;
     background-color: var(--color-footer-bg);
     color: var(--color-footer);
+    text-align: center;
   }
 
   /* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
@@ -829,19 +839,52 @@
     font-weight: 700;
   }
 
+  /* Centred like the rest of the footer. Phones: one link per row; from 48em the links share one row with even
+     gaps, each as wide as its words, so a long and a short link look evenly spaced. */
   .site-footer-links {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.5rem;
-    margin: 0 0 1rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1.25rem;
     padding: 0;
     list-style: none;
   }
 
+  @media (min-width: 48em) {
+    .site-footer-links {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem 1rem;
+    }
+  }
+
   .site-footer-links a {
     display: inline-flex;
+    gap: 0.6rem;
     align-items: center;
-    min-height: var(--spacing-touch);
+    min-height: 3.25rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .site-footer-links a:hover {
+    background-color: #fff;
+    text-decoration: underline;
+  }
+
+  .site-footer-icon {
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .site-footer p {
@@ -1377,16 +1420,124 @@
     color: var(--color-body);
   }
 
-  /* React answer page (one question per page): focus moves to the question on each page. */
+  /* React answer page (one question per page): focus moves to the question on each page. The ring
+     shows only when the browser judges it useful (keyboard use), not after a tap or click. */
   .answer-app legend:focus {
+    outline: 0;
+  }
+
+  .answer-app legend:focus-visible {
     outline: 3px solid var(--color-primary);
-    outline-offset: 2px;
+    outline-offset: 4px;
+    border-radius: var(--radius-button);
   }
 
   .answer-nav {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+
+  /* Answer page: one option per row, the whole row a tap target, so short and long choices line up. */
+  .answer-app div.choice-group, #answer-form div.choice-group {
+    flex-direction: column;
+  }
+
+  /* Questionnaire intros (screening/questionnaires/*_intro.html): the reviewed sentences, grouped
+     under small titles, each group led by a round icon named by data-icon. No inner div, so the
+     page's #answer-intro box stays one div deep. */
+  .q-intro-row {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    column-gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--color-border-warm);
+  }
+
+  .q-intro-row:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .q-intro-row > * {
+    grid-column: 2;
+    margin-bottom: 0.25rem;
+  }
+
+  .q-intro-row::before {
+    content: "";
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: var(--color-brand-soft) no-repeat center / 1.25rem;
+  }
+
+  .q-intro-row[data-icon="purpose"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E");
+  }
+
+  .q-intro-row[data-icon="who"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");
+  }
+
+  .q-intro-row[data-icon="how"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v4H9zM6 5h12v16H6z'/%3E%3Cpath d='M9 13l2 2 4-4'/%3E%3C/svg%3E");
+  }
+
+  .q-intro-row[data-icon="note"]::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5M12 16.5v.5'/%3E%3C/svg%3E");
+  }
+
+  .q-intro-title {
+    margin: 0.3rem 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--color-heading);
+  }
+
+  /* A preview of the answer buttons; the sentence above already names them, so screen readers
+     skip it (aria-hidden in the templates). */
+  .q-intro-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .q-intro-choices span {
+    padding: 0 0.6rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-size: 0.875rem;
+  }
+
+  .q-intro-source {
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .answer-autosave {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+    margin-top: 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .answer-autosave svg {
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: 0.2rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   /* While React loads, the Django form stays hidden (spec phase5_answer_flash.md); without JS the
@@ -1444,33 +1595,79 @@
   }
 
   /* add_to_home: one block per phone, closed until the user picks theirs (#196). The summary is
-     the tap target; hover and press change colour only, never position (ADR 0006). */
-  .phone-choice {
+     the tap target; hover and press change colour only, never position (ADR 0006). The answer
+     page's "這份問卷在問什麼？" is the same box, with a button (React) instead of a summary. */
+  .phone-choice, .answer-about {
     border: 0.125rem solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
   }
 
-  .phone-choice > summary {
+  /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
+     a second line instead of widening the page. */
+  .phone-choice > summary, .answer-about > button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
     min-height: var(--spacing-touch);
     padding: 0.5rem 1rem;
+    border: 0;
     border-radius: inherit;
+    background: none;
+    color: var(--color-primary);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .phone-choice > summary::-webkit-details-marker { display: none; }
+
+  /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
+     an up one when open, so nothing moves (ADR 0006). */
+  .phone-choice > summary::after, .answer-about > button::after {
+    content: "";
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: auto;
+    background-color: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .phone-choice[open] > summary::after, .answer-about > button[aria-expanded="true"]::after {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  .phone-choice-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .phone-choice > summary:hover {
+    .phone-choice > summary:hover, .answer-about > button:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .phone-choice > summary:active {
+  .phone-choice > summary:active, .answer-about > button:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
 
   .phone-choice > ol,
-  .phone-choice > p {
+  .phone-choice > p,
+  .answer-about > div > div {
     margin: 0 1rem 1rem;
   }
 

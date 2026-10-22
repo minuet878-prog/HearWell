@@ -173,11 +173,12 @@ class FamilyGuideTests(TestCase):
 
     # 4
     def test_home_and_history_link_to_it(self):
-        link = f'href="{self.url}">{LINK_TEXT}</a>'
-        self.assertContains(self.client.get(reverse("index")), link)
+        # The footer link starts with a decorative icon (footer redesign).
+        link = rf'href="{self.url}">(<svg [^>]*aria-hidden="true".*?</svg>)?{LINK_TEXT}</a>'
+        self.assertRegex(self.client.get(reverse("index")).content.decode(), link)
         self.client.force_login(consented_user(username="guide_user"))
-        self.assertContains(self.client.get(reverse("index")), link)
-        self.assertContains(self.client.get(reverse("my_hearing")), link)
+        self.assertRegex(self.client.get(reverse("index")).content.decode(), link)
+        self.assertRegex(self.client.get(reverse("my_hearing")).content.decode(), link)
 
     # 5 (the share sheet itself is checked in a real browser by e2e.main_flow)
     def test_share_button_and_visible_address(self):

@@ -117,7 +117,7 @@ export default function AnswerApp({
     const where = saved.step === 0 ? "您上次還沒答完" : `您上次答到第 ${saved.step} 題`;
     return (
       <div className="answer-app">
-        <h3 className="text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{where}，要接著答嗎？</h3>
+        <h3 className="heading-bar text-[calc(1.3rem+0.6vw)] min-[1200px]:text-[1.75rem]">{where}，要接著答嗎？</h3>
         <div className="answer-nav">
           <button type="button" className="btn btn-primary btn-lg" onClick={() => begin(saved, true)}>接著答</button>
           <button
@@ -220,10 +220,9 @@ export default function AnswerApp({
       {isHearingAid ? (
         <div dangerouslySetInnerHTML={{ __html: introHtml }} />
       ) : (
-        <div className="mb-4">
+        <div className="answer-about mb-4">
           <button
             type="button"
-            className="btn btn-link btn-lg px-0"
             aria-expanded={introOpen}
             aria-controls="answer-intro-text"
             onClick={() => setIntroOpen((open) => !open)}
@@ -233,8 +232,6 @@ export default function AnswerApp({
           <div id="answer-intro-text">{introOpen && <div dangerouslySetInnerHTML={{ __html: introHtml }} />}</div>
         </div>
       )}
-      {/* The ticket's wording, chosen by the site owner; draft.js keeps it in this browser only. */}
-      <p>答案會自動存在這支手機，中途離開也沒關係，下次打開會問您要不要接著答。</p>
       {/* The legend must be the fieldset's first child to name the radio group. */}
       <fieldset
         className="card card-body mb-4"
@@ -320,6 +317,11 @@ export default function AnswerApp({
           </button>
         )}
       </div>
+      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
+      <p className="answer-autosave">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
+        答案會自動存在這支手機，中途離開也沒關係。
+      </p>
     </div>
   );
 }
