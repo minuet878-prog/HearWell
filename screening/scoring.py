@@ -75,8 +75,17 @@ RECOMMENDATION_REASONS = {
         "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
         "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
     ),
-    "has_norm_basis": "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。",
+    # Verification-flow batch F1 (2026-10-23): IOI-HA compares with other users, not with going
+    # unaided, which the retake card below is for.
+    "has_norm_basis": (
+        "您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，"
+        "並和沒戴時困擾程度相近的一般使用者比較。"
+    ),
 }
+# The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,
+# worn. The title takes the questionnaire's topic and name.
+AIDED_RETAKE_TITLE = "戴著助聽器再做一次「{topic}」（{name}）"
+AIDED_RETAKE_NOTE = "和沒戴時的結果比較，看助聽器幫了多少。"
 
 # Middle 50% of each item (Cox, Alexander & Beyer 2003), as (lower, upper) inclusive.
 # Groups match models.NormGroup values.

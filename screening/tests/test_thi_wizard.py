@@ -66,7 +66,8 @@ class ThiWizardTests(TestCase):
                     self.assertIn(
                         f'href="{reverse("screening", args=[self.by_code[code].pk])}"', also
                     )
-                self.assertEqual(also.count("questionnaire-card"), 2)
+                # With a norm basis, the aided life-impact retake comes first (F1).
+                self.assertEqual(also.count("questionnaire-card"), 3 if norm_basis else 2)
 
     def test_asking_age_still_takes_three_steps(self):
         self.login_age(None)

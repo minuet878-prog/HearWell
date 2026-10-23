@@ -196,8 +196,9 @@ class Ssq12ComparisonRadioCardTests(TestCase):
         self.record(True, [6] * 11 + [None], datetime(2026, 9, 2, 9, 0, tzinfo=taipei))
         page = self.client.get(self.url)
         cards = test_hhi_comparisons.radio_cards
-        self.assertEqual(cards(page, "unaided"), [("2026/04/20・平均 4.3 分", False)])
-        self.assertEqual(cards(page, "aided"), [("2026/09/02・未計算：包含不適用題目", False)])
+        # One record on each side: both chosen (F2).
+        self.assertEqual(cards(page, "unaided"), [("2026/04/20・平均 4.3 分", True)])
+        self.assertEqual(cards(page, "aided"), [("2026/09/02・未計算：包含不適用題目", True)])
 
 
 class Ssq12ComparisonResultCardTests(TestCase):

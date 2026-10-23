@@ -50,6 +50,8 @@ from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.questionnaires.ioi_ha import SCALE_ENDS as IOI_HA_SCALE_ENDS
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import (
+    AIDED_RETAKE_NOTE,
+    AIDED_RETAKE_TITLE,
     IOI_HA_BELOW_NORM_NOTES,
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
@@ -152,8 +154,30 @@ def _assessment_context(request):
 
 def _after_fitting_context(request):
     # #220 H8, H9, then SADL (the owner's addition): what the wizard offers someone who
-    # wears hearing aids, not every listed questionnaire.
-    return {"follow_ups": _wearing_follow_ups(list(Questionnaire.objects.defined()))}
+    # wears hearing aids, not every listed questionnaire. Both life-impact questionnaires too,
+    # for answering one again worn (F4): the chapter is the same for everyone, so no age.
+    questionnaires = list(Questionnaire.objects.defined())
+    return {
+        "follow_ups": _wearing_follow_ups(questionnaires),
+        "life_impact": _life_impact_pair(questionnaires),
+    }
+
+
+def _form_25_context(request):
+    # What to answer before the verification visit (F3): the life-impact pair worn, IOI-HA and
+    # SADL; SSQ12-TW stays the after-fitting chapter's.
+    questionnaires = list(Questionnaire.objects.defined())
+    return {
+        "follow_ups": [
+            q for q in _wearing_follow_ups(questionnaires) if q.definition.result != AVERAGE
+        ],
+        "life_impact": _life_impact_pair(questionnaires),
+    }
+
+
+def _life_impact_pair(questionnaires):
+    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+    return [q for q in (by_code.get(hhie_s.CODE), by_code.get(hhia_s.CODE)) if q]
 
 
 @dataclass(frozen=True)
@@ -172,12 +196,15 @@ GUIDE_CHAPTERS = (
     ),
     GuideChapter("form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html"),
     GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
-    GuideChapter("form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html"),
+    # F5: the first weeks wearing them come before the visit 1 to 3 months in.
     GuideChapter(
         "after-fitting",
         "配戴助聽器之後",
         "screening/guide/after_fitting.html",
         _after_fitting_context,
+    ),
+    GuideChapter(
+        "form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html", _form_25_context
     ),
 )
 
@@ -395,6 +422,9 @@ def questionnaire_list(request):
         start_url += "?preselect=unaided"
     # IOI-HA is the recommendation itself or waits for a norm basis; the rest is 「也可以做」.
     also = [q for q in _wearing_follow_ups(questionnaires) if q.code != IOI_HA] if wearing else []
+    # With an unaided record, answering the life-impact questionnaire again worn compares the two
+    # (F1); it comes first.
+    retake = life_impact if reason == "has_norm_basis" else None
     return _wizard_step(
         request,
         total,
@@ -404,6 +434,10 @@ def questionnaire_list(request):
         why=RECOMMENDATION_REASONS[reason],
         start_url=start_url,
         also=also,
+        retake=retake,
+        retake_title=retake
+        and AIDED_RETAKE_TITLE.format(topic=retake.definition.topic, name=retake),
+        retake_note=AIDED_RETAKE_NOTE,
         # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
         offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,

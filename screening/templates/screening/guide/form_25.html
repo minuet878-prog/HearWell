@@ -10,6 +10,18 @@
     <li>核銷要帶：購買憑證、保固書影本（要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號）、二十五號表。</li>
 </ul>
 </div>
+<section class="card card-body mb-4" aria-labelledby="prepare-title">
+    <h2 id="prepare-title" class="h4">用 HearWell 準備驗證回診</h2>
+    <p>驗證前，可以先戴著助聽器做下面的問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：</p>
+    <ul>
+        <li>戴著再做一次聽力對生活的影響（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較</li>
+        {% for questionnaire in follow_ups %}
+        <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</a></li>
+        {% endfor %}
+    </ul>
+    <p>這些結果給聽力師參考，不能取代二十五號表的驗證。</p>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
+</section>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}
 {% block sources %}

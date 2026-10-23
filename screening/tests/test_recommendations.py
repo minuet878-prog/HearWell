@@ -185,15 +185,39 @@ class WizardTests(TestCase):
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
         page = self.wizard(**params)
         self.assertEqual(page.context["recommended"], self.by_code["ioi-ha"])
+        # Verification-flow batch F1: IOI-HA compares with other users, not with going unaided.
         self.assertContains(
             page,
             "<p><strong>為什麼推薦：</strong>"
-            "您有戴助聽器且有沒戴的紀錄。這份問卷能作為助聽器功效的比較。</p>",
+            "您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，"
+            "並和沒戴時困擾程度相近的一般使用者比較。</p>",
         )
         self.assertContains(
             page, f'href="{reverse("screening", args=[self.by_code["ioi-ha"].pk])}">開始作答</a>'
         )
-        self.assert_ssq12_also(page)
+        # Answering the life-impact questionnaire again wearing them comes first: that is the
+        # comparison with going unaided.
+        main = page.content.decode()
+        also = main[main.index("也可以做") : main.index("看其他問卷")]
+        cards = re.findall(r'<a class="link-card[^"]*" href="([^"]+)">(.*?)</a>', also, re.S)
+        self.assertEqual(
+            [href for href, _ in cards],
+            [
+                reverse("screening", args=[self.by_code[code].pk])
+                for code in ("hhie-s", "ssq12-tw", "sadl")
+            ],
+        )
+        self.assertIn("戴著助聽器再做一次「聽力對生活的影響」（HHIE-S）", cards[0][1])
+        self.assertIn("和沒戴時的結果比較，看助聽器幫了多少。", cards[0][1])
+        self.assertNotIn(self.by_code["hhie-s"].definition.audience, cards[0][1])
+
+    def test_aided_retake_card_follows_the_age_group(self):
+        user, params = self.recommendation("adult", "yes")
+        self.hhi_record(user, wearing=False, questionnaire="hhia-s")
+        main = self.wizard(**params).content.decode()
+        also = main[main.index("也可以做") : main.index("看其他問卷")]
+        first = re.search(r'<a class="link-card[^"]*" href="([^"]+)">', also).group(1)
+        self.assertEqual(first, reverse("screening", args=[self.by_code["hhia-s"].pk]))
 
     def test_after_catching_up_aided_recommends_ioi_ha(self):
         # #154 acceptance 4: start from the catch-up link, send the form as a browser without
