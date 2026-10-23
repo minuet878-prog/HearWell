@@ -705,7 +705,9 @@ class FittingRouteTests(TestCase):
         )
         levels = [value for value, _, _ in radios(stop, "level")]
         self.assertEqual(levels, ["basic", "mid", "advanced", "cros", "unknown"])
-        self.assertIn('<fieldset class="mb-4" data-fitting-level data-shown-with="disability"', stop)
+        self.assertIn(
+            '<fieldset class="mb-4" data-fitting-level data-shown-with="disability"', stop
+        )
         self.assertIn('<button type="submit" class="btn btn-primary btn-lg">儲存</button>', stop)
         self.assertNotIn("還沒開始戴", stop)
 
