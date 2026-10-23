@@ -28,7 +28,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   `docs/verification/aid-verification-links.md`）、報告、分享與下一步按鈕改成有圖示的卡片（我的紀錄、結果頁、聽力圖頁，驗證見 `docs/verification/action-cards.md`）、選配路線與首頁建議下一步（母規格 #257，#258–#261；選配指引的
   儀表、選配路線與目前這一站、章節步驟條，老使用者首頁「您還可以」改推薦一張加分組，驗證見
   `docs/verification/issue-258.md`–`issue-261.md`）、登入／註冊頁改成品牌橫幅＋粗框輸入框（框內圖示、填錯變紅、
-  登入頁加「顯示」密碼；本人在比較頁挑選，PR #273，驗證見 `docs/verification/auth-pages-banner.md`）。
+  登入頁加「顯示」密碼；本人在比較頁挑選，PR #273，驗證見 `docs/verification/auth-pages-banner.md`）、結果頁
+  「接下來建議您」改成一點一張卡（大按鈕改文字連結、報告連結只留在文字有提到的那一點、兩個下拉框放一起；本人在
+  比較頁挑選，PR #274，驗證見 `docs/verification/result-next-steps-cards.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
