@@ -894,6 +894,15 @@ class Form25RouteTests(TestCase):
         self.assertEqual(self.marks("form-25"), ["您在這裡"])
         self.assertEqual(self.marks("payout"), [])
 
+    def test_not_fitted_yet_takes_form_25_s_done_away_for_the_next_pair(self):
+        self.answer("form-25", "form_25_done", "True")
+        fit = FittingRouteTests.fit
+        fit(self, not_fitted="1")
+        fit(self, fitted_on="2026-05-01", ear="both", subsidy="disability", level="mid")
+        self.assertIsNone(self.aid().form_25_done)
+        self.assertEqual(self.marks("form-25"), ["您在這裡"])
+        self.assertNotIn('class="route-answer"', self.stop("form-25"))
+
     def test_an_answer_not_offered_shows_form_25_again_with_its_error(self):
         response = self.answer("form-25", "form_25_done", "maybe")
         self.assertEqual(response.status_code, 200)

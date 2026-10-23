@@ -355,8 +355,9 @@ class FittingForm(forms.ModelForm):
         # was; the model's clean then drops a level without 用身障補助.
         aid = self.instance
         if self.not_fitted:
-            # 還沒開始戴: what 配戴之後 asked goes; the notice's answers stay.
-            aid.fitted_on, aid.ear, aid.subsidy = None, "", ""
+            # 還沒開始戴: what 配戴之後 asked goes, and form 25, which the next pair is done
+            # again; the notice's answers stay.
+            aid.fitted_on, aid.ear, aid.subsidy, aid.form_25_done = None, "", "", None
             return {}
         if aid.notice_received and aid.approved_ears == ApprovedEars.BOTH:
             aid.ear = AidEar.BOTH
