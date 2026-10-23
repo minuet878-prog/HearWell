@@ -15,14 +15,14 @@
 {% endif %}
 {% endif %}
 {% if life_impact %}
-<section class="mt-6" aria-labelledby="questionnaire-title">
-    <h2 id="questionnaire-title" class="h4">問卷結果</h2>
+<section class="section-box mt-6" aria-labelledby="questionnaire-title">
+    <h2 id="questionnaire-title" class="h4 section-box-title">問卷結果</h2>
     <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.classified.text }}。</p>
 </section>
 {% endif %}
 {% if latest and not audiogram %}
-<section class="mt-6" aria-labelledby="audiogram-title">
-    <h2 id="audiogram-title" class="h4">聽力圖</h2>
+<section class="section-box mt-6" aria-labelledby="audiogram-title">
+    <h2 id="audiogram-title" class="h4 section-box-title">聽力圖</h2>
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
     <p class="mb-0"><a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
 </section>
@@ -31,8 +31,8 @@
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
 {# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
 {# The bars only draw the numbers written beside them (#260), so screen readers skip them; the line labels are read, as the sentences may not say 25. #}
-<section class="mt-6" aria-labelledby="fitting-title">
-    <h2 id="fitting-title" class="h4">要不要找聽力師評估</h2>
+<section class="section-box mt-6" aria-labelledby="fitting-title">
+    <h2 id="fitting-title" class="h4 section-box-title">要不要找聽力師評估</h2>
     {% if threshold.right.pta is None and threshold.left.pta is None %}
     <p>依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
     {% else %}
@@ -58,8 +58,8 @@
     {% endif %}
 </section>
 {# Judges only by the b230 formula (ADR 0017): no level, and a lower bound never says 未達到. #}
-<section class="mt-6" aria-labelledby="threshold-title">
-    <h2 id="threshold-title" class="h4">身障鑑定門檻</h2>
+<section class="section-box mt-6" aria-labelledby="threshold-title">
+    <h2 id="threshold-title" class="h4 section-box-title">身障鑑定門檻</h2>
     <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
     {% if threshold.ratio is not None %}
     {# A no-response point makes the ratio a lower bound, hatched from it to 100%. #}

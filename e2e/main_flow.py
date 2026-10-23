@@ -4804,6 +4804,7 @@ WHITE_CARD_PAGES_RECORDS = (
 WHITE_CARD_PAGES_LEARN = (
     ("guide, signed out", False, "/guide"),
     ("guide, with records", True, lambda test: test.guide_with_records()),
+    ("guide, without an audiogram", True, lambda test: test.guide_without_audiogram()),
     *((f"guide chapter {slug}", True, f"/guide/{slug}") for slug in HearingAidGuideTest.CHAPTERS),
     *(
         (f"guide chapter {slug}, signed out", False, f"/guide/{slug}")
@@ -4955,6 +4956,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for ear in ("right", "left")
             for f in (500, 1000, 2000, 4000)
         )
+        return "/guide"
+
+    def guide_without_audiogram(self):
+        """My guide with a life impact result and no audiogram: 聽力圖 asks for one."""
+        self.answered("hhie-s", 2)
         return "/guide"
 
     def answered_chapter(self):
@@ -5163,6 +5169,38 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 )
         return title
 
+    # The backgrounds of an element and everything it sits in, up to the page.
+    BACKGROUNDS_ABOVE = """(el) => {
+        const found = [];
+        for (let at = el; at; at = at.parentElement) {
+            found.push(getComputedStyle(at).backgroundColor);
+        }
+        return found;
+    }"""
+
+    def assert_outside_section_boxes(self, element):
+        """Shown, and not on a 段落框's beige or its title bar's."""
+        expect(element).to_be_visible()
+        backgrounds = element.evaluate(self.BACKGROUNDS_ABOVE)
+        self.assertNotIn(self.SECTION, backgrounds)
+        self.assertNotIn(self.SECTION_TITLE, backgrounds)
+
+    def assert_printed_section_box(self, part):
+        """A 段落框 on paper (#318 acceptance 12): no beige, a thin grey frame, its title bold
+        above a grey line."""
+        title = part.get_by_role("heading").first
+        with self.subTest(part=title.inner_text()):
+            self.assertEqual(self.style(part, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            for side in ("Top", "Right", "Bottom", "Left"):
+                self.assertEqual(self.style(part, f"border{side}Width"), "1px")
+                self.assertEqual(self.style(part, f"border{side}Style"), "solid")
+                self.assertEqual(self.style(part, f"border{side}Color"), self.PRINT_GREY)
+            self.assertEqual(self.style(title, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            self.assertEqual(self.style(title, "fontWeight"), "700")
+            self.assertEqual(self.style(title, "borderBottomWidth"), "1px")
+            self.assertEqual(self.style(title, "borderBottomStyle"), "solid")
+            self.assertEqual(self.style(title, "borderBottomColor"), self.PRINT_GREY)
+
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
         with self.saving_artifacts():
@@ -5337,22 +5375,36 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
 
-    # #302: my guide's parts and a done stop are flat, their links and buttons as before; the
-    # 目前這一站 keeps its pale blue box.
+    # #320 (#318 acceptance 2, 6, 7): my guide's status parts are 段落框, their bars (with the
+    # normal limit's and the threshold's lines), links and 怎麼算的 dropdown as before; 看我的路線
+    # is outside them. #302: a done stop is flat, the 目前這一站 keeps its pale blue box.
     def test_guide_parts_and_stops_are_flat_with_their_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.guide_with_records())
-            for name, link in (
-                ("問卷結果", None),
-                ("要不要找聽力師評估", "去之前要準備什麼"),
-                ("身障鑑定門檻", "找鑑定醫院"),
+            for name, link, scale in (
+                ("問卷結果", None, None),
+                ("要不要找聽力師評估", "去之前要準備什麼", "正常上限 25"),
+                ("身障鑑定門檻", "找鑑定醫院", "門檻 45%"),
             ):
                 with self.subTest(part=name):
                     part = self.main().get_by_role("region", name=name)
-                    self.assert_flat(part)
-                    self.assert_titled(part.get_by_role("heading", name=name))
+                    title = self.assert_section_box(part)
+                    expect(title).to_have_text(name)
                     if link:
                         expect(part.get_by_role("link", name=link, exact=True)).to_be_visible()
+                    if scale:
+                        expect(part.get_by_text(scale, exact=True)).to_be_visible()
+                        for line in part.locator(".meter-line").all():
+                            expect(line).to_be_visible()
+                            self.assertEqual(self.style(line, "backgroundColor"), self.HEADING)
+            threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+            worked = threshold.get_by_text("怎麼算的", exact=True)
+            self.assertEqual(self.style(worked, "color"), self.PRIMARY)
+            worked.click()
+            expect(threshold.get_by_text("3. 身障鑑定門檻是 45.0%。")).to_be_visible()
+            self.assert_outside_section_boxes(
+                self.main().get_by_role("link", name="看我的路線", exact=True)
+            )
             done = self.main().locator(".route-stop").filter(has_text="已完成").first
             self.assert_flat(done.locator(".route-box"))
             expect(done.get_by_role("link").first).to_be_visible()
@@ -5472,27 +5524,50 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     parts = self.main().locator("article > section, #stop-question")
                     self.assertGreater(parts.count(), 1)
                     for part in parts.all():
-                        title = part.get_by_role("heading").first
-                        with self.subTest(part=title.inner_text()):
-                            self.assertEqual(
-                                self.style(part, "backgroundColor"), "rgba(0, 0, 0, 0)"
-                            )
-                            for side in ("Top", "Right", "Bottom", "Left"):
-                                self.assertEqual(self.style(part, f"border{side}Width"), "1px")
-                                self.assertEqual(self.style(part, f"border{side}Style"), "solid")
-                                self.assertEqual(
-                                    self.style(part, f"border{side}Color"), self.PRINT_GREY
-                                )
-                            self.assertEqual(
-                                self.style(title, "backgroundColor"), "rgba(0, 0, 0, 0)"
-                            )
-                            self.assertEqual(self.style(title, "fontWeight"), "700")
-                            self.assertEqual(self.style(title, "borderBottomWidth"), "1px")
-                            self.assertEqual(self.style(title, "borderBottomStyle"), "solid")
-                            self.assertEqual(
-                                self.style(title, "borderBottomColor"), self.PRINT_GREY
-                            )
+                        self.assert_printed_section_box(part)
                     self.assert_titled(self.main().get_by_role("heading", level=1))
+
+    # #320 (#318 acceptance 12): my guide's status parts print as grey frames too, with and
+    # without an audiogram.
+    def test_printed_guide_status_boxes_are_grey_frames(self):
+        with self.saving_artifacts():
+            # Without an audiogram first: the second visit adds one.
+            for path, names in (
+                (lambda test: test.guide_without_audiogram(), ("問卷結果", "聽力圖")),
+                (
+                    lambda test: test.guide_with_records(),
+                    ("問卷結果", "要不要找聽力師評估", "身障鑑定門檻"),
+                ),
+            ):
+                self.visit(True, path)
+                self.page.emulate_media(media="print")
+                for name in names:
+                    self.assert_printed_section_box(self.main().get_by_role("region", name=name))
+                self.assert_titled(self.main().get_by_role("heading", level=1))
+
+    # #320 (#318 acceptance 3): before any record, and with a questionnaire but no audiogram, the
+    # note and buttons on top are outside the boxes; 聽力圖, with its button, is a 段落框.
+    def test_guide_note_and_buttons_stay_outside_and_the_audiogram_part_is_boxed(self):
+        with self.saving_artifacts():
+            self.visit(False, "/guide")
+            self.assert_outside_section_boxes(self.main().get_by_text("登入後，這裡會依您的問卷"))
+            self.assert_outside_section_boxes(
+                self.main().get_by_role("link", name="登入", exact=True)
+            )
+            self.visit(True, "/guide")
+            self.assert_outside_section_boxes(self.main().get_by_text("依您在 HearWell 最新的紀錄"))
+            for button in ("開始篩檢", "記錄醫院的聽力圖"):
+                with self.subTest(button=button):
+                    self.assert_outside_section_boxes(
+                        self.main().get_by_role("link", name=button, exact=True).first
+                    )
+            self.visit(True, lambda test: test.guide_without_audiogram())
+            self.assert_outside_section_boxes(self.main().get_by_text("依您在 HearWell 最新的紀錄"))
+            self.assert_section_box(self.main().get_by_role("region", name="問卷結果"))
+            audiogram = self.main().get_by_role("region", name="聽力圖")
+            expect(self.assert_section_box(audiogram)).to_have_text("聽力圖")
+            record = audiogram.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            self.assertEqual(self.style(record, "backgroundImage"), self.GRADIENT)
 
     # #319 (#318 acceptance 13): on a phone at 200% text a long part title wraps inside its
     # title bar, which stays inside its box.
