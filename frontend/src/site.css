@@ -1365,6 +1365,23 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-medium);
     background-color: #fff;
+    overflow-wrap: anywhere;
+  }
+
+  /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
+     few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
+  .more-section {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 14rem) {
+    .next-step {
+      padding: 0.75rem;
+    }
+
+    .next-step-because {
+      padding: 0.25rem 0.4rem;
+    }
   }
 
   /* The other cards' group titles: small, plain and dark, so the cards stay the focus. */

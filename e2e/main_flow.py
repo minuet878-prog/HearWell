@@ -2031,6 +2031,22 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     )
                     self.assertEqual(narrow, [], path)
 
+    # #261 self-review: the 建議您下一步 box at the same size. This user reaches the threshold, so
+    # the reason ends in 「（45%）。」, which may not break off and once ran past its white box.
+    def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            reason = self.main().locator(".next-step-because")
+            expect(reason).to_contain_text("（45%）")
+            self.assert_fits_a_phone_at_double_text_size("/ next step")
+            room = reason.evaluate(
+                "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
+                " overflow: p.scrollWidth - p.clientWidth})"
+            )
+            self.assertGreaterEqual(room["chars"], 4)
+            self.assertLessEqual(room["overflow"], 0)
+
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
     # threshold, so the stop is the assessment.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
