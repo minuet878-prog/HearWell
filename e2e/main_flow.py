@@ -2434,7 +2434,8 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         super().tearDownClass()
 
     def setUp(self):
-        self.client.force_login(consented_user(username="bottom_tabs_e2e"))
+        self.user = consented_user(username="bottom_tabs_e2e")
+        self.client.force_login(self.user)
         self.cookie = {
             "name": settings.SESSION_COOKIE_NAME,
             "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
@@ -2461,15 +2462,31 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 expect(self.page).to_have_url(f"{self.live_server_url}{path}")
 
     # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
-    # narrower phone assert_fits_a_phone_at_double_text_size uses. The audiogram list's cards were
-    # already wider than a phone at 200% (their 6rem thumbnail), so only its tabs are checked below.
+    # narrower phone assert_fits_a_phone_at_double_text_size uses. On the audiogram list the
+    # thumbnail moves above the date and levels, which stay inside their card.
     def test_records_and_learn_fit_a_phone_at_double_text_size(self):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        # Right ear 中重度, left ear 資料不足: the longest level label.
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear="right", conduction="air", frequency=f, db=60)
+            for f in (500, 1000, 2000, 4000)
+        )
         self.open(320, 640)
         with self.saving_artifacts():
-            for path in ("/my_hearing", "/learn"):
+            # With only an audiogram, /my_hearing opens the audiogram list (#270); the list comes
+            # last so its card is checked below, still at 200% text.
+            for path in ("/my_hearing?view=questionnaires", "/learn", "/audiograms"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+            card = self.main().locator(".link-card")
+            expect(card).to_contain_text("2026/10/01")
+            card_right = card.evaluate("e => e.getBoundingClientRect().right")
+            for part in card.locator(".link-card-body strong, .level-badge").all():
+                with self.subTest(part=part.inner_text()):
+                    self.assertLessEqual(
+                        part.evaluate("e => e.getBoundingClientRect().right"), card_right
+                    )
 
     # Acceptance: at 390px and 200% text each tab's words take one line and stay on the screen.
     # Not 320px: there a tab is about 62px wide and two characters at 200% need about 63px.
