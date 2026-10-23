@@ -5072,9 +5072,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertTrue(colours)
         for colour in colours:
             with self.subTest(colour=colour):
-                self.assertGreaterEqual(
-                    StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5
-                )
+                self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
 
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
@@ -5484,18 +5482,41 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator("a.link-card").first
             self.assert_paper(self.page.locator("#audiogram-chart"), card)
 
-    # #301: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers have a thin line;
-    # IOI-HA's summary and 接下來 are flat.
-    def test_result_item_scores_are_flat_with_a_thin_line(self):
+    HEADING = "rgb(33, 37, 41)"
+    # IOI-HA's norm on its scale and legend: grey cells with a darker grey edge.
+    NORM_GREY = "rgb(206, 212, 218)"
+    NORM_EDGE = "rgb(108, 117, 125)"
+
+    def assert_tinted_items(self, items, title, count):
+        """#310: each item its own 並列區塊, its title (found by `title` inside it) a subhead 1.2
+        times the text in the heading colour; the page's cards stay white cards."""
+        self.assertEqual(items.count(), count)
+        for item in items.all():
+            with self.subTest(item=item.inner_text()[:10]):
+                self.assert_tinted(item)
+                self.assert_readable_on_tint(item)
+                name = title(item)
+                size = float(self.style(name, "fontSize").removesuffix("px"))
+                text = float(self.style(item, "fontSize").removesuffix("px"))
+                self.assertAlmostEqual(size / text, 1.2, places=2)
+                self.assertEqual(self.style(name, "color"), self.HEADING)
+                self.assertEqual(self.style(name, "fontWeight"), "700")
+        cards = self.main().locator(".result-actions a.link-card")
+        self.assertGreater(cards.count(), 0)
+        for card in cards.all():
+            with self.subTest(card=card.inner_text()[:10]):
+                self.assert_white_card(card)
+
+    # #310: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers are each a 並列區塊
+    # with a larger title; IOI-HA's summary and 接下來 stay flat.
+    def test_result_items_are_tinted_blocks_with_larger_titles(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.ioi_ha_result())
             self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
             self.assert_flat(self.page.get_by_role("region", name="接下來", exact=True))
-            items = self.main().locator("ol > li")
-            self.assertEqual(items.count(), 7)
-            for item in items.all():
-                with self.subTest(item=item.inner_text()[:10]):
-                    self.assert_lined(item)
+            self.assert_tinted_items(
+                self.main().locator("ol > li"), lambda item: item.get_by_role("heading"), 7
+            )
             self.visit(True, lambda test: test.result("sadl", 4))
             facets = (
                 self.main()
@@ -5503,18 +5524,42 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 .filter(has=self.page.get_by_role("heading", level=3))
                 .get_by_role("listitem")
             )
-            self.assertEqual(facets.count(), 4)
-            for facet in facets.all():
-                with self.subTest(facet=facet.inner_text()[:10]):
-                    self.assert_lined(facet)
+            self.assert_tinted_items(facets, lambda item: item.get_by_role("heading"), 4)
             self.visit(True, lambda test: test.result("ssq12-tw", 5))
             lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
                 "listitem"
             )
-            self.assertEqual(lowest.count(), 3)
-            for answer in lowest.all():
-                with self.subTest(answer=answer.inner_text()[:10]):
-                    self.assert_lined(answer)
+            # The question is the item's title; its score tag sits beside it.
+            self.assert_tinted_items(lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3)
+
+    # #310: the IOI-HA scale's empty cells are clear with a thin deeper beige frame, so they do
+    # not read as white things to tap; the norm's grey cells, the blue dot and the legend stay.
+    def test_ioi_ha_scale_cells_are_clear_with_a_thin_line(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.ioi_ha_result())
+            item = self.main().locator("ol > li").first
+            cells = item.locator(".ioi-scale > *")
+            self.assertEqual(cells.count(), 5)
+            # Every item is below the norm at 1: the norm is grey cells further right.
+            band = item.locator(".ioi-scale > .ioi-cell-band")
+            self.assertGreater(band.count(), 0)
+            for cell in cells.all():
+                is_band = cell.evaluate("(el) => el.classList.contains('ioi-cell-band')")
+                with self.subTest(band=is_band):
+                    self.assertEqual(self.style(cell, "borderTopStyle"), "solid")
+                    self.assertEqual(self.style(cell, "borderTopWidth"), "1px")
+                    if is_band:
+                        self.assertEqual(self.style(cell, "backgroundColor"), self.NORM_GREY)
+                        self.assertEqual(self.style(cell, "borderTopColor"), self.NORM_EDGE)
+                    else:
+                        self.assertEqual(self.style(cell, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                        self.assertEqual(self.style(cell, "borderTopColor"), self.TINT_LINE)
+            dot = item.locator(".ioi-scale .ioi-dot-latest")
+            self.assertEqual(dot.count(), 1)
+            self.assertEqual(self.style(dot, "backgroundColor"), self.PRIMARY)
+            legend = self.main().locator(".ioi-legend-band")
+            self.assertEqual(self.style(legend, "backgroundColor"), self.NORM_GREY)
+            self.assertEqual(self.style(legend, "borderTopColor"), self.NORM_EDGE)
 
     # #301: 我的紀錄's record cards stay white cards; the summaries above them are not.
     def test_my_records_keep_white_record_cards_and_flat_summaries(self):

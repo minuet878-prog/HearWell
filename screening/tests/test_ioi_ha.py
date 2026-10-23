@@ -86,7 +86,7 @@ class IoiHaTests(TestCase):
 
     def _items(self, main):
         # By question number, wherever the result page groups them (#187).
-        items = re.findall(r'<li class="ioi-item">(.*?)</li>', main, re.DOTALL)
+        items = re.findall(r'<li class="ioi-item[^"]*">(.*?)</li>', main, re.DOTALL)
         return sorted(items, key=lambda item: int(re.search(r"IOI題(\d+)", item).group(1)))
 
     # Answering (1-4)
