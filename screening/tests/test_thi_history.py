@@ -45,15 +45,19 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self.assertRegex(trend, r"<h2[^>]*>\s*THI 總分變化\s*</h2>")
         self.assertIn('data-questionnaire="thi"', trend)
         bands = re.search(r'class="trend-bands">(.*?)</ul>', trend, re.S).group(1)
-        items = re.findall(r'<li class="trend-band-(\w+)">(.*?)</li>', bands, re.S)
+        items = re.findall(
+            r'<li class="trend-band-(\w+)( trend-band-deep)?">(.*?)</li>', bands, re.S
+        )
+        # The higher of two levels sharing a colour is the deeper shade, so the five names match
+        # the chart's five bands.
         self.assertEqual(
-            [(colour, self._text(text)) for colour, text in items],
+            [(colour, bool(deep), self._text(text)) for colour, deep, text in items],
             [
-                ("severe", "極重度障礙"),
-                ("severe", "重度障礙"),
-                ("mild_to_moderate", "中度障礙"),
-                ("mild_to_moderate", "輕度障礙"),
-                ("normal", "無障礙或輕微障礙"),
+                ("severe", True, "極重度障礙"),
+                ("severe", False, "重度障礙"),
+                ("mild_to_moderate", True, "中度障礙"),
+                ("mild_to_moderate", False, "輕度障礙"),
+                ("normal", False, "無障礙或輕微障礙"),
             ],
         )
         self.assertContains(
@@ -165,5 +169,19 @@ class ThiHistoryTests(test_thi.ThiTestCase):
                 ("moderate", 56),
                 ("severe", 76),
                 ("catastrophic", 100),
+            ],
+        )
+
+    def test_trend_chart_levels_from_the_api_shade_two_levels_sharing_a_colour(self):
+        questionnaires = self.client.get(reverse("api:questionnaires")).json()
+        thi = next(q for q in questionnaires if q["code"] == "thi")
+        self.assertEqual(
+            [(level["color"], level["shade"]) for level in thi["levels"]],
+            [
+                ("normal", "pale"),
+                ("mild_to_moderate", "pale"),
+                ("mild_to_moderate", "deep"),
+                ("severe", "pale"),
+                ("severe", "deep"),
             ],
         )

@@ -302,7 +302,7 @@ class RedesignLayoutTests(TestCase):
         expected = {
             reverse("questionnaire_list"): "選擇問卷" + suffix,
             reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
-            reverse("result", args=[self.submission.id]): "篩檢結果" + suffix,
+            reverse("result", args=[self.submission.id]): "HHIE-S 結果" + suffix,
             reverse("my_hearing"): "我的紀錄" + suffix,
         }
         self.client.force_login(self.user)
@@ -649,7 +649,8 @@ class PageFlowTests(TestCase):
 
     def test_result_next_step_links(self):
         main = self._result(self._submit([0] * 10))
-        self.assertRegex(main, rf'<a[^>]*href="{reverse("my_hearing")}"[^>]*>\s*看我的紀錄與趨勢')
+        records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
+        self.assertRegex(main, rf'<a[^>]*href="{re.escape(records)}"[^>]*>\s*看我的紀錄與趨勢')
         self.assertRegex(main, rf'<a[^>]*href="{reverse("index")}"[^>]*>\s*回首頁')
 
     def test_result_has_no_username_or_halfwidth_colon(self):

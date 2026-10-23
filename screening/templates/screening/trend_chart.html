@@ -38,7 +38,7 @@
             {% if chart.levels %}
             <ul class="trend-bands">
                 {% for level in chart.levels %}
-                <li class="trend-band-{{ level.color }}"><span class="trend-band-swatch" aria-hidden="true"></span><span>{{ level.text }}</span></li>
+                <li class="trend-band-{{ level.color }}{% if level.shade == "deep" %} trend-band-deep{% endif %}"><span class="trend-band-swatch" aria-hidden="true"></span><span>{{ level.text }}</span></li>
                 {% endfor %}
             </ul>
             {% endif %}

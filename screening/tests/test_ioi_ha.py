@@ -489,7 +489,7 @@ class IoiHaResultRedesignTests(TestCase):
 
     def _others(self, main):
         # The collapsed group of every other item.
-        match = re.search(r'<details class="ioi-others".*?</details>', main, re.S)
+        match = re.search(r'<details class="ioi-others[^"]*".*?</details>', main, re.S)
         return match.group(0) if match else ""
 
     def _items(self, html):
@@ -629,7 +629,8 @@ class IoiHaResultRedesignTests(TestCase):
             with self.subTest(scores=scores):
                 next_steps = self._next(self._main(self._result(scores)))
                 self.assertIn(
-                    "<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>", next_steps
+                    '<p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>',
+                    next_steps,
                 )
 
     def test_heading_outline_skips_no_level_and_nests_items_under_their_group(self):
@@ -659,7 +660,9 @@ class IoiHaResultRedesignTests(TestCase):
             "ungrouped": (
                 self.TWO_BELOW_ONE_ABOVE,
                 False,
-                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)] + [(2, "接下來")],
+                # Nothing to take to the audiologist without norms: no 「接下來」 (result pages
+                # tidy-up), the closing row of buttons is enough.
+                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)],
             ),
         }
         for case, (scores, grouped, expected) in cases.items():
@@ -668,17 +671,19 @@ class IoiHaResultRedesignTests(TestCase):
                 Submission.objects.all().delete()
                 self.assertEqual(outline(self._main(self._result(scores, grouped))), expected)
 
-    def test_next_steps_link_to_the_report_and_my_records(self):
-        # Ungrouped first: once an unaided HHIE-S exists, every later IOI-HA is grouped.
-        for grouped in (False, True):
-            with self.subTest(grouped=grouped):
-                next_steps = self._next(self._main(self._result((3,) * 7, grouped=grouped)))
-                self.assertIn("接下來", next_steps)
-                self.assertIn(f'href="{reverse("health_report")}">看／印聽力報告</a>', next_steps)
-                my_records = f"{reverse('my_hearing')}?questionnaire=ioi-ha"
-                self.assertIn(f'href="{my_records}">看我的紀錄</a>', next_steps)
-                self.assertNotIn("回首頁", next_steps)
-                self.assertEqual(IoiHaTests.ADVICE in next_steps, grouped)
+    def test_next_steps_only_when_grouped_with_the_links_in_the_closing_row(self):
+        # Result pages tidy-up: the report and records links moved to the row every result page
+        # ends with (test_result_pages), so 「接下來」 is only the advice, shown when grouped.
+        main = self._main(self._result((3,) * 7, grouped=False))
+        self.assertNotIn("ioi-next-title", main)
+        self.assertNotIn(IoiHaTests.ADVICE, main)
+        Answer.objects.all().delete()
+        Submission.objects.all().delete()
+        main = self._main(self._result((3,) * 7, grouped=True))
+        next_steps = self._next(main)
+        self.assertIn(IoiHaTests.ADVICE, next_steps)
+        self.assertNotIn("<a ", next_steps)
+        self.assertIn(f'href="{reverse("health_report")}">看／印聽力報告</a>', main)
 
 
 class IoiHaFixtureTests(TestCase):

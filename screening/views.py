@@ -47,6 +47,7 @@ from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
+from screening.questionnaires.ioi_ha import SCALE_ENDS as IOI_HA_SCALE_ENDS
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import (
     IOI_HA_BELOW_NORM_NOTES,
@@ -706,7 +707,12 @@ def _trend_chart(records, since_last):
         ],
         # Top band first, as stacked in the chart (phase9_ui_refresh_3_structure.md 4.5).
         "levels": [
-            {"code": level, "text": text, "color": definition.color(level)}
+            {
+                "code": level,
+                "text": text,
+                "color": definition.color(level),
+                "shade": definition.shade(level),
+            }
             for _, text, level in reversed(definition.thresholds)
         ],
     }
@@ -1148,6 +1154,7 @@ def _score_bar(definition, score, level):
             {
                 "level": segment_level,
                 "color": definition.color(segment_level),
+                "shade": definition.shade(segment_level),
                 "text": text,
                 "width": (upper - start) / ceiling * 100,
                 "current": segment_level == level,
@@ -1203,6 +1210,7 @@ def submission_result(request, submission_id):
         {
             "submission": submission,
             "answers": answers,
+            "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
@@ -1293,6 +1301,7 @@ def _ioi_ha_result(request, submission, answers):
             "below": below,
             "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
+            "scale_ends": IOI_HA_SCALE_ENDS,
         },
     )
 

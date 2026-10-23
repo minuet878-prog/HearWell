@@ -22,8 +22,10 @@
   --color-normal-bg: #e3f4ec;
   --color-mild: #704800;
   --color-mild-bg: #fff4d6;
+  --color-mild-bg-deep: #f9dd96;
   --color-severe: #8f2a12;
   --color-severe-bg: #feece7;
+  --color-severe-bg-deep: #f6c3b3;
   --color-surface: #f1f3f5;
   --color-brand-soft: #eef3fa;
   --color-brand-selected: #e8eef7;
@@ -1911,6 +1913,15 @@
     background-color: var(--color-severe-bg);
   }
 
+  /* The higher of two levels sharing a colour (THI's five in three), as the chart's bands. */
+  .trend-band-mild_to_moderate.trend-band-deep .trend-band-swatch {
+    background-color: var(--color-mild-bg-deep);
+  }
+
+  .trend-band-severe.trend-band-deep .trend-band-swatch {
+    background-color: var(--color-severe-bg-deep);
+  }
+
   /* Numbered "接下來建議您" steps on the result page (ticket #157). */
   .next-steps {
     margin: 0.5rem 0 0;
@@ -1949,6 +1960,11 @@
     height: 100%;
   }
 
+  /* A white line between segments, as between the trend chart's bands. */
+  .score-bar-segment + .score-bar-segment {
+    border-left: 2px solid #fff;
+  }
+
   .score-bar-segment-normal {
     background-color: var(--color-normal-bg);
     box-shadow: inset 0 -0.25rem 0 var(--color-normal);
@@ -1962,6 +1978,15 @@
   .score-bar-segment-severe {
     background-color: var(--color-severe-bg);
     box-shadow: inset 0 -0.25rem 0 var(--color-severe);
+  }
+
+  /* The higher of two levels sharing a colour (Definition.shade). */
+  .score-bar-segment-mild_to_moderate.score-bar-segment-deep {
+    background-color: var(--color-mild-bg-deep);
+  }
+
+  .score-bar-segment-severe.score-bar-segment-deep {
+    background-color: var(--color-severe-bg-deep);
   }
 
   .score-bar-marker {
@@ -2250,6 +2275,16 @@
     gap: 0.25rem;
     max-width: 20rem;
     margin-top: 0.75rem;
+  }
+
+  /* The scale's two ends, under its first and last cells (result pages tidy-up). */
+  .ioi-scale-ends {
+    display: flex;
+    justify-content: space-between;
+    max-width: 20rem;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--color-body);
   }
 
   .ioi-cell {

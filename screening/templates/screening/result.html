@@ -1,10 +1,10 @@
 {% extends "screening/layout.html" %}
 
-{% block title %}篩檢結果｜HearWell{% endblock %}
+{% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2">篩檢結果</h1>
-<p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+{# Headed like the other result pages, not 「篩檢結果」 (THI is not a screening). #}
+{% include "screening/result_header.html" %}
 <div class="result-banner result-banner-{{ classified_score_color }}">
     <div>結果</div>
     <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
@@ -62,8 +62,5 @@
         {% endfor %}
     </ol>
 </details>
-<div class="flex flex-col min-[576px]:flex-row gap-2 my-4">
-    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}">看我的紀錄與趨勢</a>
-    <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
-</div>
+{% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
 {% endblock %}

@@ -3,8 +3,7 @@
 {% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
-<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+{% include "screening/result_header.html" %}
 <section class="card card-body mb-6">
     {% if grouped %}
     <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
@@ -30,7 +29,7 @@
 </section>
 {% endif %}
 {% if others %}
-<details class="ioi-others">
+<details class="ioi-others dropdown-box">
     <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
     <ol class="ioi-items">
         {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
@@ -42,13 +41,12 @@
     {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
 </ol>
 {% endif %}
+{% if grouped %}
 <section class="card card-body my-6" aria-labelledby="ioi-next-title">
     <h2 id="ioi-next-title" class="h4">接下來</h2>
-    {% if grouped %}<p>如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>{% endif %}
-    <div class="flex flex-col min-[576px]:flex-row gap-2">
-        <a class="btn btn-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
-        <a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">看我的紀錄</a>
-    </div>
+    <p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
 </section>
+{% endif %}
+{% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
 {% include "screening/ioi_ha_source.html" with with_norms=True with_notes=True %}
 {% endblock %}

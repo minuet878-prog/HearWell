@@ -414,10 +414,13 @@ components:
           type: integer
         color:
           type: string
+        shade:
+          type: string
       required:
       - code
       - color
       - max
+      - shade
       - text
     PaginatedSubmissionList:
       type: object

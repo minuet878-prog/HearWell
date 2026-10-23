@@ -1,0 +1,4 @@
+{# Every result page's title and the line under it (result pages tidy-up): the topic, then the #}
+{# questionnaire, the date and, where it was asked, whether hearing aids were worn. #}
+<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
+<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答{% if wearing_text %}・{{ wearing_text }}{% endif %}</p>

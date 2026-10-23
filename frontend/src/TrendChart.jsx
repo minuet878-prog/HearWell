@@ -24,12 +24,13 @@ const FONT = {
 const TEXT_COLOR = "#212529";
 const MUTED_COLOR = "#495057";
 const PRIMARY = "#1f4e8c";
-// Presentation only, by level colour (ADR 0007's three); the bands and each level's colour come
-// from the API. The level names under the chart (trend_chart.html) use the same fills.
+// Presentation only, by level colour (ADR 0007's three) and shade; the bands, each level's colour
+// and shade come from the API. The level names under the chart (trend_chart.html) use the same
+// fills. "deep": the higher of two levels sharing a colour, so THI's five bands stay apart.
 const BAND_FILLS = {
-  normal: "#e3f4ec",
-  mild_to_moderate: "#fff4d6",
-  severe: "#feece7",
+  normal: { pale: "#e3f4ec" },
+  mild_to_moderate: { pale: "#fff4d6", deep: "#f9dd96" },
+  severe: { pale: "#feece7", deep: "#f6c3b3" },
 };
 const OTHER_BAND_FILL = "#e9ecef";
 // Hearing aid status (spec 4b): filled circle / hollow square / hollow triangle; the legend under
@@ -151,8 +152,11 @@ export default function TrendChart({ code }) {
               key={level.code}
               y1={i === 0 ? 0 : bandEdge(i - 1)}
               y2={bandEdge(i)}
-              fill={BAND_FILLS[level.color] ?? OTHER_BAND_FILL}
+              fill={BAND_FILLS[level.color]?.[level.shade] ?? OTHER_BAND_FILL}
               fillOpacity={1}
+              // A white line between bands, as between the score bar's segments.
+              stroke="#fff"
+              strokeWidth={2}
             />
           ))}
           <XAxis

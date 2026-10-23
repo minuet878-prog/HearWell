@@ -3852,6 +3852,41 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                             self.assertEqual(self.style(found, "transitionDuration"), "0s")
                             self.assertEqual(self.style(found, "animationName"), "none")
 
+    # Result pages tidy-up: THI's five levels in three colours draw five score bar segments and
+    # five legend swatches, the higher of two in one colour deeper, a white line between segments;
+    # every dropdown on the page is a full touch target.
+    def test_thi_bar_and_legend_shade_levels_sharing_a_colour(self):
+        call_command("seed_questionnaires", verbosity=0)
+        thi = Questionnaire.objects.get(code="thi")
+        record = self.submission(thi, [4] * 12 + [0] * 13)  # 48: 中度障礙
+        fills = [
+            "rgb(227, 244, 236)",
+            "rgb(255, 244, 214)",
+            "rgb(249, 221, 150)",
+            "rgb(254, 236, 231)",
+            "rgb(246, 195, 179)",
+        ]
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            segments = self.page.locator(".score-bar-segment").all()
+            self.assertEqual([self.style(s, "backgroundColor") for s in segments], fills)
+            self.assertEqual(
+                [self.styles(s, "borderLeftWidth", "borderLeftColor") for s in segments[1:]],
+                [{"borderLeftWidth": "2px", "borderLeftColor": self.WHITE}] * 4,
+            )
+            self.assertEqual(self.style(segments[0], "borderLeftWidth"), "0px")
+            summaries = self.page.locator("main details > summary").all()
+            self.assertEqual(len(summaries), 2)
+            for summary in summaries:
+                self.assertGreaterEqual(summary.bounding_box()["height"], 44)
+            self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=thi")
+            swatches = self.page.locator(".trend-band-swatch").all()
+            # Top band first, as stacked in the chart.
+            self.assertEqual(
+                [self.style(s, "backgroundColor") for s in swatches], list(reversed(fills))
+            )
+
     def test_keyboard_focus_keeps_cards_still_with_a_ring(self):
         self.open(motion=True)
         with self.saving_artifacts():

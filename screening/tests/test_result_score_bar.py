@@ -1,5 +1,7 @@
 """Spec #148 batch 2, ticket #158: the result page's score position bar."""
 
+import re
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -117,6 +119,31 @@ class ScoreBarTests(TestCase):
         # This score's level and the definition's own top score.
         self.assertIn('style="--position: 25.00%"><span>低</span></div>', page)
         self.assertIn('<div class="score-bar-ends"><span>0</span><span>20</span></div>', page)
+
+    def test_second_of_two_levels_sharing_a_colour_is_the_deeper_shade(self):
+        # THI's five levels in three colours: the bar shows five segments, not three.
+        questionnaire = Questionnaire.objects.create(questionnaire_name="假問卷", code="fake-shade")
+        question = Question.objects.create(
+            questionnaire=questionnaire, question_text="第一題", question_number=1
+        )
+        definition = fake_definition(
+            "fake-shade",
+            thresholds=((10, "輕", "mild"), (20, "中", "moderate"), (30, "重", "severe")),
+            level_colors={"mild": "normal", "moderate": "normal", "severe": "severe"},
+            advice={"mild": "輕建議", "moderate": "中建議", "severe": "重建議"},
+        )
+        with register(definition):
+            submission = self._submit(questionnaire, [question], [5])
+            page = self._get(submission)
+        segments = re.findall(r'class="score-bar-segment ([^"]+)"', page)
+        self.assertEqual(
+            segments,
+            [
+                "score-bar-segment-normal",
+                "score-bar-segment-normal score-bar-segment-deep",
+                "score-bar-segment-severe",
+            ],
+        )
 
     def test_no_bar_without_thresholds(self):
         submission = self._submit(self.unknown, [self.unknown_question], [4])
