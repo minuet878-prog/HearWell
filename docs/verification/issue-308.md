@@ -2,7 +2,7 @@
 
 日期：2026-10-24。規格：#308；票：#309–#316。基準：`origin/main` `36ae501`；整合分支：`feat/308-flat-readability`。決策：ADR 0024（修訂 ADR 0022 的平面區塊畫法）；本人在平面區塊可讀性比較頁選 A＋B＋D。
 
-狀態：自動測試與自審（Standards／Spec）都已通過，等本人實際操作確認。這次只改外觀與報告的顯示結構，沒碰計分、門檻、會動資料的 migration、權限，所以不需要交叉審查。分享報告露出的資料跟本人報告逐字相同（unit `test_family_report_folds_and_holds_the_same_as_the_owner_s`）。沒有操作真實資料，也沒有新增 migration。
+狀態：2026-10-24 本人實際操作後回覆「#308 passes acceptance」，驗收通過。自動測試與自審（Standards／Spec）都已通過。這次只改外觀與報告的顯示結構，沒碰計分、門檻、會動資料的 migration、權限，所以不需要交叉審查。分享報告露出的資料跟本人報告逐字相同（unit `test_family_report_folds_and_holds_the_same_as_the_owner_s`）。沒有操作真實資料，也沒有新增 migration。
 
 ## 測試結果（整合分支，修完自審後）
 
