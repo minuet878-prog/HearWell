@@ -609,7 +609,13 @@ class HistoryTabsTests(TestCase):
         self._hhie_s(10, False, days_ago=1)
         trend = self._trend()
         self.assertRegex(trend, r"<h2[^>]*>\s*HHIE-S 總分變化\s*</h2>")
-        order = ["<h2", self.NOTE, 'class="trend-summary', 'class="card"', 'id="trend-plot"']
+        order = [
+            "<h2",
+            self.NOTE,
+            'class="trend-summary',
+            'class="chart-canvas"',
+            'id="trend-plot"',
+        ]
         positions = [trend.index(part) for part in order]
         self.assertEqual(positions, sorted(positions))
         # React draws only inside the box; it says it is loading until then. Screen readers skip
@@ -623,7 +629,7 @@ class HistoryTabsTests(TestCase):
         # The summary stays; the chart box would only say it is loading, forever.
         self._hhie_s(10, False, days_ago=1)
         response = self.client.get(self._tab_url("hhie-s"))
-        hidden = r"<style>\s*#trend-chart \.card \{ display: none; \}\s*</style>"
+        hidden = r"<style>\s*#trend-chart \.chart-canvas \{ display: none; \}\s*</style>"
         self.assertRegex(response.content.decode(), rf"<noscript>\s*{hidden}\s*</noscript>")
 
     def test_trend_summary_queries_do_not_grow_with_records(self):

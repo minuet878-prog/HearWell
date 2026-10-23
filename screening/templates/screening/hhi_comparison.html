@@ -23,7 +23,7 @@
 </form>
 {# Pages tidy-up: the pair on screen being the one in the report shows once, as the saved card. #}
 {% if preview and not preview_is_saved %}
-<section aria-labelledby="preview-title" class="card card-body mt-6">
+<section aria-labelledby="preview-title" class="mt-6">
     <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
     {% include preview.questionnaire.definition.comparison.card_template with comparison=preview %}
     <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
@@ -33,7 +33,7 @@
 </section>
 {% endif %}
 {% if saved %}
-<section aria-labelledby="saved-title" class="card card-body mt-6">
+<section aria-labelledby="saved-title" class="mt-6">
     <h2 id="saved-title" class="h4">聽力報告裡的組合</h2>
     {% if preview_is_saved %}<p class="tip-box">這一組已經在聽力報告裡</p>{% endif %}
     {% include saved.questionnaire.definition.comparison.card_template with comparison=saved %}

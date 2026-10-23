@@ -231,7 +231,7 @@ export default function AudiogramApp({
         <>
           {/* Editing (pages tidy-up): said on the ear steps, where the saved marks are in sight. */}
           {audiogramId != null && <p className="tip-box">原本標的點已經放在圖上，照報告移動、刪除或補上，再按存檔。</p>}
-          <section className="card card-body mb-4">
+          <section className="mb-4">
             <p className="font-bold">報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）</p>
             <ol className="audiogram-howto">
               <li>選下面的符號</li>

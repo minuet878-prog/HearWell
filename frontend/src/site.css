@@ -116,8 +116,9 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card or the report's summary box has none; the box already frames it. */
-  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. Nor does an
+     ear's result on an audiogram: the line in its ear's colour marks it (ADR 0007). */
+  h1.h3, h2.h4:not(:where(.card, .report-summary, .ear-result) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -2274,7 +2275,7 @@
     margin-bottom: 0;
   }
 
-  /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */
+  /* A score as a small tag at the top right of an item (SADL facets, SSQ12-TW's lowest answers). */
   .score-card-head {
     display: flex;
     gap: 0.75rem;
@@ -3040,14 +3041,6 @@
     list-style: none;
   }
 
-  .ioi-item {
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
-  }
-
   .ioi-item-name {
     margin-bottom: 0.25rem;
     font-size: 1.25rem;
@@ -3094,17 +3087,29 @@
   }
 
   /* Audiogram input and view (spec phase5_audiogram.md). */
-  /* White frame around a chart (#137). Its side padding and border are pushed out by an equal
-     negative margin, so the chart keeps its width and its crop stays pixel-identical (#143); on a
-     phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The top
-     is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
+  /* A chart's drawing area (ADR 0022): white like a sheet of paper, a thin border, no shadow and
+     a small radius, so it never looks like a card to tap. The trend chart, and the audiogram and
+     IOI-HA frames below. */
+  .chart-canvas,
+  .audiogram-chart,
+  .ioi-chart {
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  .chart-canvas {
+    padding: 1rem;
+  }
+
+  /* The audiogram and IOI-HA frames (#137): their side padding and border are pushed out by an
+     equal negative margin, so the chart keeps its width and its crop stays pixel-identical (#143);
+     on a phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The
+     top is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
   .audiogram-chart,
   .ioi-chart {
     --chart-frame: 0.75rem;
     padding: calc(1rem - 1px) calc(var(--chart-frame) - 1px);
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
   }
 
   .audiogram-chart {
@@ -3199,6 +3204,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
     gap: 0.75rem;
+  }
+
+  /* Each ear's result is a flat block (ADR 0022) under a line in its ear's colour. */
+  .ear-result {
+    padding-top: 0.75rem;
   }
 
   .ear-result.ear-right {
