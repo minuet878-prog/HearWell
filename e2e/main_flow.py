@@ -2507,7 +2507,15 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(number).to_have_css("animation-name", animation)
 
     # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
-    # reader goes on from there; smoothly, or straight there with reduced motion.
+    # reader goes on from there; smoothly, or straight there with reduced motion. #321 (#318
+    # acceptance 5): in the 段落框's title bar, the focus ring still shows: a solid line at least
+    # 2px wide, 3:1 or more on the bar, drawn inside the bar so nothing around it hides it.
+    FOCUS_RING = """(el) => {
+        const style = getComputedStyle(el);
+        return [style.outlineStyle, parseFloat(style.outlineWidth), style.outlineColor,
+            parseFloat(style.outlineOffset), style.backgroundColor];
+    }"""
+
     def test_jump_to_the_route_lands_on_its_heading_with_focus(self):
         self.open(390, 844)
         with self.saving_artifacts():
@@ -2520,6 +2528,12 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.main().get_by_role("link", name="看我的路線").click()
                     expect(heading).to_be_focused()
                     expect(heading).to_be_in_viewport()
+                    style, width, colour, offset, bar = heading.evaluate(self.FOCUS_RING)
+                    self.assertEqual(bar, WhiteCardRuleTest.SECTION_TITLE)
+                    self.assertEqual(style, "solid")
+                    self.assertGreaterEqual(width, 2)
+                    self.assertLessEqual(offset, -width)
+                    self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, bar), 3)
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):
@@ -4811,6 +4825,7 @@ WHITE_CARD_PAGES_LEARN = (
         for slug in HearingAidGuideTest.CHAPTERS
     ),
     ("guide chapter answered", True, lambda test: test.answered_chapter()),
+    ("guide, below the threshold", True, lambda test: test.guide_below_and_not_applicable()),
     ("family guide", False, "/family"),
     ("learn", False, "/learn"),
     ("privacy", False, "/privacy"),
@@ -4961,6 +4976,23 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def guide_without_audiogram(self):
         """My guide with a life impact result and no audiogram: 聽力圖 asks for one."""
         self.answered("hhie-s", 2)
+        return "/guide"
+
+    def guide_below_and_not_applicable(self):
+        """My guide whose route has every kind of stop (#321): 已完成 (記錄聽力圖), 您在這裡,
+        估算未達門檻 (30 and 20 dB, about 0%) and 不適用 (bought paying otherwise: form 25 and
+        the payout). After the chapter answered (in the white card rule's pages), its answer is
+        cleared and this audiogram is the newer one."""
+        self.answered("hhie-s", 2)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 2))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, db in (("right", 30), ("left", 20))
+            for f in (500, 1000, 2000, 4000)
+        )
+        AidAndSubsidy.objects.update_or_create(
+            user=self.user, defaults={"certificate": "", "subsidy": "other"}
+        )
         return "/guide"
 
     def answered_chapter(self):
@@ -5377,8 +5409,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #320 (#318 acceptance 2, 6, 7): my guide's status parts are 段落框, their bars (with the
     # normal limit's and the threshold's lines), links and 怎麼算的 dropdown as before; 看我的路線
-    # is outside them. #302: a done stop is flat, the 目前這一站 keeps its pale blue box.
-    def test_guide_parts_and_stops_are_flat_with_their_links(self):
+    # is outside them. #321 (#318 acceptance 4): the route is one 段落框 too.
+    def test_guide_parts_and_route_are_section_boxes_with_their_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.guide_with_records())
             for name, link, scale in (
@@ -5405,27 +5437,93 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_outside_section_boxes(
                 self.main().get_by_role("link", name="看我的路線", exact=True)
             )
+            self.assert_route_box()
             done = self.main().locator(".route-stop").filter(has_text="已完成").first
-            self.assert_flat(done.locator(".route-box"))
             expect(done.get_by_role("link").first).to_be_visible()
-            here = self.main().locator(".route-stop[aria-current=step] .route-box")
-            self.assertEqual(self.style(here, "backgroundColor"), "rgb(238, 243, 250)")
-            self.assertEqual(self.style(here, "borderTopColor"), self.PRIMARY)
-            self.assertEqual(self.style(here, "boxShadow"), "none")
-            # #316: a stop's number is a pale blue circle with a blue number, like the chapters'
-            # numbered steps, not white; the 目前這一站's stays filled blue.
-            numbers = self.main().locator(".route-stop:not([aria-current], .is-na) .route-number")
-            self.assertGreater(numbers.count(), 1)
-            for number in numbers.all():
-                with self.subTest(stop=number.inner_text()):
-                    self.assertEqual(self.style(number, "backgroundColor"), self.BLUE_SOFT)
-                    self.assertEqual(self.style(number, "color"), self.PRIMARY)
-                    self.assertEqual(self.style(number, "borderTopColor"), self.PRIMARY)
-            self.assertGreaterEqual(
-                StyleInBrowserTest.lowest_contrast(self.PRIMARY, self.BLUE_SOFT), 4.5
-            )
-            current = self.main().locator(".route-stop[aria-current=step] .route-number")
-            self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
+
+    # #321 (#318 acceptance 4): the 選配路線 is one 段落框 titled in its bar. Its stops have no
+    # frame and no fill of their own but the 目前這一站's pale blue box with its blue frame and
+    # filled blue number; the other numbers are pale blue circles (#316), a 不適用 one grey. The
+    # joining lines are the deeper beige, easier to see than the pale line they had, and no mark
+    # is white (white is what can be tapped), each mark's words 4.5:1 or more on it.
+    PALE_GREY = "rgb(241, 243, 245)"
+    GREY_LINE = "rgb(206, 212, 218)"
+    JOINING_LINE = "(el) => getComputedStyle(el, '::after').backgroundColor"
+
+    def assert_route_box(self):
+        route = self.main().get_by_role("region", name="選配與補助，一步一步看")
+        expect(self.assert_section_box(route)).to_have_text("選配與補助，一步一步看")
+        stops = route.locator(".route-stop")
+        self.assertEqual(stops.count(), 9)
+        for stop in route.locator(".route-stop:not([aria-current])").all():
+            with self.subTest(stop=stop.get_attribute("data-stop")):
+                box = stop.locator(".route-box")
+                self.assert_flat(box)
+                for side in ("Top", "Right", "Bottom", "Left"):
+                    self.assertEqual(self.style(box, f"border{side}Width"), "0px")
+        here = route.locator(".route-stop[aria-current=step]")
+        if here.count():
+            box = here.locator(".route-box")
+            self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
+            for side in ("Top", "Right", "Bottom", "Left"):
+                self.assertEqual(self.style(box, f"border{side}Color"), self.PRIMARY)
+                self.assertEqual(self.style(box, f"border{side}Style"), "solid")
+            self.assertEqual(self.style(box, "boxShadow"), "none")
+            number = here.locator(".route-number")
+            self.assertEqual(self.style(number, "backgroundColor"), self.PRIMARY)
+        # #316: a stop's number is a pale blue circle with a blue number, like the chapters'
+        # numbered steps, not white.
+        numbers = route.locator(".route-stop:not([aria-current], .is-na) .route-number")
+        self.assertGreater(numbers.count(), 1)
+        for number in numbers.all():
+            with self.subTest(stop=number.inner_text()):
+                self.assertEqual(self.style(number, "backgroundColor"), self.BLUE_SOFT)
+                self.assertEqual(self.style(number, "color"), self.PRIMARY)
+                self.assertEqual(self.style(number, "borderTopColor"), self.PRIMARY)
+        self.assertGreaterEqual(
+            StyleInBrowserTest.lowest_contrast(self.PRIMARY, self.BLUE_SOFT), 4.5
+        )
+        for number in route.locator(".route-stop.is-na .route-number").all():
+            with self.subTest(stop=number.inner_text()):
+                self.assertEqual(self.style(number, "backgroundColor"), self.PALE_GREY)
+                self.assertEqual(self.style(number, "borderTopColor"), self.GREY_LINE)
+        old_line = StyleInBrowserTest.lowest_contrast(self.WARM_BORDER, self.SECTION)
+        for stop in stops.all()[:-1]:
+            with self.subTest(line_below=stop.get_attribute("data-stop")):
+                line = stop.evaluate(self.JOINING_LINE)
+                self.assertEqual(line, self.TINT_LINE)
+                self.assertGreater(StyleInBrowserTest.lowest_contrast(line, self.SECTION), old_line)
+        for mark in route.locator(".route-mark").all():
+            with self.subTest(mark=mark.inner_text()):
+                background = self.style(mark, "backgroundColor")
+                self.assertNotEqual(background, self.WHITE)
+                self.assertNotEqual(background, "rgba(0, 0, 0, 0)")
+                self.assertGreaterEqual(
+                    StyleInBrowserTest.lowest_contrast(self.style(mark, "color"), background), 4.5
+                )
+        return route
+
+    # #321 (#318 acceptance 3, 4, 13): signed out (no stop marked) and on a route with every
+    # kind of stop, the route is the same 段落框, the 目前這一站's button in it as before; on a
+    # phone at 200% text nothing scrolls sideways or is cut.
+    def test_guide_route_is_one_section_box_signed_out_and_with_every_kind_of_stop(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in (
+                ("signed out", False, "/guide"),
+                ("below the threshold", True, lambda test: test.guide_below_and_not_applicable()),
+            ):
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    route = self.assert_route_box()
+                    if signed_in:
+                        for kind in (".is-below", ".is-na"):
+                            expect(route.locator(f".route-stop{kind}").first).to_be_visible()
+                        button = route.get_by_role("link", name="去之前要準備什麼", exact=True)
+                        self.assertEqual(self.style(button, "backgroundImage"), self.GRADIENT)
+                    else:
+                        expect(route.locator(".route-mark")).to_have_count(0)
+                    self.visit(signed_in, path, width=320)
+                    self.assert_fits_uncut(name)
 
     # #319 (#318 acceptance 1, 5, 6, 7): every titled part of every chapter, signed in or not, is a
     # 段落框 with its links in it; outside the boxes only the chapter's title (still blue-barred),
@@ -5527,16 +5625,19 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                         self.assert_printed_section_box(part)
                     self.assert_titled(self.main().get_by_role("heading", level=1))
 
-    # #320 (#318 acceptance 12): my guide's status parts print as grey frames too, with and
-    # without an audiogram.
+    # #320, #321 (#318 acceptance 12): my guide's status parts and its route print as grey
+    # frames too, with and without an audiogram.
     def test_printed_guide_status_boxes_are_grey_frames(self):
         with self.saving_artifacts():
             # Without an audiogram first: the second visit adds one.
             for path, names in (
-                (lambda test: test.guide_without_audiogram(), ("問卷結果", "聽力圖")),
+                (
+                    lambda test: test.guide_without_audiogram(),
+                    ("問卷結果", "聽力圖", "選配與補助，一步一步看"),
+                ),
                 (
                     lambda test: test.guide_with_records(),
-                    ("問卷結果", "要不要找聽力師評估", "身障鑑定門檻"),
+                    ("問卷結果", "要不要找聽力師評估", "身障鑑定門檻", "選配與補助，一步一步看"),
                 ),
             ):
                 self.visit(True, path)

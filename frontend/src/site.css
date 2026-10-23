@@ -1802,7 +1802,8 @@
   }
 
   /* My guide's 選配路線 (#258): numbered stops on a line, the 目前這一站 in the brand blue with a
-     soft ring. Marks are blue or neutral, never the level colours (ADR 0007). */
+     soft ring. Marks are blue or neutral, never the level colours (ADR 0007). The route is one
+     段落框 (#321, ADR 0025), so its joining line is the box's deeper beige. */
   .route {
     --route-size: 2.5rem;
     container-type: inline-size;
@@ -1845,13 +1846,12 @@
     justify-content: center;
   }
 
-  /* A stop's box is a flat block (ADR 0022): no white and no shadow, only the thin warm edge
-     that the 目前這一站, the stops below it and 不適用 restyle. Its title is the link. */
+  /* A stop's box has no frame and no fill (#321): in the route's 段落框 the numbers and the
+     line keep the stops apart; only the 目前這一站 is boxed. Its title is the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
     padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border-warm);
     border-radius: var(--radius-medium);
   }
 
@@ -1896,30 +1896,23 @@
     color: #fff;
   }
 
-  .route-stop.is-below .route-box {
-    background-color: var(--color-surface);
-  }
-
+  /* #321: the neutral marks are the title bar's deeper beige, not white (white is what can be
+     tapped): the heading colour 10.34:1 on it, the body colour 5.48:1. */
   .route-stop.is-below .route-mark {
-    background-color: #fff;
+    background-color: var(--color-section-title);
     color: var(--color-heading);
   }
 
-  /* 不適用 (#293): pale grey, the 不適用 mark saying so in words; the text keeps its contrast. */
+  /* 不適用 (#293): a pale grey number, the 不適用 mark saying so in words; the text keeps its
+     contrast. */
   .route-stop.is-na .route-number {
     border-color: var(--color-border);
     background-color: var(--color-surface);
     color: var(--color-body);
   }
 
-  .route-stop.is-na .route-box {
-    border-style: dashed;
-    border-color: var(--color-border-strong);
-    background-color: var(--color-surface);
-  }
-
   .route-stop.is-na .route-mark {
-    background-color: #fff;
+    background-color: var(--color-section-title);
     color: var(--color-body);
   }
 
@@ -2104,6 +2097,13 @@
     font-size: var(--text-block-title);
     font-weight: 700;
     line-height: 1.3;
+  }
+
+  /* A title the page moves the focus to (the route's, #321) shows a ring inside its bar, the
+     brand blue 5.6:1 on the bar's beige, so nothing around the box hides it. */
+  .section-box-title:focus {
+    outline: 3px solid var(--color-primary);
+    outline-offset: -3px;
   }
 
   @media print {
