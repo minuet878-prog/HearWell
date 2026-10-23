@@ -2425,58 +2425,67 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.assert_fits_a_phone_at_double_text_size("/guide no response")
 
     # The meters' lines (25 dB HL, 45%) without a white edge: a bar stopping on the line meets it
-    # with no gap, and the line sticks out above and below its track onto the page, where it
-    # shows even over the dark blue bar. The last line in a meter runs into its label.
+    # with no gap, and the line sticks out 0.3rem above and below its track onto the page, where
+    # it shows even over the dark blue bar. The last line in a meter runs into its label's.
     def test_meter_lines_stick_out_of_their_tracks_without_a_gap(self):
         self.open(390)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         measure = """el => {
             const box = selector => {
                 const r = el.querySelector(selector).getBoundingClientRect();
-                return [r.left, r.right, r.top, r.bottom];
+                return {left: r.left, right: r.right, top: r.top, bottom: r.bottom};
             };
             return {
                 track: box(".meter-track"),
                 bar: box(".meter-bar"),
                 line: box(".meter-line"),
                 shadow: getComputedStyle(el.querySelector(".meter-line")).boxShadow,
+                rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
             };
         }"""  # fmt: skip
+        # Right and left ear in dB HL, whether the left is unheard at 4000 Hz, the ratio's text,
+        # and where the right, left and ratio bars end against their lines.
+        states = {
+            "25 dB": (25, 25, False, "約 0.0%", ("under", "under", "none")),
+            "60 dB": (60, 60, False, "約 52.5%", ("past", "past", "past")),
+            "no response": (40, 80, True, "至少約 35.0%", ("past", "past", "short")),
+        }
         with self.saving_artifacts():
-            for state, (right, left) in {
-                "25 dB, 0.0%": (25, 25),
-                "60 dB": (60, 60),
-                "no response": (40, 80),
-            }.items():
+            for state, (right, left, no_response, ratio, ends) in states.items():
                 with self.subTest(state=state):
                     points.filter(ear="right").update(db=right)
                     points.filter(ear="left").update(db=left)
-                    if state == "no response":
+                    if no_response:
                         points.filter(ear="left", frequency=4000).update(
                             db=DB_MAX["air"], no_response=True
                         )
                     self.page.goto(f"{self.live_server_url}/guide")
-                    if state == "no response":
-                        expect(self.main().locator(".meter-beyond")).to_have_count(1)
+                    threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+                    expect(threshold).to_contain_text(f"雙耳障礙比率（估算） {ratio}")
+                    expect(threshold.locator(".meter-beyond")).to_have_count(int(no_response))
                     drawings = self.main().locator(".meter-drawing")
                     expect(drawings).to_have_count(3)
-                    for drawing in drawings.all():
-                        m = drawing.evaluate(measure)
-                        bar_right = m["bar"][1]
-                        line_left, line_right, line_top, line_bottom = m["line"]
-                        self.assertEqual(m["shadow"], "none")
-                        self.assertLess(line_top, m["track"][2])
-                        self.assertGreater(line_bottom, m["track"][3])
-                        if state == "25 dB, 0.0%" and bar_right > m["bar"][0]:
-                            # 25 dB HL ends under the line; 0.0% draws no bar.
-                            self.assertGreaterEqual(bar_right, line_left)
-                            self.assertLessEqual(bar_right, line_right)
-                        elif state == "60 dB":  # 52.5% passes 45% too
-                            self.assertGreater(bar_right, line_right)
+                    for drawing, end in zip(drawings.all(), ends, strict=True):
+                        found = drawing.evaluate(measure)
+                        bar, line, track = found["bar"], found["line"], found["track"]
+                        self.assertEqual(found["shadow"], "none")
+                        for out in (track["top"] - line["top"], line["bottom"] - track["bottom"]):
+                            self.assertAlmostEqual(out, 0.3 * found["rem"], delta=0.5)
+                        if end == "under":
+                            self.assertGreater(bar["right"], bar["left"])
+                            self.assertGreaterEqual(bar["right"], line["left"])
+                            self.assertLessEqual(bar["right"], line["right"])
+                        elif end == "none":
+                            self.assertEqual(bar["right"], bar["left"])
+                        elif end == "past":
+                            self.assertGreater(bar["right"], line["right"])
+                        else:
+                            self.assertLess(bar["right"], line["left"])
                     for meter in self.main().locator(".meter").all():
                         line = meter.locator(".meter-line").last.bounding_box()
                         scale = meter.locator(".meter-scale").bounding_box()
                         self.assertGreaterEqual(line["y"] + line["height"], scale["y"])
+                        self.assertAlmostEqual(line["x"], scale["x"], delta=0.5)
 
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
     # wide at 200% text. The setUp user has read nothing, so it is 去找聽力師之前; read, the
