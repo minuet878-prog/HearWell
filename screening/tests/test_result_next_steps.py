@@ -165,7 +165,7 @@ class ResultNextStepsTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _steps(self, main):
-        start = main.index('<ol class="next-steps" role="list">')
+        start = main.index('<ol class="next-steps')
         return main[start : main.index("</ol>", start)]
 
     def test_each_level_shows_its_finalized_steps_and_action_buttons(self):
@@ -189,7 +189,7 @@ class ResultNextStepsTests(TestCase):
         # The steps drop their bullets for the numbered circles, and Safari then stops telling
         # VoiceOver it is a list; role="list" keeps 「清單，共 3 項」, as on the home page's steps.
         main = self._main(self._submit(self.questionnaires["hhie-s"], TOTALS["severe"]))
-        self.assertIn('<ol class="next-steps" role="list">', main)
+        self.assertRegex(main, r'<ol class="next-steps[^"]*" role="list">')
 
     def test_full_advice_is_unchanged_for_every_level(self):
         for code, levels in ADVICE.items():

@@ -1188,8 +1188,9 @@ class HomeTests(TestCase):
     # 7
     def test_band_backgrounds(self):
         main = self._main()
-        bands = re.findall(r'<section class="home-band[^"]*">(.*?)</section>', main, re.S)
-        # The trust band became the one-line badge card (brand refresh), so one band is left.
+        bands = re.findall(r'<section class="home-hero[^"]*">(.*?)</section>', main, re.S)
+        # The trust band became the one-line badge (brand refresh), so only the top is left, a
+        # flat block since ADR 0022.
         self.assertEqual(len(bands), 1)
         self.assertIn("home-illustration", bands[0])
         for band in bands:

@@ -61,7 +61,7 @@ class NewUserGuideEntryTests(TestCase):
 
     def _between_steps_and_preview(self):
         content = self.client.get(reverse("index")).content.decode()
-        start = content.index("</ol>", content.index('<ol class="step-cards"'))
+        start = content.index("</ol>", content.index('<ol class="step-cards'))
         return content[start : content.index('<figure class="result-preview">')]
 
     def assert_guide_card_after_the_steps(self):

@@ -60,6 +60,8 @@
   --color-page: #faf7f2;
   --color-footer-bg: #f3ede3;
   --color-border-warm: #efe6d8;
+  /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
+  --color-line-warm: #d9cdb9;
   --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
   --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
   --radius-large: 1.5rem;
@@ -114,9 +116,8 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card, the report's summary box or the home page's result example has none; the box
-     already frames it. */
-  h1.h3, h2.h4:not(:where(.card, .report-summary, .result-preview) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -1261,15 +1262,6 @@
     font-weight: 700;
   }
 
-  /* Home (spec phase9_ui_refresh_4a_home.md): a pale brand band; the first-visit top overrides it
-     with the white card below. */
-  .home-band {
-    background-color: var(--color-brand-soft);
-    border-radius: var(--radius-large);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
   .home-illustration {
     display: block;
     width: 100%;
@@ -1282,12 +1274,10 @@
     stroke-linejoin: round;
   }
 
-  /* Brand refresh (design picker): the first-visit top is a white card, not a pale band. It is
-     not a link, so it has no hover or press effect (ADR 0006). */
+  /* The home page's top, first visit or 歡迎回來: a flat block on the page (ADR 0022, #298's
+     pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
   .home-hero {
-    background-color: #fff;
-    border: 1px solid var(--color-border-warm);
-    box-shadow: var(--shadow-warm);
+    margin-bottom: 1.5rem;
   }
 
   .home-chips {
@@ -1393,17 +1383,12 @@
     }
   }
 
-  /* The audiologist line at the bottom (design picker round 3): a white card with a gradient
-     shield. Not a link, so no hover or press effect (ADR 0006). */
+  /* The audiologist line at the bottom (design picker round 3): a gradient shield before the
+     words, flat on the page since it is not a link (ADR 0022). */
   .home-credential {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
     color: var(--color-heading);
     font-weight: 700;
   }
@@ -1528,18 +1513,13 @@
     gap: 0.75rem;
   }
 
-  /* Number, icon and words in one row (pages tidy-up), so each card is half as tall; at large
-     text sizes the words drop under the number and icon instead of widening the page. */
+  /* Number, icon and words in one row (pages tidy-up); at large text sizes the words drop under
+     the number and icon instead of widening the page. Flat with a thin line (.line-list). */
   .step-cards li {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
   }
 
   .step-number {
@@ -1572,15 +1552,10 @@
     stroke-linejoin: round;
   }
 
-  /* A shrunken result card, clearly marked as an example: a white card with the result page's
-     score bar since design picker round 2. Not a link, so no hover or press effect (ADR 0006). */
+  /* A shrunken result, clearly marked as an example, with the result page's score bar since
+     design picker round 2. Not a link, so a flat block framed by its title (ADR 0022). */
   .result-preview {
     position: relative;
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
     margin-bottom: 1.5rem;
   }
 
@@ -2663,9 +2638,22 @@
     background-color: var(--color-severe-bg-deep);
   }
 
-  /* Numbered "接下來建議您" steps on the result page (ticket #157). Each step is a white card
-     with its number in a pale circle and its links as text under the words, so the steps read
-     as one list instead of being pushed apart by large buttons (result page tidy-up, option B).
+  /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
+     a thin warm line on its left, no white and no shadow. The result page's advice and THI's
+     support message, and the home page's steps. */
+  .line-list {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .line-list > * {
+    padding: 0.1em 0 0.1em 0.7em;
+    border-left: 0.18em solid var(--color-line-warm);
+  }
+
+  /* Numbered "接下來建議您" steps on the result page (ticket #157), a .line-list: each step has
+     its number in a pale circle and its links as text under the words, so the steps read as one
+     list instead of being pushed apart by large buttons (result page tidy-up, option B).
      Still an <ol>, so screen readers announce the count. */
   .next-steps {
     container-type: inline-size;
@@ -2680,10 +2668,6 @@
     grid-template-columns: 2.25rem 1fr;
     column-gap: 0.75rem;
     margin-bottom: 0.75rem;
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-medium);
-    background-color: #fff;
     counter-increment: next-step;
   }
 
