@@ -19,10 +19,14 @@ ROUTE_TITLE = "選配與補助，一步一步看"
 RATIO_LABEL = "雙耳障礙比率（估算）"
 
 
+# HTML elements without an end tag.
+VOID = frozenset(
+    ("area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "wbr")
+)
+
+
 class _ReadAloud(HTMLParser):
     """The page's text that screen readers reach: none inside an aria-hidden element."""
-
-    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source"}
 
     def __init__(self):
         super().__init__()
@@ -30,7 +34,7 @@ class _ReadAloud(HTMLParser):
         self.parts = []
 
     def handle_starttag(self, tag, attrs):
-        if tag not in self.VOID:
+        if tag not in VOID:
             above = bool(self.hidden) and self.hidden[-1]
             self.hidden.append(above or dict(attrs).get("aria-hidden") == "true")
 
@@ -38,7 +42,7 @@ class _ReadAloud(HTMLParser):
         pass
 
     def handle_endtag(self, tag):
-        if tag not in self.VOID:
+        if tag not in VOID:
             self.hidden.pop()
 
     def handle_data(self, data):
