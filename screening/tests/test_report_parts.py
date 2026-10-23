@@ -1,8 +1,11 @@
 """Health report groups adult results into three parts (#90)."""
 
+import re
 from dataclasses import replace
+from datetime import datetime
 from html.parser import HTMLParser
 from io import StringIO
+from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
 from django.test import TestCase
@@ -49,12 +52,69 @@ def _outline(response):
     return outline
 
 
+class _Folds(HTMLParser):
+    """Each fold straight inside a part (a <details> not inside a questionnaire's section): its
+    part, whether it starts open, its summary row's words and headings, and the sections in it."""
+
+    def __init__(self):
+        super().__init__()
+        self.open_sections = []
+        self.details_depth = 0
+        self.in_summary = False
+        self.folds = []
+
+    def handle_starttag(self, tag, attrs):
+        fold = self.folds[-1] if self.details_depth else None
+        if tag == "details":
+            if not self.details_depth and len(self.open_sections) == 1:
+                self.folds.append(
+                    {
+                        "part": self.open_sections[0],
+                        "open": "open" in dict(attrs),
+                        "summary": "",
+                        "headings": [],
+                        "sections": [],
+                    }
+                )
+            if self.details_depth or len(self.open_sections) == 1:
+                self.details_depth += 1
+        elif tag == "summary" and self.details_depth == 1:
+            self.in_summary = True
+        elif tag in ("h1", "h2", "h3", "h4", "h5", "h6") and self.in_summary:
+            fold["headings"].append(int(tag[1]))
+        elif tag == "section":
+            if fold:
+                fold["sections"].append(dict(attrs).get("id"))
+            self.open_sections.append(dict(attrs).get("id"))
+
+    def handle_endtag(self, tag):
+        if tag == "details" and self.details_depth:
+            self.details_depth -= 1
+        elif tag == "summary":
+            self.in_summary = False
+        elif tag == "section":
+            self.open_sections.pop()
+
+    def handle_data(self, data):
+        if self.in_summary:
+            self.folds[-1]["summary"] += data
+
+
+def _folds(response):
+    parser = _Folds()
+    parser.feed(response.content.decode())
+    for fold in parser.folds:
+        fold["summary"] = re.sub(r"\s+", " ", fold["summary"]).strip()
+    return parser.folds
+
+
 class ReportPartsTests(TestCase):
     def setUp(self):
         call_command("seed_questionnaires", stdout=StringIO())
         self.hhia = Questionnaire.objects.get(code="hhia-s")
         self.ssq = Questionnaire.objects.get(code="ssq12-tw")
         self.sadl = Questionnaire.objects.get(code="sadl")
+        self.thi = Questionnaire.objects.get(code="thi")
         self.hhie = Questionnaire.objects.create(code="hhie-s", questionnaire_name="HHIE-S")
         Question.objects.bulk_create(
             Question(questionnaire=self.hhie, question_text=f"假 HHIE 題{n}", question_number=n)
@@ -76,6 +136,12 @@ class ReportPartsTests(TestCase):
             Answer(submission=record, question=q, score=score)
             for q in questionnaire.questions.all()
         )
+        return record
+
+    def on(self, record, day):
+        """Moves record to noon on day October 2026 in Taipei, for a plain date to expect."""
+        moment = datetime(2026, 10, day, 12, tzinfo=ZoneInfo("Asia/Taipei"))
+        Submission.objects.filter(pk=record.pk).update(created_at=moment)
         return record
 
     def save_pair(self, questionnaire):
@@ -157,6 +223,71 @@ class ReportPartsTests(TestCase):
                 ):
                     self.assertEqual(life[life.index(questionnaire) + 1], comparison)
 
+    # #314: on screen each questionnaire is one fold, closed, its summary row saying its name,
+    # latest date and result; its kept comparison folds with it. Owner and family alike.
+    def test_each_questionnaire_is_a_closed_fold_with_its_summary_row(self):
+        hhie_unaided = self.on(self.record(self.hhie, wearing=False, score=4), 1)  # 40
+        hhie_aided = self.on(self.record(self.hhie, wearing=True, score=2), 2)  # 20
+        hhia_unaided = self.on(self.record(self.hhia, wearing=False, score=4), 3)  # 40
+        hhia_aided = self.on(self.record(self.hhia, wearing=True, score=0), 4)  # 0
+        self.on(self.record(self.thi), 5)  # 25 items x 2 = 50
+        ssq_unaided = self.on(self.record(self.ssq, wearing=False, score=4), 6)
+        ssq_aided = self.on(self.record(self.ssq, wearing=True, score=6), 7)
+        for unaided, aided in (
+            (hhie_unaided, hhie_aided),
+            (hhia_unaided, hhia_aided),
+            (ssq_unaided, ssq_aided),
+        ):
+            self.client.post(
+                f"/comparisons/{unaided.questionnaire_id}",
+                {"unaided": unaided.pk, "aided": aided.pk, "action": "save"},
+            )
+        ioi = self.record(
+            self.ioi, wearing=True, norm_group=NormGroup.MILD_MODERATE, norm_basis=hhie_unaided
+        )
+        # Against mild_moderate norms: item 2 below, item 7 above (the report tests' answers).
+        for answer, score in zip(
+            ioi.answers.order_by("question__question_number"), test_report.IOI_SCORES, strict=True
+        ):
+            Answer.objects.filter(pk=answer.pk).update(score=score)
+        self.on(ioi, 9)
+        expected = [
+            (
+                "report-life-impact",
+                "HHIA-S 最近一次 2026/10/04 0 分 無／極輕微影響",
+                ["report-hhia-s", "report-comparison-hhia-s"],
+            ),
+            (
+                "report-life-impact",
+                "HHIE-S 最近一次 2026/10/02 20 分 輕度到中度影響",
+                ["report-hhie-s", "report-difference"],
+            ),
+            ("report-tinnitus", "THI 最近一次 2026/10/05 50 分 中度障礙", ["report-thi"]),
+            (
+                "report-listening",
+                "SSQ12-TW 最近一次 2026/10/07 平均 6.0 分",
+                ["report-ssq12", "report-comparison-ssq12-tw"],
+            ),
+            ("report-satisfaction", "SADL 最近一次 2026/10/08 整體滿意度 4.0", ["report-sadl"]),
+            (
+                "report-hearing-aid-outcome",
+                "IOI-HA 助聽器效益 最近一次 2026/10/09 7 項中 1 項低於常模、1 項高於常模",
+                ["report-ioi-ha"],
+            ),
+        ]
+        with register(replace(sadl.DEFINITION, listed=True)):
+            self.on(self.record(self.sadl, score=4), 8)
+            owner = self.client.get("/report")
+            for name, response in (("owner", owner), ("family", self.family_report())):
+                with self.subTest(report=name):
+                    folds = _folds(response)
+                    self.assertEqual(
+                        [(f["part"], f["summary"], f["sections"]) for f in folds], expected
+                    )
+                    for fold in folds:
+                        self.assertFalse(fold["open"], fold["summary"])
+                        self.assertEqual(fold["headings"], [3], fold["summary"])
+
     def test_parts_are_level_two_and_their_contents_level_three(self):
         basis = self.save_pair(self.hhie)
         self.save_pair(self.ssq)
@@ -171,15 +302,22 @@ class ReportPartsTests(TestCase):
                     sections[0] for _, sections in outline.headings if len(sections) == 1
                 }
                 self.assertLessEqual(set(PARTS), part_titles)
-                for level, sections in outline.headings:
-                    if sections and sections[0] in PARTS:
-                        self.assertEqual(level, 2 if len(sections) == 1 else 3, sections)
+                # #314: a part's own title is level 2; every heading after it in the part (each
+                # questionnaire's summary row and the titles inside its fold) is level 3.
+                for part in PARTS:
+                    levels = [
+                        level for level, sections in outline.headings if sections[:1] == (part,)
+                    ]
+                    self.assertEqual(levels[0], 2, part)
+                    self.assertGreater(len(levels), 1, part)
+                    self.assertEqual(set(levels[1:]), {3}, part)
 
     def test_parts_without_records_are_left_out(self):
         self.record(self.hhie, wearing=False)
         owner = self.client.get("/report")
         for page in (owner, self.family_report()):
             self.assertContains(page, 'id="report-life-impact"')
+            self.assertEqual([fold["summary"][:6] for fold in _folds(page)], ["HHIE-S"])
             for part in ("report-listening", "report-hearing-aid-outcome"):
                 self.assertNotContains(page, f'id="{part}"')
 

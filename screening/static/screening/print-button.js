@@ -2,7 +2,8 @@
 // dialog, where people can print or save as PDF.
 document.getElementById("print-button")?.addEventListener("click", () => window.print());
 
-const reportAnswers = [...document.querySelectorAll(".report-answers")];
+// #314: the report's questionnaire folds open on paper too, and close again as they were.
+const reportAnswers = [...document.querySelectorAll(".report-answers, .report-fold")];
 let openAnswers = [];
 window.addEventListener("beforeprint", () => {
   openAnswers = reportAnswers.filter((details) => details.open);
