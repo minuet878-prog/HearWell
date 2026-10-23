@@ -49,13 +49,11 @@ class ReturningUserGuideEntryTests(TestCase):
         )
         self.assertIn(("", "/guide", CARD), cards)
 
-    def test_bottom_tab_bar_is_unchanged(self):
+    def test_bottom_tab_bar_is_home_screening_records_learn(self):
         nav = self.content[
             self.content.index('<nav aria-label="主要導覽"') : self.content.index("</nav>")
         ]
-        self.assertEqual(
-            re.findall(r"<span>(.*?)</span>", nav), ["首頁", "開始篩檢", "我的紀錄", "聽力圖"]
-        )
+        self.assertEqual(re.findall(r"<span>(.*?)</span>", nav), ["首頁", "篩檢", "紀錄", "了解"])
 
 
 class NewUserGuideEntryTests(TestCase):

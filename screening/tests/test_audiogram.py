@@ -513,7 +513,7 @@ class AudiogramPageTests(TestCase):
         response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
         self.assertContains(response, f'href="{reverse("audiogram_delete", args=[audiogram.id])}"')
 
-    # 導覽列：聽力圖是獨立的一項，不在我的紀錄的分頁籤裡
+    # #271: every audiogram page is under the 紀錄 tab
     def test_nav_marks_every_audiogram_page(self):
         audiogram = self._make(_four(_air, "right", (40,) * 4))
         urls = (
@@ -528,7 +528,7 @@ class AudiogramPageTests(TestCase):
                     self.client.get(url).content.decode()
                 ).group()
                 current = re.findall(r'aria-current="page">.*?<span>([^<]+)</span>', nav, re.DOTALL)
-                self.assertEqual(current, ["聽力圖"])
+                self.assertEqual(current, ["紀錄"])
 
     def test_not_a_my_hearing_tab(self):
         # Ticket #270: 我的紀錄 links to the audiogram list only from its records switch, not
@@ -1028,7 +1028,7 @@ class AudiogramEditPageTests(TestCase):
             self.client.get(reverse("audiogram_edit", args=[audiogram.id])).content.decode()
         ).group()
         current = re.findall(r'aria-current="page">.*?<span>([^<]+)</span>', nav, re.DOTALL)
-        self.assertEqual(current, ["聽力圖"])
+        self.assertEqual(current, ["紀錄"])
 
     def test_after_edit_detail_and_list_follow(self):
         first = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 1, 10))
@@ -1296,7 +1296,7 @@ class AudiogramComparePageTests(TestCase):
     def test_nav_marks_compare_page(self):
         nav = test_pages.RedesignLayoutTests.NAV.search(self._get().content.decode()).group()
         current = re.findall(r'aria-current="page">.*?<span>([^<]+)</span>', nav, re.DOTALL)
-        self.assertEqual(current, ["聽力圖"])
+        self.assertEqual(current, ["紀錄"])
 
     def test_query_count_does_not_grow(self):
         def queries():

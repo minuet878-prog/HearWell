@@ -271,7 +271,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(self.main().locator(".source-note")).to_contain_text("不能判定聽損程度")
             expect(self.main().locator(".source-note")).to_be_visible()
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="我的紀錄"
+                "link", name="紀錄"
             ).click()
             expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
 
@@ -687,7 +687,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
-        nav.get_by_role("link", name="我的紀錄").click()
+        nav.get_by_role("link", name="紀錄").click()
         # Each record is one card link (spec phase9_ui_refresh_1_shared.md 4.5).
         card = self.main().locator("a.link-card:not(.action-card)")
         expect(card).to_have_count(1)
@@ -876,7 +876,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     def step6_history_compares_with_last_time(self):
         today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
         self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-            "link", name="我的紀錄"
+            "link", name="紀錄"
         ).click()
         expect(self.page.locator("#retest-reminder")).to_have_count(0)
         since_last = self.main().get_by_role("region", name="和上一次比")
@@ -1891,7 +1891,7 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         with self.saving_artifacts():
             self.page.goto(self.live_server_url)
             nav = self.page.get_by_role("navigation", name="主要導覽")
-            nav.get_by_role("link", name="我的紀錄").click()
+            nav.get_by_role("link", name="紀錄").click()
             self.assert_on("問卷")
             self.switch().get_by_role("link", name="聽力圖").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/audiograms")
@@ -2328,7 +2328,7 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             expect(self.page.locator("#pwa-back")).to_have_count(0)
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="開始篩檢"
+                "link", name="篩檢"
             ).click()
             expect(self.back()).to_be_visible()
             box = self.back().bounding_box()
@@ -2407,6 +2407,101 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertTrue(self.on_same_line(brand, logout))
             self.assertTrue(self.on_same_line(account, logout))
             self.assertLessEqual(account["x"] + account["width"], logout["x"])
+
+
+class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#271 (spec #268): the four signed-in tabs, at 200% text and without JavaScript."""
+
+    TABS = ("首頁", "篩檢", "紀錄", "了解")
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="bottom_tabs_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width, height=900, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def nav(self):
+        return self.page.get_by_role("navigation", name="主要導覽")
+
+    # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
+    # narrower phone assert_fits_a_phone_at_double_text_size uses. The audiogram list's cards were
+    # already wider than a phone at 200% (their 6rem thumbnail), so only its tabs are checked below.
+    def test_records_and_learn_fit_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            for path in ("/my_hearing", "/learn"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
+    # Acceptance: at 390px and 200% text each tab's words take one line and stay on the screen.
+    # Not 320px: there a tab is about 62px wide and two characters at 200% need about 63px.
+    def test_tabs_stay_on_one_line_at_double_text_size(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for path in ("/my_hearing", "/audiograms", "/learn"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size.
+                    self.page.locator("html").evaluate(
+                        "html => html.style.setProperty('font-size', '225%', 'important')"
+                    )
+                    # A range has one client rect per line its words take.
+                    labels = (
+                        self.nav()
+                        .locator("a span")
+                        .evaluate_all(
+                            """spans => spans.map(span => {
+                            const range = document.createRange();
+                            range.selectNodeContents(span);
+                            const box = span.getBoundingClientRect();
+                            return [span.textContent, range.getClientRects().length,
+                                    box.left >= 0 && box.right <= innerWidth];
+                        })"""
+                        )
+                    )
+                    self.assertEqual(labels, [[tab, 1, True] for tab in self.TABS])
+
+    def test_tabs_change_page_without_javascript(self):
+        tabs = (
+            ("篩檢", "/questionnaire_list", None),
+            ("紀錄", "/my_hearing", "我的紀錄"),
+            ("了解", "/learn", "了解"),
+            ("首頁", "/", None),
+        )
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            for name, path, heading in tabs:
+                with self.subTest(tab=name):
+                    self.nav().get_by_role("link", name=name, exact=True).click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    if heading:
+                        expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
 
 
 class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
@@ -3882,7 +3977,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             item = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="我的紀錄"
+                "link", name="紀錄"
             )
             before = (item.bounding_box(), self.style(item, "color"))
             item.hover()
