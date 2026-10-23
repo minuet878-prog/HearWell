@@ -374,11 +374,13 @@ def _route(state, edit=None, question=None):
     if state is None:
         return [
             RouteStop(
-                *stop,
-                notes=ROUTE_REMINDERS.get(stop[0], ()),
-                gap=FORM_25_GAP if stop[0] == "after-fitting" else "",
+                slug=slug,
+                title=title,
+                url=url,
+                notes=ROUTE_REMINDERS.get(slug, ()),
+                gap=FORM_25_GAP if slug == "after-fitting" else "",
             )
-            for stop in stops
+            for slug, title, url in stops
         ]
     return [_route_stop(state, *stop, edit, question) for stop in stops]
 
@@ -454,18 +456,18 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
     # On the line on to form 25, unless form 25 is 不適用.
     gap = FORM_25_GAP if slug == "after-fitting" and "form-25" not in state.not_applicable else ""
     return RouteStop(
-        slug,
-        title,
-        url,
-        tuple(marks),
-        tested_on,
-        tuple(links),
-        action,
-        tuple(notes),
-        answer,
-        shown,
-        editable,
-        gap,
+        slug=slug,
+        title=title,
+        url=url,
+        marks=tuple(marks),
+        tested_on=tested_on,
+        links=tuple(links),
+        action=action,
+        notes=tuple(notes),
+        answer=answer,
+        questions=shown,
+        editable=editable,
+        gap=gap,
     )
 
 
@@ -1247,7 +1249,8 @@ def download_my_data(request):
             # Spec #291 acceptance 23: the chapters read, by name, first read first.
             "viewed_chapters": [
                 {
-                    "chapter": chapter_titles[view.chapter],
+                    # A chapter since taken out of the guide keeps its slug.
+                    "chapter": chapter_titles.get(view.chapter, view.chapter),
                     "first_viewed_at": _taipei(view.first_viewed_at),
                 }
                 for view in user.guide_views.order_by("first_viewed_at")

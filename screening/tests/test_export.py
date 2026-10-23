@@ -436,6 +436,14 @@ class ViewedChaptersExportTests(TestCase):
         view = GuideChapterView.objects.create(user=user, chapter=chapter)
         GuideChapterView.objects.filter(pk=view.pk).update(first_viewed_at=moment)
 
+    def test_a_chapter_no_longer_in_the_guide_is_exported_by_its_slug(self):
+        taipei = timezone.get_default_timezone()
+        self.view(self.user, "old-chapter", datetime(2026, 10, 19, 21, 5, tzinfo=taipei))
+        self.assertEqual(
+            self.exported()["viewed_chapters"],
+            [{"chapter": "old-chapter", "first_viewed_at": "2026-10-19T21:05:00+08:00"}],
+        )
+
     def test_each_chapter_read_with_its_name_and_first_time_in_order(self):
         taipei = timezone.get_default_timezone()
         self.view(self.user, "types-and-prices", datetime(2026, 10, 20, 9, 30, tzinfo=taipei))
