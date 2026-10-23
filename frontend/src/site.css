@@ -1744,26 +1744,12 @@
     color: var(--color-heading);
   }
 
-  /* A preview of the answer buttons; the sentence above already names them, so screen readers
-     skip it (aria-hidden in the templates). */
-  .q-intro-choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .q-intro-choices span {
-    padding: 0 0.6rem;
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-button);
-    background-color: #fff;
-    color: var(--color-heading);
-    font-size: 0.875rem;
-  }
-
+  /* A source may hold a long DOI with no place to break: it breaks anywhere rather than run past
+     a phone's edge at 200% text (#313). */
   .q-intro-source {
     margin-top: 0.5rem;
     font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   /* A reminder or a short explanation on a text-heavy page (guide chapters, audiogram result):
@@ -2077,8 +2063,13 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022); sources
-     and the check date in small print. */
+  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022). An article
+     read in order, so no tint and no lines: two parts stand twice as far apart as two paragraphs
+     inside one (ADR 0024, #313). Sources and the check date in small print. */
+  .guide-chapter > :not(h1) + * {
+    margin-top: 2rem;
+  }
+
   .guide-source,
   .guide-checked {
     font-size: 0.875rem;
@@ -2095,14 +2086,15 @@
     padding: 0;
   }
 
-  .step-list li {
+  /* Its own steps only: a list inside a step (the things to bring) keeps its own layout. */
+  .step-list > li {
     position: relative;
     display: flex;
     gap: 0.75rem;
     padding-bottom: 1rem;
   }
 
-  .step-list li:not(:last-child)::after {
+  .step-list > li:not(:last-child)::after {
     content: "";
     position: absolute;
     top: calc(var(--step-size) + 0.25rem);
@@ -2113,7 +2105,7 @@
     background-color: var(--color-border-warm);
   }
 
-  .step-list li:last-child {
+  .step-list > li:last-child {
     padding-bottom: 0;
   }
 
@@ -2140,12 +2132,12 @@
   /* At large text sizes the words drop under the number instead of shrinking to a few
      characters a line; the joining line would cross them, so it goes. */
   @container (max-width: 13rem) {
-    .step-list li {
+    .step-list > li {
       flex-direction: column;
       gap: 0.4rem;
     }
 
-    .step-list li:not(:last-child)::after {
+    .step-list > li:not(:last-child)::after {
       display: none;
     }
   }
@@ -2162,10 +2154,11 @@
     font-weight: 700;
   }
 
-  /* Guide chapters tidy-up: a step's short title above its details. */
+  /* Guide chapters tidy-up: a step's short title above its details, a subhead (ADR 0024). */
   .step-list-title {
     display: block;
     color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 
@@ -2218,29 +2211,25 @@
     outline-offset: -0.15rem;
   }
 
-  /* Short things to bring or to expect, each with a decorative icon. */
-  .icon-chips {
-    display: flex;
-    flex-wrap: wrap;
+  /* Short things to bring or to expect, one per line after a decorative icon. No frame and no
+     white: white is for what can be tapped (ADR 0024, #313). */
+  .icon-list {
+    display: grid;
     gap: 0.5rem;
     margin: 0.5rem 0 1rem;
     padding: 0;
     list-style: none;
   }
 
-  .icon-chips li {
-    display: inline-flex;
+  .icon-list li {
+    display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.3rem 0.8rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    background-color: #fff;
     color: var(--color-heading);
     font-weight: 700;
   }
 
-  .icon-chips svg {
+  .icon-list svg {
     flex: none;
     width: 1.375rem;
     height: 1.375rem;
@@ -2251,7 +2240,8 @@
     stroke-linejoin: round;
   }
 
-  /* Labelled facts (who, when, what to bring): the label in blue above its sentence. */
+  /* Labelled facts (who, when, what to bring): the label a subhead above its sentence, in the
+     heading colour, not link blue (ADR 0024). */
   .key-list {
     margin: 0 0 1rem;
   }
@@ -2271,7 +2261,8 @@
   }
 
   .key-list dt {
-    color: var(--color-primary);
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 

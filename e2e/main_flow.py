@@ -5214,6 +5214,86 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
             self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
 
+    # #313: a chapter is an article read in order, so its parts get no tint and no lines; the
+    # space between two parts is at least twice the largest space inside one.
+    PART_SPACING = """(article) => {
+        const shown = (el) => el.getClientRects().length > 0;
+        const gaps = (els) => els.slice(1).map((el, i) =>
+            el.getBoundingClientRect().top - els[i].getBoundingClientRect().bottom);
+        const parts = [...article.children].filter(shown).slice(1);  // after the chapter title
+        return {
+            between: Math.min(...gaps(parts)),
+            within: Math.max(...parts.flatMap((part) => gaps([...part.children].filter(shown)))),
+        };
+    }"""
+    # The bold subheads in each chapter's parts (a fact's label, a step's title, a list's lead).
+    GUIDE_SUBHEADS = (
+        ("before-you-go", ("適不適合我",)),
+        ("assessment", ("雙耳整體障礙比率", "到公所申請")),
+        ("form-9", ("補助上限，依助聽器等級", "做評估，拿到九號表", "縣市補助")),
+        ("types-and-prices", ("耳掛型",)),
+        ("after-fitting", ("剛開始不習慣是正常的",)),
+        ("form-25", ("誰要做",)),
+    )
+    HEADING_COLOUR = "rgb(33, 37, 41)"
+
+    def test_guide_chapter_parts_stand_apart_with_larger_subheads(self):
+        with self.saving_artifacts():
+            for slug, subheads in self.GUIDE_SUBHEADS:
+                with self.subTest(chapter=slug):
+                    self.visit(False, f"/guide/{slug}")
+                    article = self.main().get_by_role("article")
+                    for part in article.locator(":scope > :is(section, div)").all():
+                        self.assert_flat(part)
+                        self.assertEqual(self.style(part, "borderTopWidth"), "0px")
+                        self.assertEqual(self.style(part, "borderBottomWidth"), "0px")
+                    spacing = article.evaluate(self.PART_SPACING)
+                    self.assertGreater(spacing["within"], 0)
+                    self.assertGreaterEqual(spacing["between"], 2 * spacing["within"], spacing)
+                    body = float(self.style(article.locator("p").first, "fontSize")[:-2])
+                    for text in subheads:
+                        with self.subTest(subhead=text):
+                            subhead = article.get_by_text(text, exact=True)
+                            self.assertGreaterEqual(
+                                float(self.style(subhead, "fontSize")[:-2]), 1.2 * body - 0.01
+                            )
+                            self.assertEqual(self.style(subhead, "color"), self.HEADING_COLOUR)
+                            self.assertEqual(self.style(subhead, "fontWeight"), "700")
+
+    # #313: the things to bring and the checks to expect are a list, one per line, each with its
+    # icon and nothing around it: no white, no frame, no rounded pill.
+    GUIDE_ICON_LISTS = (
+        ("before-you-go", ("身分證", "現在用的助聽器（有的話）")),
+        ("assessment", ("純音聽力檢查", "鼓室圖", "身分證影本", "印章")),
+        ("form-25", ("購買憑證", "二十五號表")),
+    )
+
+    def test_guide_things_to_bring_are_plain_lists_with_icons(self):
+        with self.saving_artifacts():
+            for slug, texts in self.GUIDE_ICON_LISTS:
+                with self.subTest(chapter=slug):
+                    self.visit(False, f"/guide/{slug}")
+                    article = self.main().get_by_role("article")
+                    for text in texts:
+                        with self.subTest(item=text):
+                            item = article.get_by_role("listitem").filter(
+                                has_text=re.compile(rf"^\s*{re.escape(text)}\s*$")
+                            )
+                            expect(item.locator("svg")).to_be_visible()
+                            self.assert_flat(item)
+                            self.assertEqual(self.style(item, "borderTopWidth"), "0px")
+                            self.assertEqual(self.style(item, "borderRadius"), "0px")
+                    # One per line, close together like a list: each item starts below the one
+                    # before it, nearer than two paragraphs (18px) are.
+                    lists = article.locator("ul:has(> li > svg)")
+                    self.assertGreater(lists.count(), 0)
+                    for each in lists.all():
+                        boxes = [li.bounding_box() for li in each.locator("> li").all()]
+                        for above, below in pairwise(boxes):
+                            gap = below["y"] - (above["y"] + above["height"])
+                            self.assertGreaterEqual(gap, 0)
+                            self.assertLess(gap, 18)
+
     # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and pale
     # blue, without a shadow, like the 建議您下一步 box, and 119's box as before.
     def test_family_guide_topics_are_flat_and_the_urgent_one_stands_out(self):
@@ -5420,6 +5500,42 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.visit(True, lambda test: test.answering("hhie-s"), width=320, javascript=False)
             self.assert_fits_uncut("answering without JavaScript")
             self.assert_questions_apart(self.main().locator("#answer-form").get_by_role("group"))
+
+    # #313: in the four intros the answers are bold words in the sentence, with no white boxes
+    # beside it; at 200% on a phone nothing runs off or is cut.
+    INTRO_ANSWERS = (
+        ("hhie-s", ("常常", "有時", "從未")),
+        ("hhia-s", ("會", "有時", "不會")),
+        ("ssq12-tw", ("0–10", "不適用")),
+        ("thi", ("經常", "偶爾", "不會")),
+    )
+
+    def test_answering_intros_bold_the_answers_in_the_sentence(self):
+        with self.saving_artifacts():
+            for code, words in self.INTRO_ANSWERS:
+                with self.subTest(questionnaire=code):
+                    self.visit(True, lambda test, code=code: test.answering(code), width=320)
+                    how = (
+                        self.main()
+                        .locator("section")
+                        .filter(has=self.page.get_by_role("heading", name="怎麼回答"))
+                    )
+                    for word in words:
+                        with self.subTest(word=word):
+                            bold = how.get_by_text(word, exact=True)
+                            expect(bold).to_have_count(1)
+                            self.assertEqual(self.style(bold, "fontWeight"), "700")
+                            # Inside the sentence: its paragraph says more than the word.
+                            sentence = bold.locator("xpath=ancestor::p[1]")
+                            self.assertGreater(len(sentence.inner_text()), len(word) + 5)
+                    whites = how.evaluate(
+                        """(el) => [...el.querySelectorAll("*")]
+                            .filter((node) => getComputedStyle(node).backgroundColor
+                                === "rgb(255, 255, 255)")
+                            .map((node) => node.outerHTML.slice(0, 80))"""
+                    )
+                    self.assertEqual(whites, [])
+                    self.assert_fits_uncut(code)
 
     # #300: login and register keep their form card white: the rule's one exception.
     def test_login_and_register_form_cards_stay_white_cards(self):
