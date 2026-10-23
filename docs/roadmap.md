@@ -23,7 +23,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   （驗證見 `docs/verification/anchor-smooth-scroll.md`）、e2e 平行執行（本機 140 秒縮到約 55 秒，驗證見
   `docs/verification/e2e-parallel.md`）、全站下拉框統一與隱私權、註冊、新訪客首頁、聽力圖比較、配戴比較、
   聽力報告螢幕版整理（驗證見 `docs/verification/dropdowns-and-pages.md`）、THI 色帶分深淺與結果頁一致化（六個
-  結果頁共用標題、摺疊與結尾按鈕，ADR 0018，驗證見 `docs/verification/result-pages-consistency.md`）。
+  結果頁共用標題、摺疊與結尾按鈕，ADR 0018，驗證見 `docs/verification/result-pages-consistency.md`）、助聽器
+  驗證流程連結（推薦精靈「戴著再做一次」、比較頁預選、選配指引第 5、6 章連結與對調，驗證見
+  `docs/verification/aid-verification-links.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
