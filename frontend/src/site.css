@@ -1458,9 +1458,10 @@
     margin-bottom: 0.75rem;
   }
 
-  /* The icon tile is white on the pale box, as on a hovered action card. */
+  /* #316: the box is not a link (only its button is), so nothing in it is white (ADR 0022): the
+     icon tile and the reason are a light blue a little deeper than the box. */
   .next-step .action-card-icon {
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
   }
 
   .next-step-title {
@@ -1474,12 +1475,12 @@
   .next-step-because {
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-medium);
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
     overflow-wrap: anywhere;
   }
 
   /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
-     few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
+     few characters; 「（45%）。」 may not break off and would otherwise run past its box. */
   .more-section,
   .result-more {
     container-type: inline-size;
@@ -1824,14 +1825,16 @@
     background-color: var(--color-border-warm);
   }
 
+  /* #316: a pale blue circle with a blue number, like the chapters' .step-list-number; not white,
+     as the number is not tappable (ADR 0022). */
   .route-number {
     flex: none;
     width: var(--route-size);
     height: var(--route-size);
-    border: 0.15rem solid var(--color-border-strong);
+    border: 0.15rem solid var(--color-primary);
     border-radius: 50%;
-    background-color: #fff;
-    color: var(--color-heading);
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
     font-weight: 700;
     display: flex;
     align-items: center;
