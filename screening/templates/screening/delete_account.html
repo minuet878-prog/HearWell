@@ -15,7 +15,7 @@
     <li>聽力圖 {{ audiogram_count }} 張</li>
     <li>同意紀錄</li>
 </ul>
-<p>想留一份紀錄的話，請先<a class="btn btn-link px-1 align-baseline" href="{% url 'download_my_data' %}">下載我的資料</a>。</p>
+<p>想留一份紀錄的話，請先<a class="inline-link" href="{% url 'download_my_data' %}">下載我的資料</a>。</p>
 <form id="delete-account-form" method="post" class="narrow-form">
     {% csrf_token %}
     <div class="mb-4">

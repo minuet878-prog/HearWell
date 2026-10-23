@@ -411,14 +411,15 @@ class RegisterFormTests(TestCase):
     def test_note_uses_readable_style(self):
         self.assertContains(
             self.client.get(self.url),
-            f'<div id="id_roc_birth_year_helptext" class="text-black mt-1">{self.NOTE}</div>',
+            # Pages tidy-up: the body grey (7.6:1 on the page), one step smaller than the label.
+            f'<div id="id_roc_birth_year_helptext" class="field-help mt-1">{self.NOTE}</div>',
             html=True,
         )
 
     def test_password_rules_use_rem_size(self):
         response = self.client.get(self.url)
         self.assertNotContains(response, "form-text")
-        self.assertContains(response, 'id="id_password1_helptext" class="text-black mt-1"')
+        self.assertContains(response, 'id="id_password1_helptext" class="tip-box mt-1"')
 
     def test_aria_describedby_targets_exist(self):
         response = self._post(username="", password2="Different#123", roc_birth_year="abc")
@@ -444,14 +445,14 @@ class RegisterPageGuidanceTests(TestCase):
         content = response.content.decode()
         return content.split('id="main-content"', 1)[1].split("</main>", 1)[0]
 
-    def test_login_link_is_at_the_top_and_keeps_next(self):
+    # Issue #151 put it at the top; the owner moved it under the form in the pages tidy-up.
+    def test_login_link_is_under_the_form_and_keeps_next(self):
         main = self._main(self.client.get(self.url))
         login_url = f"{reverse('login')}?next={self.target}"
-        link = re.search(r"<a [^>]*>[^<]*</a>", main)
+        link = re.search(rf'<a [^>]*href="{re.escape(login_url)}"[^>]*>[^<]*</a>', main)
         self.assertIsNotNone(link)
-        self.assertIn(f'href="{login_url}"', link.group())
         self.assertIn("已經有帳號？登入", link.group())
-        self.assertLess(link.start(), main.index("<h1"))
+        self.assertLess(main.index("</form>"), link.start())
         self.assertEqual(main.count(f'href="{login_url}"'), 1)
 
     def test_step_one_of_two_with_progress_bar(self):
@@ -463,7 +464,7 @@ class RegisterPageGuidanceTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(
             response,
-            '<div id="id_password1_helptext" class="text-black mt-1">設定密碼時，請您注意：<ul>'
+            '<div id="id_password1_helptext" class="tip-box mt-1">設定密碼時，請您注意：<ul>'
             "<li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li>"
             "<li>不要用太常見的密碼</li></ul></div>",
             html=True,
@@ -479,7 +480,7 @@ class RegisterPageGuidanceTests(TestCase):
         response = self.client.get(self.url)
         self.assertContains(
             response,
-            '<div id="id_username_helptext" class="text-black mt-1">'
+            '<div id="id_username_helptext" class="field-help mt-1">'
             "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</div>",
             html=True,
         )

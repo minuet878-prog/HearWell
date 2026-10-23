@@ -477,7 +477,7 @@ class PageFlowTests(TestCase):
         "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
         "結果長這樣",
         "示意圖",
-        "內容由台灣執業聽力師設計與審定。",
+        "內容由台灣執業",  # 「聽力師」 is kept on one line in its own span (pages tidy-up)
     )
 
     @classmethod
@@ -1166,8 +1166,9 @@ class HomeTests(TestCase):
         line = self._between(main, 'class="home-credential"', "</p>")
         self.assertIn('<span class="home-credential-icon"><svg', line)
         self.assertIn('aria-hidden="true"', line)
-        self.assertIn("內容由台灣執業聽力師設計與審定。", line)
-        self.assertEqual(main.count("內容由台灣執業聽力師設計與審定。"), 1)
+        # 「聽力師」 sits in a no-wrap span (pages tidy-up); the sentence itself is unchanged.
+        self.assertIn("內容由台灣執業聽力師設計與審定。", re.sub(r"<[^>]+>", "", line))
+        self.assertEqual(main.count("內容由台灣執業"), 1)
         gone_texts = (
             "由聽力師開發",
             "HHIE-S、IOI-HA",

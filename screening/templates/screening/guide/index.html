@@ -72,7 +72,7 @@
     <p>如果您已經有身障證明，可以直接進行九號表。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
     {% endif %}
     {% if worked %}
-    <details class="mb-0">
+    <details class="dropdown-line mb-0">
         <summary>怎麼算的</summary>
         <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
         <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>

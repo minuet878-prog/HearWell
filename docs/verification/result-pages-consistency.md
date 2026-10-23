@@ -11,7 +11,7 @@
 |---|---|---|
 | A THI 色帶 | 同色系分深淺＋白線；圖例五格對得上五條色帶；分數條也跟著變五段 | `definition.py` 的 `shade()`、API 的 `levels[].shade`、`trend_chart.html`、`score_bar.html`、`TrendChart.jsx`、`site.css`；ADR 0018 |
 | R1 標題 | 標題改問卷主題，副標「名稱・日期 作答・有沒有戴」，跟 SSQ12 一樣 | 共用 `result_header.html`，六個結果頁都用 |
-| R2 摺疊 | 統一成有框、高度 ≥ 44px 的樣式 | 「分數細節與作答明細」「看全部 12 題的回答」「其他 n 項」改用 `.phone-choice` |
+| R2 摺疊 | 統一成有框、高度 ≥ 44px 的樣式 | 「分數細節與作答明細」「看全部 12 題的回答」「其他 n 項」改用全站共用的 `.dropdown-box`（#253 把 `.phone-choice` 改名，合併 `main` 時跟著改） |
 | R3 結尾按鈕 | 看我的紀錄（主）→ 看／印聽力報告 → 回首頁；各頁特有的（比較）放前面 | 共用 `result_actions.html`，六個結果頁都用 |
 | R4 SSQ12 | 「分數越高越好」只講一次 | 有「比上一次」那行時，不再另外寫一句 |
 | R6 IOI-HA 量表 | 兩端加「較差」「較好」 | `ioi_ha_item.html`；文字放在 `ioi_ha.py` 的 `SCALE_ENDS`（規範第 9 條） |

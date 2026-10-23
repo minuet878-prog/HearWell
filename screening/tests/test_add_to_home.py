@@ -86,9 +86,9 @@ class AddToHomeTests(TestCase):
         for summary, (_, body) in self.blocks.items():
             with self.subTest(summary=summary):
                 self.assertNotIn("<summary", body)
-        self.assertIn('<details class="phone-choice', self.main)
+        self.assertIn('<details class="dropdown-box', self.main)
         css = SITE_CSS.read_text(encoding="utf-8")
-        rules = re.findall(r"\.phone-choice[^{]*\{[^}]*\}", css)
+        rules = re.findall(r"\.dropdown-box[^{]*\{[^}]*\}", css)
         self.assertTrue(rules)
         # Tap target of at least 44px (2.75rem); hover and press change colour, never position
         # (ADR 0006).

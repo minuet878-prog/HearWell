@@ -36,7 +36,7 @@
 <p class="source-note">{{ submission.questionnaire.definition.result_note }}</p>
 {% endif %}
 {# Text-heavy pages tidy-up: the full advice mostly repeats the steps above, so it waits behind a dropdown. #}
-<details class="phone-choice mt-6 mb-4">
+<details class="dropdown-box mt-6 mb-4">
     <summary>看完整建議</summary>
     <p>{{ advice }}</p>
 </details>
@@ -47,7 +47,7 @@
 {% if show_comparison %}
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">比較戴與不戴助聽器</a></p>
 {% endif %}
-<details class="phone-choice mb-4">
+<details class="dropdown-box mb-4">
     <summary>分數細節與作答明細</summary>
     {% if has_subscores %}
     <p class="mb-1">情緒分數：{{ emotional }}　社交分數：{{ social }}</p>

@@ -29,7 +29,7 @@
 </section>
 {% endif %}
 {% if others %}
-<details class="ioi-others phone-choice">
+<details class="ioi-others dropdown-box">
     <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
     <ol class="ioi-items">
         {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}

@@ -103,11 +103,11 @@ class ResultPagesTests(TestCase):
                 self.assertEqual(main.count('class="result-actions'), 1)
 
     def test_every_dropdown_on_a_result_page_is_the_framed_kind(self):
-        # The full advice's framed dropdown (.phone-choice), not a bare ▶ line of small text.
+        # The site-wide dropdown box (.dropdown-box), not a bare ▶ line of small text.
         for code in QUESTIONNAIRES:
             with self.subTest(code=code):
                 for details in re.findall(r"<details[^>]*>", self._main(code)):
-                    self.assertIn("phone-choice", details)
+                    self.assertIn("dropdown-box", details)
 
     def test_ssq12_says_higher_is_better_once(self):
         # 「比上一次」's line already says it, so the line under it does not repeat it.

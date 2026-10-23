@@ -7,5 +7,5 @@
 </div>
 {% endif %}
 {% if field.help_text %}
-<div id="{{ field.auto_id }}_helptext" class="text-black mt-1">{{ field.help_text }}</div>
+<div id="{{ field.auto_id }}_helptext" class="{{ help_class|default:"text-black" }} mt-1">{{ field.help_text }}</div>
 {% endif %}
