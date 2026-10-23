@@ -1,7 +1,7 @@
 """End-to-end: a real browser walks the main flow against a live test server (spec phase6_e2e.md).
 
 Not named test_*.py, so the normal test run skips it; run it by name after building the frontend:
-    python manage.py test --settings=config.test_settings e2e.main_flow
+    python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4
 """
 
 import calendar
@@ -70,6 +70,13 @@ class SavesFailureArtifacts:
         # unittest records a failing subtest and carries on, so no outer block ever sees it.
         with super().subTest(*args, **params), self.saving_artifacts():
             yield
+
+    def __getstate__(self):
+        # --parallel pickles a failed subtest's test case to send it back, after the test has
+        # ended, when Django no longer leaves out what cannot be pickled: the browser objects.
+        state = super().__getstate__()
+        browser = ("page", "context", "saved_context")
+        return {key: value for key, value in state.items() if key not in browser}
 
 
 AUDIOGRAM_FORWARD = re.compile("^下一步：標右耳$|換左耳$|確認存檔$")
@@ -1942,6 +1949,40 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 with self.subTest(anchor=anchor):
                     self.page.goto(f"{self.live_server_url}/guide/form-9#{anchor}")
                     expect(self.main().get_by_role("heading", name=heading)).to_be_in_viewport()
+
+    def test_form_9_anchor_lands_when_fonts_arrive_after_the_jump(self):
+        """On a slow phone the fonts arrive after the jump and rewrap the lines above."""
+        self.open(390, 640)
+        held = []
+        self.context.route(re.compile(r"\.woff2?$"), lambda route: held.append(route))
+        with self.saving_artifacts():
+            self.page.goto(
+                f"{self.live_server_url}/guide/form-9#reapply", wait_until="domcontentloaded"
+            )
+            self.page.wait_for_function("window.scrollY > 0")
+            for route in held:
+                route.continue_()
+            self.page.wait_for_function("document.fonts.status === 'loaded'")
+            # The heading is on screen for a moment as the scroll passes it; wait until it stops.
+            self.page.wait_for_function(
+                "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+                "return still; }",
+                polling=200,
+            )
+            # At the top, where the jump puts it, not just somewhere on screen.
+            heading = self.main().get_by_role("heading", name="再次申請（換新機）")
+            self.assertLess(abs(heading.bounding_box()["y"]), 10)
+            # Jumps within the page, once loaded, still scroll smoothly.
+            expect(self.page.locator("html")).to_have_css("scroll-behavior", "smooth")
+
+    def test_reduced_motion_keeps_jumps_instant_after_loading(self):
+        self.open(390, 640)
+        with self.saving_artifacts():
+            self.page.emulate_media(reduced_motion="reduce")
+            self.page.goto(f"{self.live_server_url}/guide/form-9#reapply")
+            html = self.page.locator("html")
+            expect(html).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+            expect(html).to_have_css("scroll-behavior", "auto")
 
 
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
