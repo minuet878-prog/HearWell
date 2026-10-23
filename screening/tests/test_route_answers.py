@@ -372,6 +372,36 @@ class NotApplicableOverDoneTests(TestCase):
         self.assertNotContains(self.chapter("form-25"), 'id="stop-question"')
 
 
+class ViewedStaysDoneTests(TestCase):
+    """Spec #291 acceptance 19, through the pages: a chapter read stays 已完成 whatever is
+    answered after it."""
+
+    def setUp(self):
+        self.user = consented_user(username="viewed_stays_done_user")
+        self.client.force_login(self.user)
+
+    marks = RouteQuestionTests.marks
+    stop = RouteQuestionTests.stop
+    page = RouteQuestionTests.page
+    answer = NotApplicableOverDoneTests.answer
+
+    def test_answers_sent_after_reading_leave_stops_2_and_6_done(self):
+        for slug in ("before-you-go", "types-and-prices"):
+            self.client.get(reverse("guide_chapter", args=[slug]))
+        self.answer("assessment", "certificate", "applying")
+        self.answer("after-fitting", "not_fitted", "1")
+        self.answer("form-9", "form_9_done", "False")
+        self.answer("notice", "notice_received", "False")
+        self.answer("form-25", "form_25_done", "False")
+        aid = AidAndSubsidy.for_user(self.user)
+        self.assertEqual(
+            (aid.certificate, aid.form_9_done, aid.notice_received, aid.form_25_done),
+            ("applying", False, False, False),
+        )
+        self.assertEqual(self.marks("before-you-go"), ["已完成"])
+        self.assertEqual(self.marks("types-and-prices"), ["已完成"])
+
+
 class CertificateMigrationTests(TransactionTestCase):
     """#293: #284's yes / not yet becomes the three answers; 還沒有 stays at the stop."""
 
