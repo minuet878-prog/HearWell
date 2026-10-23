@@ -1509,6 +1509,8 @@ def submission_result(request, submission_id):
         "question__question_number"
     )
     result = submission.questionnaire.definition.result
+    # #304 (ADR 0023): the home page's 建議下一步, by the user's state now, not this record's.
+    next_step, _ = home_more(request.user, timezone.localdate())
     if result == AVERAGE:
         return render(
             request,
@@ -1520,15 +1522,20 @@ def submission_result(request, submission_id):
                 "show_comparison": _shows_wearing_comparison(
                     request.user, submission.questionnaire
                 ),
+                "next_step": next_step,
             },
         )
     if result == NORM:
-        return _ioi_ha_result(request, submission, answers)
+        return _ioi_ha_result(request, submission, answers, next_step)
     if result == SUBSCALES:
         prefetch_related_objects(
             [submission], Prefetch("answers", queryset=Answer.objects.select_related("question"))
         )
-        return render(request, "screening/sadl_result.html", {"submission": submission})
+        return render(
+            request,
+            "screening/sadl_result.html",
+            {"submission": submission, "next_step": next_step},
+        )
     total_score = submission.total_answer_score
     emotional = submission.emotional_score
     social = submission.social_score
@@ -1566,6 +1573,7 @@ def submission_result(request, submission_id):
                 and submission.wearing_hearing_aid is False
                 else None
             ),
+            "next_step": next_step,
         },
     )
 
@@ -1615,7 +1623,7 @@ def _ioi_ha_summary(submission):
     }
 
 
-def _ioi_ha_result(request, submission, answers):
+def _ioi_ha_result(request, submission, answers, next_step):
     # No total, level or advice: IOI-HA is read item by item against the fixed norm group.
     items, grouped = _ioi_ha_items(submission, answers, NORM_VERSUS_TEXT)
     # Items below the norm come first and open; the rest are folded under 「其他 n 項」 (#187).
@@ -1631,6 +1639,7 @@ def _ioi_ha_result(request, submission, answers):
             "below_text": NORM_VERSUS_TEXT["below"],
             "others": [item for item in items if item not in below],
             "scale_ends": IOI_HA_SCALE_ENDS,
+            "next_step": next_step,
         },
     )
 

@@ -1486,7 +1486,8 @@
 
   /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
      few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
-  .more-section {
+  .more-section,
+  .result-more {
     container-type: inline-size;
   }
 
