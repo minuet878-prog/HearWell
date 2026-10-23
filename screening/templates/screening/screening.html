@@ -59,31 +59,28 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         {% if is_ioi_ha %}<input type="hidden" name="norm_token" value="{{ norm_token }}">{% endif %}
         {{ formset.management_form }}
         {% if hearing_aid_form %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% elif preselect_unaided %} aria-describedby="hearing-aid-hint"{% endif %}>
-                    <legend class="font-bold text-xl/normal">{{ questionnaire.definition.wearing_question }}</legend>
-                    {# Why 沒戴 is already chosen (#154); the only copy, answer-main.jsx reads it for React. #}
-                    {% if preselect_unaided %}<p id="hearing-aid-hint">請想沒戴助聽器時的情況來回答</p>{% endif %}
-                    {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}
-                    {{ hearing_aid_form.wearing_hearing_aid }}
-                </fieldset>
-            </div>
+        {# Questions are flat blocks, apart by number, title and space; only the choices are white (ADR 0022). #}
+        <div class="mb-10">
+            <fieldset id="question-hearing-aid" tabindex="-1"{% if hearing_aid_form.wearing_hearing_aid.errors %} aria-describedby="id_wearing_hearing_aid_error"{% elif preselect_unaided %} aria-describedby="hearing-aid-hint"{% endif %}>
+                <legend class="font-bold text-xl/normal">{{ questionnaire.definition.wearing_question }}</legend>
+                {# Why 沒戴 is already chosen (#154); the only copy, answer-main.jsx reads it for React. #}
+                {% if preselect_unaided %}<p id="hearing-aid-hint">請想沒戴助聽器時的情況來回答</p>{% endif %}
+                {% include "screening/field_messages.html" with field=hearing_aid_form.wearing_hearing_aid %}
+                {{ hearing_aid_form.wearing_hearing_aid }}
+            </fieldset>
         </div>
         {% endif %}
         {% for question, form in question_form %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <fieldset id="question-{{ forloop.counter }}" tabindex="-1"{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
-                    <legend class="font-bold text-xl/normal"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
-                    {% include "screening/field_messages.html" with field=form.score %}
-                    {% if question.scale %}
-                    <p>0：{{ question.scale.min_label }}；10：{{ question.scale.max_label }}</p>
-                    {% endif %}
-                    {{ form.score }}
-                </fieldset>
-                {{ form.question_id }}
-            </div>
+        <div class="mb-10">
+            <fieldset id="question-{{ forloop.counter }}" tabindex="-1"{% if form.score.errors %} aria-describedby="{{ form.score.auto_id }}_error"{% endif %}>
+                <legend class="font-bold text-xl/normal"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ question_count }} 題</span>{{ question.question_text }}</legend>
+                {% include "screening/field_messages.html" with field=form.score %}
+                {% if question.scale %}
+                <p>0：{{ question.scale.min_label }}；10：{{ question.scale.max_label }}</p>
+                {% endif %}
+                {{ form.score }}
+            </fieldset>
+            {{ form.question_id }}
         </div>
         {% endfor %}
         <div class="text-center">
