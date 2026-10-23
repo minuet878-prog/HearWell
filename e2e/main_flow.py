@@ -37,6 +37,7 @@ from screening.models import (
     Submission,
     User,
 )
+from screening.questionnaires.thi import SUPPORT_MESSAGE as THI_SUPPORT_MESSAGE
 from screening.tests.helpers import consented_user, fake_definition, register
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -3972,7 +3973,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         home_cases = (
             ("/", "body", self.WARM_PAGE),
             ("/", ".site-footer", self.WARM_FOOTER),
-            ("/", ".step-cards li", self.WHITE),
         )
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", self.WHITE),
@@ -4048,12 +4048,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_three_radius_levels(self):
         basis, ioi, audiogram = self.warm_shell_records()
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
-        # #159: these are the new-user home's own elements, so check them signed out.
-        home_cases = (
-            ("/", ".step-cards li", large),
-            ("/", ".home-band", large),
-            ("/", ".result-preview", large),
-        )
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", large),
             ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
@@ -4073,13 +4067,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             (f"/audiograms/{audiogram.pk}", ".audiogram-svg", "0px"),
         )
         with self.saving_artifacts():
-            self.open(signed_in=False)
-            for path, selector, radius in home_cases:
-                with self.subTest(path=path, selector=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    found = self.page.locator(selector).first
-                    expect(found).to_be_attached()
-                    self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
             self.open()
             for path, selector, radius in cases:
                 with self.subTest(path=path, selector=selector):
@@ -4093,24 +4080,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def test_large_white_blocks_have_warm_borders_and_shadows(self):
         self.submission(self.hhie_s, [2] * 10)
-        # #159: the step cards are the new-user home's own elements, so check them signed out.
-        home_cases = (("/", ".step-cards li"),)
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card"),
             ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
         )
         with self.saving_artifacts():
-            self.open(signed_in=False)
-            for path, selector in home_cases:
-                with self.subTest(path=path, selector=selector):
-                    self.page.goto(f"{self.live_server_url}{path}")
-                    found = self.page.locator(selector).first
-                    expect(found).to_be_attached()
-                    self.assertEqual(self.style(found, "borderTopColor"), self.WARM_BORDER)
-                    self.assertEqual(
-                        self.style(found, "boxShadow"),
-                        "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px",
-                    )
             self.open()
             for path, selector in cases:
                 with self.subTest(path=path, selector=selector):
@@ -4202,11 +4176,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             hero = self.page.locator(".home-hero")
-            self.assertEqual(self.style(hero, "backgroundColor"), self.WHITE)
-            # Design picker round 2: the result example is a white card with the score bar.
+            # Design picker round 2: the result example has the score bar.
             preview = self.page.locator(".result-preview")
-            self.assertEqual(self.style(preview, "backgroundColor"), self.WHITE)
-            self.assertEqual(self.style(preview, "borderTopStyle"), "solid")
             expect(preview.locator(".score-bar-marker")).to_be_visible()
             animations = self.page.evaluate(
                 """() => document.getAnimations()
@@ -4810,3 +4781,198 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     "borderTopColor": self.PRIMARY,
                 },
             )
+
+
+# White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket
+# so each ticket adds only its own pages. Each entry: (name, signed in, path, or a function that
+# takes the test, makes the records the page needs and returns its path).
+WHITE_CARD_PAGES_HOME_RESULT = (
+    ("home, signed out", False, "/"),
+    ("home, returning", True, lambda test: test.returning_home()),
+    ("HHIE-S result", True, lambda test: test.result("hhie-s", 2)),
+    ("HHIA-S result", True, lambda test: test.result("hhia-s", 2)),
+    ("THI result", True, lambda test: test.result("thi", 4)),
+)
+
+# #300: the answering pages.
+WHITE_CARD_PAGES_ANSWERING = ()
+
+# #301: the records pages, and the IOI-HA, SADL and SSQ12-TW result pages (their item cards
+# are #301's).
+WHITE_CARD_PAGES_RECORDS = ()
+
+# #302: the learn pages.
+WHITE_CARD_PAGES_LEARN = ()
+
+# #303: the sharing and account pages.
+WHITE_CARD_PAGES_SHARING = ()
+
+
+class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """ADR 0022: only a tappable card is a white card; everything else is a flat block."""
+
+    fixtures = ("questions_fixture.json",)
+    PAGES = (
+        WHITE_CARD_PAGES_HOME_RESULT
+        + WHITE_CARD_PAGES_ANSWERING
+        + WHITE_CARD_PAGES_RECORDS
+        + WHITE_CARD_PAGES_LEARN
+        + WHITE_CARD_PAGES_SHARING
+    )
+    WHITE = "rgb(255, 255, 255)"
+    WARM_SHADOW = "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px"
+    LINE = "rgb(217, 205, 185)"  # #298's pick: a thin warm line on the left
+    PRIMARY = "rgb(31, 78, 140)"
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
+    # White under a warm shadow (resting or lifted), and neither a link, inside one, nor inside
+    # the login and register form card: what the rule forbids.
+    WHITE_CARDS_THAT_ARE_NOT_LINKS = """() => [...document.querySelectorAll("body *")]
+        .filter((el) => {
+            const style = getComputedStyle(el);
+            return style.backgroundColor === "rgb(255, 255, 255)"
+                && style.boxShadow.includes("rgba(120, 90, 50,");
+        })
+        .filter((el) => !el.closest("a, .auth-card"))
+        .map((el) => el.outerHTML.slice(0, 120))"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="white_card_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, signed_in, width=1024):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900}, reduced_motion="reduce"
+        )
+        if signed_in:
+            self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def answered(self, code, score):
+        """A record of code with every item scored score."""
+        questionnaire = Questionnaire.objects.get(code=code)
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question in questionnaire.questions.all()
+        )
+        return record
+
+    def result(self, code, score):
+        return f"/submission/{self.answered(code, score).pk}"
+
+    def returning_home(self):
+        self.answered("hhie-s", 2)
+        return "/"
+
+    def visit(self, signed_in, path, width=1024):
+        self.open(signed_in, width)
+        self.page.goto(f"{self.live_server_url}{path(self) if callable(path) else path}")
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def assert_flat(self, block):
+        expect(block).to_be_visible()
+        self.assertEqual(self.style(block, "backgroundColor"), "rgba(0, 0, 0, 0)")
+        self.assertEqual(self.style(block, "boxShadow"), "none")
+
+    def assert_lined(self, block):
+        """#298's pick for a list of explanations: flat, with only a thin warm line on the left."""
+        self.assert_flat(block)
+        self.assertEqual(self.style(block, "borderLeftColor"), self.LINE)
+        self.assertEqual(self.style(block, "borderTopWidth"), "0px")
+
+    # Spec #297 acceptance 1: every white card under a warm shadow is a link.
+    def test_every_white_card_is_a_link(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.PAGES:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+
+    # #299: the signed-out home's four steps, result example and audiologist line are flat.
+    def test_first_visit_home_blocks_are_flat(self):
+        with self.saving_artifacts():
+            self.visit(False, "/")
+            for text in ("建立帳號", "回答問題", "馬上看到結果", "隔一段時間再做一次"):
+                with self.subTest(step=text):
+                    self.assert_lined(self.main().get_by_role("listitem").filter(has_text=text))
+            self.assert_flat(self.main().get_by_role("figure"))
+            self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
+
+    # #299: 歡迎回來 is flat with its two buttons as before; 您還可以's cards stay white cards.
+    def test_returning_home_welcome_is_flat_and_more_cards_stay_white(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.returning_home())
+            welcome = (
+                self.main()
+                .locator("section")
+                .filter(has=self.page.get_by_role("heading", name="歡迎回來", exact=True))
+            )
+            self.assert_flat(welcome)
+            records = welcome.get_by_role("link", name="看我的紀錄與趨勢", exact=True)
+            self.assertEqual(self.style(records, "backgroundImage"), self.GRADIENT)
+            again = welcome.get_by_role("link", name="再做一次", exact=True)
+            self.assertEqual(self.style(again, "borderTopColor"), self.PRIMARY)
+            cards = self.page.get_by_role("region", name="您還可以").locator("a.link-card")
+            self.assertGreater(cards.count(), 0)
+            for card in cards.all():
+                with self.subTest(card=card.inner_text()):
+                    self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+
+    # #299: advice 1-3 and THI's support message are flat with a thin line; the links in the
+    # advice still look like links.
+    def test_result_advice_is_flat_with_links_that_look_like_links(self):
+        with self.saving_artifacts():
+            # HHIE-S at 20 (mild to moderate): advice with a link to the guide.
+            self.visit(True, lambda test: test.result("hhie-s", 2))
+            steps = self.main().locator("ol.next-steps > li")
+            self.assertEqual(steps.count(), 3)
+            for step in steps.all():
+                with self.subTest(step=step.inner_text()[:10]):
+                    self.assert_lined(step)
+            links = steps.get_by_role("link")
+            self.assertGreater(links.count(), 0)
+            for link in links.all():
+                with self.subTest(link=link.inner_text()):
+                    self.assertEqual(self.style(link, "color"), self.PRIMARY)
+                    self.assertEqual(self.style(link, "textDecorationLine"), "underline")
+            # THI at full marks: the support message and the advice under it.
+            self.visit(True, lambda test: test.result("thi", 4))
+            self.assert_lined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
+            steps = self.main().locator("ol.next-steps > li")
+            self.assertGreater(steps.count(), 0)
+            for step in steps.all():
+                with self.subTest(step=step.inner_text()[:10]):
+                    self.assert_lined(step)
+
+    # #299: no sideways scrolling on a phone at 200% text, on both homes and the result pages.
+    def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path, width=320)
+                    self.assert_fits_a_phone_at_double_text_size(name)

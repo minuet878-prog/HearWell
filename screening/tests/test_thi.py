@@ -375,7 +375,7 @@ class ThiResultAdviceTests(ThiTestCase):
         for total, expected in STEPS.items():
             with self.subTest(total=total):
                 main = self._main(total)
-                start = main.index('<ol class="next-steps" role="list">')
+                start = main.index('<ol class="next-steps')
                 items = main[start : main.index("</ol>", start)].split("<li>")[1:]
                 self.assertEqual(len(items), len(expected))
                 for item, (text, action) in zip(items, expected, strict=True):

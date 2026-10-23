@@ -4,8 +4,8 @@
 
 {% block body %}
 {% if user_state.is_new %}
-{# Layout per spec phase9_ui_refresh_4a_home.md 4.1, restyled as a white card in the brand refresh; pictures are decorative, the words carry the meaning. #}
-<section class="home-band home-hero mt-2">
+{# Layout per spec phase9_ui_refresh_4a_home.md 4.1, a flat block since ADR 0022; pictures are decorative, the words carry the meaning. #}
+<section class="home-hero mt-2">
     <div class="home-chips">
         <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>約 3 分鐘</span>
         <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h5"/></svg>國際標準量表</span>
@@ -33,7 +33,7 @@
     <p class="text-center mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
     {% endif %}
 </section>
-<ol class="step-cards" role="list">
+<ol class="step-cards line-list" role="list">
     <li>
         <span class="step-number">1</span>
         <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
@@ -64,7 +64,7 @@
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
 </ul>
-{# Brand refresh round 4 ("結果頁會告訴您"): the title in the card, three checks instead of cut-off advice. #}
+{# Brand refresh round 4 ("結果頁會告訴您"): the title on top, three checks instead of cut-off advice. #}
 <figure class="result-preview">
     <div class="result-preview-head">
         <h2 class="h4 mb-0">結果長這樣</h2>
@@ -82,11 +82,11 @@
     </ul>
     <figcaption>實際結果依您的回答而定。</figcaption>
 </figure>
-{# Brand refresh, design picker round 3: one line in a badge card; the scales are in the top label. #}
+{# Brand refresh, design picker round 3: one line with a badge; the scales are in the top label. #}
 <p class="home-credential"><span class="home-credential-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="home-credential-text">內容由台灣執業<span class="break-keep wrap-anywhere">聽力師</span>設計與審定。</span></p>
 {% else %}
-{# Spec #148 batch 2, ticket #159 (ADR 0010): a returning user sees their last result and whether a retest is due, in the first visit's white card. #}
-<section class="home-band home-hero mt-2">
+{# Spec #148 batch 2, ticket #159 (ADR 0010): a returning user sees their last result and whether a retest is due, flat like the first visit's top (ADR 0022). #}
+<section class="home-hero mt-2">
 <h1 class="h3">歡迎回來</h1>
 {% with submission=user_state.last_result.submission %}
 <p class="mt-2">{{ submission.created_at|date:"Y/m/d" }} 作答</p>

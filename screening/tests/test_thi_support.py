@@ -31,7 +31,7 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
         main = self._main(only_often(5))
         self.assertIn("總分 4 分（滿分 100）", main)
         self.assertIn('aria-describedby="result-score">無障礙或輕微障礙</h2>', main)
-        self.assertIn(f'<p class="card card-body mt-4">{SUPPORT}</p>', main)
+        self.assertIn(SUPPORT, main)
         # Under the level: after the banner, before the score bar and the steps.
         banner_end = main.index('<div id="result-score"')
         support = main.index(SUPPORT)
@@ -42,16 +42,13 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
     def test_item_11_or_item_23_alone_often_shows_the_support_message(self):
         for number in (11, 23):
             with self.subTest(item=number):
-                self.assertIn(
-                    f'<p class="card card-body mt-4">{SUPPORT}</p>', self._main(only_often(number))
-                )
+                self.assertIn(SUPPORT, self._main(only_often(number)))
 
     def test_items_5_11_23_sometimes_and_the_rest_often_shows_no_support_message(self):
         scores = [SOMETIMES if number in (5, 11, 23) else OFTEN for number in range(1, 26)]
         main = self._main(scores)
         self.assertIn('aria-describedby="result-score">極重度障礙</h2>', main)
         self.assertNotIn(SUPPORT, main)
-        self.assertNotIn('<p class="card card-body mt-4">', main)
         # The catastrophic advice and steps still give the 1925 line.
         self.assertIn(test_thi.LINE_1925, main.split("完整建議", 1)[1])
 
