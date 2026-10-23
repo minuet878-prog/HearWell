@@ -108,7 +108,7 @@
     {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
     <ol class="route" role="list">
         {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}">
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
             <span class="route-number">{{ forloop.counter }}</span>
             <div class="route-box">
                 {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}

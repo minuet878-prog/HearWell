@@ -86,6 +86,13 @@ class GuideRouteTests(TestCase):
             with self.subTest(stop=slug):
                 self.assert_link(markup, href, title)
 
+    def test_each_stop_takes_the_focus_its_address_points_to(self):
+        # Back from an answer at /guide#stop-<slug>, the focus lands on that stop.
+        stops = re.findall(r'<li class="route-stop[^"]*"[^>]*>', self.page())
+        self.assertEqual(len(stops), len(STOPS))
+        for stop in stops:
+            self.assertIn(' tabindex="-1"', stop)
+
     # 4, 5
     def test_chapters_read_signed_in_are_done_and_here_is_the_first_left(self):
         self.make(PTA_55, PTA_55)
