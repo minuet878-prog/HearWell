@@ -2116,6 +2116,139 @@
     font-weight: 700;
   }
 
+  /* Guide chapters, shorter to read (plan B): a step's short title above its details. */
+  .step-list-title {
+    display: block;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* Numbers that matter (a threshold, a subsidy limit) large on the left, what they mean on the
+     right. At large text sizes the meaning drops under the number. */
+  .fact-rows {
+    container-type: inline-size;
+    display: grid;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fact-rows li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-button);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .fact-rows li > :last-child {
+    flex: 1 1 7rem;
+  }
+
+  /* Never wider than the row: at double text size on a 320px phone a long amount breaks too. */
+  .fact-rows-value {
+    min-width: min(6.5rem, 100%);
+    overflow-wrap: anywhere;
+    color: var(--color-primary);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* At large text sizes the large number would split mid-figure ("20,00 / 0 元"): body size. */
+  @container (max-width: 13rem) {
+    .fact-rows-value {
+      font-size: 1rem;
+    }
+  }
+
+  /* The rung a reader is checking against (the 45.0% threshold): outlined, not coloured. */
+  .fact-rows li.is-key {
+    outline: 0.15rem solid var(--color-primary);
+    outline-offset: -0.15rem;
+  }
+
+  /* Short things to bring or to expect, each with a decorative icon. */
+  .icon-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.5rem 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .icon-chips li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .icon-chips svg {
+    flex: none;
+    width: 1.375rem;
+    height: 1.375rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Labelled facts (who, when, what to bring): the label in blue above its sentence. */
+  .key-list {
+    margin: 0 0 1rem;
+  }
+
+  .key-list > div {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--color-border-warm);
+  }
+
+  .key-list > div:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .key-list > div:last-child {
+    padding-bottom: 0;
+  }
+
+  .key-list dt {
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .key-list dd {
+    margin: 0;
+  }
+
+  .key-list dd > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* A short result list (hospitals of a county): one per line, divided, no bullets. */
+  .plain-rows {
+    margin: 0 0 1rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .plain-rows li {
+    padding: 0.6rem 0.25rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
   /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */
   .score-card-head {
     display: flex;

@@ -1,28 +1,46 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-<p>第一次去評估選配助聽器時，先準備好下面的東西和問題，可以少跑一趟，也比較知道要問什麼。</p>
+{# Plan B tidy-up: shorter wording, the things to bring as chips, the questions grouped. #}
+<p>第一次去評估選配助聽器，先準備好下面這些，可以少跑一趟。</p>
 <section class="card card-body mb-4" aria-labelledby="bring-title">
     <h2 id="bring-title" class="h4">要帶的東西</h2>
-    <ul>
-        <li>醫院給的聽力檢查報告（聽力圖）。也可以在 HearWell 印出聽力報告帶去。</li>
-        <li>身分證。</li>
-        <li>身心障礙證明（有的話）。要申請身障補助，一定要有證明。</li>
-        <li>現在在用的助聽器（有的話）。</li>
+    <ul class="icon-chips" role="list">
+        <li>{% include "screening/guide/icon.html" with icon="audiogram" %}聽力圖</li>
+        <li>{% include "screening/guide/icon.html" with icon="id" %}身分證</li>
+        <li>{% include "screening/guide/icon.html" with icon="certificate" %}身心障礙證明（有的話）</li>
+        <li>{% include "screening/guide/icon.html" with icon="ear" %}現在用的助聽器（有的話）</li>
     </ul>
+    <p>聽力圖可以帶醫院的檢查報告，或在 HearWell 印出聽力報告。</p>
+    <p>要申請身障補助，一定要有身心障礙證明。</p>
 </section>
 <section class="card card-body mb-4" aria-labelledby="ask-title">
     <h2 id="ask-title" class="h4">可以問聽力師的問題</h2>
-    <ul>
-        <li>我適合哪一種助聽器？為什麼？</li>
-        <li>可以先試戴嗎？可以試戴多久？試戴要收費嗎？</li>
-        <li>價格包含哪些服務？之後回來調整要另外收費嗎？</li>
-        <li>保固多久？保固包含哪些？</li>
-        <li>這一台屬於補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？</li>
-        <li>我要申請補助，可以幫我開九號表嗎？</li>
-        <li>可以給我書面的報價單和保固內容嗎？</li>
-    </ul>
+    <dl class="key-list">
+        <div>
+            <dt>適不適合我</dt>
+            <dd><ul class="mb-0">
+                <li>我適合哪一種助聽器？為什麼？</li>
+                <li>可以先試戴嗎？試戴多久？要收費嗎？</li>
+            </ul></dd>
+        </div>
+        <div>
+            <dt>價格與保固</dt>
+            <dd><ul class="mb-0">
+                <li>價格包含哪些服務？之後回來調整要另外收費嗎？</li>
+                <li>保固多久？包含哪些？</li>
+                <li>可以給我書面的報價單和保固內容嗎？</li>
+            </ul></dd>
+        </div>
+        <div>
+            <dt>補助</dt>
+            <dd><ul class="mb-0">
+                <li>這一台是補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？</li>
+                <li>可以幫我開九號表嗎？</li>
+            </ul></dd>
+        </div>
+    </dl>
 </section>
-<p class="tip-box">提醒：要申請身障補助的話，一定要先拿到核定通知再買，沒核定就先買的不補助。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}
 {% block sources %}

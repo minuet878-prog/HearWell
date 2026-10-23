@@ -1,50 +1,69 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-<p>助聽器的身障補助，要先有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定才拿得到。</p>
+{# Plan B tidy-up: the wording shortened by the owner's request, the numbers and things to bring set apart. #}
+<p>要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。</p>
 <section class="card card-body mb-4" aria-labelledby="threshold-title">
-    <h2 id="threshold-title" class="h4">鑑定門檻怎麼算</h2>
-    <p>鑑定時，醫院用 500、1000、2000、4000 Hz 的聽力平均，算出「雙耳整體障礙比率」。比率達到 45.0% 以上，就是聽覺機能第 1 級（輕度）。</p>
-    <p>一耳聽力 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。</p>
-    <p>比率越高，等級越高：70.1% 以上是第 2 級，90.1% 以上是第 3 級。</p>
-    <p>未滿六歲的孩子門檻不一樣，本頁不適用，請直接洽詢鑑定醫院。</p>
+    <h2 id="threshold-title" class="h4">鑑定門檻</h2>
+    <p class="mb-2 font-bold">雙耳整體障礙比率</p>
+    <ul class="fact-rows" role="list">
+        <li class="is-key"><span class="fact-rows-value">45.0%</span><span>以上：第 1 級（輕度）</span></li>
+        <li><span class="fact-rows-value">70.1%</span><span>以上：第 2 級</span></li>
+        <li><span class="fact-rows-value">90.1%</span><span>以上：第 3 級</span></li>
+    </ul>
+    <p class="tip-box">一耳 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。</p>
+    <details class="dropdown-line">
+        <summary>比率怎麼算、小孩的門檻</summary>
+        <p>用 500、1000、2000、4000 Hz 的聽力平均計算。</p>
+        <p>未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。</p>
+    </details>
 </section>
 <section class="card card-body mb-4" aria-labelledby="exam-title">
     <h2 id="exam-title" class="h4">鑑定時會做什麼</h2>
-    <p>鑑定由耳鼻喉科專科醫師負責，會做純音聽力檢查、語音聽力檢查和鼓室圖，必要時再加做其他檢查。</p>
+    <p class="mb-0">耳鼻喉科專科醫師會做這三項，必要時再加做其他檢查：</p>
+    <ul class="icon-chips" role="list">
+        <li>{% include "screening/guide/icon.html" with icon="tone" %}純音聽力檢查</li>
+        <li>{% include "screening/guide/icon.html" with icon="speech" %}語音聽力檢查</li>
+        <li>{% include "screening/guide/icon.html" with icon="ear" %}鼓室圖</li>
+    </ul>
 </section>
 <section class="card card-body mb-4" aria-labelledby="apply-title">
     <h2 id="apply-title" class="h4">怎麼申請鑑定</h2>
-    {# #259: the three paragraphs as steps, split only at sentence breaks. #}
     <ol class="step-list" role="list">
-        <li><span class="step-list-number">1</span><span class="step-list-body">先帶身分證影本、3 張一吋半身照片和印章，到戶籍所在縣市的任一區（鄉、鎮、市）公所申請，也可以線上申請。</span></li>
-        <li><span class="step-list-number">2</span><span class="step-list-body">公所會給您鑑定表，再帶著鑑定表到鑑定醫院。鑑定需要的檢查費用，由政府或健保支付。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body">鑑定完成後，大約 35 天可以拿到證明。<span class="step-when" aria-hidden="true">約 35 天</span></span></li>
+        <li><span class="step-list-number">1</span><div class="step-list-body"><span class="step-list-title">到公所申請</span>戶籍所在縣市的任一區（鄉、鎮、市）公所，也可以線上申請。要帶：<ul class="icon-chips" role="list">
+            <li>{% include "screening/guide/icon.html" with icon="id" %}身分證影本</li>
+            <li>{% include "screening/guide/icon.html" with icon="photo" %}一吋半身照片 3 張</li>
+            <li>{% include "screening/guide/icon.html" with icon="stamp" %}印章</li>
+        </ul></div></li>
+        <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">帶公所給的鑑定表，到鑑定醫院</span>檢查費用由政府或健保支付。</span></li>
+        <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">拿到證明</span>鑑定完成後大約 35 天。<span class="step-when" aria-hidden="true">約 35 天</span></span></li>
     </ol>
 </section>
 <section class="card card-body mb-4" aria-labelledby="hospitals-title">
     <h2 id="hospitals-title" class="h4">找鑑定醫院</h2>
-    <form method="get" action="{% url 'guide_chapter' 'assessment' %}">
-        <label for="county" class="form-label text-xl/normal font-bold">選擇您的縣市，下面會列出可以做聽覺機能鑑定的醫院。</label>
+    {# Back on this card after searching, not at the top of the page. #}
+    <form method="get" action="{% url 'guide_chapter' 'assessment' %}#hospitals-title">
+        <label for="county" class="form-label text-xl/normal font-bold">選擇您的縣市，列出可以做聽覺機能鑑定的醫院</label>
         <select id="county" name="county" class="form-select form-select-lg mb-2">
             <option value=""{% if not county %} selected{% endif %}>請先選擇縣市</option>
             {% for name in counties %}
             <option value="{{ name }}"{% if name == county %} selected{% endif %}>{{ name }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn btn-primary btn-lg">查詢</button>
+        <button type="submit" class="btn btn-primary btn-lg w-full">查詢</button>
     </form>
-    <p class="mt-4">資料來自衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（{{ roster_version }}）。實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。</p>
     {% if not county %}
-    <p>請先選擇縣市。</p>
+    <p class="mt-4">請先選擇縣市。</p>
     {% elif not hospitals %}
-    <p>這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
+    <p class="mt-4">這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
     {% else %}
-    <ul id="hospital-list" aria-label="{{ county }}">
+    <p class="mt-4 mb-2 text-xl/normal font-bold">{{ county }}：{{ hospitals|length }} 家醫院</p>
+    <ul id="hospital-list" class="plain-rows" role="list" aria-label="{{ county }}">
         {% for hospital in hospitals %}
         <li>{{ hospital.name }}</li>
         {% endfor %}
     </ul>
     {% endif %}
+    <p class="guide-source">名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（{{ roster_version }}）。以各縣市衛生局公布為準，去之前先打電話確認。</p>
 </section>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}

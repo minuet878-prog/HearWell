@@ -10,29 +10,41 @@ from django.urls import reverse
 from screening import assessment_hospitals
 from screening.tests import test_guide
 
-# Wording finalised in #220: B2–B14 from the draft; B11 rewritten and B11a, B11b added
-# in the follow-up comment.
+# Wording finalised in #220 (B2–B14, B11a, B11b), shortened in the plan B tidy-up (2026-10-23,
+# the owner's request): the threshold as rows of numbers, the things to bring as chips.
 ASSESSMENT = (
-    "助聽器的身障補助，要先有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定才拿得到。",
-    "鑑定門檻怎麼算",
-    "鑑定時，醫院用 500、1000、2000、4000 Hz 的聽力平均，算出「雙耳整體障礙比率」。"
-    "比率達到 45.0% 以上，就是聽覺機能第 1 級（輕度）。",
-    "一耳聽力 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。",
-    "比率越高，等級越高：70.1% 以上是第 2 級，90.1% 以上是第 3 級。",
-    "未滿六歲的孩子門檻不一樣，本頁不適用，請直接洽詢鑑定醫院。",
+    "要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。",
+    "鑑定門檻",
+    "雙耳整體障礙比率",
+    "45.0% 以上：第 1 級（輕度）",
+    "70.1% 以上：第 2 級",
+    "90.1% 以上：第 3 級",
+    "一耳 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。",
+    "比率怎麼算、小孩的門檻",
+    "用 500、1000、2000、4000 Hz 的聽力平均計算。",
+    "未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。",
     "鑑定時會做什麼",
-    "鑑定由耳鼻喉科專科醫師負責，會做純音聽力檢查、語音聽力檢查和鼓室圖，必要時再加做其他檢查。",
+    "耳鼻喉科專科醫師會做這三項，必要時再加做其他檢查：",
+    "純音聽力檢查",
+    "語音聽力檢查",
+    "鼓室圖",
     "怎麼申請鑑定",
-    # Split into steps 1 and 2 at the sentence break since the step list (#259).
-    "先帶身分證影本、3 張一吋半身照片和印章，到戶籍所在縣市的任一區（鄉、鎮、市）公所申請，"
-    "也可以線上申請。",
-    "公所會給您鑑定表，再帶著鑑定表到鑑定醫院。",
-    "鑑定需要的檢查費用，由政府或健保支付。",
-    "鑑定完成後，大約 35 天可以拿到證明。",
+    "到公所申請",
+    "戶籍所在縣市的任一區（鄉、鎮、市）公所，也可以線上申請。要帶：",
+    "身分證影本",
+    "一吋半身照片 3 張",
+    "印章",
+    "帶公所給的鑑定表，到鑑定醫院",
+    "檢查費用由政府或健保支付。",
+    "拿到證明",
+    "鑑定完成後大約 35 天。",
     "找鑑定醫院",
-    "選擇您的縣市，下面會列出可以做聽覺機能鑑定的醫院。",
-    "資料來自衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（1150717）。"
-    "實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。",
+    "選擇您的縣市，列出可以做聽覺機能鑑定的醫院",
+)
+# Under the menu and any list, as the card's last line.
+ROSTER_NOTE = (
+    "名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（1150717）。"
+    "以各縣市衛生局公布為準，去之前先打電話確認。"
 )
 CHOOSE_COUNTY = "請先選擇縣市。"
 # B15 without its full stop, as the menu's blank first option.
@@ -87,10 +99,12 @@ class AssessmentChapterTests(TestCase):
         self.assertContains(response, "<title>身障鑑定與鑑定醫院\uff5cHearWell</title>")
         self.assertContains(response, '<h1 class="h3 mt-4">身障鑑定與鑑定醫院</h1>')
         text = test_guide.text_of(response)
-        positions = [text.index(sentence) for sentence in (*ASSESSMENT, CHOOSE_COUNTY)]
+        positions = [text.index(s) for s in (*ASSESSMENT, CHOOSE_COUNTY, ROSTER_NOTE)]
         self.assertEqual(positions, sorted(positions))
         content = response.content.decode()
-        self.assertIn(f'<form method="get" action="{self.url}">', content)
+        # Searching lands back on this card, not at the top of the page.
+        self.assertIn(f'<form method="get" action="{self.url}#hospitals-title">', content)
+        self.assertIn('<h2 id="hospitals-title" class="h4">找鑑定醫院</h2>', content)
         self.assertIn('<label for="county"', content)
         self.assertIn('<select id="county" name="county"', content)
         options = [
@@ -110,12 +124,15 @@ class AssessmentChapterTests(TestCase):
         start = content.index('<h2 id="apply-title"')
         section = content[start : content.index("</section>", start)]
         steps = section[section.index('<ol class="step-list" role="list">') :]
-        items = re.findall(r"<li>(.*?)</li>", steps, re.S)
-        self.assertEqual(len(items), 3)
         numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
         self.assertEqual(numbers, ["1", "2", "3"])
-        self.assertIn("到戶籍所在縣市的任一區", items[0])
-        self.assertIn("再帶著鑑定表到鑑定醫院。", items[1])
+        # Each step from its number to the next: step 1 holds a list of its own.
+        items = re.split(r'<span class="step-list-number">\d+</span>', steps)[1:]
+        self.assertIn("到公所申請", items[0])
+        self.assertIn("戶籍所在縣市的任一區", items[0])
+        chips = re.findall(r"</svg>\s*([^<]+?)\s*</li>", items[0])
+        self.assertEqual(chips, ["身分證影本", "一吋半身照片 3 張", "印章"])
+        self.assertIn("帶公所給的鑑定表，到鑑定醫院", items[1])
         self.assertIn("由政府或健保支付。", items[1])
         tags = [re.findall(r'<span class="step-when"[^>]*>(.*?)</span>', item) for item in items]
         self.assertEqual(tags, [[], [], ["約 35 天"]])
@@ -138,7 +155,9 @@ class AssessmentChapterTests(TestCase):
         self.assertEqual(listing[: listing.index("</ul>")].count("<li>"), 3)
         self.assertNotIn("惠民醫院", text)
         self.assertNotIn("臺北榮民總醫院", text)
-        self.assertIn("（1150717）", text)
+        # How many before the list, the roster's version after it.
+        self.assertLess(text.index("澎湖縣：3 家醫院"), text.index("衛生福利部澎湖醫院"))
+        self.assertLess(text.index("衛生福利部澎湖醫院"), text.index(ROSTER_NOTE))
         self.assertIn('<option value="澎湖縣" selected>澎湖縣</option>', content)
         self.assertIn('<option value="">請先選擇縣市</option>', content)
         self.assertEqual(content.count(" selected>"), 1)

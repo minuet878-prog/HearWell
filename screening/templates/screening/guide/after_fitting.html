@@ -1,22 +1,35 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
+{# Plan B tidy-up: each point's gist as its label, the rest in one short sentence. #}
 <div class="card card-body mb-4">
-<ul class="mb-0">
-    <li>剛開始不習慣是正常的：前幾週可能覺得自己的聲音怪怪的、環境的聲音很吵，大腦需要時間重新適應聲音。</li>
-    <li>照聽力師的建議每天戴，從安靜的地方、短時間開始，再慢慢拉長。</li>
-    <li>覺得太吵、太小聲或不舒服，都可以回去請聽力師調整，不用勉強忍耐。可以記下哪些場合聽不清楚，回診時告訴聽力師。</li>
-    <li>助聽器不是戴上就跟以前一樣，在吵雜的餐廳、多人聊天時，還是可能聽不清楚。</li>
-</ul>
+<dl class="key-list">
+    <div>
+        <dt>剛開始不習慣是正常的</dt>
+        <dd>前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。</dd>
+    </div>
+    <div>
+        <dt>每天戴，慢慢拉長</dt>
+        <dd>照聽力師的建議，從安靜的地方、短時間開始。</dd>
+    </div>
+    <div>
+        <dt>不舒服就回去調整</dt>
+        <dd>太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。</dd>
+    </div>
+    <div>
+        <dt>不會跟以前完全一樣</dt>
+        <dd>在吵雜的餐廳、多人聊天時，還是可能聽不清楚。</dd>
+    </div>
+</dl>
 </div>
 <section class="card card-body mb-4" aria-labelledby="record-title">
     <h2 id="record-title" class="h4">記錄配戴的效果</h2>
-    <p>配戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告帶去給聽力師看。</p>
+    <p>戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告給聽力師看。</p>
     <ul>
         {% for questionnaire in follow_ups %}
         <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）：{{ questionnaire.definition.audience }}</a></li>
         {% endfor %}
     </ul>
-    <p>也可以戴著助聽器再做一次生活影響問卷（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較。</p>
+    <p>也可以戴著助聽器再做一次生活影響問卷（{% include "screening/guide/life_impact_links.html" %}），和沒戴時比較。</p>
 </section>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}
