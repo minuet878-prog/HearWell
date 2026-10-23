@@ -95,19 +95,21 @@ class NextStep:
     button: str
 
 
-# #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use.
+# #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use, each
+# (key, title, card keys).
 HOME_GROUPS = (
-    ("記錄", ("record",)),
-    ("給別人看", ("print", "share")),
-    ("了解", ("guide",)),
-    ("方便使用", ("add-home",)),
+    ("record", "記錄", ("record",)),
+    ("show", "給別人看", ("print", "share")),
+    ("learn", "了解", ("guide",)),
+    ("convenience", "方便使用", ("add-home",)),
 )
 # The group pwa-nav.js hides in the home-screen app (ticket #160): it is added already.
-HIDDEN_IN_APP = "方便使用"
+HIDDEN_IN_APP = "convenience"
 
 
 def home_more(user):
-    """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty."""
+    """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty:
+    each group (title, cards, hidden in the home-screen app)."""
     cards = {
         "record": HomeCard("記錄醫院的聽力圖", reverse("audiogram_new"), "audiogram"),
         "print": HomeCard("印聽力報告給醫師看", reverse("health_report"), "report"),
@@ -135,6 +137,7 @@ def home_more(user):
         suggested = "share"
         next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去分享")
     groups = (
-        (title, [cards[key] for key in keys if key != suggested]) for title, keys in HOME_GROUPS
+        (title, [cards[key] for key in keys if key != suggested], group == HIDDEN_IN_APP)
+        for group, title, keys in HOME_GROUPS
     )
-    return next_step, [(title, shown) for title, shown in groups if shown]
+    return next_step, [(title, shown, hidden) for title, shown, hidden in groups if shown]

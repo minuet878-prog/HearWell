@@ -43,7 +43,7 @@ from screening.forms import (
     answer_choices,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
-from screening.main_flow import HIDDEN_IN_APP, NEW_USER_STATE, get_user_state, home_more
+from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
@@ -130,7 +130,6 @@ def index(request):
             "last_ioi_ha": last_ioi_ha,
             "next_step": next_step,
             "more_groups": more_groups,
-            "hidden_in_app": HIDDEN_IN_APP,
         },
     )
     if request.user.is_authenticated:

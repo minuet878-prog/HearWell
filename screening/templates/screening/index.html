@@ -138,8 +138,8 @@
         <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
     </div>
     {# Ticket #160: pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript every group shows. #}
-    {% for title, cards in more_groups %}
-    <div class="more-group"{% if title == hidden_in_app %} data-hide-in-app{% endif %}>
+    {% for title, cards, hidden_in_app in more_groups %}
+    <div class="more-group"{% if hidden_in_app %} data-hide-in-app{% endif %}>
         <h3 class="more-group-title">{{ title }}</h3>
         <ul class="list-unstyled">
             {% for card in cards %}
