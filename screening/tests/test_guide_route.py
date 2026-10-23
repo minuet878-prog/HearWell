@@ -120,7 +120,7 @@ class GuideRouteTests(TestCase):
         self.assertEqual(tags["audiogram"], [HERE])
         self.assertEqual(sum(t.count(HERE) for t in tags.values()), 1)
         self.assert_link(self.stop("audiogram"), reverse("audiogram_new"), "記錄醫院的聽力圖")
-        self.assertRegex(self.page(), r'<li [^>]*data-stop="audiogram" aria-current="step">')
+        self.assertRegex(self.page(), r'<li [^>]*data-stop="audiogram" aria-current="step"[^>]*>')
 
     def test_with_an_audiogram_recording_it_is_done_with_its_date(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
@@ -329,8 +329,9 @@ class AidOnlyRecordsTests(TestCase):
 
     def test_any_answer_is_a_record(self):
         for fields in (
-            {"has_certificate": True},
-            {"has_certificate": False},
+            {"certificate": "yes"},
+            {"certificate": "applying"},
+            {"certificate": "no_subsidy"},
             {"fitted_on": date(2026, 5, 1)},
             {"ear": "both"},
             {"subsidy": "other"},

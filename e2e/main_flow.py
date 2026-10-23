@@ -2077,6 +2077,58 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(here.get_by_role("link", name="找鑑定醫院")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide with chapters read")
 
+    # #293 (spec #291 e2e, acceptance 6, 7, 18, 27; no JavaScript, story 40): answer the
+    # certificate at the foot of its chapter, again on the route, then change it with 修改.
+    # The chapter's question card and the route's open question fit 320px at 200% text.
+    def test_answering_the_certificate_moves_the_route_on(self):
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        question = "您有聽覺機能的身心障礙證明嗎？"
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/assessment")
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            expect(card.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment question card")
+            card.get_by_role("button", name="還沒有，正在申請鑑定").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
+            expect(self.main().get_by_role("region", name="看完了嗎？")).to_have_count(0)
+
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("身障鑑定與鑑定醫院")
+            expect(here.locator(".route-answer")).to_have_text("正在申請鑑定")
+            expect(here.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide open question")
+            here.get_by_role("button", name="有", exact=True).click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-assessment")
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.locator(".route-mark")).to_have_text(["已完成"])
+            expect(assessment.locator(".route-answer")).to_have_text("有身障證明 修改")
+            expect(self.main().locator('[aria-current="step"]')).to_contain_text("九號表")
+            assessment.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide?edit=assessment#stop-assessment"
+            )
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide editing the question")
+            assessment.get_by_role("button", name="沒有，不申請身障補助").click()
+
+            for slug in ("form-9", "notice", "form-25", "payout"):
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_text(["不適用"])
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("助聽器的種類與價格")
+
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
     # with the worked steps open and a county's hospitals listed.
     def test_pages_fit_a_phone_at_double_text_size(self):

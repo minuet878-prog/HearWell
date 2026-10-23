@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
-from screening.models import AidAndSubsidy, AidLevel, Audiogram, Submission
+from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters,
@@ -29,6 +29,10 @@ STOPS = (
 WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
 # The stops a 看過 makes 已完成 (spec #291 Q4); the other chapters are done by an answer.
 DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
+# The certificate answers that finish 身障鑑定與鑑定醫院 (spec #291 Q2); 正在申請鑑定 stays.
+CERTIFICATE_DONE = frozenset({Certificate.YES, Certificate.NO_SUBSIDY})
+# Not applying for the 身障補助 leaves its stops 不適用 (spec #291 Q2).
+WITHOUT_SUBSIDY = frozenset({"form-9", "notice", "form-25", "payout"})
 # 要做二十五號表 (#284 Q7): 身障補助 at these levels; 不知道 counts as one of them.
 FORM_25_LEVELS = (AidLevel.MID, AidLevel.ADVANCED, AidLevel.CROS, AidLevel.UNKNOWN)
 REAPPLY_MONTHS = 48  # 身障補助 again 4 years on; #284 leaves out under-12s' 2 years
@@ -65,6 +69,7 @@ class FittingState:
     fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
     threshold: dict | None  # assessment_estimate, without an audiogram None
     done: frozenset  # the 已完成 stops' slugs
+    not_applicable: frozenset  # the 不適用 stops' slugs, which 您在這裡 passes by
     stop: str | None  # one of STOPS; None when no stop applies
     today: date  # the day the route is judged on, for its dated rules
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they answer any
@@ -124,21 +129,35 @@ def fitting_state(user, today):
     done = viewed & DONE_BY_VIEWING
     if fitting is not None:
         done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
+    not_applicable = set()
+    if aid is not None and aid.certificate in CERTIFICATE_DONE:
+        done.add("assessment")
+    if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
+        not_applicable |= WITHOUT_SUBSIDY
     # Q7: within the normal range, the route waits until the user starts on a stop.
     started = bool(viewed) or (aid is not None and not aid.unanswered)
-    stop = _stop(wearing, done, fitting is False and not started)
+    stop = _stop(wearing, done | not_applicable, fitting is False and not started)
     return FittingState(
-        latest, audiogram, wearing, fitting, threshold, frozenset(done), stop, today, aid
+        latest,
+        audiogram,
+        wearing,
+        fitting,
+        threshold,
+        frozenset(done),
+        frozenset(not_applicable),
+        stop,
+        today,
+        aid,
     )
 
 
-def _stop(wearing, done, waiting):
-    # Spec #291 (in place of #284's and #257 Q18's rules): the first stop not done, from
-    # 配戴之後 on for someone wearing hearing aids; none while the route waits.
+def _stop(wearing, passed, waiting):
+    # Spec #291 (in place of #284's and #257 Q18's rules): the first stop neither done nor
+    # 不適用, from 配戴之後 on for someone wearing hearing aids; none while the route waits.
     if wearing:
         stops = WEARING_STOPS
     elif waiting:
         return None
     else:
         stops = STOPS
-    return next((slug for slug in stops if slug not in done), None)
+    return next((slug for slug in stops if slug not in passed), None)

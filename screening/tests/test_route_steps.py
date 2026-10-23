@@ -151,7 +151,7 @@ class HereTests(TestCase):
 
     def test_both_ears_within_25_after_any_answer_follow_the_rule(self):
         self.make(*WITHIN_25)
-        AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
+        AidAndSubsidy.objects.create(user=self.user, certificate="applying")
         self.assertEqual(self.state().stop, "before-you-go")
 
     def test_viewing_a_chapter_without_a_stop_of_its_own_also_starts_the_route(self):
@@ -207,3 +207,71 @@ class HereTests(TestCase):
         self.make(PTA_55, PTA_55, tested_on=date(2026, 10, 20))
         self.answer(wearing=True, day=21)
         self.assertLessEqual({"before-you-go", "types-and-prices"}, self.state().done)
+
+    def test_changing_an_answer_does_not_undo_a_viewed_stop(self):
+        self.make(*OVER_25)
+        self.view("before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        AidAndSubsidy.objects.filter(user=self.user).update(certificate="applying")
+        self.assertIn("before-you-go", self.state().done)
+
+
+class CertificateStopTests(TestCase):
+    """#293 (spec #291 acceptance 7): 身障鑑定與鑑定醫院 is done by the certificate answer; not
+    applying makes the subsidy's stops 不適用, and 您在這裡 passes them by."""
+
+    def setUp(self):
+        self.user = consented_user(username="certificate_user")
+        self.make(*OVER_25)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def state(self, certificate=None):
+        if certificate is not None:
+            AidAndSubsidy.objects.update_or_create(
+                user=self.user, defaults={"certificate": certificate}
+            )
+        return fitting_state(self.user, TODAY)
+
+    def test_having_one_is_done_and_moves_on_to_form_9(self):
+        state = self.state("yes")
+        self.assertIn("assessment", state.done)
+        self.assertEqual(state.stop, "form-9")
+        self.assertEqual(state.not_applicable, frozenset())
+
+    def test_applying_stays_at_the_assessment(self):
+        state = self.state("applying")
+        self.assertNotIn("assessment", state.done)
+        self.assertEqual(state.stop, "assessment")
+        self.assertEqual(state.not_applicable, frozenset())
+
+    def test_unanswered_stays_at_the_assessment(self):
+        state = self.state("")
+        self.assertNotIn("assessment", state.done)
+        self.assertEqual(state.stop, "assessment")
+
+    def test_not_applying_is_done_and_the_subsidy_s_stops_do_not_apply(self):
+        state = self.state("no_subsidy")
+        self.assertIn("assessment", state.done)
+        self.assertEqual(state.not_applicable, {"form-9", "notice", "form-25", "payout"})
+        self.assertEqual(state.stop, "types-and-prices")
+
+    def test_not_applying_with_types_and_prices_read_moves_on_to_after_fitting(self):
+        GuideChapterView.objects.create(user=self.user, chapter="types-and-prices")
+        self.assertEqual(self.state("no_subsidy").stop, "after-fitting")
+
+    def test_wearing_and_not_applying_passes_form_25_and_the_payout_by(self):
+        AidAndSubsidy.objects.create(
+            user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1)
+        )
+        state = self.state()
+        self.assertLessEqual({"form-25", "payout"}, state.not_applicable)
+        self.assertEqual(state.stop, "after-fitting")
+
+    def test_changing_back_to_applying_undoes_it(self):
+        self.state("no_subsidy")
+        state = self.state("applying")
+        self.assertNotIn("assessment", state.done)
+        self.assertEqual(state.not_applicable, frozenset())
+        self.assertEqual(state.stop, "assessment")

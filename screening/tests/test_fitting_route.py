@@ -123,7 +123,7 @@ class OldRulesGoneTests(TestCase):
 
     def test_a_certificate_no_longer_moves_the_stop_to_form_9(self):
         self.make(PTA_55, PTA_55)
-        AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
         self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")
 
     def test_form_25_s_dates_no_longer_move_the_stop(self):
@@ -217,6 +217,8 @@ class Form25DatesTests(TestCase):
         self.answer(wearing=True)
         AidAndSubsidy.objects.create(user=self.user, subsidy="disability", level="mid")
         self.assertIsNone(self.form_25())
+
+
 class ReapplyDateTests(TestCase):
     """#288 (spec #284 acceptance 17): someone who bought with 身障補助 can apply again four
     years after the fitting date."""

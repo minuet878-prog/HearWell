@@ -1,0 +1,17 @@
+{# #293: a 選配路線 stop's question, on the route and at the foot of its chapter. Each answer is a submit button, so one press sends it without JavaScript; the current answer is the filled one. #}
+<form method="post" action="{% url 'route_answer' %}" class="stop-question">
+    {% csrf_token %}
+    <input type="hidden" name="stop" value="{{ stop }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    {% for field in question %}
+    <fieldset{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
+        {% include "screening/field_messages.html" with help_class="field-help" %}
+        <div class="stop-answers">
+            {% for value, label in field.field.choices %}
+            <button type="submit" name="{{ field.html_name }}" value="{{ value }}" class="btn btn-lg {% if value == field.value %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</button>
+            {% endfor %}
+        </div>
+    </fieldset>
+    {% endfor %}
+</form>

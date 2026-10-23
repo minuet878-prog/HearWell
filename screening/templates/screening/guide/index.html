@@ -108,7 +108,7 @@
     {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
     <ol class="route" role="list">
         {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %}>
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}">
             <span class="route-number">{{ forloop.counter }}</span>
             <div class="route-box">
                 {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
@@ -117,6 +117,9 @@
                 {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
                 {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
                 {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
+                {# #293: the answer in short; 修改 opens the question again, without JavaScript. #}
+                {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if not stop.question %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
+                {% if stop.question %}{% url 'guide' as guide_url %}{% include "screening/guide/stop_question.html" with question=stop.question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endif %}
             </div>
         </li>
         {% endfor %}

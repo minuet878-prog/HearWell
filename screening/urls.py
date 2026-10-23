@@ -20,6 +20,7 @@ urlpatterns = [
     path("learn", views.learn, name="learn"),
     path("guide", views.guide, name="guide"),
     path("guide/<slug:chapter>", views.guide_chapter, name="guide_chapter"),
+    path("route_answer", views.route_answer, name="route_answer"),
     path("consent", views.consent, name="consent"),
     path("monitoring-test", views.monitoring_test, name="monitoring_test"),
     path("questionnaire_list", views.questionnaire_list, name="questionnaire_list"),

@@ -379,7 +379,7 @@ class HearingAidReportLineTests(TestCase):
         )
 
     def fill(self, **fields):
-        defaults = {"has_certificate": True, "fitted_on": date(2026, 5, 1), "ear": "both"}
+        defaults = {"certificate": "yes", "fitted_on": date(2026, 5, 1), "ear": "both"}
         AidAndSubsidy.objects.create(user=self.user, **(defaults | fields))
 
     def summary(self):

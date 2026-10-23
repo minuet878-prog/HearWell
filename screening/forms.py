@@ -7,7 +7,15 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import Answer, Question, Submission, User, shared_days
+from screening.models import (
+    AidAndSubsidy,
+    Answer,
+    Certificate,
+    Question,
+    Submission,
+    User,
+    shared_days,
+)
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -229,3 +237,20 @@ class HhiComparisonForm(forms.Form):
                 first_two = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
                 if len(first_two) == 1:
                     self.initial[name] = first_two[0]
+
+
+class CertificateForm(forms.ModelForm):
+    # 身障鑑定與鑑定醫院's question (spec #291 Q2): one press of an answer sends it.
+    certificate = forms.ChoiceField(
+        label="您有聽覺機能的身心障礙證明嗎？",
+        help_text="第二類 b230、s260，或舊制 02",
+        choices=Certificate.choices,
+    )
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("certificate",)
+
+
+# The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug.
+STOP_QUESTIONS = {"assessment": CertificateForm}

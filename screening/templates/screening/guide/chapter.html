@@ -7,6 +7,14 @@
 <h1 class="h3 mt-4">{{ chapter.title }}</h1>
 {% block chapter %}{% endblock %}
 </article>
+{# #293: the stop's question again, signed in and not yet answered; the route moves on with it. #}
+{% if question %}
+<section id="stop-question" class="card card-body mt-6" aria-labelledby="stop-question-title">
+    <h2 id="stop-question-title" class="h4">看完了嗎？</h2>
+    {% include "screening/guide/stop_question.html" with stop=chapter.slug next=request.path|add:"#stop-question" %}
+    <p class="mt-2 mb-0">答了之後，選配路線會往下一站走。</p>
+</section>
+{% endif %}
 {# Sources behind a dropdown box (text-heavy pages tidy-up); the links are unchanged (#218 Q7). #}
 <footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
     <details class="dropdown-box mb-2">

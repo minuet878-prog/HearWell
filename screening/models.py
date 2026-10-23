@@ -520,14 +520,21 @@ class AidLevel(models.TextChoices):
     UNKNOWN = "unknown", "不知道"
 
 
+class Certificate(models.TextChoices):
+    # Spec #291 Q2: a 聽覺機能 身心障礙證明, or why there is none.
+    YES = "yes", "有"
+    APPLYING = "applying", "還沒有，正在申請鑑定"
+    NO_SUBSIDY = "no_subsidy", "沒有，不申請身障補助"
+
+
 class AidAndSubsidy(models.Model):
     # 助聽器與補助資料 (GLOSSARY, spec #284): what the user says about their certificate and
     # their current hearing aids. Every field may be left unanswered; only the current pair.
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="aid_and_subsidy"
     )
-    # A 聽覺機能 身心障礙證明: None unanswered, True has one, False not yet.
-    has_certificate = models.BooleanField(null=True, blank=True)
+    # 身障鑑定與鑑定醫院's answer (#293); "" is unanswered.
+    certificate = models.CharField(max_length=10, choices=Certificate, blank=True, default="")
     # The current pair (#287); "" is unanswered. The level is kept only with 身障補助.
     fitted_on = models.DateField(null=True, blank=True)
     ear = models.CharField(max_length=5, choices=AidEar, blank=True, default="")
@@ -553,10 +560,8 @@ class AidAndSubsidy(models.Model):
 
     @property
     def unanswered(self):
-        return (
-            self.has_certificate is None
-            and self.fitted_on is None
-            and not (self.ear or self.subsidy or self.level)
+        return self.fitted_on is None and not (
+            self.certificate or self.ear or self.subsidy or self.level
         )
 
     @property

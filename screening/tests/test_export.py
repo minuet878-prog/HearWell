@@ -309,7 +309,8 @@ class DownloadMyDataTests(TestCase):
 
 
 class AidAndSubsidyExportTests(TestCase):
-    """#286 (spec #284 acceptance 21): the 助聽器與補助資料 in the export, the certificate too."""
+    """#286, #293 (spec #291 acceptance 23): the 助聽器與補助資料 in the export, the
+    certificate answer too, worded as the question offers it."""
 
     def setUp(self):
         self.user = consented_user(username="export_aid")
@@ -321,17 +322,23 @@ class AidAndSubsidyExportTests(TestCase):
 
     def test_the_certificate_as_answered(self):
         other = consented_user(username="export_aid_other")
-        AidAndSubsidy.objects.create(user=other, has_certificate=False)
-        aid = AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
-        self.assertIs(self.exported()["has_certificate"], True)
-        aid.has_certificate = False
-        aid.save()
-        self.assertIs(self.exported()["has_certificate"], False)
+        AidAndSubsidy.objects.create(user=other, certificate="no_subsidy")
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for answer, wording in (
+            ("yes", "有"),
+            ("applying", "還沒有，正在申請鑑定"),
+            ("no_subsidy", "沒有，不申請身障補助"),
+        ):
+            with self.subTest(answer=answer):
+                aid.certificate = answer
+                aid.save()
+                self.assertEqual(self.exported()["certificate"], wording)
+        self.assertNotIn("has_certificate", self.exported())
 
     def test_unanswered_is_null(self):
-        self.assertIsNone(self.exported()["has_certificate"])
-        AidAndSubsidy.objects.create(user=self.user, has_certificate=None)
-        self.assertIsNone(self.exported()["has_certificate"])
+        self.assertIsNone(self.exported()["certificate"])
+        AidAndSubsidy.objects.create(user=self.user, certificate="")
+        self.assertIsNone(self.exported()["certificate"])
 
 
 class HearingAidExportTests(TestCase):
@@ -344,7 +351,7 @@ class HearingAidExportTests(TestCase):
     def test_all_four_filled_in(self):
         AidAndSubsidy.objects.create(
             user=self.user,
-            has_certificate=True,
+            certificate="yes",
             fitted_on=date(2026, 5, 1),
             ear="both",
             subsidy="disability",
@@ -353,7 +360,7 @@ class HearingAidExportTests(TestCase):
         self.assertEqual(
             self.exported(),
             {
-                "has_certificate": True,
+                "certificate": "有",
                 "fitted_on": "2026-05-01",
                 "ear": "雙耳",
                 "subsidy": "用身障補助（有九號表）",
@@ -364,7 +371,7 @@ class HearingAidExportTests(TestCase):
 
     def test_unanswered_are_null(self):
         unanswered = {
-            "has_certificate": None,
+            "certificate": None,
             "fitted_on": None,
             "ear": None,
             "subsidy": None,

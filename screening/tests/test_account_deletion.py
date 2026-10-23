@@ -58,7 +58,7 @@ class DeleteAccountTests(TestCase):
             audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=35
         )
         # #284 acceptance 22: 助聽器與補助資料 is PROTECT too, and so is 看過 (#291).
-        AidAndSubsidy.objects.create(user=user, has_certificate=True)
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
         GuideChapterView.objects.create(user=user, chapter="before-you-go")
 
     def _counts(self, user_id):
@@ -297,8 +297,8 @@ class AidAndSubsidyDeletionTests(TestCase):
 
     def test_all_four_filled_in_go_with_the_account(self):
         fields = {"fitted_on": date(2026, 5, 1), "ear": "both", "subsidy": "disability"}
-        AidAndSubsidy.objects.create(user=self.user, has_certificate=True, level="mid", **fields)
-        AidAndSubsidy.objects.create(user=self.other, has_certificate=False)
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes", level="mid", **fields)
+        AidAndSubsidy.objects.create(user=self.other, certificate="applying")
         self._delete()
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
         self.assertEqual(
