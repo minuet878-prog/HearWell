@@ -26,6 +26,11 @@
   --color-severe: #8f2a12;
   --color-severe-bg: #feece7;
   --color-severe-bg-deep: #f6c3b3;
+  /* The welcome-back gauge's arcs (ADR 0026): brighter than the level text colours, so the
+     three levels read as a dial; the level itself is written in text under it. */
+  --color-gauge-normal: #3f9c6f;
+  --color-gauge-mild: #e2a92b;
+  --color-gauge-severe: #c4532f;
   --color-surface: #f1f3f5;
   --color-brand-soft: #eef3fa;
   --color-brand-soft-deep: #d6e2f2;
@@ -1389,6 +1394,195 @@
 
     .btn-start::after {
       animation: start-ring 2s ease-out 1.2s both;
+    }
+  }
+
+  /* Welcome back, option D (ADR 0026): a blue greeting band with the smiling elder, and the result
+     box tucked under it. Neither is a link, so neither has a hover or press effect (ADR 0006). */
+  /* The title beside the elder; the date runs the band's full width under both, so it keeps to one
+     line on a phone and wraps on its own at large text sizes. */
+  .welcome-band {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 0 0.75rem;
+    padding: 1.5rem 1rem 3rem;
+    border-radius: var(--radius-large);
+    /* Two faint rings, like sound spreading out, drawn in the background so nothing pokes out. */
+    background-image:
+      radial-gradient(circle at calc(100% - 3rem) 2rem, transparent 7.8rem,
+        rgba(255, 255, 255, 0.18) 7.8rem 8rem, transparent 8rem),
+      radial-gradient(circle at 2rem calc(100% + 1rem), transparent 4.8rem,
+        rgba(255, 255, 255, 0.18) 4.8rem 5rem, transparent 5rem),
+      var(--gradient-brand);
+    color: #fff;
+  }
+
+  .welcome-title {
+    min-width: 0;
+    margin: 0;
+    color: #fff;
+    font-size: 1.85rem;
+    font-weight: 700;
+  }
+
+  .welcome-date {
+    grid-column: 1 / -1;
+    margin: 0.35rem 0 0;
+  }
+
+  /* On the blue: a white body and sound, dark lines. */
+  .home-hero .welcome-band .home-illustration {
+    width: 6rem;
+    margin: 0;
+    stroke: var(--color-primary-active);
+  }
+
+  .welcome-band .home-illustration .ill-solid {
+    fill: #fff;
+    opacity: 0.9;
+  }
+
+  .welcome-band .home-illustration .ill-hair {
+    stroke: var(--color-border-subtle);
+  }
+
+  .welcome-band .home-illustration .ill-accent {
+    stroke: #fff;
+  }
+
+  /* At large text sizes the elder would leave the title a character or less: it gives way. */
+  .welcome {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 14rem) {
+    .welcome-band {
+      grid-template-columns: 1fr;
+    }
+
+    .home-hero .welcome-band .home-illustration {
+      display: none;
+    }
+  }
+
+  .welcome .result-banner {
+    position: relative;
+    margin: -1.75rem 0.75rem 0;
+    border-radius: var(--radius-large);
+    text-align: center;
+  }
+
+  .welcome .result-banner > div:first-child {
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .welcome-result-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: var(--spacing-touch);
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--color-border);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .welcome-reminder {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    color: var(--color-heading);
+  }
+
+  .welcome-reminder svg {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    margin-top: 0.15rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .welcome-reminder-due {
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+    font-weight: 700;
+  }
+
+  /* Side by side when there is room, one under the other on a phone. */
+  .welcome-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+  }
+
+  .welcome-actions .btn {
+    flex: 1 1 14rem;
+  }
+
+  /* The gauge: the score bar's levels as arcs, the needle at the score (option D). */
+  .score-gauge {
+    display: block;
+    width: 13rem;
+    max-width: 100%;
+    margin: 0.25rem auto 0.35rem;
+  }
+
+  .score-gauge-arc {
+    fill: none;
+    stroke-width: 18;
+    stroke-dasharray: 1;
+  }
+
+  .score-gauge-arc-normal { stroke: var(--color-gauge-normal); }
+  .score-gauge-arc-mild_to_moderate { stroke: var(--color-gauge-mild); }
+  .score-gauge-arc-severe { stroke: var(--color-gauge-severe); }
+
+  .score-gauge-needle {
+    stroke: var(--color-heading);
+    stroke-width: 5;
+    stroke-linecap: round;
+    transform-box: view-box;
+    transform-origin: 110px 105px;
+    transform: rotate(var(--angle));
+  }
+
+  .score-gauge-hub {
+    fill: var(--color-heading);
+  }
+
+  .score-gauge text {
+    fill: var(--color-body);
+    font-size: 0.75rem;
+    text-anchor: middle;
+  }
+
+  /* Once on arrival, about 2.6 seconds (ADR 0006): the elder sways (as above) and the sound
+     lights up twice; the arcs draw left to right, then the needle swings from 0 to the score and
+     stops without bouncing, bad news included. Reduced motion shows the end at once. */
+  @media (prefers-reduced-motion: no-preference) {
+    .welcome-band .ill-accent {
+      animation: welcome-sound 2.4s ease-in-out;
+    }
+
+    .score-gauge-arc {
+      animation: gauge-draw 0.45s ease-out 0.1s both;
+    }
+
+    .score-gauge-arc:nth-of-type(2) { animation-delay: 0.45s; }
+    .score-gauge-arc:nth-of-type(3) { animation-delay: 0.8s; }
+
+    .score-gauge-needle {
+      animation: gauge-needle 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) 1.1s both;
     }
   }
 
@@ -4021,4 +4215,18 @@
 @keyframes start-ring {
   from { box-shadow: 0 0 0 0 rgba(29, 111, 153, 0.55); }
   to { box-shadow: 0 0 0 1rem rgba(29, 111, 153, 0); }
+}
+
+/* Welcome back (ADR 0026): the elder's sound lights up twice, the gauge draws and its needle swings. */
+@keyframes welcome-sound {
+  0%, 50% { opacity: 0.2; }
+  25%, 75% { opacity: 1; }
+}
+
+@keyframes gauge-draw {
+  from { stroke-dashoffset: 1; }
+}
+
+@keyframes gauge-needle {
+  from { transform: rotate(0deg); }
 }

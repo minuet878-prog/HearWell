@@ -182,8 +182,8 @@ class ReturningUserHomeTests(TestCase):
     # Acceptance 9: "today" and every record's time are fixed, never the real clock.
     TODAY = date(2026, 10, 22)
     NOON = timezone.make_aware(datetime(2026, 10, 22, 12))
-    PRIMARY = "btn btn-primary btn-lg w-full mt-2"
-    SECONDARY = "btn btn-outline-primary btn-lg w-full mt-2"
+    PRIMARY = "btn btn-primary btn-lg"
+    SECONDARY = "btn btn-outline-primary btn-lg"
 
     @classmethod
     def setUpTestData(cls):
@@ -250,8 +250,11 @@ class ReturningUserHomeTests(TestCase):
         # Acceptance 4: 2026/04/22 is exactly six months before "today".
         submission = self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
         main = self._main()
-        self.assertIn(
-            '<p class="mt-4">距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>', main
+        # Option D (ADR 0026): the due reminder is a pale blue box with a flag.
+        self.assertRegex(
+            main,
+            r'<p class="welcome-reminder welcome-reminder-due"><svg[^>]*>.*?</svg>'
+            r"<span>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</span></p>",
         )
         self.assertIn(
             f'<a class="{self.PRIMARY}" href="{self._retake_url(self.hhie_s)}">'
@@ -265,7 +268,11 @@ class ReturningUserHomeTests(TestCase):
         # Acceptance 5: one month in (2026/09/22), so next 2027/03/22.
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=30)
         main = self._main()
-        self.assertIn('<p class="mt-4">下次建議 2027/03/22 再做</p>', main)
+        self.assertRegex(
+            main,
+            r'<p class="welcome-reminder"><svg[^>]*>.*?</svg>'
+            r"<span>下次建議 2027/03/22 再做</span></p>",
+        )
         self.assertIn(
             f'<a class="{self.PRIMARY}" href="{reverse("my_hearing")}">看我的紀錄與趨勢</a>', main
         )
@@ -281,10 +288,33 @@ class ReturningUserHomeTests(TestCase):
         self._submit("ioi-ha", [3] * 7, days_ago=20, norm_group="ungrouped")
         self._submit("ssq12-tw", [6] * 12, days_ago=10)
         main = self._main()
-        self.assertIn('<p class="mt-2">2026/09/22 作答</p>', main)
+        self.assertIn('<p class="welcome-date">上次是 2026/09/22 做的</p>', main)
         self.assertIn('<h2 class="result-level mb-0">輕度到中度影響</h2>', main)
-        self.assertIn("<div>HHIE-S 總分 12 分</div>", main)
+        self.assertIn("<div>HHIE-S 總分 12 分（滿分 40）</div>", main)
         self.assertIn(f'href="{reverse("result", args=[latest.id])}"', main)
+
+    def test_life_impact_result_has_a_gauge_with_the_needle_at_its_score(self):
+        # Welcome back option D: 12 of 40 is 30% of the half circle, 54 degrees from 0.
+        self._hhie_s(days_ago=30)
+        main = self._main()
+        gauge = re.search(r'<svg class="score-gauge".*?</svg>', main, re.S).group(0)
+        self.assertIn('aria-hidden="true"', gauge)
+        self.assertIn("--angle: 54.00deg", gauge)
+        self.assertEqual(
+            re.findall(r"score-gauge-arc-(\w+)", gauge), ["normal", "mild_to_moderate", "severe"]
+        )
+        # The arcs run from 0 on the left to the top score on the right.
+        arcs = re.findall(r' d="([^"]+)"', gauge)
+        self.assertTrue(arcs[0].startswith("M30.00 105.00"))
+        self.assertTrue(arcs[-1].endswith("190.00 105.00"))
+        self.assertRegex(gauge, r">\s*40\s*</text>")
+
+    def test_records_without_levels_have_no_gauge(self):
+        # The owner's pick: the blue greeting stays, the grey box draws no gauge.
+        self._submit("ioi-ha", [3] * 7, days_ago=1, norm_group="ungrouped")
+        main = self._main()
+        self.assertIn("上次是 2026/10/21 做的", main)
+        self.assertNotIn("score-gauge", main)
 
     def test_only_ioi_ha_shows_its_norm_summary_without_a_reminder(self):
         # Acceptance 3. Mild to moderate norms: items 1 and 2 below, item 5 above.
