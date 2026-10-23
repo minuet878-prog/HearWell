@@ -102,6 +102,14 @@ def heading_levels(response):
     return [int(level) for level in re.findall(r"<h([1-6])[\s>]", main)]
 
 
+def assert_levels_without_skipping(testcase, levels):
+    """levels open with the one first-level heading and never skip a level going down."""
+    testcase.assertEqual(levels[0], 1)
+    testcase.assertEqual(levels.count(1), 1)
+    for above, below in pairwise(levels):
+        testcase.assertLessEqual(below, above + 1, levels)
+
+
 class GuideContentsTests(TestCase):
     """#221: the contents page of the hearing-aid guide."""
 
@@ -168,11 +176,8 @@ class GuideChapterTests(TestCase):
                 with self.subTest(chapter=chapter.slug, signed_in=signed_in):
                     url = reverse("guide_chapter", args=[chapter.slug])
                     levels = heading_levels(self.client.get(url))
-                    self.assertEqual(levels[0], 1)
-                    self.assertEqual(levels.count(1), 1)
+                    assert_levels_without_skipping(self, levels)
                     self.assertIn(2, levels)
-                    for above, below in pairwise(levels):
-                        self.assertLessEqual(below, above + 1, levels)
 
     def test_unknown_chapter_is_not_found(self):
         url = reverse("guide_chapter", args=["no-such-chapter"])

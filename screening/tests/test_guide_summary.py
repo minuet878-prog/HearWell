@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from itertools import pairwise
 
 from django.db import connection
 from django.test import TestCase
@@ -324,11 +323,8 @@ class GuideSummaryStatesTests(TestCase):
                 self.make(PTA_55, PTA_55)
             with self.subTest(records=records):
                 levels = test_guide.heading_levels(self.client.get(reverse("guide")))
-                self.assertEqual(levels[0], 1)
-                self.assertEqual(levels.count(1), 1)
+                test_guide.assert_levels_without_skipping(self, levels)
                 self.assertGreaterEqual(levels.count(2), 1 + (records != "none"))
-                for above, below in pairwise(levels):
-                    self.assertLessEqual(below, above + 1, levels)
 
     def test_an_ear_over_25_suggests_an_assessment(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))

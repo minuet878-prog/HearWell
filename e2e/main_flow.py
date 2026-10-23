@@ -2510,7 +2510,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # reader goes on from there; smoothly, or straight there with reduced motion. #321 (#318
     # acceptance 5): in the 段落框's title bar, the focus ring still shows: a solid line at least
     # 2px wide, 3:1 or more on the bar, drawn inside the bar so nothing around it hides it.
-    FOCUS_RING = """(el) => {
+    OUTLINE_AND_BAR = """(el) => {
         const style = getComputedStyle(el);
         return [style.outlineStyle, parseFloat(style.outlineWidth), style.outlineColor,
             parseFloat(style.outlineOffset), style.backgroundColor];
@@ -2528,7 +2528,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.main().get_by_role("link", name="看我的路線").click()
                     expect(heading).to_be_focused()
                     expect(heading).to_be_in_viewport()
-                    style, width, colour, offset, bar = heading.evaluate(self.FOCUS_RING)
+                    style, width, colour, offset, bar = heading.evaluate(self.OUTLINE_AND_BAR)
                     self.assertEqual(bar, WhiteCardRuleTest.SECTION_TITLE)
                     self.assertEqual(style, "solid")
                     self.assertGreaterEqual(width, 2)
@@ -4865,6 +4865,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     SECTION = "rgb(245, 239, 229)"
     SECTION_TITLE = "rgb(224, 210, 184)"
     WARM_BORDER = "rgb(239, 230, 216)"  # the pale line a 段落框 would hide
+    WARM_BORDER_ON_SECTION = StyleInBrowserTest.lowest_contrast(WARM_BORDER, SECTION)
     PRINT_GREY = "rgb(173, 181, 189)"
     # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
     # reason) is this deeper light blue, so it still stands out.
@@ -5100,6 +5101,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "backgroundColor"), "rgba(0, 0, 0, 0)")
         self.assertEqual(self.style(block, "boxShadow"), "none")
 
+    def assert_every_side(self, element, **expected):
+        """All four of an element's borders have each value given, as border{Side}{name}."""
+        for side in ("Top", "Right", "Bottom", "Left"):
+            for name, value in expected.items():
+                self.assertEqual(self.style(element, f"border{side}{name}"), value, side)
+
     def assert_fits_uncut(self, where, width=320):
         """Spec #297 acceptance 12: at 200% on a phone, no sideways scrolling and nothing cut."""
         self.assert_fits_a_phone_at_double_text_size(where, width)
@@ -5223,10 +5230,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         title = part.get_by_role("heading").first
         with self.subTest(part=title.inner_text()):
             self.assertEqual(self.style(part, "backgroundColor"), "rgba(0, 0, 0, 0)")
-            for side in ("Top", "Right", "Bottom", "Left"):
-                self.assertEqual(self.style(part, f"border{side}Width"), "1px")
-                self.assertEqual(self.style(part, f"border{side}Style"), "solid")
-                self.assertEqual(self.style(part, f"border{side}Color"), self.PRINT_GREY)
+            self.assert_every_side(part, Width="1px", Style="solid", Color=self.PRINT_GREY)
             self.assertEqual(self.style(title, "backgroundColor"), "rgba(0, 0, 0, 0)")
             self.assertEqual(self.style(title, "fontWeight"), "700")
             self.assertEqual(self.style(title, "borderBottomWidth"), "1px")
@@ -5459,15 +5463,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             with self.subTest(stop=stop.get_attribute("data-stop")):
                 box = stop.locator(".route-box")
                 self.assert_flat(box)
-                for side in ("Top", "Right", "Bottom", "Left"):
-                    self.assertEqual(self.style(box, f"border{side}Width"), "0px")
+                self.assert_every_side(box, Width="0px")
         here = route.locator(".route-stop[aria-current=step]")
         if here.count():
             box = here.locator(".route-box")
             self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
-            for side in ("Top", "Right", "Bottom", "Left"):
-                self.assertEqual(self.style(box, f"border{side}Color"), self.PRIMARY)
-                self.assertEqual(self.style(box, f"border{side}Style"), "solid")
+            self.assert_every_side(box, Color=self.PRIMARY, Style="solid")
             self.assertEqual(self.style(box, "boxShadow"), "none")
             number = here.locator(".route-number")
             self.assertEqual(self.style(number, "backgroundColor"), self.PRIMARY)
@@ -5487,12 +5488,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             with self.subTest(stop=number.inner_text()):
                 self.assertEqual(self.style(number, "backgroundColor"), self.PALE_GREY)
                 self.assertEqual(self.style(number, "borderTopColor"), self.GREY_LINE)
-        old_line = StyleInBrowserTest.lowest_contrast(self.WARM_BORDER, self.SECTION)
         for stop in stops.all()[:-1]:
             with self.subTest(line_below=stop.get_attribute("data-stop")):
                 line = stop.evaluate(self.JOINING_LINE)
                 self.assertEqual(line, self.TINT_LINE)
-                self.assertGreater(StyleInBrowserTest.lowest_contrast(line, self.SECTION), old_line)
+                self.assertGreater(
+                    StyleInBrowserTest.lowest_contrast(line, self.SECTION),
+                    self.WARM_BORDER_ON_SECTION,
+                )
         for mark in route.locator(".route-mark").all():
             with self.subTest(mark=mark.inner_text()):
                 background = self.style(mark, "backgroundColor")
@@ -5582,7 +5585,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     )
 
     def test_guide_chapter_boxes_stand_apart_with_subheads_and_visible_lines(self):
-        old_line = StyleInBrowserTest.lowest_contrast(self.WARM_BORDER, self.SECTION)
         with self.saving_artifacts():
             for slug, subheads in self.GUIDE_SUBHEADS:
                 with self.subTest(chapter=slug):
@@ -5608,7 +5610,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                             colour = self.style(line, f"border{side}Color")
                             self.assertEqual(colour, self.TINT_LINE)
                             self.assertGreater(
-                                StyleInBrowserTest.lowest_contrast(colour, self.SECTION), old_line
+                                StyleInBrowserTest.lowest_contrast(colour, self.SECTION),
+                                self.WARM_BORDER_ON_SECTION,
                             )
 
     # #319 (#318 acceptance 12): on paper no beige: each 段落框 is a thin grey frame, its title
@@ -5670,8 +5673,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             record = audiogram.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
             self.assertEqual(self.style(record, "backgroundImage"), self.GRADIENT)
 
-    # #319 (#318 acceptance 13): on a phone at 200% text a long part title wraps inside its
-    # title bar, which stays inside its box.
+    # #319, #320, #321 (#318 acceptance 13): on a phone at 200% text a long part title wraps
+    # inside its title bar, which stays inside its box, on my guide (with records, the route's
+    # title included) and in the six chapters.
     LINES = """(el) => {
         const style = getComputedStyle(el);
         const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
@@ -5679,13 +5683,17 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     }"""
 
     def test_guide_part_titles_wrap_in_their_bars_at_double_text_size(self):
-        wrapped = 0
+        pages = [("guide", lambda test: test.guide_with_records(), ".section-box")] + [
+            (slug, f"/guide/{slug}", "article > section, #stop-question")
+            for slug in HearingAidGuideTest.CHAPTERS
+        ]
         with self.saving_artifacts():
-            for slug in HearingAidGuideTest.CHAPTERS:
-                with self.subTest(chapter=slug):
-                    self.visit(True, f"/guide/{slug}", width=320)
-                    self.assert_fits_uncut(slug)
-                    for part in self.main().locator("article > section, #stop-question").all():
+            for name, path, parts in pages:
+                wrapped = 0
+                with self.subTest(page=name):
+                    self.visit(True, path, width=320)
+                    self.assert_fits_uncut(name)
+                    for part in self.main().locator(parts).all():
                         title = part.get_by_role("heading").first
                         with self.subTest(part=title.inner_text()):
                             box, bar = part.bounding_box(), title.bounding_box()
@@ -5693,7 +5701,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                 bar["x"] + bar["width"], box["x"] + box["width"] + 0.5
                             )
                             wrapped += title.evaluate(self.LINES) > 1.5
-            self.assertGreater(wrapped, 0)
+                    self.assertGreater(wrapped, 0)
 
     # #313: the things to bring and the checks to expect are a list, one per line, each with its
     # icon and nothing around it: no white, no frame, no rounded pill.

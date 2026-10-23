@@ -176,9 +176,14 @@ class AfterFittingChapterTests(TestCase):
     # #319: the four points are a part titled 剛開始戴助聽器, read out as a region by that name.
     def test_the_four_points_are_a_titled_part(self):
         part = test_guide.part(self.client.get(self.url), "剛開始戴助聽器")
-        for point in AFTER_FITTING[1:9:2]:
-            with self.subTest(point=point):
-                self.assertIn(f"<dt>{point}</dt>", part)
+        for label in (
+            "剛開始不習慣是正常的",
+            "每天戴，慢慢拉長",
+            "不舒服就回去調整",
+            "不會跟以前完全一樣",
+        ):
+            with self.subTest(label=label):
+                self.assertIn(f"<dt>{label}</dt>", part)
 
     def test_links_only_the_follow_up_questionnaires_in_the_catalogue_wording(self):
         # One read of the questionnaire table for their addresses; no user data.
