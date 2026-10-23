@@ -1738,6 +1738,87 @@
     }
   }
 
+  /* My guide's meters (#260): a bar per number, on a 0-120 dB HL scale with the normal limit's
+     line, or 0-100% with the threshold's. The numbers sit beside them as text; the bars are
+     hidden from screen readers. Ears in the audiogram's colours, the ratio in neutral blue. */
+  .meter {
+    --meter-max: 120;
+    --meter-line: 25;
+    margin: 0 0 1rem;
+  }
+
+  .meter-ratio {
+    --meter-max: 100;
+    --meter-line: 45;
+  }
+
+  .meter-label {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 0.75rem;
+    margin: 0.5rem 0 0.25rem;
+    color: var(--color-heading);
+  }
+
+  .meter-track {
+    position: relative;
+    height: 1.1rem;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background-color: var(--color-surface);
+  }
+
+  /* Below 0 draws nothing and over the top draws it full. */
+  .meter-bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(clamp(0, var(--meter-value), var(--meter-max)) / var(--meter-max) * 100%);
+  }
+
+  .meter-bar-right {
+    background-color: var(--color-ear-right);
+  }
+
+  .meter-bar-left {
+    background-color: var(--color-ear-left);
+  }
+
+  .meter-bar-ratio {
+    background-color: var(--color-primary);
+  }
+
+  /* With a no-response point the ratio is a lower bound: hatched on to 100%, as it may be higher. */
+  .meter-beyond {
+    position: absolute;
+    inset: 0 0 0 calc(var(--meter-value) / var(--meter-max) * 100%);
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--color-primary) 0 0.15rem,
+      transparent 0.15rem 0.5rem
+    );
+    opacity: 0.5;
+  }
+
+  .meter-line {
+    position: absolute;
+    inset: 0 auto 0 calc(var(--meter-line) / var(--meter-max) * 100%);
+    width: 0.2rem;
+    background-color: var(--color-heading);
+    box-shadow: 0 0 0 0.1rem #fff;
+  }
+
+  /* The line's label starts where the line is and wraps in the room to its right. */
+  .meter-scale {
+    margin: 0 0 0 calc(var(--meter-line) / var(--meter-max) * 100%);
+    padding: 0.1rem 0 0 0.35rem;
+    border-left: 0.2rem solid var(--color-heading);
+    color: var(--color-heading);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+  }
+
   /* Guide chapters: each part in a card; sources and the check date in small print. */
   .guide-chapter .card > :last-child {
     margin-bottom: 0;

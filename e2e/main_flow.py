@@ -1900,9 +1900,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
-            expect(self.main().get_by_role("region", name="聽力圖")).to_contain_text(
-                "依您 2026/10/01 的聽力圖：右耳四頻平均 55 dB HL，左耳四頻平均 55 dB HL。"
-            )
+            # #260: the audiogram's date and numbers open the 選配 meter.
+            fitting = self.main().get_by_role("region", name="要不要找聽力師評估")
+            expect(fitting).to_contain_text("依您 2026/10/01 的聽力圖：")
+            expect(fitting).to_contain_text("右耳四頻平均 55 dB HL")
+            expect(fitting).to_contain_text("左耳四頻平均 55 dB HL")
             threshold = self.main().get_by_role("region", name="身障鑑定門檻")
             expect(threshold).to_contain_text(
                 "雙耳障礙比率約 45.0%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"
@@ -1984,6 +1986,21 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(here).to_contain_text("身障鑑定與鑑定醫院")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
+
+    # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
+    # reader goes on from there; smoothly, or straight there with reduced motion.
+    def test_jump_to_the_route_lands_on_its_heading_with_focus(self):
+        self.open(390, 844)
+        with self.saving_artifacts():
+            for motion in ("no-preference", "reduce"):
+                with self.subTest(motion=motion):
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
+                    expect(heading).not_to_be_in_viewport()
+                    self.main().get_by_role("link", name="看我的路線").click()
+                    expect(heading).to_be_focused()
+                    expect(heading).to_be_in_viewport()
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):

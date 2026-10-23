@@ -21,7 +21,6 @@ from screening.tests import test_audiogram, test_guide
 from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (M9-M11, M17-M26, M28-M33).
-AUDIOGRAM_TITLE = "聽力圖"
 THRESHOLD_TITLE = "身障鑑定門檻"
 THRESHOLD_NOTE = "雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。"
 REACHED = (
@@ -102,9 +101,9 @@ class GuideSummaryTests(TestCase):
         self.make(PTA_60, PTA_60, tested_on=date(2026, 3, 1))
         self.make(PTA_53_75, PTA_60, tested_on=date(2026, 10, 1))
         text = self.text()
-        self.assertIn(AUDIOGRAM_TITLE, text)
+        # #260: the date and each ear's number open the 選配 meter.
         self.assertIn(
-            "依您 2026/10/01 的聽力圖：右耳四頻平均 53.75 dB HL，左耳四頻平均 60 dB HL。", text
+            "依您 2026/10/01 的聽力圖： 右耳四頻平均 53.75 dB HL 左耳四頻平均 60 dB HL", text
         )
         self.assertNotIn("2026/03/01", text)
 
@@ -156,7 +155,7 @@ class GuideSummaryTests(TestCase):
         audiogram = self.make(PTA_55, PTA_55)
         audiogram.points.filter(ear="left", frequency=4000).delete()
         text = self.text()
-        self.assertIn("右耳四頻平均 55 dB HL，左耳：資料不足，無法判讀", text)
+        self.assertIn("右耳四頻平均 55 dB HL 左耳四頻平均 資料不足，無法判讀", text)
         self.assertIn(INSUFFICIENT, text)
         self.assertNotIn(HOW, text)
 
@@ -187,7 +186,7 @@ class GuideSummaryTests(TestCase):
         audiogram.points.filter(frequency=4000).delete()
         text = self.text()
         self.assertIn("依您 2026/10/01 的聽力圖：兩耳都資料不足，無法判讀。", text)
-        self.assertNotIn("右耳：資料不足", text)
+        self.assertNotIn("右耳四頻平均", text)
 
     def test_an_ear_under_25_is_noted_as_0_percent(self):
         self.make((10, 10, 10, 10), (100, 100, 100, 100))
@@ -426,7 +425,7 @@ class GuideSummaryStatesTests(TestCase):
         text = test_guide.text_of(response)
         self.assertIn("您 2026/10/03 做的", text)
         self.assertIn(
-            "依您 2026/10/01 的聽力圖：右耳四頻平均 30 dB HL，左耳四頻平均 20 dB HL。", text
+            "依您 2026/10/01 的聽力圖： 右耳四頻平均 30 dB HL 左耳四頻平均 20 dB HL", text
         )
         self.assertIn(RECOMMENDS, text)
         self.assertNotIn(WEARING, text)

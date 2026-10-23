@@ -29,17 +29,24 @@
 {% endif %}
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
-<section class="card card-body mt-6" aria-labelledby="audiogram-title">
-    <h2 id="audiogram-title" class="h4">聽力圖</h2>
-    {% if threshold.right.pta is None and threshold.left.pta is None %}
-    <p class="mb-0">依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
-    {% else %}
-    <p class="mb-0">依您 {{ date }} 的聽力圖：{% for label, ear in ears %}{% if ear.pta is None %}{{ label }}：資料不足，無法判讀{% else %}{{ label }}四頻平均 {{ ear.pta|stringformat:"g" }} dB HL{% endif %}{% if not forloop.last %}，{% endif %}{% endfor %}。</p>
-    {% endif %}
-</section>
 {# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
+{# The bars only draw the numbers written beside them (#260), so screen readers skip them. #}
 <section class="card card-body mt-6" aria-labelledby="fitting-title">
     <h2 id="fitting-title" class="h4">要不要找聽力師評估</h2>
+    {% if threshold.right.pta is None and threshold.left.pta is None %}
+    <p>依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
+    {% else %}
+    <p>依您 {{ date }} 的聽力圖：</p>
+    <div class="meter">
+        {% for label, side, ear in ears %}
+        <p class="meter-label"><span>{{ label }}四頻平均</span> <span>{% if ear.pta is None %}資料不足，無法判讀{% else %}{{ ear.pta|stringformat:"g" }} dB HL{% endif %}</span></p>
+        {% if ear.pta is not None %}
+        <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-{{ side }}" style="--meter-value: {{ ear.pta|stringformat:"g" }}"></div><span class="meter-line"></span></div>
+        {% endif %}
+        {% endfor %}
+        <p class="meter-scale" aria-hidden="true">正常上限 25</p>
+    </div>
+    {% endif %}
     {% if wearing %}
     <p class="mb-0">您已在使用助聽器，換新機與再次申請補助的規定見九號表章節。<a href="{% url 'guide_chapter' 'form-9' %}#reapply">看再次申請的規定</a></p>
     {% elif fitting %}
@@ -54,6 +61,15 @@
 <section class="card card-body mt-6" aria-labelledby="threshold-title">
     <h2 id="threshold-title" class="h4">身障鑑定門檻</h2>
     <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
+    {% if threshold.ratio is not None %}
+    {# A no-response point makes the ratio a lower bound, hatched from it to 100%. #}
+    {# Neutral blue, never a level colour (ADR 0007, 0017). #}
+    <div class="meter meter-ratio">
+        <p class="meter-label"><span>雙耳障礙比率（估算）</span> <span>{% if threshold.no_response %}至少約{% else %}約{% endif %} {{ threshold.ratio }}%</span></p>
+        <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-ratio" style="--meter-value: {{ threshold.ratio }}"></div>{% if threshold.no_response %}<div class="meter-beyond" style="--meter-value: {{ threshold.ratio }}"></div>{% endif %}<span class="meter-line"></span></div>
+        <p class="meter-scale" aria-hidden="true">門檻 45%</p>
+    </div>
+    {% endif %}
     {% if threshold.status == "insufficient" %}
     <p class="mb-0">兩耳都要有四頻平均，才能估算鑑定門檻。</p>
     {% elif threshold.status == "uncertain" %}
@@ -83,10 +99,12 @@
     </details>
     {% endif %}
 </section>
+{# Down to the route on this page; the heading takes the focus, so reading goes on from there. #}
+<p class="mt-6 mb-0"><a class="btn btn-primary btn-lg w-full" href="#contents-title">看我的路線<span aria-hidden="true"> ↓</span></a></p>
 {% endwith %}
 {% endif %}
 <section aria-labelledby="contents-title">
-    <h2 id="contents-title" class="h4 mt-6">選配與補助，一步一步看</h2>
+    <h2 id="contents-title" class="h4 mt-6" tabindex="-1">選配與補助，一步一步看</h2>
     {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
     <ol class="route" role="list">
         {% for stop in route %}
