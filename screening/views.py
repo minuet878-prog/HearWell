@@ -43,7 +43,7 @@ from screening.forms import (
     answer_choices,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
-from screening.main_flow import NEW_USER_STATE, get_user_state
+from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
@@ -113,6 +113,8 @@ def index(request):
         if last and last.submission.questionnaire.definition.result == NORM
         else None
     )
+    # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
+    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user)
     response = render(
         request,
         "screening/index.html",
@@ -126,6 +128,8 @@ def index(request):
             ),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
+            "next_step": next_step,
+            "more_groups": more_groups,
         },
     )
     if request.user.is_authenticated:
@@ -235,9 +239,9 @@ def _percent(ratio):
 
 
 def _guide_audiogram(state):
-    # The latest audiogram's 聽力圖, 選配 and 身障鑑定門檻 boxes (#226, #227, ADR 0017).
+    # The latest audiogram's 選配 and 身障鑑定門檻 meters (#226, #227, #260, ADR 0017).
     estimate = state.threshold
-    ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
+    ears = [(ear.label, ear.value, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
     context = {
         "audiogram": state.audiogram,
         "ears": ears,
@@ -246,7 +250,7 @@ def _guide_audiogram(state):
     }
     if estimate["ratio"] is not None:
         context["worked"] = {
-            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, e in ears],
+            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, _, e in ears],
             "better": _percent(estimate["better"]),
             "worse": _percent(estimate["worse"]),
         }

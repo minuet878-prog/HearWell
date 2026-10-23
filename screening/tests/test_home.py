@@ -368,18 +368,24 @@ class ReturningUserHomeTests(TestCase):
 
     def test_more_you_can_do_links_five_cards_to_their_pages(self):
         # Acceptance 1; #193 moved sharing to its own page; #228 added the hearing-aid guide.
+        # #261: without an audiogram the first is the 建議您下一步, the other four cards follow.
         self._hhie_s(days_ago=30)
         section = self._more_section(self._main())
         self.assertIn('<h2 id="more-title" class="h4">您還可以</h2>', section)
+        self.assertRegex(
+            section,
+            r'(?s)<h3 class="next-step-title">記錄醫院的聽力圖</h3>.*?'
+            r'<a class="btn btn-primary btn-lg w-full" href="/audiograms/new">去記錄</a>',
+        )
         cards = re.findall(
-            r'<a class="link-card" href="([^"]*)">\s*<span class="link-card-body">\s*'
+            r'<a class="link-card action-card" href="([^"]*)">.*?'
             r'<span class="link-card-title">([^<]*)</span>',
             section,
+            re.DOTALL,
         )
         self.assertEqual(
             cards,
             [
-                ("/audiograms/new", "記錄醫院的聽力圖"),
                 ("/report", "印聽力報告給醫師看"),
                 ("/share", "分享報告給家人"),
                 ("/guide", "了解助聽器選配與補助"),
@@ -387,14 +393,15 @@ class ReturningUserHomeTests(TestCase):
             ],
         )
 
-    def test_more_you_can_do_shows_all_five_cards_without_javascript(self):
+    def test_more_you_can_do_shows_all_cards_without_javascript(self):
         # Acceptance 3: only the script hides "加到手機主畫面", so the page itself hides nothing.
+        # #261: the mark is on its whole group (test_home_next_step).
         self._hhie_s(days_ago=30)
         section = self._more_section(self._main())
-        self.assertEqual(section.count('class="link-card"'), 5)
+        self.assertEqual(section.count('class="link-card action-card"'), 4)
         self.assertNotRegex(section, r"\shidden[\s=>]")  # the HTML attribute, not aria-hidden
         items = re.findall(r"<li([^>]*)>", section)
-        self.assertEqual(items, ["", "", "", "", " data-hide-in-app"])
+        self.assertEqual(items, ["", "", "", ""])
 
     def test_new_user_home_has_no_more_you_can_do(self):
         # Acceptance 4: no records (and an anonymous visitor) see the new-user home only.

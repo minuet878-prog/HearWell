@@ -125,41 +125,35 @@
 {% endif %}
 {% endif %}
 </section>
-{# Ticket #160: pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript all five show. #}
-<section class="mt-6" aria-labelledby="more-title">
+{# #261 (spec #257, option Z): the 建議下一步 on top, then the other cards grouped by use. The suggestion is a box, not a link: only its button is clickable (ADR 0006). #}
+<section class="more-section mt-6" aria-labelledby="more-title">
     <h2 id="more-title" class="h4">您還可以</h2>
-    <ul class="list-unstyled">
-        <li><a class="link-card" href="{% url 'audiogram_new' %}">
-            <span class="link-card-body">
-                <span class="link-card-title">記錄醫院的聽力圖</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-        <li><a class="link-card" href="{% url 'health_report' %}">
-            <span class="link-card-body">
-                <span class="link-card-title">印聽力報告給醫師看</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-        <li><a class="link-card" href="{% url 'share_report' %}">
-            <span class="link-card-body">
-                <span class="link-card-title">分享報告給家人</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-        <li><a class="link-card" href="{% url 'guide' %}">
-            <span class="link-card-body">
-                <span class="link-card-title">了解助聽器選配與補助</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-        <li data-hide-in-app><a class="link-card" href="{% url 'add_to_home' %}">
-            <span class="link-card-body">
-                <span class="link-card-title">加到手機主畫面</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
+    <div class="next-step">
+        <p class="next-step-label">建議您下一步</p>
+        <div class="next-step-head">
+            {% include "screening/action_icon.html" with icon=next_step.card.icon %}
+            <h3 class="next-step-title">{{ next_step.card.title }}</h3>
+        </div>
+        <p class="next-step-because">因為：{{ next_step.because }}</p>
+        <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
+    </div>
+    {# Ticket #160: pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript every group shows. #}
+    {% for title, cards, hidden_in_app in more_groups %}
+    <div class="more-group"{% if hidden_in_app %} data-hide-in-app{% endif %}>
+        <h3 class="more-group-title">{{ title }}</h3>
+        <ul class="list-unstyled">
+            {% for card in cards %}
+            <li><a class="link-card action-card" href="{{ card.href }}">
+                {% include "screening/action_icon.html" with icon=card.icon %}
+                <span class="link-card-body">
+                    <span class="link-card-title">{{ card.title }}</span>
+                </span>
+                <span class="link-card-arrow" aria-hidden="true">›</span>
+            </a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
 </section>
 {% endif %}
 {% endblock %}

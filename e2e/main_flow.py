@@ -20,6 +20,7 @@ from django.test import Client
 from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
+from screening.audiogram import DB_MAX
 from screening.models import (
     Answer,
     Audiogram,
@@ -1890,19 +1891,23 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         self.addCleanup(self.context.close)
 
     # #231: home card -> my guide (an audiogram reaching the threshold) -> the assessment
-    # chapter with a county chosen -> the form 9 chapter.
+    # chapter with a county chosen -> the form 9 chapter. #261: reaching the threshold makes
+    # the guide the 建議您下一步, so its button is the way in.
     def test_route_from_home_card_to_form_9(self):
         self.open(390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             more = self.page.get_by_role("region", name="您還可以")
-            more.get_by_role("link", name="了解助聽器選配與補助").click()
+            expect(more.get_by_role("heading", level=3).first).to_have_text("了解助聽器選配與補助")
+            more.get_by_role("link", name="看我的選配指引").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
-            expect(self.main().get_by_role("region", name="聽力圖")).to_contain_text(
-                "依您 2026/10/01 的聽力圖：右耳四頻平均 55 dB HL，左耳四頻平均 55 dB HL。"
-            )
+            # #260: the audiogram's date and numbers open the 選配 meter.
+            fitting = self.main().get_by_role("region", name="要不要找聽力師評估")
+            expect(fitting).to_contain_text("依您 2026/10/01 的聽力圖：")
+            expect(fitting).to_contain_text("右耳四頻平均 55 dB HL")
+            expect(fitting).to_contain_text("左耳四頻平均 55 dB HL")
             threshold = self.main().get_by_role("region", name="身障鑑定門檻")
             expect(threshold).to_contain_text(
                 "雙耳障礙比率約 45.0%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"
@@ -1949,6 +1954,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
     # #258: the route's longest stops at 200% text: 您在這裡 with 資料不足 and its button, then
     # 估算未達門檻 with its link (the setUp audiogram reaches the threshold, so it is changed).
+    # #260: then a no-response point, so the ratio's meter says 至少約 and hatches on to 100%.
     def test_route_marks_fit_a_phone_at_double_text_size(self):
         self.open(320, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
@@ -1969,6 +1975,77 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.page.goto(f"{self.live_server_url}/guide")
                 expect(self.main().get_by_role("link", name="看沒有身障證明時")).to_have_count(2)
                 self.assert_fits_a_phone_at_double_text_size("/guide not reached")
+            with self.subTest(state="no response"):
+                # 40 and 80 dB HL, the left unheard at 4000 Hz: at least about 35.0%.
+                points.filter(ear="right").update(db=40)
+                points.filter(ear="left").update(db=80)
+                points.filter(ear="left", frequency=4000).update(db=DB_MAX["air"], no_response=True)
+                self.page.goto(f"{self.live_server_url}/guide")
+                threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+                expect(threshold).to_contain_text("雙耳障礙比率（估算） 至少約 35.0%")
+                expect(threshold.locator(".meter-beyond")).to_have_count(1)
+                self.assert_fits_a_phone_at_double_text_size("/guide no response")
+
+    # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
+    # wide at 200% text. The setUp audiogram reaches the threshold; missing a frequency, one
+    # ear over 25 still says to go before the threshold can tell; within 25, nothing can.
+    def test_home_next_step_fits_a_phone_at_double_text_size(self):
+        self.open(390, 640)
+        points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
+        with self.saving_artifacts():
+            for state, button in (
+                ("assessment", "看我的選配指引"),
+                ("before you go", "看我的選配指引"),
+                ("too little data", "修改這張聽力圖"),
+            ):
+                with self.subTest(state=state):
+                    if state == "before you go":
+                        points.filter(ear="left", frequency=4000).delete()
+                    if state == "too little data":
+                        points.update(db=20)
+                    self.page.goto(f"{self.live_server_url}/")
+                    more = self.page.get_by_role("region", name="您還可以")
+                    expect(more.get_by_role("link", name=button)).to_be_visible()
+                    self.page.wait_for_load_state("load")
+                    self.page.locator("html").evaluate(
+                        "html => html.style.setProperty('font-size', '225%', 'important')"
+                    )
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 390, state)
+
+    # #261 self-review: the action cards (#256) shared by the home page's 您還可以 and the result
+    # pages, 320px wide at 200% text, keep room for four characters a line in their titles.
+    def test_action_card_titles_keep_four_characters_a_line_at_double_text_size(self):
+        self.open(320, 640)
+        submission = Submission.objects.get(user__username="guide_e2e")
+        with self.saving_artifacts():
+            for path in ("/", f"/submission/{submission.pk}"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    titles = self.main().locator(".action-card .link-card-title")
+                    expect(titles.first).to_be_visible()
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    narrow = titles.evaluate_all(
+                        "titles => titles.filter(t => t.getBoundingClientRect().width"
+                        " < 4 * parseFloat(getComputedStyle(t).fontSize)).map(t => t.textContent)"
+                    )
+                    self.assertEqual(narrow, [], path)
+
+    # #261 self-review: the 建議您下一步 box at the same size. This user reaches the threshold, so
+    # the reason ends in 「（45%）。」, which may not break off and once ran past its white box.
+    def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            reason = self.main().locator(".next-step-because")
+            expect(reason).to_contain_text("（45%）")
+            self.assert_fits_a_phone_at_double_text_size("/ next step")
+            room = reason.evaluate(
+                "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
+                " overflow: p.scrollWidth - p.clientWidth})"
+            )
+            self.assertGreaterEqual(room["chars"], 4)
+            self.assertLessEqual(room["overflow"], 0)
 
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
     # threshold, so the stop is the assessment.
@@ -1984,6 +2061,21 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(here).to_contain_text("身障鑑定與鑑定醫院")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
+
+    # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
+    # reader goes on from there; smoothly, or straight there with reduced motion.
+    def test_jump_to_the_route_lands_on_its_heading_with_focus(self):
+        self.open(390, 844)
+        with self.saving_artifacts():
+            for motion in ("no-preference", "reduce"):
+                with self.subTest(motion=motion):
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
+                    expect(heading).not_to_be_in_viewport()
+                    self.main().get_by_role("link", name="看我的路線").click()
+                    expect(heading).to_be_focused()
+                    expect(heading).to_be_in_viewport()
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):
@@ -2171,14 +2263,15 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Ticket #160 acceptance 2 and 3: the home page's "您還可以" in and out of the app."""
 
     fixtures = ("questions_fixture.json",)
-    # #228 put the hearing-aid guide card before the one the app hides.
+    # #228 put the hearing-aid guide card before the one the app hides. #261: this user has no
+    # audiogram, so recording one is the 建議您下一步, not a card, and the cards are grouped.
     CARDS = (
-        "記錄醫院的聽力圖",
         "印聽力報告給醫師看",
         "分享報告給家人",
         "了解助聽器選配與補助",
         "加到手機主畫面",
     )
+    GROUPS = ("給別人看", "了解", "方便使用")
 
     @classmethod
     def setUpClass(cls):
@@ -2223,12 +2316,17 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page.wait_for_load_state("networkidle")
         return self.page.get_by_role("region", name="您還可以").get_by_role("link")
 
+    def group_titles(self):
+        return self.page.get_by_role("region", name="您還可以").locator(".more-group-title")
+
     def test_home_screen_app_hides_add_to_home(self):
         cards = self.open_home(standalone=True)
         with self.saving_artifacts():
-            # Role locators skip hidden elements, so the last card is gone.
+            # Role locators skip hidden elements, so the last card is gone. #261: its whole
+            # group goes, the 方便使用 title too.
             expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:-1]))
             expect(self.page.locator("main [data-hide-in-app]")).to_be_hidden()
+            expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS[:-1]))
 
     # #195: the account page's "加到手機主畫面" row hides in the app the same way.
     def test_home_screen_app_hides_add_to_home_on_account_settings(self):
@@ -2247,6 +2345,7 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 cards = self.open_home(standalone=standalone, javascript=javascript)
                 with self.saving_artifacts():
                     expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS))
+                    expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS))
 
 
 class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):

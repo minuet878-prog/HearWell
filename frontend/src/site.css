@@ -1036,6 +1036,25 @@
     }
   }
 
+  /* The card is its own container: at normal sizes nothing wraps, as the body may shrink. */
+  .action-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  /* At large text sizes the words drop under the icon instead of shrinking to a character a
+     line; the arrow stays on the icon's row. */
+  @container (max-width: 11rem) {
+    .action-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .action-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
   /* Login and register forms */
   .narrow-form {
     max-width: var(--container-form);
@@ -1297,6 +1316,80 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* 建議您下一步 on the returning user's home (#261, option Z): a pale blue box with a blue
+     border. Only its button is clickable, so the box has no hover or press effect (ADR 0006). */
+  .next-step {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    border: 0.125rem solid var(--color-primary);
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .next-step-label {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+    padding: 0.125rem 0.75rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* With large text the title drops under the icon instead of squeezing into a narrow column. */
+  .next-step-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  /* The icon tile is white on the pale box, as on a hovered action card. */
+  .next-step .action-card-icon {
+    background-color: #fff;
+  }
+
+  .next-step-title {
+    flex: 1 1 10rem;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .next-step-because {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: #fff;
+    overflow-wrap: anywhere;
+  }
+
+  /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
+     few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
+  .more-section {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 14rem) {
+    .next-step {
+      padding: 0.75rem;
+    }
+
+    .next-step-because {
+      padding: 0.25rem 0.4rem;
+    }
+  }
+
+  /* The other cards' group titles: small, plain and dark, so the cards stay the focus. */
+  .more-group-title {
+    margin: 1.25rem 0 0.5rem;
+    color: var(--color-heading);
+    font-size: 1.125rem;
+    font-weight: 700;
   }
 
   /* The login link under the start button: a full touch target, still a plain link. */
@@ -1736,6 +1829,87 @@
     .route-stop:not(:last-child)::after {
       display: none;
     }
+  }
+
+  /* My guide's meters (#260): a bar per number, on a 0-120 dB HL scale with the normal limit's
+     line, or 0-100% with the threshold's. The numbers sit beside them as text; the bars are
+     hidden from screen readers. Ears in the audiogram's colours, the ratio in neutral blue. */
+  .meter {
+    --meter-max: 120;
+    --meter-line: 25;
+    margin: 0 0 1rem;
+  }
+
+  .meter-ratio {
+    --meter-max: 100;
+    --meter-line: 45;
+  }
+
+  .meter-label {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 0.75rem;
+    margin: 0.5rem 0 0.25rem;
+    color: var(--color-heading);
+  }
+
+  .meter-track {
+    position: relative;
+    height: 1.1rem;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background-color: var(--color-surface);
+  }
+
+  /* Below 0 draws nothing and over the top draws it full. */
+  .meter-bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(clamp(0, var(--meter-value), var(--meter-max)) / var(--meter-max) * 100%);
+  }
+
+  .meter-bar-right {
+    background-color: var(--color-ear-right);
+  }
+
+  .meter-bar-left {
+    background-color: var(--color-ear-left);
+  }
+
+  .meter-bar-ratio {
+    background-color: var(--color-primary);
+  }
+
+  /* With a no-response point the ratio is a lower bound: hatched on to 100%, as it may be higher. */
+  .meter-beyond {
+    position: absolute;
+    inset: 0 0 0 calc(var(--meter-value) / var(--meter-max) * 100%);
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--color-primary) 0 0.15rem,
+      transparent 0.15rem 0.5rem
+    );
+    opacity: 0.5;
+  }
+
+  .meter-line {
+    position: absolute;
+    inset: 0 auto 0 calc(var(--meter-line) / var(--meter-max) * 100%);
+    width: 0.2rem;
+    background-color: var(--color-heading);
+    box-shadow: 0 0 0 0.1rem #fff;
+  }
+
+  /* The line's label starts where the line is and wraps in the room to its right. */
+  .meter-scale {
+    margin: 0 0 0 calc(var(--meter-line) / var(--meter-max) * 100%);
+    padding: 0.1rem 0 0 0.35rem;
+    border-left: 0.2rem solid var(--color-heading);
+    color: var(--color-heading);
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   /* Guide chapters: each part in a card; sources and the check date in small print. */

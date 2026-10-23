@@ -39,10 +39,13 @@ class ReturningUserGuideEntryTests(TestCase):
         section = re.search(
             r'<section[^>]*aria-labelledby="more-title".*?</section>', self.content, re.DOTALL
         ).group(0)
+        # #261: an action card in the 了解 group (this user has no audiogram, so the
+        # suggestion is recording one and the guide stays a card).
         cards = re.findall(
-            r'<li([^>]*)><a class="link-card" href="([^"]*)">\s*<span class="link-card-body">\s*'
+            r'<li([^>]*)><a class="link-card action-card" href="([^"]*)">.*?'
             r'<span class="link-card-title">([^<]*)</span>',
             section,
+            re.DOTALL,
         )
         self.assertIn(("", "/guide", CARD), cards)
 
