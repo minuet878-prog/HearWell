@@ -10,6 +10,15 @@ from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
+TODAY = date(2026, 10, 23)
+
+
+class TodayTests(TestCase):
+    """#285: the route is judged on the day it is given, so dated rules can be tested."""
+
+    def test_the_state_keeps_the_day_it_was_judged_on(self):
+        user = consented_user(username="today_user")
+        self.assertEqual(fitting_state(user, TODAY).today, TODAY)
 
 
 class CurrentStopTests(TestCase):
@@ -34,12 +43,12 @@ class CurrentStopTests(TestCase):
         Submission.objects.filter(pk=submission.pk).update(created_at=moment)
 
     def stop(self):
-        return fitting_state(self.user).stop
+        return fitting_state(self.user, TODAY).stop
 
     def test_without_an_audiogram_the_stop_is_recording_one(self):
         self.answer()
         self.assertEqual(self.stop(), AUDIOGRAM)
-        self.assertFalse(fitting_state(self.user).insufficient)
+        self.assertFalse(fitting_state(self.user, TODAY).insufficient)
 
     def test_wearing_comes_first_even_when_the_threshold_is_reached(self):
         self.answer(wearing=True)
@@ -65,14 +74,14 @@ class CurrentStopTests(TestCase):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
         audiogram.points.filter(ear="left", frequency=4000).delete()
         self.assertEqual(self.stop(), AUDIOGRAM)
-        self.assertTrue(fitting_state(self.user).insufficient)
+        self.assertTrue(fitting_state(self.user, TODAY).insufficient)
 
     def test_wearing_with_an_audiogram_that_cannot_tell_still_has_too_little_data(self):
         self.answer(wearing=True)
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
         audiogram.points.filter(ear="left", frequency=4000).delete()
         self.assertEqual(self.stop(), "after-fitting")
-        self.assertTrue(fitting_state(self.user).insufficient)
+        self.assertTrue(fitting_state(self.user, TODAY).insufficient)
 
     def test_reaching_the_threshold_is_the_assessment(self):
         self.make(PTA_55, PTA_55)
@@ -80,7 +89,7 @@ class CurrentStopTests(TestCase):
 
     def test_an_ear_over_25_with_the_threshold_uncertain_is_before_you_go(self):
         self.make((30, 30, 30, 30), (30, 30, 30, 30), no_response_at=("right", 4000))
-        self.assertEqual(fitting_state(self.user).threshold["status"], "uncertain")
+        self.assertEqual(fitting_state(self.user, TODAY).threshold["status"], "uncertain")
         self.assertEqual(self.stop(), "before-you-go")
 
     def test_an_ear_over_25_not_reaching_the_threshold_is_before_you_go(self):
@@ -119,7 +128,7 @@ class CertificateRouteTests(TestCase):
         AidAndSubsidy.objects.create(user=self.user, has_certificate=has_certificate)
 
     def stop(self):
-        return fitting_state(self.user).stop
+        return fitting_state(self.user, TODAY).stop
 
     def test_a_certificate_without_an_audiogram_is_form_9(self):
         self.certify(True)

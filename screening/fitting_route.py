@@ -2,6 +2,7 @@
 behind it, kept in one place for every page that shows the route or points along it."""
 
 from dataclasses import dataclass
+from datetime import date
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
 from screening.models import AidAndSubsidy, Audiogram, Submission
@@ -19,6 +20,7 @@ class FittingState:
     fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
     threshold: dict | None  # assessment_estimate, without an audiogram None
     stop: str | None  # AUDIOGRAM or a chapter slug; None when no stop applies
+    today: date  # the day the route is judged on, for its dated rules
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they fill it in
 
     @property
@@ -28,7 +30,7 @@ class FittingState:
         return self.audiogram is not None and self.fitting is None
 
 
-def fitting_state(user):
+def fitting_state(user, today):
     audiogram = user.audiograms.prefetch_related("points").first()
     latest = (
         user.submissions.defined()
@@ -48,7 +50,7 @@ def fitting_state(user):
     aid = AidAndSubsidy.objects.filter(user=user).first()
     certified = aid is not None and aid.has_certificate is True
     stop = _stop(wearing, certified, audiogram, fitting, threshold)
-    return FittingState(latest, audiogram, wearing, fitting, threshold, stop, aid)
+    return FittingState(latest, audiogram, wearing, fitting, threshold, stop, today, aid)
 
 
 def _stop(wearing, certified, audiogram, fitting, threshold):

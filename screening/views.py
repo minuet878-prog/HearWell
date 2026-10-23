@@ -102,8 +102,9 @@ HOME_PREVIEW_SCORE = 18
 
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
+    today = timezone.localdate()
     user_state = (
-        get_user_state(request.user, today=timezone.localdate())
+        get_user_state(request.user, today=today)
         if request.user.is_authenticated
         else NEW_USER_STATE
     )
@@ -114,7 +115,7 @@ def index(request):
         else None
     )
     # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
-    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user)
+    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user, today)
     response = render(
         request,
         "screening/index.html",
@@ -222,10 +223,11 @@ def guide(request):
     # Open without logging in (spec #218): the contents are for family too.
     context, state = {}, None
     if request.user.is_authenticated:
-        state = fitting_state(request.user)
+        today = timezone.localdate()
+        state = fitting_state(request.user, today)
         context["has_records"] = state.audiogram is not None or state.latest is not None
         # The same life-impact record the home page shows as the last result.
-        last = get_user_state(request.user, today=timezone.localdate()).last_result
+        last = get_user_state(request.user, today=today).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
         context["wearing"] = state.wearing
