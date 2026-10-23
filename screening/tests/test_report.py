@@ -159,12 +159,16 @@ class HealthReportTests(TestCase):
         # ④ IOI-HA, same comparison as its result page
         ioi = _section(content, "report-ioi-ha")
         self.assertIn("輕度至中度", ioi)
-        self.assertInHTML(
-            f"<tr><td>幫助程度</td><td>{IOI_HA_CHOICES[2][1]}</td><td>低於常模</td></tr>", ioi
-        )
-        self.assertInHTML(
-            f"<tr><td>生活樂趣</td><td>{IOI_HA_CHOICES[7][4]}</td><td>高於常模</td></tr>", ioi
-        )
+        for item, answer, comparison in (
+            ("幫助程度", IOI_HA_CHOICES[2][1], "低於常模"),
+            ("生活樂趣", IOI_HA_CHOICES[7][4], "高於常模"),
+        ):
+            self.assertInHTML(
+                f'<tr role="row"><td role="cell" data-label="項目">{item}</td>'
+                f'<td role="cell" data-label="回答">{answer}</td>'
+                f'<td role="cell" data-label="與常模比較">{comparison}</td></tr>',
+                ioi,
+            )
         result_page = self.client.get(
             reverse("result", args=[Submission.objects.get(questionnaire=self.ioi_ha).pk])
         )
@@ -282,7 +286,7 @@ class HealthReportTests(TestCase):
             self._hhie_s(self.user, AIDED, wearing=True, days_ago=days_ago)
         hhie = _section(self._content(), "report-hhie-s")
         self.assertIn("共 7 次，列出最近 5 次", hhie)
-        dates = re.findall(r"<td>(\d{4}/\d{2}/\d{2})</td>", hhie)
+        dates = re.findall(r"<time datetime=\"[^\"]+\">(\d{4}/\d{2}/\d{2})</time>", hhie)
         expected = [
             f"{timezone.localtime(timezone.now() - timedelta(days=d)):%Y/%m/%d}"
             for d in range(1, 6)
@@ -341,8 +345,8 @@ class HealthReportTests(TestCase):
         self.assertNotIn("→", summary)
         self.assertIn("7 項中 1 項低於常模、1 項高於常模", summary)
         ioi = _section(content, "report-ioi-ha")
-        self.assertEqual(ioi.count("<td>低於常模</td>"), 1)
-        self.assertEqual(ioi.count("<td>高於常模</td>"), 1)
+        self.assertEqual(ioi.count(">低於常模</td>"), 1)
+        self.assertEqual(ioi.count(">高於常模</td>"), 1)
 
     # 16
     def test_title_and_section_order(self):

@@ -48,12 +48,18 @@ class ThiReportPartTests(ThiReportTestCase):
                 self.assertIn("助聽器：有戴", thi)
                 self.assertIn(f"<p>{test_thi.ADVICE[58]}</p>", thi)
                 self.assertIn("共 2 次", thi)
-                rows = re.findall(r"<tr><td>.*?</tr>", thi)
+                rows = [
+                    [
+                        re.sub(r"<[^>]+>", "", cell)
+                        for cell in re.findall(r"<td[^>]*>(.*?)</td>", row)
+                    ]
+                    for row in re.findall(r"<tr[^>]*><td.*?</tr>", thi)
+                ]
                 self.assertEqual(
                     rows,
                     [
-                        f"<tr><td>{_day(latest)}</td><td>58</td><td>重度障礙</td><td>有戴</td></tr>",
-                        f"<tr><td>{_day(older)}</td><td>38</td><td>中度障礙</td><td>沒戴</td></tr>",
+                        [_day(latest), "58", "重度障礙", "有戴"],
+                        [_day(older), "38", "中度障礙", "沒戴"],
                     ],
                 )
 
@@ -129,7 +135,7 @@ class ThiReportPartTests(ThiReportTestCase):
             self.client.get(reverse("health_report")).content.decode(), "report-thi"
         )
         self.assertIn("共 6 次，列出最近 5 次", thi)
-        self.assertEqual(len(re.findall(r"<tr><td>", thi)), 5)
+        self.assertEqual(len(re.findall(r"<tr[^>]*><td", thi)), 5)
 
 
 class ThiExportTests(ThiReportTestCase):
