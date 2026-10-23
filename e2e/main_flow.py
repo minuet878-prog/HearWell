@@ -3256,6 +3256,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.styles(unanswered, "paddingLeft", "listStyleType"),
                 {"paddingLeft": "0px", "listStyleType": "none"},
             )
+            # #272: each question's own error has the warning mark too, not the red alone.
+            question_error = self.page.locator(".field-error").first
+            self.assertEqual(self.style(question_error, "fontWeight"), "700")
+            self.assertIn(
+                "data:image/svg+xml",
+                question_error.evaluate("el => getComputedStyle(el, '::before').maskImage"),
+            )
 
     def test_screen_reader_only_text_is_hidden_but_read(self):
         self.open(signed_in=False)
