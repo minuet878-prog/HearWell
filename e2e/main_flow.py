@@ -4826,6 +4826,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     WHITE = "rgb(255, 255, 255)"
     WARM_SHADOW = "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px"
     LINE = "rgb(217, 205, 185)"  # #298's pick: a thin warm line on the left
+    # ADR 0024: a 並列區塊 sits on a pale beige a little deeper than the page, with deeper beige
+    # lines between the parts inside it; its radius is the medium one (0.75rem at 18px).
+    TINT = "rgb(236, 227, 212)"
+    TINT_LINE = "rgb(201, 187, 163)"
+    TINT_RADIUS = "13.5px"
+    # Every colour of text in an element: its own and its descendants' that hold words directly.
+    TEXT_COLOURS = """(el) => [el, ...el.querySelectorAll("*")]
+        .filter((node) => [...node.childNodes]
+            .some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
+        .map((node) => getComputedStyle(node).color)"""
     PRIMARY = "rgb(31, 78, 140)"
     GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
     # White under a warm shadow (resting or lifted), and neither a link, inside one, nor inside
@@ -5034,6 +5044,38 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "borderLeftColor"), self.LINE)
         self.assertEqual(self.style(block, "borderTopWidth"), "0px")
 
+    def assert_tinted(self, block):
+        """A 並列區塊 (ADR 0024): pale beige, no shadow, no border, the medium radius."""
+        expect(block).to_be_visible()
+        self.assertEqual(self.style(block, "backgroundColor"), self.TINT)
+        self.assertEqual(self.style(block, "boxShadow"), "none")
+        self.assertEqual(self.style(block, "borderWidth"), "0px")
+        self.assertEqual(self.style(block, "borderRadius"), self.TINT_RADIUS)
+
+    def assert_lines_between(self, parts):
+        """Parts inside a 並列區塊 (ADR 0024): a deeper beige line between each two, none on
+        their left."""
+        parts = parts.all()
+        self.assertGreater(len(parts), 1)
+        self.assertEqual(self.style(parts[0], "borderTopWidth"), "0px")
+        for part in parts[1:]:
+            with self.subTest(part=part.inner_text()[:10]):
+                self.assertEqual(self.style(part, "borderTopColor"), self.TINT_LINE)
+                self.assertEqual(self.style(part, "borderTopStyle"), "solid")
+                self.assertNotEqual(self.style(part, "borderTopWidth"), "0px")
+        for part in parts:
+            self.assertEqual(self.style(part, "borderLeftWidth"), "0px")
+
+    def assert_readable_on_tint(self, block):
+        """Spec #308 acceptance 2: every text and link colour in a 並列區塊 at least 4.5:1."""
+        colours = set(block.evaluate(self.TEXT_COLOURS))
+        self.assertTrue(colours)
+        for colour in colours:
+            with self.subTest(colour=colour):
+                self.assertGreaterEqual(
+                    StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5
+                )
+
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
         with self.saving_artifacts():
@@ -5072,31 +5114,38 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(card=card.inner_text()):
                     self.assert_white_card(card)
 
-    # #299: advice 1-3 and THI's support message are flat with a thin line; the links in the
-    # advice still look like links.
-    def test_result_advice_is_flat_with_links_that_look_like_links(self):
+    # #309: advice 1-3 sit in one 並列區塊 with a line between each, where each had a thin line on
+    # its left; the links in it still look like links and the cards below stay white cards.
+    # THI's support message above them keeps its thin line.
+    def test_result_advice_is_one_tinted_block_with_links_that_look_like_links(self):
+        links_seen = 0
         with self.saving_artifacts():
-            # HHIE-S at 20 (mild to moderate): advice with a link to the guide.
-            self.visit(True, lambda test: test.result("hhie-s", 2))
-            steps = self.main().locator("ol.next-steps > li")
-            self.assertEqual(steps.count(), 3)
-            for step in steps.all():
-                with self.subTest(step=step.inner_text()[:10]):
-                    self.assert_lined(step)
-            links = steps.get_by_role("link")
-            self.assertGreater(links.count(), 0)
-            for link in links.all():
-                with self.subTest(link=link.inner_text()):
-                    self.assertEqual(self.style(link, "color"), self.PRIMARY)
-                    self.assertEqual(self.style(link, "textDecorationLine"), "underline")
-            # THI at full marks: the support message and the advice under it.
-            self.visit(True, lambda test: test.result("thi", 4))
+            # HHIE-S and HHIA-S at 20 (mild to moderate), THI at full marks: the pages with advice.
+            for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    advice = self.main().locator("ol.next-steps")
+                    self.assert_tinted(advice)
+                    self.assert_readable_on_tint(advice)
+                    # Three steps, four on THI's page: all in the one block.
+                    steps = advice.locator("> li")
+                    self.assert_lines_between(steps)
+                    for step in steps.all():
+                        self.assertEqual(self.style(step, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                        self.assertEqual(self.style(step, "boxShadow"), "none")
+                    links = advice.get_by_role("link")
+                    links_seen += links.count()
+                    for link in links.all():
+                        with self.subTest(link=link.inner_text()):
+                            self.assertEqual(self.style(link, "color"), self.PRIMARY)
+                            self.assertEqual(self.style(link, "textDecorationLine"), "underline")
+                    cards = self.main().locator(".result-actions a.link-card")
+                    self.assertGreater(cards.count(), 0)
+                    for card in cards.all():
+                        with self.subTest(card=card.inner_text()[:10]):
+                            self.assert_white_card(card)
             self.assert_lined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
-            steps = self.main().locator("ol.next-steps > li")
-            self.assertGreater(steps.count(), 0)
-            for step in steps.all():
-                with self.subTest(step=step.inner_text()[:10]):
-                    self.assert_lined(step)
+        self.assertGreater(links_seen, 0)
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.

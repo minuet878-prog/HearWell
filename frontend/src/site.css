@@ -62,6 +62,14 @@
   --color-border-warm: #efe6d8;
   /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
   --color-line-warm: #d9cdb9;
+  /* A 並列區塊 (ADR 0024): pale beige a little deeper than the page (about 1.2:1), and the deeper
+     beige of the lines between the parts inside one. Text and links on it keep 4.5:1 or more. */
+  --color-tint: #ece3d4;
+  --color-tint-line: #c9bba3;
+  /* ADR 0024's larger subheads in flat content, against 1rem body text: a 並列區塊's title, and
+     a bold subhead inside one (or in a guide chapter). */
+  --text-block-title: 1.35rem;
+  --text-subhead: 1.2rem;
   --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
   --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
   --radius-large: 1.5rem;
@@ -2635,24 +2643,56 @@
     background-color: var(--color-severe-bg-deep);
   }
 
+  /* A 並列區塊 (ADR 0024): one of several complete units of the same kind side by side, on a
+     pale beige with no shadow and no border, so it sinks where a tappable white card floats.
+     Only something tappable or usable inside it may be white. .tint-rows puts a deeper beige
+     line between its parts (the result page's advice); .tint-block-title is the block's title
+     and .tint-subhead a bold subhead inside it, both in the heading colour, not link blue. */
+  .tint-block {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-tint);
+  }
+
+  .tint-rows > * + * {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-tint-line);
+  }
+
+  .tint-block-title {
+    margin: 0 0 0.5rem;
+    color: var(--color-heading);
+    font-size: var(--text-block-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .tint-subhead {
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
   /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
-     a thin warm line on its left, no white and no shadow. The result page's advice and the home
-     page's steps; .line-block is one such block on its own (THI's support message). The list
-     itself is unstyled by its own class (.list-unstyled, .next-steps, .step-cards, .ioi-items). */
+     a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
+     one such block on its own (THI's support message). The list itself is unstyled by its own
+     class (.list-unstyled, .step-cards, .ioi-items). */
   .line-list > *,
   .line-block {
     padding: 0.1em 0 0.1em 0.7em;
     border-left: 0.18em solid var(--color-line-warm);
   }
 
-  /* Numbered "接下來建議您" steps on the result page (ticket #157), a .line-list: each step has
-     its number in a pale circle and its links as text under the words, so the steps read as one
-     list instead of being pushed apart by large buttons (result page tidy-up, option B).
-     Still an <ol>, so screen readers announce the count. */
+  /* Numbered "接下來建議您" steps on the result page (ticket #157), one .tint-block of
+     .tint-rows (#309): each step has its number in a pale circle and its links as text under the
+     words, so the steps read as one list instead of being pushed apart by large buttons (result
+     page tidy-up, option B). Still an <ol>, so screen readers announce the count. */
   .next-steps {
     container-type: inline-size;
     margin: 0.5rem 0 0;
-    padding: 0;
     list-style: none;
     counter-reset: next-step;
   }
@@ -2661,7 +2701,6 @@
     display: grid;
     grid-template-columns: 2.25rem 1fr;
     column-gap: 0.75rem;
-    margin-bottom: 0.75rem;
     counter-increment: next-step;
   }
 
