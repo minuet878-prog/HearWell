@@ -2390,7 +2390,8 @@
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .dropdown-box > summary, .dropdown-line > summary, .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary,
+  .answer-about > button {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -2414,11 +2415,13 @@
   }
 
   .dropdown-box > summary::-webkit-details-marker,
-  .dropdown-line > summary::-webkit-details-marker { display: none; }
+  .dropdown-line > summary::-webkit-details-marker,
+  .report-fold > summary::-webkit-details-marker { display: none; }
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .dropdown-box > summary::after, .dropdown-line > summary::after, .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after,
+  .answer-about > button::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -2430,6 +2433,7 @@
 
   .dropdown-box[open] > summary::after,
   .dropdown-line[open] > summary::after,
+  .report-fold[open] > summary::after,
   .answer-about > button[aria-expanded="true"]::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
   }
@@ -2446,13 +2450,15 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
+    .answer-about > button:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .dropdown-box > summary:active, .dropdown-line > summary:active, .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active,
+  .answer-about > button:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
@@ -3839,6 +3845,75 @@
 
     .health-report .report-answers.dropdown-box > :not(summary) {
       margin-inline: 0;
+    }
+  }
+
+  /* #314 (ADR 0024): on screen the report folds by questionnaire. The summary row looks like
+     the site's dropdowns (a white box, grey edge, chevron) and says the questionnaire's name,
+     latest date and result; what opens below is a 並列區塊 on the tint. Its summary row already
+     names the questionnaire, so its own title waits for paper. On paper every fold opens and the
+     row and tint go: the report prints as it did before the folds. */
+  .report-fold {
+    margin-top: 1rem;
+  }
+
+  .report-fold > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.25rem 0.75rem;
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .report-fold > summary::after {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .report-fold-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-block-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .report-fold-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  .report-fold-body {
+    margin-top: 0.5rem;
+  }
+
+  @media screen {
+    .health-report .report-fold-body > section:first-child {
+      margin-top: 0;
+    }
+
+    .report-fold-body > section:first-child > h3:first-child {
+      display: none;
+    }
+  }
+
+  @media print {
+    .health-report .report-fold,
+    .health-report .report-fold::details-content,
+    .health-report .report-fold-body {
+      display: contents;
+    }
+
+    .health-report .report-fold::details-content {
+      content-visibility: visible;
+    }
+
+    .health-report .report-fold > summary {
+      display: none;
     }
   }
 }

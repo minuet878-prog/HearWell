@@ -396,6 +396,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 ).to_be_visible()
             self.page.goto(f"{self.live_server_url}/report")
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
+            # #314: every questionnaire folded; open them all, so their contents must fit too.
+            for fold in self.main().locator("details > summary:has(> h3)").all():
+                fold.click()
             self.page.set_viewport_size({"width": 320, "height": 800})
             self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
             self.page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
@@ -428,6 +431,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 expect(
                     family_page.get_by_role("link", name="更換或移除", exact=False)
                 ).to_have_count(0)
+                for fold in (
+                    family_page.get_by_role("main").locator("details > summary:has(> h3)").all()
+                ):
+                    fold.click()
                 family_page.set_viewport_size({"width": 320, "height": 800})
                 family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
                 # Wider glyphs reproduce the table's minimum-width overflow across platforms.
@@ -5420,16 +5427,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(self.style(cancel, "borderTopStyle"), "solid")
             self.assert_outline_button_readable(cancel)
 
-    # #303: the report's parts on screen are flat, with the blue bar on their section titles;
-    # the summary keeps its blue frame.
+    # #303: the report's audiogram on screen is flat, with the blue bar on its title; the
+    # summary keeps its blue frame. (A questionnaire's part folds onto the tint since #314.)
     def test_report_parts_are_flat_and_the_summary_keeps_its_blue_frame(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.report())
-            for part in ("聽力圖", "HHIE-S"):
-                with self.subTest(part=part):
-                    self.assert_flat(
-                        self.main().get_by_role("region", name=re.compile(f"^{part}（"))
-                    )
+            self.assert_flat(self.main().get_by_role("region", name=re.compile("^聽力圖（")))
             audiogram_title = self.main().get_by_role("heading", name=re.compile("^聽力圖（"))
             self.assertEqual(self.style(audiogram_title, "borderLeftColor"), self.PRIMARY)
             summary = self.main().get_by_role("region", name="重點摘要")
@@ -5449,6 +5452,118 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(part, "paddingLeft"), "0px")
             title = self.page.locator("#audiogram-title")
             self.assertEqual(self.style(title, "borderLeftColor"), self.PRIMARY)
+
+    # #314: the report with HHIE-S, its kept comparison and an audiogram, for the folds.
+    def folded_report(self):
+        unaided = self.answered("hhie-s", 2)
+        aided = self.answered("hhie-s", 0)
+        Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
+        ReportComparison.objects.create(
+            user=self.user, questionnaire=unaided.questionnaire, unaided=unaided, aided=aided
+        )
+        self.audiogram()
+        return "/report"
+
+    def both_folded_reports(self):
+        """The owner's folded report and the family's copy of it, signed in and not."""
+        owner = self.folded_report()
+        family = f"/shared/{ReportShare.objects.create(user=self.user).token}/report"
+        return (("owner", True, owner), ("family", False, family))
+
+    def report_folds(self):
+        """Each questionnaire's summary row: a summary holding a level 3 heading."""
+        return self.main().locator("details > summary:has(> h3)")
+
+    # #314 (spec #308 acceptance 6-8): on both reports each questionnaire starts as a closed
+    # summary row that looks like the site's dropdowns; a click or Enter opens only that one onto
+    # the tint, its comparison inside, and again closes it; a reload closes it. The audiogram
+    # stays open. It opens without JavaScript too.
+    def test_report_folds_by_questionnaire_closed_until_opened(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.both_folded_reports():
+                with self.subTest(report=name):
+                    self.visit(signed_in, path)
+                    expect(
+                        self.main().get_by_role("region", name=re.compile("^聽力圖（"))
+                    ).to_be_visible()
+                    if signed_in:
+                        expect(self.main().get_by_role("region", name="重點摘要")).to_be_visible()
+                    expect(
+                        self.main().get_by_role("heading", level=2, name="生活影響", exact=True)
+                    ).to_be_visible()
+                    title = self.main().get_by_role("heading", level=3, name="HHIE-S", exact=True)
+                    summary = title.locator("xpath=..")
+                    # The latest record (aided, all 0): its date, score and level.
+                    expect(summary).to_have_text(
+                        re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無/極輕微影響$")
+                    )
+                    part = self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
+                    comparison = self.main().get_by_role(
+                        "region", name=re.compile("^配戴狀態比較（HHIE-S")
+                    )
+                    expect(part).to_be_hidden()
+                    expect(comparison).to_be_hidden()
+                    # Like the site's dropdowns: white, a grey edge, no shadow, a chevron.
+                    self.assertEqual(self.style(summary, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(summary, "borderTopColor"), self.GREY_EDGE)
+                    self.assertEqual(self.style(summary, "boxShadow"), "none")
+                    chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
+                    self.assertIn("M6 9l6 6 6-6", chevron)
+                    # The block's title: in the heading colour, 1.35 times the text.
+                    self.assertEqual(self.style(title, "color"), "rgb(33, 37, 41)")
+                    size = float(self.style(title, "fontSize").removesuffix("px"))
+                    text = float(
+                        self.style(self.page.locator("body"), "fontSize").removesuffix("px")
+                    )
+                    self.assertAlmostEqual(size / text, 1.35, places=2)
+                    summary.click()
+                    expect(part).to_be_visible()
+                    expect(comparison).to_be_visible()
+                    body = part.locator("xpath=..")
+                    self.assert_tinted(body)
+                    self.assert_readable_on_tint(body)
+                    expect(
+                        body.get_by_role("region", name=re.compile("^配戴狀態比較（HHIE-S"))
+                    ).to_be_visible()
+                    chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
+                    self.assertIn("M6 15l6-6 6 6", chevron)
+                    summary.click()
+                    expect(part).to_be_hidden()
+                    summary.focus()
+                    self.page.keyboard.press("Enter")
+                    expect(part).to_be_visible()
+                    self.page.keyboard.press("Enter")
+                    expect(part).to_be_hidden()
+                    summary.click()
+                    self.page.reload()
+                    expect(part).to_be_hidden()
+                    self.visit(signed_in, path, javascript=False)
+                    self.report_folds().first.click()
+                    expect(
+                        self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
+                    ).to_be_visible()
+
+    # #314 (spec #308 acceptance 9, 14): on paper every fold is open and its summary row gone;
+    # on a phone at 200% text both reports fit with every fold open.
+    def test_report_folds_open_on_paper_and_fit_a_phone_open(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.both_folded_reports():
+                with self.subTest(report=name):
+                    self.visit(signed_in, path, width=320)
+                    folds = self.report_folds()
+                    self.assertGreater(folds.count(), 0)
+                    for fold in folds.all():
+                        fold.click()
+                    self.assert_fits_uncut(name)
+                    self.page.locator("html").evaluate("html => html.style.fontSize = ''")
+                    folds.first.click()  # one open, one closed: paper opens both
+                    self.page.emulate_media(media="print")
+                    for region in ("^HHIE-S（", "^配戴狀態比較（HHIE-S"):
+                        expect(
+                            self.page.get_by_role("region", name=re.compile(region))
+                        ).to_be_visible()
+                    for fold in folds.all():
+                        expect(fold).to_be_hidden()
 
     # #303 (#298's pick): the account details are flat rows with a thin line between them;
     # every link row is a white card of its own and goes where it went before.

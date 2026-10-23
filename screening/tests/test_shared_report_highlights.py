@@ -152,6 +152,29 @@ class SharedReportHighlightsTests(TestCase):
             ],
         )
 
+    # #314: the family's report folds like the owner's and holds exactly the same, from the
+    # audiogram to the disclaimer: folding changes how it shows, not what it shows.
+    def test_family_report_folds_and_holds_the_same_as_the_owner_s(self):
+        unaided = self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=30)
+        aided = self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
+        self.client.force_login(self.user)
+        self.client.post(
+            f"/comparisons/{self.hhie_s.pk}",
+            {"unaided": unaided.pk, "aided": aided.pk, "action": "save"},
+        )
+        self._ioi_ha(self.user, basis=unaided)
+        self._right_moderate_left_mild()
+        owner = self.client.get(reverse("health_report")).content.decode()
+        self.client.logout()
+        family = self._shared()
+
+        def body(content):
+            start = content.index('<section id="report-audiogram"')
+            return content[start : content.index('<p class="report-disclaimer">')]
+
+        self.assertEqual(body(family), body(owner))
+        self.assertEqual(len(re.findall(r"<details[^>]*>\s*<summary><h3", family)), 2)
+
     # Acceptance 16 (ticket #194 acceptance 4)
     def test_help_cards_link_to_the_three_family_guide_sections(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
