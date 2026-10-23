@@ -2044,14 +2044,44 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             )
             expect(self.main()).to_contain_text("沒核定就先買的不補助")
 
+    # #286 (spec #284 e2e, acceptance 26): the setUp user reaches the threshold; saying they
+    # have a certificate moves 您在這裡 on to form 9. The form and my guide with its card fit
+    # 320px at 200% text.
+    def test_certificate_moves_the_route_on_to_form_9(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("身障鑑定與鑑定醫院")
+            here.get_by_role("link", name="我已經有身障證明").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/my_aid")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("我的助聽器與補助")
+            certificate = self.main().get_by_role("group", name="您有聽覺機能的身心障礙證明嗎？")
+            expect(certificate.get_by_role("radio", name="不填")).to_be_checked()
+            certificate.get_by_role("radio", name="有", exact=True).check()
+            self.assert_fits_a_phone_at_double_text_size("/my_aid")
+            self.main().get_by_role("button", name="儲存").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("九號表：申請助聽器補助")
+            expect(here.get_by_role("link", name="看九號表的流程")).to_be_visible()
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.locator(".route-mark")).to_have_text(["已完成"])
+            card = self.main().get_by_role("region", name="我的助聽器與補助")
+            expect(card).to_contain_text("身障證明：有")
+            self.assert_fits_a_phone_at_double_text_size("/guide with a certificate")
+
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
-    # with the worked steps open and a county's hospitals listed.
+    # with the worked steps open and a county's hospitals listed; #286 adds 我的助聽器與補助.
     def test_pages_fit_a_phone_at_double_text_size(self):
         self.open(320, 640)
         paths = [
             "/guide",
             *(f"/guide/{slug}" for slug in self.CHAPTERS),
             f"/guide/assessment?county={self.COUNTY}",
+            "/my_aid",  # #286
         ]
         with self.saving_artifacts():
             for path in paths:
