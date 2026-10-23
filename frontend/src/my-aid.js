@@ -4,7 +4,7 @@
 const level = document.querySelector("[data-aid-level]");
 const subsidy = () => document.querySelector('input[name="subsidy"]:checked')?.value;
 const show = () => {
-  level.hidden = subsidy() !== "disability";
+  level.hidden = subsidy() !== level.dataset.shownWith;
 };
 
 if (level) {

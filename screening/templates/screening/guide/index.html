@@ -20,7 +20,7 @@
     <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.classified.text }}。</p>
 </section>
 {% endif %}
-{% if has_records and not audiogram %}
+{% if latest and not audiogram %}
 <section class="card card-body mt-6" aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>

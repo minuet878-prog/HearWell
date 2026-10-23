@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
-from screening.models import AidAndSubsidy, AidLevel, Audiogram, Submission, Subsidy
+from screening.models import AidAndSubsidy, AidLevel, Audiogram, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters.
@@ -25,12 +25,20 @@ def add_months(start, months):
     return date(year, month, day)
 
 
+def _certified(aid):
+    return aid is not None and aid.has_certificate is True
+
+
+def _fitted(aid):
+    return aid is not None and aid.fitted_on is not None
+
+
 def _form_25(aid):
     """(from, by): form 25 is done a month to three months after the fitting date, both days
     included (#284 Q7); None for someone who does not have to do it or gave no date."""
-    if aid is None or aid.fitted_on is None:
+    if not _fitted(aid):
         return None
-    if aid.subsidy != Subsidy.DISABILITY or aid.level not in FORM_25_LEVELS:
+    if not aid.uses_disability_subsidy or aid.level not in FORM_25_LEVELS:
         return None
     return add_months(aid.fitted_on, 1), add_months(aid.fitted_on, 3)
 
@@ -47,6 +55,22 @@ class FittingState:
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they fill it in
 
     @property
+    def certified(self):
+        """The user said they have a 身障證明."""
+        return _certified(self.aid)
+
+    @property
+    def fitted(self):
+        """The user filled in when they started wearing their current pair."""
+        return _fitted(self.aid)
+
+    @property
+    def has_records(self):
+        """A questionnaire, an audiogram, or any 助聽器與補助資料 to place the user on the route."""
+        answered = self.aid is not None and not self.aid.unanswered
+        return self.audiogram is not None or self.latest is not None or answered
+
+    @property
     def form_25(self):
         """(from, by) for someone who has to do form 25 and gave a fitting date, else None."""
         return _form_25(self.aid)
@@ -55,10 +79,9 @@ class FittingState:
     def reapply_on(self):
         """The day someone who bought with 身障補助 can apply again: four years after the
         fitting date (#284 acceptance 17); None without the subsidy or the date."""
-        aid = self.aid
-        if aid is None or aid.fitted_on is None or aid.subsidy != Subsidy.DISABILITY:
+        if not self.fitted or not self.aid.uses_disability_subsidy:
             return None
-        return add_months(aid.fitted_on, REAPPLY_MONTHS)
+        return add_months(self.aid.fitted_on, REAPPLY_MONTHS)
 
     @property
     def insufficient(self):
@@ -79,18 +102,17 @@ def fitting_state(user, today):
     wearing = latest is not None and (
         latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
     )
-    aid = AidAndSubsidy.objects.filter(user=user).first()
+    aid = AidAndSubsidy.for_user(user)
     # A fitting date the user filled in counts as wearing them too (#284 default 3).
-    wearing = wearing or (aid is not None and aid.fitted_on is not None)
+    wearing = wearing or _fitted(aid)
     fitting = threshold = None
     if audiogram is not None:
         points = list(audiogram.points.all())
         fitting = recommends_fitting_assessment(points)
         threshold = assessment_estimate(points)
-    certified = aid is not None and aid.has_certificate is True
     form_25 = _form_25(aid)
     due = form_25 is not None and form_25[0] <= today <= form_25[1]
-    stop = _stop(wearing, due, certified, audiogram, fitting, threshold)
+    stop = _stop(wearing, due, _certified(aid), audiogram, fitting, threshold)
     return FittingState(latest, audiogram, wearing, fitting, threshold, stop, today, aid)
 
 

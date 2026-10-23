@@ -295,10 +295,3 @@ class AidAndSubsidyForm(forms.ModelForm):
         if fitted_on and fitted_on > timezone.localdate():
             raise forms.ValidationError("開始配戴日期不能是未來")
         return fitted_on
-
-    def clean(self):
-        cleaned = super().clean()
-        # A level means a 身障補助 one (#284 acceptance 3, 6): with any other answer, cleared.
-        if cleaned.get("subsidy") != Subsidy.DISABILITY:
-            cleaned["level"] = ""
-        return cleaned

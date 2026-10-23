@@ -18,7 +18,7 @@
     </div>
     {% else %}
     {# my-aid.js shows the level only with 身障補助; without JavaScript it stays (#287). #}
-    <fieldset class="mb-6"{% if field.name == "level" %} data-aid-level{% endif %}{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+    <fieldset class="mb-6"{% if field.name == "level" %} data-aid-level data-shown-with="{{ disability }}"{% endif %}{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
         {% include "screening/field_messages.html" with help_class="field-help" %}
         {{ field }}

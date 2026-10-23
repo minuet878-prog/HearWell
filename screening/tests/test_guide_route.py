@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
-from screening.tests import test_guide_summary
+from screening.tests import test_guide, test_guide_summary
 from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
@@ -391,3 +391,35 @@ class ReapplyDateTests(TestCase):
     def test_paying_has_no_date_to_apply_again(self):
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1), subsidy="other")
         self.assertNotIn("起可以再申請補助", self.page())
+
+
+class AidOnlyRecordsTests(TestCase):
+    """Only 助聽器與補助資料, no questionnaire or audiogram: still records, so the page does
+    not ask for them above a route that has a 目前這一站 (#284 review)."""
+
+    def setUp(self):
+        self.user = consented_user(username="aid_only_reader")
+        self.client.force_login(self.user)
+
+    def text(self):
+        return test_guide.text_of(self.client.get(reverse("guide")))
+
+    def test_any_answer_is_a_record(self):
+        for fields in (
+            {"has_certificate": True},
+            {"has_certificate": False},
+            {"fitted_on": date(2026, 5, 1)},
+            {"ear": "both"},
+            {"subsidy": "other"},
+        ):
+            with self.subTest(**fields):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                AidAndSubsidy.objects.create(user=self.user, **fields)
+                text = self.text()
+                self.assertNotIn(test_guide_summary.NO_RECORDS, text)
+                self.assertNotIn(test_guide_summary.START, text)
+                self.assertNotIn(test_guide_summary.NO_AUDIOGRAM, text)
+
+    def test_a_row_left_unanswered_is_not_a_record(self):
+        AidAndSubsidy.objects.create(user=self.user)
+        self.assertIn(test_guide_summary.NO_RECORDS, self.text())

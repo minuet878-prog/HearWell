@@ -536,9 +536,27 @@ class AidAndSubsidy(models.Model):
     def __str__(self):
         return f"{self.user} aid and subsidy"
 
+    @classmethod
+    def for_user(cls, user):
+        """The user's row, None before their first save."""
+        return cls.objects.filter(user=user).first()
+
+    def clean(self):
+        # A level means a 身障補助 one (#284 acceptance 3, 6): with any other answer, cleared.
+        if not self.uses_disability_subsidy:
+            self.level = ""
+
+    @property
+    def uses_disability_subsidy(self):
+        return self.subsidy == Subsidy.DISABILITY
+
     @property
     def unanswered(self):
-        return self.has_certificate is None and not self.hearing_aids_text and not self.subsidy
+        return (
+            self.has_certificate is None
+            and self.fitted_on is None
+            and not (self.ear or self.subsidy or self.level)
+        )
 
     @property
     def hearing_aids_text(self):
@@ -558,8 +576,10 @@ class AidAndSubsidy(models.Model):
     @property
     def subsidy_text(self):
         """用身障補助，中階型 on the summary card; "" unanswered."""
-        if self.subsidy != Subsidy.DISABILITY:
+        if not self.uses_disability_subsidy:
             return self.get_subsidy_display()
         if self.level == AidLevel.UNKNOWN:
             return "用身障補助，等級不知道"
-        return "，".join(["用身障補助", *([self.get_level_display()] if self.level else [])])
+        if self.level:
+            return f"用身障補助，{self.get_level_display()}"
+        return "用身障補助"

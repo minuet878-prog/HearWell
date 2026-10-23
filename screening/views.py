@@ -226,7 +226,8 @@ def guide(request):
     if request.user.is_authenticated:
         today = timezone.localdate()
         state = fitting_state(request.user, today)
-        context["has_records"] = state.audiogram is not None or state.latest is not None
+        context["has_records"] = state.has_records
+        context["latest"] = state.latest  # 問卷結果 without an audiogram asks for one
         # The same life-impact record the home page shows as the last result.
         last = get_user_state(request.user, today=today).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
@@ -308,8 +309,7 @@ def _route_stop(state, slug, title, url):
         else:
             marks.append("已完成")
             tested_on = state.audiogram.tested_on
-    certified = state.aid is not None and state.aid.has_certificate is True
-    if slug == "assessment" and certified:
+    if slug == "assessment" and state.certified:
         marks.append("已完成")  # #284 Q6: whatever the audiogram estimates (default 4)
     if slug == state.stop:
         marks.append("您在這裡")
@@ -329,7 +329,7 @@ def _route_stop(state, slug, title, url):
             "form-25": ("看二十五號表要帶什麼", url),
         }[slug]
     # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
-    if slug == "assessment" and not certified:
+    if slug == "assessment" and not state.certified:
         if state.threshold and state.threshold["status"] == "not_reached":
             marks.append("估算未達門檻")
             links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
@@ -338,7 +338,7 @@ def _route_stop(state, slug, title, url):
         notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
-    if slug == "after-fitting" and state.wearing and not (state.aid and state.aid.fitted_on):
+    if slug == "after-fitting" and state.wearing and not state.fitted:
         links.append(("記錄我的助聽器", reverse("my_aid")))  # #284 acceptance 18
     if slug == "form-25" and state.form_25:
         # #284 Q7: from when before it opens, by when while open, nothing once it has closed.
@@ -987,14 +987,15 @@ def _mark_not_applicable_answers(data):
 @health_data_page
 def my_aid(request):
     # 我的助聽器與補助 (spec #284): only request.user's own, one row made on the first save.
-    aid = models.AidAndSubsidy.objects.filter(user=request.user).first()
+    aid = models.AidAndSubsidy.for_user(request.user)
     form = AidAndSubsidyForm(
         request.POST or None, instance=aid or models.AidAndSubsidy(user=request.user)
     )
     if request.method == "POST" and form.is_valid():
         form.save()
         return redirect("guide")
-    return render(request, "screening/my_aid.html", {"form": form})
+    context = {"form": form, "disability": models.Subsidy.DISABILITY}
+    return render(request, "screening/my_aid.html", context)
 
 
 @login_required
@@ -1014,7 +1015,7 @@ def download_my_data(request):
     )
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
-    aid = models.AidAndSubsidy.objects.filter(user=user).first()
+    aid = models.AidAndSubsidy.for_user(user)
     data = {
         "account": {
             "username": user.username,
@@ -1205,7 +1206,7 @@ def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
     # #287: the owner's report only; the family's copy shares the template but not this.
-    aid = models.AidAndSubsidy.objects.filter(user=request.user).first()
+    aid = models.AidAndSubsidy.for_user(request.user)
     context["aid_report_text"] = aid.report_text if aid else ""
     return render(request, "screening/health_report.html", context)
 

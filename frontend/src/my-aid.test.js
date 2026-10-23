@@ -8,7 +8,7 @@ const FORM = `
       <input type="radio" name="subsidy" value="disability">
       <input type="radio" name="subsidy" value="other">
     </fieldset>
-    <fieldset data-aid-level>
+    <fieldset data-aid-level data-shown-with="disability">
       <input type="radio" name="level" value="" checked>
       <input type="radio" name="level" value="mid">
     </fieldset>
