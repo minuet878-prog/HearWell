@@ -240,9 +240,9 @@ def _percent(ratio):
 
 
 def _guide_audiogram(state):
-    # The latest audiogram's 聽力圖, 選配 and 身障鑑定門檻 boxes (#226, #227, ADR 0017).
+    # The latest audiogram's 選配 and 身障鑑定門檻 meters (#226, #227, #260, ADR 0017).
     estimate = state.threshold
-    ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
+    ears = [(ear.label, ear.value, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
     context = {
         "audiogram": state.audiogram,
         "ears": ears,
@@ -251,7 +251,7 @@ def _guide_audiogram(state):
     }
     if estimate["ratio"] is not None:
         context["worked"] = {
-            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, e in ears],
+            "ears": [(label, e["pta"], _percent(e["ratio"])) for label, _, e in ears],
             "better": _percent(estimate["better"]),
             "worse": _percent(estimate["worse"]),
         }
