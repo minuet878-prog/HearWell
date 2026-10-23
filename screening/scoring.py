@@ -92,6 +92,9 @@ NEXT_STEP_REASONS = {
     "before-you-go": "您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。",
     "assessment": "依您的聽力圖估算，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。",
     "after-fitting": "您已在使用助聽器，可以看配戴之後要注意什麼、怎麼記錄效果。",
+    # #284's drafts; form 25's takes its deadline, the last day it can be done.
+    "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
+    "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     # without a 目前這一站
     "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
     "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",

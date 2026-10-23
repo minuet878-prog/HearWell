@@ -120,7 +120,10 @@ def home_more(user, today):
         next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄")
     elif state.stop:
         suggested = "guide"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[state.stop], "看我的選配指引")
+        because = NEXT_STEP_REASONS[state.stop]
+        if state.stop == "form-25":
+            because = because.format(deadline=state.form_25[1])
+        next_step = NextStep(cards[suggested], because, "看我的選配指引")
     elif user.report_shares.exists():  # any link ever made, ended ones too
         suggested = "print"
         next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告")

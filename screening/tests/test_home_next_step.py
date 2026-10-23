@@ -1,13 +1,15 @@
 """#261 (spec #257): 建議您下一步 and the grouped cards on the returning user's home page."""
 
 import re
-from datetime import timedelta
+from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Category,
     Question,
@@ -27,6 +29,7 @@ ASSESSMENT = "因為：依您的聽力圖估算，達到身障鑑定門檻（45%
 AFTER_FITTING = "因為：您已在使用助聽器，可以看配戴之後要注意什麼、怎麼記錄效果。"
 SHARE = "因為：讓家人也知道您的聽力狀況，家人不用登入就能看。"
 REPORT = "因為：看診時把報告帶給醫師，一張紙看完所有紀錄。"
+FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
 
 RECORD = ("/audiograms/new", "記錄醫院的聽力圖")
 PRINT = ("/report", "印聽力報告給醫師看")
@@ -284,3 +287,44 @@ class HomeNextStepTests(TestCase):
                 self.assertIn("開始篩檢", content)
                 for part in ("建議您下一步", "next-step", "more-group", "您還可以"):
                     self.assertNotIn(part, content)
+
+
+class Form9And25NextStepTests(TestCase):
+    """#289 (spec #284 acceptance 19): 九號表 and 二十五號表 as the 目前這一站."""
+
+    def setUp(self):
+        self.user = consented_user(username="form_9_25_user")
+        self.client.force_login(self.user)
+        real_localdate = timezone.localdate
+
+        def localdate(value=None, timezone=None):
+            return date(2026, 6, 15) if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+        self.answer()
+
+    setUpTestData = classmethod(HomeNextStepTests.setUpTestData.__func__)
+    answer = HomeNextStepTests.answer
+    section = HomeNextStepTests.section
+    next_step = HomeNextStepTests.next_step
+
+    def test_a_certificate_suggests_my_guide_for_form_9(self):
+        AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", FORM_9, "/guide", "看我的選配指引")
+        )
+
+    def test_form_25_suggests_my_guide_saying_its_deadline(self):
+        # Fitted 2026/05/01 with 身障補助 at 中階型: form 25 is due by 2026/08/01.
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        self.assertEqual(
+            self.next_step(),
+            (
+                "了解助聽器選配與補助",
+                "因為：您的助聽器要在 2026/08/01 前做使用效益驗證（二十五號表），才能核銷補助。",
+                "/guide",
+                "看我的選配指引",
+            ),
+        )
