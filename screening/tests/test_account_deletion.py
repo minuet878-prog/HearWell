@@ -6,11 +6,13 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
     Category,
     Consent,
+    GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
@@ -55,6 +57,9 @@ class DeleteAccountTests(TestCase):
         AudiogramPoint.objects.create(
             audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=35
         )
+        # #284 acceptance 22: 助聽器與補助資料 is PROTECT too, and so is 看過 (#291).
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
 
     def _counts(self, user_id):
         return {
@@ -64,6 +69,8 @@ class DeleteAccountTests(TestCase):
             "answers": Answer.objects.filter(submission__user_id=user_id).count(),
             "audiograms": Audiogram.objects.filter(user_id=user_id).count(),
             "points": AudiogramPoint.objects.filter(audiogram__user_id=user_id).count(),
+            "aid_and_subsidy": AidAndSubsidy.objects.filter(user_id=user_id).count(),
+            "guide_views": GuideChapterView.objects.filter(user_id=user_id).count(),
         }
 
     def _delete(self, password=PASSWORD, client=None):
@@ -74,7 +81,8 @@ class DeleteAccountTests(TestCase):
         self._fill(self.user, submissions=2)
         user_id = self.user.pk
         before = {"user": 1, "consents": 1, "submissions": 2}
-        before |= {"answers": 2, "audiograms": 1, "points": 1}
+        before |= {"answers": 2, "audiograms": 1, "points": 1, "aid_and_subsidy": 1}
+        before |= {"guide_views": 1}
         self.assertEqual(self._counts(user_id), before)
         self._delete()
         self.assertEqual(set(self._counts(user_id).values()), {0})
@@ -269,3 +277,30 @@ class DeleteAccountTests(TestCase):
         self.client.force_login(user)
         self._delete(password=" pad Pass9# ")
         self.assertFalse(User.objects.filter(pk=user.pk).exists())
+
+
+class AidAndSubsidyDeletionTests(TestCase):
+    """#287 (spec #284 acceptance 22, story 31): the 助聽器與補助資料, all four filled in, goes
+    with the account, and the page says so first."""
+
+    setUp = DeleteAccountTests.setUp
+    _delete = DeleteAccountTests._delete
+
+    def test_the_page_lists_it(self):
+        # #292 (spec #291 acceptance 24): the answers on the route and the chapters read.
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            "<li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>",
+            html=True,
+        )
+
+    def test_all_four_filled_in_go_with_the_account(self):
+        fields = {"fitted_on": date(2026, 5, 1), "ear": "both", "subsidy": "disability"}
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes", level="mid", **fields)
+        AidAndSubsidy.objects.create(user=self.other, certificate="applying")
+        self._delete()
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertEqual(
+            list(AidAndSubsidy.objects.values_list("user", flat=True)), [self.other.pk]
+        )

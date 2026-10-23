@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import quote
 
 from django.db import connection
@@ -10,10 +10,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
     Category,
+    GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
@@ -304,3 +306,157 @@ class DownloadMyDataTests(TestCase):
         answers = self._download()["submissions"][0]["answers"]
         self.assertEqual(answers[1]["score"], 1)
         self.assertIsNone(answers[1]["choice"])
+
+
+class AidAndSubsidyExportTests(TestCase):
+    """#286, #293 (spec #291 acceptance 23): the 助聽器與補助資料 in the export, the
+    certificate answer too, worded as the question offers it."""
+
+    def setUp(self):
+        self.user = consented_user(username="export_aid")
+        self.client.force_login(self.user)
+
+    def exported(self):
+        response = self.client.get(reverse("download_my_data"))
+        return json.loads(response.content)["aid_and_subsidy"]
+
+    def test_the_certificate_as_answered(self):
+        other = consented_user(username="export_aid_other")
+        AidAndSubsidy.objects.create(user=other, certificate="no_subsidy")
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for answer, wording in (
+            ("yes", "有"),
+            ("applying", "還沒有，正在申請鑑定"),
+            ("no_subsidy", "沒有，不申請身障補助"),
+        ):
+            with self.subTest(answer=answer):
+                aid.certificate = answer
+                aid.save()
+                self.assertEqual(self.exported()["certificate"], wording)
+        self.assertNotIn("has_certificate", self.exported())
+
+    def test_unanswered_is_null(self):
+        self.assertIsNone(self.exported()["certificate"])
+        AidAndSubsidy.objects.create(user=self.user, certificate="")
+        self.assertIsNone(self.exported()["certificate"])
+
+    def test_form_9_and_the_notice_as_answered(self):
+        # #294: worded as the questions offer them.
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for form_9_done, notice_received, ears, wordings in (
+            (True, True, "one", ("完成了", "收到了", "單耳")),
+            (False, True, "both", ("還沒", "收到了", "雙耳")),
+            (None, False, "", (None, "還沒", None)),
+        ):
+            with self.subTest(wordings=wordings):
+                aid.form_9_done, aid.notice_received = form_9_done, notice_received
+                aid.approved_ears = ears
+                aid.save()
+                exported = self.exported()
+                self.assertEqual(
+                    (
+                        exported["form_9_done"],
+                        exported["notice_received"],
+                        exported["approved_ears"],
+                    ),
+                    wordings,
+                )
+
+    def test_form_25_as_answered(self):
+        # #296: worded as the question offers it.
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for answer, wording in ((True, "完成了"), (False, "還沒"), (None, None)):
+            with self.subTest(answer=answer):
+                aid.form_25_done = answer
+                aid.save()
+                self.assertEqual(self.exported()["form_25_done"], wording)
+
+
+class HearingAidExportTests(TestCase):
+    """#287 (spec #284 acceptance 21): all four in the export, the labels as the form shows
+    them, unanswered as null."""
+
+    setUp = AidAndSubsidyExportTests.setUp
+    exported = AidAndSubsidyExportTests.exported
+
+    def test_all_four_filled_in(self):
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            certificate="yes",
+            form_9_done=True,
+            notice_received=True,
+            approved_ears="both",
+            fitted_on=date(2026, 5, 1),
+            ear="both",
+            subsidy="disability",
+            level="mid",
+            form_25_done=True,
+        )
+        self.assertEqual(
+            self.exported(),
+            {
+                "certificate": "有",
+                "form_9_done": "完成了",
+                "notice_received": "收到了",
+                "approved_ears": "雙耳",
+                "fitted_on": "2026-05-01",
+                "ear": "雙耳",
+                "subsidy": "用身障補助",
+                "level": "中階型",
+                "form_25_done": "完成了",
+                "viewed_chapters": [],
+            },
+        )
+
+    def test_unanswered_are_null(self):
+        unanswered = {
+            "certificate": None,
+            "form_9_done": None,
+            "notice_received": None,
+            "approved_ears": None,
+            "fitted_on": None,
+            "ear": None,
+            "subsidy": None,
+            "level": None,
+            "form_25_done": None,
+            "viewed_chapters": [],
+        }
+        self.assertEqual(self.exported(), unanswered)
+        AidAndSubsidy.objects.create(user=self.user)
+        self.assertEqual(self.exported(), unanswered)
+
+
+class ViewedChaptersExportTests(TestCase):
+    """#292 (spec #291 acceptance 23): the chapters read, by name, with the first time each."""
+
+    setUp = AidAndSubsidyExportTests.setUp
+    exported = AidAndSubsidyExportTests.exported
+
+    def view(self, user, chapter, moment):
+        view = GuideChapterView.objects.create(user=user, chapter=chapter)
+        GuideChapterView.objects.filter(pk=view.pk).update(first_viewed_at=moment)
+
+    def test_a_chapter_no_longer_in_the_guide_is_exported_by_its_slug(self):
+        taipei = timezone.get_default_timezone()
+        self.view(self.user, "old-chapter", datetime(2026, 10, 19, 21, 5, tzinfo=taipei))
+        self.assertEqual(
+            self.exported()["viewed_chapters"],
+            [{"chapter": "old-chapter", "first_viewed_at": "2026-10-19T21:05:00+08:00"}],
+        )
+
+    def test_each_chapter_read_with_its_name_and_first_time_in_order(self):
+        taipei = timezone.get_default_timezone()
+        self.view(self.user, "types-and-prices", datetime(2026, 10, 20, 9, 30, tzinfo=taipei))
+        self.view(self.user, "before-you-go", datetime(2026, 10, 19, 21, 5, tzinfo=taipei))
+        other = consented_user(username="export_views_other")
+        self.view(other, "form-9", datetime(2026, 10, 18, 8, 0, tzinfo=taipei))
+        self.assertEqual(
+            self.exported()["viewed_chapters"],
+            [
+                {"chapter": "去找聽力師之前", "first_viewed_at": "2026-10-19T21:05:00+08:00"},
+                {
+                    "chapter": "助聽器的種類與價格",
+                    "first_viewed_at": "2026-10-20T09:30:00+08:00",
+                },
+            ],
+        )

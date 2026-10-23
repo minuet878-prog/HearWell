@@ -20,7 +20,7 @@
     <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.classified.text }}。</p>
 </section>
 {% endif %}
-{% if has_records and not audiogram %}
+{% if latest and not audiogram %}
 <section class="card card-body mt-6" aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
@@ -108,15 +108,21 @@
     {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
     <ol class="route" role="list">
         {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %}>
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
             <span class="route-number">{{ forloop.counter }}</span>
             <div class="route-box">
                 {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
                 <a class="route-title" href="{{ stop.url }}">{{ stop.title }}</a>
                 {% if stop.tested_on %}<p class="route-note">{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖</p>{% endif %}
+                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
                 {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
                 {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
+                {# #293: the answer in short; 修改 opens the question again, without JavaScript. #}
+                {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
+                {% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endfor %}
             </div>
+            {# #296: on the line on to the next stop, beside it. #}
+            {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}
         </li>
         {% endfor %}
     </ol>

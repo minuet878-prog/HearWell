@@ -88,10 +88,17 @@ RECOMMENDATION_REASONS = {
 NEXT_STEP_REASONS = {
     "record": "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
-    # 了解助聽器選配與補助, by the 目前這一站 (a guide chapter's slug)
-    "before-you-go": "您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。",
-    "assessment": "依您的聽力圖估算，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。",
-    "after-fitting": "您已在使用助聽器，可以看配戴之後要注意什麼、怎麼記錄效果。",
+    # 了解助聽器選配與補助, by the 目前這一站 (a stop's slug), spec #291's drafts; none
+    # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
+    # last day it can be done.
+    "before-you-go": "先看看第一次去找聽力師要準備什麼。",
+    "assessment": "先確認有沒有身障證明，才知道能不能申請補助。",
+    "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
+    "notice": "九號表送出後，等公所的核定公文。",
+    "types-and-prices": "可以看看助聽器的種類與價格，比較之後再買。",
+    "after-fitting": "開始戴助聽器後，記下哪一天開始戴。",
+    "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
+    "payout": "接下來等補助發放。",
     # without a 目前這一站
     "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
     "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",

@@ -1,0 +1,40 @@
+{% load static %}
+{# #293: a 選配路線 stop's question, on the route and at the foot of its chapter. Each answer is a submit button, so one press sends it without JavaScript; the current answer is the filled one. #295: 配戴之後's date and choices are sent with one save button instead. #}
+<form method="post" action="{% url 'route_answer' %}" class="stop-question">
+    {% csrf_token %}
+    <input type="hidden" name="stop" value="{{ stop }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    {% for field in question %}
+    {% if field.widget_type == "date" %}
+    <div class="mb-4">
+        <label for="{{ field.id_for_label }}" class="form-label font-bold text-xl/normal">{{ field.label }}</label>
+        {{ field }}
+        {% include "screening/field_messages.html" with help_class="field-help" %}
+    </div>
+    {% elif field.widget_type == "radioselect" %}
+    {# fitting-level.js shows the level only with 用身障補助; without JavaScript it stays (#287). #}
+    <fieldset class="mb-4"{% if field.name == "level" %} data-fitting-level data-shown-with="disability"{% endif %}{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
+        {% include "screening/field_messages.html" with help_class="field-help" %}
+        {{ field }}
+    </fieldset>
+    {% if field.name == "level" %}<script type="module" src="{% static 'screening/frontend/fitting-level.js' %}"></script>{% endif %}
+    {% else %}
+    <fieldset{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
+        {% include "screening/field_messages.html" with help_class="field-help" %}
+        <div class="stop-answers">
+            {% for value, label in field.field.choices %}
+            <button type="submit" name="{{ field.html_name }}" value="{{ value }}" class="btn btn-lg {% if value == field.value %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</button>
+            {% endfor %}
+        </div>
+    </fieldset>
+    {% endif %}
+    {% endfor %}
+    {% if question.save_label %}
+    <div class="stop-answers">
+        <button type="submit" class="btn btn-primary btn-lg">{{ question.save_label }}</button>
+        {% if question.answered %}<button type="submit" name="{{ question.NOT_FITTED }}" value="1" class="btn btn-outline-primary btn-lg">還沒開始戴</button>{% endif %}
+    </div>
+    {% endif %}
+</form>

@@ -21,11 +21,14 @@ from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
+from screening.fitting_route import add_months
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
     Category,
+    GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
@@ -2044,6 +2047,321 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             )
             expect(self.main()).to_contain_text("沒核定就先買的不補助")
 
+    # #292 (spec #291 e2e, acceptance 2, 4, 5, 27): the setUp user reaches the threshold but
+    # has read nothing, so 您在這裡 is 去找聽力師之前. Reading it from the button, and 種類與價格
+    # out of order from its title, marks both 已完成 and moves 您在這裡 on to the assessment.
+    # The nine stops fit 320px at 200% text.
+    def test_reading_chapters_moves_the_route_on(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            stops = self.main().locator(".route-stop")
+            expect(stops).to_have_count(9)
+            expect(stops.nth(4)).to_contain_text("等待核定公文")
+            expect(stops.nth(8)).to_contain_text("等待補助發放")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("去找聽力師之前")
+            here.get_by_role("link", name="去之前要準備什麼").click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
+
+            self.page.goto(f"{self.live_server_url}/guide")
+            types = self.main().locator('[data-stop="types-and-prices"]')
+            expect(types.locator(".route-mark")).to_have_count(0)
+            types.get_by_role("link", name="助聽器的種類與價格").click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器的種類與價格")
+
+            self.page.goto(f"{self.live_server_url}/guide")
+            for slug in ("before-you-go", "types-and-prices"):
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_text(["已完成"])
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("身障鑑定與鑑定醫院")
+            expect(here.get_by_role("link", name="找鑑定醫院")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide with chapters read")
+
+    # #293 (spec #291 e2e, acceptance 6, 7, 18, 27; no JavaScript, story 40): answer the
+    # certificate at the foot of its chapter, again on the route, then change it with 修改.
+    # The chapter's question card and the route's open question fit 320px at 200% text.
+    def test_answering_the_certificate_moves_the_route_on(self):
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        question = "您有聽覺機能的身心障礙證明嗎？"
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/assessment")
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            expect(card.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment question card")
+            card.get_by_role("button", name="還沒有，正在申請鑑定").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
+            expect(self.main().get_by_role("region", name="看完了嗎？")).to_have_count(0)
+            # #294: the card says what was kept, and its button goes back to the route.
+            kept = self.main().get_by_role("region", name="已記下：正在申請鑑定")
+            expect(kept).to_be_in_viewport()
+            expect(kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment answered card")
+            kept.get_by_role("link", name="回選配路線看下一站").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#contents-title")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("身障鑑定與鑑定醫院")
+            expect(here.locator(".route-answer")).to_have_text("正在申請鑑定")
+            expect(here.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide open question")
+            here.get_by_role("button", name="有", exact=True).click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-assessment")
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.locator(".route-mark")).to_have_text(["已完成"])
+            expect(assessment.locator(".route-answer")).to_have_text("有身障證明 修改")
+            expect(self.main().locator('[aria-current="step"]')).to_contain_text("九號表")
+            assessment.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide?edit=assessment#stop-assessment"
+            )
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.get_by_role("group", name=question)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide editing the question")
+            assessment.get_by_role("button", name="沒有，不申請身障補助").click()
+
+            for slug in ("form-9", "notice", "form-25", "payout"):
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_text(["不適用"])
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("助聽器的種類與價格")
+
+    # #294 (spec #291 e2e, acceptance 8, 9, 10, 27; no JavaScript, story 40): with a
+    # certificate, answer 九號表 on the route, then 等待核定公文 one question at a time.
+    def test_answering_form_9_and_the_notice_moves_the_route_on(self):
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("九號表")
+            expect(here.get_by_role("link", name="看九號表的流程")).to_be_visible()
+            expect(here.get_by_role("group", name="九號表完成了嗎？")).to_be_visible()
+            here.get_by_role("button", name="完成了").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-form-9")
+            form_9 = self.main().locator('[data-stop="form-9"]')
+            expect(form_9.locator(".route-mark")).to_have_text(["已完成"])
+            expect(form_9.locator(".route-answer")).to_have_text("九號表完成了 修改")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("等待核定公文")
+            here.get_by_role("button", name="收到了").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-notice")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("等待核定公文")
+            expect(here.get_by_role("group", name="核定的是單耳還是雙耳？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide the notice's ears")
+            here.get_by_role("button", name="雙耳").click()
+
+            here = self.main().locator('[aria-current="step"]')
+            expect(here.get_by_role("group", name="補助的等級是？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide the notice's level")
+            here.get_by_role("button", name="中階型").click()
+
+            notice = self.main().locator('[data-stop="notice"]')
+            expect(notice.locator(".route-mark")).to_have_text(["已完成"])
+            expect(notice.locator(".route-answer")).to_have_text("雙耳、中階型 修改")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("助聽器的種類與價格")
+            expect(here).to_contain_text("收到核定通知後 6 個月內要買。")
+
+    # #295 (spec #291 e2e, acceptance 11, 12, 18, 27): the latest questionnaire answered
+    # wearing hearing aids, so 您在這裡 is 配戴之後 and it asks the ear and the subsidy too; the
+    # level appears only once 用身障補助 is chosen. Then 修改 and 還沒開始戴 take it back.
+    def test_answering_the_fitting_date_moves_the_route_on(self):
+        Submission.objects.filter(user__username="guide_e2e").update(wearing_hearing_aid=True)
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/after-fitting")
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            expect(card.get_by_label("這副助聽器哪一天開始戴？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/after-fitting question card")
+
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("配戴助聽器之後")
+            expect(here.get_by_role("group", name="有沒有用身障補助買？")).to_be_visible()
+            level = here.get_by_role("group", name="補助的等級是？")
+            expect(level).to_be_hidden()
+            here.get_by_label("這副助聽器哪一天開始戴？").fill("2026-05-01")
+            here.get_by_role("radio", name="雙耳").check()
+            here.get_by_role("radio", name="自費或其他補助").check()
+            expect(level).to_be_hidden()
+            here.get_by_role("radio", name="用身障補助").check()
+            expect(level).to_be_visible()
+            level.get_by_role("radio", name="中階型").check()
+            self.assert_fits_a_phone_at_double_text_size("/guide the fitting question")
+            here.get_by_role("button", name="儲存").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-after-fitting")
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.locator(".route-mark")).to_have_text(["已完成"])
+            expect(fitting.locator(".route-answer")).to_have_text(
+                "2026/05/01 開始戴、雙耳、用身障補助、中階型 修改"
+            )
+            expect(self.main().locator('[aria-current="step"]')).to_contain_text("二十五號表")
+            fitting.get_by_role("link", name="修改配戴助聽器之後的回答").click()
+
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.get_by_label("這副助聽器哪一天開始戴？")).to_have_value("2026-05-01")
+            expect(fitting.get_by_role("group", name="補助的等級是？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide editing the fitting")
+            fitting.get_by_role("button", name="還沒開始戴").click()
+
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("配戴助聽器之後")
+            expect(here.locator(".route-answer")).to_have_count(0)
+            expect(here.get_by_label("這副助聽器哪一天開始戴？")).to_have_value("")
+
+    def here(self):
+        return self.main().locator('[aria-current="step"]')
+
+    # #296 (spec #291 e2e, acceptance 1-2, 4, 6-9, 11, 14, 16, 18, 27): the whole route
+    # from recording the audiogram to 等待補助發放, reading chapters, answering on the route and
+    # at a chapter's foot, and 修改 once. 320px at 200% text where questions open.
+    def test_walking_the_route_from_the_audiogram_to_the_payout(self):
+        Audiogram.objects.filter(user__username="guide_e2e").delete()
+        fitted_on = timezone.localdate() - timedelta(days=10)
+        opens = add_months(fitted_on, 1)
+        self.open(320, 640)
+        with self.saving_artifacts():
+            # 1 記錄聽力圖, in its four steps.
+            self.page.goto(f"{self.live_server_url}/guide")
+            expect(self.here()).to_contain_text("記錄聽力圖")
+            self.here().get_by_role("link", name="記錄醫院的聽力圖").click()
+            main = self.main()
+            main.get_by_label("檢查日期").fill("2026-10-01")
+            main.get_by_role("button", name="下一步：標右耳", exact=True).click()
+            for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
+                if ear == "右耳":
+                    main.get_by_text("用數值輸入（鍵盤或螢幕閱讀器）").click()
+                for frequency in (500, 1000, 2000, 4000):
+                    main.get_by_label(f"{ear}氣導 {frequency} Hz", exact=True).select_option("55")
+                main.get_by_role("button", name=button, exact=True).click()
+            main.get_by_role("button", name="存檔", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+
+            # 2 去找聽力師之前, read from its button.
+            self.page.goto(f"{self.live_server_url}/guide")
+            audiogram = self.main().locator('[data-stop="audiogram"]')
+            expect(audiogram.locator(".route-mark")).to_have_text(["已完成"])
+            expect(self.here()).to_contain_text("去找聽力師之前")
+            self.here().get_by_role("link", name="去之前要準備什麼").click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("去找聽力師之前")
+
+            # 3 身障鑑定, answered on the route.
+            self.page.goto(f"{self.live_server_url}/guide")
+            expect(self.here()).to_contain_text("身障鑑定與鑑定醫院")
+            self.here().get_by_role("button", name="有", exact=True).click()
+
+            # 4 九號表, answered at the foot of its chapter, then back to the route.
+            expect(self.here()).to_contain_text("九號表")
+            self.here().get_by_role("link", name="看九號表的流程").click()
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            card.get_by_role("button", name="完成了").click()
+            kept = self.main().get_by_role("region", name="已記下：九號表完成了")
+            kept.get_by_role("link", name="回選配路線看下一站").click()
+
+            # 5 等待核定公文, one question at a time.
+            expect(self.here()).to_contain_text("等待核定公文")
+            self.here().get_by_role("button", name="收到了").click()
+            self.here().get_by_role("button", name="雙耳").click()
+            self.here().get_by_role("button", name="中階型").click()
+
+            # 6 種類與價格, read from its title.
+            expect(self.here()).to_contain_text("助聽器的種類與價格")
+            self.here().get_by_role("link", name="助聽器的種類與價格").click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器的種類與價格")
+
+            # 7 配戴之後: the notice's 雙耳 leaves only the date.
+            self.page.goto(f"{self.live_server_url}/guide")
+            expect(self.here()).to_contain_text("配戴助聽器之後")
+            self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
+            self.here().get_by_role("button", name="儲存").click()
+
+            # 8 二十五號表: at least a month on, dated. Answered 完成了 at the foot of its
+            # chapter, then on the route 修改 to 還沒 and 完成了 again.
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.locator(".route-gap")).to_have_text("至少 1 個月")
+            expect(self.here()).to_contain_text("二十五號表")
+            expect(self.here()).to_contain_text(f"{opens:%Y/%m/%d} 起可以做")
+            expect(self.here().get_by_role("group", name="二十五號表完成了嗎？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide form 25's question")
+            self.here().get_by_role("link", name="看二十五號表要帶什麼").click()
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            expect(card.get_by_role("group", name="二十五號表完成了嗎？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/form-25 question card")
+            card.get_by_role("button", name="完成了").click()
+            kept = self.main().get_by_role("region", name="已記下：二十五號表完成了")
+            kept.get_by_role("link", name="回選配路線看下一站").click()
+
+            expect(self.here()).to_contain_text("等待補助發放")
+            form_25 = self.main().locator('[data-stop="form-25"]')
+            expect(form_25.locator(".route-answer")).to_have_text("二十五號表完成了 修改")
+            form_25.get_by_role("link", name="修改二十五號表：使用效益驗證的回答").click()
+            form_25 = self.main().locator('[data-stop="form-25"]')
+            form_25.get_by_role("button", name="還沒").click()
+            expect(self.here()).to_contain_text("二十五號表")
+            expect(self.here().locator(".route-answer")).to_have_text("二十五號表還沒完成")
+            self.here().get_by_role("button", name="完成了").click()
+
+            # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
+            expect(self.here()).to_contain_text("等待補助發放")
+            expect(self.here().locator(".route-mark")).to_have_text(["您在這裡"])
+            expect(self.here().locator("form")).to_have_count(0)
+            done = self.main().locator(".route-stop").filter(has_text="已完成")
+            expect(done).to_have_count(8)
+            self.assert_fits_a_phone_at_double_text_size("/guide at the payout")
+
+    # #296 (spec #291 e2e, acceptance 7, 15): not applying for the 身障補助 and paying for the
+    # pair, form 25 and the payout are 不適用, and once fitted no stop is 您在這裡.
+    def test_not_applying_for_the_subsidy_shows_its_stops_not_applicable(self):
+        user = User.objects.get(username="guide_e2e")
+        Submission.objects.filter(user=user).update(wearing_hearing_aid=True)
+        AidAndSubsidy.objects.create(user=user, certificate="no_subsidy")
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            for slug in ("form-9", "notice", "form-25", "payout"):
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_text(["不適用"])
+            expect(self.here()).to_contain_text("配戴助聽器之後")
+            fitted_on = timezone.localdate() - timedelta(days=10)
+            self.here().get_by_label("這副助聽器哪一天開始戴？").fill(fitted_on.isoformat())
+            self.here().get_by_role("radio", name="雙耳").check()
+            self.here().get_by_role("radio", name="自費或其他補助").check()
+            self.here().get_by_role("button", name="儲存").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-after-fitting")
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.locator(".route-mark")).to_have_text(["已完成"])
+            for slug in ("form-25", "payout"):
+                stop = self.main().locator(f'[data-stop="{slug}"]')
+                expect(stop.locator(".route-mark")).to_have_text(["不適用"])
+            expect(self.here()).to_have_count(0)
+            expect(self.main().locator(".route-gap")).to_have_count(0)
+            self.assert_fits_a_phone_at_double_text_size("/guide without the subsidy")
+
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
     # with the worked steps open and a county's hospitals listed.
     def test_pages_fit_a_phone_at_double_text_size(self):
@@ -2102,22 +2420,24 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.assert_fits_a_phone_at_double_text_size("/guide no response")
 
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
-    # wide at 200% text. The setUp audiogram reaches the threshold; missing a frequency, one
-    # ear over 25 still says to go before the threshold can tell; within 25, nothing can.
+    # wide at 200% text. The setUp user has read nothing, so it is 去找聽力師之前; read, the
+    # assessment (spec #291's reasons); within 25 and missing a frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         with self.saving_artifacts():
             for state, button in (
-                ("assessment", "看我的選配指引"),
                 ("before you go", "看我的選配指引"),
+                ("assessment", "看我的選配指引"),
                 ("too little data", "修改這張聽力圖"),
             ):
                 with self.subTest(state=state):
-                    if state == "before you go":
-                        points.filter(ear="left", frequency=4000).delete()
+                    if state == "assessment":
+                        user = User.objects.get(username="guide_e2e")
+                        GuideChapterView.objects.create(user=user, chapter="before-you-go")
                     if state == "too little data":
                         points.update(db=20)
+                        points.filter(ear="left", frequency=4000).delete()
                     self.page.goto(f"{self.live_server_url}/")
                     more = self.page.get_by_role("region", name="您還可以")
                     expect(more.get_by_role("link", name=button)).to_be_visible()
@@ -2146,14 +2466,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     )
                     self.assertEqual(narrow, [], path)
 
-    # #261 self-review: the 建議您下一步 box at the same size. This user reaches the threshold, so
-    # the reason ends in 「（45%）。」, which may not break off and once ran past its white box.
+    # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
+    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason).
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             reason = self.main().locator(".next-step-because")
-            expect(reason).to_contain_text("（45%）")
+            expect(reason).to_contain_text("先看看第一次去找聽力師要準備什麼。")
             self.assert_fits_a_phone_at_double_text_size("/ next step")
             room = reason.evaluate(
                 "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
@@ -2162,8 +2482,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.assertGreaterEqual(room["chars"], 4)
             self.assertLessEqual(room["overflow"], 0)
 
-    # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
-    # threshold, so the stop is the assessment.
+    # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
+    # nothing, so the stop is 去找聽力師之前 (spec #291).
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
         self.open(390)
         with self.saving_artifacts():
@@ -2173,7 +2493,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.page.goto(f"{self.live_server_url}/guide")
                     here = self.main().locator('[aria-current="step"]')
                     expect(here).to_have_count(1)
-                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    expect(here).to_contain_text("去找聽力師之前")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
 

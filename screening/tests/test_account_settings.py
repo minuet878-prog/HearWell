@@ -122,7 +122,8 @@ class AccountSettingsTests(TestCase):
         self.assertIn("登入後到「帳號設定」頁按「下載我的資料」", text)
         self.assertIn("登入後到「帳號設定」頁按「刪除帳號」", text)
         self.assertNotIn("到「我的紀錄」頁按", text)
-        self.assertEqual(models.CONSENT_VERSION, 1)
+        # A minor fix that kept version 1; #286's 助聽器與補助資料 then raised it to 2.
+        self.assertEqual(models.CONSENT_VERSION, 2)
 
     # 10
     def test_questionnaire_switch(self):

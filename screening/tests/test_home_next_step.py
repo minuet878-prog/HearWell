@@ -1,15 +1,20 @@
 """#261 (spec #257): 建議您下一步 and the grouped cards on the returning user's home page."""
 
 import re
-from datetime import timedelta
+from dataclasses import replace
+from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from screening.fitting_route import fitting_state
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Category,
+    GuideChapterView,
     Question,
     Questionnaire,
     ReportShare,
@@ -22,11 +27,16 @@ from screening.tests.helpers import consented_user
 # The 「因為」 sentences of spec #257's table (★ ones are drafts the owner settles on review).
 NO_AUDIOGRAM = "因為：您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。"
 TOO_LITTLE_DATA = "因為：這張聽力圖缺少頻率，資料不足，無法判斷。"
-BEFORE_YOU_GO = "因為：您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。"
-ASSESSMENT = "因為：依您的聽力圖估算，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"
-AFTER_FITTING = "因為：您已在使用助聽器，可以看配戴之後要注意什麼、怎麼記錄效果。"
 SHARE = "因為：讓家人也知道您的聽力狀況，家人不用登入就能看。"
 REPORT = "因為：看診時把報告帶給醫師，一張紙看完所有紀錄。"
+# Spec #291's drafts, one for each stop of the nine-stop route but form 25 (#296).
+BEFORE_YOU_GO = "因為：先看看第一次去找聽力師要準備什麼。"
+ASSESSMENT = "因為：先確認有沒有身障證明，才知道能不能申請補助。"
+FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
+NOTICE = "因為：九號表送出後，等公所的核定公文。"
+TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之後再買。"
+AFTER_FITTING = "因為：開始戴助聽器後，記下哪一天開始戴。"
+PAYOUT = "因為：接下來等補助發放。"
 
 RECORD = ("/audiograms/new", "記錄醫院的聽力圖")
 PRINT = ("/report", "印聽力報告給醫師看")
@@ -112,17 +122,20 @@ class HomeNextStepTests(TestCase):
         )
 
     def test_a_stop_on_the_guide_suggests_my_guide_saying_why(self):
-        # Acceptance 2: 去找聽力師之前, 身障鑑定與鑑定醫院, 配戴助聽器之後.
-        for stop, wearing, ears, because in (
-            ("before-you-go", False, ((30, 30, 30, 30), (20, 20, 20, 20)), BEFORE_YOU_GO),
-            ("assessment", False, (test_guide_summary.PTA_55,) * 2, ASSESSMENT),
-            ("after-fitting", True, None, AFTER_FITTING),
+        # Acceptance 2, with spec #291 acceptance 21: the stops records reach in #292.
+        for stop, wearing, ears, read, because in (
+            ("before-you-go", False, (30, 20), (), BEFORE_YOU_GO),
+            ("assessment", False, (55, 55), ("before-you-go",), ASSESSMENT),
+            ("after-fitting", True, None, (), AFTER_FITTING),
         ):
             with self.subTest(stop=stop):
                 self.user.audiograms.all().delete()
+                self.user.guide_views.all().delete()
                 self.answer(wearing=wearing)
                 if ears:
-                    self.make(*ears)
+                    self.make(*((pta,) * 4 for pta in ears))
+                for chapter in read:
+                    GuideChapterView.objects.create(user=self.user, chapter=chapter)
                 self.assertEqual(
                     self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
                 )
@@ -284,3 +297,92 @@ class HomeNextStepTests(TestCase):
                 self.assertIn("開始篩檢", content)
                 for part in ("建議您下一步", "next-step", "more-group", "您還可以"):
                     self.assertNotIn(part, content)
+
+
+class EveryStopNextStepTests(TestCase):
+    """#292 (spec #291 acceptance 21): a reason for every stop of the nine, so the home page
+    never fails on one. Stops 4, 5, 6, 8 and 9 need answers the later tickets add, so the
+    route's stop is set here on the state the records give."""
+
+    def setUp(self):
+        self.user = consented_user(username="every_stop_user")
+        self.client.force_login(self.user)
+        real_localdate = timezone.localdate
+
+        def localdate(value=None, timezone=None):
+            return date(2026, 6, 15) if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+        self.answer()
+
+    setUpTestData = classmethod(HomeNextStepTests.setUpTestData.__func__)
+    answer = HomeNextStepTests.answer
+    section = HomeNextStepTests.section
+    next_step = HomeNextStepTests.next_step
+
+    def at(self, stop):
+        def state_at(user, today):
+            return replace(fitting_state(user, today), stop=stop)
+
+        return patch("screening.main_flow.fitting_state", state_at)
+
+    def test_each_stop_on_the_guide_says_why(self):
+        for stop, because in (
+            ("before-you-go", BEFORE_YOU_GO),
+            ("assessment", ASSESSMENT),
+            ("form-9", FORM_9),
+            ("notice", NOTICE),
+            ("types-and-prices", TYPES_AND_PRICES),
+            ("after-fitting", AFTER_FITTING),
+            ("payout", PAYOUT),
+        ):
+            with self.subTest(stop=stop), self.at(stop):
+                self.assertEqual(
+                    self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
+                )
+
+    def test_form_25_says_its_deadline(self):
+        # Fitted 2026/05/01 with 身障補助 at 中階型: form 25 is due by 2026/08/01.
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        with self.at("form-25"):
+            self.assertEqual(
+                self.next_step(),
+                (
+                    "了解助聽器選配與補助",
+                    "因為：您的助聽器要在 2026/08/01 前做使用效益驗證（二十五號表），"
+                    "才能核銷補助。",
+                    "/guide",
+                    "看我的選配指引",
+                ),
+            )
+
+    def test_form_25_done_says_the_payout_comes_next(self):
+        # #296 (spec #291 acceptance 16, 21): on the records alone, not a set stop.
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            fitted_on=date(2026, 5, 1),
+            subsidy="disability",
+            level="mid",
+            form_25_done=True,
+        )
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
+        )
+
+    def test_basic_at_the_payout_says_it_comes_next_without_form_25(self):
+        # 簡易型 passes form 25 by (#296): the reason does not say form 25 was done.
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
+        )
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
+        )
+
+    def test_the_date_with_the_subsidy_unanswered_is_still_after_fitting(self):
+        # Spec #291 Q16: without the notice, 配戴之後 is done only once the subsidy is answered.
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", AFTER_FITTING, "/guide", "看我的選配指引")
+        )

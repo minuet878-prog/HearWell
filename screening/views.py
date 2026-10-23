@@ -30,14 +30,18 @@ from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
-from screening.fitting_route import AUDIOGRAM, fitting_state
+from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
 from screening.forms import (
     ROC_OFFSET,
+    STOP_QUESTIONS,
     AgeGroupForm,
     AnswerFormSet,
     DeleteAccountForm,
+    Form9Form,
+    Form25Form,
     HearingAidForm,
     HhiComparisonForm,
+    NoticeForm,
     RegisterForm,
     WearingNowForm,
     answer_choices,
@@ -102,8 +106,9 @@ HOME_PREVIEW_SCORE = 18
 
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
+    today = timezone.localdate()
     user_state = (
-        get_user_state(request.user, today=timezone.localdate())
+        get_user_state(request.user, today=today)
         if request.user.is_authenticated
         else NEW_USER_STATE
     )
@@ -114,7 +119,7 @@ def index(request):
         else None
     )
     # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
-    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user)
+    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user, today)
     response = render(
         request,
         "screening/index.html",
@@ -219,19 +224,29 @@ GUIDE_CHAPTERS = (
 
 
 def guide(request):
-    # Open without logging in (spec #218): the contents are for family too.
+    # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
+    # opens an answered stop's question again (#293).
+    return _guide_page(request, edit=request.GET.get("edit"))
+
+
+def _guide_page(request, edit=None, question=None):
+    """我的選配指引, the stop being edited showing its question: question, a form sent back
+    with its errors, or else one holding the current answer."""
     context, state = {}, None
     if request.user.is_authenticated:
-        state = fitting_state(request.user)
-        context["has_records"] = state.audiogram is not None or state.latest is not None
+        today = timezone.localdate()
+        state = fitting_state(request.user, today)
+        context["has_records"] = state.has_records
+        context["latest"] = state.latest  # 問卷結果 without an audiogram asks for one
         # The same life-impact record the home page shows as the last result.
-        last = get_user_state(request.user, today=timezone.localdate()).last_result
+        last = get_user_state(request.user, today=today).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
-        # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
+        # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4), or
+        # a fitting date is filled in (#287).
         context["wearing"] = state.wearing
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
-    context["route"] = _route(state)
+    context["route"] = _route(state, edit, question)
     response = render(request, "screening/guide/index.html", context)
     if request.user.is_authenticated:
         # Shows this account's records (GLOSSARY 健康資料頁面): never cached.
@@ -272,6 +287,11 @@ class RouteStop:
     tested_on: object | None = None  # the recorded audiogram's date, on the done first stop
     links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the title
     action: tuple[str, str] | None = None  # the 目前這一站's button
+    notes: tuple[str, ...] = ()  # dated (#288) or fixed (#294) wordings under the title
+    answer: str = ""  # the user's answer in short (#293)
+    questions: tuple = ()  # the stop's question forms shown open (#293, #294)
+    editable: bool = False  # 修改 opens questions answered but not shown (#294)
+    gap: str = ""  # said on the line on to the next stop (#296)
 
     @property
     def here(self):
@@ -281,29 +301,105 @@ class RouteStop:
     def below(self):
         return "估算未達門檻" in self.marks
 
+    @property
+    def not_applicable(self):
+        return "不適用" in self.marks
 
-def _route(state):
-    # 選配路線 (#258): recording an audiogram, then the chapters in reading order. Signed out,
-    # no stop is marked. Every wording but the marks is one #220 already reviewed.
-    stops = [(AUDIOGRAM, "記錄聽力圖", reverse("audiogram_new"))]
-    stops += [(c.slug, c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS]
+
+# #293: each answer in short, under its stop.
+CERTIFICATE_ANSWERS = {
+    models.Certificate.YES: "有身障證明",
+    models.Certificate.APPLYING: "正在申請鑑定",
+    models.Certificate.NO_SUBSIDY: "不申請身障補助",
+}
+FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  # #294
+FORM_25_ANSWERS = {True: "二十五號表完成了", False: "二十五號表還沒完成"}  # #296
+# Said under the stop for everyone (#294, spec #291 Q12: the notice's date is not asked).
+ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買。",)}
+# #296 (spec #291 acceptance 14): form 25 comes at least a month after the fitting date.
+FORM_25_GAP = "至少 1 個月"
+
+
+def _answer(slug, aid):
+    """The stop's answer in short, "" unanswered (#293, #294)."""
+    if aid is None:
+        return ""
+    if slug == "assessment":
+        return CERTIFICATE_ANSWERS.get(aid.certificate, "")
+    if slug == "form-9":
+        return FORM_9_ANSWERS.get(aid.form_9_done, "")
+    if slug == "form-25":
+        return FORM_25_ANSWERS.get(aid.form_25_done, "")
+    if slug == "after-fitting":
+        # #295: 2026/05/01 開始戴、雙耳, with the subsidy and its level where this stop asked.
+        if aid.fitted_on is None:
+            return ""
+        parts = [f"{aid.fitted_on:%Y/%m/%d} 開始戴", aid.get_ear_display()]
+        if aid.subsidy:
+            parts += [aid.get_subsidy_display(), aid.get_level_display()]
+        return "、".join(filter(None, parts))
+    # The notice: 雙耳、中階型 once both are answered, else how far it has got.
+    if aid.notice_received is None:
+        return ""
+    if not aid.notice_received:
+        return "還沒收到核定公文"
+    if aid.approved_ears and aid.level:
+        return f"{aid.get_approved_ears_display()}、{aid.get_level_display()}"
+    if aid.approved_ears:
+        return f"收到核定公文，{aid.get_approved_ears_display()}"
+    return "收到核定公文"
+
+
+def _reached(slug, aid):
+    """The stop's questions asked so far, in order; the last is the one to answer next. The
+    notice asks 單耳 or 雙耳 once 收到了, then the level (#294)."""
+    questions = STOP_QUESTIONS[slug]
+    if slug != "notice" or aid is None or not aid.notice_received:
+        return questions[:1]
+    return questions if aid.approved_ears else questions[:2]
+
+
+def _route(state, edit=None, question=None):
+    # 選配路線 (#258, spec #291): recording an audiogram, then the chapters in reading order
+    # and the two waits, which have no chapter and point to form 9's 申請流程 (Q15). Signed
+    # out, no stop is marked.
+    steps = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
+    places = {c.slug: (c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS}
+    places |= {
+        AUDIOGRAM: ("記錄聽力圖", reverse("audiogram_new")),
+        "notice": ("等待核定公文", steps),
+        "payout": ("等待補助發放", steps),
+    }
+    stops = [(slug, *places[slug]) for slug in STOPS]
     if state is None:
-        return [RouteStop(*stop) for stop in stops]
-    return [_route_stop(state, *stop) for stop in stops]
+        return [
+            RouteStop(
+                slug=slug,
+                title=title,
+                url=url,
+                notes=ROUTE_REMINDERS.get(slug, ()),
+                gap=FORM_25_GAP if slug == "after-fitting" else "",
+            )
+            for slug, title, url in stops
+        ]
+    return [_route_stop(state, *stop, edit, question) for stop in stops]
 
 
-def _route_stop(state, slug, title, url):
+def _route_stop(state, slug, title, url, edit=None, question=None):
     marks, links, action, tested_on = [], [], None, None
+    notes = list(ROUTE_REMINDERS.get(slug, ()))
     form_9 = reverse("guide_chapter", args=["form-9"])
-    if slug == AUDIOGRAM and state.audiogram is not None:
-        if state.insufficient:
-            # Never 已完成 (grill Q9): the title and a link go to editing it instead.
-            url = reverse("audiogram_edit", args=[state.audiogram.pk])
-        else:
-            marks.append("已完成")
+    if slug == AUDIOGRAM and state.insufficient:
+        # Never 已完成 (grill Q9): the title and a link go to editing it instead.
+        url = reverse("audiogram_edit", args=[state.audiogram.pk])
+    if slug in state.done:
+        marks.append("已完成")
+        if slug == AUDIOGRAM:
             tested_on = state.audiogram.tested_on
     if slug == state.stop:
         marks.append("您在這裡")
+    if slug in state.not_applicable:
+        marks.append("不適用")
     if slug == AUDIOGRAM and state.insufficient:
         marks.append("資料不足")
         if slug == state.stop:
@@ -311,30 +407,130 @@ def _route_stop(state, slug, title, url):
         else:
             links.append(("修改這張聽力圖", url))
     elif slug == state.stop:
+        # The waits and types and prices have no button: the title is the only link.
         action = {
             AUDIOGRAM: ("記錄醫院的聽力圖", url),
             "before-you-go": ("去之前要準備什麼", url),
             "assessment": ("找鑑定醫院", url),
+            "form-9": ("看九號表的流程", url),
             "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
-        }[slug]
-    # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
-    if slug == "assessment" and state.threshold and state.threshold["status"] == "not_reached":
+            "form-25": ("看二十五號表要帶什麼", url),
+        }.get(slug)
+    # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked. Once the
+    # certificate is answered the estimate is left out (#293).
+    if (
+        slug == "assessment"
+        and slug not in state.done
+        and state.threshold
+        and state.threshold["status"] == "not_reached"
+    ):
         marks.append("估算未達門檻")
         links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+    if slug == "form-9" and state.reapply_on:
+        notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
-    return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action)
+    if slug == "form-25" and state.form_25:
+        # #296 (spec #291 acceptance 14): from when before it opens, by when while open, and
+        # once it has closed the deadline, never saying it is overdue.
+        opens, closes = state.form_25
+        if state.today < opens:
+            notes.append(f"{opens:%Y/%m/%d} 起可以做")
+        elif state.today <= closes:
+            notes.append(f"{closes:%Y/%m/%d} 前要做完")
+        else:
+            notes.append(f"期限是 {closes:%Y/%m/%d}")
+    answer, shown, editable = "", (), False
+    if slug in STOP_QUESTIONS:
+        answer = _answer(slug, state.aid)
+        reached = _reached(slug, state.aid)
+        # Spec #291 Q14: open at the 目前這一站, the next question only; where the user chose
+        # 修改, every one asked so far, and then only that stop. A form sent back with its
+        # errors is the edited stop's.
+        if slug == edit and question is not None:
+            shown = (question,)
+        elif slug == edit:
+            shown = tuple(form_class(instance=state.aid) for form_class in reached)
+        elif slug == state.stop and edit not in STOP_QUESTIONS:
+            shown = (reached[-1](instance=state.aid),)
+        editable = bool(answer) and len(shown) < len(reached)
+    # On the line on to form 25, unless form 25 is 不適用.
+    gap = FORM_25_GAP if slug == "after-fitting" and "form-25" not in state.not_applicable else ""
+    return RouteStop(
+        slug=slug,
+        title=title,
+        url=url,
+        marks=tuple(marks),
+        tested_on=tested_on,
+        links=tuple(links),
+        action=action,
+        notes=tuple(notes),
+        answer=answer,
+        questions=shown,
+        editable=editable,
+        gap=gap,
+    )
 
 
 def guide_chapter(request, chapter):
-    # Like the family guide: the same reviewed content for everyone, no user data.
+    # Like the family guide: the same reviewed content for everyone, no user data shown.
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
-    context = {"chapter": found}
-    if found.extra_context:
-        context.update(found.extra_context(request))
-    return render(request, found.template, context)
+    if request.user.is_authenticated and request.user.has_consented():
+        # 看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing
+        # to the privacy notice that covers it, nothing is kept.
+        models.GuideChapterView.objects.get_or_create(user=request.user, chapter=chapter)
+    return _chapter_page(request, found)
+
+
+def _chapter_page(request, chapter, question=None):
+    """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
+    user has not answered it, and 已記下 with the answer once they have (#294), but neither
+    where the stop is 不適用 (#291 review); question is a form sent back with its errors."""
+    context = {"chapter": chapter}
+    if chapter.extra_context:
+        context.update(chapter.extra_context(request))
+    user = request.user
+    asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
+    aid = models.AidAndSubsidy.for_user(user) if asked else None
+    if asked and chapter.slug in not_applicable_stops(aid):
+        asked, question = False, None
+    if question is None and asked:
+        context["answered"] = _answer(chapter.slug, aid)
+        if not context["answered"]:
+            question = STOP_QUESTIONS[chapter.slug][0](instance=aid)
+    context["question"] = question
+    response = render(request, chapter.template, context)
+    if user.is_authenticated:
+        # Whether the question shows depends on this account's answers.
+        add_never_cache_headers(response)
+    return response
+
+
+@login_required
+@require_http_methods(["POST"])
+@health_data_page
+def route_answer(request):
+    # #293 (spec #291 acceptance 28): a stop's answer, request.user's own only; back to the
+    # stop on the route, or to the chapter's question.
+    stop = request.POST.get("stop")
+    questions = STOP_QUESTIONS.get(stop)
+    if questions is None:
+        return HttpResponseBadRequest()
+    # The question whose answer was pressed (#294: the notice has three).
+    form_class = next((q for q in questions if q.base_fields.keys() & request.POST.keys()), None)
+    form_class = form_class or questions[0]
+    aid = models.AidAndSubsidy.for_user(request.user)
+    form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
+    next_url = _safe_next(request)
+    if form.is_valid():
+        form.save()
+        return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
+    if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
+        chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)
+        return _chapter_page(request, chapter, form)
+    return _guide_page(request, edit=stop, question=form)
 
 
 class MonitoringTestError(Exception):
@@ -958,6 +1154,11 @@ def _mark_not_applicable_answers(data):
             answer["choice"] = "不適用"
 
 
+def _offered(form_class, name, value):
+    """The wording the question offers for the answer value; None unanswered."""
+    return dict(form_class.base_fields[name].choices).get(value)
+
+
 @login_required
 @require_http_methods(["GET"])
 @health_data_page
@@ -975,6 +1176,8 @@ def download_my_data(request):
     )
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
+    aid = models.AidAndSubsidy.for_user(user)
+    chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
     data = {
         "account": {
             "username": user.username,
@@ -1032,6 +1235,28 @@ def download_my_data(request):
             }
             for share in user.report_shares.all()
         ],
+        # Spec #284, #291: what the user answered, unanswered as null, the certificate included.
+        "aid_and_subsidy": {
+            "certificate": (aid and aid.get_certificate_display()) or None,
+            # #294: worded as the questions offer them.
+            "form_9_done": _offered(Form9Form, "form_9_done", aid and aid.form_9_done),
+            "notice_received": _offered(NoticeForm, "notice_received", aid and aid.notice_received),
+            "approved_ears": (aid and aid.get_approved_ears_display()) or None,
+            "fitted_on": aid.fitted_on.isoformat() if aid and aid.fitted_on else None,
+            "ear": (aid and aid.get_ear_display()) or None,
+            "subsidy": (aid and aid.get_subsidy_display()) or None,
+            "level": (aid and aid.get_level_display()) or None,
+            "form_25_done": _offered(Form25Form, "form_25_done", aid and aid.form_25_done),
+            # Spec #291 acceptance 23: the chapters read, by name, first read first.
+            "viewed_chapters": [
+                {
+                    # A chapter since taken out of the guide keeps its slug.
+                    "chapter": chapter_titles.get(view.chapter, view.chapter),
+                    "first_viewed_at": _taipei(view.first_viewed_at),
+                }
+                for view in user.guide_views.order_by("first_viewed_at")
+            ],
+        },
     }
     filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(
@@ -1156,6 +1381,9 @@ def _report_context(user):
 def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
+    # #287: the owner's report only; the family's copy shares the template but not this.
+    aid = models.AidAndSubsidy.for_user(request.user)
+    context["aid_report_text"] = aid.report_text if aid else ""
     return render(request, "screening/health_report.html", context)
 
 

@@ -7,7 +7,19 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import Answer, Question, Submission, User, shared_days
+from screening.models import (
+    AidAndSubsidy,
+    AidEar,
+    AidLevel,
+    Answer,
+    ApprovedEars,
+    Certificate,
+    Question,
+    Submission,
+    Subsidy,
+    User,
+    shared_days,
+)
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -229,3 +241,147 @@ class HhiComparisonForm(forms.Form):
                 first_two = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
                 if len(first_two) == 1:
                     self.initial[name] = first_two[0]
+
+
+class CertificateForm(forms.ModelForm):
+    # 身障鑑定與鑑定醫院's question (spec #291 Q2): one press of an answer sends it.
+    certificate = forms.ChoiceField(
+        label="您有聽覺機能的身心障礙證明嗎？",
+        help_text="第二類 b230、s260，或舊制 02",
+        choices=Certificate.choices,
+    )
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("certificate",)
+
+
+def _done_or_not_yet(label, done):
+    # #294: 完成了 / 收到了, or 還沒, kept as True or False.
+    return forms.TypedChoiceField(
+        label=label, choices=((True, done), (False, "還沒")), coerce=lambda value: value == "True"
+    )
+
+
+class Form9Form(forms.ModelForm):
+    form_9_done = _done_or_not_yet("九號表完成了嗎？", "完成了")
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("form_9_done",)
+
+
+class NoticeForm(forms.ModelForm):
+    notice_received = _done_or_not_yet("收到核定公文了嗎？", "收到了")
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("notice_received",)
+
+
+class ApprovedEarsForm(forms.ModelForm):
+    approved_ears = forms.ChoiceField(label="核定的是單耳還是雙耳？", choices=ApprovedEars.choices)
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("approved_ears",)
+
+
+class ApprovedLevelForm(forms.ModelForm):
+    level = forms.ChoiceField(label="補助的等級是？", choices=AidLevel.choices)
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("level",)
+
+
+def _radios(label, choices, **kwargs):
+    # Optional: a question left unchosen keeps what was there (#295 only writes what is given).
+    return forms.ChoiceField(
+        label=label,
+        choices=choices,
+        required=False,
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        **kwargs,
+    )
+
+
+class FittingForm(forms.ModelForm):
+    # 配戴之後's questions (#295, spec #291 Q6): the date, then only what is not known yet. The
+    # notice's 單耳 asks which ear, its 雙耳 none; without the notice, the ear, the subsidy and
+    # its level. Saved with one button; the date picker is the one recording an audiogram uses.
+    fitted_on = forms.DateField(
+        label="這副助聽器哪一天開始戴？",
+        help_text="可以看購買收據或保固書上的日期",
+        widget=forms.DateInput(
+            format="%Y-%m-%d", attrs={"type": "date", "class": "form-control form-control-lg"}
+        ),
+    )
+    ear = _radios("戴哪一耳？", AidEar.choices)
+    subsidy = _radios("有沒有用身障補助買？", Subsidy.choices)
+    # fitting-level.js shows it only with 用身障補助; without JavaScript it stays (#287).
+    level = _radios("補助的等級是？", AidLevel.choices, help_text="選了用身障補助才需要填")
+    save_label = "儲存"
+    # 修改 offers to clear the pair (spec #291 acceptance 18) instead of the date field's own.
+    NOT_FITTED = "not_fitted"
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("fitted_on", "ear", "subsidy", "level")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fitted_on"].widget.attrs["max"] = timezone.localdate().isoformat()
+        self.answered = self.instance.fitted_on is not None
+        self.not_fitted = self.NOT_FITTED in self.data
+        aid = self.instance
+        if aid.notice_received:
+            del self.fields["subsidy"], self.fields["level"]  # the notice's answers stand
+            if aid.approved_ears == ApprovedEars.ONE:
+                self.fields["ear"].choices = AidEar.choices[:2]  # 左耳 or 右耳
+            elif aid.approved_ears == ApprovedEars.BOTH:
+                del self.fields["ear"]
+        if self.not_fitted:
+            self.fields["fitted_on"].required = False
+
+    def clean_fitted_on(self):
+        fitted_on = self.cleaned_data["fitted_on"]
+        if fitted_on and fitted_on > timezone.localdate():
+            raise forms.ValidationError("開始配戴日期不能是未來")
+        return fitted_on
+
+    def clean(self):
+        # The instance is set here, as construct_instance leaves an unsent radio's field as it
+        # was; the model's clean then drops a level without 用身障補助.
+        aid = self.instance
+        if self.not_fitted:
+            # 還沒開始戴: what 配戴之後 asked goes, and form 25, which the next pair is done
+            # again; the notice's answers stay.
+            aid.fitted_on, aid.ear, aid.subsidy, aid.form_25_done = None, "", "", None
+            return {}
+        if aid.notice_received and aid.approved_ears == ApprovedEars.BOTH:
+            aid.ear = AidEar.BOTH
+        # Spec #291 Q16: without the notice the subsidy must be answered. Checked here, not
+        # as a required radio, so 還沒開始戴 still goes through on an older record without it.
+        if "subsidy" in self.fields and not self.cleaned_data.get("subsidy"):
+            self.add_error("subsidy", "請選擇有沒有用身障補助")
+        return super().clean()
+
+
+class Form25Form(forms.ModelForm):
+    form_25_done = _done_or_not_yet("二十五號表完成了嗎？", "完成了")  # #296
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("form_25_done",)
+
+
+# The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug: each
+# stop's questions in the order they are asked, one at a time (#294: the notice's three).
+STOP_QUESTIONS = {
+    "assessment": (CertificateForm,),
+    "form-9": (Form9Form,),
+    "notice": (NoticeForm, ApprovedEarsForm, ApprovedLevelForm),
+    "after-fitting": (FittingForm,),
+    "form-25": (Form25Form,),
+}

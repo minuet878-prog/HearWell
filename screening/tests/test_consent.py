@@ -55,14 +55,15 @@ class PrivacyPageTests(TestCase):
 
     def test_lists_only_services_the_site_still_uses(self):
         # #181, ADR 0014: cdnjs went with Bootstrap and the font comes from our own host, so
-        # neither is listed; one fewer service is a minor fix that keeps version 1.
+        # neither is listed; one fewer service was a minor fix that kept version 1 (#286 then
+        # raised it to 2 for the 助聽器與補助資料).
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "cdnjs")
         self.assertNotContains(response, "Google")
         for service in ("Render", "Neon", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
-        self.assertEqual(models.CONSENT_VERSION, 1)
+        self.assertEqual(models.CONSENT_VERSION, 2)
 
     def test_no_placeholder_left(self):
         # Acceptance 16: operator, contact and regions are filled in before release.
@@ -142,12 +143,30 @@ class PrivacyHighlightsTests(TestCase):
         self.assertIn('href="mailto:hearwellweb@gmail.com"', last)
         self.assertIn("到「帳號設定」自己下載、刪除", test_layout._text(last))
 
-    def test_minor_fix_moves_the_date_and_keeps_the_version(self):
+    def test_aid_and_subsidy_is_listed_with_the_health_data(self):
+        # #292 (spec #291 acceptance 25): every answer on the route and the chapters read,
+        # written in once for the whole feature (spec #291's draft).
+        main = self._privacy_main()
+        collected = main[main.index("蒐集哪些資料") : main.index("存放在哪裡、保存多久")]
+        self.assertIn(
+            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
+            "您在選配路線上的回答（有沒有聽覺機能的身心障礙證明、九號表與核定公文的進度、"
+            "核定單耳或雙耳與補助等級、助聽器開始配戴的日期與戴哪一耳、有沒有用身障補助買、"
+            "二十五號表完成了沒），以及您看過哪幾個選配指引章節。",
+            self._list_items(collected),
+        )
+
+    def test_aid_and_subsidy_raises_the_version_so_everyone_agrees_again(self):
+        # #286 (spec #284 acceptance 23): what is collected changed, so version 2.
         self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 23))
-        self.assertEqual(models.CONSENT_VERSION, 1)
-        user = consented_user(username="already_agreed")
+        self.assertEqual(models.CONSENT_VERSION, 2)
+        user = User.objects.create_user(username="agreed_to_version_1")
+        Consent.objects.create(user=user, version=1)
         self.client.force_login(user)
-        self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), _consent_url(url))
+        self.client.post(reverse("consent"), {"agree": "", "next": url})
+        self.assertEqual(self.client.get(url).status_code, 200)
 
 
 class NewUserTests(TestCase):

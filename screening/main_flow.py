@@ -1,13 +1,12 @@
 """Where a user stands in the main flow: new/old, last result, retest reminder (ADR 0010)."""
 
-import calendar
 from dataclasses import dataclass
 from datetime import date
 
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.fitting_route import AUDIOGRAM, fitting_state
+from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
 from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import (
     NEXT_STEP_REASONS,
@@ -15,14 +14,6 @@ from screening.scoring import (
     RETEST_DUE_TEXT,
     retest_next_text,
 )
-
-
-def _add_months(start, months):
-    month_index = start.month - 1 + months
-    year = start.year + month_index // 12
-    month = month_index % 12 + 1
-    day = min(start.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
 
 
 @dataclass(frozen=True)
@@ -60,7 +51,7 @@ def get_user_state(user, today):
     life_impact = [s for s in submissions if s.questionnaire.definition.life_impact]
     if life_impact:
         latest = life_impact[0]
-        next_date = _add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)
+        next_date = add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)
         due = next_date <= today
         return UserState(
             is_new=False,
@@ -107,7 +98,7 @@ HOME_GROUPS = (
 HIDDEN_IN_APP = "convenience"
 
 
-def home_more(user):
+def home_more(user, today):
     """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty:
     each group (title, cards, hidden in the home-screen app)."""
     cards = {
@@ -117,7 +108,7 @@ def home_more(user):
         "guide": HomeCard("了解助聽器選配與補助", reverse("guide"), "guide"),
         "add-home": HomeCard("加到手機主畫面", reverse("add_to_home"), "add-home"),
     }
-    state = fitting_state(user)
+    state = fitting_state(user, today)
     if state.stop == AUDIOGRAM and state.insufficient:
         suggested = None  # not a card of its own: 記錄醫院的聽力圖 stays in its group
         edit = HomeCard(
@@ -129,7 +120,10 @@ def home_more(user):
         next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄")
     elif state.stop:
         suggested = "guide"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[state.stop], "看我的選配指引")
+        because = NEXT_STEP_REASONS[state.stop]
+        if state.stop == "form-25":
+            because = because.format(deadline=state.form_25[1])  # #296: always dated there
+        next_step = NextStep(cards[suggested], because, "看我的選配指引")
     elif user.report_shares.exists():  # any link ever made, ended ones too
         suggested = "print"
         next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告")

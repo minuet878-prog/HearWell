@@ -5,6 +5,7 @@
         {% if audiogram %}
         <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}</li>
         {% endif %}
+        {% if aid_report_text %}<li>助聽器：{{ aid_report_text }}</li>{% endif %}{# #287: health_report only #}
         {% for section in sections|add:tinnitus_sections %}{% with latest=section.latest %}
         <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}

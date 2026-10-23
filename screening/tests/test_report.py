@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
@@ -16,6 +17,7 @@ from screening.models import (
     NormGroup,
     Question,
     Questionnaire,
+    ReportShare,
     Submission,
     User,
 )
@@ -361,3 +363,94 @@ class HealthReportTests(TestCase):
         self.assertIn("未分組", ioi)
         self.assertNotIn("低於常模", ioi)
         self.assertNotIn("高於常模", ioi)
+
+
+class HearingAidReportLineTests(TestCase):
+    """#287 (spec #284 acceptance 20): the owner's printed report says which hearing aids they
+    wear; the family's copy, built from the same template, does not."""
+
+    LINE = "助聽器：雙耳，2026/05/01 開始戴，中階型"
+
+    def setUp(self):
+        self.user = consented_user(username="report_wearer")
+        self.client.force_login(self.user)
+        HealthReportTests._audiogram(
+            self, self.user, date(2026, 9, 28), (40, 45, 50, 45), (30, 35, 40, 35)
+        )
+
+    def fill(self, **fields):
+        defaults = {"certificate": "yes", "fitted_on": date(2026, 5, 1), "ear": "both"}
+        AidAndSubsidy.objects.create(user=self.user, **(defaults | fields))
+
+    def summary(self):
+        content = self.client.get(reverse("health_report")).content.decode()
+        return re.sub(r"\s+", " ", _section(content, "report-summary"))
+
+    def test_the_line_in_the_summary_without_the_certificate(self):
+        self.fill(subsidy="disability", level="mid")
+        summary = self.summary()
+        self.assertIn(f"<li>{self.LINE}</li>", summary)
+        content = self.client.get(reverse("health_report")).content.decode()
+        self.assertNotIn("身障證明", content)
+
+    def test_the_route_s_other_answers_are_not_printed(self):
+        # Spec #291 acceptance 22: only the line on the hearing aids, none of the answers
+        # about form 9, the notice, form 25 or the certificate.
+        self.fill(
+            form_9_done=True,
+            notice_received=True,
+            approved_ears="both",
+            level="mid",
+            form_25_done=True,
+        )
+        summary = self.summary()
+        self.assertIn(f"<li>{self.LINE}</li>", summary)
+        self.assertEqual(summary.count("<li>助聽器："), 1)
+        content = self.client.get(reverse("health_report")).content.decode()
+        for word in ("九號表", "公文", "核定", "二十五號表", "身障證明", "身障補助"):
+            with self.subTest(word=word):
+                self.assertNotIn(word, content)
+
+    def test_paying_otherwise_has_no_level(self):
+        self.fill(subsidy="other")
+        self.assertIn("<li>助聽器：雙耳，2026/05/01 開始戴</li>", self.summary())
+
+    def test_a_level_not_known_is_left_out(self):
+        self.fill(subsidy="disability", level="unknown")
+        self.assertIn("<li>助聽器：雙耳，2026/05/01 開始戴</li>", self.summary())
+
+    def test_only_what_is_filled_in(self):
+        # #295 (spec #291 acceptance 22): the notice's level before a fitting date, or a date
+        # without the ear.
+        for fields, line in (
+            ({"fitted_on": None, "ear": "", "notice_received": True, "level": "mid"}, "中階型"),
+            ({"ear": ""}, "2026/05/01 開始戴"),
+            ({"fitted_on": None, "ear": "left"}, "左耳"),
+        ):
+            with self.subTest(**fields):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.fill(**fields)
+                self.assertIn(f"<li>助聽器：{line}</li>", self.summary())
+
+    def test_no_line_without_the_ear_the_date_or_the_level(self):
+        self.fill(fitted_on=None, ear="", subsidy="other")
+        self.assertNotIn("開始戴", self.summary())
+        self.assertNotIn("<li>助聽器：", self.summary())
+
+    def test_the_shared_report_never_has_it(self):
+        self.fill(subsidy="disability", level="mid")
+        share = ReportShare.objects.create(user=self.user)
+        self.client.logout()
+        content = self.client.get(reverse("shared_report", args=[share.token])).content.decode()
+        self.assertIn("report-summary", content)  # the shared template is the one tested
+        self.assertNotIn("開始戴", content)
+        self.assertNotIn("中階型", content)
+        self.assertNotIn("身障證明", content)
+
+    def test_query_count_is_the_same_with_and_without_it(self):
+        with CaptureQueriesContext(connection) as without:
+            self.client.get(reverse("health_report"))
+        self.fill(subsidy="disability", level="mid")
+        with CaptureQueriesContext(connection) as filled:
+            self.client.get(reverse("health_report"))
+        self.assertEqual(len(filled), len(without))

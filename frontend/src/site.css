@@ -1928,6 +1928,63 @@
     color: var(--color-heading);
   }
 
+  /* 不適用 (#293): pale grey, the 不適用 mark saying so in words; the text keeps its contrast. */
+  .route-stop.is-na .route-number {
+    border-color: var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  .route-stop.is-na .route-box {
+    border-style: dashed;
+    border-color: var(--color-border-strong);
+    background-color: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .route-stop.is-na .route-mark {
+    background-color: #fff;
+    color: var(--color-body);
+  }
+
+  /* #296: said on the line on to the next stop, beside it under the box. */
+  .route-stop:has(.route-gap) {
+    flex-wrap: wrap;
+  }
+
+  .route-gap {
+    flex-basis: 100%;
+    margin: 0;
+    padding-left: calc(var(--route-size) + 0.75rem);
+    color: var(--color-body);
+    font-size: 0.9375rem;
+  }
+
+  /* #293: the answer in short under a stop, a step smaller, as the field help is. */
+  .route-answer {
+    margin: 0.5rem 0 0;
+    color: var(--color-body);
+    font-size: 0.9375rem;
+  }
+
+  /* #293: a stop's question, on the route and at a chapter's foot. Each answer is a large
+     button; long answers wrap inside it rather than widening a phone page. */
+  .stop-question {
+    margin-top: 0.75rem;
+  }
+
+  .stop-answers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .stop-answers .btn {
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     .route-stop.is-here .route-number {
       animation: route-ring 2.4s ease-in-out both;
@@ -1944,6 +2001,15 @@
 
     .route-stop:not(:last-child)::after {
       display: none;
+    }
+
+    /* Stacked, the line's words simply follow the box; wrapping a column would add columns. */
+    .route-stop:has(.route-gap) {
+      flex-wrap: nowrap;
+    }
+
+    .route-gap {
+      padding-left: 0;
     }
   }
 
