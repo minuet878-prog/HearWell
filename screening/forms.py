@@ -319,7 +319,7 @@ class FittingForm(forms.ModelForm):
     )
     ear = _radios("戴哪一耳？", AidEar.choices)
     subsidy = _radios("有沒有用身障補助買？", Subsidy.choices)
-    # my-aid.js shows it only with 用身障補助; without JavaScript it stays (#287).
+    # fitting-level.js shows it only with 用身障補助; without JavaScript it stays (#287).
     level = _radios("補助的等級是？", AidLevel.choices, help_text="選了用身障補助才需要填")
     save_label = "儲存"
     # 修改 offers to clear the pair (spec #291 acceptance 18) instead of the date field's own.

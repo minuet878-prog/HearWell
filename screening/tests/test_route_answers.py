@@ -705,7 +705,7 @@ class FittingRouteTests(TestCase):
         )
         levels = [value for value, _, _ in radios(stop, "level")]
         self.assertEqual(levels, ["basic", "mid", "advanced", "cros", "unknown"])
-        self.assertIn('<fieldset class="mb-4" data-aid-level data-shown-with="disability"', stop)
+        self.assertIn('<fieldset class="mb-4" data-fitting-level data-shown-with="disability"', stop)
         self.assertIn('<button type="submit" class="btn btn-primary btn-lg">儲存</button>', stop)
         self.assertNotIn("還沒開始戴", stop)
 
@@ -848,9 +848,9 @@ class FittingRouteTests(TestCase):
 
     def test_the_level_s_script_comes_with_the_level_question(self):
         self.without_the_notice()
-        self.assertIn("screening/frontend/my-aid.js", self.page())
+        self.assertIn("screening/frontend/fitting-level.js", self.page())
         AidAndSubsidy.objects.filter(user=self.user).update(certificate="yes")
-        self.assertNotIn("my-aid.js", self.page())
+        self.assertNotIn("fitting-level.js", self.page())
 
 
 class FittingChapterTests(TestCase):

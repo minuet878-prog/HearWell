@@ -12,13 +12,13 @@
         {% include "screening/field_messages.html" with help_class="field-help" %}
     </div>
     {% elif field.widget_type == "radioselect" %}
-    {# my-aid.js shows the level only with 用身障補助; without JavaScript it stays (#287). #}
-    <fieldset class="mb-4"{% if field.name == "level" %} data-aid-level data-shown-with="disability"{% endif %}{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+    {# fitting-level.js shows the level only with 用身障補助; without JavaScript it stays (#287). #}
+    <fieldset class="mb-4"{% if field.name == "level" %} data-fitting-level data-shown-with="disability"{% endif %}{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
         {% include "screening/field_messages.html" with help_class="field-help" %}
         {{ field }}
     </fieldset>
-    {% if field.name == "level" %}<script type="module" src="{% static 'screening/frontend/my-aid.js' %}"></script>{% endif %}
+    {% if field.name == "level" %}<script type="module" src="{% static 'screening/frontend/fitting-level.js' %}"></script>{% endif %}
     {% else %}
     <fieldset{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
