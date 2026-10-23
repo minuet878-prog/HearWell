@@ -28,8 +28,9 @@ from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
-from screening.audiogram import assessment_estimate, compare, recommends_fitting_assessment
+from screening.audiogram import compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
+from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.forms import (
     ROC_OFFSET,
     AgeGroupForm,
@@ -209,26 +210,18 @@ GUIDE_CHAPTERS = (
 
 def guide(request):
     # Open without logging in (spec #218): the contents are for family too.
-    context = {"chapters": GUIDE_CHAPTERS}
+    context, state = {}, None
     if request.user.is_authenticated:
-        audiogram = request.user.audiograms.prefetch_related("points").first()
-        latest = (
-            request.user.submissions.defined()
-            .select_related("questionnaire")
-            .order_by("-created_at", "-id")
-            .first()
-        )
-        context["has_records"] = audiogram is not None or latest is not None
+        state = fitting_state(request.user)
+        context["has_records"] = state.audiogram is not None or state.latest is not None
         # The same life-impact record the home page shows as the last result.
         last = get_user_state(request.user, today=timezone.localdate()).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
-        # IOI-HA saves no wearing answer, but only people wearing hearing aids take it.
-        context["wearing"] = latest is not None and (
-            latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
-        )
-        if audiogram is not None:
-            context |= _guide_audiogram(audiogram)
+        context["wearing"] = state.wearing
+        if state.audiogram is not None:
+            context |= _guide_audiogram(state)
+    context["route"] = _route(state)
     response = render(request, "screening/guide/index.html", context)
     if request.user.is_authenticated:
         # Shows this account's records (GLOSSARY 健康資料頁面): never cached.
@@ -241,15 +234,14 @@ def _percent(ratio):
     return format(ratio.normalize(), "f")
 
 
-def _guide_audiogram(audiogram):
+def _guide_audiogram(state):
     # The latest audiogram's 聽力圖, 選配 and 身障鑑定門檻 boxes (#226, #227, ADR 0017).
-    points = list(audiogram.points.all())
-    estimate = assessment_estimate(points)
+    estimate = state.threshold
     ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
     context = {
-        "audiogram": audiogram,
+        "audiogram": state.audiogram,
         "ears": ears,
-        "fitting": recommends_fitting_assessment(points),
+        "fitting": state.fitting,
         "threshold": estimate,
     }
     if estimate["ratio"] is not None:
@@ -259,6 +251,69 @@ def _guide_audiogram(audiogram):
             "worse": _percent(estimate["worse"]),
         }
     return context
+
+
+@dataclass(frozen=True)
+class RouteStop:
+    slug: str
+    title: str
+    url: str
+    marks: tuple[str, ...] = ()  # 已完成, 您在這裡, 資料不足, 估算未達門檻, in that order
+    tested_on: object | None = None  # the recorded audiogram's date, on the done first stop
+    links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the title
+    action: tuple[str, str] | None = None  # the 目前這一站's button
+
+    @property
+    def here(self):
+        return "您在這裡" in self.marks
+
+    @property
+    def below(self):
+        return "估算未達門檻" in self.marks
+
+
+def _route(state):
+    # 選配路線 (#258): recording an audiogram, then the chapters in reading order. Signed out,
+    # no stop is marked. Every wording but the marks is one #220 already reviewed.
+    stops = [(AUDIOGRAM, "記錄聽力圖", reverse("audiogram_new"))]
+    stops += [(c.slug, c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS]
+    if state is None:
+        return [RouteStop(*stop) for stop in stops]
+    return [_route_stop(state, *stop) for stop in stops]
+
+
+def _route_stop(state, slug, title, url):
+    marks, links, action, tested_on = [], [], None, None
+    form_9 = reverse("guide_chapter", args=["form-9"])
+    if slug == AUDIOGRAM and state.audiogram is not None:
+        if state.insufficient:
+            # Never 已完成 (grill Q9): the title and a link go to editing it instead.
+            url = reverse("audiogram_edit", args=[state.audiogram.pk])
+        else:
+            marks.append("已完成")
+            tested_on = state.audiogram.tested_on
+    if slug == state.stop:
+        marks.append("您在這裡")
+    if slug == AUDIOGRAM and state.insufficient:
+        marks.append("資料不足")
+        if slug == state.stop:
+            action = ("修改這張聽力圖", url)
+        else:
+            links.append(("修改這張聽力圖", url))
+    elif slug == state.stop:
+        action = {
+            AUDIOGRAM: ("記錄醫院的聽力圖", url),
+            "before-you-go": ("去之前要準備什麼", url),
+            "assessment": ("找鑑定醫院", url),
+            "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
+        }[slug]
+    # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
+    if slug == "assessment" and state.threshold and state.threshold["status"] == "not_reached":
+        marks.append("估算未達門檻")
+        links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+    if slug == "form-9" and state.wearing:
+        links.append(("看再次申請的規定", f"{form_9}#reapply"))
+    return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action)
 
 
 def guide_chapter(request, chapter):

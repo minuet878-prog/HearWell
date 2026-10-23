@@ -1947,6 +1947,44 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 expect(self.main().get_by_role("link", name="登入", exact=True)).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("/guide signed out")
 
+    # #258: the route's longest stops at 200% text: 您在這裡 with 資料不足 and its button, then
+    # 估算未達門檻 with its link (the setUp audiogram reaches the threshold, so it is changed).
+    def test_route_marks_fit_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
+        with self.saving_artifacts():
+            with self.subTest(state="too little data"):
+                # Both ears within 25 and one unknown: the audiogram cannot tell.
+                points.update(db=20)
+                points.filter(ear="left", frequency=4000).delete()
+                self.page.goto(f"{self.live_server_url}/guide")
+                expect(self.main().get_by_role("link", name="修改這張聽力圖")).to_have_count(2)
+                self.assert_fits_a_phone_at_double_text_size("/guide too little data")
+            with self.subTest(state="not reached"):
+                points.filter(ear="right").update(db=30)
+                AudiogramPoint.objects.create(
+                    audiogram=points.first().audiogram, ear="left", conduction="air",
+                    frequency=4000, db=20,
+                )  # fmt: skip
+                self.page.goto(f"{self.live_server_url}/guide")
+                expect(self.main().get_by_role("link", name="看沒有身障證明時")).to_have_count(2)
+                self.assert_fits_a_phone_at_double_text_size("/guide not reached")
+
+    # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
+    # threshold, so the stop is the assessment.
+    def test_current_stop_ring_moves_only_without_reduced_motion(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for motion, animation in (("reduce", "none"), ("no-preference", "route-ring")):
+                with self.subTest(motion=motion):
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_have_count(1)
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    number = here.locator(".route-number")
+                    expect(number).to_have_css("animation-name", animation)
+
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):
         self.open(390, 640)

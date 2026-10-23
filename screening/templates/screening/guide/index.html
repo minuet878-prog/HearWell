@@ -87,14 +87,19 @@
 {% endif %}
 <section aria-labelledby="contents-title">
     <h2 id="contents-title" class="h4 mt-6">選配與補助，一步一步看</h2>
-    <ol class="list-unstyled">
-        {% for chapter in chapters %}
-        <li><a class="link-card" href="{% url 'guide_chapter' chapter.slug %}">
-            <span class="link-card-body">
-                <span class="link-card-title">{{ chapter.title }}</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
+    {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
+    <ol class="route" role="list">
+        {% for stop in route %}
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %}>
+            <span class="route-number">{{ forloop.counter }}</span>
+            <div class="route-box">
+                {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
+                <a class="route-title" href="{{ stop.url }}">{{ stop.title }}</a>
+                {% if stop.tested_on %}<p class="route-note">{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖</p>{% endif %}
+                {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
+                {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
+            </div>
+        </li>
         {% endfor %}
     </ol>
 </section>
