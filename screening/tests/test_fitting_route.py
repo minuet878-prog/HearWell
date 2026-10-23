@@ -206,8 +206,13 @@ class Form25DatesTests(TestCase):
                 self.fit(level=level)
                 self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
 
-    def test_basic_paying_or_unanswered_subsidies_have_none(self):
-        for subsidy, level in (("disability", "basic"), ("other", ""), ("", "")):
+    def test_the_subsidy_unanswered_is_dated_as_if_it_had_to_be_done(self):
+        # #296 (coordinator's decision): without the notice, form 25 may be needed.
+        self.fit(subsidy="", level="")
+        self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
+
+    def test_basic_or_paying_otherwise_have_none(self):
+        for subsidy, level in (("disability", "basic"), ("other", "")):
             with self.subTest(subsidy=subsidy, level=level):
                 AidAndSubsidy.objects.filter(user=self.user).delete()
                 self.fit(subsidy=subsidy, level=level)
@@ -232,6 +237,17 @@ class ReapplyDateTests(TestCase):
     def test_four_years_after_the_fitting_date(self):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
+        )
+        self.assertEqual(self.reapply_on(), date(2030, 5, 1))
+
+    def test_the_notice_received_counts_as_the_subsidy(self):
+        # #296: 用身障補助 as spec #291 defines it, the notice received or 配戴之後's answer.
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            notice_received=True,
+            approved_ears="both",
+            level="mid",
+            fitted_on=date(2026, 5, 1),
         )
         self.assertEqual(self.reapply_on(), date(2030, 5, 1))
 

@@ -98,8 +98,6 @@ NEXT_STEP_REASONS = {
     "types-and-prices": "收到核定公文了，可以看看助聽器的種類與價格。",
     "after-fitting": "開始戴助聽器後，記下哪一天開始戴。",
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
-    # #295: at form 25 without its dates (the subsidy unanswered), the same without one.
-    "form-25-undated": "您的助聽器要做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "二十五號表完成了，接下來等補助發放。",
     # without a 目前這一站
     "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",

@@ -551,6 +551,8 @@ class AidAndSubsidy(models.Model):
     ear = models.CharField(max_length=5, choices=AidEar, blank=True, default="")
     subsidy = models.CharField(max_length=10, choices=Subsidy, blank=True, default="")
     level = models.CharField(max_length=8, choices=AidLevel, blank=True, default="")
+    # 二十五號表's answer (#296): None unanswered, False 還沒, True 完成了.
+    form_25_done = models.BooleanField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.user} aid and subsidy"
@@ -579,6 +581,7 @@ class AidAndSubsidy(models.Model):
             self.fitted_on is None
             and self.form_9_done is None
             and self.notice_received is None
+            and self.form_25_done is None
             and not (
                 self.certificate or self.approved_ears or self.ear or self.subsidy or self.level
             )

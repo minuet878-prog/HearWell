@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
-from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission
+from screening.models import AidAndSubsidy, AidLevel, Audiogram, Certificate, Submission, Subsidy
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters,
@@ -33,8 +33,8 @@ DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
 CERTIFICATE_DONE = frozenset({Certificate.YES, Certificate.NO_SUBSIDY})
 # Not applying for the 身障補助 leaves its stops 不適用 (spec #291 Q2).
 WITHOUT_SUBSIDY = frozenset({"form-9", "notice", "form-25", "payout"})
-# 要做二十五號表 (#284 Q7): 身障補助 at these levels; 不知道 counts as one of them.
-FORM_25_LEVELS = (AidLevel.MID, AidLevel.ADVANCED, AidLevel.CROS, AidLevel.UNKNOWN)
+# Bought paying otherwise, as 配戴之後 asks (spec #291 acceptance 15).
+BOUGHT_OTHERWISE = frozenset({"form-25", "payout"})
 REAPPLY_MONTHS = 48  # 身障補助 again 4 years on; #284 leaves out under-12s' 2 years
 
 
@@ -49,16 +49,6 @@ def add_months(start, months):
 
 def _fitted(aid):
     return aid is not None and aid.fitted_on is not None
-
-
-def _form_25(aid):
-    """(from, by): form 25 is done a month to three months after the fitting date, both days
-    included (#284 Q7); None for someone who does not have to do it or gave no date."""
-    if not _fitted(aid):
-        return None
-    if not aid.uses_disability_subsidy or aid.level not in FORM_25_LEVELS:
-        return None
-    return add_months(aid.fitted_on, 1), add_months(aid.fitted_on, 3)
 
 
 @dataclass(frozen=True)
@@ -87,8 +77,13 @@ class FittingState:
 
     @property
     def form_25(self):
-        """(from, by) for someone who has to do form 25 and gave a fitting date, else None."""
-        return _form_25(self.aid)
+        """(from, by): form 25 is done a month to three months after the fitting date, both
+        days included (#284 Q7); None without the date or when form 25 is 不適用. 要做二十五號表
+        is every case it is not (#296): 身障補助 at a level above 簡易型 or 不知道, or the
+        subsidy unanswered, rather a reminder than none."""
+        if not self.fitted or "form-25" in self.not_applicable:
+            return None
+        return add_months(self.aid.fitted_on, 1), add_months(self.aid.fitted_on, 3)
 
     @property
     def reapply_on(self):
@@ -138,8 +133,14 @@ def fitting_state(user, today):
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
     if _fitted(aid):
         done.add("after-fitting")  # #295: the fitting date alone finishes it
+    if aid is not None and aid.form_25_done:
+        done.add("form-25")  # #296; 等待補助發放 is never done
     if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
         not_applicable |= WITHOUT_SUBSIDY
+    if aid is not None and aid.subsidy == Subsidy.OTHER:
+        not_applicable |= BOUGHT_OTHERWISE  # #296: no 身障補助 to verify or pay out
+    if aid is not None and aid.level == AidLevel.BASIC:
+        not_applicable.add("form-25")  # #296: 簡易型 is paid out without form 25
     # Q7: within the normal range, the route waits until the user starts on a stop.
     started = bool(viewed) or (aid is not None and not aid.unanswered)
     stop = _stop(wearing, done | not_applicable, fitting is False and not started)

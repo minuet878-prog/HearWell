@@ -121,6 +121,8 @@
                 {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
                 {% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endfor %}
             </div>
+            {# #296: on the line on to the next stop, beside it. #}
+            {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}
         </li>
         {% endfor %}
     </ol>

@@ -389,3 +389,54 @@ class FittingStopTests(TestCase):
         state = self.state()
         self.assertNotIn("after-fitting", state.done)
         self.assertEqual(state.stop, "after-fitting")
+
+
+class Form25AndPayoutStopTests(TestCase):
+    """#296 (spec #291 acceptance 15, 16): who has to do form 25. 簡易型 passes it by to the
+    payout; paying otherwise passes both by and leaves no stop once fitted."""
+
+    def setUp(self):
+        self.user = consented_user(username="form_25_stop_user")
+
+    def state(self, **answers):
+        AidAndSubsidy.objects.update_or_create(
+            user=self.user, defaults={"fitted_on": date(2026, 5, 1), **answers}
+        )
+        return fitting_state(self.user, TODAY)
+
+    def test_the_subsidy_at_these_levels_or_none_is_here_at_form_25(self):
+        for level in ("mid", "advanced", "cros", "unknown", ""):
+            with self.subTest(level=level):
+                state = self.state(subsidy="disability", level=level)
+                self.assertEqual(state.not_applicable, frozenset())
+                self.assertEqual(state.stop, "form-25")
+
+    def test_the_notice_at_a_level_is_here_at_form_25(self):
+        state = self.state(notice_received=True, approved_ears="both", level="advanced")
+        self.assertEqual(state.stop, "form-25")
+
+    def test_the_subsidy_unanswered_without_the_notice_may_have_to_do_it(self):
+        # #296 (coordinator's decision): rather a reminder than none.
+        state = self.state()
+        self.assertEqual(state.not_applicable, frozenset())
+        self.assertEqual(state.stop, "form-25")
+
+    def test_basic_passes_form_25_by_to_the_payout(self):
+        state = self.state(subsidy="disability", level="basic")
+        self.assertEqual(state.not_applicable, {"form-25"})
+        self.assertEqual(state.stop, "payout")
+
+    def test_paying_otherwise_passes_both_by_and_leaves_no_stop(self):
+        state = self.state(subsidy="other")
+        self.assertEqual(state.not_applicable, {"form-25", "payout"})
+        self.assertIsNone(state.stop)
+
+    def test_form_25_done_is_done_and_here_is_the_payout_never_done(self):
+        state = self.state(subsidy="disability", level="mid", form_25_done=True)
+        self.assertEqual(state.done, {"after-fitting", "form-25"})
+        self.assertEqual(state.stop, "payout")
+
+    def test_form_25_not_yet_stays_at_form_25(self):
+        state = self.state(subsidy="disability", level="mid", form_25_done=False)
+        self.assertNotIn("form-25", state.done)
+        self.assertEqual(state.stop, "form-25")

@@ -363,6 +363,14 @@ class FittingForm(forms.ModelForm):
         return super().clean()
 
 
+class Form25Form(forms.ModelForm):
+    form_25_done = _done_or_not_yet("二十五號表完成了嗎？", "完成了")  # #296
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("form_25_done",)
+
+
 # The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug: each
 # stop's questions in the order they are asked, one at a time (#294: the notice's three).
 STOP_QUESTIONS = {
@@ -370,4 +378,5 @@ STOP_QUESTIONS = {
     "form-9": (Form9Form,),
     "notice": (NoticeForm, ApprovedEarsForm, ApprovedLevelForm),
     "after-fitting": (FittingForm,),
+    "form-25": (Form25Form,),
 }

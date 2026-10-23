@@ -362,6 +362,15 @@ class AidAndSubsidyExportTests(TestCase):
                     wordings,
                 )
 
+    def test_form_25_as_answered(self):
+        # #296: worded as the question offers it.
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for answer, wording in ((True, "完成了"), (False, "還沒"), (None, None)):
+            with self.subTest(answer=answer):
+                aid.form_25_done = answer
+                aid.save()
+                self.assertEqual(self.exported()["form_25_done"], wording)
+
 
 class HearingAidExportTests(TestCase):
     """#287 (spec #284 acceptance 21): all four in the export, the labels as the form shows
@@ -381,6 +390,7 @@ class HearingAidExportTests(TestCase):
             ear="both",
             subsidy="disability",
             level="mid",
+            form_25_done=True,
         )
         self.assertEqual(
             self.exported(),
@@ -393,6 +403,7 @@ class HearingAidExportTests(TestCase):
                 "ear": "雙耳",
                 "subsidy": "用身障補助",
                 "level": "中階型",
+                "form_25_done": "完成了",
                 "viewed_chapters": [],
             },
         )
@@ -407,6 +418,7 @@ class HearingAidExportTests(TestCase):
             "ear": None,
             "subsidy": None,
             "level": None,
+            "form_25_done": None,
             "viewed_chapters": [],
         }
         self.assertEqual(self.exported(), unanswered)

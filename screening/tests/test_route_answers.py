@@ -272,8 +272,8 @@ class ChapterQuestionTests(TestCase):
         )
         self.assertFalse(AidAndSubsidy.objects.exists())
 
-    def test_other_chapters_ask_nothing_yet(self):
-        for slug in ("before-you-go", "types-and-prices", "form-25"):
+    def test_the_chapters_done_by_reading_ask_nothing(self):
+        for slug in ("before-you-go", "types-and-prices"):
             with self.subTest(chapter=slug):
                 self.assertNotContains(self.page(slug), 'id="stop-question"')
 
@@ -676,9 +676,7 @@ class FittingRouteTests(TestCase):
     def test_the_date_and_answers_are_kept_and_it_is_done(self):
         self.without_the_notice()
         response = self.fit(fitted_on="2026-05-01", ear="left", subsidy="disability", level="mid")
-        self.assertRedirects(
-            response, "/guide#stop-after-fitting", fetch_redirect_response=False
-        )
+        self.assertRedirects(response, "/guide#stop-after-fitting", fetch_redirect_response=False)
         aid = self.aid()
         self.assertEqual(
             (aid.fitted_on, aid.ear, aid.subsidy, aid.level),
@@ -821,3 +819,96 @@ class FittingChapterTests(TestCase):
         response = self.client.post(reverse("route_answer"), data)
         self.assertContains(response, "開始配戴日期不能是未來")
         self.assertContains(response, '<h1 class="h3 mt-4">配戴助聽器之後</h1>')
+
+
+class Form25RouteTests(TestCase):
+    """#296 (spec #291 acceptance 16, 18): 二十五號表 asked at the 目前這一站 and at the foot
+    of its chapter; 完成了 moves on to 等待補助發放, which asks nothing and is never done."""
+
+    QUESTION = "二十五號表完成了嗎？"
+    ROUTE = "/guide#stop-form-25"
+    CHAPTER = "/guide/form-25#stop-question"
+
+    def setUp(self):
+        self.user = consented_user(username="form_25_route_user")
+        self.client.force_login(self.user)
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+
+    page = RouteQuestionTests.page
+    stop = RouteQuestionTests.stop
+    marks = RouteQuestionTests.marks
+    answer = Form9AndNoticeRouteTests.answer
+    aid = Form9AndNoticeRouteTests.aid
+
+    def chapter_card(self):
+        content = self.client.get(reverse("guide_chapter", args=["form-25"])).content.decode()
+        return content[content.index('<section id="stop-question"') : content.index("<footer")]
+
+    def test_here_at_form_25_it_asks_whether_it_is_done(self):
+        form_25 = self.stop("form-25")
+        self.assertEqual(self.marks("form-25"), ["您在這裡"])
+        self.assertIn(f'<legend class="font-bold text-xl/normal">{self.QUESTION}</legend>', form_25)
+        self.assertIn('<input type="hidden" name="stop" value="form-25">', form_25)
+        self.assertIn(f'<input type="hidden" name="next" value="{self.ROUTE}">', form_25)
+        self.assertEqual(
+            answer_buttons(form_25, "form_25_done"),
+            [("True", "完成了", False), ("False", "還沒", False)],
+        )
+
+    def test_done_moves_on_to_the_payout_which_asks_nothing_and_is_never_done(self):
+        response = self.answer("form-25", "form_25_done", "True")
+        self.assertRedirects(response, self.ROUTE, fetch_redirect_response=False)
+        self.assertIs(self.aid().form_25_done, True)
+        self.assertEqual(self.marks("form-25"), ["已完成"])
+        self.assertEqual(self.marks("payout"), ["您在這裡"])
+        payout = self.stop("payout")
+        self.assertNotIn("<form", payout)
+        self.assertNotIn("route-answer", payout)
+        edit = re.escape(reverse("guide") + "?edit=form-25#stop-form-25")
+        self.assertRegex(
+            self.stop("form-25"),
+            rf'<p class="route-answer">二十五號表完成了 <a href="{edit}"[^>]*>修改</a></p>',
+        )
+
+    def test_not_yet_stays_with_the_question_open_and_filled(self):
+        self.answer("form-25", "form_25_done", "False")
+        self.assertIs(self.aid().form_25_done, False)
+        form_25 = self.stop("form-25")
+        self.assertEqual(self.marks("form-25"), ["您在這裡"])
+        self.assertIn('<p class="route-answer">二十五號表還沒完成</p>', form_25)
+        self.assertEqual(
+            answer_buttons(form_25, "form_25_done"),
+            [("True", "完成了", False), ("False", "還沒", True)],
+        )
+
+    def test_edit_opens_it_again_and_not_yet_takes_the_done_away(self):
+        self.answer("form-25", "form_25_done", "True")
+        form_25 = self.stop("form-25", "?edit=form-25")
+        self.assertEqual(
+            answer_buttons(form_25, "form_25_done"),
+            [("True", "完成了", True), ("False", "還沒", False)],
+        )
+        self.answer("form-25", "form_25_done", "False")
+        self.assertEqual(self.marks("form-25"), ["您在這裡"])
+        self.assertEqual(self.marks("payout"), [])
+
+    def test_an_answer_not_offered_shows_form_25_again_with_its_error(self):
+        response = self.answer("form-25", "form_25_done", "maybe")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.QUESTION)
+        self.assertIsNone(self.aid().form_25_done)
+
+    def test_the_chapter_asks_too_and_answering_comes_back_to_already_kept(self):
+        card = self.chapter_card()
+        self.assertIn(self.QUESTION, card)
+        self.assertIn("看完了嗎？", card)
+        self.assertIn(f'<input type="hidden" name="next" value="{self.CHAPTER}">', card)
+        response = self.answer("form-25", "form_25_done", "True", next_url=self.CHAPTER)
+        self.assertRedirects(response, self.CHAPTER, fetch_redirect_response=False)
+        card = self.chapter_card()
+        self.assertIn('<h2 id="stop-question-title" class="h4">已記下：二十五號表完成了</h2>', card)
+        edit = reverse("guide") + "?edit=form-25#stop-form-25"
+        label = "修改二十五號表：使用效益驗證的回答"
+        self.assertIn(f'<a href="{edit}" aria-label="{label}">修改</a>', card)

@@ -358,15 +358,28 @@ class EveryStopNextStepTests(TestCase):
                 ),
             )
 
-    def test_form_25_without_a_deadline_says_it_without_one(self):
-        # #295: a fitting date with the subsidy unanswered moves on to form 25, whose dates
-        # need 用身障補助; the reason leaves the date out rather than failing.
+    def test_form_25_done_says_the_payout_comes_next(self):
+        # #296 (spec #291 acceptance 16, 21): on the records alone, not a set stop.
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            fitted_on=date(2026, 5, 1),
+            subsidy="disability",
+            level="mid",
+            form_25_done=True,
+        )
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
+        )
+
+    def test_form_25_with_the_subsidy_unanswered_says_its_deadline_too(self):
+        # #296 (coordinator's decision): without the notice or the subsidy answered, form 25
+        # may be needed, so the reason dates it as for 不知道.
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
         self.assertEqual(
             self.next_step(),
             (
                 "了解助聽器選配與補助",
-                "因為：您的助聽器要做使用效益驗證（二十五號表），才能核銷補助。",
+                "因為：您的助聽器要在 2026/08/01 前做使用效益驗證（二十五號表），才能核銷補助。",
                 "/guide",
                 "看我的選配指引",
             ),

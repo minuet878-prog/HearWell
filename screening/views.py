@@ -38,6 +38,7 @@ from screening.forms import (
     AnswerFormSet,
     DeleteAccountForm,
     Form9Form,
+    Form25Form,
     HearingAidForm,
     HhiComparisonForm,
     NoticeForm,
@@ -290,6 +291,7 @@ class RouteStop:
     answer: str = ""  # the user's answer in short (#293)
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
+    gap: str = ""  # said on the line on to the next stop (#296)
 
     @property
     def here(self):
@@ -311,8 +313,11 @@ CERTIFICATE_ANSWERS = {
     models.Certificate.NO_SUBSIDY: "不申請身障補助",
 }
 FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  # #294
+FORM_25_ANSWERS = {True: "二十五號表完成了", False: "二十五號表還沒完成"}  # #296
 # Said under the stop for everyone (#294, spec #291 Q12: the notice's date is not asked).
 ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買。",)}
+# #296 (spec #291 acceptance 14): form 25 comes at least a month after the fitting date.
+FORM_25_GAP = "至少 1 個月"
 
 
 def _answer(slug, aid):
@@ -323,6 +328,8 @@ def _answer(slug, aid):
         return CERTIFICATE_ANSWERS.get(aid.certificate, "")
     if slug == "form-9":
         return FORM_9_ANSWERS.get(aid.form_9_done, "")
+    if slug == "form-25":
+        return FORM_25_ANSWERS.get(aid.form_25_done, "")
     if slug == "after-fitting":
         # #295: 2026/05/01 開始戴、雙耳, with the subsidy and its level where this stop asked.
         if aid.fitted_on is None:
@@ -365,7 +372,14 @@ def _route(state, edit=None, question=None):
     }
     stops = [(slug, *places[slug]) for slug in STOPS]
     if state is None:
-        return [RouteStop(*stop, notes=ROUTE_REMINDERS.get(stop[0], ())) for stop in stops]
+        return [
+            RouteStop(
+                *stop,
+                notes=ROUTE_REMINDERS.get(stop[0], ()),
+                gap=FORM_25_GAP if stop[0] == "after-fitting" else "",
+            )
+            for stop in stops
+        ]
     return [_route_stop(state, *stop, edit, question) for stop in stops]
 
 
@@ -415,12 +429,15 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
     if slug == "form-25" and state.form_25:
-        # #284 Q7: from when before it opens, by when while open, nothing once it has closed.
+        # #296 (spec #291 acceptance 14): from when before it opens, by when while open, and
+        # once it has closed the deadline, never saying it is overdue.
         opens, closes = state.form_25
         if state.today < opens:
             notes.append(f"{opens:%Y/%m/%d} 起可以做")
         elif state.today <= closes:
             notes.append(f"{closes:%Y/%m/%d} 前要做完")
+        else:
+            notes.append(f"期限是 {closes:%Y/%m/%d}")
     answer, shown, editable = "", (), False
     if slug in STOP_QUESTIONS:
         answer = _answer(slug, state.aid)
@@ -434,6 +451,8 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         elif slug == state.stop:
             shown = (reached[-1](instance=state.aid),)
         editable = bool(answer) and len(shown) < len(reached)
+    # On the line on to form 25, unless form 25 is 不適用.
+    gap = FORM_25_GAP if slug == "after-fitting" and "form-25" not in state.not_applicable else ""
     return RouteStop(
         slug,
         title,
@@ -446,6 +465,7 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         answer,
         shown,
         editable,
+        gap,
     )
 
 
@@ -1220,6 +1240,7 @@ def download_my_data(request):
             "ear": (aid and aid.get_ear_display()) or None,
             "subsidy": (aid and aid.get_subsidy_display()) or None,
             "level": (aid and aid.get_level_display()) or None,
+            "form_25_done": _offered(Form25Form, "form_25_done", aid and aid.form_25_done),
             # Spec #291 acceptance 23: the chapters read, by name, first read first.
             "viewed_chapters": [
                 {
