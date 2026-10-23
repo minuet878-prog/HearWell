@@ -30,7 +30,7 @@
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
 {# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
-{# The bars only draw the numbers written beside them (#260), so screen readers skip them. #}
+{# The bars only draw the numbers written beside them (#260), so screen readers skip them; the line labels are read, as the sentences may not say 25. #}
 <section class="card card-body mt-6" aria-labelledby="fitting-title">
     <h2 id="fitting-title" class="h4">要不要找聽力師評估</h2>
     {% if threshold.right.pta is None and threshold.left.pta is None %}
@@ -44,7 +44,7 @@
         <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-{{ side }}" style="--meter-value: {{ ear.pta|stringformat:"g" }}"></div><span class="meter-line"></span></div>
         {% endif %}
         {% endfor %}
-        <p class="meter-scale" aria-hidden="true">正常上限 25</p>
+        <p class="meter-scale">正常上限 25</p>
     </div>
     {% endif %}
     {% if wearing %}
@@ -67,7 +67,7 @@
     <div class="meter meter-ratio">
         <p class="meter-label"><span>雙耳障礙比率（估算）</span> <span>{% if threshold.no_response %}至少約{% else %}約{% endif %} {{ threshold.ratio }}%</span></p>
         <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-ratio" style="--meter-value: {{ threshold.ratio }}"></div>{% if threshold.no_response %}<div class="meter-beyond" style="--meter-value: {{ threshold.ratio }}"></div>{% endif %}<span class="meter-line"></span></div>
-        <p class="meter-scale" aria-hidden="true">門檻 45%</p>
+        <p class="meter-scale">門檻 45%</p>
     </div>
     {% endif %}
     {% if threshold.status == "insufficient" %}

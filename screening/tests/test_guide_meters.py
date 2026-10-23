@@ -1,5 +1,6 @@
 import re
 from datetime import date
+from html.parser import HTMLParser
 
 from django.test import TestCase
 from django.urls import reverse
@@ -16,6 +17,39 @@ LEFT_36_25 = (35, 35, 35, 40)
 JUMP = "看我的路線"
 ROUTE_TITLE = "選配與補助，一步一步看"
 RATIO_LABEL = "雙耳障礙比率（估算）"
+
+
+class _ReadAloud(HTMLParser):
+    """The page's text that screen readers reach: none inside an aria-hidden element."""
+
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source"}
+
+    def __init__(self):
+        super().__init__()
+        self.hidden = []  # per open element, whether it or an ancestor is aria-hidden
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in self.VOID:
+            above = bool(self.hidden) and self.hidden[-1]
+            self.hidden.append(above or dict(attrs).get("aria-hidden") == "true")
+
+    def handle_startendtag(self, tag, attrs):
+        pass
+
+    def handle_endtag(self, tag):
+        if tag not in self.VOID:
+            self.hidden.pop()
+
+    def handle_data(self, data):
+        if not (self.hidden and self.hidden[-1]):
+            self.parts.append(data)
+
+
+def read_aloud(markup):
+    parser = _ReadAloud()
+    parser.feed(markup)
+    return re.sub(r"\s+", " ", " ".join(parser.parts))
 
 
 class GuideMetersTests(TestCase):
@@ -148,6 +182,14 @@ class GuideMetersTests(TestCase):
         for meter in meters:
             with self.subTest(meter=meter):
                 self.assertIn('aria-hidden="true"', meter)
+
+    def test_the_reference_values_are_read_aloud_though_the_bars_are_not(self):
+        # Self-review of #260: with a hearing aid or a missing frequency the sentence never
+        # says 25, so the labels beside the lines must reach screen readers.
+        self.make(PTA_55, PTA_55, no_response_at=("right", 2000))
+        spoken = read_aloud(self.page())
+        self.assertIn("正常上限 25", spoken)
+        self.assertIn("門檻 45%", spoken)
 
     def test_the_jump_goes_to_the_route_title_which_takes_focus(self):
         self.make(RIGHT_48_75, LEFT_36_25)
