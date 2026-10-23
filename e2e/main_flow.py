@@ -3201,9 +3201,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 self.style(self.page.locator("h2.h4", has_text="誰在蒐集"), "borderLeftWidth"),
                 "5px",  # 0.3rem, drawn in whole pixels
             )
+            # #302: the highlights are a flat block now; the family guide's urgent topic is still
+            # in its blue box.
+            self.page.goto(f"{self.live_server_url}/family")
             self.assertEqual(
                 self.style(
-                    self.page.locator(".card h2.h4", has_text="先看重點"), "borderLeftWidth"
+                    self.page.locator(".card h2.h4", has_text="什麼時候要馬上就醫"),
+                    "borderLeftWidth",
                 ),
                 "0px",
             )
@@ -3540,28 +3544,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.audiogram(date(2026, 10, 5))
         with self.saving_artifacts():
             self.open()
-            self.page.goto(f"{self.live_server_url}/family")
-            card = self.page.locator(".card.card-body").first
-            self.assertEqual(
-                self.styles(
-                    card,
-                    "display",
-                    "padding",
-                    "borderTopWidth",
-                    "borderTopColor",
-                    "borderTopLeftRadius",
-                    "backgroundColor",
-                ),
-                {
-                    "display": "flex",
-                    "padding": "18px",
-                    "borderTopWidth": "1px",
-                    "borderTopColor": self.WARM_BORDER,  # and 1.5rem since #137
-                    "borderTopLeftRadius": "27px",
-                    "backgroundColor": "rgb(255, 255, 255)",
-                },
-            )
-
             self.page.goto(f"{self.live_server_url}/audiograms/{first.pk}")
             table = self.page.locator("table.table").first
             self.assertEqual(self.style(table, "marginBottom"), "18px")
@@ -4798,8 +4780,17 @@ WHITE_CARD_PAGES_ANSWERING = (
 # are #301's).
 WHITE_CARD_PAGES_RECORDS = ()
 
-# #302: the learn pages.
-WHITE_CARD_PAGES_LEARN = ()
+# #302: the learn pages. Signed in, each chapter that asks its stop's question ends with it.
+WHITE_CARD_PAGES_LEARN = (
+    ("guide, signed out", False, "/guide"),
+    ("guide, with records", True, lambda test: test.guide_with_records()),
+    *((f"guide chapter {slug}", True, f"/guide/{slug}") for slug in HearingAidGuideTest.CHAPTERS),
+    ("guide chapter answered", True, lambda test: test.answered_chapter()),
+    ("family guide", False, "/family"),
+    ("learn", False, "/learn"),
+    ("privacy", False, "/privacy"),
+    ("consent", True, lambda test: test.undecided()),
+)
 
 # #303: the sharing and account pages.
 WHITE_CARD_PAGES_SHARING = (
@@ -4887,6 +4878,34 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def returning_home(self):
         self.answered("hhie-s", 2)
         return "/"
+
+    # #302: the learn pages' records.
+    def guide_with_records(self):
+        """My guide with all its parts: a life impact result and 55 dB in both ears (45.0%),
+        so 記錄聽力圖 is a done stop above 您在這裡."""
+        self.answered("hhie-s", 2)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return "/guide"
+
+    def answered_chapter(self):
+        """The assessment chapter after its question: 已記下 and the button back to the route."""
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        return "/guide/assessment"
+
+    def undecided(self):
+        """The consent page, shown only to someone who has not agreed yet."""
+        self.user.consents.all().delete()
+        return "/consent"
+
+    def assert_titled(self, heading):
+        """#298's pick for an article's parts: framed by the title's brand-blue bar only."""
+        self.assertEqual(self.style(heading, "borderLeftColor"), self.PRIMARY)
+        self.assertEqual(self.style(heading, "borderLeftStyle"), "solid")
 
     # #303: the report with a questionnaire's part and the audiogram, the share page with a live
     # link (all three steps filled in), and the family's copy through that link.
@@ -5017,6 +5036,93 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_a_phone_at_double_text_size(name)
 
+    # #302: my guide's parts and a done stop are flat, their links and buttons as before; the
+    # 目前這一站 keeps its pale blue box.
+    def test_guide_parts_and_stops_are_flat_with_their_links(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.guide_with_records())
+            for name, link in (
+                ("問卷結果", None),
+                ("要不要找聽力師評估", "去之前要準備什麼"),
+                ("身障鑑定門檻", "找鑑定醫院"),
+            ):
+                with self.subTest(part=name):
+                    part = self.main().get_by_role("region", name=name)
+                    self.assert_flat(part)
+                    self.assert_titled(part.get_by_role("heading", name=name))
+                    if link:
+                        expect(part.get_by_role("link", name=link, exact=True)).to_be_visible()
+            done = self.main().locator(".route-stop").filter(has_text="已完成").first
+            self.assert_flat(done.locator(".route-box"))
+            expect(done.get_by_role("link").first).to_be_visible()
+            here = self.main().locator(".route-stop[aria-current=step] .route-box")
+            self.assertEqual(self.style(here, "backgroundColor"), "rgb(238, 243, 250)")
+            self.assertEqual(self.style(here, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(here, "boxShadow"), "none")
+
+    # #302: every chapter's parts are flat blocks framed by their titles, the links still in
+    # them; the question at the foot and its answered form are flat with their buttons.
+    def test_guide_chapters_are_flat_with_their_links(self):
+        linked = set()
+        with self.saving_artifacts():
+            for slug in HearingAidGuideTest.CHAPTERS:
+                with self.subTest(chapter=slug):
+                    self.visit(True, f"/guide/{slug}")
+                    parts = self.main().get_by_role("article").get_by_role("region")
+                    self.assertGreater(parts.count(), 0)
+                    for part in parts.all():
+                        self.assert_flat(part)
+                        self.assert_titled(part.get_by_role("heading").first)
+                    if parts.get_by_role("link").count():
+                        linked.add(slug)
+            # The chapters with links in their parts (the others link only in their sources).
+            self.assertEqual(linked, {"form-9", "types-and-prices", "after-fitting", "form-25"})
+            self.visit(True, "/guide/assessment")
+            question = self.main().get_by_role("region", name="看完了嗎？")
+            self.assert_flat(question)
+            self.assert_titled(question.get_by_role("heading", name="看完了嗎？"))
+            for answer in ("有", "還沒有，正在申請鑑定", "沒有，不申請身障補助"):
+                with self.subTest(answer=answer):
+                    expect(question.get_by_role("button", name=answer, exact=True)).to_be_visible()
+            self.visit(True, lambda test: test.answered_chapter())
+            answered = self.main().get_by_role("region", name="已記下：有身障證明")
+            self.assert_flat(answered)
+            expect(
+                answered.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")
+            ).to_be_visible()
+            again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
+            self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
+
+    # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and 119's
+    # box as before.
+    def test_family_guide_topics_are_flat_and_the_urgent_one_stands_out(self):
+        with self.saving_artifacts():
+            self.visit(False, "/family")
+            for name in ("怎麼跟聽損的家人說話", "陪伴配戴助聽器", "傳給家人", "出處："):
+                with self.subTest(part=name):
+                    part = self.main().get_by_role("region", name=name)
+                    self.assert_flat(part)
+                    self.assert_titled(part.get_by_role("heading", name=name))
+            sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
+            self.assertGreater(sources.count(), 0)
+            urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
+            self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
+            self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
+            call = urgent.get_by_text("如果同時出現", exact=False)
+            self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(call, "boxShadow"), "none")
+
+    # #302: the 了解 page's cards stay white cards.
+    def test_learn_cards_stay_white_cards(self):
+        with self.saving_artifacts():
+            self.visit(False, "/learn")
+            cards = self.main().get_by_role("link")
+            self.assertEqual(cards.count(), 2)
+            for card in cards.all():
+                with self.subTest(card=card.inner_text()):
+                    self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+
     # #303: the family's 「您可以怎麼幫忙」 and 「先看重點」 are flat; the three cards in it stay
     # white cards and go where they went before.
     def test_family_help_is_flat_and_its_three_cards_stay_white(self):
@@ -5034,6 +5140,35 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(card=card.inner_text()):
                     self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
                     self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+
+    # #302: the privacy notice's highlights and contact, and the consent page's highlights, are
+    # flat blocks framed by their titles.
+    def test_privacy_and_consent_highlights_are_flat(self):
+        with self.saving_artifacts():
+            self.visit(False, "/privacy")
+            for name in ("先看重點", "有問題或要刪除資料？"):
+                with self.subTest(part=name):
+                    part = self.main().get_by_role("region", name=name)
+                    self.assert_flat(part)
+                    self.assert_titled(part.get_by_role("heading", name=name))
+            expect(
+                self.main()
+                .get_by_role("region", name="有問題或要刪除資料？")
+                .get_by_role("link", name="hearwellweb@gmail.com")
+            ).to_be_visible()
+            self.visit(True, lambda test: test.undecided())
+            highlights = self.main().get_by_role("region", name="重點", exact=True)
+            self.assert_flat(highlights)
+            self.assert_titled(highlights.get_by_role("heading", name="重點", exact=True))
+
+    # #302: no sideways scrolling on a phone at 200% text, on my guide, its chapters and the
+    # other learn pages.
+    def test_learn_pages_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in WHITE_CARD_PAGES_LEARN:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path, width=320)
+                    self.assert_fits_a_phone_at_double_text_size(name)
 
     # #303: the share page's steps 1-3 are flat; their buttons are still buttons.
     def test_share_steps_are_flat_and_keep_their_buttons(self):
