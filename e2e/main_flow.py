@@ -2434,7 +2434,8 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         super().tearDownClass()
 
     def setUp(self):
-        self.client.force_login(consented_user(username="bottom_tabs_e2e"))
+        self.user = consented_user(username="bottom_tabs_e2e")
+        self.client.force_login(self.user)
         self.cookie = {
             "name": settings.SESSION_COOKIE_NAME,
             "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
@@ -2460,16 +2461,59 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 nav.get_by_role("link", name=name, exact=True).click()
                 expect(self.page).to_have_url(f"{self.live_server_url}{path}")
 
+    def add_audiogram(self):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        # Right ear 中重度, left ear 資料不足: the longest level label.
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear="right", conduction="air", frequency=f, db=60)
+            for f in (500, 1000, 2000, 4000)
+        )
+
     # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
-    # narrower phone assert_fits_a_phone_at_double_text_size uses. The audiogram list's cards were
-    # already wider than a phone at 200% (their 6rem thumbnail), so only its tabs are checked below.
+    # narrower phone assert_fits_a_phone_at_double_text_size uses.
     def test_records_and_learn_fit_a_phone_at_double_text_size(self):
+        self.add_audiogram()
         self.open(320, 640)
         with self.saving_artifacts():
-            for path in ("/my_hearing", "/learn"):
+            # With only an audiogram, /my_hearing opens the audiogram list (#270).
+            for path in ("/my_hearing?view=questionnaires", "/audiograms", "/learn"):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+    # The audiogram card (owner's pick A): at normal text the date sits beside the thumbnail as
+    # before; at 200% text it drops under the thumbnail, and the date and levels stay inside the
+    # card on both phones.
+    def test_audiogram_card_moves_its_thumbnail_up_at_double_text_size(self):
+        self.add_audiogram()
+        box = (
+            "e => { const r = e.getBoundingClientRect(); "
+            "return [r.left, r.right, r.top, r.bottom]; }"
+        )
+        for width in (320, 390):
+            self.open(width, 640)
+            with self.saving_artifacts():
+                self.page.goto(f"{self.live_server_url}/audiograms")
+                self.page.wait_for_load_state("load")
+                card = self.main().locator(".link-card")
+                thumbnail = card.locator(".audiogram-thumbnail")
+                date_text = card.locator(".link-card-body strong")
+                with self.subTest(width=width, text="normal"):
+                    self.assertLessEqual(thumbnail.evaluate(box)[1], date_text.evaluate(box)[0])
+                # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size.
+                self.page.locator("html").evaluate(
+                    "html => html.style.setProperty('font-size', '225%', 'important')"
+                )
+                with self.subTest(width=width, text="200%"):
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+                    self.assertLessEqual(thumbnail.evaluate(box)[3], date_text.evaluate(box)[2])
+                    left, right, _, _ = card.evaluate(box)
+                    for part in (date_text, *card.locator(".level-badge").all()):
+                        part_left, part_right, _, _ = part.evaluate(box)
+                        self.assertGreaterEqual(part_left, left, part.inner_text())
+                        self.assertLessEqual(part_right, right, part.inner_text())
 
     # Acceptance: at 390px and 200% text each tab's words take one line and stay on the screen.
     # Not 320px: there a tab is about 62px wide and two characters at 200% need about 63px.
