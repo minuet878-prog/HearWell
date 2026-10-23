@@ -413,10 +413,11 @@ class ViewedStaysDoneTests(TestCase):
 
 
 class CertificateMigrationTests(TransactionTestCase):
-    """#293: #284's yes / not yet becomes the three answers; 還沒有 stays at the stop."""
+    """#293, spec #291 Q17: in the one 0027, #284's yes / not yet becomes the three answers;
+    還沒有 stays at the stop."""
 
-    before = (("screening", "0027_guide_chapter_view"),)
-    after = (("screening", "0028_aid_certificate_answer"),)
+    before = (("screening", "0026_aid_and_subsidy"),)
+    after = (("screening", "0027_route_progress"),)
 
     def _migrate(self, targets):
         executor = MigrationExecutor(connection)
