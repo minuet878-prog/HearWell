@@ -25,7 +25,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   聽力報告螢幕版整理（驗證見 `docs/verification/dropdowns-and-pages.md`）、THI 色帶分深淺與結果頁一致化（六個
   結果頁共用標題、摺疊與結尾按鈕，ADR 0018，驗證見 `docs/verification/result-pages-consistency.md`）、助聽器
   驗證流程連結（推薦精靈「戴著再做一次」、比較頁預選、選配指引第 5、6 章連結與對調，驗證見
-  `docs/verification/aid-verification-links.md`）、選配路線與首頁建議下一步（母規格 #257，#258–#261；選配指引的
+  `docs/verification/aid-verification-links.md`）、報告、分享與下一步按鈕改成有圖示的卡片（我的紀錄、結果頁、聽力圖頁，驗證見 `docs/verification/action-cards.md`）、選配路線與首頁建議下一步（母規格 #257，#258–#261；選配指引的
   儀表、選配路線與目前這一站、章節步驟條，老使用者首頁「您還可以」改推薦一張加分組，驗證見
   `docs/verification/issue-258.md`–`issue-261.md`）。
 - 進行中：
