@@ -841,6 +841,10 @@ def my_hearing(request):
         .with_scores()
     )
     if not submissions:
+        # Ticket #270 (ADR 0019): opened plainly with only audiograms, show those instead of an
+        # empty page; the switch's 問卷 link (view=questionnaires) always stays here.
+        if request.GET.get("view") != "questionnaires" and request.user.audiograms.exists():
+            return redirect("audiogram_list")
         return render(request, "screening/my_hearing.html", {"submissions": []})
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
     questionnaires = sorted({s.questionnaire for s in submissions}, key=lambda q: q.id)

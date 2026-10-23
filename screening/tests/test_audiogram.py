@@ -531,8 +531,12 @@ class AudiogramPageTests(TestCase):
                 self.assertEqual(current, ["聽力圖"])
 
     def test_not_a_my_hearing_tab(self):
+        # Ticket #270: 我的紀錄 links to the audiogram list only from its records switch, not
+        # from the questionnaire tabs.
         main = self._main(self.client.get(reverse("my_hearing")))
-        self.assertNotIn(reverse("audiogram_list"), main)
+        switch = re.search(r'<nav[^>]*aria-label="紀錄種類"[^>]*>.*?</nav>', main, re.S).group()
+        self.assertIn(f'href="{reverse("audiogram_list")}"', switch)
+        self.assertNotIn(reverse("audiogram_list"), main.replace(switch, ""))
 
     def test_bundle_entries_in_vite_config(self):
         config = test_answering.ReactAnswerPageTests.VITE_CONFIG.read_text(encoding="utf-8")
