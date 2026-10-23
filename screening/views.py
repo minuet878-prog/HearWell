@@ -143,6 +143,12 @@ def family_guide(request):
     return render(request, "screening/family_guide.html")
 
 
+def learn(request):
+    # #269 (spec #268): open without logging in, like the guide and the family page it leads to.
+    # It reads no records, so it is not a 健康資料頁面.
+    return render(request, "screening/learn.html")
+
+
 def _assessment_context(request):
     # An unknown county is treated like none chosen: the menu again, not an error.
     roster = assessment_hospitals.roster()
@@ -835,6 +841,10 @@ def my_hearing(request):
         .with_scores()
     )
     if not submissions:
+        # Ticket #270 (ADR 0019): opened plainly with only audiograms, show those instead of an
+        # empty page; the switch's 問卷 link (view=questionnaires) always stays here.
+        if request.GET.get("view") != "questionnaires" and request.user.audiograms.exists():
+            return redirect("audiogram_list")
         return render(request, "screening/my_hearing.html", {"submissions": []})
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
     questionnaires = sorted({s.questionnaire for s in submissions}, key=lambda q: q.id)

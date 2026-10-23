@@ -13,6 +13,7 @@
 
 {% block body %}
 <h1 class="h3 mt-2">我的紀錄</h1>
+{% include "screening/records_switch.html" with side="questionnaires" %}
 {# Ticket #162: the home page's retest reminder, shown here only once it is due. #}
 {% if user_state.retest_due %}
 <section id="retest-reminder" class="bg-brand-soft rounded-large p-6 mb-6">

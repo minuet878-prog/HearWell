@@ -276,7 +276,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(self.main().locator(".source-note")).to_contain_text("不能判定聽損程度")
             expect(self.main().locator(".source-note")).to_be_visible()
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="我的紀錄"
+                "link", name="紀錄"
             ).click()
             expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
 
@@ -692,7 +692,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def step6_history(self):
         nav = self.page.get_by_role("navigation", name="主要導覽")
-        nav.get_by_role("link", name="我的紀錄").click()
+        nav.get_by_role("link", name="紀錄").click()
         # Each record is one card link (spec phase9_ui_refresh_1_shared.md 4.5).
         card = self.main().locator("a.link-card:not(.action-card)")
         expect(card).to_have_count(1)
@@ -883,7 +883,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     def step6_history_compares_with_last_time(self):
         today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
         self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-            "link", name="我的紀錄"
+            "link", name="紀錄"
         ).click()
         expect(self.page.locator("#retest-reminder")).to_have_count(0)
         since_last = self.main().get_by_role("region", name="和上一次比")
@@ -1839,6 +1839,101 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
+class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#270 (spec #268, ADR 0019): 我的紀錄's questionnaires or audiograms switch in a browser."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="records_switch_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.context = self.browser.new_context(viewport={"width": 390, "height": 800})
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def switch(self):
+        return self.main().get_by_role("navigation", name="紀錄種類")
+
+    def assert_on(self, side):
+        expect(self.main().get_by_role("heading", level=1)).to_have_text("我的紀錄")
+        expect(self.switch().locator('a[aria-current="page"]')).to_have_text(side)
+
+    def test_switch_to_audiograms_and_back(self):
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="紀錄").click()
+            self.assert_on("問卷")
+            self.switch().get_by_role("link", name="聽力圖").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/audiograms")
+            self.assert_on("聽力圖")
+            expect(self.main().get_by_role("link", name="新增聽力圖")).to_be_visible()
+            self.switch().get_by_role("link", name="問卷").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            self.assert_on("問卷")
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            # Each side is its own address: the back button returns to the audiograms.
+            self.page.go_back()
+            self.assert_on("聽力圖")
+
+    def test_switch_fits_a_phone_at_double_text_size(self):
+        for path in ("/my_hearing", "/audiograms"):
+            with self.subTest(path=path):
+                self.page.goto(f"{self.live_server_url}{path}")
+                self.page.wait_for_load_state("load")
+                # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size.
+                self.page.locator("html").evaluate(
+                    "html => html.style.setProperty('font-size', '225%', 'important')"
+                )
+                # The audiogram list's cards were already wider than a phone at 200% before the
+                # switch (their 6rem thumbnail), so only 我的紀錄 is checked as a whole page.
+                if path == "/my_hearing":
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 390)
+                widths = self.switch().evaluate("nav => [nav.scrollWidth, nav.clientWidth]")
+                self.assertLessEqual(widths[0], widths[1])
+                for link in self.switch().get_by_role("link").all():
+                    box = link.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], 390)
+
+
 class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec #218 (ticket #231): the guide's route, and its pages at 200% text on a phone."""
 
@@ -2137,6 +2232,56 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(html).to_have_css("scroll-behavior", "auto")
 
 
+class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#269 (spec #268): the 了解 page, signed out, at 200% text and without JavaScript."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, width, height=900, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    # Acceptance: 390px at 200% text has no sideways scroll; checked at 320px, the narrower
+    # phone the other 200% tests use.
+    def test_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="了解"
+            ).click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("了解")
+            self.assert_fits_a_phone_at_double_text_size("/learn")
+
+    def test_cards_change_page_without_javascript(self):
+        cards = (
+            ("了解助聽器選配與補助", "/guide", "我的選配指引"),
+            ("給家人看：怎麼跟聽損的家人溝通", "/family", "給家人的溝通與陪伴"),
+        )
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            for name, path, heading in cards:
+                with self.subTest(card=name):
+                    self.page.goto(f"{self.live_server_url}/learn")
+                    self.main().get_by_role("link", name=name).click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
 
@@ -2190,7 +2335,7 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             expect(self.page.locator("#pwa-back")).to_have_count(0)
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="開始篩檢"
+                "link", name="篩檢"
             ).click()
             expect(self.back()).to_be_visible()
             box = self.back().bounding_box()
@@ -2269,6 +2414,127 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertTrue(self.on_same_line(brand, logout))
             self.assertTrue(self.on_same_line(account, logout))
             self.assertLessEqual(account["x"] + account["width"], logout["x"])
+
+
+class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#271 (spec #268): the four signed-in tabs, at 200% text and without JavaScript."""
+
+    TABS = ("首頁", "篩檢", "紀錄", "了解")
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="bottom_tabs_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width, height=900, javascript=True, signed_in=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
+        if signed_in:
+            self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def nav(self):
+        return self.page.get_by_role("navigation", name="主要導覽")
+
+    def click_through(self, nav, links):
+        for name, path in links:
+            with self.subTest(link=name):
+                nav.get_by_role("link", name=name, exact=True).click()
+                expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+
+    # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
+    # narrower phone assert_fits_a_phone_at_double_text_size uses. The audiogram list's cards were
+    # already wider than a phone at 200% (their 6rem thumbnail), so only its tabs are checked below.
+    def test_records_and_learn_fit_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            for path in ("/my_hearing", "/learn"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
+    # Acceptance: at 390px and 200% text each tab's words take one line and stay on the screen.
+    # Not 320px: there a tab is about 62px wide and two characters at 200% need about 63px.
+    def test_tabs_stay_on_one_line_at_double_text_size(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for path in ("/my_hearing", "/audiograms", "/learn"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size.
+                    self.page.locator("html").evaluate(
+                        "html => html.style.setProperty('font-size', '225%', 'important')"
+                    )
+                    # A range has one client rect per line its words take.
+                    labels = (
+                        self.nav()
+                        .locator("a span")
+                        .evaluate_all(
+                            """spans => spans.map(span => {
+                            const range = document.createRange();
+                            range.selectNodeContents(span);
+                            const box = span.getBoundingClientRect();
+                            return [span.textContent, range.getClientRects().length,
+                                    box.left >= 0 && box.right <= innerWidth];
+                        })"""
+                        )
+                    )
+                    self.assertEqual(labels, [[tab, 1, True] for tab in self.TABS])
+
+    def test_tabs_change_page_without_javascript(self):
+        tabs = (
+            ("篩檢", "/questionnaire_list", None),
+            ("紀錄", "/my_hearing", "我的紀錄"),
+            ("了解", "/learn", "了解"),
+            ("首頁", "/", None),
+        )
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/learn")
+            for name, path, heading in tabs:
+                with self.subTest(tab=name):
+                    self.nav().get_by_role("link", name=name, exact=True).click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    if heading:
+                        expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+    # Spec #268 acceptance 20: the records switch and the signed-out tabs are plain links too.
+    def test_records_switch_changes_page_without_javascript(self):
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing")
+            switch = self.page.get_by_role("navigation", name="紀錄種類")
+            self.click_through(
+                switch, (("聽力圖", "/audiograms"), ("問卷", "/my_hearing?view=questionnaires"))
+            )
+
+    def test_signed_out_tabs_change_page_without_javascript(self):
+        self.open(390, javascript=False, signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.click_through(
+                self.nav(),
+                (("了解", "/learn"), ("登入", "/login"), ("註冊", "/register"), ("首頁", "/")),
+            )
 
 
 class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
@@ -3777,7 +4043,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             item = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
-                "link", name="我的紀錄"
+                "link", name="紀錄"
             )
             before = (item.bounding_box(), self.style(item, "color"))
             item.hover()

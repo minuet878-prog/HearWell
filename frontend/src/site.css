@@ -2358,6 +2358,37 @@
     color: #fff;
   }
 
+  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill, the
+     current one a gradient pill (shape as well as colour). At 200% text the two halves stack
+     instead of running off a phone. */
+  .records-switch {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    gap: 0.25rem;
+    margin: 0.5rem 0 1.5rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-selected);
+  }
+
+  .records-switch a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-touch);
+    padding: 0.25rem 1rem;
+    border-radius: var(--radius-tab);
+    color: var(--color-primary);
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .records-switch a[aria-current="page"] {
+    background-color: var(--color-primary);
+    background-image: var(--gradient-brand);
+    color: #fff;
+  }
+
   /* Aided vs unaided HHIE-S, styled like the trend summary box. */
   .aided-difference {
     margin-bottom: 1.5rem;

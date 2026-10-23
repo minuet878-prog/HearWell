@@ -734,7 +734,9 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=183)
         main = self._fetch_main_html(f"{reverse('my_hearing')}?questionnaire=ioi-ha")
         # The tab's code sits in its own span (text-heavy pages tidy-up).
-        current = re.search(r'<a[^>]*aria-current="page"[^>]*>(.*?)</a>', main, re.S).group(1)
+        # Ticket #270: the records switch above has its own current link; read the tabs' one.
+        tabs = main[main.index('aria-label="問卷"') :]
+        current = re.search(r'<a[^>]*aria-current="page"[^>]*>(.*?)</a>', tabs, re.S).group(1)
         self.assertEqual(re.sub(r"<[^>]+>", "", current), "助聽器使用成效（IOI-HA）")
         reminder = self._reminder(main)
         self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)

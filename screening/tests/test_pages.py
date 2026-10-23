@@ -216,8 +216,8 @@ class HeaderBrandTests(TestCase):
 
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
-    LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄", "聽力圖")
-    LOGGED_OUT_ITEMS = ("首頁", "登入", "註冊")
+    LOGGED_IN_ITEMS = ("首頁", "篩檢", "紀錄", "了解")
+    LOGGED_OUT_ITEMS = ("首頁", "了解", "登入", "註冊")
 
     @classmethod
     def setUpTestData(cls):
@@ -246,12 +246,15 @@ class RedesignLayoutTests(TestCase):
     def _logged_in_pages(self):
         return {
             reverse("index"): "首頁",
-            reverse("questionnaire_list"): "開始篩檢",
-            reverse("screening", args=[self.questionnaire.id]): "開始篩檢",
-            reverse("result", args=[self.submission.id]): "我的紀錄",
-            reverse("my_hearing"): "我的紀錄",
-            reverse("audiogram_list"): "聽力圖",
-            reverse("audiogram_new"): "聽力圖",
+            reverse("questionnaire_list"): "篩檢",
+            reverse("screening", args=[self.questionnaire.id]): "篩檢",
+            reverse("result", args=[self.submission.id]): "紀錄",
+            reverse("my_hearing"): "紀錄",
+            reverse("audiogram_list"): "紀錄",
+            reverse("audiogram_new"): "紀錄",
+            reverse("learn"): "了解",
+            reverse("guide"): "了解",
+            reverse("family_guide"): "了解",
         }
 
     def test_logged_in_nav_and_header(self):
@@ -744,7 +747,7 @@ class PwaTests(TestCase):
         "點右上角的「⋮」（三個點）。",
         "點「加到主畫面」或「安裝應用程式」。",
         "再點一次「安裝」或「新增」。",
-        "從主畫面打開時，請用畫面下方的「首頁、開始篩檢、我的紀錄、聽力圖」切換頁面。",
+        "從主畫面打開時，請用畫面下方的「首頁、篩檢、紀錄、了解」切換頁面。",
     )
 
     @classmethod
