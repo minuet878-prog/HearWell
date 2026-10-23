@@ -24,27 +24,30 @@
 
 | 需求 | 驗證 | 證據 |
 |---|---|---|
-| 招呼區顯示「上次是 … 做的」 | ✅ 自動 | `screening/tests/test_home.py:284`、`e2e/main_flow.py:840`、`:895` |
-| 有分級：儀表三段依門檻、指針角度依分數（12/40 → 54 度）、0 到滿分、讀螢幕軟體不唸 | ✅ 自動 | `screening/tests/test_home.py:296` |
-| 總分後面加「（滿分 40）」 | ✅ 自動 | `screening/tests/test_home.py:284` |
-| 沒分級：招呼區照樣、沒有儀表 | ✅ 自動 | `screening/tests/test_home.py:312` |
-| 提醒：平常月曆、到期淡藍框 | ✅ 自動 | `screening/tests/test_home.py:249`、`:267`；THI 不影響 `screening/tests/test_thi.py:427` |
-| 按鈕連結、主次不變 | ✅ 自動（既有測試改新 class） | `screening/tests/test_home.py:249`、`:267`、`:340` |
+| 招呼區顯示「上次是 … 做的」 | ✅ 自動 | `screening/tests/test_home.py:286`、`e2e/main_flow.py:840`、`:895` |
+| 有分級：儀表三段依門檻（接點在 8、24 分）、指針角度依分數（12/40 → 54 度）、兩端寫 0 和滿分、讀螢幕軟體不唸 | ✅ 自動 | `screening/tests/test_home.py:298` |
+| 總分後面加「（滿分 40）」 | ✅ 自動 | `screening/tests/test_home.py:286` |
+| 沒分級：招呼區照樣、灰框、沒有儀表、「看這次結果」在框裡 | ✅ 自動 | `screening/tests/test_home.py:328` |
+| 提醒：平常是月曆、到期是旗子加淡藍框 | ✅ 自動（圖示分得出來；淡藍只驗 class） | `screening/tests/test_home.py:250`、`:269`；THI 不影響 `screening/tests/test_thi.py:427` |
+| 按鈕連結、主次不變 | ✅ 自動（既有測試改新 class） | `screening/tests/test_home.py:250`、`:269`、`:363` |
+| 寬螢幕兩顆按鈕並排 | ✅ 自動 | `e2e/main_flow.py:5269` |
 | 招呼區是藍色漸層、整塊仍不是白卡；「您還可以」的卡片仍是白卡 | ✅ 自動 | `e2e/main_flow.py:5251` |
 | 動畫各只播一次、4 秒內停；減少動態效果時沒有動畫；最後指針停在分數（20/40 → 90 度） | ✅ 自動（新增） | `e2e/main_flow.py:4225` |
-| 手機 320px、兩倍字級不超出、沒有被切掉 | ✅ 自動（既有） | `e2e/main_flow.py:4809`（`home, returning`） |
+| 手機 320px、兩倍字級時長輩讓位、不超出、沒被切掉 | ✅ 自動（新增） | `e2e/main_flow.py:5343`；其他首頁與結果頁照舊 `:5352` |
 | 新訪客首頁的長輩、動畫不變 | ✅ 自動（既有） | `screening/tests/test_pages.py:1132`、`e2e/main_flow.py:4161` |
 | 實際看起來順不順、動畫會不會太快或太晃 | ⚠️ 要人工 | 請本人實際操作 |
 
 ## 測試與審查
 
 - 單元測試 `manage.py test --settings=config.test_settings`：1345 項全過。
-- 端對端（先 `npm run build --prefix frontend`）`e2e.main_flow --parallel 4`：167 項全過（新增 1 項）。
+- 端對端（先 `npm run build --prefix frontend`）`e2e.main_flow --parallel 4`：168 項全過（新增 2 項）。
 - 前端 `npm test --prefix frontend`：220 項全過。
 - `ruff check .`：全過。
 - 改了的既有測試（刻意改變外觀，不是行為壞掉）：日期那行的文字、提醒的標記、按鈕的 class、e2e 找標題的名字（多了「！」）。
 - e2e 第一次抓到兩個問題，都已修：日期用 `whitespace-nowrap` 時字放大會超出招呼區（改成日期獨占一行）；兩圈圓環用偽元素畫在框外，會被算成「內容被切掉」（改成背景漸層）。
-- 自審：見 PR 說明。
+- 自審（`/mattpocock-skills:code-review`，基準 `origin/main`，規格＝ADR 0026 和本檔「行為」段）：
+  - **Standards**：沒有硬違規。採納：儀表的魔術數字取名（`HALF_CIRCLE_DEGREES`、用段落序號判斷頭尾）、`first`／`last` 改名 `arc_start`／`arc_end`、「看這次結果」連結只寫一次、儀表兩端的字 0.75rem 放大到 0.875rem、三個檔共用的儀表中心加註互相指向、ADR 0026 補一句「指針擺動不算數字往上跑」。不採納：`last_max_score` 和 `gauge.ceiling` 數值相同，但「無法判讀」時沒有儀表仍要顯示滿分，留著；`.welcome-date`、`.welcome-actions` 跟著首頁既有 `home-*` 寫法用具名 class；儀表幾何不搬成獨立模組（只有一個函式，搬了反而多一層）。
+  - **Spec**：實作和 ADR 一致，沒有做錯或多做。補上 5 處證明不足的測試：儀表弧的接點落在門檻、左端「0」、灰框裡有「看這次結果」、提醒圖示分得出月曆和旗子、寬螢幕按鈕並排、200% 字級長輩讓位（新 e2e）；驗收表的 320px 行號改指到真正的測試。
 
 ## 人工驗收
 

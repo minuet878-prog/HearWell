@@ -1516,9 +1516,11 @@ def _score_bar(definition, score, level):
 
 # The welcome-back gauge (option D, ADR 0026): a half circle centred at (110, 105) in its 220 x 130
 # drawing, with a small gap between the levels' arcs.
+# score_gauge.html and site.css use the same centre for the needle.
 GAUGE_CENTRE = (110, 105)
 GAUGE_RADIUS = 80
 GAUGE_GAP = 0.5  # percent of the half circle on each side of a join
+HALF_CIRCLE_DEGREES = 180
 
 
 def _gauge_point(percent):
@@ -1532,21 +1534,23 @@ def _score_gauge(bar):
     # of 180 degrees. No bar ("無法判讀", or no levels), no gauge.
     if bar is None:
         return None
+    segments = bar["segments"]
     arcs = []
     start = 0
-    for segment in bar["segments"]:
+    for number, segment in enumerate(segments, start=1):
         end = start + segment["width"]
-        first = start + (GAUGE_GAP if start else 0)
-        last = end - (GAUGE_GAP if end < 99.99 else 0)
+        arc_start = start + (GAUGE_GAP if number > 1 else 0)
+        arc_end = end - (GAUGE_GAP if number < len(segments) else 0)
         arcs.append(
             {
                 "color": segment["color"],
-                "d": f"M{_gauge_point(first)}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 "
-                f"{_gauge_point(last)}",
+                "d": f"M{_gauge_point(arc_start)}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 "
+                f"{_gauge_point(arc_end)}",
             }
         )
         start = end
-    return {"arcs": arcs, "angle": bar["position"] * 1.8, "ceiling": bar["ceiling"]}
+    angle = bar["position"] / 100 * HALF_CIRCLE_DEGREES
+    return {"arcs": arcs, "angle": angle, "ceiling": bar["ceiling"]}
 
 
 @login_required

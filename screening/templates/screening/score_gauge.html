@@ -1,6 +1,7 @@
 {# Welcome back option D (ADR 0026): the score bar as a half-circle gauge, the needle at this score. Decorative: the level and score are written below it. #}
 <svg class="score-gauge" viewBox="0 0 220 130" aria-hidden="true" focusable="false" style="--angle: {{ gauge.angle|floatformat:2 }}deg">
     {% for arc in gauge.arcs %}<path class="score-gauge-arc score-gauge-arc-{{ arc.color }}" pathLength="1" d="{{ arc.d }}"/>{% endfor %}
+    {# From GAUGE_CENTRE (views.py) towards 0 on the left; site.css turns it about the same centre. #}
     <line class="score-gauge-needle" x1="110" y1="105" x2="52" y2="105"/>
     <circle class="score-gauge-hub" cx="110" cy="105" r="7"/>
     <text x="30" y="126">0</text>

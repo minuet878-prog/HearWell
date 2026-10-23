@@ -2,6 +2,7 @@
 Spec #148 batch 2, ticket #159: the returning-user home page.
 """
 
+import math
 import re
 from datetime import date, datetime, timedelta
 from unittest.mock import patch
@@ -253,7 +254,8 @@ class ReturningUserHomeTests(TestCase):
         # Option D (ADR 0026): the due reminder is a pale blue box with a flag.
         self.assertRegex(
             main,
-            r'<p class="welcome-reminder welcome-reminder-due"><svg[^>]*>.*?</svg>'
+            r'<p class="welcome-reminder welcome-reminder-due"><svg[^>]*><path d="M5 21V4'
+            r'.*?</svg>'
             r"<span>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</span></p>",
         )
         self.assertIn(
@@ -270,7 +272,7 @@ class ReturningUserHomeTests(TestCase):
         main = self._main()
         self.assertRegex(
             main,
-            r'<p class="welcome-reminder"><svg[^>]*>.*?</svg>'
+            r'<p class="welcome-reminder"><svg[^>]*><rect .*?</svg>'
             r"<span>下次建議 2027/03/22 再做</span></p>",
         )
         self.assertIn(
@@ -303,10 +305,24 @@ class ReturningUserHomeTests(TestCase):
         self.assertEqual(
             re.findall(r"score-gauge-arc-(\w+)", gauge), ["normal", "mild_to_moderate", "severe"]
         )
-        # The arcs run from 0 on the left to the top score on the right.
+        # The arcs run from 0 on the left to the top score on the right, and meet at the
+        # thresholds (8 and 24 points), a small gap either side.
         arcs = re.findall(r' d="([^"]+)"', gauge)
         self.assertTrue(arcs[0].startswith("M30.00 105.00"))
         self.assertTrue(arcs[-1].endswith("190.00 105.00"))
+
+        def points(arc):
+            x0, y0, *_, x1, y1 = map(float, re.findall(r"-?\d+\.?\d*", arc))
+            return [
+                (180 - math.degrees(math.atan2(105 - y, x - 110))) / 180 * 40
+                for x, y in ((x0, y0), (x1, y1))
+            ]
+
+        ends = [points(arc) for arc in arcs]
+        for (_, left), (right, _), threshold in zip(ends[:-1], ends[1:], (8, 24), strict=True):
+            self.assertAlmostEqual((left + right) / 2, threshold, places=2)
+            self.assertLess(left, right)
+        self.assertRegex(gauge, r">\s*0\s*</text>")
         self.assertRegex(gauge, r">\s*40\s*</text>")
 
     def test_records_without_levels_have_no_gauge(self):
@@ -315,6 +331,13 @@ class ReturningUserHomeTests(TestCase):
         main = self._main()
         self.assertIn("上次是 2026/10/21 做的", main)
         self.assertNotIn("score-gauge", main)
+        # The grey box, with 看這次結果 inside it.
+        self.assertRegex(
+            main,
+            r'(?s)<div class="result-banner result-banner-unknown">'
+            r"(?:(?!welcome-reminder|welcome-actions).)*?"
+            r'class="welcome-result-link"',
+        )
 
     def test_only_ioi_ha_shows_its_norm_summary_without_a_reminder(self):
         # Acceptance 3. Mild to moderate norms: items 1 and 2 below, item 5 above.

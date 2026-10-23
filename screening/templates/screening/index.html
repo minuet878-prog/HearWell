@@ -82,19 +82,14 @@
     {% include "screening/home_illustration.html" %}
     <p class="welcome-date">上次是 {{ submission.created_at|date:"Y/m/d" }} 做的</p>
 </div>
-{% if user_state.last_result.is_life_impact %}
 {% with classified=submission.classified %}
-<div class="result-banner result-banner-{{ classified.color }}">
+<div class="result-banner result-banner-{% if user_state.last_result.is_life_impact %}{{ classified.color }}{% else %}unknown{% endif %}">
     <div>上次結果</div>
+    {% if user_state.last_result.is_life_impact %}
     {% if last_gauge %}{% include "screening/score_gauge.html" with gauge=last_gauge %}{% endif %}
     <h2 class="result-level mb-0">{{ classified.text }}</h2>
     <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ submission.total_answer_score }} 分{% if last_max_score %}（滿分 {{ last_max_score }}）{% endif %}</div>
-    <a class="welcome-result-link" href="{% url 'result' submission.id %}">看這次結果<span aria-hidden="true">›</span></a>
-</div>
-{% endwith %}
-{% else %}
-<div class="result-banner result-banner-unknown">
-    <div>上次結果</div>
+    {% else %}
     <h2 class="result-level mb-0">{{ submission.questionnaire.definition.topic }}（{{ submission.questionnaire.questionnaire_name }}）</h2>
     {% if last_ioi_ha %}
     <div>{% include "screening/ioi_ha_summary.html" with ioi_ha=last_ioi_ha %}</div>
@@ -103,9 +98,10 @@
     {% elif submission.satisfaction %}
     <div>{% include "screening/sadl_overall.html" %}</div>
     {% endif %}
+    {% endif %}
     <a class="welcome-result-link" href="{% url 'result' submission.id %}">看這次結果<span aria-hidden="true">›</span></a>
 </div>
-{% endif %}
+{% endwith %}
 {% endwith %}
 {% if user_state.reminder %}
 <p class="welcome-reminder{% if user_state.retest_due %} welcome-reminder-due{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">{% if user_state.retest_due %}<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>{% else %}<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>{% endif %}</svg><span>{{ user_state.reminder }}</span></p>

@@ -1551,6 +1551,7 @@
     stroke: var(--color-heading);
     stroke-width: 5;
     stroke-linecap: round;
+    /* GAUGE_CENTRE in views.py, in the drawing's own units. */
     transform-box: view-box;
     transform-origin: 110px 105px;
     transform: rotate(var(--angle));
@@ -1562,7 +1563,7 @@
 
   .score-gauge text {
     fill: var(--color-body);
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     text-anchor: middle;
   }
 

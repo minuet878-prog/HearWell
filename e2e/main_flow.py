@@ -5265,6 +5265,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(self.style(records, "backgroundImage"), self.GRADIENT)
             again = welcome.get_by_role("link", name="再做一次", exact=True)
             self.assertEqual(self.style(again, "borderTopColor"), self.PRIMARY)
+            # ADR 0026: side by side on a wide screen.
+            self.assertEqual(records.bounding_box()["y"], again.bounding_box()["y"])
             cards = self.page.get_by_role("region", name="您還可以").locator("a.link-card")
             self.assertGreater(cards.count(), 0)
             for card in cards.all():
@@ -5337,6 +5339,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
+    # ADR 0026: at double text size on a phone the elder gives way to the title.
+    def test_welcome_back_elder_gives_way_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.returning_home(), width=320)
+            elder = self.main().locator(".welcome-band .home-illustration")
+            expect(elder).to_be_visible()
+            self.assert_fits_uncut("home, returning")
+            expect(elder).to_be_hidden()
+
     def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
         results = tuple(page for page in WHITE_CARD_PAGES_RECORDS if page[0].endswith(" result"))
         with self.saving_artifacts():
