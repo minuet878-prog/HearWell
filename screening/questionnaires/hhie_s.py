@@ -70,8 +70,6 @@ NEXT_STEPS = {
                 "這次篩檢能讓您體認到聽力對生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查，"
                 "並詢問專業意見。"
             ),
-            "action_label": "看／印聽力報告",
-            "action_url": "health_report",
             **GUIDE_ACTION,
         },
         RETEST_STEP,
@@ -82,8 +80,6 @@ NEXT_STEPS = {
                 "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
                 "建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。"
             ),
-            "action_label": "看／印聽力報告",
-            "action_url": "health_report",
             **GUIDE_ACTION,
         },
         {
