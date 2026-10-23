@@ -3004,8 +3004,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # field is measured on the delete-account page.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
         field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
-        border = "rgb(222, 226, 230)"
-        thick_border = "rgb(108, 117, 125)"  # --color-input-border, 4.7:1 on white
+        # #272: every field edge is --color-input-border (4.7:1 on white); the old
+        # rgb(222, 226, 230) was 1.3:1, under WCAG 1.4.11's 3:1. Sizes stay as they were.
+        border = "rgb(108, 117, 125)"
         self.audiogram(date(2026, 9, 28))
         with self.saving_artifacts():
             self.open()
@@ -3046,7 +3047,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 {
                     "padding": "6.75px 13.5px 6.75px 54px",
                     "borderTopWidth": "2px",
-                    "borderTopColor": thick_border,
+                    "borderTopColor": border,
                     "borderTopLeftRadius": "13.5px",
                     "fontSize": "22.5px",
                     "color": self.TEXT,
@@ -3071,7 +3072,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 ),
                 {
                     "backgroundColor": "rgb(248, 249, 250)",
-                    "borderTopColor": thick_border,
+                    "borderTopColor": border,
                     "padding": "6.75px 13.5px",
                     "borderTopLeftRadius": "13.5px",
                     "borderTopRightRadius": "0px",
@@ -3097,6 +3098,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.get_by_text("用數值輸入").click()
             select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
             self.assertEqual(self.size(select)[1], 42.5)
+            self.assertEqual(self.style(select, "borderTopColor"), border)
             self.assertEqual(self.style(select, "padding"), "6.75px 40.5px 6.75px 13.5px")
             self.assertIn("svg", self.style(select, "backgroundImage"))
             select.focus()
@@ -3105,6 +3107,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             mask = self.page.get_by_label("右耳氣導 500 Hz 遮蔽")
             self.assertEqual(self.size(mask), (18, 18))
             self.assertEqual(self.style(mask, "opacity"), "0.5")
+            self.assertEqual(self.style(mask, "borderTopColor"), border)
             self.assertEqual(
                 self.styles(mask.locator(".."), "minHeight", "paddingLeft"),
                 {"minHeight": "27px", "paddingLeft": "27px"},
@@ -3119,10 +3122,21 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.get_by_role("button", name="上一步").click()
             date_field = self.page.get_by_label("檢查日期")
             self.assertEqual(
-                self.styles(date_field, "padding", "fontSize", "borderTopLeftRadius"),
-                {"padding": "9px 18px", "fontSize": "22.5px", "borderTopLeftRadius": "13.5px"},
+                self.styles(
+                    date_field, "padding", "fontSize", "borderTopLeftRadius", "borderTopColor"
+                ),
+                {
+                    "padding": "9px 18px",
+                    "fontSize": "22.5px",
+                    "borderTopLeftRadius": "13.5px",
+                    "borderTopColor": border,
+                },
             )
             self.assertGreaterEqual(self.size(date_field)[1], 44)
+
+            # #272: the guide's county picker, the one large select.
+            self.page.goto(f"{self.live_server_url}/guide/assessment")
+            self.assertEqual(self.style(self.page.locator("#county"), "borderTopColor"), border)
 
             # #202: the compare page picks with radio cards in 舊 and 新 rows, not selects; each
             # row is a full touch target.
@@ -3269,6 +3283,29 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             error = self.page.locator("#login_error")
             expect(error).to_be_visible()
             self.assertEqual(self.style(error, "color"), self.ERROR)
+
+    def test_a_wrong_entry_turns_the_field_red_and_marks_the_message(self):
+        # #272: the field shows the error too, and the message has a warning mark, so neither
+        # rests on the red alone. The field keeps its size.
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/account/delete")
+            self.page.get_by_label("請輸入密碼確認").fill("not-the-password")
+            self.page.get_by_role("main").get_by_role("button", name="刪除帳號").click()
+            error = self.page.locator("#id_password_error p")
+            expect(error).to_have_text("密碼不正確")
+            # Focused again by autofocus; the red stays while the person types.
+            password = self.page.get_by_label("請輸入密碼確認")
+            self.assertEqual(
+                self.styles(password, "borderTopColor", "backgroundColor"),
+                {"borderTopColor": self.ERROR, "backgroundColor": "rgb(254, 236, 231)"},
+            )
+            self.assertEqual(self.size(password)[1], 42.5)
+            self.assertEqual(self.style(error, "fontWeight"), "700")
+            self.assertIn(
+                "data:image/svg+xml",
+                error.evaluate("el => getComputedStyle(el, '::before').maskImage"),
+            )
 
     def test_result_banner_colours(self):
         unconfigured = Questionnaire.objects.create(

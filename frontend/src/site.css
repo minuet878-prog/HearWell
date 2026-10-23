@@ -362,7 +362,8 @@
     color: var(--color-body);
     appearance: none;
     background-color: #fff;
-    border: 1px solid var(--color-border-subtle);
+    /* #272: 4.7:1 on white, so the edge shows (WCAG 1.4.11 asks 3:1; --color-border-subtle was 1.3:1). */
+    border: 1px solid var(--color-input-border);
     border-radius: var(--radius-medium);
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
@@ -395,6 +396,12 @@
     box-shadow: var(--shadow-field-focus);
   }
   .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
+  /* #272: a wrong entry (Django sets aria-invalid) shows on the field too, and stays while the
+     person types, so it comes after both :focus rules. */
+  .form-control[aria-invalid="true"], .form-select[aria-invalid="true"] {
+    border-color: var(--color-severe);
+    background-color: var(--color-severe-bg);
+  }
   .form-check {
     display: block;
     min-height: 1.5rem;
@@ -414,7 +421,7 @@
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
-    border: 1px solid var(--color-border-subtle);
+    border: 1px solid var(--color-input-border);  /* #272: the same visible edge as the fields */
     print-color-adjust: exact;
   }
   .form-check-input[type="checkbox"] { border-radius: 0.25em; }
@@ -455,7 +462,7 @@
     text-align: center;
     white-space: nowrap;
     background-color: #f8f9fa;
-    border: 1px solid var(--color-border-subtle);
+    border: 1px solid var(--color-input-border);  /* #272: the field's own edge */
     border-radius: var(--radius-medium);
   }
   @media (prefers-reduced-motion: reduce) {
@@ -528,6 +535,25 @@
   /* Error text at WCAG AA on white. */
   .text-danger {
     color: var(--color-severe) !important;
+  }
+  /* #272: a field's error (field_messages.html), and every error in the login and register card,
+     gets a warning mark, so it does not rest on the red alone. */
+  .field-error, .auth-card .text-danger {
+    display: flex;
+    gap: 0.4rem;
+    font-weight: 700;
+  }
+  .field-error::before, .auth-card .text-danger::before {
+    --warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
+    content: "";
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.15rem;
+    background-color: currentColor;
+    /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
+    -webkit-mask: var(--warning-mark) center / contain no-repeat;
+    mask: var(--warning-mark) center / contain no-repeat;
   }
 
   /* The first keyboard stop bypasses shared navigation. */
@@ -1121,35 +1147,10 @@
   .auth-card label { font-weight: 700; color: var(--color-heading); }
   .auth-field:focus-within label { color: var(--color-primary); }
   .auth-field:has([aria-invalid="true"]) label { color: var(--color-severe); }
-  /* A 2px edge in --color-input-border (4.7:1 on white); the faint default is 1.3:1. */
-  .auth-card .form-control, .auth-card .input-group-text {
-    border: 2px solid var(--color-input-border);
-  }
+  /* Twice the width of the site's field edge (#272 gave every field its colour). */
+  .auth-card .form-control, .auth-card .input-group-text { border-width: 2px; }
   .auth-card .input-group > :not(:first-child) { margin-left: -2px; }
   .auth-card .form-control { min-height: 3.25rem; font-size: 1.25rem; }
-  .auth-card .form-control:focus { border-color: var(--color-primary); }
-  .auth-card .form-control[aria-invalid="true"] {
-    border-color: var(--color-severe);
-    background-color: var(--color-severe-bg);
-  }
-  /* The error text gets a warning mark, so it does not rest on the red alone. */
-  .auth-card .text-danger {
-    display: flex;
-    gap: 0.4rem;
-    font-weight: 700;
-  }
-  .auth-card .text-danger::before {
-    --auth-warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
-    content: "";
-    flex: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    margin-top: 0.15rem;
-    background-color: currentColor;
-    /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
-    -webkit-mask: var(--auth-warning-mark) center / contain no-repeat;
-    mask: var(--auth-warning-mark) center / contain no-repeat;
-  }
   .auth-input { position: relative; }
   .auth-input > svg {
     position: absolute;
