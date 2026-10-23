@@ -388,6 +388,12 @@ class ReapplyDateTests(TestCase):
         self.assertIn("2030/05/01 起可以再申請補助", self.stop("form-9"))
         self.assert_only_here_at(self.tags(), "after-fitting")
 
+    def test_four_years_after_29_february_shows_the_28th_in_2100(self):
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2096, 2, 29), subsidy="disability", level="basic"
+        )
+        self.assertIn("2100/02/28 起可以再申請補助", self.stop("form-9"))
+
     def test_paying_has_no_date_to_apply_again(self):
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1), subsidy="other")
         self.assertNotIn("起可以再申請補助", self.page())

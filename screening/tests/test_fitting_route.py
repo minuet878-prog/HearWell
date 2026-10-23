@@ -278,6 +278,13 @@ class ReapplyDateTests(TestCase):
         )
         self.assertEqual(self.reapply_on(), date(2030, 5, 1))
 
+    def test_the_end_of_february_in_a_year_that_is_not_leap(self):
+        # 2100 is not a leap year: four years after 29 February is the 28th (spec #284 testing).
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2096, 2, 29), subsidy="disability", level="basic"
+        )
+        self.assertEqual(self.reapply_on(), date(2100, 2, 28))
+
     def test_none_without_the_subsidy_or_a_fitting_date(self):
         for fitted_on, subsidy in (
             (date(2026, 5, 1), "other"),

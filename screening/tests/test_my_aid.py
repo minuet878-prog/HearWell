@@ -340,3 +340,55 @@ class HearingAidQuestionsTests(TestCase):
     def test_the_script_is_built(self):
         config = test_answering.ReactAnswerPageTests.VITE_CONFIG.read_text(encoding="utf-8")
         self.assertIn('"my-aid": "src/my-aid.js"', config)
+
+
+class NotAnsweringRouteTests(TestCase):
+    """#284 acceptance 4 (cross-review): choosing 不填 again puts the route back as if it had
+    never been filled in, deadlines included."""
+
+    def setUp(self):
+        self.user = consented_user(username="aid_unanswerer")
+        self.client.force_login(self.user)
+        # Over a month and under three before today, whatever today is: inside the form 25 window.
+        self.fitted_on = (timezone.localdate() - timedelta(days=40)).isoformat()
+
+    def post(self, **fields):
+        data = {"has_certificate": "", "fitted_on": "", "ear": "", "subsidy": "", "level": ""}
+        return self.client.post(reverse("my_aid"), data | fields)
+
+    def route(self):
+        return self.client.get(reverse("guide")).content.decode()
+
+    def here(self):
+        return re.findall(r'data-stop="([^"]+)" aria-current="step"', self.route())
+
+    def wearing_with_the_subsidy(self, **changes):
+        fields = {"fitted_on": self.fitted_on, "subsidy": "disability", "level": "mid"}
+        self.post(**fields)
+        self.assertEqual(self.here(), ["form-25"])
+        self.post(**(fields | changes))
+
+    def test_not_answering_the_date_is_no_longer_wearing(self):
+        self.wearing_with_the_subsidy(fitted_on="")
+        # No questionnaire or audiogram either: back to recording one.
+        self.assertEqual(self.here(), ["audiogram"])
+        route = self.route()
+        self.assertNotIn("前要做完", route)
+        self.assertNotIn("起可以再申請補助", route)
+
+    def test_not_answering_the_subsidy_leaves_form_25(self):
+        self.wearing_with_the_subsidy(subsidy="")
+        self.assertEqual(self.here(), ["after-fitting"])
+        route = self.route()
+        self.assertNotIn("前要做完", route)
+        self.assertNotIn("起可以再申請補助", route)
+
+    def test_not_answering_only_the_level_leaves_form_25(self):
+        self.wearing_with_the_subsidy(level="")
+        aid = AidAndSubsidy.objects.get(user=self.user)
+        self.assertEqual((aid.subsidy, aid.level), ("disability", ""))
+        self.assertEqual(self.here(), ["after-fitting"])
+        route = self.route()
+        self.assertNotIn("前要做完", route)
+        # Still bought with 身障補助, so reapplying keeps its date.
+        self.assertIn("起可以再申請補助", route)
