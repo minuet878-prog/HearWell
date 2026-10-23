@@ -3916,6 +3916,70 @@
       display: none;
     }
   }
+
+  /* #315: on screen a report table's columns take the room their text needs, and neither a date
+     nor a column's name breaks. Paper keeps its equal columns. */
+  @media screen {
+    .health-report .table {
+      table-layout: auto;
+    }
+
+    .health-report .table :is(th, time) {
+      white-space: nowrap;
+    }
+
+    /* Where a table does not fit (16rem, about what the four columns need: 200% text on a
+       phone, or a 320px phone), each record stacks into a block of its own: each value after its
+       column's name, a line between two records. The header row stays for screen readers only,
+       and the tables' role attributes keep them tables there (Safari drops a table's semantics
+       when its display changes); the names in front of the values are not read. */
+    .health-report .report-fold-body {
+      container-type: inline-size;
+    }
+
+    @container (width < 16rem) {
+      .health-report .table,
+      .health-report .table > :is(thead, tbody),
+      .health-report .table > :is(thead, tbody) > tr,
+      .health-report .table > :is(thead, tbody) > tr > * {
+        display: block;
+      }
+
+      .health-report .table > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .health-report .table > thead > tr > th {
+        padding: 0;
+      }
+
+      .health-report .table > tbody > tr + tr {
+        border-top: 1px solid var(--color-tint-line);
+      }
+
+      /* The value goes beside its name, or whole onto the next line when it does not fit. */
+      .health-report .table > tbody > tr > td {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
+        border-bottom-width: 0;
+        padding-block: 0.25rem;
+      }
+
+      .health-report .table > tbody > tr > td::before {
+        content: attr(data-label) / "";
+        color: var(--color-heading);
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+    }
+  }
 }
 
 /* Every printed page keeps the same margins; element margins vanish where a page breaks. Outside

@@ -100,8 +100,8 @@ class OnAPhone:
     def main(self):
         return self.page.get_by_role("main")
 
-    def assert_fits_a_phone_at_double_text_size(self, where):
-        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
+    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
+        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is width px wide. Not
         # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
         # Wait for the stylesheet first: a click only waits until the new page starts, and an
         # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
@@ -110,7 +110,7 @@ class OnAPhone:
             "html => html.style.setProperty('font-size', '225%', 'important')"
         )
         scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
-        self.assertLessEqual(scroll_width, 320, where)
+        self.assertLessEqual(scroll_width, width, where)
 
     def question(self, number):
         """The one question on screen, checked to be the expected one."""
@@ -5035,9 +5035,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "backgroundColor"), "rgba(0, 0, 0, 0)")
         self.assertEqual(self.style(block, "boxShadow"), "none")
 
-    def assert_fits_uncut(self, where):
+    def assert_fits_uncut(self, where, width=320):
         """Spec #297 acceptance 12: at 200% on a phone, no sideways scrolling and nothing cut."""
-        self.assert_fits_a_phone_at_double_text_size(where)
+        self.assert_fits_a_phone_at_double_text_size(where, width)
         self.assertEqual(self.page.evaluate(self.CUT_OFF), [], where)
 
     def assert_white_card(self, card):
@@ -5564,6 +5564,119 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                         ).to_be_visible()
                     for fold in folds.all():
                         expect(fold).to_be_hidden()
+
+    # #315: both reports with their two kinds of table: HHIE-S's recent records (three of them,
+    # one of each level, 2 being IOI-HA's norm basis) and IOI-HA's items compared with the norm.
+    def table_reports(self):
+        for score in (0, 4):
+            self.answered("hhie-s", score)
+        self.ioi_ha()
+        family = f"/shared/{ReportShare.objects.create(user=self.user).token}/report"
+        return (("owner", True, "/report"), ("family", False, family))
+
+    def open_report_tables(self, signed_in, path, width):
+        """The report with every fold open, and its tables."""
+        self.visit(signed_in, path, width=width)
+        for fold in self.report_folds().all():
+            fold.click()
+        tables = self.main().get_by_role("table")
+        self.assertEqual(tables.count(), 2)
+        return tables
+
+    LINES = """el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+    }"""
+
+    # #315 (spec #308 acceptance 13): on a phone at the normal text size every date in the
+    # reports' tables stays on one line, and nothing is cut.
+    def test_report_table_dates_stay_on_one_line(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.table_reports():
+                for width in (320, 390):
+                    with self.subTest(report=name, width=width):
+                        self.open_report_tables(signed_in, path, width)
+                        dates = self.main().get_by_role(
+                            "cell", name=re.compile(r"^\d{4}\/\d\d\/\d\d$")
+                        )
+                        self.assertEqual(dates.count(), 3)
+                        for cell in dates.all():
+                            self.assertEqual(cell.evaluate(self.LINES), 1, cell.inner_text())
+                        self.assertEqual(self.page.evaluate(self.CUT_OFF), [])
+
+    def records(self, table):
+        """A table's records: its rows of cells, the header row left out."""
+        return table.get_by_role("row").filter(has=self.page.get_by_role("cell"))
+
+    # #315 (spec #308 acceptance 14): on a phone at 200% text, where a table does not fit, each
+    # record stacks into a block of its own: one value under another, each after its column's
+    # name, a line between two records; nothing scrolls sideways or is cut. With room, at the
+    # normal size, it stays a table of side-by-side columns.
+    def test_report_table_records_stack_when_the_table_does_not_fit(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.table_reports():
+                for width in (320, 390):
+                    with self.subTest(report=name, width=width):
+                        tables = self.open_report_tables(signed_in, path, width)
+                        self.assert_fits_uncut(f"{name}, {width}", width)
+                        for table in tables.all():
+                            columns = table.get_by_role("columnheader").all_inner_texts()
+                            for header in table.get_by_role("columnheader").all():
+                                self.assertLessEqual(header.bounding_box()["width"], 1)
+                            records = self.records(table)
+                            self.assert_lines_between(records)
+                            for record in records.all():
+                                cells = record.get_by_role("cell")
+                                labels = [
+                                    cell.evaluate("el => getComputedStyle(el, '::before').content")
+                                    for cell in cells.all()
+                                ]
+                                self.assertEqual([label.split('"')[1] for label in labels], columns)
+                                boxes = [cell.bounding_box() for cell in cells.all()]
+                                for above, below in pairwise(boxes):
+                                    self.assertGreaterEqual(
+                                        below["y"], above["y"] + above["height"] - 0.5
+                                    )
+            # On a phone at 200% text the stacked records are still tables to a screen reader, as
+            # the browser's own accessibility tree says: column names, and cells that hold only
+            # their values (the names shown in front of them are not read twice).
+            self.visit(True, "/report", width=320)
+            for fold in self.report_folds().all():
+                fold.click()
+            self.assert_fits_uncut("owner, accessibility tree")
+            session = self.context.new_cdp_session(self.page)
+            nodes = session.send("Accessibility.getFullAXTree")["nodes"]
+            named = [
+                (node["role"]["value"], node.get("name", {}).get("value", ""))
+                for node in nodes
+                if not node.get("ignored")
+            ]
+            self.assertEqual([role for role, _ in named].count("table"), 2)
+            self.assertEqual(
+                [name for role, name in named if role == "columnheader"],
+                ["日期", "總分", "分級", "助聽器", "項目", "回答", "與常模比較"],
+            )
+            cells = [name for role, name in named if role == "cell"]
+            self.assertEqual(len(cells), 3 * 4 + 7 * 3)
+            self.assertIn("2026", cells[0])
+            for cell in cells:
+                self.assertNotRegex(cell, "^(日期|總分|分級|助聽器|項目|回答|與常模比較)")
+            self.assertEqual([role for role, _ in named].count("row"), 2 + 3 + 7)
+            # With room, at the normal size: side-by-side columns under a header row whose names
+            # do not break either.
+            self.visit(True, "/report", width=390)
+            for fold in self.report_folds().all():
+                fold.click()
+            for table in self.main().get_by_role("table").all():
+                for header in table.get_by_role("columnheader").all():
+                    self.assertGreater(header.bounding_box()["width"], 1)
+                    self.assertEqual(header.evaluate(self.LINES), 1, header.inner_text())
+                for record in self.records(table).all():
+                    tops = {
+                        round(cell.bounding_box()["y"]) for cell in record.get_by_role("cell").all()
+                    }
+                    self.assertEqual(len(tops), 1, record.inner_text())
 
     # #303 (#298's pick): the account details are flat rows with a thin line between them;
     # every link row is a white card of its own and goes where it went before.

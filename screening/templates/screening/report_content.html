@@ -102,11 +102,11 @@
     {% if submission.norm_basis %}<p>完成時固定依據：{{ submission.norm_basis.questionnaire }}，{{ submission.norm_basis.created_at|date:"Y/m/d H:i" }}，{{ submission.norm_basis.total_answer_score }} 分（未配戴）。</p>{% endif %}
     <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
     {% if not ioi_ha.grouped %}<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>{% endif %}
-    <table class="table">
-        <thead><tr><th scope="col">項目</th><th scope="col">回答</th>{% if ioi_ha.grouped %}<th scope="col">與常模比較</th>{% endif %}</tr></thead>
-        <tbody>
+    <table class="table" role="table">
+        <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">項目</th><th scope="col" role="columnheader">回答</th>{% if ioi_ha.grouped %}<th scope="col" role="columnheader">與常模比較</th>{% endif %}</tr></thead>
+        <tbody role="rowgroup">
             {% for item in ioi_ha.items %}
-            <tr><td>{{ item.name }}</td><td>{{ item.label }}</td>{% if ioi_ha.grouped %}<td>{{ item.comparison }}</td>{% endif %}</tr>
+            <tr role="row"><td role="cell" data-label="項目">{{ item.name }}</td><td role="cell" data-label="回答">{{ item.label }}</td>{% if ioi_ha.grouped %}<td role="cell" data-label="與常模比較">{{ item.comparison }}</td>{% endif %}</tr>
             {% endfor %}
         </tbody>
     </table>
