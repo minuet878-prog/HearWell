@@ -1,10 +1,10 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Guide chapters tidy-up: the things to bring as chips, the questions grouped. #}
+{# Guide chapters tidy-up: the things to bring as a list with icons, the questions grouped. #}
 <p>第一次去評估選配助聽器，先準備好下面這些，可以少跑一趟。</p>
 <section class="mb-6" aria-labelledby="bring-title">
     <h2 id="bring-title" class="h4">要帶的東西</h2>
-    <ul class="icon-chips" role="list">
+    <ul class="icon-list" role="list">
         <li>{% include "screening/guide/icon.html" with icon="audiogram" %}醫院的聽力檢查報告（聽力圖）</li>
         <li>{% include "screening/guide/icon.html" with icon="id" %}身分證</li>
         <li>{% include "screening/guide/icon.html" with icon="certificate" %}身心障礙證明（有的話）</li>

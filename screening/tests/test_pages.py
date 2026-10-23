@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 from screening.models import (
     Answer,
@@ -87,8 +88,10 @@ class CopyTests(TestCase):
 
     def test_intro_typo_fixed(self):
         response = self.client.get(self.url)
+        # Word for word as read: #313 sets the answers in bold inside the sentence.
+        text = strip_tags(response.content.decode())
         for sentence in self.INTRO:
-            self.assertContains(response, sentence)
+            self.assertIn(sentence, text)
         self.assertNotContains(response, "以選配了助聽器格")
 
     def test_advice_text(self):
