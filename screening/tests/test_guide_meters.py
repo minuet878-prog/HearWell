@@ -181,7 +181,7 @@ class GuideMetersTests(TestCase):
     def test_bars_are_hidden_from_screen_readers(self):
         self.make(PTA_55, PTA_55, no_response_at=("right", 2000))
         page = self.page()
-        meters = re.findall(r'<div class="meter-track[^"]*"[^>]*>', page)
+        meters = re.findall(r'<div class="meter-drawing[^"]*"[^>]*>', page)
         self.assertEqual(len(meters), 3)
         for meter in meters:
             with self.subTest(meter=meter):
