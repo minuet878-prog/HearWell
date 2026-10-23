@@ -2434,17 +2434,24 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             "url": self.live_server_url,
         }
 
-    def open(self, width, height=900, javascript=True):
+    def open(self, width, height=900, javascript=True, signed_in=True):
         self.context = self.browser.new_context(
             viewport={"width": width, "height": height}, java_script_enabled=javascript
         )
-        self.context.add_cookies([self.cookie])
+        if signed_in:
+            self.context.add_cookies([self.cookie])
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
 
     def nav(self):
         return self.page.get_by_role("navigation", name="主要導覽")
+
+    def click_through(self, nav, links):
+        for name, path in links:
+            with self.subTest(link=name):
+                nav.get_by_role("link", name=name, exact=True).click()
+                expect(self.page).to_have_url(f"{self.live_server_url}{path}")
 
     # Acceptance: no sideways scroll at 200% text on 我的紀錄 and 了解, checked at 320px, the
     # narrower phone assert_fits_a_phone_at_double_text_size uses. The audiogram list's cards were
@@ -2502,6 +2509,25 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     expect(self.page).to_have_url(f"{self.live_server_url}{path}")
                     if heading:
                         expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+    # Spec #268 acceptance 20: the records switch and the signed-out tabs are plain links too.
+    def test_records_switch_changes_page_without_javascript(self):
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing")
+            switch = self.page.get_by_role("navigation", name="紀錄種類")
+            self.click_through(
+                switch, (("聽力圖", "/audiograms"), ("問卷", "/my_hearing?view=questionnaires"))
+            )
+
+    def test_signed_out_tabs_change_page_without_javascript(self):
+        self.open(390, javascript=False, signed_in=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.click_through(
+                self.nav(),
+                (("了解", "/learn"), ("登入", "/login"), ("註冊", "/register"), ("首頁", "/")),
+            )
 
 
 class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):

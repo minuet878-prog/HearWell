@@ -87,19 +87,9 @@
                     <span>紀錄</span>
                 </a>
             </li>
-            <li>
-                <a href="{% url 'learn' %}"{% if page == "learn" or page == "guide" or page == "guide_chapter" or page == "family_guide" %} aria-current="page"{% endif %}>
-                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8zM5 9h3M5 13h3M16 9h3M16 13h3"/></svg>
-                    <span>了解</span>
-                </a>
-            </li>
+            {% include "screening/nav_learn.html" %}
             {% else %}
-            <li>
-                <a href="{% url 'learn' %}"{% if page == "learn" or page == "guide" or page == "guide_chapter" or page == "family_guide" %} aria-current="page"{% endif %}>
-                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8zM5 9h3M5 13h3M16 9h3M16 13h3"/></svg>
-                    <span>了解</span>
-                </a>
-            </li>
+            {% include "screening/nav_learn.html" %}
             <li>
                 <a href="{% url 'login' %}"{% if page == "login" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>
