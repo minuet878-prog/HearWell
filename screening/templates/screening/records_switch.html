@@ -1,0 +1,6 @@
+{# Ticket #270 (ADR 0019): 我的紀錄's two kinds of records; side is "questionnaires" or "audiograms". #}
+{# Each side is its own URL, so reload and the back button keep it. #}
+<nav class="records-switch" aria-label="紀錄種類">
+    <a href="{% url 'my_hearing' %}?view=questionnaires"{% if side == "questionnaires" %} aria-current="page"{% endif %}>問卷</a>
+    <a href="{% url 'audiogram_list' %}"{% if side == "audiograms" %} aria-current="page"{% endif %}>聽力圖</a>
+</nav>

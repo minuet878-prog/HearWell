@@ -1832,6 +1832,101 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
+class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#270 (spec #268, ADR 0019): 我的紀錄's questionnaires or audiograms switch in a browser."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="records_switch_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.context = self.browser.new_context(viewport={"width": 390, "height": 800})
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def switch(self):
+        return self.main().get_by_role("navigation", name="紀錄種類")
+
+    def assert_on(self, side):
+        expect(self.main().get_by_role("heading", level=1)).to_have_text("我的紀錄")
+        expect(self.switch().locator('a[aria-current="page"]')).to_have_text(side)
+
+    def test_switch_to_audiograms_and_back(self):
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="我的紀錄").click()
+            self.assert_on("問卷")
+            self.switch().get_by_role("link", name="聽力圖").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/audiograms")
+            self.assert_on("聽力圖")
+            expect(self.main().get_by_role("link", name="新增聽力圖")).to_be_visible()
+            self.switch().get_by_role("link", name="問卷").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            self.assert_on("問卷")
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            # Each side is its own address: the back button returns to the audiograms.
+            self.page.go_back()
+            self.assert_on("聽力圖")
+
+    def test_switch_fits_a_phone_at_double_text_size(self):
+        for path in ("/my_hearing", "/audiograms"):
+            with self.subTest(path=path):
+                self.page.goto(f"{self.live_server_url}{path}")
+                self.page.wait_for_load_state("load")
+                # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size.
+                self.page.locator("html").evaluate(
+                    "html => html.style.setProperty('font-size', '225%', 'important')"
+                )
+                # The audiogram list's cards were already wider than a phone at 200% before the
+                # switch (their 6rem thumbnail), so only 我的紀錄 is checked as a whole page.
+                if path == "/my_hearing":
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, 390)
+                widths = self.switch().evaluate("nav => [nav.scrollWidth, nav.clientWidth]")
+                self.assertLessEqual(widths[0], widths[1])
+                for link in self.switch().get_by_role("link").all():
+                    box = link.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], 390)
+
+
 class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec #218 (ticket #231): the guide's route, and its pages at 200% text on a phone."""
 
