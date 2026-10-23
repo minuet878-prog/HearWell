@@ -5072,9 +5072,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertTrue(colours)
         for colour in colours:
             with self.subTest(colour=colour):
-                self.assertGreaterEqual(
-                    StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5
-                )
+                self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
 
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
@@ -5214,25 +5212,61 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
             self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
 
-    # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and pale
-    # blue, without a shadow, like the 建議您下一步 box, and 119's box as before.
-    def test_family_guide_topics_are_flat_and_the_urgent_one_stands_out(self):
+    # #312: each of the family guide's topics is a 並列區塊 under its blue-barred title: its tips
+    # on the beige with a deeper beige line between each two, each tip's point a subhead larger
+    # than the words under it. Signed in and signed out alike. 傳給家人 and the sources stay
+    # flat; the urgent topic keeps its blue frame and pale blue, without a shadow, like the
+    # 建議您下一步 box, and 119's box as before.
+    def test_family_guide_topics_are_tinted_and_the_urgent_one_stands_out(self):
         with self.saving_artifacts():
-            self.visit(False, "/family")
-            for name in ("怎麼跟聽損的家人說話", "陪伴配戴助聽器", "傳給家人", "出處："):
-                with self.subTest(part=name):
-                    part = self.main().get_by_role("region", name=name)
-                    self.assert_flat(part)
-                    self.assert_titled(part.get_by_role("heading", name=name))
-            sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
-            self.assertGreater(sources.count(), 0)
-            urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
-            self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
-            self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
-            self.assertEqual(self.style(urgent, "boxShadow"), "none")
-            call = urgent.get_by_text("如果同時出現", exact=False)
-            self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
-            self.assertEqual(self.style(call, "boxShadow"), "none")
+            for signed_in in (False, True):
+                with self.subTest(signed_in=signed_in):
+                    self.visit(signed_in, "/family")
+                    for name in ("怎麼跟聽損的家人說話", "陪伴配戴助聽器"):
+                        with self.subTest(topic=name):
+                            topic = self.main().get_by_role("region", name=name)
+                            self.assert_flat(topic)
+                            self.assert_titled(topic.get_by_role("heading", name=name))
+                            tips = topic.get_by_role("list")
+                            self.assert_tinted(tips)
+                            self.assert_readable_on_tint(tips)
+                            self.assert_lines_between(tips.get_by_role("listitem"))
+                            for tip in tips.get_by_role("listitem").all():
+                                point = tip.locator("strong")
+                                with self.subTest(tip=point.inner_text()):
+                                    # 1.2 times the 18px body text (ADR 0024).
+                                    self.assertEqual(self.style(tip, "fontSize"), "18px")
+                                    self.assertEqual(self.style(point, "fontSize"), "21.6px")
+                                    # The heading colour, not link blue.
+                                    self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
+                    for name in ("傳給家人", "出處："):
+                        with self.subTest(part=name):
+                            part = self.main().get_by_role("region", name=name)
+                            self.assert_flat(part)
+                            self.assert_titled(part.get_by_role("heading", name=name))
+                    sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
+                    self.assertGreater(sources.count(), 0)
+                    urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
+                    self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
+                    self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
+                    self.assertEqual(self.style(urgent, "borderTopWidth"), "2px")  # 0.125rem
+                    self.assertEqual(self.style(urgent, "boxShadow"), "none")
+                    urgent_tips = urgent.get_by_role("listitem")
+                    # Its own grey lines and spacing, as before.
+                    second = urgent_tips.nth(1)
+                    self.assertEqual(self.style(second, "borderTopColor"), "rgb(206, 212, 218)")
+                    self.assertEqual(self.style(second, "paddingTop"), "13.5px")
+                    call = urgent.get_by_text("如果同時出現", exact=False)
+                    self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(call, "boxShadow"), "none")
+
+    # #312: the family guide fits a phone at 200% text, signed in and signed out.
+    def test_family_guide_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for signed_in in (False, True):
+                with self.subTest(signed_in=signed_in):
+                    self.visit(signed_in, "/family", width=320)
+                    self.assert_fits_uncut(f"family guide, signed in: {signed_in}")
 
     # #302: the 了解 page's cards stay white cards.
     def test_learn_cards_stay_white_cards(self):
