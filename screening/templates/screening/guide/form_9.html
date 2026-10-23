@@ -12,15 +12,18 @@
 </section>
 <section class="card card-body mb-4" aria-labelledby="steps-title">
     <h2 id="steps-title" class="h4">申請流程</h2>
-    <ol>
-        <li>找聽力師或縣市輔具中心做評估，拿到九號表。九號表 3 個月內有效。</li>
-        <li>帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。</li>
-        <li>等核定通知。主管機關收到評估報告後，10 天內會核定。</li>
-        <li>收到核定通知後，6 個月內購買並請款。</li>
-        <li>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內，要做使用效益驗證，拿到二十五號表。<a href="{% url 'guide_chapter' 'form-25' %}">看二十五號表</a></li>
-        <li>帶購買憑證、保固書影本（和二十五號表）去核銷。受理後 1 個月內撥款。</li>
+    {# #259: a step list, the warning right before buying; tags repeat each step's time limit. #}
+    <ol class="step-list" role="list">
+        <li><span class="step-list-number" aria-hidden="true">1</span><span class="step-list-body">找聽力師或縣市輔具中心做評估，拿到九號表。九號表 3 個月內有效。<span class="step-when" aria-hidden="true">3 個月內有效</span></span></li>
+        <li><span class="step-list-number" aria-hidden="true">2</span><span class="step-list-body">帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。</span></li>
+        <li><span class="step-list-number" aria-hidden="true">3</span><span class="step-list-body">等核定通知。主管機關收到評估報告後，10 天內會核定。<span class="step-when" aria-hidden="true">10 天內核定</span></span></li>
     </ol>
     <p class="tip-box">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+    <ol class="step-list" role="list" start="4">
+        <li><span class="step-list-number" aria-hidden="true">4</span><span class="step-list-body">收到核定通知後，6 個月內購買並請款。<span class="step-when" aria-hidden="true">6 個月內</span></span></li>
+        <li><span class="step-list-number" aria-hidden="true">5</span><span class="step-list-body">買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內，要做使用效益驗證，拿到二十五號表。<a href="{% url 'guide_chapter' 'form-25' %}">看二十五號表</a><span class="step-when" aria-hidden="true">配戴 1–3 個月內</span></span></li>
+        <li><span class="step-list-number" aria-hidden="true">6</span><span class="step-list-body">帶購買憑證、保固書影本（和二十五號表）去核銷。受理後 1 個月內撥款。<span class="step-when" aria-hidden="true">1 個月內撥款</span></span></li>
+    </ol>
     <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060">身心障礙者輔具費用補助辦法</a>、<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
 </section>
 <section class="card card-body mb-4" aria-labelledby="issuer-title">

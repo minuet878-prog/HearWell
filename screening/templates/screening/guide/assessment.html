@@ -14,9 +14,12 @@
 </section>
 <section class="card card-body mb-4" aria-labelledby="apply-title">
     <h2 id="apply-title" class="h4">怎麼申請鑑定</h2>
-    <p>先帶身分證影本、3 張一吋半身照片和印章，到戶籍所在縣市的任一區（鄉、鎮、市）公所申請，也可以線上申請。公所會給您鑑定表，再帶著鑑定表到鑑定醫院。</p>
-    <p>鑑定需要的檢查費用，由政府或健保支付。</p>
-    <p>鑑定完成後，大約 35 天可以拿到證明。</p>
+    {# #259: the three paragraphs as steps, split only at sentence breaks. #}
+    <ol class="step-list" role="list">
+        <li><span class="step-list-number" aria-hidden="true">1</span><span class="step-list-body">先帶身分證影本、3 張一吋半身照片和印章，到戶籍所在縣市的任一區（鄉、鎮、市）公所申請，也可以線上申請。</span></li>
+        <li><span class="step-list-number" aria-hidden="true">2</span><span class="step-list-body">公所會給您鑑定表，再帶著鑑定表到鑑定醫院。鑑定需要的檢查費用，由政府或健保支付。</span></li>
+        <li><span class="step-list-number" aria-hidden="true">3</span><span class="step-list-body">鑑定完成後，大約 35 天可以拿到證明。<span class="step-when" aria-hidden="true">約 35 天</span></span></li>
+    </ol>
 </section>
 <section class="card card-body mb-4" aria-labelledby="hospitals-title">
     <h2 id="hospitals-title" class="h4">找鑑定醫院</h2>

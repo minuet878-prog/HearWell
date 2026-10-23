@@ -1593,6 +1593,82 @@
     font-size: 0.875rem;
   }
 
+  /* A chapter's process as numbered circles joined by a line (#259); the numbers are drawn in
+     the template, so a list split by a warning (start="4") needs no counter support. */
+  .step-list {
+    container-type: inline-size;
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+  }
+
+  .step-list li {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+  }
+
+  .step-list li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 2.5rem;
+    bottom: 0.25rem;
+    left: 1.05rem;
+    width: 0.15rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-border-warm);
+  }
+
+  .step-list li:last-child {
+    padding-bottom: 0;
+  }
+
+  .step-list-number {
+    flex: none;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 0.125rem solid var(--color-primary);
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .step-list-body {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-top: 0.2rem;
+  }
+
+  /* At large text sizes the words drop under the number instead of shrinking to a few
+     characters a line; the joining line would cross them, so it goes. */
+  @container (max-width: 13rem) {
+    .step-list li {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .step-list li:not(:last-child)::after {
+      display: none;
+    }
+  }
+
+  .step-when {
+    display: block;
+    width: fit-content;
+    margin-top: 0.35rem;
+    padding: 0 0.6rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-mild-bg);
+    color: var(--color-mild);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
   /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */
   .score-card-head {
     display: flex;

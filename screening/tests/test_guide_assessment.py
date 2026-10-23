@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from unittest import mock
 
@@ -22,8 +23,10 @@ ASSESSMENT = (
     "鑑定時會做什麼",
     "鑑定由耳鼻喉科專科醫師負責，會做純音聽力檢查、語音聽力檢查和鼓室圖，必要時再加做其他檢查。",
     "怎麼申請鑑定",
+    # Split into steps 1 and 2 at the sentence break since the step list (#259).
     "先帶身分證影本、3 張一吋半身照片和印章，到戶籍所在縣市的任一區（鄉、鎮、市）公所申請，"
-    "也可以線上申請。公所會給您鑑定表，再帶著鑑定表到鑑定醫院。",
+    "也可以線上申請。",
+    "公所會給您鑑定表，再帶著鑑定表到鑑定醫院。",
     "鑑定需要的檢查費用，由政府或健保支付。",
     "鑑定完成後，大約 35 天可以拿到證明。",
     "找鑑定醫院",
@@ -101,6 +104,19 @@ class AssessmentChapterTests(TestCase):
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026-10-22", SOURCES)
+
+    def test_applying_is_a_three_step_list_ending_with_the_wait(self):
+        content = self.client.get(self.url).content.decode()
+        start = content.index('<h2 id="apply-title"')
+        section = content[start : content.index("</section>", start)]
+        steps = section[section.index('<ol class="step-list" role="list">') :]
+        items = re.findall(r"<li>(.*?)</li>", steps, re.S)
+        self.assertEqual(len(items), 3)
+        self.assertIn("到戶籍所在縣市的任一區", items[0])
+        self.assertIn("再帶著鑑定表到鑑定醫院。", items[1])
+        self.assertIn("由政府或健保支付。", items[1])
+        tags = [re.findall(r'<span class="step-when"[^>]*>(.*?)</span>', item) for item in items]
+        self.assertEqual(tags, [[], [], ["約 35 天"]])
 
     def test_chosen_county_lists_only_its_hearing_assessment_hospitals(self):
         with self.assertNumQueries(0):
