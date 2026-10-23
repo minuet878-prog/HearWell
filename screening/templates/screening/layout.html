@@ -78,19 +78,19 @@
             <li>
                 <a href="{% url 'questionnaire_list' %}"{% if page == "questionnaire_list" or page == "screening" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg>
-                    <span>開始篩檢</span>
+                    <span>篩檢</span>
                 </a>
             </li>
             <li>
-                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" %} aria-current="page"{% endif %}>
+                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
-                    <span>我的紀錄</span>
+                    <span>紀錄</span>
                 </a>
             </li>
             <li>
-                <a href="{% url 'audiogram_list' %}"{% if page|slice:":10" == "audiogram_" %} aria-current="page"{% endif %}>
-                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M3 4v16h18M7 8l4 3 4 1 4 5"/><circle cx="7" cy="8" r="1.5"/><circle cx="15" cy="12" r="1.5"/></svg>
-                    <span>聽力圖</span>
+                <a href="{% url 'learn' %}"{% if page == "learn" or page == "guide" or page == "guide_chapter" or page == "family_guide" %} aria-current="page"{% endif %}>
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8zM5 9h3M5 13h3M16 9h3M16 13h3"/></svg>
+                    <span>了解</span>
                 </a>
             </li>
             {% else %}

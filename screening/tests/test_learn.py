@@ -58,6 +58,14 @@ class LearnPageTests(TestCase):
         self.assert_groups()
 
     def test_learn_is_the_only_current_tab_on_its_pages(self):
+        self.assert_learn_is_the_only_current_tab()
+
+    def test_learn_is_the_only_current_tab_when_logged_in(self):
+        # #271: the signed-in tab bar's 了解 is current on the same pages.
+        self.client.force_login(consented_user(username="learn_tab_reader"))
+        self.assert_learn_is_the_only_current_tab()
+
+    def assert_learn_is_the_only_current_tab(self):
         layout = test_pages.RedesignLayoutTests
         pages = (
             reverse("learn"),
