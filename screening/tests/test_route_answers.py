@@ -334,6 +334,44 @@ class AnsweredCardTests(TestCase):
         self.assertNotContains(self.page(), 'id="stop-question"')
 
 
+class NotApplicableOverDoneTests(TestCase):
+    """Spec #291 (#291 review): a stop both answered done and 不適用 is marked 不適用 only, and
+    its chapter asks nothing at its foot, neither the question nor 已記下."""
+
+    def setUp(self):
+        self.user = consented_user(username="not_applicable_over_done_user")
+        self.client.force_login(self.user)
+
+    page = RouteQuestionTests.page
+    stop = RouteQuestionTests.stop
+    marks = RouteQuestionTests.marks
+
+    def answer(self, stop, name, value):
+        data = {"stop": stop, name: value, "next": f"/guide#stop-{stop}"}
+        self.client.post(reverse("route_answer"), data)
+
+    def chapter(self, slug):
+        return self.client.get(reverse("guide_chapter", args=[slug]))
+
+    def test_form_9_done_then_not_applying_is_not_applicable_only(self):
+        self.answer("assessment", "certificate", "yes")
+        self.answer("form-9", "form_9_done", "True")
+        self.answer("assessment", "certificate", "no_subsidy")
+        self.assertEqual(self.marks("form-9"), ["不適用"])
+        self.assertNotContains(self.chapter("form-9"), 'id="stop-question"')
+
+    def test_basic_with_form_25_done_is_not_applicable_only(self):
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            fitted_on=date(2026, 5, 1),
+            subsidy="disability",
+            level="basic",
+            form_25_done=True,
+        )
+        self.assertEqual(self.marks("form-25"), ["不適用"])
+        self.assertNotContains(self.chapter("form-25"), 'id="stop-question"')
+
+
 class CertificateMigrationTests(TransactionTestCase):
     """#293: #284's yes / not yet becomes the three answers; 還沒有 stays at the stop."""
 

@@ -30,7 +30,7 @@ from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
-from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state
+from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
 from screening.forms import (
     ROC_OFFSET,
     STOP_QUESTIONS,
@@ -483,15 +483,17 @@ def guide_chapter(request, chapter):
 
 def _chapter_page(request, chapter, question=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
-    user has not answered it, and 已記下 with the answer once they have (#294); question is a
-    form sent back with its errors."""
+    user has not answered it, and 已記下 with the answer once they have (#294), but neither
+    where the stop is 不適用 (#291 review); question is a form sent back with its errors."""
     context = {"chapter": chapter}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
     user = request.user
     asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
+    aid = models.AidAndSubsidy.for_user(user) if asked else None
+    if asked and chapter.slug in not_applicable_stops(aid):
+        asked, question = False, None
     if question is None and asked:
-        aid = models.AidAndSubsidy.for_user(user)
         context["answered"] = _answer(chapter.slug, aid)
         if not context["answered"]:
             question = STOP_QUESTIONS[chapter.slug][0](instance=aid)

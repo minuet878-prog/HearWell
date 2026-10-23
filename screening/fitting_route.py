@@ -124,7 +124,6 @@ def fitting_state(user, today):
     done = viewed & DONE_BY_VIEWING
     if fitting is not None:
         done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
-    not_applicable = set()
     if aid is not None and aid.certificate in CERTIFICATE_DONE:
         done.add("assessment")
     if aid is not None and aid.form_9_done:
@@ -135,12 +134,8 @@ def fitting_state(user, today):
         done.add("after-fitting")  # #295: the fitting date alone finishes it
     if aid is not None and aid.form_25_done:
         done.add("form-25")  # #296; 等待補助發放 is never done
-    if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
-        not_applicable |= WITHOUT_SUBSIDY
-    if aid is not None and aid.subsidy == Subsidy.OTHER:
-        not_applicable |= BOUGHT_OTHERWISE  # #296: no 身障補助 to verify or pay out
-    if aid is not None and aid.level == AidLevel.BASIC:
-        not_applicable.add("form-25")  # #296: 簡易型 is paid out without form 25
+    not_applicable = not_applicable_stops(aid)
+    done -= not_applicable  # a stop is never both: 不適用 wins (#291 review)
     # Q7: within the normal range, the route waits until the user starts on a stop.
     started = bool(viewed) or (aid is not None and not aid.unanswered)
     stop = _stop(wearing, done | not_applicable, fitting is False and not started)
@@ -151,11 +146,23 @@ def fitting_state(user, today):
         fitting,
         threshold,
         frozenset(done),
-        frozenset(not_applicable),
+        not_applicable,
         stop,
         today,
         aid,
     )
+
+
+def not_applicable_stops(aid):
+    """The 不適用 stops' slugs by the user's 助聽器與補助資料 (aid, or None)."""
+    not_applicable = set()
+    if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
+        not_applicable |= WITHOUT_SUBSIDY
+    if aid is not None and aid.subsidy == Subsidy.OTHER:
+        not_applicable |= BOUGHT_OTHERWISE  # #296: no 身障補助 to verify or pay out
+    if aid is not None and aid.level == AidLevel.BASIC:
+        not_applicable.add("form-25")  # #296: 簡易型 is paid out without form 25
+    return frozenset(not_applicable)
 
 
 def _stop(wearing, passed, waiting):
