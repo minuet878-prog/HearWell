@@ -5181,11 +5181,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             with self.subTest(colour=colour):
                 self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
 
-    def assert_section_box(self, part):
+    def assert_section_box(self, part, words_on_box=True):
         """A 段落框 (ADR 0025): the pale beige, no shadow and no border; its title in the deeper
         beige bar across its top, a block title (1.35 times the body text, bold, the heading
-        colour, no brand-blue bar). The words on each beige keep 4.5:1 or more. Returns the
-        title."""
+        colour, no brand-blue bar). The words on each beige keep 4.5:1 or more. Without
+        words_on_box (the route, its words all on its stops' 並列區塊) none need sit on the box
+        itself. Returns the title."""
         expect(part).to_be_visible()
         self.assertEqual(self.style(part, "backgroundColor"), self.SECTION)
         self.assertEqual(self.style(part, "boxShadow"), "none")
@@ -5200,7 +5201,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             StyleInBrowserTest.lowest_contrast(self.style(title, "color"), self.SECTION_TITLE), 4.5
         )
         colours = set(part.evaluate(self.TEXT_COLOURS, True))
-        self.assertTrue(colours)
+        if words_on_box:
+            self.assertTrue(colours)
         for colour in colours:
             with self.subTest(colour=colour):
                 self.assertGreaterEqual(
@@ -5456,14 +5458,17 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     def assert_route_box(self):
         route = self.main().get_by_role("region", name="選配與補助，一步一步看")
-        expect(self.assert_section_box(route)).to_have_text("選配與補助，一步一步看")
+        expect(self.assert_section_box(route, words_on_box=False)).to_have_text(
+            "選配與補助，一步一步看"
+        )
         stops = route.locator(".route-stop")
         self.assertEqual(stops.count(), 9)
+        # Acceptance: each stop other than the 目前這一站 sits on a 並列區塊's beige, no frame.
         for stop in route.locator(".route-stop:not([aria-current])").all():
             with self.subTest(stop=stop.get_attribute("data-stop")):
                 box = stop.locator(".route-box")
-                self.assert_flat(box)
-                self.assert_every_side(box, Width="0px")
+                self.assert_tinted(box)
+                self.assert_readable_on_tint(box, skip_own_backgrounds=True)
         here = route.locator(".route-stop[aria-current=step]")
         if here.count():
             box = here.locator(".route-box")

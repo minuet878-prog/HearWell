@@ -1846,13 +1846,14 @@
     justify-content: center;
   }
 
-  /* A stop's box has no frame and no fill (#321): in the route's 段落框 the numbers and the
-     line keep the stops apart; only the 目前這一站 is boxed. Its title is the link. */
+  /* A stop's box is a 並列區塊 in the route's 段落框 (#321, ADR 0025): the deeper beige, no
+     frame; only the 目前這一站 restyles it. Its title is the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-medium);
+    background-color: var(--color-tint);
   }
 
   .route-title {
