@@ -18,8 +18,8 @@
 {{ chart_points|json_script:"audiogram-points" }}
 <div class="ear-results">
     {% for ear, label, result in ears %}
-    <section class="ear-result ear-{{ ear }}" data-ear="{{ ear }}">
-        <h2 class="h4">{{ label }}</h2>
+    <section class="ear-result tint-block ear-{{ ear }}" data-ear="{{ ear }}">
+        <h2 class="tint-block-title">{{ label }}</h2>
         {% if result.pta is None %}
         <p class="mb-0">{% include "screening/level_badge.html" with text="資料不足" color="unknown" %}，無法判讀</p>
         {% else %}

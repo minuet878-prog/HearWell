@@ -94,14 +94,24 @@ def audiogram_step(page, live_server_url, step):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
 
+# #314: each questionnaire's summary row on the report: a summary holding a level 3 heading.
+REPORT_FOLDS = "details > summary:has(> h3)"
+
+
+def open_report_folds(page):
+    """#314: opens every questionnaire's fold on the report."""
+    for fold in page.get_by_role("main").locator(REPORT_FOLDS).all():
+        fold.click()
+
+
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
     def main(self):
         return self.page.get_by_role("main")
 
-    def assert_fits_a_phone_at_double_text_size(self, where):
-        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is 320px wide. Not
+    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
+        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is width px wide. Not
         # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
         # Wait for the stylesheet first: a click only waits until the new page starts, and an
         # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
@@ -110,7 +120,7 @@ class OnAPhone:
             "html => html.style.setProperty('font-size', '225%', 'important')"
         )
         scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
-        self.assertLessEqual(scroll_width, 320, where)
+        self.assertLessEqual(scroll_width, width, where)
 
     def question(self, number):
         """The one question on screen, checked to be the expected one."""
@@ -396,6 +406,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 ).to_be_visible()
             self.page.goto(f"{self.live_server_url}/report")
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
+            # #314: every questionnaire folded; open them all, so their contents must fit too.
+            open_report_folds(self.page)
             self.page.set_viewport_size({"width": 320, "height": 800})
             self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
             self.page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
@@ -428,6 +440,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 expect(
                     family_page.get_by_role("link", name="更換或移除", exact=False)
                 ).to_have_count(0)
+                open_report_folds(family_page)
                 family_page.set_viewport_size({"width": 320, "height": 800})
                 family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
                 # Wider glyphs reproduce the table's minimum-width overflow across platforms.
@@ -4826,6 +4839,32 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     WHITE = "rgb(255, 255, 255)"
     WARM_SHADOW = "rgba(120, 90, 50, 0.08) 0px 4.5px 13.5px 0px"
     LINE = "rgb(217, 205, 185)"  # #298's pick: a thin warm line on the left
+    # ADR 0024: a 並列區塊 sits on a pale beige a little deeper than the page, with deeper beige
+    # lines between the parts inside it; its radius is the medium one (0.75rem at 18px).
+    TINT = "rgb(236, 227, 212)"
+    TINT_LINE = "rgb(201, 187, 163)"
+    TINT_RADIUS = "13.5px"
+    HEADING = "rgb(33, 37, 41)"
+    # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
+    # reason) is this deeper light blue, so it still stands out.
+    BLUE_DEEP = "rgb(214, 226, 242)"
+    BLUE_SOFT = "rgb(238, 243, 250)"
+    # Every colour of text in an element: its own and its descendants' that hold words directly.
+    # Given true, text on a colour of its own inside the element (a filled button, a level badge,
+    # a step's number circle) is left out: only what sits on the element's own background.
+    TEXT_COLOURS = """(el, skipOwnBackgrounds) => [el, ...el.querySelectorAll("*")]
+        .filter((node) => [...node.childNodes]
+            .some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
+        .filter((node) => {
+            if (!skipOwnBackgrounds) return true;
+            for (let at = node; at !== el; at = at.parentElement) {
+                const style = getComputedStyle(at);
+                if (style.backgroundColor !== "rgba(0, 0, 0, 0)"
+                    || style.backgroundImage !== "none") return false;
+            }
+            return true;
+        })
+        .map((node) => getComputedStyle(node).color)"""
     PRIMARY = "rgb(31, 78, 140)"
     GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
     # White under a warm shadow (resting or lifted), and neither a link, inside one, nor inside
@@ -5018,9 +5057,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "backgroundColor"), "rgba(0, 0, 0, 0)")
         self.assertEqual(self.style(block, "boxShadow"), "none")
 
-    def assert_fits_uncut(self, where):
+    def assert_fits_uncut(self, where, width=320):
         """Spec #297 acceptance 12: at 200% on a phone, no sideways scrolling and nothing cut."""
-        self.assert_fits_a_phone_at_double_text_size(where)
+        self.assert_fits_a_phone_at_double_text_size(where, width)
         self.assertEqual(self.page.evaluate(self.CUT_OFF), [], where)
 
     def assert_white_card(self, card):
@@ -5034,6 +5073,64 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "borderLeftColor"), self.LINE)
         self.assertEqual(self.style(block, "borderTopWidth"), "0px")
 
+    def assert_tinted(self, block, top_line=None):
+        """A 並列區塊 (ADR 0024): pale beige, no shadow, no border, the medium radius. Given a
+        top_line colour (#311: an ear's result), a line in that colour on top and no other border,
+        its lower corners rounded."""
+        expect(block).to_be_visible()
+        self.assertEqual(self.style(block, "backgroundColor"), self.TINT)
+        self.assertEqual(self.style(block, "boxShadow"), "none")
+        if top_line is None:
+            self.assertEqual(self.style(block, "borderWidth"), "0px")
+            self.assertEqual(self.style(block, "borderRadius"), self.TINT_RADIUS)
+            return
+        self.assertEqual(self.style(block, "borderTopColor"), top_line)
+        self.assertEqual(self.style(block, "borderTopStyle"), "solid")
+        self.assertNotEqual(self.style(block, "borderTopWidth"), "0px")
+        for side in ("Right", "Bottom", "Left"):
+            self.assertEqual(self.style(block, f"border{side}Width"), "0px")
+        self.assertEqual(self.style(block, "borderBottomLeftRadius"), self.TINT_RADIUS)
+
+    def assert_block_title(self, title, ratio=1.35):
+        """ADR 0024: a 並列區塊's title is 1.35 times the body text and a bold subhead in it 1.2
+        times, both bold in the heading colour (not link blue), without the brand-blue bar of a
+        page's section titles. Returns its size in px."""
+        body = float(self.style(self.page.locator("body"), "fontSize").removesuffix("px"))
+        size = float(self.style(title, "fontSize").removesuffix("px"))
+        self.assertAlmostEqual(size / body, ratio, places=2)
+        self.assertEqual(self.style(title, "color"), self.HEADING)
+        self.assertEqual(self.style(title, "fontWeight"), "700")
+        self.assertEqual(self.style(title, "borderLeftWidth"), "0px")
+        return size
+
+    def assert_lines_between(self, parts):
+        """Parts inside a 並列區塊 (ADR 0024): a deeper beige line between each two, none on
+        their left."""
+        parts = parts.all()
+        self.assertGreater(len(parts), 1)
+        self.assertEqual(self.style(parts[0], "borderTopWidth"), "0px")
+        # Spec #308 acceptance 2: easier to see on the beige than #298's thin warm line would be.
+        old_line = StyleInBrowserTest.lowest_contrast(self.LINE, self.TINT)
+        for part in parts[1:]:
+            with self.subTest(part=part.inner_text()[:10]):
+                line = self.style(part, "borderTopColor")
+                self.assertGreater(StyleInBrowserTest.lowest_contrast(line, self.TINT), old_line)
+                self.assertEqual(line, self.TINT_LINE)
+                self.assertEqual(self.style(part, "borderTopStyle"), "solid")
+                self.assertNotEqual(self.style(part, "borderTopWidth"), "0px")
+        for part in parts:
+            self.assertEqual(self.style(part, "borderLeftWidth"), "0px")
+
+    def assert_readable_on_tint(self, block, skip_own_backgrounds=False):
+        """Spec #308 acceptance 2: every text and link colour in a 並列區塊 at least 4.5:1 on the
+        beige. With skip_own_backgrounds (a block holding buttons or badges), text on a colour of
+        its own inside the block is left out: only what sits on the beige is measured."""
+        colours = set(block.evaluate(self.TEXT_COLOURS, skip_own_backgrounds))
+        self.assertTrue(colours)
+        for colour in colours:
+            with self.subTest(colour=colour):
+                self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
+
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
         with self.saving_artifacts():
@@ -5041,6 +5138,68 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
                     self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+
+    # Spec #308 acceptance 12 (#316): white means tappable. "White" is what a person sees as a
+    # white surface: an element's own background is opaque white (rgb(255, 255, 255), with or
+    # without a shadow), it is on screen, and nothing above it fades it (the login banner's bars
+    # are white at 35% opacity: pale blue on the blue banner, not white). Every such element must
+    # be, or sit inside, one of these:
+    WHITE_ALLOWED = ", ".join(
+        (
+            "a",  # a link, including every white card
+            "button",  # a button, including an outline button given a white fill on a tint (#311)
+            "input, select, textarea",  # a box to type in or a list to pick from
+            "summary",  # a dropdown's bar (看完整建議, 逐題回答, a report's questionnaire)
+            "label:has(input)",  # an answer choice: the label around its radio button
+            "table",  # a table (spec #308: tables are the rule's exception)
+            ".chart-canvas, .audiogram-chart, .ioi-chart",  # a chart's drawing area (#301)
+            ".auth-card",  # the login and register form card (#300)
+            # The site's frame, not a block of content: the header and its menu bar are white
+            # since the brand refresh (ADR 0012).
+            ".site-header, .site-nav",
+            # Register's banner: the done step's bar is a thin progress line on the blue, not a
+            # surface.
+            ".auth-hero .step-progress-segment",
+        )
+    )
+    # A dropdown (details) is allowed as a box only: what opens inside it is checked like the rest,
+    # so every dropdown is opened first (a report's questionnaires fold into dropdowns, #314).
+    WHITE_BUT_NOT_TAPPABLE = """(allowed) => {
+        document.querySelectorAll("details").forEach((box) => { box.open = true; });
+        const faded = (el) => el
+            && (getComputedStyle(el).opacity !== "1" || faded(el.parentElement));
+        return [...document.querySelectorAll("body *")]
+            .filter((el) => getComputedStyle(el).backgroundColor === "rgb(255, 255, 255)")
+            .filter((el) => el.checkVisibility() && !faded(el))
+            .filter((el) => !el.matches("details") && !el.closest(allowed))
+            .map((el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")} `
+                + el.textContent.trim().replace(/\\s+/g, " ").slice(0, 30));
+    }"""
+    # The answering page of each questionnaire, each with its own intro (spec #308 acceptance 10).
+    WHITE_ANSWERING_PAGES = tuple(
+        (f"answering {code}", True, lambda test, code=code: test.answering(code))
+        for code in ("hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha")
+    )
+    # What React draws after the page loads; wait for it so its white elements are counted too.
+    DRAWN_LATER = (
+        ("#answer-app", "#answer-app fieldset"),
+        ("#audiogram-app", "#audiogram-app > *"),
+        ("#trend-plot", "#trend-plot .recharts-wrapper"),
+        ("#audiogram-chart", "#audiogram-chart svg"),
+    )
+
+    def white_but_not_tappable(self):
+        for mount, drawn in self.DRAWN_LATER:
+            if self.page.locator(mount).count():
+                self.page.locator(drawn).first.wait_for(state="attached")
+        return self.page.evaluate(self.WHITE_BUT_NOT_TAPPABLE, self.WHITE_ALLOWED)
+
+    def test_every_white_element_can_be_tapped(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.PAGES + self.WHITE_ANSWERING_PAGES:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    self.assertEqual(self.white_but_not_tappable(), [])
 
     # #299: the signed-out home's four steps, result example and audiologist line are flat.
     def test_first_visit_home_blocks_are_flat(self):
@@ -5072,31 +5231,69 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(card=card.inner_text()):
                     self.assert_white_card(card)
 
-    # #299: advice 1-3 and THI's support message are flat with a thin line; the links in the
-    # advice still look like links.
-    def test_result_advice_is_flat_with_links_that_look_like_links(self):
+    # #309: advice 1-3 sit in one 並列區塊 with a line between each, where each had a thin line on
+    # its left; the links in it still look like links and the cards below stay white cards.
+    # THI's support message above them keeps its thin line.
+    def test_result_advice_is_one_tinted_block_with_links_that_look_like_links(self):
+        links_seen = 0
         with self.saving_artifacts():
-            # HHIE-S at 20 (mild to moderate): advice with a link to the guide.
-            self.visit(True, lambda test: test.result("hhie-s", 2))
-            steps = self.main().locator("ol.next-steps > li")
-            self.assertEqual(steps.count(), 3)
-            for step in steps.all():
-                with self.subTest(step=step.inner_text()[:10]):
-                    self.assert_lined(step)
-            links = steps.get_by_role("link")
-            self.assertGreater(links.count(), 0)
-            for link in links.all():
-                with self.subTest(link=link.inner_text()):
-                    self.assertEqual(self.style(link, "color"), self.PRIMARY)
-                    self.assertEqual(self.style(link, "textDecorationLine"), "underline")
-            # THI at full marks: the support message and the advice under it.
-            self.visit(True, lambda test: test.result("thi", 4))
+            # HHIE-S and HHIA-S at 20 (mild to moderate), THI at full marks: the pages with advice.
+            for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    advice = self.main().locator("ol.next-steps")
+                    self.assert_tinted(advice)
+                    self.assert_readable_on_tint(advice)
+                    # Three steps, four on THI's page: all in the one block.
+                    steps = advice.locator("> li")
+                    self.assert_lines_between(steps)
+                    for step in steps.all():
+                        self.assertEqual(self.style(step, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                        self.assertEqual(self.style(step, "boxShadow"), "none")
+                    links = advice.get_by_role("link")
+                    links_seen += links.count()
+                    for link in links.all():
+                        with self.subTest(link=link.inner_text()):
+                            self.assertEqual(self.style(link, "color"), self.PRIMARY)
+                            self.assertEqual(self.style(link, "textDecorationLine"), "underline")
+                    cards = self.main().locator(".result-actions a.link-card")
+                    self.assertGreater(cards.count(), 0)
+                    for card in cards.all():
+                        with self.subTest(card=card.inner_text()[:10]):
+                            self.assert_white_card(card)
             self.assert_lined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
-            steps = self.main().locator("ol.next-steps > li")
-            self.assertGreater(steps.count(), 0)
-            for step in steps.all():
-                with self.subTest(step=step.inner_text()[:10]):
-                    self.assert_lined(step)
+        self.assertGreater(links_seen, 0)
+
+    # #316: the 建議您下一步 box (returning home and every result page) has no white left: its icon
+    # tile and its 因為 line are a light blue deeper than the box; only its button is tappable.
+    def test_next_step_box_is_blue_with_only_its_button_to_tap(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in (
+                *WHITE_CARD_PAGES_HOME_RESULT[1:],
+                ("SADL result", True, lambda test: test.result("sadl", 4)),
+            ):
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    box = self.main().locator(".next-step")
+                    self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
+                    for part in (".action-card-icon", ".next-step-because"):
+                        self.assertEqual(
+                            self.style(box.locator(part), "backgroundColor"), self.BLUE_DEEP
+                        )
+                    because = box.get_by_text("因為：", exact=False)
+                    for colour in set(because.evaluate(self.TEXT_COLOURS)):
+                        with self.subTest(colour=colour):
+                            self.assertGreaterEqual(
+                                StyleInBrowserTest.lowest_contrast(colour, self.BLUE_DEEP), 4.5
+                            )
+                    stroke = self.style(box.locator(".action-card-icon svg"), "stroke")
+                    self.assertGreaterEqual(
+                        StyleInBrowserTest.lowest_contrast(stroke, self.BLUE_DEEP), 4.5
+                    )
+                    self.assertEqual(box.get_by_role("link").count(), 1)
+                    self.assertEqual(
+                        self.style(box.get_by_role("link"), "backgroundImage"), self.GRADIENT
+                    )
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
@@ -5131,6 +5328,20 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(self.style(here, "backgroundColor"), "rgb(238, 243, 250)")
             self.assertEqual(self.style(here, "borderTopColor"), self.PRIMARY)
             self.assertEqual(self.style(here, "boxShadow"), "none")
+            # #316: a stop's number is a pale blue circle with a blue number, like the chapters'
+            # numbered steps, not white; the 目前這一站's stays filled blue.
+            numbers = self.main().locator(".route-stop:not([aria-current], .is-na) .route-number")
+            self.assertGreater(numbers.count(), 1)
+            for number in numbers.all():
+                with self.subTest(stop=number.inner_text()):
+                    self.assertEqual(self.style(number, "backgroundColor"), self.BLUE_SOFT)
+                    self.assertEqual(self.style(number, "color"), self.PRIMARY)
+                    self.assertEqual(self.style(number, "borderTopColor"), self.PRIMARY)
+            self.assertGreaterEqual(
+                StyleInBrowserTest.lowest_contrast(self.PRIMARY, self.BLUE_SOFT), 4.5
+            )
+            current = self.main().locator(".route-stop[aria-current=step] .route-number")
+            self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
 
     # #302: every chapter's parts are flat blocks framed by their titles, the links still in
     # them; the question at the foot and its answered form are flat with their buttons.
@@ -5165,25 +5376,151 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
             self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
 
-    # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and pale
-    # blue, without a shadow, like the 建議您下一步 box, and 119's box as before.
-    def test_family_guide_topics_are_flat_and_the_urgent_one_stands_out(self):
+    # #313: a chapter is an article read in order, so its parts get no tint and no lines; the
+    # space between two parts is at least twice the largest space inside one.
+    PART_SPACING = """(article) => {
+        const shown = (el) => el.getClientRects().length > 0;
+        const gaps = (els) => els.slice(1).map((el, i) =>
+            el.getBoundingClientRect().top - els[i].getBoundingClientRect().bottom);
+        const parts = [...article.children].filter(shown).slice(1);  // after the chapter title
+        return {
+            between: Math.min(...gaps(parts)),
+            within: Math.max(...parts.flatMap((part) => gaps([...part.children].filter(shown)))),
+        };
+    }"""
+    # The bold subheads in each chapter's parts (a fact's label, a step's title, a list's lead).
+    GUIDE_SUBHEADS = (
+        ("before-you-go", ("適不適合我",)),
+        ("assessment", ("雙耳整體障礙比率", "到公所申請")),
+        ("form-9", ("補助上限，依助聽器等級", "做評估，拿到九號表", "縣市補助")),
+        ("types-and-prices", ("耳掛型",)),
+        ("after-fitting", ("剛開始不習慣是正常的",)),
+        ("form-25", ("誰要做",)),
+    )
+
+    def test_guide_chapter_parts_stand_apart_with_larger_subheads(self):
         with self.saving_artifacts():
-            self.visit(False, "/family")
-            for name in ("怎麼跟聽損的家人說話", "陪伴配戴助聽器", "傳給家人", "出處："):
-                with self.subTest(part=name):
-                    part = self.main().get_by_role("region", name=name)
-                    self.assert_flat(part)
-                    self.assert_titled(part.get_by_role("heading", name=name))
-            sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
-            self.assertGreater(sources.count(), 0)
-            urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
-            self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
-            self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
-            self.assertEqual(self.style(urgent, "boxShadow"), "none")
-            call = urgent.get_by_text("如果同時出現", exact=False)
-            self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
-            self.assertEqual(self.style(call, "boxShadow"), "none")
+            for slug, subheads in self.GUIDE_SUBHEADS:
+                with self.subTest(chapter=slug):
+                    self.visit(False, f"/guide/{slug}")
+                    article = self.main().get_by_role("article")
+                    for part in article.locator(":scope > :is(section, div)").all():
+                        self.assert_flat(part)
+                        self.assertEqual(self.style(part, "borderTopWidth"), "0px")
+                        self.assertEqual(self.style(part, "borderBottomWidth"), "0px")
+                    spacing = article.evaluate(self.PART_SPACING)
+                    self.assertGreater(spacing["within"], 0)
+                    self.assertGreaterEqual(spacing["between"], 2 * spacing["within"], spacing)
+                    body = float(self.style(article.locator("p").first, "fontSize")[:-2])
+                    for text in subheads:
+                        with self.subTest(subhead=text):
+                            subhead = article.get_by_text(text, exact=True)
+                            self.assertGreaterEqual(
+                                float(self.style(subhead, "fontSize")[:-2]), 1.2 * body - 0.01
+                            )
+                            self.assertEqual(self.style(subhead, "color"), self.HEADING)
+                            self.assertEqual(self.style(subhead, "fontWeight"), "700")
+
+    # #313: the things to bring and the checks to expect are a list, one per line, each with its
+    # icon and nothing around it: no white, no frame, no rounded pill.
+    GUIDE_ICON_LISTS = (
+        ("before-you-go", ("身分證", "現在用的助聽器（有的話）")),
+        ("assessment", ("純音聽力檢查", "鼓室圖", "身分證影本", "印章")),
+        ("form-25", ("購買憑證", "二十五號表")),
+    )
+
+    def test_guide_things_to_bring_are_plain_lists_with_icons(self):
+        with self.saving_artifacts():
+            for slug, texts in self.GUIDE_ICON_LISTS:
+                with self.subTest(chapter=slug):
+                    self.visit(False, f"/guide/{slug}")
+                    article = self.main().get_by_role("article")
+                    for text in texts:
+                        with self.subTest(item=text):
+                            item = article.get_by_role("listitem").filter(
+                                has_text=re.compile(rf"^\s*{re.escape(text)}\s*$")
+                            )
+                            expect(item.locator("svg")).to_be_visible()
+                            self.assert_flat(item)
+                            self.assertEqual(self.style(item, "borderTopWidth"), "0px")
+                            self.assertEqual(self.style(item, "borderRadius"), "0px")
+                    # One per line, close together like a list: each item starts below the one
+                    # before it, nearer than two paragraphs (18px) are.
+                    lists = article.locator("ul:has(> li > svg)")
+                    self.assertGreater(lists.count(), 0)
+                    for each in lists.all():
+                        boxes = [li.bounding_box() for li in each.locator("> li").all()]
+                        for above, below in pairwise(boxes):
+                            gap = below["y"] - (above["y"] + above["height"])
+                            self.assertGreaterEqual(gap, 0)
+                            self.assertLess(gap, 18)
+
+    # #312: each of the family guide's topics is a 並列區塊 under its blue-barred title: its tips
+    # on the beige with a deeper beige line between each two, each tip's point a subhead larger
+    # than the words under it. Signed in and signed out alike. 傳給家人 and the sources stay
+    # flat; the urgent topic keeps its blue frame and pale blue, without a shadow, like the
+    # 建議您下一步 box, and 119's box as before.
+    def test_family_guide_topics_are_tinted_and_the_urgent_one_stands_out(self):
+        with self.saving_artifacts():
+            for signed_in in (False, True):
+                with self.subTest(signed_in=signed_in):
+                    self.visit(signed_in, "/family")
+                    for name in ("怎麼跟聽損的家人說話", "陪伴配戴助聽器"):
+                        with self.subTest(topic=name):
+                            topic = self.main().get_by_role("region", name=name)
+                            self.assert_flat(topic)
+                            self.assert_titled(topic.get_by_role("heading", name=name))
+                            tips = topic.get_by_role("list")
+                            self.assert_tinted(tips)
+                            self.assert_readable_on_tint(tips)
+                            self.assert_lines_between(tips.get_by_role("listitem"))
+                            for tip in tips.get_by_role("listitem").all():
+                                point = tip.locator("strong")
+                                with self.subTest(tip=point.inner_text()):
+                                    # 1.2 times the 18px body text (ADR 0024).
+                                    self.assertEqual(self.style(tip, "fontSize"), "18px")
+                                    self.assertEqual(self.style(point, "fontSize"), "21.6px")
+                                    # The heading colour, not link blue.
+                                    self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
+                    for name in ("傳給家人", "出處："):
+                        with self.subTest(part=name):
+                            part = self.main().get_by_role("region", name=name)
+                            self.assert_flat(part)
+                            self.assert_titled(part.get_by_role("heading", name=name))
+                    sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
+                    self.assertGreater(sources.count(), 0)
+                    urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
+                    self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
+                    self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
+                    self.assertEqual(self.style(urgent, "borderTopWidth"), "2px")  # 0.125rem
+                    self.assertEqual(self.style(urgent, "boxShadow"), "none")
+                    urgent_tips = urgent.get_by_role("listitem")
+                    # Its own grey lines and spacing, as before.
+                    second = urgent_tips.nth(1)
+                    self.assertEqual(self.style(second, "borderTopColor"), "rgb(206, 212, 218)")
+                    self.assertEqual(self.style(second, "paddingTop"), "13.5px")
+                    # #316: the 119 line is not white (white means tappable) but a light blue a
+                    # little deeper than the box, so it still stands out; 119 stays large and bold.
+                    call = urgent.get_by_text("如果同時出現", exact=False)
+                    self.assertEqual(self.style(call, "backgroundColor"), self.BLUE_DEEP)
+                    self.assertEqual(self.style(call, "boxShadow"), "none")
+                    number = call.get_by_text("119", exact=True)
+                    self.assertEqual(self.style(number, "fontWeight"), "800")
+                    self.assertEqual(self.style(number, "fontSize"), "31.5px")  # 1.75rem
+                    for colour in set(call.evaluate(self.TEXT_COLOURS)):
+                        with self.subTest(colour=colour):
+                            self.assertGreaterEqual(
+                                StyleInBrowserTest.lowest_contrast(colour, "rgb(214, 226, 242)"),
+                                4.5,
+                            )
+
+    # #312: the family guide fits a phone at 200% text, signed in and signed out.
+    def test_family_guide_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for signed_in in (False, True):
+                with self.subTest(signed_in=signed_in):
+                    self.visit(signed_in, "/family", width=320)
+                    self.assert_fits_uncut(f"family guide, signed in: {signed_in}")
 
     # #302: the 了解 page's cards stay white cards.
     def test_learn_cards_stay_white_cards(self):
@@ -5241,27 +5578,28 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
 
-    # #303: the share page's steps 1-3 are flat; their buttons are still buttons.
-    def test_share_steps_are_flat_and_keep_their_buttons(self):
+    # #311: the share page's steps 1-3 are 並列區塊 titled by a larger subhead; their buttons
+    # are still buttons.
+    def test_share_steps_are_tinted_and_keep_their_buttons(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.share_settings())
             for step in ("家人會看到什麼", "產生連結", "傳給家人"):
                 with self.subTest(step=step):
-                    self.assert_flat(self.main().get_by_role("region", name=step))
+                    block = self.main().get_by_role("region", name=step)
+                    self.assert_tinted(block)
+                    self.assert_block_title(block.get_by_role("heading", name=step, exact=True))
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
             cancel = self.main().get_by_role("button", name="取消分享", exact=True)
             expect(cancel).to_be_visible()
             self.assertEqual(self.style(cancel, "borderTopStyle"), "solid")
+            self.assert_outline_button_readable(cancel)
 
-    # #303: the report's parts on screen are flat, with the blue bar on their section titles;
-    # the summary keeps its blue frame.
+    # #303: the report's audiogram on screen is flat, with the blue bar on its title; the
+    # summary keeps its blue frame. (A questionnaire's part folds onto the tint since #314.)
     def test_report_parts_are_flat_and_the_summary_keeps_its_blue_frame(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.report())
-            for part in ("聽力圖", "HHIE-S"):
-                with self.subTest(part=part):
-                    self.assert_flat(
-                        self.main().get_by_role("region", name=re.compile(f"^{part}（"))
-                    )
+            self.assert_flat(self.main().get_by_role("region", name=re.compile("^聽力圖（")))
             audiogram_title = self.main().get_by_role("heading", name=re.compile("^聽力圖（"))
             self.assertEqual(self.style(audiogram_title, "borderLeftColor"), self.PRIMARY)
             summary = self.main().get_by_role("region", name="重點摘要")
@@ -5281,6 +5619,253 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(part, "paddingLeft"), "0px")
             title = self.page.locator("#audiogram-title")
             self.assertEqual(self.style(title, "borderLeftColor"), self.PRIMARY)
+
+    # #314: the report with a fold for HHIE-S (its kept comparison inside), SSQ12-TW, SADL and
+    # IOI-HA (grouped by an earlier unaided HHIE-S), and an audiogram.
+    def folded_report(self):
+        self.ioi_ha()
+        self.answered("ssq12-tw", 5)
+        self.answered("sadl", 4)
+        unaided = self.answered("hhie-s", 2)
+        aided = self.answered("hhie-s", 0)
+        Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
+        ReportComparison.objects.create(
+            user=self.user, questionnaire=unaided.questionnaire, unaided=unaided, aided=aided
+        )
+        self.audiogram()
+        return "/report"
+
+    def both_folded_reports(self):
+        """The owner's folded report and the family's copy of it, signed in and not."""
+        owner = self.folded_report()
+        family = f"/shared/{ReportShare.objects.create(user=self.user).token}/report"
+        return (("owner", True, owner), ("family", False, family))
+
+    def report_folds(self):
+        """Each questionnaire's summary row."""
+        return self.main().locator(REPORT_FOLDS)
+
+    def fold_body(self, fold):
+        """What a questionnaire's summary row opens: the 並列區塊 under it."""
+        return fold.locator("xpath=following-sibling::*")
+
+    def visit_open_report(self, signed_in, path, width=1024):
+        """The report with every questionnaire's fold opened."""
+        self.visit(signed_in, path, width=width)
+        open_report_folds(self.page)
+
+    def tab_to(self, target):
+        """Presses Tab, from wherever the focus is, until target has the focus."""
+        for _ in range(60):
+            self.page.keyboard.press("Tab")
+            if target.evaluate("el => el === document.activeElement"):
+                return
+        self.fail("Tab never reached it")
+
+    # #314 (spec #308 acceptance 1, 6-8): on both reports each questionnaire starts as a closed
+    # summary row that looks like the site's dropdowns; a click, or Tab to it and Enter, opens
+    # only that one onto the tint, its comparison inside, and again closes it; a reload closes
+    # it. The audiogram stays open. Every fold opens onto the tint with readable text. It opens
+    # without JavaScript too.
+    def test_report_folds_by_questionnaire_closed_until_opened(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.both_folded_reports():
+                with self.subTest(report=name):
+                    self.visit(signed_in, path)
+                    expect(
+                        self.main().get_by_role("region", name=re.compile("^聽力圖（"))
+                    ).to_be_visible()
+                    if signed_in:
+                        expect(self.main().get_by_role("region", name="重點摘要")).to_be_visible()
+                    expect(
+                        self.main().get_by_role("heading", level=2, name="生活影響", exact=True)
+                    ).to_be_visible()
+                    folds = self.report_folds()
+                    self.assertEqual(
+                        [fold.get_by_role("heading", level=3).inner_text() for fold in folds.all()],
+                        ["HHIE-S", "SSQ12-TW", "SADL", "IOI-HA 助聽器效益"],
+                    )
+                    for fold in folds.all():
+                        expect(self.fold_body(fold)).to_be_hidden()
+                    summary = folds.first
+                    title = summary.get_by_role("heading", level=3)
+                    # The latest record (aided, all 0): its date, score and level.
+                    expect(summary).to_have_text(
+                        re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無/極輕微影響$")
+                    )
+                    part = self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
+                    comparison = self.main().get_by_role(
+                        "region", name=re.compile("^配戴狀態比較（HHIE-S")
+                    )
+                    expect(part).to_be_hidden()
+                    expect(comparison).to_be_hidden()
+                    # Like the site's dropdowns: white, a grey edge, no shadow, a chevron.
+                    self.assertEqual(self.style(summary, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(summary, "borderTopColor"), self.GREY_EDGE)
+                    self.assertEqual(self.style(summary, "boxShadow"), "none")
+                    chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
+                    self.assertIn("M6 9l6 6 6-6", chevron)
+                    self.assert_block_title(title)
+                    summary.click()
+                    expect(part).to_be_visible()
+                    expect(comparison).to_be_visible()
+                    for other in folds.all()[1:]:
+                        expect(self.fold_body(other)).to_be_hidden()
+                    body = self.fold_body(summary)
+                    expect(
+                        body.get_by_role("region", name=re.compile("^配戴狀態比較（HHIE-S"))
+                    ).to_be_visible()
+                    chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
+                    self.assertIn("M6 15l6-6 6 6", chevron)
+                    summary.click()
+                    expect(part).to_be_hidden()
+                    summary.click()
+                    self.page.reload()
+                    expect(part).to_be_hidden()
+                    self.tab_to(summary)
+                    self.page.keyboard.press("Enter")
+                    expect(part).to_be_visible()
+                    self.page.keyboard.press("Enter")
+                    expect(part).to_be_hidden()
+                    for fold in folds.all():
+                        with self.subTest(fold=fold.inner_text()[:8]):
+                            fold.click()
+                            self.assert_tinted(self.fold_body(fold))
+                            self.assert_readable_on_tint(self.fold_body(fold))
+                    self.visit(signed_in, path, javascript=False)
+                    self.report_folds().first.click()
+                    expect(
+                        self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
+                    ).to_be_visible()
+
+    # #314 (spec #308 acceptance 9, 14): on a phone at 200% text both reports fit with every fold
+    # open; on paper every fold is open, the one the reader opened and those left closed alike,
+    # and no summary row shows.
+    def test_report_folds_open_on_paper_and_fit_a_phone_open(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.both_folded_reports():
+                with self.subTest(report=name):
+                    self.visit_open_report(signed_in, path, width=320)
+                    self.assert_fits_uncut(name)
+                    self.page.reload()  # every fold closed again, the text its normal size
+                    folds = self.report_folds()
+                    self.assertEqual(folds.count(), 4)
+                    folds.nth(1).click()
+                    expect(self.fold_body(folds.nth(1))).to_be_visible()
+                    self.page.emulate_media(media="print")
+                    for fold in folds.all():
+                        expect(fold).to_be_hidden()
+                        expect(self.fold_body(fold).get_by_role("region").first).to_be_visible()
+                    expect(
+                        self.page.get_by_role("region", name=re.compile("^配戴狀態比較（HHIE-S"))
+                    ).to_be_visible()
+
+    # #315: both reports with their two kinds of table: HHIE-S's recent records (three of them,
+    # one of each level, 2 being IOI-HA's norm basis) and IOI-HA's items compared with the norm.
+    def table_reports(self):
+        for score in (0, 4):
+            self.answered("hhie-s", score)
+        self.ioi_ha()
+        family = f"/shared/{ReportShare.objects.create(user=self.user).token}/report"
+        return (("owner", True, "/report"), ("family", False, family))
+
+    def open_report_tables(self, signed_in, path, width):
+        """The report with every fold open, and its tables."""
+        self.visit_open_report(signed_in, path, width)
+        tables = self.main().get_by_role("table")
+        self.assertEqual(tables.count(), 2)
+        return tables
+
+    LINES = """el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
+    }"""
+
+    # #315 (spec #308 acceptance 13): on a phone at the normal text size every date in the
+    # reports' tables stays on one line, and nothing is cut.
+    def test_report_table_dates_stay_on_one_line(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.table_reports():
+                for width in (320, 390):
+                    with self.subTest(report=name, width=width):
+                        self.open_report_tables(signed_in, path, width)
+                        dates = self.main().get_by_role(
+                            "cell", name=re.compile(r"^\d{4}\/\d\d\/\d\d$")
+                        )
+                        self.assertEqual(dates.count(), 3)
+                        for cell in dates.all():
+                            self.assertEqual(cell.evaluate(self.LINES), 1, cell.inner_text())
+                        self.assertEqual(self.page.evaluate(self.CUT_OFF), [])
+
+    def records(self, table):
+        """A table's records: its rows of cells, the header row left out."""
+        return table.get_by_role("row").filter(has=self.page.get_by_role("cell"))
+
+    # #315 (spec #308 acceptance 14): on a phone at 200% text, where a table does not fit, each
+    # record stacks into a block of its own: one value under another, each after its column's
+    # name, a line between two records; nothing scrolls sideways or is cut. With room, at the
+    # normal size, it stays a table of side-by-side columns.
+    def test_report_table_records_stack_when_the_table_does_not_fit(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.table_reports():
+                for width in (320, 390):
+                    with self.subTest(report=name, width=width):
+                        tables = self.open_report_tables(signed_in, path, width)
+                        self.assert_fits_uncut(f"{name}, {width}", width)
+                        for table in tables.all():
+                            columns = table.get_by_role("columnheader").all_inner_texts()
+                            for header in table.get_by_role("columnheader").all():
+                                self.assertLessEqual(header.bounding_box()["width"], 1)
+                            records = self.records(table)
+                            self.assert_lines_between(records)
+                            for record in records.all():
+                                cells = record.get_by_role("cell")
+                                labels = [
+                                    cell.evaluate("el => getComputedStyle(el, '::before').content")
+                                    for cell in cells.all()
+                                ]
+                                self.assertEqual([label.split('"')[1] for label in labels], columns)
+                                boxes = [cell.bounding_box() for cell in cells.all()]
+                                for above, below in pairwise(boxes):
+                                    self.assertGreaterEqual(
+                                        below["y"], above["y"] + above["height"] - 0.5
+                                    )
+            # On a phone at 200% text the stacked records are still tables to a screen reader, as
+            # the browser's own accessibility tree says: column names, and cells that hold only
+            # their values (the names shown in front of them are not read twice).
+            self.visit_open_report(True, "/report", width=320)
+            self.assert_fits_uncut("owner, accessibility tree")
+            session = self.context.new_cdp_session(self.page)
+            nodes = session.send("Accessibility.getFullAXTree")["nodes"]
+            named = [
+                (node["role"]["value"], node.get("name", {}).get("value", ""))
+                for node in nodes
+                if not node.get("ignored")
+            ]
+            self.assertEqual([role for role, _ in named].count("table"), 2)
+            self.assertEqual(
+                [name for role, name in named if role == "columnheader"],
+                ["日期", "總分", "分級", "助聽器", "項目", "回答", "與常模比較"],
+            )
+            cells = [name for role, name in named if role == "cell"]
+            self.assertEqual(len(cells), 3 * 4 + 7 * 3)
+            self.assertIn("2026", cells[0])
+            for cell in cells:
+                self.assertNotRegex(cell, "^(日期|總分|分級|助聽器|項目|回答|與常模比較)")
+            self.assertEqual([role for role, _ in named].count("row"), 2 + 3 + 7)
+            # With room, at the normal size: side-by-side columns under a header row whose names
+            # do not break either.
+            self.visit_open_report(True, "/report", width=390)
+            for table in self.main().get_by_role("table").all():
+                for header in table.get_by_role("columnheader").all():
+                    self.assertGreater(header.bounding_box()["width"], 1)
+                    self.assertEqual(header.evaluate(self.LINES), 1, header.inner_text())
+                for record in self.records(table).all():
+                    tops = {
+                        round(cell.bounding_box()["y"]) for cell in record.get_by_role("cell").all()
+                    }
+                    self.assertEqual(len(tops), 1, record.inner_text())
 
     # #303 (#298's pick): the account details are flat rows with a thin line between them;
     # every link row is a white card of its own and goes where it went before.
@@ -5372,6 +5957,42 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_fits_uncut("answering without JavaScript")
             self.assert_questions_apart(self.main().locator("#answer-form").get_by_role("group"))
 
+    # #313: in the four intros the answers are bold words in the sentence, with no white boxes
+    # beside it; at 200% on a phone nothing runs off or is cut.
+    INTRO_ANSWERS = (
+        ("hhie-s", ("常常", "有時", "從未")),
+        ("hhia-s", ("會", "有時", "不會")),
+        ("ssq12-tw", ("0–10", "不適用")),
+        ("thi", ("經常", "偶爾", "不會")),
+    )
+
+    def test_answering_intros_bold_the_answers_in_the_sentence(self):
+        with self.saving_artifacts():
+            for code, words in self.INTRO_ANSWERS:
+                with self.subTest(questionnaire=code):
+                    self.visit(True, lambda test, code=code: test.answering(code), width=320)
+                    how = (
+                        self.main()
+                        .locator("section")
+                        .filter(has=self.page.get_by_role("heading", name="怎麼回答"))
+                    )
+                    for word in words:
+                        with self.subTest(word=word):
+                            bold = how.get_by_text(word, exact=True)
+                            expect(bold).to_have_count(1)
+                            self.assertEqual(self.style(bold, "fontWeight"), "700")
+                            # Inside the sentence: its paragraph says more than the word.
+                            sentence = bold.locator("xpath=ancestor::p[1]")
+                            self.assertGreater(len(sentence.inner_text()), len(word) + 5)
+                    whites = how.evaluate(
+                        """(el) => [...el.querySelectorAll("*")]
+                            .filter((node) => getComputedStyle(node).backgroundColor
+                                === "rgb(255, 255, 255)")
+                            .map((node) => node.outerHTML.slice(0, 80))"""
+                    )
+                    self.assertEqual(whites, [])
+                    self.assert_fits_uncut(code)
+
     # #300: login and register keep their form card white: the rule's one exception.
     def test_login_and_register_form_cards_stay_white_cards(self):
         with self.saving_artifacts():
@@ -5435,18 +6056,35 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator("a.link-card").first
             self.assert_paper(self.page.locator("#audiogram-chart"), card)
 
-    # #301: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers have a thin line;
-    # IOI-HA's summary and 接下來 are flat.
-    def test_result_item_scores_are_flat_with_a_thin_line(self):
+    # IOI-HA's norm on its scale and legend: grey cells with a darker grey edge.
+    NORM_GREY = "rgb(206, 212, 218)"
+    NORM_EDGE = "rgb(108, 117, 125)"
+
+    def assert_tinted_items(self, items, title, count, ratio, before):
+        """#310: each item its own 並列區塊, its title (found by `title` inside it) `ratio` times
+        the text and larger than the `before` px it had on a phone before ADR 0024."""
+        self.assertEqual(items.count(), count)
+        for item in items.all():
+            with self.subTest(item=item.inner_text()[:10]):
+                self.assert_tinted(item)
+                self.assert_readable_on_tint(item)
+                self.assertGreater(self.assert_block_title(title(item), ratio), before)
+
+    # #310: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers are each a 並列區塊
+    # with a larger title; IOI-HA's summary and 接下來 stay flat.
+    def test_result_items_are_tinted_blocks_with_larger_titles(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.ioi_ha_result())
             self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
             self.assert_flat(self.page.get_by_role("region", name="接下來", exact=True))
-            items = self.main().locator("ol > li")
-            self.assertEqual(items.count(), 7)
-            for item in items.all():
-                with self.subTest(item=item.inner_text()[:10]):
-                    self.assert_lined(item)
+            # Each item's name is its block's title (1.35 times); it was 1.25rem, 22.5px.
+            self.assert_tinted_items(
+                self.main().locator("ol > li"),
+                lambda item: item.get_by_role("heading"),
+                7,
+                1.35,
+                22.5,
+            )
             self.visit(True, lambda test: test.result("sadl", 4))
             facets = (
                 self.main()
@@ -5454,18 +6092,69 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 .filter(has=self.page.get_by_role("heading", level=3))
                 .get_by_role("listitem")
             )
-            self.assertEqual(facets.count(), 4)
-            for facet in facets.all():
-                with self.subTest(facet=facet.inner_text()[:10]):
-                    self.assert_lined(facet)
+            # Each facet's name is its block's title (1.35 times); it was 1.25rem, 22.5px.
+            self.assert_tinted_items(
+                facets, lambda item: item.get_by_role("heading"), 4, 1.35, 22.5
+            )
             self.visit(True, lambda test: test.result("ssq12-tw", 5))
             lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
                 "listitem"
             )
-            self.assertEqual(lowest.count(), 3)
-            for answer in lowest.all():
-                with self.subTest(answer=answer.inner_text()[:10]):
-                    self.assert_lined(answer)
+            # The question beside its score tag is a bold subhead (1.2 times); it was body text,
+            # 18px.
+            self.assert_tinted_items(
+                lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3, 1.2, 18
+            )
+
+    # Spec #308 acceptance 4: a tappable card's title and the answering page's question keep the
+    # size they had before ADR 0024, measured on main (36ae501) at this 390px phone width: the
+    # card titles 1.25rem, the question calc(1.275rem + 0.3vw).
+    def test_card_titles_and_questions_keep_their_size(self):
+        with self.saving_artifacts():
+            for name, path in (
+                ("returning home", lambda test: test.returning_home()),
+                ("HHIE-S result", lambda test: test.result("hhie-s", 2)),
+            ):
+                with self.subTest(page=name):
+                    self.visit(True, path, width=390)
+                    titles = self.main().locator("a.link-card .link-card-title")
+                    self.assertGreater(titles.count(), 0)
+                    for title in titles.all():
+                        with self.subTest(card=title.inner_text()):
+                            self.assertEqual(self.style(title, "fontSize"), "22.5px")
+            self.visit(True, lambda test: test.answering("hhie-s"), width=390)
+            question = self.main().get_by_role("group").locator("legend")
+            expect(question).to_be_visible()
+            self.assertEqual(self.style(question, "fontSize"), "24.12px")
+
+    # #310: the IOI-HA scale's empty cells are clear with a thin deeper beige frame, so they do
+    # not read as white things to tap; the norm's grey cells, the blue dot and the legend stay.
+    def test_ioi_ha_scale_cells_are_clear_with_a_thin_line(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.ioi_ha_result())
+            item = self.main().locator("ol > li").first
+            cells = item.locator(".ioi-scale > *")
+            self.assertEqual(cells.count(), 5)
+            # Every item is below the norm at 1: the norm is grey cells further right.
+            band = item.locator(".ioi-scale > .ioi-cell-band")
+            self.assertGreater(band.count(), 0)
+            for cell in cells.all():
+                is_band = cell.evaluate("(el) => el.classList.contains('ioi-cell-band')")
+                with self.subTest(band=is_band):
+                    self.assertEqual(self.style(cell, "borderTopStyle"), "solid")
+                    self.assertEqual(self.style(cell, "borderTopWidth"), "1px")
+                    if is_band:
+                        self.assertEqual(self.style(cell, "backgroundColor"), self.NORM_GREY)
+                        self.assertEqual(self.style(cell, "borderTopColor"), self.NORM_EDGE)
+                    else:
+                        self.assertEqual(self.style(cell, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                        self.assertEqual(self.style(cell, "borderTopColor"), self.TINT_LINE)
+            dot = item.locator(".ioi-scale .ioi-dot-latest")
+            self.assertEqual(dot.count(), 1)
+            self.assertEqual(self.style(dot, "backgroundColor"), self.PRIMARY)
+            legend = self.main().locator(".ioi-legend-band")
+            self.assertEqual(self.style(legend, "backgroundColor"), self.NORM_GREY)
+            self.assertEqual(self.style(legend, "borderTopColor"), self.NORM_EDGE)
 
     # #301: 我的紀錄's record cards stay white cards; the summaries above them are not.
     def test_my_records_keep_white_record_cards_and_flat_summaries(self):
@@ -5483,24 +6172,66 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(summary, "boxShadow"), "none")
 
-    # #301: the audiogram's summary and ear results, the comparison page's two pairs, and the
-    # new audiogram's how-to on an ear step are flat.
-    def test_audiogram_and_comparison_blocks_are_flat(self):
+    def assert_outline_button_readable(self, button):
+        """#311: an outline button in a 並列區塊 is filled white (white is what can be tapped), so
+        its words keep 4.5:1; the danger red on the beige alone is 3.6:1."""
+        self.assertEqual(self.style(button, "backgroundColor"), self.WHITE)
+        self.assertGreaterEqual(
+            StyleInBrowserTest.lowest_contrast(self.style(button, "color"), self.WHITE), 4.5
+        )
+
+    # #311: each ear's result is a 並列區塊 that keeps the line in its ear's colour on top.
+    EAR_LINES = (("右耳", "rgb(192, 57, 43)"), ("左耳", "rgb(31, 78, 140)"))
+
+    # #311: the audiogram's ear results and the comparison page's two pairs are 並列區塊 titled
+    # by a larger subhead, the comparison's buttons as before; the summary above the ears and the
+    # new audiogram's how-to on an ear step stay flat (#301).
+    def test_ear_results_and_comparison_pairs_are_tinted(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.audiogram_detail())
             self.assert_flat(self.page.get_by_role("region", name="兩耳程度"))
-            for ear in ("右耳", "左耳"):
+            for ear, colour in self.EAR_LINES:
                 with self.subTest(ear=ear):
                     heading = self.page.get_by_role("heading", name=ear, exact=True)
-                    self.assert_flat(self.main().locator("section").filter(has=heading))
+                    block = self.main().locator("section").filter(has=heading)
+                    self.assert_tinted(block, top_line=colour)
+                    self.assert_block_title(heading)
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
             self.visit(True, lambda test: test.hhi_comparison())
-            for title in ("目前查看的兩筆", "聽力報告裡的組合"):
+            for title, button in (
+                ("目前查看的兩筆", "改放這一組到報告"),
+                ("聽力報告裡的組合", "從報告移除"),
+            ):
                 with self.subTest(block=title):
-                    self.assert_flat(self.page.get_by_role("region", name=title))
+                    block = self.page.get_by_role("region", name=title)
+                    self.assert_tinted(block)
+                    self.assert_block_title(block.get_by_role("heading", name=title, exact=True))
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
+                    expect(block.get_by_role("button", name=button, exact=True)).to_be_visible()
+            save = self.page.get_by_role("button", name="改放這一組到報告", exact=True)
+            self.assertEqual(self.style(save, "backgroundImage"), self.GRADIENT)
+            self.assert_outline_button_readable(
+                self.page.get_by_role("button", name="從報告移除", exact=True)
+            )
+            self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
             self.open(signed_in=True)
             audiogram_step(self.page, self.live_server_url, 2)
             expect(self.main().get_by_text("報告上的 O 是右耳")).to_be_visible()
             self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+
+    # #311: no sideways scrolling or cut text on a phone at 200% text on the three pages with
+    # its 並列區塊.
+    def test_ear_results_share_steps_and_comparison_fit_a_phone_at_double_text_size(self):
+        pages = (
+            ("audiogram", lambda test: test.audiogram_detail()),
+            ("share settings", lambda test: test.share_settings()),
+            ("aided and unaided comparison", lambda test: test.hhi_comparison()),
+        )
+        with self.saving_artifacts():
+            for name, path in pages:
+                with self.subTest(page=name):
+                    self.visit(True, path, width=320)
+                    self.assert_fits_uncut(name)
 
     # #301: no sideways scrolling on a phone at 200% text on 我的紀錄's two tabs and an audiogram.
     def test_records_and_audiogram_fit_a_phone_at_double_text_size(self):

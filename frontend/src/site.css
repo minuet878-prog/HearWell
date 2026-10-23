@@ -28,6 +28,7 @@
   --color-severe-bg-deep: #f6c3b3;
   --color-surface: #f1f3f5;
   --color-brand-soft: #eef3fa;
+  --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
   --color-pull: #e7eef8;
   --color-border: #ced4da;
@@ -62,6 +63,14 @@
   --color-border-warm: #efe6d8;
   /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
   --color-line-warm: #d9cdb9;
+  /* A 並列區塊 (ADR 0024): pale beige a little deeper than the page (about 1.2:1), and the deeper
+     beige of the lines between the parts inside one. Text and links on it keep 4.5:1 or more. */
+  --color-tint: #ece3d4;
+  --color-tint-line: #c9bba3;
+  /* ADR 0024's larger subheads in flat content, against 1rem body text: a 並列區塊's title, and
+     a bold subhead inside one (or in a guide chapter). */
+  --text-block-title: 1.35rem;
+  --text-subhead: 1.2rem;
   --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
   --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
   --radius-large: 1.5rem;
@@ -116,9 +125,8 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card or the report's summary box has none; the box already frames it. Nor does an
-     ear's result on an audiogram: the line in its ear's colour marks it (ADR 0007). */
-  h1.h3, h2.h4:not(:where(.card, .report-summary, .ear-result) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -1450,9 +1458,10 @@
     margin-bottom: 0.75rem;
   }
 
-  /* The icon tile is white on the pale box, as on a hovered action card. */
+  /* #316: the box is not a link (only its button is), so nothing in it is white (ADR 0022): the
+     icon tile and the reason are a light blue a little deeper than the box. */
   .next-step .action-card-icon {
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
   }
 
   .next-step-title {
@@ -1466,12 +1475,12 @@
   .next-step-because {
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-medium);
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
     overflow-wrap: anywhere;
   }
 
   /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
-     few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
+     few characters; 「（45%）。」 may not break off and would otherwise run past its box. */
   .more-section,
   .result-more {
     container-type: inline-size;
@@ -1736,26 +1745,12 @@
     color: var(--color-heading);
   }
 
-  /* A preview of the answer buttons; the sentence above already names them, so screen readers
-     skip it (aria-hidden in the templates). */
-  .q-intro-choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .q-intro-choices span {
-    padding: 0 0.6rem;
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-button);
-    background-color: #fff;
-    color: var(--color-heading);
-    font-size: 0.875rem;
-  }
-
+  /* A source may hold a long DOI with no place to break: it breaks anywhere rather than run past
+     a phone's edge at 200% text (#313). */
   .q-intro-source {
     margin-top: 0.5rem;
     font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   /* A reminder or a short explanation on a text-heavy page (guide chapters, audiogram result):
@@ -1830,14 +1825,16 @@
     background-color: var(--color-border-warm);
   }
 
+  /* #316: a pale blue circle with a blue number, like the chapters' .step-list-number; not white,
+     as the number is not tappable (ADR 0022). */
   .route-number {
     flex: none;
     width: var(--route-size);
     height: var(--route-size);
-    border: 0.15rem solid var(--color-border-strong);
+    border: 0.15rem solid var(--color-primary);
     border-radius: 50%;
-    background-color: #fff;
-    color: var(--color-heading);
+    background-color: var(--color-brand-soft);
+    color: var(--color-primary);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -2069,8 +2066,13 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022); sources
-     and the check date in small print. */
+  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022). An article
+     read in order, so no tint and no lines: two parts stand twice as far apart as two paragraphs
+     inside one (ADR 0024, #313). Sources and the check date in small print. */
+  .guide-chapter > :not(h1) + * {
+    margin-top: 2rem;
+  }
+
   .guide-source,
   .guide-checked {
     font-size: 0.875rem;
@@ -2087,14 +2089,15 @@
     padding: 0;
   }
 
-  .step-list li {
+  /* Its own steps only: a list inside a step (the things to bring) keeps its own layout. */
+  .step-list > li {
     position: relative;
     display: flex;
     gap: 0.75rem;
     padding-bottom: 1rem;
   }
 
-  .step-list li:not(:last-child)::after {
+  .step-list > li:not(:last-child)::after {
     content: "";
     position: absolute;
     top: calc(var(--step-size) + 0.25rem);
@@ -2105,7 +2108,7 @@
     background-color: var(--color-border-warm);
   }
 
-  .step-list li:last-child {
+  .step-list > li:last-child {
     padding-bottom: 0;
   }
 
@@ -2132,12 +2135,12 @@
   /* At large text sizes the words drop under the number instead of shrinking to a few
      characters a line; the joining line would cross them, so it goes. */
   @container (max-width: 13rem) {
-    .step-list li {
+    .step-list > li {
       flex-direction: column;
       gap: 0.4rem;
     }
 
-    .step-list li:not(:last-child)::after {
+    .step-list > li:not(:last-child)::after {
       display: none;
     }
   }
@@ -2154,10 +2157,11 @@
     font-weight: 700;
   }
 
-  /* Guide chapters tidy-up: a step's short title above its details. */
+  /* Guide chapters tidy-up: a step's short title above its details, a subhead (ADR 0024). */
   .step-list-title {
     display: block;
     color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 
@@ -2210,29 +2214,25 @@
     outline-offset: -0.15rem;
   }
 
-  /* Short things to bring or to expect, each with a decorative icon. */
-  .icon-chips {
-    display: flex;
-    flex-wrap: wrap;
+  /* Short things to bring or to expect, one per line after a decorative icon. No frame and no
+     white: white is for what can be tapped (ADR 0024, #313). */
+  .icon-list {
+    display: grid;
     gap: 0.5rem;
     margin: 0.5rem 0 1rem;
     padding: 0;
     list-style: none;
   }
 
-  .icon-chips li {
-    display: inline-flex;
+  .icon-list li {
+    display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.3rem 0.8rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    background-color: #fff;
     color: var(--color-heading);
     font-weight: 700;
   }
 
-  .icon-chips svg {
+  .icon-list svg {
     flex: none;
     width: 1.375rem;
     height: 1.375rem;
@@ -2243,7 +2243,8 @@
     stroke-linejoin: round;
   }
 
-  /* Labelled facts (who, when, what to bring): the label in blue above its sentence. */
+  /* Labelled facts (who, when, what to bring): the label a subhead above its sentence, in the
+     heading colour, not link blue (ADR 0024). */
   .key-list {
     margin: 0 0 1rem;
   }
@@ -2263,7 +2264,8 @@
   }
 
   .key-list dt {
-    color: var(--color-primary);
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 
@@ -2392,7 +2394,8 @@
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .dropdown-box > summary, .dropdown-line > summary, .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary,
+  .answer-about > button {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -2416,11 +2419,13 @@
   }
 
   .dropdown-box > summary::-webkit-details-marker,
-  .dropdown-line > summary::-webkit-details-marker { display: none; }
+  .dropdown-line > summary::-webkit-details-marker,
+  .report-fold > summary::-webkit-details-marker { display: none; }
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .dropdown-box > summary::after, .dropdown-line > summary::after, .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after,
+  .answer-about > button::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -2432,6 +2437,7 @@
 
   .dropdown-box[open] > summary::after,
   .dropdown-line[open] > summary::after,
+  .report-fold[open] > summary::after,
   .answer-about > button[aria-expanded="true"]::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
   }
@@ -2448,13 +2454,15 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
+    .answer-about > button:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .dropdown-box > summary:active, .dropdown-line > summary:active, .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active,
+  .answer-about > button:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
@@ -2635,24 +2643,63 @@
     background-color: var(--color-severe-bg-deep);
   }
 
+  /* A 並列區塊 (ADR 0024): one of several complete units of the same kind side by side, on a
+     pale beige with no shadow and no border, so it sinks where a tappable white card floats.
+     Only something tappable or usable inside it may be white. .tint-rows puts a deeper beige
+     line between its parts (the result page's advice); .tint-block-title is the block's title.
+     .tint-subhead is a bold subhead, in a 並列區塊 (a family guide tip's point) or in flat
+     content (a guide chapter's lead). Both are in the heading colour, not link blue. */
+  .tint-block {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-tint);
+  }
+
+  /* An outline button in a 並列區塊 is filled white (#311): white is what can be tapped, and its
+     words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
+  .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
+    --btn-bg: #fff;
+  }
+
+  .tint-rows > * + * {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-tint-line);
+  }
+
+  .tint-block-title {
+    margin: 0 0 0.5rem;
+    color: var(--color-heading);
+    font-size: var(--text-block-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .tint-subhead {
+    margin: 0 0 0.25rem;
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
   /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
-     a thin warm line on its left, no white and no shadow. The result page's advice and the home
-     page's steps; .line-block is one such block on its own (THI's support message). The list
-     itself is unstyled by its own class (.list-unstyled, .next-steps, .step-cards, .ioi-items). */
+     a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
+     one such block on its own (THI's support message). The list itself is unstyled by its own
+     class (.step-cards). */
   .line-list > *,
   .line-block {
     padding: 0.1em 0 0.1em 0.7em;
     border-left: 0.18em solid var(--color-line-warm);
   }
 
-  /* Numbered "接下來建議您" steps on the result page (ticket #157), a .line-list: each step has
-     its number in a pale circle and its links as text under the words, so the steps read as one
-     list instead of being pushed apart by large buttons (result page tidy-up, option B).
-     Still an <ol>, so screen readers announce the count. */
+  /* Numbered "接下來建議您" steps on the result page (ticket #157), one .tint-block of
+     .tint-rows (#309): each step has its number in a pale circle and its links as text under the
+     words, so the steps read as one list instead of being pushed apart by large buttons (result
+     page tidy-up, option B). Still an <ol>, so screen readers announce the count. */
   .next-steps {
     container-type: inline-size;
     margin: 0.5rem 0 0;
-    padding: 0;
     list-style: none;
     counter-reset: next-step;
   }
@@ -2661,7 +2708,6 @@
     display: grid;
     grid-template-columns: 2.25rem 1fr;
     column-gap: 0.75rem;
-    margin-bottom: 0.75rem;
     counter-increment: next-step;
   }
 
@@ -3015,7 +3061,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one white card per item; nothing here is a link, so no hover (ADR 0006). */
+  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
+     here is a link, so no hover (ADR 0006). */
   .ioi-below,
   .ioi-others {
     margin-bottom: 1.5rem;
@@ -3036,11 +3083,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .ioi-item-name {
-    margin-bottom: 0.25rem;
-    font-size: 1.25rem;
   }
 
   .ioi-versus {
@@ -3069,13 +3111,14 @@
     color: var(--color-body);
   }
 
+  /* An empty cell is clear with a thin deeper beige frame, not white, so it never looks like
+     something to tap (#310); the norm's grey cells keep their own fill. */
   .ioi-cell {
     display: grid;
     place-items: center;
     height: 1.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-tint-line);
     border-radius: var(--radius-small);
-    background-color: #fff;
   }
 
   .ioi-cell-band {
@@ -3203,11 +3246,8 @@
     gap: 0.75rem;
   }
 
-  /* Each ear's result is a flat block (ADR 0022) under a line in its ear's colour. */
-  .ear-result {
-    padding-top: 0.75rem;
-  }
-
+  /* Each ear's result is a .tint-block (並列區塊, ADR 0024, #311) under a line in its ear's
+     colour. */
   .ear-result.ear-right {
     border-top: 0.375rem solid var(--color-ear-right);
   }
@@ -3526,9 +3566,10 @@
     }
   }
 
-  /* Family guide (#240): one flat block per topic framed by its title (ADR 0022), each tip's
-     point on its own line, the urgent topic framed in the brand blue (ADR 0007) with 119 in
-     large type; the sources at the end. */
+  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
+     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
+     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
+     the sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -3548,27 +3589,11 @@
 
   .family-guide .tips {
     margin: 0;
-    padding: 0;
     list-style: none;
-  }
-
-  .family-guide .tips > li {
-    padding-block: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
-  }
-
-  .family-guide .tips > li:first-child {
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .family-guide .tips > li:last-child {
-    padding-bottom: 0;
   }
 
   .family-guide .tip-point {
     display: block;
-    color: var(--color-heading);
   }
 
   .family-guide .family-urgent {
@@ -3577,15 +3602,31 @@
     box-shadow: none;
   }
 
-  .family-guide .family-urgent .tips > li {
-    border-top-color: var(--color-border);
+  .family-guide .family-urgent .tips {
+    padding: 0;
   }
 
+  .family-guide .family-urgent .tips > li {
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .family-guide .family-urgent .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .family-urgent .tips > li:last-child {
+    padding-bottom: 0;
+  }
+
+  /* #316: not white (white means tappable, ADR 0022) but a light blue a little deeper than the
+     urgent box, so the 119 line still stands out. */
   .family-guide .urgent-call {
     margin-bottom: 0;
     padding: 0.875rem;
     border-radius: var(--radius-large);
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
     color: var(--color-heading);
   }
 
@@ -3811,6 +3852,131 @@
 
     .health-report .report-answers.dropdown-box > :not(summary) {
       margin-inline: 0;
+    }
+  }
+
+  /* #314 (ADR 0024): on screen the report folds by questionnaire. The summary row looks like
+     the site's dropdowns (a white box, grey edge, chevron) and says the questionnaire's name,
+     latest date and result; what opens below is a 並列區塊 on the tint. Its summary row already
+     names the questionnaire, so its own title waits for paper. On paper every fold opens and the
+     row and tint go: the report prints as it did before the folds. */
+  .report-fold {
+    margin-top: 1rem;
+  }
+
+  .report-fold > summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.25rem 0.75rem;
+    border: 0.125rem solid var(--color-border);
+    border-radius: var(--radius-button);
+    background-color: #fff;
+  }
+
+  .report-fold > summary::after {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .report-fold-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  .report-fold-body {
+    margin-top: 0.5rem;
+  }
+
+  @media screen {
+    .health-report .report-fold-body > section:first-child {
+      margin-top: 0;
+    }
+
+    .report-fold-body > section:first-child > h3:first-child {
+      display: none;
+    }
+  }
+
+  @media print {
+    .health-report .report-fold,
+    .health-report .report-fold::details-content,
+    .health-report .report-fold-body {
+      display: contents;
+    }
+
+    .health-report .report-fold::details-content {
+      content-visibility: visible;
+    }
+
+    .health-report .report-fold > summary {
+      display: none;
+    }
+  }
+
+  /* #315: on screen a report table's columns take the room their text needs, and neither a date
+     nor a column's name breaks. Paper keeps its equal columns. */
+  @media screen {
+    .health-report .table {
+      table-layout: auto;
+    }
+
+    .health-report .table :is(th, time) {
+      white-space: nowrap;
+    }
+
+    /* Where a table does not fit (16rem, about what the four columns need: 200% text on a
+       phone, or a 320px phone), each record stacks into a block of its own: each value after its
+       column's name, a line between two records. The header row stays for screen readers only,
+       and the tables' role attributes keep them tables there (Safari drops a table's semantics
+       when its display changes); the names in front of the values are not read. */
+    .health-report .report-fold-body {
+      container-type: inline-size;
+    }
+
+    @container (width < 16rem) {
+      .health-report .table,
+      .health-report .table > :is(thead, tbody),
+      .health-report .table > :is(thead, tbody) > tr,
+      .health-report .table > :is(thead, tbody) > tr > * {
+        display: block;
+      }
+
+      .health-report .table > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .health-report .table > thead > tr > th {
+        padding: 0;
+      }
+
+      .health-report .table > tbody > tr + tr {
+        border-top: 1px solid var(--color-tint-line);
+      }
+
+      /* The value goes beside its name, or whole onto the next line when it does not fit. */
+      .health-report .table > tbody > tr > td {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
+        border-bottom-width: 0;
+        padding-block: 0.25rem;
+      }
+
+      .health-report .table > tbody > tr > td::before {
+        content: attr(data-label) / "";
+        color: var(--color-heading);
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
     }
   }
 }

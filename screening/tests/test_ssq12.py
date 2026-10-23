@@ -375,7 +375,8 @@ class Ssq12LowestItemsTests(TestCase):
         """(question text, score) of each listed item, in page order."""
         # Each item a card since the text-heavy pages tidy-up: the question, then its score tag.
         return re.findall(
-            r'<div class="score-card-head"><span>(.*?)</span><span class="score-chip">(.*?)</span>',
+            r'<div class="score-card-head"><span[^>]*>(.*?)</span>'
+            r'<span class="score-chip">(.*?)</span>',
             section,
             re.S,
         )
