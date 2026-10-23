@@ -445,12 +445,13 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         answer = _answer(slug, state.aid)
         reached = _reached(slug, state.aid)
         # Spec #291 Q14: open at the 目前這一站, the next question only; where the user chose
-        # 修改, every one asked so far. A form sent back with its errors is the edited stop's.
+        # 修改, every one asked so far, and then only that stop. A form sent back with its
+        # errors is the edited stop's.
         if slug == edit and question is not None:
             shown = (question,)
         elif slug == edit:
             shown = tuple(form_class(instance=state.aid) for form_class in reached)
-        elif slug == state.stop:
+        elif slug == state.stop and edit not in STOP_QUESTIONS:
             shown = (reached[-1](instance=state.aid),)
         editable = bool(answer) and len(shown) < len(reached)
     # On the line on to form 25, unless form 25 is 不適用.

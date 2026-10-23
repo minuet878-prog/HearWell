@@ -205,6 +205,16 @@ class RouteQuestionTests(TestCase):
         self.assertIn('<p class="route-answer">有身障證明</p>', assessment)
         self.assert_question(assessment, filled="yes")
 
+    def test_edit_opens_only_the_stop_being_edited(self):
+        # Spec #291 Q14 (cross-review): the 目前這一站 stays closed while another is edited.
+        self.answer("yes")
+        self.assertEqual(self.marks("form-9"), ["您在這裡"])
+        page = self.page("?edit=assessment")
+        self.assertEqual(page.count("<fieldset"), 1)
+        self.assertIn(QUESTION, self.stop("assessment", "?edit=assessment"))
+        self.assertNotIn("<fieldset", self.stop("form-9", "?edit=assessment"))
+        self.assertNotIn("九號表完成了嗎？", page)
+
     def test_changing_to_applying_takes_the_done_away(self):
         self.answer("yes")
         self.answer("applying")
