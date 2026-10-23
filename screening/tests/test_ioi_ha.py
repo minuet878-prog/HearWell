@@ -640,6 +640,8 @@ class IoiHaResultRedesignTests(TestCase):
             return [(int(level), re.sub(r"<[^>]+>", "", text).strip()) for level, text in headings]
 
         names = scoring.IOI_HA_ITEM_NAMES
+        # #304: the closing cards, under the 建議下一步 (IOI-HA means wearing them: 配戴之後).
+        closing = [(2, "了解助聽器選配與補助"), (2, "其他您可以做的")]
         cases = {
             "grouped, two below": (
                 self.TWO_BELOW_ONE_ABOVE,
@@ -648,21 +650,23 @@ class IoiHaResultRedesignTests(TestCase):
                 + [(3, names[n]) for n in (1, 6)]
                 + [(2, "其他 5 項")]
                 + [(3, names[n]) for n in (2, 3, 4, 5, 7)]
-                + [(2, "接下來")],
+                + [(2, "接下來")]
+                + closing,
             ),
             "grouped, none below": (
                 (3,) * 7,
                 True,
                 [(1, "助聽器使用成效"), (2, "其他 7 項")]
                 + [(3, names[n]) for n in range(1, 8)]
-                + [(2, "接下來")],
+                + [(2, "接下來")]
+                + closing,
             ),
             "ungrouped": (
                 self.TWO_BELOW_ONE_ABOVE,
                 False,
                 # Nothing to take to the audiologist without norms: no 「接下來」 (result pages
                 # tidy-up), the closing row of buttons is enough.
-                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)],
+                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)] + closing,
             ),
         }
         for case, (scores, grouped, expected) in cases.items():

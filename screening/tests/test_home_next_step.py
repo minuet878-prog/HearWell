@@ -46,7 +46,8 @@ ADD_HOME = ("/add_to_home", "加到手機主畫面")
 
 NEXT_STEP = re.compile(
     r'<div class="next-step">\s*<p class="next-step-label">([^<]*)</p>.*?'
-    r'<h3 class="next-step-title">([^<]*)</h3>\s*</div>\s*'
+    # h3 on the home page, h2 on a result page (#304, test_result_next_step).
+    r'<h[23] class="next-step-title">([^<]*)</h[23]>\s*</div>\s*'
     r'<p class="next-step-because">([^<]*)</p>\s*'
     r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
     re.S,
