@@ -1,18 +1,41 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
+{# Guide chapters tidy-up: who, when, by whom and what to bring as labelled facts. #}
 <p>「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。</p>
 <div class="card card-body mb-4">
-<ul class="mb-0">
-    <li>買中階型、進階型或雙對側傳聲型的人才需要；簡易型不需要。</li>
-    <li>時間：配戴滿 1 個月後、3 個月內。</li>
-    <li>和九號表一樣，由聽力師或輔具中心的評估人員開立。</li>
-    <li>驗證時，聽力師會核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。</li>
-    <li>核銷要帶：購買憑證、保固書影本（要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號）、二十五號表。</li>
-</ul>
+<dl class="key-list">
+    <div>
+        <dt>誰要做</dt>
+        <dd>買中階型、進階型或雙對側傳聲型的人。簡易型不需要。</dd>
+    </div>
+    <div>
+        <dt>什麼時候</dt>
+        <dd>配戴滿 1 個月後、3 個月內。</dd>
+    </div>
+    <div>
+        <dt>找誰開</dt>
+        <dd>和九號表一樣，聽力師或輔具中心的評估人員。</dd>
+    </div>
+    <div>
+        <dt>驗證做什麼</dt>
+        <dd>聽力師核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。</dd>
+    </div>
+    <div>
+        <dt>核銷要帶</dt>
+        <dd>
+            <ul class="icon-chips" role="list">
+                <li>{% include "screening/guide/icon.html" with icon="receipt" %}購買憑證</li>
+                <li>{% include "screening/guide/icon.html" with icon="document" %}保固書影本</li>
+                <li>{% include "screening/guide/icon.html" with icon="document" %}二十五號表</li>
+            </ul>
+            <p>保固書要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號。</p>
+        </dd>
+    </div>
+</dl>
 </div>
 <section class="card card-body mb-4" aria-labelledby="prepare-title">
     <h2 id="prepare-title" class="h4">用 HearWell 準備驗證回診</h2>
-    <p>驗證前，可以先戴著助聽器做下面的問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：</p>
+    <p>驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：</p>
     <ul>
         <li>戴著再做一次{{ life_impact.0.definition.topic }}（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較</li>
         {% for questionnaire in follow_ups %}

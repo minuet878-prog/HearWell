@@ -9,14 +9,21 @@ from screening.questionnaires import hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.tests import test_guide
 from screening.tests.helpers import register
 
-# Wording finalised in #220 (F1-F7).
+# Wording finalised in #220 (F1-F7), shortened in the guide chapters tidy-up (2026-10-23, the
+# owner's request): labelled facts, the things to bring as chips.
 FORM_25 = (
     "「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。",
-    "買中階型、進階型或雙對側傳聲型的人才需要；簡易型不需要。",
-    "時間：配戴滿 1 個月後、3 個月內。",
-    "和九號表一樣，由聽力師或輔具中心的評估人員開立。",
-    "驗證時，聽力師會核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。",
-    "核銷要帶：購買憑證、保固書影本（要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號）、二十五號表。",
+    "誰要做",
+    "買中階型、進階型或雙對側傳聲型的人。簡易型不需要。",
+    "什麼時候",
+    "配戴滿 1 個月後、3 個月內。",
+    "找誰開",
+    "和九號表一樣，聽力師或輔具中心的評估人員。",
+    "驗證做什麼",
+    "聽力師核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。",
+    "核銷要帶",
+    "購買憑證 保固書影本 二十五號表",
+    "保固書要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號。",
 )
 FORM_25_SOURCES = (
     (
@@ -37,7 +44,7 @@ FORM_25_SOURCES = (
 # Verification-flow batch F3, reviewed in the chat on 2026-10-23.
 PREPARE = (
     "用 HearWell 準備驗證回診",
-    "驗證前，可以先戴著助聽器做下面的問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：",
+    "驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：",
     "戴著再做一次聽力對生活的影響（HHIE-S 或 HHIA-S），和沒戴時的結果比較",
     "助聽器使用成效（IOI-HA）",
     "助聽器滿意度（SADL）",
@@ -101,16 +108,22 @@ class Form25ChapterTests(TestCase):
         self.assertNotIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', content)
 
 
-# Wording finalised in #220 (H2-H7, H10; H8 and H9 come from the questionnaire definitions).
+# Wording finalised in #220 (H2-H7, H10; H8 and H9 come from the questionnaire definitions),
+# shortened in the guide chapters tidy-up (2026-10-23, the owner's request): each point's gist
+# as a label.
 AFTER_FITTING = (
-    "剛開始不習慣是正常的：前幾週可能覺得自己的聲音怪怪的、環境的聲音很吵，大腦需要時間重新適應聲音。",
-    "照聽力師的建議每天戴，從安靜的地方、短時間開始，再慢慢拉長。",
-    "覺得太吵、太小聲或不舒服，都可以回去請聽力師調整，不用勉強忍耐。可以記下哪些場合聽不清楚，回診時告訴聽力師。",
-    "助聽器不是戴上就跟以前一樣，在吵雜的餐廳、多人聊天時，還是可能聽不清楚。",
+    "剛開始不習慣是正常的",
+    "前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。",
+    "每天戴，慢慢拉長",
+    "照聽力師的建議，從安靜的地方、短時間開始。",
+    "不舒服就回去調整",
+    "太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。",
+    "不會跟以前完全一樣",
+    "在吵雜的餐廳、多人聊天時，還是可能聽不清楚。",
     "記錄配戴的效果",
-    "配戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告帶去給聽力師看。",
+    "戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告給聽力師看。",
     # F4 (verification-flow batch): the two life-impact questionnaires named and linked.
-    "也可以戴著助聽器再做一次生活影響問卷（HHIE-S 或 HHIA-S），和沒戴時的結果比較。",
+    "也可以戴著助聽器再做一次生活影響問卷（HHIE-S 或 HHIA-S），和沒戴時比較。",
 )
 # The family guide's sources for the same reviewed wording (its 「陪伴配戴助聽器」 section).
 AFTER_FITTING_SOURCES = (
@@ -168,8 +181,8 @@ class AfterFittingChapterTests(TestCase):
                 self.assertRegex(content, rf'<a href="{href}">\s*{wording}\s*</a>')
         positions = [text.index(wording) for _, wording in follow_ups]
         self.assertEqual(positions, sorted(positions))
-        self.assertLess(text.index(AFTER_FITTING[5]), positions[0])
-        self.assertLess(positions[-1], text.index(AFTER_FITTING[6]))
+        self.assertLess(text.index(AFTER_FITTING[-2]), positions[0])
+        self.assertLess(positions[-1], text.index(AFTER_FITTING[-1]))
         # Only these three: not every questionnaire on the site.
         for questionnaire in self.others:
             with self.subTest(questionnaire=questionnaire.questionnaire_name):

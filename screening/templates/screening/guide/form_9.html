@@ -1,10 +1,11 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-<p>「九號表」是購買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+{# Guide chapters tidy-up: step titles, the amounts as large numbers. #}
+<p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
 <section class="card card-body mb-4" aria-labelledby="who-title">
     <h2 id="who-title" class="h4">誰可以申請</h2>
     <ul>
-        <li>持有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</li>
+        <li>有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</li>
         <li>中度以上視覺障礙，而且好的那一耳聽力損失大於 40 dB 的人。</li>
         <li>最近一年在國內住超過 183 天。</li>
     </ul>
@@ -14,22 +15,25 @@
     <h2 id="steps-title" class="h4">申請流程</h2>
     {# #259: a step list, the warning right before buying; tags repeat each step's time limit. #}
     <ol class="step-list" role="list">
-        <li><span class="step-list-number">1</span><span class="step-list-body">找聽力師或縣市輔具中心做評估，拿到九號表。九號表 3 個月內有效。<span class="step-when" aria-hidden="true">3 個月內有效</span></span></li>
-        <li><span class="step-list-number">2</span><span class="step-list-body">帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body">等核定通知。主管機關收到評估報告後，10 天內會核定。<span class="step-when" aria-hidden="true">10 天內核定</span></span></li>
+        <li><span class="step-list-number">1</span><span class="step-list-body"><span class="step-list-title">做評估，拿到九號表</span>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="step-when" aria-hidden="true">3 個月內有效</span></span></li>
+        <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">到公所申請</span>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></li>
+        <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">等核定通知</span>主管機關收到評估報告後，10 天內會核定。<span class="step-when" aria-hidden="true">10 天內核定</span></span></li>
     </ol>
     <p class="tip-box">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
     <ol class="step-list" role="list" start="4">
-        <li><span class="step-list-number">4</span><span class="step-list-body">收到核定通知後，6 個月內購買並請款。<span class="step-when" aria-hidden="true">6 個月內</span></span></li>
-        <li><span class="step-list-number">5</span><span class="step-list-body">買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內，要做使用效益驗證，拿到二十五號表。<a href="{% url 'guide_chapter' 'form-25' %}">看二十五號表</a><span class="step-when" aria-hidden="true">配戴 1–3 個月內</span></span></li>
-        <li><span class="step-list-number">6</span><span class="step-list-body">帶購買憑證、保固書影本（和二十五號表）去核銷。受理後 1 個月內撥款。<span class="step-when" aria-hidden="true">1 個月內撥款</span></span></li>
+        <li><span class="step-list-number">4</span><span class="step-list-body"><span class="step-list-title">購買並請款</span>收到核定通知後 6 個月內。<span class="step-when" aria-hidden="true">6 個月內</span></span></li>
+        <li><span class="step-list-number">5</span><span class="step-list-body"><span class="step-list-title">使用效益驗證</span>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<a href="{% url 'guide_chapter' 'form-25' %}">看二十五號表</a><span class="step-when" aria-hidden="true">配戴 1–3 個月內</span></span></li>
+        <li><span class="step-list-number">6</span><span class="step-list-body"><span class="step-list-title">核銷</span>帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。<span class="step-when" aria-hidden="true">1 個月內撥款</span></span></li>
     </ol>
     <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060">身心障礙者輔具費用補助辦法</a>、<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
 </section>
 <section class="card card-body mb-4" aria-labelledby="issuer-title">
     <h2 id="issuer-title" class="h4">九號表找誰開</h2>
-    <p>聽力師，或各縣市輔具中心的評估人員都可以開。您可以找醫院耳鼻喉科的聽力師，或您縣市的輔具中心。</p>
+    <p>聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。</p>
+    {# The 47 centres folded away, longer than the rest of the chapter; the heading stays out for screen readers. #}
     <h3 id="centres-title" class="h5 mt-4">各縣市輔具中心</h3>
+    <details class="dropdown-box mb-0">
+    <summary>看各縣市輔具中心電話</summary>
     <p>資料來源：<a href="https://newrepat.sfaa.gov.tw/home/repat-center">輔具資源入口網</a></p>
     <ul aria-labelledby="centres-title">
         <li>基隆市
@@ -168,33 +172,65 @@
             </ul>
         </li>
     </ul>
+    </details>
 </section>
 <section class="card card-body mb-4" aria-labelledby="amount-title">
     <h2 id="amount-title" class="h4">補助多少</h2>
+    <p class="mb-2 font-bold">補助上限，依助聽器等級</p>
+    <ul class="fact-rows" role="list">
+        <li><span class="fact-rows-value">2,000 元</span><span>簡易型，每只最多</span></li>
+        <li><span class="fact-rows-value">10,000 元</span><span>中階型，每只最多</span></li>
+        <li><span class="fact-rows-value">20,000 元</span><span>進階型，每只最多</span></li>
+        <li><span class="fact-rows-value">30,000 元</span><span>雙對側傳聲型，每組最多</span></li>
+    </ul>
+    <p class="mb-2 font-bold">再乘上比例，而且不超過實際購買金額</p>
+    <ul class="fact-rows" role="list">
+        <li><span class="fact-rows-value">100%</span><span>低收入戶</span></li>
+        <li><span class="fact-rows-value">75%</span><span>中低收入戶</span></li>
+        <li><span class="fact-rows-value">50%</span><span>一般戶</span></li>
+    </ul>
     <ul>
-        <li>補助依助聽器的等級有上限（每只）：簡易型 2,000 元、中階型 10,000 元、進階型 20,000 元；雙對側傳聲型一組 30,000 元。</li>
-        <li>實際補助是上限乘上比例：低收入戶 100%、中低收入戶 75%、一般戶 50%，而且不超過實際購買金額。</li>
-        <li>滿 65 歲以後才第一次鑑定為輕度的人，申請進階型時另有總額上限：低收入戶 20,000 元、中低收入戶 15,000 元、一般戶 10,000 元。</li>
+        <li>滿 65 歲以後才第一次鑑定為輕度的人，申請進階型另有總額上限：低收入戶 20,000 元、中低收入戶 15,000 元、一般戶 10,000 元。</li>
         <li>雙耳一起申請或分開申請，都算同一項。</li>
     </ul>
     <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060">身心障礙者輔具費用補助辦法</a>、<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
 </section>
 <section class="card card-body mb-4" aria-labelledby="reapply">
     <h2 id="reapply" class="h4">再次申請（換新機）</h2>
-    <ul>
-        <li>助聽器的最低使用年限是 4 年，滿 4 年後可以再申請補助；12 歲以下每 2 年可以申請一次。</li>
-        <li>再次申請簡易型，不需要重新評估。</li>
+    <ul class="fact-rows" role="list">
+        <li><span class="fact-rows-value">滿 4 年</span><span>可以再申請（最低使用年限）</span></li>
+        <li><span class="fact-rows-value">每 2 年</span><span>12 歲以下可以申請一次</span></li>
     </ul>
+    <p>再次申請簡易型，不需要重新評估。</p>
     <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
 </section>
 <section class="card card-body mb-4" aria-labelledby="without-certificate">
     <h2 id="without-certificate" class="h4">沒有身障證明時</h2>
-    <p>沒有身心障礙證明，就不能申請上面的補助。不過，還有下面這些資源。</p>
-    <ul>
-        <li>低收入戶老人配戴助聽器補助：65 歲以上（原住民 55 歲以上）的低收入戶，經健保合約醫療院所診斷，聽力損失在 45 到 110 分貝之間，每只最多補助 5,500 元。同一耳 4 年可以申請一次。申請時要附 6 個月內的診斷證明書和聽力圖正本，向設籍或居住的縣市政府申請。<br>來源：<a href="https://social.chiayi.gov.tw/News_Content.aspx?n=1101&amp;s=909655">衛生福利部社會及家庭署低收入戶老人配戴助聽器獎助項目及基準（114–117 年）</a>（嘉義市政府社會處轉載）</li>
-        <li>各縣市可能另有補助，請洽您縣市的社會局。</li>
-        <li>有些縣市的輔具中心提供免費評估和試戴，沒有身障證明也可以，例如新北市輔具資源中心。<br>來源：<a href="https://atrc.aihsin.ntpc.gov.tw/NewsInfo/62">新北市輔具資源中心公告</a></li>
-    </ul>
+    <p>不能申請上面的補助，但還有下面這些資源。</p>
+    <dl class="key-list">
+        <div>
+            <dt>低收入戶老人配戴助聽器補助</dt>
+            <dd>
+                <ul class="fact-rows mt-2" role="list">
+                    <li><span class="fact-rows-value">5,500 元</span><span>每只最多，同一耳 4 年一次</span></li>
+                </ul>
+                <p>65 歲以上（原住民 55 歲以上）的低收入戶，經健保合約醫療院所診斷，聽力損失在 45 到 110 分貝之間。</p>
+                <p>申請時附 6 個月內的診斷證明書和聽力圖正本，向設籍或居住的縣市政府申請。</p>
+                <p class="guide-source">來源：<a href="https://social.chiayi.gov.tw/News_Content.aspx?n=1101&amp;s=909655">衛生福利部社會及家庭署低收入戶老人配戴助聽器獎助項目及基準（114–117 年）</a>（嘉義市政府社會處轉載）</p>
+            </dd>
+        </div>
+        <div>
+            <dt>縣市補助</dt>
+            <dd><p>各縣市可能另有補助，請洽您縣市的社會局。</p></dd>
+        </div>
+        <div>
+            <dt>免費評估和試戴</dt>
+            <dd>
+                <p>有些縣市的輔具中心提供，沒有身障證明也可以，例如新北市輔具資源中心。</p>
+                <p class="guide-source">來源：<a href="https://atrc.aihsin.ntpc.gov.tw/NewsInfo/62">新北市輔具資源中心公告</a></p>
+            </dd>
+        </div>
+    </dl>
 </section>
 {% endblock %}
 {% block checked_on %}2026-10-23{% endblock %}
