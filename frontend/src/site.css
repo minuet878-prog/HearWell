@@ -2684,7 +2684,7 @@
   /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
      a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
      one such block on its own (THI's support message). The list itself is unstyled by its own
-     class (.list-unstyled, .step-cards, .ioi-items). */
+     class (.step-cards). */
   .line-list > *,
   .line-block {
     padding: 0.1em 0 0.1em 0.7em;
@@ -3059,7 +3059,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one white card per item; nothing here is a link, so no hover (ADR 0006). */
+  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
+     here is a link, so no hover (ADR 0006). */
   .ioi-below,
   .ioi-others {
     margin-bottom: 1.5rem;
@@ -3080,11 +3081,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .ioi-item-name {
-    margin-bottom: 0.25rem;
-    font-size: 1.25rem;
   }
 
   .ioi-versus {
@@ -3113,13 +3109,14 @@
     color: var(--color-body);
   }
 
+  /* An empty cell is clear with a thin deeper beige frame, not white, so it never looks like
+     something to tap (#310); the norm's grey cells keep their own fill. */
   .ioi-cell {
     display: grid;
     place-items: center;
     height: 1.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-tint-line);
     border-radius: var(--radius-small);
-    background-color: #fff;
   }
 
   .ioi-cell-band {
