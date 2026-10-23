@@ -35,8 +35,13 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   有提到的那一點、兩個下拉框放一起；本人在比較頁挑選，PR #274，驗證見
   `docs/verification/result-next-steps-cards.md`）、全站輸入框外框看得到、填錯變紅（#272：外框 1.3:1 改 4.7:1、大小不變，
   填錯的框變紅、錯誤字加驚嘆號；PR #279，驗證見 `docs/verification/issue-272.md`）、
-  聽力圖清單在 200% 字級不再左右捲動（字放大時縮圖移到卡片上方；本人在比較頁挑選，驗證見 `docs/verification/audiogram-list-double-text.md`）。
+  聽力圖清單在 200% 字級不再左右捲動（字放大時縮圖移到卡片上方；本人在比較頁挑選，驗證見 `docs/verification/audiogram-list-double-text.md`）、
+  選配指引六章精簡字句、重要數字改成大數字列（本人在比較頁選 B 案；查詢醫院後停在名單、輔具中心收進下拉框；PR #282，
+  驗證見 `docs/verification/guide-chapters-tidy.md`）。
 - 進行中：
+  - 選配路線推進：本人自填「我的助聽器與補助」（身障證明、開始配戴日期、戴哪一耳、有沒有用補助買），路線推到
+    九號表、二十五號表期限；同意書升第 2 版（ADR 0020，[拷問決定](planning/hearing-aid-guide/route-progress-grill-decisions.md)）。
+    拷問完成，還沒寫規格。
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
     老使用者首頁）也已合併（PR #178）。2026-10-22 本人決定直接上線：拿掉 `listed=False`，正式站目錄、推薦精靈
@@ -96,6 +101,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 選配路線與首頁建議下一步 | #257、#258–#261：選配指引上方兩個儀表（兩耳四頻平均對正常上限 25、雙耳障礙比率對門檻 45%，測不到反應時畫最低估計）與「看我的路線」；章節清單改成七站的選配路線，依紀錄標已完成／您在這裡／資料不足／估算未達門檻；九號表與鑑定申請改步驟條；老使用者首頁依目前這一站推薦一張並寫出原因，其餘分四組小卡；字放大時動作卡片改上下排（ADR 0017，[拷問決定](planning/hearing-aid-guide/route-grill-decisions.md)，[#258](verification/issue-258.md)、[#259](verification/issue-259.md)、[#260](verification/issue-260.md)、[#261](verification/issue-261.md)；交叉審查本人決定跳過） |
 | 導覽 A 案 | #268、#269–#271：底部分頁改成「首頁｜篩檢｜紀錄｜了解」（沒登入是「首頁｜了解｜登入｜註冊」），聽力圖併進「我的紀錄」用「問卷｜聽力圖」二選一切換（只有聽力圖時直接停在聽力圖，網址不變），新的公開「了解」入口頁收選配指引與家人溝通頁；200% 字級時分頁字各一行（ADR 0019，[拷問決定](planning/navigation/grill-decisions.md)，[驗證紀錄](verification/issue-268.md)） |
 | 聽力圖清單 200% 字級 | 字放大到卡片放不下時，縮圖和箭頭一列、日期與兩耳程度移到下一列，縮圖仍跟字放大；一般字級不變，320px 與 390px 不再撐到 517px（本人在比較頁選 A，[驗證紀錄](verification/audiogram-list-double-text.md)） |
+| 選配指引六章精簡 | 門檻、補助上限、比例、年限改成大數字列，要帶的東西改圖示標籤，段落改小標＋一句；查詢醫院後停在名單，輔具中心收進下拉框；自審找出 6 處字句意思變了並修正（本人在比較頁選 B 案，PR #282，[驗證紀錄](verification/guide-chapters-tidy.md)） |
 | 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
 
 ---
