@@ -158,6 +158,9 @@ class Form9ChapterTests(TestCase):
         self.assertLess(warning, second)
         self.assertEqual(steps[first:warning].count("<li>"), 3)
         self.assertEqual(steps[second:].count("<li>"), 3)
+        # The circles carry the numbers for screen readers too: the list's own markers are off.
+        numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
+        self.assertEqual(numbers, ["1", "2", "3", "4", "5", "6"])
 
     def test_each_step_has_its_time_limit_tag(self):
         content = self.client.get(self.url).content.decode()

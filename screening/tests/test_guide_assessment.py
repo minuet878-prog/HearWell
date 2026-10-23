@@ -112,6 +112,8 @@ class AssessmentChapterTests(TestCase):
         steps = section[section.index('<ol class="step-list" role="list">') :]
         items = re.findall(r"<li>(.*?)</li>", steps, re.S)
         self.assertEqual(len(items), 3)
+        numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
+        self.assertEqual(numbers, ["1", "2", "3"])
         self.assertIn("到戶籍所在縣市的任一區", items[0])
         self.assertIn("再帶著鑑定表到鑑定醫院。", items[1])
         self.assertIn("由政府或健保支付。", items[1])

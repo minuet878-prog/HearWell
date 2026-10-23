@@ -1593,9 +1593,11 @@
     font-size: 0.875rem;
   }
 
-  /* A chapter's process as numbered circles joined by a line (#259); the numbers are drawn in
-     the template, so a list split by a warning (start="4") needs no counter support. */
+  /* A chapter's process as numbered circles joined by a line (#259). The numbers are text in the
+     template, read out too: the list's own markers are off, and a list split by a warning
+     (start="4") then needs no counter support. */
   .step-list {
+    --step-size: 2.25rem;
     container-type: inline-size;
     list-style: none;
     margin: 0 0 1rem;
@@ -1612,9 +1614,9 @@
   .step-list li:not(:last-child)::after {
     content: "";
     position: absolute;
-    top: 2.5rem;
+    top: calc(var(--step-size) + 0.25rem);
     bottom: 0.25rem;
-    left: 1.05rem;
+    left: calc((var(--step-size) - 0.15rem) / 2);
     width: 0.15rem;
     border-radius: var(--radius-pill);
     background-color: var(--color-border-warm);
@@ -1626,8 +1628,8 @@
 
   .step-list-number {
     flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: var(--step-size);
+    height: var(--step-size);
     border: 0.125rem solid var(--color-primary);
     border-radius: 50%;
     background-color: var(--color-brand-soft);
@@ -1663,8 +1665,8 @@
     margin-top: 0.35rem;
     padding: 0 0.6rem;
     border-radius: var(--radius-pill);
-    background-color: var(--color-mild-bg);
-    color: var(--color-mild);
+    background-color: var(--color-brand-selected);
+    color: var(--color-primary);
     font-size: 0.875rem;
     font-weight: 700;
   }
