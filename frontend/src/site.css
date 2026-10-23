@@ -1616,6 +1616,128 @@
     line-height: 1.4;
   }
 
+  /* My guide's 選配路線 (#258): numbered stops on a line, the 目前這一站 in the brand blue with a
+     soft ring. Marks are blue or neutral, never the level colours (ADR 0007). */
+  .route {
+    --route-size: 2.5rem;
+    container-type: inline-size;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .route-stop {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .route-stop:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--route-size) + 0.25rem);
+    bottom: 0.25rem;
+    left: calc((var(--route-size) - 0.2rem) / 2);
+    width: 0.2rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-border-warm);
+  }
+
+  .route-number {
+    flex: none;
+    width: var(--route-size);
+    height: var(--route-size);
+    border: 0.15rem solid var(--color-border-strong);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-heading);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .route-box {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-medium);
+    background-color: #fff;
+    box-shadow: var(--shadow-warm);
+  }
+
+  .route-title {
+    font-weight: 700;
+  }
+
+  .route-marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0 0 0.25rem;
+  }
+
+  .route-mark {
+    padding: 0 0.6rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-brand-selected);
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .route-note {
+    margin: 0.25rem 0 0;
+  }
+
+  .route-stop.is-here .route-number {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 0 0 0.35rem rgba(31, 78, 140, 0.18);
+  }
+
+  .route-stop.is-here .route-box {
+    border: 0.125rem solid var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  .route-stop.is-here .route-mark:first-child {
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  .route-stop.is-below .route-box {
+    background-color: var(--color-surface);
+    box-shadow: none;
+  }
+
+  .route-stop.is-below .route-mark {
+    background-color: #fff;
+    color: var(--color-heading);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .route-stop.is-here .route-number {
+      animation: route-ring 2.4s ease-in-out 3;
+    }
+  }
+
+  /* At large text sizes the box drops under the number instead of shrinking to a few
+     characters a line; the joining line would cross it, so it goes. */
+  @container (max-width: 15rem) {
+    .route-stop {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .route-stop:not(:last-child)::after {
+      display: none;
+    }
+  }
+
   /* Guide chapters: each part in a card; sources and the check date in small print. */
   .guide-chapter .card > :last-child {
     margin-bottom: 0;
@@ -3131,6 +3253,11 @@
 @keyframes home-sway {
   25% { transform: rotate(-3deg); }
   75% { transform: rotate(3deg); }
+}
+
+/* My guide (#258): the 目前這一站's ring breathes three times, then stays. */
+@keyframes route-ring {
+  50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
 }
 
 @keyframes start-ring {

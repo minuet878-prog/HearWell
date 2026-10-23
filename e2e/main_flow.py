@@ -1948,6 +1948,21 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.assert_fits_a_phone_at_double_text_size("/guide signed out")
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
+    # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
+    # threshold, so the stop is the assessment.
+    def test_current_stop_ring_moves_only_without_reduced_motion(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for motion, animation in (("reduce", "none"), ("no-preference", "route-ring")):
+                with self.subTest(motion=motion):
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_have_count(1)
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    number = here.locator(".route-number")
+                    expect(number).to_have_css("animation-name", animation)
+
     def test_form_9_anchors_jump_to_their_sections(self):
         self.open(390, 640)
         with self.saving_artifacts():
