@@ -230,12 +230,10 @@ class GroupedAccountSettingsTests(TestCase):
         link = re.search(
             rf'<a [^>]*href="{reverse("download_my_data")}"[^>]*>(.*?)</a>', main, re.S
         ).group(1)
-        self.assertIn('class="settings-icon"', link)
-        self.assertNotIn("settings-row-arrow", link)
+        self.assertIn('<path d="M12 3v12M7 10l5 5 5-5M5 20h14"/>', link)  # an arrow into a tray
+        self.assertNotIn(test_layout.ARROW, link)
         privacy = re.search(rf'<a [^>]*href="{reverse("privacy")}"[^>]*>(.*?)</a>', main, re.S)
-        self.assertIn(
-            '<span class="settings-row-arrow" aria-hidden="true">\u203a</span>', privacy.group(1)
-        )
+        self.assertIn(test_layout.ARROW, privacy.group(1))
 
     def test_account_rows_are_not_links(self):
         main = self._main()
@@ -244,13 +242,10 @@ class GroupedAccountSettingsTests(TestCase):
         for value in ("grouped_a", "a@example.com", "民國 44 年（1955）"):
             self.assertIn(value, test_layout._text(group))
 
-    def test_only_link_rows_change_on_hover_and_press(self):
+    def test_account_rows_do_not_change_on_hover_and_press(self):
         css = SITE_CSS.read_text()
         for state in ("hover", "active"):
             with self.subTest(state=state):
-                # Rows share one card, so they change colour only and never move (ADR 0006).
-                block = re.search(rf"\.settings-row-link:{state}\s*\{{([^}}]*)\}}", css)
-                self.assertIn("background-color", block.group(1))
-                self.assertNotIn("transform", block.group(1))
-                # The account rows are not links, so nothing changes on them.
-                self.assertNotRegex(css, rf"\.settings-(row|group)[\w-]*(?<!-link):{state}")
+                # The account rows are not links, so nothing changes on them (ADR 0006); the
+                # link rows are link cards since #303.
+                self.assertNotRegex(css, rf"\.settings-(row|group)[\w-]*:{state}")
