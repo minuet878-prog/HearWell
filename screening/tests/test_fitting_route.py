@@ -132,7 +132,7 @@ class OldRulesGoneTests(TestCase):
         )
         for today in (date(2026, 5, 20), date(2026, 7, 15), date(2026, 8, 2)):
             with self.subTest(today=today):
-                self.assertEqual(fitting_state(self.user, today).stop, "after-fitting")
+                self.assertEqual(fitting_state(self.user, today).stop, "form-25")
 
 
 class FittedOnRouteTests(TestCase):
@@ -152,16 +152,16 @@ class FittedOnRouteTests(TestCase):
     def state(self):
         return fitting_state(self.user, TODAY)
 
-    def test_a_fitting_date_without_a_questionnaire_is_after_fitting(self):
+    def test_a_fitting_date_without_a_questionnaire_looks_on_from_after_fitting(self):
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertEqual(self.state().stop, "after-fitting")
+        self.assertEqual(self.state().stop, "form-25")
         self.assertTrue(self.state().wearing)
 
-    def test_a_fitting_date_with_the_latest_answered_without_them_is_after_fitting(self):
+    def test_a_fitting_date_with_the_latest_answered_without_them_looks_on_too(self):
         self.make(PTA_55, PTA_55)
         self.answer(wearing=False)
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertEqual(self.state().stop, "after-fitting")
+        self.assertEqual(self.state().stop, "form-25")
 
     def test_without_a_fitting_date_the_rest_of_the_row_does_not_count_as_wearing(self):
         self.make(PTA_55, PTA_55)

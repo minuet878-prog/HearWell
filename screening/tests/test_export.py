@@ -391,7 +391,7 @@ class HearingAidExportTests(TestCase):
                 "approved_ears": "雙耳",
                 "fitted_on": "2026-05-01",
                 "ear": "雙耳",
-                "subsidy": "用身障補助（有九號表）",
+                "subsidy": "用身障補助",
                 "level": "中階型",
                 "viewed_chapters": [],
             },

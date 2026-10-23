@@ -1,9 +1,11 @@
 import re
+from datetime import date, timedelta
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.models import AidAndSubsidy, GuideChapterView, User
 from screening.tests import test_guide, test_guide_summary
@@ -271,7 +273,7 @@ class ChapterQuestionTests(TestCase):
         self.assertFalse(AidAndSubsidy.objects.exists())
 
     def test_other_chapters_ask_nothing_yet(self):
-        for slug in ("before-you-go", "types-and-prices", "after-fitting", "form-25"):
+        for slug in ("before-you-go", "types-and-prices", "form-25"):
             with self.subTest(chapter=slug):
                 self.assertNotContains(self.page(slug), 'id="stop-question"')
 
@@ -576,3 +578,246 @@ class Form9AndNoticeRouteTests(TestCase):
         self.assertContains(response, self.FORM_9)
         self.assertContains(response, 'class="text-danger field-error')
         self.assertIsNone(self.aid().form_9_done)
+
+
+def radios(markup, name):
+    """Each radio for the field name: (value, wording, checked) in order."""
+    found = re.findall(
+        rf'<label[^>]*><input type="radio" name="{name}" value="([^"]+)"([^>]*)>\s*([^<]+)</label>',
+        markup,
+    )
+    return [(value, wording.strip(), " checked" in attrs) for value, attrs, wording in found]
+
+
+class FittingRouteTests(TestCase):
+    """#295 (spec #291 acceptance 11, 18): 配戴之後 asks when the current pair was first worn;
+    which ear only when the notice approved one ear, and for someone who did not come through
+    form 9 and the notice also the ear, the subsidy and, with 用身障補助, its level."""
+
+    DATE = "這副助聽器哪一天開始戴？"
+    DATE_HELP = "可以看購買收據或保固書上的日期"
+    EAR = "戴哪一耳？"
+    SUBSIDY = "有沒有用身障補助買？"
+    LEVEL = "補助的等級是？"
+
+    def setUp(self):
+        self.user = consented_user(username="fitting_route_user")
+        self.client.force_login(self.user)
+        self.make(PTA_55, PTA_55)
+        for chapter in ("before-you-go", "types-and-prices"):
+            GuideChapterView.objects.create(user=self.user, chapter=chapter)
+
+    make = test_guide_summary.GuideSummaryTests.make
+    page = RouteQuestionTests.page
+    stop = RouteQuestionTests.stop
+    marks = RouteQuestionTests.marks
+    legends = Form9AndNoticeRouteTests.legends
+
+    def without_the_notice(self):
+        # 不申請身障補助: 九號表 and the notice do not apply, so 您在這裡 is 配戴之後.
+        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
+
+    def test_without_the_notice_it_asks_the_date_the_ear_the_subsidy_and_the_level(self):
+        self.without_the_notice()
+        stop = self.stop("after-fitting")
+        self.assertEqual(self.marks("after-fitting"), ["您在這裡"])
+        self.assertIn('<input type="hidden" name="stop" value="after-fitting">', stop)
+        self.assertRegex(stop, rf'<label for="id_fitted_on"[^>]*>{self.DATE}</label>')
+        self.assertIn(self.DATE_HELP, stop)
+        today = timezone.localdate().isoformat()
+        self.assertRegex(stop, rf'<input type="date" name="fitted_on"[^>]* max="{today}"')
+        self.assertEqual(self.legends(stop), [self.EAR, self.SUBSIDY, self.LEVEL])
+        self.assertEqual(
+            radios(stop, "ear"),
+            [("left", "左耳", False), ("right", "右耳", False), ("both", "雙耳", False)],
+        )
+        self.assertEqual(
+            radios(stop, "subsidy"),
+            [("disability", "用身障補助", False), ("other", "自費或其他補助", False)],
+        )
+        levels = [value for value, _, _ in radios(stop, "level")]
+        self.assertEqual(levels, ["basic", "mid", "advanced", "cros", "unknown"])
+        self.assertIn('<fieldset class="mb-4" data-aid-level data-shown-with="disability"', stop)
+        self.assertIn('<button type="submit" class="btn btn-primary btn-lg">儲存</button>', stop)
+        self.assertNotIn("還沒開始戴", stop)
+
+    def with_the_notice(self, ears):
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            certificate="yes",
+            form_9_done=True,
+            notice_received=True,
+            approved_ears=ears,
+            level="mid",
+        )
+
+    def test_the_notice_s_one_ear_asks_left_or_right_and_nothing_it_answered(self):
+        self.with_the_notice("one")
+        stop = self.stop("after-fitting")
+        self.assertEqual(self.marks("after-fitting"), ["您在這裡"])
+        self.assertEqual(self.legends(stop), [self.EAR])
+        self.assertEqual(radios(stop, "ear"), [("left", "左耳", False), ("right", "右耳", False)])
+        self.assertNotIn('name="subsidy"', stop)
+        self.assertNotIn('name="level"', stop)
+
+    def test_the_notice_s_both_ears_asks_only_the_date(self):
+        self.with_the_notice("both")
+        stop = self.stop("after-fitting")
+        self.assertIn(self.DATE, stop)
+        self.assertEqual(self.legends(stop), [])
+
+    def fit(self, **answers):
+        data = {"stop": "after-fitting", "next": "/guide#stop-after-fitting", **answers}
+        return self.client.post(reverse("route_answer"), data)
+
+    def aid(self):
+        return AidAndSubsidy.for_user(self.user)
+
+    def test_the_date_and_answers_are_kept_and_it_is_done(self):
+        self.without_the_notice()
+        response = self.fit(fitted_on="2026-05-01", ear="left", subsidy="disability", level="mid")
+        self.assertRedirects(
+            response, "/guide#stop-after-fitting", fetch_redirect_response=False
+        )
+        aid = self.aid()
+        self.assertEqual(
+            (aid.fitted_on, aid.ear, aid.subsidy, aid.level),
+            (date(2026, 5, 1), "left", "disability", "mid"),
+        )
+        self.assertEqual(self.marks("after-fitting"), ["已完成"])
+        edit = re.escape(reverse("guide") + "?edit=after-fitting#stop-after-fitting")
+        self.assertRegex(
+            self.stop("after-fitting"),
+            rf'<p class="route-answer">2026/05/01 開始戴、左耳、用身障補助、中階型 '
+            rf'<a href="{edit}"[^>]*>修改</a></p>',
+        )
+
+    def test_paying_otherwise_keeps_no_level(self):
+        self.without_the_notice()
+        self.fit(fitted_on="2026-05-01", ear="both", subsidy="other", level="mid")
+        aid = self.aid()
+        self.assertEqual((aid.subsidy, aid.level), ("other", ""))
+        self.assertIn("2026/05/01 開始戴、雙耳、自費或其他補助", self.stop("after-fitting"))
+
+    def test_the_date_alone_is_enough(self):
+        self.without_the_notice()
+        self.fit(fitted_on="2026-05-01")
+        self.assertEqual(self.marks("after-fitting"), ["已完成"])
+        self.assertIn('<p class="route-answer">2026/05/01 開始戴 <a', self.stop("after-fitting"))
+
+    def test_the_notice_s_both_ears_are_kept_as_both(self):
+        self.with_the_notice("both")
+        self.fit(fitted_on="2026-05-01")
+        aid = self.aid()
+        self.assertEqual((aid.fitted_on, aid.ear, aid.level), (date(2026, 5, 1), "both", "mid"))
+        self.assertIn("2026/05/01 開始戴、雙耳", self.stop("after-fitting"))
+
+    def test_the_notice_s_one_ear_keeps_the_ear_chosen_and_the_notice_s_level(self):
+        self.with_the_notice("one")
+        self.fit(fitted_on="2026-05-01", ear="right")
+        aid = self.aid()
+        self.assertEqual((aid.ear, aid.subsidy, aid.level), ("right", "", "mid"))
+
+    def test_the_notice_s_one_ear_cannot_be_both(self):
+        self.with_the_notice("one")
+        response = self.fit(fitted_on="2026-05-01", ear="both")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="text-danger field-error')
+        self.assertIsNone(self.aid().fitted_on)
+
+    def test_a_date_after_today_or_none_shows_the_question_again(self):
+        self.without_the_notice()
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        for fitted_on, error in ((tomorrow.isoformat(), "開始配戴日期不能是未來"), ("", None)):
+            with self.subTest(fitted_on=fitted_on):
+                response = self.fit(fitted_on=fitted_on, ear="left")
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, self.DATE)
+                self.assertContains(response, 'class="text-danger field-error')
+                if error:
+                    self.assertContains(response, error)
+                aid = self.aid()
+                self.assertEqual((aid.fitted_on, aid.ear), (None, ""))
+
+    def test_today_is_allowed(self):
+        self.without_the_notice()
+        self.fit(fitted_on=timezone.localdate().isoformat())
+        self.assertEqual(self.aid().fitted_on, timezone.localdate())
+
+    def test_edit_opens_it_filled_with_not_fitted_yet(self):
+        self.without_the_notice()
+        self.fit(fitted_on="2026-05-01", ear="left", subsidy="disability", level="mid")
+        stop = self.stop("after-fitting", "?edit=after-fitting")
+        self.assertRegex(stop, r'<input type="date" name="fitted_on" value="2026-05-01"')
+        self.assertEqual(radios(stop, "ear")[0], ("left", "左耳", True))
+        self.assertEqual(radios(stop, "subsidy")[0], ("disability", "用身障補助", True))
+        self.assertEqual(radios(stop, "level")[1], ("mid", "中階型", True))
+        self.assertIn(
+            '<button type="submit" name="not_fitted" value="1" '
+            'class="btn btn-outline-primary btn-lg">還沒開始戴</button>',
+            stop,
+        )
+
+    def test_not_fitted_yet_clears_what_it_asked_and_takes_the_done_away(self):
+        self.without_the_notice()
+        self.fit(fitted_on="2026-05-01", ear="left", subsidy="disability", level="mid")
+        self.fit(fitted_on="2026-05-01", ear="left", not_fitted="1")
+        aid = self.aid()
+        self.assertEqual(
+            (aid.fitted_on, aid.ear, aid.subsidy, aid.level, aid.certificate),
+            (None, "", "", "", "no_subsidy"),
+        )
+        self.assertEqual(self.marks("after-fitting"), ["您在這裡"])
+        self.assertNotIn('class="route-answer"', self.stop("after-fitting"))
+
+    def test_not_fitted_yet_keeps_the_notice_s_answers(self):
+        self.with_the_notice("both")
+        self.fit(fitted_on="2026-05-01")
+        self.fit(not_fitted="1")
+        aid = self.aid()
+        self.assertEqual(
+            (aid.fitted_on, aid.ear, aid.notice_received, aid.approved_ears, aid.level),
+            (None, "", True, "both", "mid"),
+        )
+
+    def test_the_level_s_script_comes_with_the_level_question(self):
+        self.without_the_notice()
+        self.assertIn("screening/frontend/my-aid.js", self.page())
+        AidAndSubsidy.objects.filter(user=self.user).update(certificate="yes")
+        self.assertNotIn("my-aid.js", self.page())
+
+
+class FittingChapterTests(TestCase):
+    """#295 (spec #291 Q13): the 配戴之後 chapter ends with the same question while it is
+    unanswered, and 已記下 once the date is filled in."""
+
+    def setUp(self):
+        self.user = consented_user(username="fitting_chapter_user")
+        self.client.force_login(self.user)
+        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
+
+    def card(self):
+        content = self.client.get(reverse("guide_chapter", args=["after-fitting"])).content
+        content = content.decode()
+        return content[content.index('<section id="stop-question"') : content.index("<footer")]
+
+    def test_unanswered_it_asks_and_answering_goes_back_to_it(self):
+        chapter = "/guide/after-fitting#stop-question"
+        card = self.card()
+        self.assertIn(FittingRouteTests.DATE, card)
+        self.assertIn(f'<input type="hidden" name="next" value="{chapter}">', card)
+        data = {"stop": "after-fitting", "fitted_on": "2026-05-01", "ear": "both", "next": chapter}
+        response = self.client.post(reverse("route_answer"), data)
+        self.assertRedirects(response, chapter, fetch_redirect_response=False)
+        self.assertIn("已記下：2026/05/01 開始戴、雙耳", self.card())
+
+    def test_a_date_after_today_shows_the_chapter_again_with_its_error(self):
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        data = {
+            "stop": "after-fitting",
+            "fitted_on": tomorrow.isoformat(),
+            "next": "/guide/after-fitting#stop-question",
+        }
+        response = self.client.post(reverse("route_answer"), data)
+        self.assertContains(response, "開始配戴日期不能是未來")
+        self.assertContains(response, '<h1 class="h3 mt-4">配戴助聽器之後</h1>')

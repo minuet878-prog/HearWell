@@ -2184,6 +2184,54 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).to_contain_text("收到核定通知後 6 個月內要買。")
 
+    # #295 (spec #291 e2e, acceptance 11, 12, 18, 27): the latest questionnaire answered
+    # wearing hearing aids, so 您在這裡 is 配戴之後 and it asks the ear and the subsidy too; the
+    # level appears only once 用身障補助 is chosen. Then 修改 and 還沒開始戴 take it back.
+    def test_answering_the_fitting_date_moves_the_route_on(self):
+        Submission.objects.filter(user__username="guide_e2e").update(wearing_hearing_aid=True)
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/after-fitting")
+            card = self.main().get_by_role("region", name="看完了嗎？")
+            expect(card.get_by_label("這副助聽器哪一天開始戴？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/after-fitting question card")
+
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("配戴助聽器之後")
+            expect(here.get_by_role("group", name="有沒有用身障補助買？")).to_be_visible()
+            level = here.get_by_role("group", name="補助的等級是？")
+            expect(level).to_be_hidden()
+            here.get_by_label("這副助聽器哪一天開始戴？").fill("2026-05-01")
+            here.get_by_role("radio", name="雙耳").check()
+            here.get_by_role("radio", name="自費或其他補助").check()
+            expect(level).to_be_hidden()
+            here.get_by_role("radio", name="用身障補助").check()
+            expect(level).to_be_visible()
+            level.get_by_role("radio", name="中階型").check()
+            self.assert_fits_a_phone_at_double_text_size("/guide the fitting question")
+            here.get_by_role("button", name="儲存").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-after-fitting")
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.locator(".route-mark")).to_have_text(["已完成"])
+            expect(fitting.locator(".route-answer")).to_have_text(
+                "2026/05/01 開始戴、雙耳、用身障補助、中階型 修改"
+            )
+            expect(self.main().locator('[aria-current="step"]')).to_contain_text("二十五號表")
+            fitting.get_by_role("link", name="修改配戴助聽器之後的回答").click()
+
+            fitting = self.main().locator('[data-stop="after-fitting"]')
+            expect(fitting.get_by_label("這副助聽器哪一天開始戴？")).to_have_value("2026-05-01")
+            expect(fitting.get_by_role("group", name="補助的等級是？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide editing the fitting")
+            fitting.get_by_role("button", name="還沒開始戴").click()
+
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("配戴助聽器之後")
+            expect(here.locator(".route-answer")).to_have_count(0)
+            expect(here.get_by_label("這副助聽器哪一天開始戴？")).to_have_value("")
+
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
     # with the worked steps open and a county's hospitals listed.
     def test_pages_fit_a_phone_at_double_text_size(self):

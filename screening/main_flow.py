@@ -121,8 +121,10 @@ def home_more(user, today):
     elif state.stop:
         suggested = "guide"
         because = NEXT_STEP_REASONS[state.stop]
-        if state.stop == "form-25":
+        if state.stop == "form-25" and state.form_25:
             because = because.format(deadline=state.form_25[1])
+        elif state.stop == "form-25":
+            because = NEXT_STEP_REASONS["form-25-undated"]
         next_step = NextStep(cards[suggested], because, "看我的選配指引")
     elif user.report_shares.exists():  # any link ever made, ended ones too
         suggested = "print"

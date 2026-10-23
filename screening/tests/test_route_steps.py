@@ -267,7 +267,7 @@ class CertificateStopTests(TestCase):
         )
         state = self.state()
         self.assertLessEqual({"form-25", "payout"}, state.not_applicable)
-        self.assertEqual(state.stop, "after-fitting")
+        self.assertIsNone(state.stop)
 
     def test_changing_back_to_applying_undoes_it(self):
         self.state("no_subsidy")
@@ -355,3 +355,37 @@ class Form9AndNoticeStopTests(TestCase):
         self.make(*WITHIN_25)
         AidAndSubsidy.objects.create(user=self.user, form_9_done=False)
         self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")
+
+
+class FittingStopTests(TestCase):
+    """#295 (spec #291 acceptance 12, 13, Q9): 配戴之後 is done once a fitting date is filled
+    in; from then on 您在這裡 looks only at 二十五號表 and 等待補助發放."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+
+    def setUp(self):
+        self.user = consented_user(username="fitting_stop_user")
+        self.make(*OVER_25)
+
+    make = test_guide_summary.GuideSummaryTests.make
+    answer = test_fitting_route.CurrentStopTests.answer
+
+    def state(self):
+        return fitting_state(self.user, TODAY)
+
+    def test_a_fitting_date_is_done_and_here_is_form_25_not_the_stops_before(self):
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        state = self.state()
+        self.assertEqual(state.done, {AUDIOGRAM, "after-fitting"})
+        self.assertEqual(state.stop, "form-25")
+
+    def test_wearing_by_the_questionnaire_without_a_date_stays_at_after_fitting(self):
+        self.answer(wearing=True)
+        AidAndSubsidy.objects.create(user=self.user, ear="both", subsidy="disability")
+        state = self.state()
+        self.assertNotIn("after-fitting", state.done)
+        self.assertEqual(state.stop, "after-fitting")

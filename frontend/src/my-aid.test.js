@@ -1,15 +1,13 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-// my_aid.html's subsidy and level questions, as Django renders them (#287).
+// stop_question.html's subsidy and level questions at 配戴之後, as Django renders them (#295).
 const FORM = `
   <form>
     <fieldset>
-      <input type="radio" name="subsidy" value="" checked>
       <input type="radio" name="subsidy" value="disability">
       <input type="radio" name="subsidy" value="other">
     </fieldset>
-    <fieldset data-aid-level data-shown-with="disability">
-      <input type="radio" name="level" value="" checked>
+    <fieldset class="mb-4" data-aid-level data-shown-with="disability">
       <input type="radio" name="level" value="mid">
     </fieldset>
   </form>`;
@@ -34,14 +32,11 @@ it("hides the level until 用身障補助 is chosen", async () => {
   expect(level().hidden).toBe(false);
 });
 
-it("hides it again when paying otherwise or not answering", async () => {
+it("hides it again when paying otherwise", async () => {
   document.body.innerHTML = FORM;
   await import("./my-aid.js");
   choose("disability");
   choose("other");
-  expect(level().hidden).toBe(true);
-  choose("disability");
-  choose("");
   expect(level().hidden).toBe(true);
 });
 

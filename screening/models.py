@@ -508,7 +508,7 @@ class AidEar(models.TextChoices):
 
 
 class Subsidy(models.TextChoices):
-    DISABILITY = "disability", "用身障補助（有九號表）"
+    DISABILITY = "disability", "用身障補助"
     OTHER = "other", "自費或其他補助"
 
 

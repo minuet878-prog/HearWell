@@ -136,6 +136,8 @@ def fitting_state(user, today):
         done.add("form-9")
     if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
+    if _fitted(aid):
+        done.add("after-fitting")  # #295: the fitting date alone finishes it
     if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
         not_applicable |= WITHOUT_SUBSIDY
     # Q7: within the normal range, the route waits until the user starts on a stop.

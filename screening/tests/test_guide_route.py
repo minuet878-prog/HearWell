@@ -218,11 +218,11 @@ class FittedOnRouteTests(TestCase):
     tags = GuideRouteTests.tags
     assert_only_here_at = GuideRouteTests.assert_only_here_at
 
-    def test_a_fitting_date_with_the_latest_answered_without_them_is_here_after_fitting(self):
+    def test_a_fitting_date_with_the_latest_answered_without_them_looks_on_from_it(self):
         self.make(PTA_55, PTA_55)
         self.answer(wearing=False)
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assert_only_here_at(self.tags(), "after-fitting")
+        self.assert_only_here_at(self.tags(), "form-25")
 
 
 class Form25DeadlineTests(TestCase):
@@ -300,10 +300,10 @@ class ReapplyDateTests(TestCase):
 
     def test_the_subsidy_and_a_fitting_date_say_when_to_apply_again(self):
         AidAndSubsidy.objects.create(
-            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
         )
         self.assertIn("2030/05/01 起可以再申請補助", self.stop("form-9"))
-        self.assert_only_here_at(self.tags(), "after-fitting")
+        self.assert_only_here_at(self.tags(), "form-25")
 
     def test_four_years_after_29_february_shows_the_28th_in_2100(self):
         AidAndSubsidy.objects.create(

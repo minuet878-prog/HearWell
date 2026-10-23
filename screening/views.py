@@ -323,6 +323,14 @@ def _answer(slug, aid):
         return CERTIFICATE_ANSWERS.get(aid.certificate, "")
     if slug == "form-9":
         return FORM_9_ANSWERS.get(aid.form_9_done, "")
+    if slug == "after-fitting":
+        # #295: 2026/05/01 開始戴、雙耳, with the subsidy and its level where this stop asked.
+        if aid.fitted_on is None:
+            return ""
+        parts = [f"{aid.fitted_on:%Y/%m/%d} 開始戴", aid.get_ear_display()]
+        if aid.subsidy:
+            parts += [aid.get_subsidy_display(), aid.get_level_display()]
+        return "、".join(filter(None, parts))
     # The notice: 雙耳、中階型 once both are answered, else how far it has got.
     if aid.notice_received is None:
         return ""

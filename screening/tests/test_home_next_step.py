@@ -357,3 +357,17 @@ class EveryStopNextStepTests(TestCase):
                     "看我的選配指引",
                 ),
             )
+
+    def test_form_25_without_a_deadline_says_it_without_one(self):
+        # #295: a fitting date with the subsidy unanswered moves on to form 25, whose dates
+        # need 用身障補助; the reason leaves the date out rather than failing.
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assertEqual(
+            self.next_step(),
+            (
+                "了解助聽器選配與補助",
+                "因為：您的助聽器要做使用效益驗證（二十五號表），才能核銷補助。",
+                "/guide",
+                "看我的選配指引",
+            ),
+        )

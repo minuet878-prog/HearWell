@@ -401,6 +401,19 @@ class HearingAidReportLineTests(TestCase):
         self.fill(subsidy="disability", level="unknown")
         self.assertIn("<li>助聽器：雙耳，2026/05/01 開始戴</li>", self.summary())
 
+    def test_only_what_is_filled_in(self):
+        # #295 (spec #291 acceptance 22): the notice's level before a fitting date, or a date
+        # without the ear.
+        for fields, line in (
+            ({"fitted_on": None, "ear": "", "notice_received": True, "level": "mid"}, "中階型"),
+            ({"ear": ""}, "2026/05/01 開始戴"),
+            ({"fitted_on": None, "ear": "left"}, "左耳"),
+        ):
+            with self.subTest(**fields):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.fill(**fields)
+                self.assertIn(f"<li>助聽器：{line}</li>", self.summary())
+
     def test_no_line_without_the_ear_the_date_or_the_level(self):
         self.fill(fitted_on=None, ear="", subsidy="other")
         self.assertNotIn("開始戴", self.summary())
