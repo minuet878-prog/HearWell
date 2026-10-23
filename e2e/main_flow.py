@@ -1164,7 +1164,13 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             for path in self.pages:
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
-                    self.page.wait_for_load_state("networkidle")
+                    # Not networkidle, which Playwright discourages and which once never came in
+                    # CI: wait for the charts React draws (/report has an audiogram), then their
+                    # fonts.
+                    expect(self.page.get_by_text("趨勢圖載入中…")).to_have_count(0)
+                    if self.page.locator("#audiogram-chart").count():
+                        expect(self.page.locator("#audiogram-chart svg").first).to_be_visible()
+                    self.page.evaluate("document.fonts.ready")
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 320)
                     # Spec 4.3: at the very bottom the footer's last line clears the tab bar.
@@ -2166,8 +2172,8 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_browser_tab_shows_no_back_button(self):
         self.open(standalone=False)
         with self.saving_artifacts():
+            # goto waits for the load event, and pwa-nav.js, a module script, has run before it.
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
-            self.page.wait_for_load_state("networkidle")
             expect(self.page.locator("#pwa-back")).to_be_hidden()
 
     # 2, 3, 4
@@ -2175,7 +2181,6 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            self.page.wait_for_load_state("networkidle")
             expect(self.page.locator("#pwa-back")).to_have_count(0)
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
                 "link", name="開始篩檢"
@@ -2213,7 +2218,7 @@ class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
     def header_boxes(self, username):
         self.page.goto(f"{self.live_server_url}/my_hearing")
-        self.page.wait_for_load_state("networkidle")
+        self.page.evaluate("document.fonts.ready")
         return (
             self.page.locator(".site-brand").bounding_box(),
             self.page.get_by_role("button", name="登出").bounding_box(),
@@ -2313,7 +2318,6 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.page.goto(f"{self.live_server_url}/")
-        self.page.wait_for_load_state("networkidle")
         return self.page.get_by_role("region", name="您還可以").get_by_role("link")
 
     def group_titles(self):
@@ -2333,7 +2337,6 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open_home(standalone=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/account")
-            self.page.wait_for_load_state("networkidle")
             rows = self.page.get_by_role("region", name="家人與手機").get_by_role("link")
             expect(rows.locator(".settings-row-title")).to_have_text(
                 ["分享報告給家人", "給家人看：怎麼跟聽損的家人溝通"]

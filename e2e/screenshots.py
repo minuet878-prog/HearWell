@@ -304,7 +304,14 @@ class Screenshots(StaticLiveServerTestCase):
         page.clock.set_fixed_time(NOW)
         page.emulate_media(media=shot.media)
         page.goto(f"{self.live_server_url}{shot.url}")
-        page.wait_for_load_state("networkidle")
+        # Wait for what React draws, not networkidle (Playwright discourages it; it once never
+        # came in CI): the trend chart's API answer, the answer page's questions, the audiograms.
+        if shot.javascript:
+            expect(page.get_by_text("趨勢圖載入中…")).to_have_count(0)
+            expect(page.locator("html.answer-loading")).to_have_count(0)
+            for mount, drawn in (("#audiogram-chart", "svg"), ("#audiogram-app", ".step-progress")):
+                if page.locator(mount).count():
+                    expect(page.locator(f"{mount} {drawn}").first).to_be_visible()
         page.evaluate("document.fonts.ready")
         if page.locator("#trend-chart, #audiogram-chart, #audiogram-app").count():
             page.wait_for_timeout(SETTLE_MS)
