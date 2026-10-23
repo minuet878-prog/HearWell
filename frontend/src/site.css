@@ -28,6 +28,7 @@
   --color-severe-bg-deep: #f6c3b3;
   --color-surface: #f1f3f5;
   --color-brand-soft: #eef3fa;
+  --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
   --color-pull: #e7eef8;
   --color-border: #ced4da;
@@ -3609,11 +3610,13 @@
     padding-bottom: 0;
   }
 
+  /* #316: not white (white means tappable, ADR 0022) but a light blue a little deeper than the
+     urgent box, so the 119 line still stands out. */
   .family-guide .urgent-call {
     margin-bottom: 0;
     padding: 0.875rem;
     border-radius: var(--radius-large);
-    background-color: #fff;
+    background-color: var(--color-brand-soft-deep);
     color: var(--color-heading);
   }
 
