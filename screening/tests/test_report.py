@@ -21,7 +21,7 @@ from screening.models import (
 )
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.scoring import IOI_HA_BELOW_NORM_NOTES
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import action_cards, consented_user
 
 # Unaided 4x5 + 2x3 + 0x2 = 26 (顯著影響, emotional 20, social 6); aided all 2 = 20.
 UNAIDED = [4, 4, 4, 4, 4, 2, 2, 2, 0, 0]
@@ -263,10 +263,16 @@ class HealthReportTests(TestCase):
 
     # 10
     def test_history_page_links_to_report(self):
-        response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, f'href="{self.url}"')
-        self.assertContains(response, "聽力報告")
-        self.assertContains(response, "可以印出來或存成 PDF，帶去給醫師看")
+        # The report and sharing it, as two action cards under 「要給醫師或家人看？」.
+        content = self.client.get(reverse("my_hearing")).content.decode()
+        section = content[content.index('aria-labelledby="for-doctor-title"') :]
+        self.assertEqual(
+            action_cards(section),
+            [
+                (self.url, "看／印聽力報告", "可以印出來或存成 PDF"),
+                (reverse("share_report"), "傳給家人看", "家人不用登入就能看"),
+            ],
+        )
 
     # 11
     def test_history_table_lists_latest_five(self):

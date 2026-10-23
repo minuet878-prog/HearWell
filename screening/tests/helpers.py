@@ -33,6 +33,18 @@ def register(*definitions):
     return patch.dict(questionnaires.DEFINITIONS, {d.code: d for d in definitions})
 
 
+ACTION_CARD = re.compile(
+    r'<a class="link-card action-card" href="([^"]*)">.*?'
+    r'<span class="link-card-title">([^<]*)</span>\s*<span>([^<]*)</span>',
+    re.S,
+)
+
+
+def action_cards(html):
+    """(href, title, line under it) of each action card (icon, title, one line, arrow)."""
+    return ACTION_CARD.findall(html)
+
+
 def step_bar(response):
     """(done, total) segments of the step progress bar on a page, or None without one."""
     content = response.content.decode()

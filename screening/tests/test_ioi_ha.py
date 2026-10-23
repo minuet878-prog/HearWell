@@ -11,7 +11,7 @@ from django.utils import timezone
 from screening import scoring
 from screening.models import Answer, Category, Question, Questionnaire, Submission
 from screening.questionnaires import ioi_ha
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import action_cards, consented_user
 
 
 class IoiHaTests(TestCase):
@@ -683,7 +683,9 @@ class IoiHaResultRedesignTests(TestCase):
         next_steps = self._next(main)
         self.assertIn(IoiHaTests.ADVICE, next_steps)
         self.assertNotIn("<a ", next_steps)
-        self.assertIn(f'href="{reverse("health_report")}">看／印聽力報告</a>', main)
+        self.assertIn(
+            (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"), action_cards(main)
+        )
 
 
 class IoiHaFixtureTests(TestCase):

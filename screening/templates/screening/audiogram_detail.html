@@ -51,12 +51,32 @@
         </tbody>
     </table>
 </details>
-<section class="card card-body mb-4" aria-labelledby="next-title">
+<section class="mb-4" aria-labelledby="next-title">
     <h2 id="next-title" class="h4">接下來</h2>
-    {% if latest_tested_on %}<p>聽力報告放的是最新一張（{{ latest_tested_on|date:"Y/m/d" }}）</p>{% endif %}
-    <a class="btn btn-primary btn-lg w-full" href="{% url 'health_report' %}">看／印聽力報告</a>
-    {% if compare_with %}<a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'audiogram_compare' %}?a={{ audiogram.id }}&amp;b={{ compare_with }}">和以前的聽力圖比較</a>{% endif %}
-    {% if fitting_guide %}<a class="btn btn-outline-primary btn-lg w-full mt-2" href="{% url 'guide' %}">看我的選配指引</a>{% endif %}
+    <a class="link-card action-card" href="{% url 'health_report' %}">
+        {% include "screening/action_icon.html" with icon="report" %}
+        <span class="link-card-body">
+            <span class="link-card-title">看／印聽力報告</span>
+            <span>{% if latest_tested_on %}聽力報告放的是最新一張（{{ latest_tested_on|date:"Y/m/d" }}）{% else %}可以印出來或存成 PDF{% endif %}</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>
+    {% if compare_with %}<a class="link-card action-card" href="{% url 'audiogram_compare' %}?a={{ audiogram.id }}&amp;b={{ compare_with }}">
+        {% include "screening/action_icon.html" with icon="compare" %}
+        <span class="link-card-body">
+            <span class="link-card-title">和以前的聽力圖比較</span>
+            <span>看聽力有沒有變化</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>{% endif %}
+    {% if fitting_guide %}<a class="link-card action-card" href="{% url 'guide' %}">
+        {% include "screening/action_icon.html" with icon="guide" %}
+        <span class="link-card-body">
+            <span class="link-card-title">看我的選配指引</span>
+            <span>依您的聽力圖整理下一步</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>{% endif %}
 </section>
 <p class="quiet-links"><a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a><a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a></p>
 {% endblock %}

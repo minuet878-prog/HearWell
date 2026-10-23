@@ -10,7 +10,7 @@ from screening.tests import test_audiogram
 from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (E3), written out so a changed template fails.
-GUIDE_LINK = 'href="/guide">看我的選配指引</a>'
+GUIDE_LINK = '<a class="link-card action-card" href="/guide">'
 
 
 def ear(side, values):

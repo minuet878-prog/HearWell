@@ -25,7 +25,7 @@ from screening.models import (
 from screening.questionnaires import hhie_s
 from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_history
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.tests.helpers import action_cards, consented_user, fake_definition, register
 
 
 class CopyTests(TestCase):
@@ -650,8 +650,9 @@ class PageFlowTests(TestCase):
     def test_result_next_step_links(self):
         main = self._result(self._submit([0] * 10))
         records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
-        self.assertRegex(main, rf'<a[^>]*href="{re.escape(records)}"[^>]*>\s*看我的紀錄與趨勢')
-        self.assertRegex(main, rf'<a[^>]*href="{reverse("index")}"[^>]*>\s*回首頁')
+        cards = [card[:2] for card in action_cards(main)]
+        self.assertIn((records, "看我的紀錄與趨勢"), cards)
+        self.assertIn((reverse("index"), "回首頁"), cards)
 
     def test_result_has_no_username_or_halfwidth_colon(self):
         main = self._result(self._submit([2] * 10))

@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, NormGroup, Questionnaire, Submission
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import action_cards, consented_user
 
 # A valid score for every item of each questionnaire, and what its header names.
 QUESTIONNAIRES = {
@@ -82,22 +82,18 @@ class ResultPagesTests(TestCase):
             with self.subTest(code=code):
                 main = self._main(code)
                 row = re.search(r'<div class="result-actions[^"]*">(.*?)</div>', main, re.S)
-                links = re.findall(r'<a class="([^"]+)" href="([^"]+)">(.*?)</a>', row.group(1))
                 records = "看我的紀錄與趨勢" if code in TREND_CHART else "看我的紀錄"
+                self.assertEqual(row.group(1).count("<a "), 3)
                 self.assertEqual(
-                    links,
+                    action_cards(row.group(1)),
                     [
                         (
-                            "btn btn-primary btn-lg",
                             f"{reverse('my_hearing')}?questionnaire={code}",
                             records,
+                            "每一次的結果都在這裡",
                         ),
-                        (
-                            "btn btn-outline-primary btn-lg",
-                            reverse("health_report"),
-                            "看／印聽力報告",
-                        ),
-                        ("btn btn-outline-primary btn-lg", reverse("index"), "回首頁"),
+                        (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"),
+                        (reverse("index"), "回首頁", "選其他問卷或功能"),
                     ],
                 )
                 self.assertEqual(main.count('class="result-actions'), 1)
