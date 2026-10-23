@@ -2468,20 +2468,24 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(narrow, [], path)
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
-    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason).
+    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason). #304:
+    # the result page shows the same box (spec #297 acceptance 12).
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
+        submission = Submission.objects.get(user__username="guide_e2e")
         with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            reason = self.main().locator(".next-step-because")
-            expect(reason).to_contain_text("先看看第一次去找聽力師要準備什麼。")
-            self.assert_fits_a_phone_at_double_text_size("/ next step")
-            room = reason.evaluate(
-                "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
-                " overflow: p.scrollWidth - p.clientWidth})"
-            )
-            self.assertGreaterEqual(room["chars"], 4)
-            self.assertLessEqual(room["overflow"], 0)
+            for path in ("/", f"/submission/{submission.pk}"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    reason = self.main().locator(".next-step-because")
+                    expect(reason).to_contain_text("先看看第一次去找聽力師要準備什麼。")
+                    self.assert_fits_a_phone_at_double_text_size(f"{path} next step")
+                    room = reason.evaluate(
+                        "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
+                        " overflow: p.scrollWidth - p.clientWidth})"
+                    )
+                    self.assertGreaterEqual(room["chars"], 4, path)
+                    self.assertLessEqual(room["overflow"], 0, path)
 
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
     # nothing, so the stop is 去找聽力師之前 (spec #291).

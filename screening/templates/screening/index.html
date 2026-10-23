@@ -128,15 +128,7 @@
 {# #261 (spec #257, option Z): the 建議下一步 on top, then the other cards grouped by use. The suggestion is a box, not a link: only its button is clickable (ADR 0006). #}
 <section class="more-section mt-6" aria-labelledby="more-title">
     <h2 id="more-title" class="h4">您還可以</h2>
-    <div class="next-step">
-        <p class="next-step-label">建議您下一步</p>
-        <div class="next-step-head">
-            {% include "screening/action_icon.html" with icon=next_step.card.icon %}
-            <h3 class="next-step-title">{{ next_step.card.title }}</h3>
-        </div>
-        <p class="next-step-because">因為：{{ next_step.because }}</p>
-        <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
-    </div>
+    {% include "screening/next_step.html" with heading=3 %}
     {# Ticket #160: pwa-nav.js hides [data-hide-in-app] in the home-screen app; without JavaScript every group shows. #}
     {% for title, cards, hidden_in_app in more_groups %}
     <div class="more-group"{% if hidden_in_app %} data-hide-in-app{% endif %}>

@@ -1,0 +1,10 @@
+{# The 建議下一步 box (GLOSSARY), shared by the returning user's home and every result page (ADR 0023). The box is not a link: only its button is clickable (ADR 0006). heading: 3 under the home page's 您還可以, 2 on a result page (rule 17). #}
+<div class="next-step">
+    <p class="next-step-label">建議您下一步</p>
+    <div class="next-step-head">
+        {% include "screening/action_icon.html" with icon=next_step.card.icon %}
+        <h{{ heading }} class="next-step-title">{{ next_step.card.title }}</h{{ heading }}>
+    </div>
+    <p class="next-step-because">因為：{{ next_step.because }}</p>
+    <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
+</div>
