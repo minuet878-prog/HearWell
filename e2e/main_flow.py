@@ -20,6 +20,7 @@ from django.test import Client
 from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
+from screening.audiogram import DB_MAX
 from screening.models import (
     Answer,
     Audiogram,
@@ -1953,6 +1954,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
     # #258: the route's longest stops at 200% text: 您在這裡 with 資料不足 and its button, then
     # 估算未達門檻 with its link (the setUp audiogram reaches the threshold, so it is changed).
+    # #260: then a no-response point, so the ratio's meter says 至少約 and hatches on to 100%.
     def test_route_marks_fit_a_phone_at_double_text_size(self):
         self.open(320, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
@@ -1973,6 +1975,16 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.page.goto(f"{self.live_server_url}/guide")
                 expect(self.main().get_by_role("link", name="看沒有身障證明時")).to_have_count(2)
                 self.assert_fits_a_phone_at_double_text_size("/guide not reached")
+            with self.subTest(state="no response"):
+                # 40 and 80 dB HL, the left unheard at 4000 Hz: at least about 35.0%.
+                points.filter(ear="right").update(db=40)
+                points.filter(ear="left").update(db=80)
+                points.filter(ear="left", frequency=4000).update(db=DB_MAX["air"], no_response=True)
+                self.page.goto(f"{self.live_server_url}/guide")
+                threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+                expect(threshold).to_contain_text("雙耳障礙比率（估算） 至少約 35.0%")
+                expect(threshold.locator(".meter-beyond")).to_have_count(1)
+                self.assert_fits_a_phone_at_double_text_size("/guide no response")
 
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
     # wide at 200% text. The setUp audiogram reaches the threshold; missing a frequency, one
