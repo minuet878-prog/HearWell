@@ -59,7 +59,7 @@ class GuideResultEntryTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _items(self, main):
-        start = main.index('<ol class="next-steps">')
+        start = main.index('<ol class="next-steps" role="list">')
         return main[start : main.index("</ol>", start)].split("<li>")[1:]
 
     def test_the_check_step_links_to_the_guide_after_its_own_link(self):
