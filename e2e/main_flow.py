@@ -4785,8 +4785,14 @@ WHITE_CARD_PAGES_HOME_RESULT = (
     ("THI result", True, lambda test: test.result("thi", 4)),
 )
 
-# #300: the answering pages.
-WHITE_CARD_PAGES_ANSWERING = ()
+# #300: the answering pages, and login and register, whose form card is the rule's one exception.
+WHITE_CARD_PAGES_ANSWERING = (
+    ("answering", True, lambda test: test.answering("hhie-s")),
+    ("questionnaire list, suggested", True, "/questionnaire_list?age_group=older&hearing_aid=yes"),
+    ("questionnaire list, choose yourself", True, "/questionnaire_list?choose=self"),
+    ("login", False, "/login"),
+    ("register", False, "/register"),
+)
 
 # #301: the records pages, and the IOI-HA, SADL and SSQ12-TW result pages (their item cards
 # are #301's).
@@ -4902,6 +4908,23 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def shared_report(self):
         self.report()
         return f"/shared/{ReportShare.objects.create(user=self.user).token}/report"
+
+    # #300's helpers.
+    def answering(self, code):
+        return f"/questionnaire/{Questionnaire.objects.get(code=code).pk}"
+
+    def visit_without_javascript(self, path, width=1024):
+        """The answering page's Django form, every question at once, as when React does not load."""
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900},
+            reduced_motion="reduce",
+            java_script_enabled=False,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
 
     def visit(self, signed_in, path, width=1024):
         self.open(signed_in, width)
@@ -5091,3 +5114,91 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_a_phone_at_double_text_size(name)
+
+    # #300: the answering page's questions are flat; its choices stay white with a grey edge.
+    GREY_EDGE = "rgb(206, 212, 218)"
+
+    def assert_white_choices(self, question):
+        choices = question.locator("label")
+        self.assertGreater(choices.count(), 1)
+        for choice in choices.all():
+            with self.subTest(choice=choice.inner_text()):
+                self.assertEqual(self.style(choice, "backgroundColor"), self.WHITE)
+                self.assertEqual(self.style(choice, "borderTopColor"), self.GREY_EDGE)
+                self.assertEqual(self.style(choice, "boxShadow"), "none")
+
+    def assert_questions_apart(self, questions):
+        """More space between two questions than between two choices inside one."""
+        choices = questions.first.locator("label")
+        inside = choices.nth(1).bounding_box()["y"] - (
+            choices.nth(0).bounding_box()["y"] + choices.nth(0).bounding_box()["height"]
+        )
+        boxes = [question.bounding_box() for question in questions.all()]
+        for above, below in pairwise(boxes):
+            self.assertGreater(below["y"] - (above["y"] + above["height"]), inside)
+
+    def test_answering_questions_are_flat_and_choices_stay_white(self):
+        with self.saving_artifacts():
+            # React: one question per page, here the wearing question first.
+            self.visit(True, lambda test: test.answering("hhie-s"))
+            question = self.main().locator(".answer-app").get_by_role("group")
+            self.assert_flat(question)
+            self.assert_white_choices(question)
+            self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+            # The Django form: every question on one page, apart by number, title and space.
+            self.visit_without_javascript(self.answering("hhie-s"))
+            questions = self.main().locator("#answer-form").get_by_role("group")
+            self.assertEqual(questions.count(), 1 + QUESTION_COUNT)
+            for question in questions.all():
+                with self.subTest(question=question.inner_text()[:12]):
+                    self.assert_flat(question)
+                    self.assert_white_choices(question)
+            self.assert_questions_apart(questions)
+            self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+
+    def test_answering_fits_a_phone_at_double_text_size_with_questions_apart(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.answering("hhie-s"), width=320)
+            expect(self.main().locator(".answer-app").get_by_role("group")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("answering")
+            self.visit_without_javascript(self.answering("hhie-s"), width=320)
+            self.assert_fits_a_phone_at_double_text_size("answering without JavaScript")
+            self.assert_questions_apart(self.main().locator("#answer-form").get_by_role("group"))
+
+    # #300: login and register keep their form card white: the rule's one exception.
+    def test_login_and_register_form_cards_stay_white_cards(self):
+        with self.saving_artifacts():
+            for path, button in (("/login", "登入"), ("/register", "註冊")):
+                with self.subTest(page=path):
+                    self.visit(False, path)
+                    form_card = self.main().locator(".auth-card")
+                    expect(form_card.get_by_role("button", name=button, exact=True)).to_be_visible()
+                    self.assertEqual(self.style(form_card, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(form_card, "boxShadow"), self.WARM_SHADOW)
+
+    # #300: the suggested questionnaire is flat with its 開始作答 button; whole cards stay white.
+    def test_suggested_questionnaire_is_flat_and_questionnaire_cards_stay_white(self):
+        with self.saving_artifacts():
+            self.visit(True, "/questionnaire_list?age_group=older&hearing_aid=yes")
+            suggested = (
+                self.main()
+                .get_by_role("region")
+                .filter(has=self.page.get_by_role("link", name="開始作答", exact=True))
+            )
+            self.assert_flat(suggested)
+            self.assertEqual(
+                self.style(suggested.get_by_role("link", name="開始作答"), "backgroundImage"),
+                self.GRADIENT,
+            )
+            for path in (
+                "/questionnaire_list?age_group=older&hearing_aid=yes",
+                "/questionnaire_list?choose=self",
+            ):
+                with self.subTest(page=path):
+                    self.visit(True, path)
+                    cards = self.main().locator("a.link-card").filter(visible=True)
+                    self.assertGreater(cards.count(), 0)
+                    for card in cards.all():
+                        with self.subTest(card=card.inner_text()[:12]):
+                            self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
+                            self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
