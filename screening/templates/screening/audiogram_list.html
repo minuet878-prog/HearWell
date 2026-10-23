@@ -17,7 +17,7 @@
 </p>
 {% for audiogram in audiograms %}
 {% with result=audiogram.interpretation %}
-<a class="link-card" href="{% url 'audiogram_detail' audiogram.id %}">
+<a class="link-card audiogram-card" href="{% url 'audiogram_detail' audiogram.id %}">
     {% include "screening/audiogram_thumbnail.html" %}
     <span class="link-card-body">
         <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>

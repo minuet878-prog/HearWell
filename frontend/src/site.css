@@ -3625,6 +3625,28 @@
     background-color: #fff;
   }
 
+  /* Audiogram list card (owner's pick from the comparison, 2026-10-23): at normal sizes nothing
+     wraps, as in .action-card. When large text leaves the date and levels no room beside the
+     thumbnail, they drop under it; the thumbnail keeps growing with the text, beside the arrow. */
+  .audiogram-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  @container (max-width: 13.5rem) {
+    .audiogram-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .audiogram-card .audiogram-thumbnail {
+      flex: 1;
+      width: auto;
+      height: auto;
+      aspect-ratio: 4 / 3;
+    }
+  }
+
   /* SSQ12 score input follows the reviewed range-and-buttons prototype. */
   .ssq-scale input[type="range"] {
     width: 100%;
