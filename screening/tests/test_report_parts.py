@@ -288,6 +288,19 @@ class ReportPartsTests(TestCase):
                         self.assertFalse(fold["open"], fold["summary"])
                         self.assertEqual(fold["headings"], [3], fold["summary"])
 
+    # #314 (spec #308 acceptance 6): with no average, SSQ12-TW's summary row says why instead.
+    # Owner and family alike.
+    def test_ssq_summary_row_says_why_there_is_no_average(self):
+        record = self.on(self.record(self.ssq, wearing=False, score=6), 6)
+        Answer.objects.filter(submission=record, question__question_number=12).update(score=None)
+        owner = self.client.get("/report")
+        for name, response in (("owner", owner), ("family", self.family_report())):
+            with self.subTest(report=name):
+                self.assertEqual(
+                    [fold["summary"] for fold in _folds(response)],
+                    ["SSQ12-TW 最近一次 2026/10/06 未計算：包含不適用題目"],
+                )
+
     def test_parts_are_level_two_and_their_contents_level_three(self):
         basis = self.save_pair(self.hhie)
         self.save_pair(self.ssq)

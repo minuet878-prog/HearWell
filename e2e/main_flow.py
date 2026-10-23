@@ -94,6 +94,16 @@ def audiogram_step(page, live_server_url, step):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
 
+# #314: each questionnaire's summary row on the report: a summary holding a level 3 heading.
+REPORT_FOLDS = "details > summary:has(> h3)"
+
+
+def open_report_folds(page):
+    """#314: opens every questionnaire's fold on the report."""
+    for fold in page.get_by_role("main").locator(REPORT_FOLDS).all():
+        fold.click()
+
+
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
@@ -397,8 +407,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.goto(f"{self.live_server_url}/report")
             expect(self.page.locator("#report-ssq12")).to_contain_text("整體平均：8.0")
             # #314: every questionnaire folded; open them all, so their contents must fit too.
-            for fold in self.main().locator("details > summary:has(> h3)").all():
-                fold.click()
+            open_report_folds(self.page)
             self.page.set_viewport_size({"width": 320, "height": 800})
             self.page.locator("html").evaluate("el => el.style.fontSize = '24px'")
             self.page.locator("body").evaluate("el => el.style.fontFamily = 'monospace'")
@@ -431,10 +440,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 expect(
                     family_page.get_by_role("link", name="更換或移除", exact=False)
                 ).to_have_count(0)
-                for fold in (
-                    family_page.get_by_role("main").locator("details > summary:has(> h3)").all()
-                ):
-                    fold.click()
+                open_report_folds(family_page)
                 family_page.set_viewport_size({"width": 320, "height": 800})
                 family_page.locator("html").evaluate("el => el.style.fontSize = '24px'")
                 # Wider glyphs reproduce the table's minimum-width overflow across platforms.
@@ -4838,14 +4844,26 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     TINT = "rgb(236, 227, 212)"
     TINT_LINE = "rgb(201, 187, 163)"
     TINT_RADIUS = "13.5px"
+    HEADING = "rgb(33, 37, 41)"
     # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
     # reason) is this deeper light blue, so it still stands out.
     BLUE_DEEP = "rgb(214, 226, 242)"
     BLUE_SOFT = "rgb(238, 243, 250)"
     # Every colour of text in an element: its own and its descendants' that hold words directly.
-    TEXT_COLOURS = """(el) => [el, ...el.querySelectorAll("*")]
+    # Given true, text on a colour of its own inside the element (a filled button, a level badge,
+    # a step's number circle) is left out: only what sits on the element's own background.
+    TEXT_COLOURS = """(el, skipOwnBackgrounds) => [el, ...el.querySelectorAll("*")]
         .filter((node) => [...node.childNodes]
             .some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
+        .filter((node) => {
+            if (!skipOwnBackgrounds) return true;
+            for (let at = node; at !== el; at = at.parentElement) {
+                const style = getComputedStyle(at);
+                if (style.backgroundColor !== "rgba(0, 0, 0, 0)"
+                    || style.backgroundImage !== "none") return false;
+            }
+            return true;
+        })
         .map((node) => getComputedStyle(node).color)"""
     PRIMARY = "rgb(31, 78, 140)"
     GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
@@ -5055,13 +5073,35 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(block, "borderLeftColor"), self.LINE)
         self.assertEqual(self.style(block, "borderTopWidth"), "0px")
 
-    def assert_tinted(self, block):
-        """A 並列區塊 (ADR 0024): pale beige, no shadow, no border, the medium radius."""
+    def assert_tinted(self, block, top_line=None):
+        """A 並列區塊 (ADR 0024): pale beige, no shadow, no border, the medium radius. Given a
+        top_line colour (#311: an ear's result), a line in that colour on top and no other border,
+        its lower corners rounded."""
         expect(block).to_be_visible()
         self.assertEqual(self.style(block, "backgroundColor"), self.TINT)
         self.assertEqual(self.style(block, "boxShadow"), "none")
-        self.assertEqual(self.style(block, "borderWidth"), "0px")
-        self.assertEqual(self.style(block, "borderRadius"), self.TINT_RADIUS)
+        if top_line is None:
+            self.assertEqual(self.style(block, "borderWidth"), "0px")
+            self.assertEqual(self.style(block, "borderRadius"), self.TINT_RADIUS)
+            return
+        self.assertEqual(self.style(block, "borderTopColor"), top_line)
+        self.assertEqual(self.style(block, "borderTopStyle"), "solid")
+        self.assertNotEqual(self.style(block, "borderTopWidth"), "0px")
+        for side in ("Right", "Bottom", "Left"):
+            self.assertEqual(self.style(block, f"border{side}Width"), "0px")
+        self.assertEqual(self.style(block, "borderBottomLeftRadius"), self.TINT_RADIUS)
+
+    def assert_block_title(self, title, ratio=1.35):
+        """ADR 0024: a 並列區塊's title is 1.35 times the body text and a bold subhead in it 1.2
+        times, both bold in the heading colour (not link blue), without the brand-blue bar of a
+        page's section titles. Returns its size in px."""
+        body = float(self.style(self.page.locator("body"), "fontSize").removesuffix("px"))
+        size = float(self.style(title, "fontSize").removesuffix("px"))
+        self.assertAlmostEqual(size / body, ratio, places=2)
+        self.assertEqual(self.style(title, "color"), self.HEADING)
+        self.assertEqual(self.style(title, "fontWeight"), "700")
+        self.assertEqual(self.style(title, "borderLeftWidth"), "0px")
+        return size
 
     def assert_lines_between(self, parts):
         """Parts inside a 並列區塊 (ADR 0024): a deeper beige line between each two, none on
@@ -5069,17 +5109,23 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         parts = parts.all()
         self.assertGreater(len(parts), 1)
         self.assertEqual(self.style(parts[0], "borderTopWidth"), "0px")
+        # Spec #308 acceptance 2: easier to see on the beige than #298's thin warm line would be.
+        old_line = StyleInBrowserTest.lowest_contrast(self.LINE, self.TINT)
         for part in parts[1:]:
             with self.subTest(part=part.inner_text()[:10]):
-                self.assertEqual(self.style(part, "borderTopColor"), self.TINT_LINE)
+                line = self.style(part, "borderTopColor")
+                self.assertGreater(StyleInBrowserTest.lowest_contrast(line, self.TINT), old_line)
+                self.assertEqual(line, self.TINT_LINE)
                 self.assertEqual(self.style(part, "borderTopStyle"), "solid")
                 self.assertNotEqual(self.style(part, "borderTopWidth"), "0px")
         for part in parts:
             self.assertEqual(self.style(part, "borderLeftWidth"), "0px")
 
-    def assert_readable_on_tint(self, block):
-        """Spec #308 acceptance 2: every text and link colour in a 並列區塊 at least 4.5:1."""
-        colours = set(block.evaluate(self.TEXT_COLOURS))
+    def assert_readable_on_tint(self, block, skip_own_backgrounds=False):
+        """Spec #308 acceptance 2: every text and link colour in a 並列區塊 at least 4.5:1 on the
+        beige. With skip_own_backgrounds (a block holding buttons or badges), text on a colour of
+        its own inside the block is left out: only what sits on the beige is measured."""
+        colours = set(block.evaluate(self.TEXT_COLOURS, skip_own_backgrounds))
         self.assertTrue(colours)
         for colour in colours:
             with self.subTest(colour=colour):
@@ -5351,7 +5397,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         ("after-fitting", ("剛開始不習慣是正常的",)),
         ("form-25", ("誰要做",)),
     )
-    HEADING_COLOUR = "rgb(33, 37, 41)"
 
     def test_guide_chapter_parts_stand_apart_with_larger_subheads(self):
         with self.saving_artifacts():
@@ -5373,7 +5418,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                             self.assertGreaterEqual(
                                 float(self.style(subhead, "fontSize")[:-2]), 1.2 * body - 0.01
                             )
-                            self.assertEqual(self.style(subhead, "color"), self.HEADING_COLOUR)
+                            self.assertEqual(self.style(subhead, "color"), self.HEADING)
                             self.assertEqual(self.style(subhead, "fontWeight"), "700")
 
     # #313: the things to bring and the checks to expect are a list, one per line, each with its
@@ -5542,8 +5587,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(step=step):
                     block = self.main().get_by_role("region", name=step)
                     self.assert_tinted(block)
-                    self.assert_block_titled(block, step)
-                    self.assert_text_readable_on_tint(block)
+                    self.assert_block_title(block.get_by_role("heading", name=step, exact=True))
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
             cancel = self.main().get_by_role("button", name="取消分享", exact=True)
             expect(cancel).to_be_visible()
             self.assertEqual(self.style(cancel, "borderTopStyle"), "solid")
@@ -5575,8 +5620,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             title = self.page.locator("#audiogram-title")
             self.assertEqual(self.style(title, "borderLeftColor"), self.PRIMARY)
 
-    # #314: the report with HHIE-S, its kept comparison and an audiogram, for the folds.
+    # #314: the report with a fold for HHIE-S (its kept comparison inside), SSQ12-TW, SADL and
+    # IOI-HA (grouped by an earlier unaided HHIE-S), and an audiogram.
     def folded_report(self):
+        self.ioi_ha()
+        self.answered("ssq12-tw", 5)
+        self.answered("sadl", 4)
         unaided = self.answered("hhie-s", 2)
         aided = self.answered("hhie-s", 0)
         Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
@@ -5593,13 +5642,31 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         return (("owner", True, owner), ("family", False, family))
 
     def report_folds(self):
-        """Each questionnaire's summary row: a summary holding a level 3 heading."""
-        return self.main().locator("details > summary:has(> h3)")
+        """Each questionnaire's summary row."""
+        return self.main().locator(REPORT_FOLDS)
 
-    # #314 (spec #308 acceptance 6-8): on both reports each questionnaire starts as a closed
-    # summary row that looks like the site's dropdowns; a click or Enter opens only that one onto
-    # the tint, its comparison inside, and again closes it; a reload closes it. The audiogram
-    # stays open. It opens without JavaScript too.
+    def fold_body(self, fold):
+        """What a questionnaire's summary row opens: the 並列區塊 under it."""
+        return fold.locator("xpath=following-sibling::*")
+
+    def visit_open_report(self, signed_in, path, width=1024):
+        """The report with every questionnaire's fold opened."""
+        self.visit(signed_in, path, width=width)
+        open_report_folds(self.page)
+
+    def tab_to(self, target):
+        """Presses Tab, from wherever the focus is, until target has the focus."""
+        for _ in range(60):
+            self.page.keyboard.press("Tab")
+            if target.evaluate("el => el === document.activeElement"):
+                return
+        self.fail("Tab never reached it")
+
+    # #314 (spec #308 acceptance 1, 6-8): on both reports each questionnaire starts as a closed
+    # summary row that looks like the site's dropdowns; a click, or Tab to it and Enter, opens
+    # only that one onto the tint, its comparison inside, and again closes it; a reload closes
+    # it. The audiogram stays open. Every fold opens onto the tint with readable text. It opens
+    # without JavaScript too.
     def test_report_folds_by_questionnaire_closed_until_opened(self):
         with self.saving_artifacts():
             for name, signed_in, path in self.both_folded_reports():
@@ -5613,8 +5680,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     expect(
                         self.main().get_by_role("heading", level=2, name="生活影響", exact=True)
                     ).to_be_visible()
-                    title = self.main().get_by_role("heading", level=3, name="HHIE-S", exact=True)
-                    summary = title.locator("xpath=..")
+                    folds = self.report_folds()
+                    self.assertEqual(
+                        [fold.get_by_role("heading", level=3).inner_text() for fold in folds.all()],
+                        ["HHIE-S", "SSQ12-TW", "SADL", "IOI-HA 助聽器效益"],
+                    )
+                    for fold in folds.all():
+                        expect(self.fold_body(fold)).to_be_hidden()
+                    summary = folds.first
+                    title = summary.get_by_role("heading", level=3)
                     # The latest record (aided, all 0): its date, score and level.
                     expect(summary).to_have_text(
                         re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無/極輕微影響$")
@@ -5631,19 +5705,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(self.style(summary, "boxShadow"), "none")
                     chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
                     self.assertIn("M6 9l6 6 6-6", chevron)
-                    # The block's title: in the heading colour, 1.35 times the text.
-                    self.assertEqual(self.style(title, "color"), "rgb(33, 37, 41)")
-                    size = float(self.style(title, "fontSize").removesuffix("px"))
-                    text = float(
-                        self.style(self.page.locator("body"), "fontSize").removesuffix("px")
-                    )
-                    self.assertAlmostEqual(size / text, 1.35, places=2)
+                    self.assert_block_title(title)
                     summary.click()
                     expect(part).to_be_visible()
                     expect(comparison).to_be_visible()
-                    body = part.locator("xpath=..")
-                    self.assert_tinted(body)
-                    self.assert_readable_on_tint(body)
+                    for other in folds.all()[1:]:
+                        expect(self.fold_body(other)).to_be_hidden()
+                    body = self.fold_body(summary)
                     expect(
                         body.get_by_role("region", name=re.compile("^配戴狀態比較（HHIE-S"))
                     ).to_be_visible()
@@ -5651,41 +5719,46 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertIn("M6 15l6-6 6 6", chevron)
                     summary.click()
                     expect(part).to_be_hidden()
-                    summary.focus()
+                    summary.click()
+                    self.page.reload()
+                    expect(part).to_be_hidden()
+                    self.tab_to(summary)
                     self.page.keyboard.press("Enter")
                     expect(part).to_be_visible()
                     self.page.keyboard.press("Enter")
                     expect(part).to_be_hidden()
-                    summary.click()
-                    self.page.reload()
-                    expect(part).to_be_hidden()
+                    for fold in folds.all():
+                        with self.subTest(fold=fold.inner_text()[:8]):
+                            fold.click()
+                            self.assert_tinted(self.fold_body(fold))
+                            self.assert_readable_on_tint(self.fold_body(fold))
                     self.visit(signed_in, path, javascript=False)
                     self.report_folds().first.click()
                     expect(
                         self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
                     ).to_be_visible()
 
-    # #314 (spec #308 acceptance 9, 14): on paper every fold is open and its summary row gone;
-    # on a phone at 200% text both reports fit with every fold open.
+    # #314 (spec #308 acceptance 9, 14): on a phone at 200% text both reports fit with every fold
+    # open; on paper every fold is open, the one the reader opened and those left closed alike,
+    # and no summary row shows.
     def test_report_folds_open_on_paper_and_fit_a_phone_open(self):
         with self.saving_artifacts():
             for name, signed_in, path in self.both_folded_reports():
                 with self.subTest(report=name):
-                    self.visit(signed_in, path, width=320)
-                    folds = self.report_folds()
-                    self.assertGreater(folds.count(), 0)
-                    for fold in folds.all():
-                        fold.click()
+                    self.visit_open_report(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
-                    self.page.locator("html").evaluate("html => html.style.fontSize = ''")
-                    folds.first.click()  # one open, one closed: paper opens both
+                    self.page.reload()  # every fold closed again, the text its normal size
+                    folds = self.report_folds()
+                    self.assertEqual(folds.count(), 4)
+                    folds.nth(1).click()
+                    expect(self.fold_body(folds.nth(1))).to_be_visible()
                     self.page.emulate_media(media="print")
-                    for region in ("^HHIE-S（", "^配戴狀態比較（HHIE-S"):
-                        expect(
-                            self.page.get_by_role("region", name=re.compile(region))
-                        ).to_be_visible()
                     for fold in folds.all():
                         expect(fold).to_be_hidden()
+                        expect(self.fold_body(fold).get_by_role("region").first).to_be_visible()
+                    expect(
+                        self.page.get_by_role("region", name=re.compile("^配戴狀態比較（HHIE-S"))
+                    ).to_be_visible()
 
     # #315: both reports with their two kinds of table: HHIE-S's recent records (three of them,
     # one of each level, 2 being IOI-HA's norm basis) and IOI-HA's items compared with the norm.
@@ -5698,9 +5771,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     def open_report_tables(self, signed_in, path, width):
         """The report with every fold open, and its tables."""
-        self.visit(signed_in, path, width=width)
-        for fold in self.report_folds().all():
-            fold.click()
+        self.visit_open_report(signed_in, path, width)
         tables = self.main().get_by_role("table")
         self.assertEqual(tables.count(), 2)
         return tables
@@ -5763,9 +5834,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             # On a phone at 200% text the stacked records are still tables to a screen reader, as
             # the browser's own accessibility tree says: column names, and cells that hold only
             # their values (the names shown in front of them are not read twice).
-            self.visit(True, "/report", width=320)
-            for fold in self.report_folds().all():
-                fold.click()
+            self.visit_open_report(True, "/report", width=320)
             self.assert_fits_uncut("owner, accessibility tree")
             session = self.context.new_cdp_session(self.page)
             nodes = session.send("Accessibility.getFullAXTree")["nodes"]
@@ -5787,9 +5856,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual([role for role, _ in named].count("row"), 2 + 3 + 7)
             # With room, at the normal size: side-by-side columns under a header row whose names
             # do not break either.
-            self.visit(True, "/report", width=390)
-            for fold in self.report_folds().all():
-                fold.click()
+            self.visit_open_report(True, "/report", width=390)
             for table in self.main().get_by_role("table").all():
                 for header in table.get_by_role("columnheader").all():
                     self.assertGreater(header.bounding_box()["width"], 1)
@@ -5989,32 +6056,19 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator("a.link-card").first
             self.assert_paper(self.page.locator("#audiogram-chart"), card)
 
-    HEADING = "rgb(33, 37, 41)"
     # IOI-HA's norm on its scale and legend: grey cells with a darker grey edge.
     NORM_GREY = "rgb(206, 212, 218)"
     NORM_EDGE = "rgb(108, 117, 125)"
 
     def assert_tinted_items(self, items, title, count, ratio, before):
         """#310: each item its own 並列區塊, its title (found by `title` inside it) `ratio` times
-        the text in the heading colour and larger than the `before` px it had on a phone before
-        ADR 0024; the page's cards stay white cards."""
+        the text and larger than the `before` px it had on a phone before ADR 0024."""
         self.assertEqual(items.count(), count)
         for item in items.all():
             with self.subTest(item=item.inner_text()[:10]):
                 self.assert_tinted(item)
                 self.assert_readable_on_tint(item)
-                name = title(item)
-                size = float(self.style(name, "fontSize").removesuffix("px"))
-                text = float(self.style(item, "fontSize").removesuffix("px"))
-                self.assertAlmostEqual(size / text, ratio, places=2)
-                self.assertGreater(size, before)
-                self.assertEqual(self.style(name, "color"), self.HEADING)
-                self.assertEqual(self.style(name, "fontWeight"), "700")
-        cards = self.main().locator(".result-actions a.link-card")
-        self.assertGreater(cards.count(), 0)
-        for card in cards.all():
-            with self.subTest(card=card.inner_text()[:10]):
-                self.assert_white_card(card)
+                self.assertGreater(self.assert_block_title(title(item), ratio), before)
 
     # #310: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers are each a 並列區塊
     # with a larger title; IOI-HA's summary and 接下來 stay flat.
@@ -6051,6 +6105,27 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_tinted_items(
                 lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3, 1.2, 18
             )
+
+    # Spec #308 acceptance 4: a tappable card's title and the answering page's question keep the
+    # size they had before ADR 0024, measured on main (36ae501) at this 390px phone width: the
+    # card titles 1.25rem, the question calc(1.275rem + 0.3vw).
+    def test_card_titles_and_questions_keep_their_size(self):
+        with self.saving_artifacts():
+            for name, path in (
+                ("returning home", lambda test: test.returning_home()),
+                ("HHIE-S result", lambda test: test.result("hhie-s", 2)),
+            ):
+                with self.subTest(page=name):
+                    self.visit(True, path, width=390)
+                    titles = self.main().locator("a.link-card .link-card-title")
+                    self.assertGreater(titles.count(), 0)
+                    for title in titles.all():
+                        with self.subTest(card=title.inner_text()):
+                            self.assertEqual(self.style(title, "fontSize"), "22.5px")
+            self.visit(True, lambda test: test.answering("hhie-s"), width=390)
+            question = self.main().get_by_role("group").locator("legend")
+            expect(question).to_be_visible()
+            self.assertEqual(self.style(question, "fontSize"), "24.12px")
 
     # #310: the IOI-HA scale's empty cells are clear with a thin deeper beige frame, so they do
     # not read as white things to tap; the norm's grey cells, the blue dot and the legend stay.
@@ -6097,42 +6172,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(summary, "boxShadow"), "none")
 
-    # #311: a 並列區塊's title is a larger subhead (1.35 times the text) in the heading colour,
-    # without the brand-blue bar of the page's own section titles.
-    HEADING = "rgb(33, 37, 41)"
-
-    def assert_block_titled(self, block, title):
-        heading = block.get_by_role("heading", name=title, exact=True)
-        body = float(self.style(self.page.locator("body"), "fontSize").removesuffix("px"))
-        size = float(self.style(heading, "fontSize").removesuffix("px"))
-        self.assertAlmostEqual(size / body, 1.35, places=2)
-        self.assertEqual(self.style(heading, "color"), self.HEADING)
-        self.assertEqual(self.style(heading, "borderLeftWidth"), "0px")
-
-    # TEXT_COLOURS without the text on a colour of its own inside the block (a filled button, a
-    # level badge, a step's number circle): only what sits on the beige itself.
-    TEXT_COLOURS_ON_BLOCK = """(block) => [block, ...block.querySelectorAll("*")]
-        .filter((node) => [...node.childNodes]
-            .some((child) => child.nodeType === Node.TEXT_NODE && child.textContent.trim()))
-        .filter((node) => {
-            for (let el = node; el !== block; el = el.parentElement) {
-                const style = getComputedStyle(el);
-                if (style.backgroundColor !== "rgba(0, 0, 0, 0)"
-                    || style.backgroundImage !== "none") return false;
-            }
-            return true;
-        })
-        .map((node) => getComputedStyle(node).color)"""
-
-    def assert_text_readable_on_tint(self, block):
-        """Spec #308 acceptance 2 for a block that holds buttons or badges: every text and link
-        colour on the beige at least 4.5:1."""
-        colours = set(block.evaluate(self.TEXT_COLOURS_ON_BLOCK))
-        self.assertTrue(colours)
-        for colour in colours:
-            with self.subTest(colour=colour):
-                self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
-
     def assert_outline_button_readable(self, button):
         """#311: an outline button in a 並列區塊 is filled white (white is what can be tapped), so
         its words keep 4.5:1; the danger red on the beige alone is 3.6:1."""
@@ -6143,17 +6182,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #311: each ear's result is a 並列區塊 that keeps the line in its ear's colour on top.
     EAR_LINES = (("右耳", "rgb(192, 57, 43)"), ("左耳", "rgb(31, 78, 140)"))
-
-    def assert_tinted_under_ear_line(self, block, colour):
-        expect(block).to_be_visible()
-        self.assertEqual(self.style(block, "backgroundColor"), self.TINT)
-        self.assertEqual(self.style(block, "boxShadow"), "none")
-        self.assertEqual(self.style(block, "borderTopColor"), colour)
-        self.assertEqual(self.style(block, "borderTopStyle"), "solid")
-        self.assertNotEqual(self.style(block, "borderTopWidth"), "0px")
-        for side in ("Right", "Bottom", "Left"):
-            self.assertEqual(self.style(block, f"border{side}Width"), "0px")
-        self.assertEqual(self.style(block, "borderBottomLeftRadius"), self.TINT_RADIUS)
 
     # #311: the audiogram's ear results and the comparison page's two pairs are 並列區塊 titled
     # by a larger subhead, the comparison's buttons as before; the summary above the ears and the
@@ -6166,9 +6194,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(ear=ear):
                     heading = self.page.get_by_role("heading", name=ear, exact=True)
                     block = self.main().locator("section").filter(has=heading)
-                    self.assert_tinted_under_ear_line(block, colour)
-                    self.assert_block_titled(block, ear)
-                    self.assert_text_readable_on_tint(block)
+                    self.assert_tinted(block, top_line=colour)
+                    self.assert_block_title(heading)
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
             self.visit(True, lambda test: test.hhi_comparison())
             for title, button in (
                 ("目前查看的兩筆", "改放這一組到報告"),
@@ -6177,8 +6205,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(block=title):
                     block = self.page.get_by_role("region", name=title)
                     self.assert_tinted(block)
-                    self.assert_block_titled(block, title)
-                    self.assert_text_readable_on_tint(block)
+                    self.assert_block_title(block.get_by_role("heading", name=title, exact=True))
+                    self.assert_readable_on_tint(block, skip_own_backgrounds=True)
                     expect(block.get_by_role("button", name=button, exact=True)).to_be_visible()
             save = self.page.get_by_role("button", name="改放這一組到報告", exact=True)
             self.assertEqual(self.style(save, "backgroundImage"), self.GRADIENT)
