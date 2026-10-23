@@ -22,11 +22,15 @@
     {% for step in next_steps %}
     <li>
         <span>{{ step.text }}</span>
-        {% if step.action_label %}
-        <a class="btn btn-outline-primary btn-lg mt-1" href="{% url step.action_url %}">{{ step.action_label }}</a>
-        {% endif %}
-        {% if step.second_label %}
-        <a class="btn btn-outline-primary btn-lg mt-1" href="{% url step.second_url %}">{{ step.second_label }}</a>
+        {% if step.action_label or step.second_label %}
+        <span class="next-steps-links">
+            {% if step.action_label %}
+            <a class="next-steps-link" href="{% url step.action_url %}">{{ step.action_label }}</a>
+            {% endif %}
+            {% if step.second_label %}
+            <a class="next-steps-link" href="{% url step.second_url %}">{{ step.second_label }}</a>
+            {% endif %}
+        </span>
         {% endif %}
     </li>
     {% endfor %}
@@ -40,13 +44,6 @@
     <summary>看完整建議</summary>
     <p>{{ advice }}</p>
 </details>
-{% if optional_ssq12 %}
-<p>您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
-<a class="btn btn-outline-primary btn-lg" href="{% url 'screening' optional_ssq12.pk %}">了解日常聆聽能力（SSQ12-TW）</a>
-{% endif %}
-{% if show_comparison %}
-<p><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">比較戴與不戴助聽器</a></p>
-{% endif %}
 <details class="dropdown-box mb-4">
     <summary>分數細節與作答明細</summary>
     {% if has_subscores %}
@@ -62,5 +59,16 @@
         {% endfor %}
     </ol>
 </details>
+{# The optional extras come after both dropdowns, so the two folds sit together. #}
+{% if optional_ssq12 %}
+<p class="mt-6 mb-2">您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
+<a class="link-card" href="{% url 'screening' optional_ssq12.pk %}">
+    <span class="link-card-body"><span class="link-card-title">了解日常聆聽能力（SSQ12-TW）</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}
+{% if show_comparison %}
+<p class="mt-4"><a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' submission.questionnaire_id %}">比較戴與不戴助聽器</a></p>
+{% endif %}
 {% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
 {% endblock %}

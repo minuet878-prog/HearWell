@@ -12,7 +12,9 @@ AUDIOGRAM = ("記錄聽力圖", "/audiograms/new")
 REPORT = ("看／印聽力報告", "/report")
 
 # The owner's finalized wording (#156, with the corrections noted there), written out here so a
-# changed definition fails instead of being copied into the expectation.
+# changed definition fails instead of being copied into the expectation. A step's own link (the
+# guide link after it is test_guide_result_entry's): the report only where its words mention the
+# report or this result (result page tidy-up), as the closing row of every result page links it.
 STEPS = {
     "hhie-s": {
         "normal": (
@@ -36,7 +38,7 @@ STEPS = {
             (
                 "這次篩檢能讓您體認到聽力對生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查，"
                 "並詢問專業意見。",
-                REPORT,
+                None,
             ),
             RETEST,
         ),
@@ -44,7 +46,7 @@ STEPS = {
             (
                 "聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，"
                 "建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。",
-                REPORT,
+                None,
             ),
             (
                 "聽力喪失影響的並不只是聽不聽得到，無形中也會增加社交活動的壓力，"
@@ -67,7 +69,7 @@ STEPS = {
         ),
         "severe": (
             ("您回報的聽力困擾對生活有顯著影響。", None),
-            ("建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。", REPORT),
+            ("建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。", None),
             RETEST,
         ),
     },
@@ -177,7 +179,8 @@ class ResultNextStepsTests(TestCase):
                     for item, (text, action) in zip(items, expected, strict=True):
                         self.assertIn(f"<span>{text}</span>", item)
                         if action is None:
-                            self.assertNotIn("<a ", item)
+                            for _, own_url in (AUDIOGRAM, REPORT):
+                                self.assertNotIn(f'href="{own_url}"', item)
                         else:
                             label, url = action
                             self.assertIn(f'href="{url}">{label}</a>', item)

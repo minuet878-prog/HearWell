@@ -269,7 +269,8 @@ class ThiScoringTests(ThiTestCase):
 
 
 # Draft wording from #211, written out here so a changed definition fails instead of being
-# copied into the expectation.
+# copied into the expectation. A step links the report only where its words mention the report
+# (result page tidy-up); the closing row of every result page links it anyway.
 LINE_1925 = "1925 安心專線（24 小時免付費）"
 RETAKE = ("3 個月後，或開始新的處置（例如配戴助聽器）3 個月後再做一次。", None)
 AUDIOGRAM = ("記錄聽力圖", "/audiograms/new")
@@ -306,7 +307,7 @@ STEPS = {
         RETAKE,
     ),
     58: (
-        ("耳鳴已經嚴重影響您的生活，請盡快到醫院耳鼻喉科就診，並請聽力師評估。", REPORT),
+        ("耳鳴已經嚴重影響您的生活，請盡快到醫院耳鼻喉科就診，並請聽力師評估。", None),
         ("可以和聽力師討論助聽器、聲音治療等處理方式。", None),
         (
             "如果耳鳴讓您心情低落、很難熬，可以撥 1925 安心專線（24 小時免付費），有專人陪您聊聊。",
@@ -317,7 +318,7 @@ STEPS = {
     78: (
         (
             "耳鳴已經非常嚴重地影響您的生活和心情，請盡快到醫院耳鼻喉科就診，並請聽力師評估。",
-            REPORT,
+            None,
         ),
         ("如果同時有失眠、焦慮或心情低落，也可以請身心科一起協助。", None),
         ("覺得撐不下去時，請撥 1925 安心專線（24 小時免付費），有專人陪您聊聊。", None),

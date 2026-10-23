@@ -62,18 +62,23 @@ class GuideResultEntryTests(TestCase):
         start = main.index('<ol class="next-steps">')
         return main[start : main.index("</ol>", start)].split("<li>")[1:]
 
-    def test_the_check_step_links_to_the_guide_after_its_own_button(self):
+    def test_the_check_step_links_to_the_guide_after_its_own_link(self):
+        # Since the result page tidy-up some check steps have no link of their own, only the guide.
         for code, levels in GUIDE_STEP.items():
             for level, index in levels.items():
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(code, test_result_next_steps.TOTALS[level])
                     item = self._items(main)[index]
-                    text, (label, url) = test_result_next_steps.STEPS[code][level][index]
-                    button = f'href="{url}">{label}</a>'
+                    text, action = test_result_next_steps.STEPS[code][level][index]
                     self.assertIn(f"<span>{text}</span>", item)
-                    self.assertIn(button, item)
                     self.assertIn(GUIDE_LINK, item)
-                    self.assertLess(item.index(button), item.index(GUIDE_LINK))
+                    if action is None:
+                        self.assertEqual(item.count("<a "), 1)
+                    else:
+                        label, url = action
+                        own = f'href="{url}">{label}</a>'
+                        self.assertIn(own, item)
+                        self.assertLess(item.index(own), item.index(GUIDE_LINK))
                     self.assertEqual(main.count(GUIDE_LINK), 1)
 
     def test_steps_without_the_guide_link_are_unchanged(self):

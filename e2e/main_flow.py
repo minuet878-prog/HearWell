@@ -843,13 +843,15 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         # Every answer 有時 (2 points) x 10.
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
-        # HHIE-S 輕度到中度影響's steps (ticket #157): the report button, then the retest.
+        # HHIE-S 輕度到中度影響's steps (ticket #157): the guide link, then the retest. The report
+        # is left to the closing row, as this step's words do not mention it (result page tidy-up).
         expect(self.main().get_by_role("heading", name="接下來建議您")).to_be_visible()
         steps = self.main().locator("ol.next-steps > li")
         expect(steps).to_have_count(3)
         expect(steps.nth(0)).to_contain_text("聽力問題已經慢慢影響您的社交活動與情緒")
         expect(steps.nth(1)).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(steps.nth(1).get_by_role("link", name="看／印聽力報告")).to_be_visible()
+        expect(steps.nth(1).get_by_role("link", name="看助聽器選配指引")).to_be_visible()
+        expect(steps.nth(1).get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(steps.nth(2)).to_have_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
         # (9-24 of 0-40).

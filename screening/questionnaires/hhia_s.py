@@ -74,8 +74,6 @@ NEXT_STEPS = {
         {"text": "您回報的聽力困擾對生活有顯著影響。"},
         {
             "text": "建議儘早安排聽力評估，與聽力師或耳鼻喉科醫師討論適合您的協助方式。",
-            "action_label": "看／印聽力報告",
-            "action_url": "health_report",
             **GUIDE_ACTION,
         },
         RETEST_STEP,
