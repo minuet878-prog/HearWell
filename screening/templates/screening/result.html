@@ -11,7 +11,7 @@
     <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
 {% if support_message %}
-<div class="line-list mt-4"><p class="mb-0">{{ support_message }}</p></div>
+<p class="line-block mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
 {% if score_bar %}
 {% include "screening/score_bar.html" with bar=score_bar %}
