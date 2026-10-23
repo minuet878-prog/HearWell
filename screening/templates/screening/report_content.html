@@ -51,7 +51,7 @@
 <section id="report-listening" class="report-part" aria-labelledby="listening-title">
 <h2 id="listening-title" class="h4">日常聆聽能力</h2>
 <details class="report-fold">
-<summary><h3 class="report-fold-title">SSQ12-TW</h3> <span class="report-fold-meta"><span>最近一次 {{ ssq_latest.created_at|date:"Y/m/d" }}</span> <span>{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</span></span></summary>
+<summary><h3 class="tint-block-title mb-0">SSQ12-TW</h3> <span class="report-fold-meta"><span>最近一次 {{ ssq_latest.created_at|date:"Y/m/d" }}</span> <span>{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</span></span></summary>
 <div class="report-fold-body tint-block">
 <section id="report-ssq12" aria-labelledby="ssq-title">
 <h3 id="ssq-title" class="h5">SSQ12-TW</h3>
@@ -72,7 +72,7 @@
 <section id="report-satisfaction" class="report-part" aria-labelledby="satisfaction-title">
 <h2 id="satisfaction-title" class="h4">助聽器滿意度</h2>
 <details class="report-fold">
-<summary><h3 class="report-fold-title">SADL</h3> <span class="report-fold-meta"><span>最近一次 {{ sadl_latest.created_at|date:"Y/m/d" }}</span> <span>整體滿意度 {{ satisfaction.overall }}</span></span></summary>
+<summary><h3 class="tint-block-title mb-0">SADL</h3> <span class="report-fold-meta"><span>最近一次 {{ sadl_latest.created_at|date:"Y/m/d" }}</span> <span>整體滿意度 {{ satisfaction.overall }}</span></span></summary>
 <div class="report-fold-body tint-block">
 <section id="report-sadl" aria-labelledby="sadl-title">
 <h3 id="sadl-title" class="h5">SADL</h3>
@@ -95,7 +95,7 @@
 <section id="report-hearing-aid-outcome" class="report-part" aria-labelledby="outcome-title">
 <h2 id="outcome-title" class="h4">助聽器使用成效</h2>
 <details class="report-fold">
-<summary><h3 class="report-fold-title">IOI-HA 助聽器效益</h3> <span class="report-fold-meta"><span>最近一次 {{ submission.created_at|date:"Y/m/d" }}</span> <span>{% include "screening/ioi_ha_summary.html" %}</span></span></summary>
+<summary><h3 class="tint-block-title mb-0">IOI-HA 助聽器效益</h3> <span class="report-fold-meta"><span>最近一次 {{ submission.created_at|date:"Y/m/d" }}</span> <span>{% include "screening/ioi_ha_summary.html" %}</span></span></summary>
 <div class="report-fold-body tint-block">
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h3 id="ioi-ha-title" class="h5">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h3>

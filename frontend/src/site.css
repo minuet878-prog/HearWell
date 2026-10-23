@@ -2646,8 +2646,9 @@
   /* A 並列區塊 (ADR 0024): one of several complete units of the same kind side by side, on a
      pale beige with no shadow and no border, so it sinks where a tappable white card floats.
      Only something tappable or usable inside it may be white. .tint-rows puts a deeper beige
-     line between its parts (the result page's advice); .tint-block-title is the block's title
-     and .tint-subhead a bold subhead inside it, both in the heading colour, not link blue. */
+     line between its parts (the result page's advice); .tint-block-title is the block's title.
+     .tint-subhead is a bold subhead, in a 並列區塊 (a family guide tip's point) or in flat
+     content (a guide chapter's lead). Both are in the heading colour, not link blue. */
   .tint-block {
     padding: 1rem 1.25rem;
     border-radius: var(--radius-medium);
@@ -3875,14 +3876,6 @@
   .report-fold > summary::after {
     grid-column: 2;
     grid-row: 1 / span 2;
-  }
-
-  .report-fold-title {
-    margin: 0;
-    color: var(--color-heading);
-    font-size: var(--text-block-title);
-    font-weight: 700;
-    line-height: 1.3;
   }
 
   .report-fold-meta {
