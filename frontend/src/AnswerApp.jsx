@@ -241,9 +241,10 @@ export default function AnswerApp({
           <div id="answer-intro-text">{introOpen && <div dangerouslySetInnerHTML={{ __html: introHtml }} />}</div>
         </div>
       )}
-      {/* The legend must be the fieldset's first child to name the radio group. */}
+      {/* The legend must be the fieldset's first child to name the radio group. A flat block: only
+          the choices are white (ADR 0022). */}
       <fieldset
-        className="card card-body mb-4"
+        className="mb-4"
         disabled={isSending}
         aria-describedby={showHint ? "answer-hearing-aid-hint" : undefined}
       >
