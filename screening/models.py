@@ -497,3 +497,16 @@ class AudiogramPoint(models.Model):
 
     def __str__(self):
         return f"{self.ear} {self.conduction} {self.frequency} Hz: {self.db}"
+
+
+class AidAndSubsidy(models.Model):
+    # 助聽器與補助資料 (GLOSSARY, spec #284): what the user says about their certificate and
+    # their current hearing aids. Every field may be left unanswered; only the current pair.
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="aid_and_subsidy"
+    )
+    # A 聽覺機能 身心障礙證明: None unanswered, True has one, False not yet.
+    has_certificate = models.BooleanField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} aid and subsidy"

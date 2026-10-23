@@ -4,7 +4,7 @@ behind it, kept in one place for every page that shows the route or points along
 from dataclasses import dataclass
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
-from screening.models import Audiogram, Submission
+from screening.models import AidAndSubsidy, Audiogram, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters.
@@ -19,6 +19,7 @@ class FittingState:
     fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
     threshold: dict | None  # assessment_estimate, without an audiogram None
     stop: str | None  # AUDIOGRAM or a chapter slug; None when no stop applies
+    aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they fill it in
 
     @property
     def insufficient(self):
@@ -44,14 +45,19 @@ def fitting_state(user):
         points = list(audiogram.points.all())
         fitting = recommends_fitting_assessment(points)
         threshold = assessment_estimate(points)
-    stop = _stop(wearing, audiogram, fitting, threshold)
-    return FittingState(latest, audiogram, wearing, fitting, threshold, stop)
+    aid = AidAndSubsidy.objects.filter(user=user).first()
+    certified = aid is not None and aid.has_certificate is True
+    stop = _stop(wearing, certified, audiogram, fitting, threshold)
+    return FittingState(latest, audiogram, wearing, fitting, threshold, stop, aid)
 
 
-def _stop(wearing, audiogram, fitting, threshold):
-    # Spec #257 Q18, from the top. Wearing comes first: choosing hearing aids is behind them.
+def _stop(wearing, certified, audiogram, fitting, threshold):
+    # Spec #284 (in place of #257 Q18), from the top. Wearing comes first: choosing hearing
+    # aids is behind them. A certificate is next, with or without an audiogram (#284 Q6).
     if wearing:
         return "after-fitting"
+    if certified:
+        return "form-9"
     if audiogram is None or fitting is None:
         return AUDIOGRAM
     if threshold["status"] == "reached":

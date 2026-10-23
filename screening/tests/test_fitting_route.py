@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.models import Questionnaire, Submission
+from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
@@ -100,3 +100,51 @@ class CurrentStopTests(TestCase):
         self.make(PTA_55, PTA_55, tested_on=date(2026, 9, 1))
         self.make((10, 10, 10, 10), (10, 10, 10, 10), tested_on=date(2026, 10, 1))
         self.assertIsNone(self.stop())
+
+
+class CertificateRouteTests(TestCase):
+    """#286 (spec #284 Q6): a 身障證明 the user says they have moves the 目前這一站 on to form 9."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+
+    def setUp(self):
+        self.user = consented_user(username="certificate_user")
+
+    make = test_guide_summary.GuideSummaryTests.make
+    answer = CurrentStopTests.answer
+
+    def certify(self, has_certificate):
+        AidAndSubsidy.objects.create(user=self.user, has_certificate=has_certificate)
+
+    def stop(self):
+        return fitting_state(self.user).stop
+
+    def test_a_certificate_without_an_audiogram_is_form_9(self):
+        self.certify(True)
+        self.assertEqual(self.stop(), "form-9")
+
+    def test_a_certificate_comes_before_reaching_the_threshold(self):
+        self.certify(True)
+        self.make(PTA_55, PTA_55)
+        self.assertEqual(self.stop(), "form-9")
+
+    def test_a_certificate_comes_before_an_audiogram_that_cannot_tell(self):
+        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        self.certify(True)
+        self.assertEqual(self.stop(), "form-9")
+
+    def test_wearing_comes_before_a_certificate(self):
+        self.certify(True)
+        self.answer(wearing=True)
+        self.assertEqual(self.stop(), "after-fitting")
+
+    def test_not_yet_is_the_same_as_unanswered(self):
+        for has_certificate in (False, None):
+            with self.subTest(has_certificate=has_certificate):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.make(PTA_55, PTA_55)
+                self.certify(has_certificate)
+                self.assertEqual(self.stop(), "assessment")
