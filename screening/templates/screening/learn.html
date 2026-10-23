@@ -1,0 +1,32 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}了解｜HearWell{% endblock %}
+
+{% block body %}
+{# #269 (spec #268): the 了解 tab's entry, cards grouped like the home page's 「您還可以」. The owner settles the card wording at acceptance. #}
+<h1 class="h3 mt-2">了解</h1>
+<div class="more-group">
+    <h2 class="more-group-title">助聽器</h2>
+    <ul class="list-unstyled">
+        <li><a class="link-card action-card" href="{% url 'guide' %}">
+            {% include "screening/action_icon.html" with icon="guide" %}
+            <span class="link-card-body">
+                <span class="link-card-title">了解助聽器選配與補助</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</div>
+<div class="more-group">
+    <h2 class="more-group-title">溝通與照顧</h2>
+    <ul class="list-unstyled">
+        <li><a class="link-card action-card" href="{% url 'family_guide' %}">
+            {% include "screening/action_icon.html" with icon="family" %}
+            <span class="link-card-body">
+                <span class="link-card-title">給家人看：怎麼跟聽損的家人溝通</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</div>
+{% endblock %}

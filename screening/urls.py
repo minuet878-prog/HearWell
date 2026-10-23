@@ -17,6 +17,7 @@ urlpatterns = [
     path("register", views.register, name="register"),
     path("privacy", views.privacy, name="privacy"),
     path("family", views.family_guide, name="family_guide"),
+    path("learn", views.learn, name="learn"),
     path("guide", views.guide, name="guide"),
     path("guide/<slug:chapter>", views.guide_chapter, name="guide_chapter"),
     path("consent", views.consent, name="consent"),
