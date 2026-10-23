@@ -1165,9 +1165,12 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     # Not networkidle, which Playwright discourages and which once never came in
-                    # CI: wait for the fonts and the trend chart, the last things to change width.
-                    self.page.evaluate("document.fonts.ready")
+                    # CI: wait for the charts React draws (/report has an audiogram), then their
+                    # fonts.
                     expect(self.page.get_by_text("趨勢圖載入中…")).to_have_count(0)
+                    if self.page.locator("#audiogram-chart").count():
+                        expect(self.page.locator("#audiogram-chart svg").first).to_be_visible()
+                    self.page.evaluate("document.fonts.ready")
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 320)
                     # Spec 4.3: at the very bottom the footer's last line clears the tab bar.
