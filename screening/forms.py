@@ -225,6 +225,7 @@ class HhiComparisonForm(forms.Form):
             self.fields[name].queryset = records.filter(wearing_hearing_aid=wearing)
             self.fields[name].shared_days = days
             if choose_lone_records:
-                only = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
-                if len(only) == 1:
-                    self.initial[name] = only[0]
+                # Two are enough to tell a lone record; chosen through initial, as a saved pair is.
+                first_two = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
+                if len(first_two) == 1:
+                    self.initial[name] = first_two[0]

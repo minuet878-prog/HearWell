@@ -168,16 +168,14 @@ def _form_25_context(request):
     # SADL; SSQ12-TW stays the after-fitting chapter's.
     questionnaires = list(Questionnaire.objects.defined())
     return {
-        "follow_ups": [
-            q for q in _wearing_follow_ups(questionnaires) if q.definition.result != AVERAGE
-        ],
+        "follow_ups": [q for q in _wearing_follow_ups(questionnaires) if q.code != SSQ12],
         "life_impact": _life_impact_pair(questionnaires),
     }
 
 
 def _life_impact_pair(questionnaires):
-    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-    return [q for q in (by_code.get(hhie_s.CODE), by_code.get(hhia_s.CODE)) if q]
+    # HHIE-S, then HHIA-S, as the catalogue lists them.
+    return sorted((q for q in questionnaires if q.definition.life_impact), key=list_order)
 
 
 @dataclass(frozen=True)
@@ -424,7 +422,10 @@ def questionnaire_list(request):
     also = [q for q in _wearing_follow_ups(questionnaires) if q.code != IOI_HA] if wearing else []
     # With an unaided record, answering the life-impact questionnaire again worn compares the two
     # (F1); it comes first.
-    retake = life_impact if reason == "has_norm_basis" else None
+    retake = None
+    if reason == "has_norm_basis":
+        title = AIDED_RETAKE_TITLE.format(topic=life_impact.definition.topic, name=life_impact)
+        retake = {"questionnaire": life_impact, "title": title, "note": AIDED_RETAKE_NOTE}
     return _wizard_step(
         request,
         total,
@@ -435,9 +436,6 @@ def questionnaire_list(request):
         start_url=start_url,
         also=also,
         retake=retake,
-        retake_title=retake
-        and AIDED_RETAKE_TITLE.format(topic=retake.definition.topic, name=retake),
-        retake_note=AIDED_RETAKE_NOTE,
         # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
         offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,

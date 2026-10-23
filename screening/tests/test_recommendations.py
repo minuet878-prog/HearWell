@@ -216,8 +216,10 @@ class WizardTests(TestCase):
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
         main = self.wizard(**params).content.decode()
         also = main[main.index("也可以做") : main.index("看其他問卷")]
-        first = re.search(r'<a class="link-card[^"]*" href="([^"]+)">', also).group(1)
-        self.assertEqual(first, reverse("screening", args=[self.by_code["hhia-s"].pk]))
+        first = re.search(r'<a class="link-card[^"]*" href="([^"]+)">(.*?)</a>', also, re.S)
+        self.assertEqual(first.group(1), reverse("screening", args=[self.by_code["hhia-s"].pk]))
+        self.assertIn("戴著助聽器再做一次「聽力對生活的影響」（HHIA-S）", first.group(2))
+        self.assertIn("和沒戴時的結果比較，看助聽器幫了多少。", first.group(2))
 
     def test_after_catching_up_aided_recommends_ioi_ha(self):
         # #154 acceptance 4: start from the catch-up link, send the form as a browser without
