@@ -37,7 +37,6 @@ urlpatterns = [
     path("shared/<str:token>", views.shared_cover, name="shared_cover"),
     path("shared/<str:token>/report", views.shared_report, name="shared_report"),
     path("my_data/download", views.download_my_data, name="download_my_data"),
-    path("my_aid", views.my_aid, name="my_aid"),
     path("account", views.account_settings, name="account_settings"),
     path("account/delete", views.delete_account, name="delete_account"),
     path("submission/<int:submission_id>", views.submission_result, name="result"),

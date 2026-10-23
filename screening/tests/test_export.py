@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date
+from datetime import date, datetime
 from urllib.parse import quote
 
 from django.db import connection
@@ -15,6 +15,7 @@ from screening.models import (
     Audiogram,
     AudiogramPoint,
     Category,
+    GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
@@ -357,6 +358,7 @@ class HearingAidExportTests(TestCase):
                 "ear": "雙耳",
                 "subsidy": "用身障補助（有九號表）",
                 "level": "中階型",
+                "viewed_chapters": [],
             },
         )
 
@@ -367,7 +369,36 @@ class HearingAidExportTests(TestCase):
             "ear": None,
             "subsidy": None,
             "level": None,
+            "viewed_chapters": [],
         }
         self.assertEqual(self.exported(), unanswered)
         AidAndSubsidy.objects.create(user=self.user)
         self.assertEqual(self.exported(), unanswered)
+
+
+class ViewedChaptersExportTests(TestCase):
+    """#292 (spec #291 acceptance 23): the chapters read, by name, with the first time each."""
+
+    setUp = AidAndSubsidyExportTests.setUp
+    exported = AidAndSubsidyExportTests.exported
+
+    def view(self, user, chapter, moment):
+        view = GuideChapterView.objects.create(user=user, chapter=chapter)
+        GuideChapterView.objects.filter(pk=view.pk).update(first_viewed_at=moment)
+
+    def test_each_chapter_read_with_its_name_and_first_time_in_order(self):
+        taipei = timezone.get_default_timezone()
+        self.view(self.user, "types-and-prices", datetime(2026, 10, 20, 9, 30, tzinfo=taipei))
+        self.view(self.user, "before-you-go", datetime(2026, 10, 19, 21, 5, tzinfo=taipei))
+        other = consented_user(username="export_views_other")
+        self.view(other, "form-9", datetime(2026, 10, 18, 8, 0, tzinfo=taipei))
+        self.assertEqual(
+            self.exported()["viewed_chapters"],
+            [
+                {"chapter": "去找聽力師之前", "first_viewed_at": "2026-10-19T21:05:00+08:00"},
+                {
+                    "chapter": "助聽器的種類與價格",
+                    "first_viewed_at": "2026-10-20T09:30:00+08:00",
+                },
+            ],
+        )

@@ -144,13 +144,15 @@ class PrivacyHighlightsTests(TestCase):
         self.assertIn("到「帳號設定」自己下載、刪除", test_layout._text(last))
 
     def test_aid_and_subsidy_is_listed_with_the_health_data(self):
-        # #286 (spec #284 Q9): the four new answers, written in once for the whole feature.
+        # #292 (spec #291 acceptance 25): every answer on the route and the chapters read,
+        # written in once for the whole feature (spec #291's draft).
         main = self._privacy_main()
         collected = main[main.index("蒐集哪些資料") : main.index("存放在哪裡、保存多久")]
         self.assertIn(
             "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
-            "您自己填的助聽器與補助資料（有沒有聽覺機能的身心障礙證明、助聽器開始配戴的日期、"
-            "戴哪一耳、有沒有用身障補助買和補助等級）。",
+            "您在選配路線上的回答（有沒有聽覺機能的身心障礙證明、九號表與核定公文的進度、"
+            "核定單耳或雙耳與補助等級、助聽器開始配戴的日期與戴哪一耳、有沒有用身障補助買、"
+            "二十五號表完成了沒），以及您看過哪幾個選配指引章節。",
             self._list_items(collected),
         )
 
@@ -165,7 +167,6 @@ class PrivacyHighlightsTests(TestCase):
         self.assertRedirects(self.client.get(url), _consent_url(url))
         self.client.post(reverse("consent"), {"agree": "", "next": url})
         self.assertEqual(self.client.get(url).status_code, 200)
-        self.assertEqual(self.client.get(reverse("my_aid")).status_code, 200)
 
 
 class NewUserTests(TestCase):

@@ -49,6 +49,7 @@ class User(AbstractUser):
         self.consents.all().delete()
         self.report_shares.all().delete()
         AidAndSubsidy.objects.filter(user=self).delete()
+        self.guide_views.all().delete()
         self.delete()
 
 
@@ -573,13 +574,20 @@ class AidAndSubsidy(models.Model):
         level = "" if self.level == AidLevel.UNKNOWN else self.get_level_display()
         return "，".join(filter(None, [self.hearing_aids_text, level]))
 
-    @property
-    def subsidy_text(self):
-        """用身障補助，中階型 on the summary card; "" unanswered."""
-        if not self.uses_disability_subsidy:
-            return self.get_subsidy_display()
-        if self.level == AidLevel.UNKNOWN:
-            return "用身障補助，等級不知道"
-        if self.level:
-            return f"用身障補助，{self.get_level_display()}"
-        return "用身障補助"
+
+class GuideChapterView(models.Model):
+    # 看過 (spec #291, ADR 0021): a chapter the user opened signed in, one row each, kept from
+    # the first time. Some chapters' views make their stop on the 選配路線 已完成.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="guide_views"
+    )
+    chapter = models.CharField(max_length=20)  # a guide chapter's slug
+    first_viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=("user", "chapter"), name="one_view_per_chapter"),
+        )
+
+    def __str__(self):
+        return f"{self.user} viewed {self.chapter}"

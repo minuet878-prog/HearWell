@@ -8,20 +8,25 @@ from django.utils import timezone
 
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
-from screening.tests import test_guide, test_guide_summary
+from screening.tests import test_guide, test_guide_summary, test_route_steps
 from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
-# The route's seven stops in order: recording an audiogram, then the chapters (#255's order).
+# The route's nine stops in order (spec #291): recording an audiogram, then the chapters,
+# with the two waits that have no chapter of their own.
 STOPS = (
     ("audiogram", "記錄聽力圖"),
     ("before-you-go", "去找聽力師之前"),
     ("assessment", "身障鑑定與鑑定醫院"),
     ("form-9", "九號表：申請助聽器補助"),
+    ("notice", "等待核定公文"),
     ("types-and-prices", "助聽器的種類與價格"),
     ("after-fitting", "配戴助聽器之後"),
     ("form-25", "二十五號表：使用效益驗證"),
+    ("payout", "等待補助發放"),
 )
+# 等待核定公文 and 等待補助發放 link to form 9's 申請流程 (spec #291 Q15).
+WAITS = ("notice", "payout")
 DONE, HERE, BELOW, TOO_LITTLE = "已完成", "您在這裡", "估算未達門檻", "資料不足"
 TAGS = (DONE, HERE, BELOW, TOO_LITTLE)
 
@@ -67,18 +72,42 @@ class GuideRouteTests(TestCase):
     def assert_link(self, markup, href, text):
         self.assertRegex(markup, rf'<a [^>]*href="{re.escape(href)}"[^>]*>{re.escape(text)}</a>')
 
-    def test_seven_stops_in_order_each_linked(self):
+    def test_nine_stops_in_order_each_linked(self):
         self.client.logout()
         stops = self.stops()
         self.assertEqual([slug for slug, _ in stops], [slug for slug, _ in STOPS])
         for (slug, markup), (_, title) in zip(stops, STOPS, strict=True):
-            href = (
-                reverse("audiogram_new")
-                if slug == "audiogram"
-                else reverse("guide_chapter", args=[slug])
-            )
+            if slug == "audiogram":
+                href = reverse("audiogram_new")
+            elif slug in WAITS:
+                href = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
+            else:
+                href = reverse("guide_chapter", args=[slug])
             with self.subTest(stop=slug):
                 self.assert_link(markup, href, title)
+
+    # 4, 5
+    def test_chapters_read_signed_in_are_done_and_here_is_the_first_left(self):
+        self.make(PTA_55, PTA_55)
+        for slug in ("types-and-prices", "before-you-go"):
+            self.client.get(reverse("guide_chapter", args=[slug]))
+        tags = self.tags()
+        self.assertEqual(tags["before-you-go"], [DONE])
+        self.assertEqual(tags["types-and-prices"], [DONE])
+        self.assert_only_here_at(tags, "assessment")
+        assessment = reverse("guide_chapter", args=["assessment"])
+        self.assert_link(self.stop("assessment"), assessment, "找鑑定醫院")
+
+    # 3
+    def test_within_25_reading_any_chapter_puts_here_on_the_route(self):
+        self.make(*test_route_steps.WITHIN_25)
+        self.client.get(reverse("guide_chapter", args=["form-9"]))
+        self.assert_only_here_at(self.tags(), "before-you-go")
+
+    # 26
+    def test_there_is_no_aid_and_subsidy_card(self):
+        self.make(PTA_55, PTA_55)
+        self.assertNotIn("我的助聽器與補助", self.page())
 
     def test_signed_out_no_stop_is_marked(self):
         self.client.logout()
@@ -121,13 +150,12 @@ class GuideRouteTests(TestCase):
         self.assert_only_here_at(tags, "before-you-go")
         self.assertNotIn("看沒有身障證明時", self.stop("assessment"))
 
-    def test_reached_is_here_at_the_assessment(self):
+    def test_reached_is_here_at_before_you_go_until_it_is_read(self):
+        # Spec #291 default 4, in place of #257 Q5.
         self.make(PTA_55, PTA_55)
         tags = self.tags()
-        self.assert_only_here_at(tags, "assessment")
-        self.assertEqual(tags["before-you-go"], [])
-        assessment = reverse("guide_chapter", args=["assessment"])
-        self.assert_link(self.stop("assessment"), assessment, "找鑑定醫院")
+        self.assert_only_here_at(tags, "before-you-go")
+        self.assertEqual(tags["assessment"], [])
 
     def test_an_audiogram_that_cannot_tell_is_here_with_too_little_data(self):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -172,82 +200,8 @@ class GuideRouteTests(TestCase):
         self.assertEqual(tags["audiogram"], [DONE])
 
 
-class CertificateRouteTests(TestCase):
-    """#286 (spec #284 acceptance 7-10, 25): the route with the 身障證明 the user filled in."""
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
-
-    def setUp(self):
-        self.user = consented_user(username="certificate_reader")
-        self.client.force_login(self.user)
-
-    make = test_guide_summary.GuideSummaryTests.make
-    page = GuideRouteTests.page
-    stops = GuideRouteTests.stops
-    stop = GuideRouteTests.stop
-    tags = GuideRouteTests.tags
-    assert_only_here_at = GuideRouteTests.assert_only_here_at
-    assert_link = GuideRouteTests.assert_link
-
-    def certify(self, has_certificate):
-        AidAndSubsidy.objects.update_or_create(
-            user=self.user, defaults={"has_certificate": has_certificate}
-        )
-
-    # 7
-    def test_reached_without_an_answer_links_the_assessment_to_the_form(self):
-        self.make(PTA_55, PTA_55)
-        self.assert_only_here_at(self.tags(), "assessment")
-        self.assert_link(self.stop("assessment"), reverse("my_aid"), "我已經有身障證明")
-
-    # 8
-    def test_a_certificate_without_an_audiogram_is_here_at_form_9(self):
-        self.certify(True)
-        tags = self.tags()
-        self.assert_only_here_at(tags, "form-9")
-        self.assertEqual(tags["assessment"], [DONE])
-        self.assertEqual(tags["audiogram"], [])
-        form_9 = re.escape(reverse("guide_chapter", args=["form-9"]))
-        button = rf'<a class="btn[^"]*" href="{form_9}">看九號表的流程</a>'
-        self.assertRegex(self.stop("form-9"), button)
-        self.assertNotIn("我已經有身障證明", self.stop("assessment"))
-
-    # 9
-    def test_a_certificate_below_the_threshold_is_only_done(self):
-        self.make((30, 30, 30, 30), (20, 20, 20, 20))
-        self.certify(True)
-        self.assertEqual(self.tags()["assessment"], [DONE])
-        assessment = self.stop("assessment")
-        self.assertNotIn("看沒有身障證明時", assessment)
-        self.assertNotIn("我已經有身障證明", assessment)
-
-    # 10
-    def test_not_yet_marks_the_route_as_unanswered_does(self):
-        for state, right, left in (
-            ("reached", PTA_55, PTA_55),
-            ("not reached", (30, 30, 30, 30), (20, 20, 20, 20)),
-        ):
-            with self.subTest(state=state):
-                AidAndSubsidy.objects.filter(user=self.user).delete()
-                self.make(right, left)  # the newest audiogram decides
-                unanswered = self.stops()
-                self.certify(None)
-                self.assertEqual(self.stops(), unanswered)
-                self.certify(False)
-                self.assertEqual(self.stops(), unanswered)
-                assessment = dict(unanswered)["assessment"]
-                self.assert_link(assessment, reverse("my_aid"), "我已經有身障證明")
-
-    # 25
-    def test_signed_out_has_no_link_to_the_form(self):
-        self.client.logout()
-        self.assertNotIn(reverse("my_aid"), self.page())
-
-
 class FittedOnRouteTests(TestCase):
-    """#287 (spec #284 acceptance 11, 18): the route with the fitting date the user filled in."""
+    """#287 (spec #291 Q5): a fitting date counts as wearing hearing aids on the route too."""
 
     @classmethod
     def setUpTestData(cls):
@@ -261,36 +215,18 @@ class FittedOnRouteTests(TestCase):
     answer = GuideRouteTests.answer
     page = GuideRouteTests.page
     stops = GuideRouteTests.stops
-    stop = GuideRouteTests.stop
     tags = GuideRouteTests.tags
     assert_only_here_at = GuideRouteTests.assert_only_here_at
-    assert_link = GuideRouteTests.assert_link
 
-    # 11
     def test_a_fitting_date_with_the_latest_answered_without_them_is_here_after_fitting(self):
         self.make(PTA_55, PTA_55)
         self.answer(wearing=False)
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
         self.assert_only_here_at(self.tags(), "after-fitting")
 
-    # 18
-    def test_wearing_without_a_fitting_date_links_after_fitting_to_the_form(self):
-        self.answer(wearing=True)
-        self.assert_only_here_at(self.tags(), "after-fitting")
-        self.assert_link(self.stop("after-fitting"), reverse("my_aid"), "記錄我的助聽器")
-
-    def test_a_fitting_date_has_no_link_to_record_them(self):
-        self.answer(wearing=True)
-        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertNotIn(reverse("my_aid"), self.stop("after-fitting"))
-
-    def test_not_wearing_has_no_link_to_record_them(self):
-        self.make(PTA_55, PTA_55)
-        self.assertNotIn("記錄我的助聽器", self.page())
-
 
 class Form25DeadlineTests(TestCase):
-    """#288 (spec #284 acceptance 12-17): the form 25 stop dated from the fitting date."""
+    """#288: the form 25 stop dated from the fitting date (#296 turns it to spec #291's)."""
 
     def setUp(self):
         self.user = consented_user(username="form_25_reader")
@@ -306,38 +242,22 @@ class Form25DeadlineTests(TestCase):
     page = GuideRouteTests.page
     stops = GuideRouteTests.stops
     stop = GuideRouteTests.stop
-    tags = GuideRouteTests.tags
-    assert_only_here_at = GuideRouteTests.assert_only_here_at
-    assert_link = GuideRouteTests.assert_link
 
     def fit(self, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"):
         AidAndSubsidy.objects.create(
             user=self.user, fitted_on=fitted_on, subsidy=subsidy, level=level
         )
 
-    # 12
     def test_before_a_month_says_from_when_it_can_be_done(self):
         self.fit()
-        self.assert_only_here_at(self.tags(), "after-fitting")
         self.assertIn("2026/06/01 起可以做", self.stop("form-25"))
 
-    # 13
-    def test_from_a_month_to_three_says_by_when_and_is_here(self):
+    def test_from_a_month_to_three_says_by_when(self):
         self.fit()
         self.today = date(2026, 7, 15)
-        self.assert_only_here_at(self.tags(), "form-25")
         form_25 = self.stop("form-25")
         self.assertIn("2026/08/01 前要做完", form_25)
         self.assertNotIn("起可以做", form_25)
-        href = re.escape(reverse("guide_chapter", args=["form-25"]))
-        self.assertRegex(form_25, rf'<a class="btn[^"]*" href="{href}">看二十五號表要帶什麼</a>')
-
-    # 14
-    def test_after_three_months_is_after_fitting_with_no_date(self):
-        self.fit()
-        self.today = date(2026, 8, 2)
-        self.assert_only_here_at(self.tags(), "after-fitting")
-        self.assertNotIn("2026/", self.stop("form-25"))
 
     def test_the_wording_turns_on_the_boundary_days(self):
         self.fit()
@@ -350,17 +270,14 @@ class Form25DeadlineTests(TestCase):
                 self.today = today
                 self.assertIn(wording, self.stop("form-25"))
 
-    # 15
     def test_basic_or_paying_has_no_form_25_date(self):
         self.today = date(2026, 7, 15)
         for subsidy, level in (("disability", "basic"), ("other", ""), ("", "")):
             with self.subTest(subsidy=subsidy, level=level):
                 AidAndSubsidy.objects.filter(user=self.user).delete()
                 self.fit(subsidy=subsidy, level=level)
-                self.assert_only_here_at(self.tags(), "after-fitting")
                 self.assertNotIn("2026/", self.stop("form-25"))
 
-    # 17
     def test_a_month_after_the_31st_is_the_last_day_of_february(self):
         self.fit(fitted_on=date(2026, 1, 31))
         self.today = date(2026, 2, 10)

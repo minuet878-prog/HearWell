@@ -22,7 +22,7 @@ class TodayTests(TestCase):
 
 
 class CurrentStopTests(TestCase):
-    """#258 (spec #257 Q18): the 目前這一站, the first rule from the top that holds."""
+    """#258 (spec #257 Q18), with #291's nine stops: the 目前這一站 from the records."""
 
     @classmethod
     def setUpTestData(cls):
@@ -68,7 +68,7 @@ class CurrentStopTests(TestCase):
         self.answer(wearing=True, day=1)
         self.answer(wearing=False, day=2)
         self.make(PTA_55, PTA_55)
-        self.assertEqual(self.stop(), "assessment")
+        self.assertEqual(self.stop(), "before-you-go")
 
     def test_an_audiogram_that_cannot_tell_is_recording_one_with_too_little_data(self):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -82,10 +82,6 @@ class CurrentStopTests(TestCase):
         audiogram.points.filter(ear="left", frequency=4000).delete()
         self.assertEqual(self.stop(), "after-fitting")
         self.assertTrue(fitting_state(self.user, TODAY).insufficient)
-
-    def test_reaching_the_threshold_is_the_assessment(self):
-        self.make(PTA_55, PTA_55)
-        self.assertEqual(self.stop(), "assessment")
 
     def test_an_ear_over_25_with_the_threshold_uncertain_is_before_you_go(self):
         self.make((30, 30, 30, 30), (30, 30, 30, 30), no_response_at=("right", 4000))
@@ -111,57 +107,37 @@ class CurrentStopTests(TestCase):
         self.assertIsNone(self.stop())
 
 
-class CertificateRouteTests(TestCase):
-    """#286 (spec #284 Q6): a 身障證明 the user says they have moves the 目前這一站 on to form 9."""
+class OldRulesGoneTests(TestCase):
+    """#292 (spec #291): #284's rules are gone. A certificate no longer jumps to form 9, and
+    form 25's first month no longer holds the 目前這一站 at 配戴之後; the stops move on as the
+    user reads and answers them."""
 
     @classmethod
     def setUpTestData(cls):
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
 
     def setUp(self):
-        self.user = consented_user(username="certificate_user")
+        self.user = consented_user(username="old_rules_user")
 
     make = test_guide_summary.GuideSummaryTests.make
-    answer = CurrentStopTests.answer
 
-    def certify(self, has_certificate):
-        AidAndSubsidy.objects.create(user=self.user, has_certificate=has_certificate)
-
-    def stop(self):
-        return fitting_state(self.user, TODAY).stop
-
-    def test_a_certificate_without_an_audiogram_is_form_9(self):
-        self.certify(True)
-        self.assertEqual(self.stop(), "form-9")
-
-    def test_a_certificate_comes_before_reaching_the_threshold(self):
-        self.certify(True)
+    def test_a_certificate_no_longer_moves_the_stop_to_form_9(self):
         self.make(PTA_55, PTA_55)
-        self.assertEqual(self.stop(), "form-9")
+        AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")
 
-    def test_a_certificate_comes_before_an_audiogram_that_cannot_tell(self):
-        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
-        audiogram.points.filter(ear="left", frequency=4000).delete()
-        self.certify(True)
-        self.assertEqual(self.stop(), "form-9")
-
-    def test_wearing_comes_before_a_certificate(self):
-        self.certify(True)
-        self.answer(wearing=True)
-        self.assertEqual(self.stop(), "after-fitting")
-
-    def test_not_yet_is_the_same_as_unanswered(self):
-        for has_certificate in (False, None):
-            with self.subTest(has_certificate=has_certificate):
-                AidAndSubsidy.objects.filter(user=self.user).delete()
-                self.make(PTA_55, PTA_55)
-                self.certify(has_certificate)
-                self.assertEqual(self.stop(), "assessment")
+    def test_form_25_s_dates_no_longer_move_the_stop(self):
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
+        for today in (date(2026, 5, 20), date(2026, 7, 15), date(2026, 8, 2)):
+            with self.subTest(today=today):
+                self.assertEqual(fitting_state(self.user, today).stop, "after-fitting")
 
 
 class FittedOnRouteTests(TestCase):
-    """#287 (spec #284 acceptance 11, story 21): a fitting date the user filled in counts as
-    wearing hearing aids, as the latest questionnaire answered wearing them does."""
+    """#287 (spec #291 Q5): a fitting date the user filled in counts as wearing hearing aids,
+    as the latest questionnaire answered wearing them does."""
 
     @classmethod
     def setUpTestData(cls):
@@ -191,12 +167,12 @@ class FittedOnRouteTests(TestCase):
         self.make(PTA_55, PTA_55)
         AidAndSubsidy.objects.create(user=self.user, ear="both", subsidy="disability", level="mid")
         self.assertFalse(self.state().wearing)
-        self.assertEqual(self.state().stop, "assessment")
+        self.assertEqual(self.state().stop, "before-you-go")
 
 
-class Form25DeadlineTests(TestCase):
-    """#288 (spec #284 acceptance 12-16, Q7): someone who has to do form 25 is at it from a
-    month to three months after the fitting date, both days included."""
+class Form25DatesTests(TestCase):
+    """#288 (spec #291 Implementation Decisions): someone who has to do form 25 does it from a
+    month to three months after the fitting date, both days included. Kept for #296."""
 
     @classmethod
     def setUpTestData(cls):
@@ -212,56 +188,35 @@ class Form25DeadlineTests(TestCase):
             user=self.user, fitted_on=fitted_on, subsidy=subsidy, level=level
         )
 
-    def stop(self, today):
-        return fitting_state(self.user, today).stop
+    def form_25(self):
+        return fitting_state(self.user, TODAY).form_25
 
-    def test_a_month_after_fitting_is_form_25(self):
+    def test_from_a_month_to_three_months_after_fitting(self):
         self.fit()
-        self.assertEqual(self.stop(date(2026, 6, 1)), "form-25")
-
-    def test_the_day_before_a_month_is_after_fitting(self):
-        self.fit()
-        self.assertEqual(self.stop(date(2026, 5, 31)), "after-fitting")
-
-    def test_three_months_after_fitting_is_still_form_25(self):
-        self.fit()
-        self.assertEqual(self.stop(date(2026, 8, 1)), "form-25")
-
-    def test_the_day_after_three_months_is_after_fitting_again(self):
-        self.fit()
-        self.assertEqual(self.stop(date(2026, 8, 2)), "after-fitting")
+        self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
 
     def test_a_month_after_the_31st_is_the_last_day_of_a_shorter_month(self):
         self.fit(fitted_on=date(2026, 1, 31))
-        self.assertEqual(self.stop(date(2026, 2, 27)), "after-fitting")
-        self.assertEqual(self.stop(date(2026, 2, 28)), "form-25")
+        self.assertEqual(self.form_25(), (date(2026, 2, 28), date(2026, 4, 30)))
 
-    # 16
-    def test_an_unknown_level_counts_as_having_to_do_it(self):
-        self.fit(level="unknown")
-        self.assertEqual(self.stop(date(2026, 7, 15)), "form-25")
-
-    def test_the_higher_levels_have_to_do_it(self):
-        for level in ("advanced", "cros"):
+    def test_an_unknown_level_and_the_higher_levels_have_to_do_it(self):
+        for level in ("unknown", "advanced", "cros"):
             with self.subTest(level=level):
                 AidAndSubsidy.objects.filter(user=self.user).delete()
                 self.fit(level=level)
-                self.assertEqual(self.stop(date(2026, 7, 15)), "form-25")
+                self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
 
-    # 15
-    def test_basic_paying_or_unanswered_subsidies_stay_after_fitting(self):
+    def test_basic_paying_or_unanswered_subsidies_have_none(self):
         for subsidy, level in (("disability", "basic"), ("other", ""), ("", "")):
             with self.subTest(subsidy=subsidy, level=level):
                 AidAndSubsidy.objects.filter(user=self.user).delete()
                 self.fit(subsidy=subsidy, level=level)
-                self.assertEqual(self.stop(date(2026, 7, 15)), "after-fitting")
+                self.assertIsNone(self.form_25())
 
-    def test_wearing_by_the_questionnaire_without_a_date_stays_after_fitting(self):
+    def test_wearing_by_the_questionnaire_without_a_date_has_none(self):
         self.answer(wearing=True)
         AidAndSubsidy.objects.create(user=self.user, subsidy="disability", level="mid")
-        self.assertEqual(self.stop(date(2026, 7, 15)), "after-fitting")
-
-
+        self.assertIsNone(self.form_25())
 class ReapplyDateTests(TestCase):
     """#288 (spec #284 acceptance 17): someone who bought with 身障補助 can apply again four
     years after the fitting date."""

@@ -1,5 +1,6 @@
-"""Where a user stands on the 選配路線 (GLOSSARY, spec #257): the 目前這一站 and the records
-behind it, kept in one place for every page that shows the route or points along it."""
+"""Where a user stands on the 選配路線 (GLOSSARY, spec #291): each stop's state, the 目前這一站
+and the records behind them, kept in one place for every page that shows the route or points
+along it."""
 
 import calendar
 from dataclasses import dataclass
@@ -9,8 +10,25 @@ from screening.audiogram import assessment_estimate, recommends_fitting_assessme
 from screening.models import AidAndSubsidy, AidLevel, Audiogram, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
-# The route's first stop, recording an audiogram; the other stops are the guide's chapters.
+# The route's first stop, recording an audiogram; the other stops are the guide's chapters,
+# but for 等待核定公文 and 等待補助發放, which have none.
 AUDIOGRAM = "audiogram"
+# The nine stops in route order (spec #291).
+STOPS = (
+    AUDIOGRAM,
+    "before-you-go",
+    "assessment",
+    "form-9",
+    "notice",
+    "types-and-prices",
+    "after-fitting",
+    "form-25",
+    "payout",
+)
+# Someone wearing hearing aids looks for the 目前這一站 from 配戴之後 on (spec #291 Q5, Q9).
+WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
+# The stops a 看過 makes 已完成 (spec #291 Q4); the other chapters are done by an answer.
+DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
 # 要做二十五號表 (#284 Q7): 身障補助 at these levels; 不知道 counts as one of them.
 FORM_25_LEVELS = (AidLevel.MID, AidLevel.ADVANCED, AidLevel.CROS, AidLevel.UNKNOWN)
 REAPPLY_MONTHS = 48  # 身障補助 again 4 years on; #284 leaves out under-12s' 2 years
@@ -23,10 +41,6 @@ def add_months(start, months):
     month = month_index % 12 + 1
     day = min(start.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
-
-
-def _certified(aid):
-    return aid is not None and aid.has_certificate is True
 
 
 def _fitted(aid):
@@ -50,14 +64,10 @@ class FittingState:
     wearing: bool
     fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
     threshold: dict | None  # assessment_estimate, without an audiogram None
-    stop: str | None  # AUDIOGRAM or a chapter slug; None when no stop applies
+    done: frozenset  # the 已完成 stops' slugs
+    stop: str | None  # one of STOPS; None when no stop applies
     today: date  # the day the route is judged on, for its dated rules
-    aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they fill it in
-
-    @property
-    def certified(self):
-        """The user said they have a 身障證明."""
-        return _certified(self.aid)
+    aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they answer any
 
     @property
     def fitted(self):
@@ -110,23 +120,25 @@ def fitting_state(user, today):
         points = list(audiogram.points.all())
         fitting = recommends_fitting_assessment(points)
         threshold = assessment_estimate(points)
-    form_25 = _form_25(aid)
-    due = form_25 is not None and form_25[0] <= today <= form_25[1]
-    stop = _stop(wearing, due, _certified(aid), audiogram, fitting, threshold)
-    return FittingState(latest, audiogram, wearing, fitting, threshold, stop, today, aid)
+    viewed = set(user.guide_views.values_list("chapter", flat=True))
+    done = viewed & DONE_BY_VIEWING
+    if fitting is not None:
+        done.add(AUDIOGRAM)  # an audiogram that can tell; one missing a frequency is not done
+    # Q7: within the normal range, the route waits until the user starts on a stop.
+    started = bool(viewed) or (aid is not None and not aid.unanswered)
+    stop = _stop(wearing, done, fitting is False and not started)
+    return FittingState(
+        latest, audiogram, wearing, fitting, threshold, frozenset(done), stop, today, aid
+    )
 
 
-def _stop(wearing, form_25_due, certified, audiogram, fitting, threshold):
-    # Spec #284 (in place of #257 Q18), from the top. Wearing comes first: choosing hearing
-    # aids is behind them. A certificate is next, with or without an audiogram (#284 Q6).
+def _stop(wearing, done, waiting):
+    # Spec #291 (in place of #284's and #257 Q18's rules): the first stop not done, from
+    # 配戴之後 on for someone wearing hearing aids; none while the route waits.
     if wearing:
-        return "form-25" if form_25_due else "after-fitting"
-    if certified:
-        return "form-9"
-    if audiogram is None or fitting is None:
-        return AUDIOGRAM
-    if threshold["status"] == "reached":
-        return "assessment"  # the certificate comes before form 9's subsidy
-    if fitting:
-        return "before-you-go"
-    return None
+        stops = WEARING_STOPS
+    elif waiting:
+        return None
+    else:
+        stops = STOPS
+    return next((slug for slug in stops if slug not in done), None)

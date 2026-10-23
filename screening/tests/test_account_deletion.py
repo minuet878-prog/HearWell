@@ -12,6 +12,7 @@ from screening.models import (
     AudiogramPoint,
     Category,
     Consent,
+    GuideChapterView,
     NormGroup,
     Question,
     Questionnaire,
@@ -56,8 +57,9 @@ class DeleteAccountTests(TestCase):
         AudiogramPoint.objects.create(
             audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=35
         )
-        # #284 acceptance 22: 助聽器與補助資料 is PROTECT too.
+        # #284 acceptance 22: 助聽器與補助資料 is PROTECT too, and so is 看過 (#291).
         AidAndSubsidy.objects.create(user=user, has_certificate=True)
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
 
     def _counts(self, user_id):
         return {
@@ -68,6 +70,7 @@ class DeleteAccountTests(TestCase):
             "audiograms": Audiogram.objects.filter(user_id=user_id).count(),
             "points": AudiogramPoint.objects.filter(audiogram__user_id=user_id).count(),
             "aid_and_subsidy": AidAndSubsidy.objects.filter(user_id=user_id).count(),
+            "guide_views": GuideChapterView.objects.filter(user_id=user_id).count(),
         }
 
     def _delete(self, password=PASSWORD, client=None):
@@ -79,6 +82,7 @@ class DeleteAccountTests(TestCase):
         user_id = self.user.pk
         before = {"user": 1, "consents": 1, "submissions": 2}
         before |= {"answers": 2, "audiograms": 1, "points": 1, "aid_and_subsidy": 1}
+        before |= {"guide_views": 1}
         self.assertEqual(self._counts(user_id), before)
         self._delete()
         self.assertEqual(set(self._counts(user_id).values()), {0})
@@ -283,10 +287,11 @@ class AidAndSubsidyDeletionTests(TestCase):
     _delete = DeleteAccountTests._delete
 
     def test_the_page_lists_it(self):
+        # #292 (spec #291 acceptance 24): the answers on the route and the chapters read.
         response = self.client.get(self.url)
         self.assertContains(
             response,
-            "<li>助聽器與補助資料（有沒有身障證明、開始配戴日期、戴哪一耳、補助方式和等級）</li>",
+            "<li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>",
             html=True,
         )
 

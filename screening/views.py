@@ -30,11 +30,10 @@ from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
 from screening.audiogram import compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
-from screening.fitting_route import AUDIOGRAM, fitting_state
+from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state
 from screening.forms import (
     ROC_OFFSET,
     AgeGroupForm,
-    AidAndSubsidyForm,
     AnswerFormSet,
     DeleteAccountForm,
     HearingAidForm,
@@ -234,7 +233,6 @@ def guide(request):
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4), or
         # a fitting date is filled in (#287).
         context["wearing"] = state.wearing
-        context["aid"] = state.aid  # the 我的助聽器與補助 card (#284 Q13)
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
     context["route"] = _route(state)
@@ -290,10 +288,17 @@ class RouteStop:
 
 
 def _route(state):
-    # 選配路線 (#258): recording an audiogram, then the chapters in reading order. Signed out,
-    # no stop is marked. Every wording but the marks is one #220 already reviewed.
-    stops = [(AUDIOGRAM, "記錄聽力圖", reverse("audiogram_new"))]
-    stops += [(c.slug, c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS]
+    # 選配路線 (#258, spec #291): recording an audiogram, then the chapters in reading order
+    # and the two waits, which have no chapter and point to form 9's 申請流程 (Q15). Signed
+    # out, no stop is marked.
+    steps = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
+    places = {c.slug: (c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS}
+    places |= {
+        AUDIOGRAM: ("記錄聽力圖", reverse("audiogram_new")),
+        "notice": ("等待核定公文", steps),
+        "payout": ("等待補助發放", steps),
+    }
+    stops = [(slug, *places[slug]) for slug in STOPS]
     if state is None:
         return [RouteStop(*stop) for stop in stops]
     return [_route_stop(state, *stop) for stop in stops]
@@ -302,15 +307,13 @@ def _route(state):
 def _route_stop(state, slug, title, url):
     marks, links, action, tested_on, notes = [], [], None, None, []
     form_9 = reverse("guide_chapter", args=["form-9"])
-    if slug == AUDIOGRAM and state.audiogram is not None:
-        if state.insufficient:
-            # Never 已完成 (grill Q9): the title and a link go to editing it instead.
-            url = reverse("audiogram_edit", args=[state.audiogram.pk])
-        else:
-            marks.append("已完成")
+    if slug == AUDIOGRAM and state.insufficient:
+        # Never 已完成 (grill Q9): the title and a link go to editing it instead.
+        url = reverse("audiogram_edit", args=[state.audiogram.pk])
+    if slug in state.done:
+        marks.append("已完成")
+        if slug == AUDIOGRAM:
             tested_on = state.audiogram.tested_on
-    if slug == "assessment" and state.certified:
-        marks.append("已完成")  # #284 Q6: whatever the audiogram estimates (default 4)
     if slug == state.stop:
         marks.append("您在這裡")
     if slug == AUDIOGRAM and state.insufficient:
@@ -320,6 +323,7 @@ def _route_stop(state, slug, title, url):
         else:
             links.append(("修改這張聽力圖", url))
     elif slug == state.stop:
+        # The waits and types and prices have no button: the title is the only link.
         action = {
             AUDIOGRAM: ("記錄醫院的聽力圖", url),
             "before-you-go": ("去之前要準備什麼", url),
@@ -327,19 +331,15 @@ def _route_stop(state, slug, title, url):
             "form-9": ("看九號表的流程", url),
             "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
             "form-25": ("看二十五號表要帶什麼", url),
-        }[slug]
+        }.get(slug)
     # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
-    if slug == "assessment" and not state.certified:
-        if state.threshold and state.threshold["status"] == "not_reached":
-            marks.append("估算未達門檻")
-            links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
-        links.append(("我已經有身障證明", reverse("my_aid")))
+    if slug == "assessment" and state.threshold and state.threshold["status"] == "not_reached":
+        marks.append("估算未達門檻")
+        links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
     if slug == "form-9" and state.reapply_on:
         notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
-    if slug == "after-fitting" and state.wearing and not state.fitted:
-        links.append(("記錄我的助聽器", reverse("my_aid")))  # #284 acceptance 18
     if slug == "form-25" and state.form_25:
         # #284 Q7: from when before it opens, by when while open, nothing once it has closed.
         opens, closes = state.form_25
@@ -351,10 +351,13 @@ def _route_stop(state, slug, title, url):
 
 
 def guide_chapter(request, chapter):
-    # Like the family guide: the same reviewed content for everyone, no user data.
+    # Like the family guide: the same reviewed content for everyone, no user data shown.
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
+    if request.user.is_authenticated:
+        # 看過 (spec #291 acceptance 4): the first time stays; signed out, nothing is kept.
+        models.GuideChapterView.objects.get_or_create(user=request.user, chapter=chapter)
     context = {"chapter": found}
     if found.extra_context:
         context.update(found.extra_context(request))
@@ -983,22 +986,6 @@ def _mark_not_applicable_answers(data):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
-@health_data_page
-def my_aid(request):
-    # 我的助聽器與補助 (spec #284): only request.user's own, one row made on the first save.
-    aid = models.AidAndSubsidy.for_user(request.user)
-    form = AidAndSubsidyForm(
-        request.POST or None, instance=aid or models.AidAndSubsidy(user=request.user)
-    )
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("guide")
-    context = {"form": form, "disability": models.Subsidy.DISABILITY}
-    return render(request, "screening/my_aid.html", context)
-
-
-@login_required
 @require_http_methods(["GET"])
 @health_data_page
 def download_my_data(request):
@@ -1016,6 +1003,7 @@ def download_my_data(request):
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
     aid = models.AidAndSubsidy.for_user(user)
+    chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
     data = {
         "account": {
             "username": user.username,
@@ -1080,6 +1068,14 @@ def download_my_data(request):
             "ear": (aid and aid.get_ear_display()) or None,
             "subsidy": (aid and aid.get_subsidy_display()) or None,
             "level": (aid and aid.get_level_display()) or None,
+            # Spec #291 acceptance 23: the chapters read, by name, first read first.
+            "viewed_chapters": [
+                {
+                    "chapter": chapter_titles[view.chapter],
+                    "first_viewed_at": _taipei(view.first_viewed_at),
+                }
+                for view in user.guide_views.order_by("first_viewed_at")
+            ],
         },
     }
     filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
