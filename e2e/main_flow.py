@@ -840,7 +840,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     def step2_home_shows_the_reminder(self):
         self.page.goto(self.live_server_url)
         expect(self.main().get_by_role("heading", name="歡迎回來")).to_be_visible()
-        expect(self.main()).to_contain_text(f"{self.old_date} 作答")
+        expect(self.main()).to_contain_text(f"上次是 {self.old_date} 做的")
         expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 40 分")
         expect(self.main()).to_contain_text(self.REMINDER)
 
@@ -892,7 +892,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     def step5_home_shows_the_next_date(self):
         self.main().get_by_role("link", name="回首頁").click()
         today = datetime.now(self.TAIPEI).date()
-        expect(self.main()).to_contain_text(f"{today:%Y/%m/%d} 作答")
+        expect(self.main()).to_contain_text(f"上次是 {today:%Y/%m/%d} 做的")
         expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 20 分")
         expect(self.main()).to_contain_text(f"下次建議 {six_months_after(today):%Y/%m/%d} 再做")
         expect(self.main()).not_to_contain_text(self.REMINDER)
@@ -4213,6 +4213,41 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_wave_plays_and_settles(self.page)
 
+    # Welcome back option D (ADR 0026): the elder sways, its sound lights up, the gauge draws and
+    # the needle swings to the score, each once inside ADR 0006's four seconds; then the needle
+    # rests at the score. Reduced motion: nothing moves and the needle is already there.
+    WELCOME_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.closest('.welcome'))
+        .map(a => ({ name: a.animationName, state: a.playState,
+                     iterations: a.effect.getComputedTiming().iterations,
+                     end: a.effect.getComputedTiming().endTime }))"""
+
+    def test_welcome_back_plays_once_and_rests_at_the_score(self):
+        self.submission(self.hhie_s, (2,) * 10)  # 20 of 40: the needle at 90 degrees
+        for motion in (True, False):
+            with self.subTest(motion=motion):
+                self.open(motion=motion)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/")
+                    needle = self.page.locator(".score-gauge-needle")
+                    expect(needle).to_be_attached()
+                    animations = self.page.evaluate(self.WELCOME_ANIMATIONS)
+                    if not motion:
+                        self.assertEqual(animations, [])
+                    else:
+                        self.assertEqual(
+                            {a["name"] for a in animations},
+                            {"home-sway", "welcome-sound", "gauge-draw", "gauge-needle"},
+                        )
+                        for animation in animations:
+                            self.assertEqual(animation["iterations"], 1, animation)
+                            self.assertLessEqual(animation["end"], 4000, animation)
+                        self.page.wait_for_timeout(4200)
+                        running = self.page.evaluate(self.WELCOME_ANIMATIONS)
+                        self.assertEqual([a for a in running if a["state"] == "running"], [])
+                    # rotate(90deg) as a matrix: cos 90 = 0, sin 90 = 1.
+                    self.assertEqual(self.style(needle, "transform"), "matrix(0, 1, -1, 0, 0, 0)")
+
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
         with self.saving_artifacts():
@@ -5212,19 +5247,26 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
 
     # #299: 歡迎回來 is flat with its two buttons as before; 您還可以's cards stay white cards.
+    # Option D (ADR 0026): inside it, a blue greeting band, still not a white card.
     def test_returning_home_welcome_is_flat_and_more_cards_stay_white(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.returning_home())
             welcome = (
                 self.main()
                 .locator("section")
-                .filter(has=self.page.get_by_role("heading", name="歡迎回來", exact=True))
+                .filter(has=self.page.get_by_role("heading", name="歡迎回來"))
             )
             self.assert_flat(welcome)
+            band = welcome.locator(".welcome-band")
+            # The brand gradient under the two faint rings.
+            self.assertTrue(self.style(band, "backgroundImage").endswith(self.GRADIENT))
+            self.assertEqual(self.style(band, "boxShadow"), "none")
             records = welcome.get_by_role("link", name="看我的紀錄與趨勢", exact=True)
             self.assertEqual(self.style(records, "backgroundImage"), self.GRADIENT)
             again = welcome.get_by_role("link", name="再做一次", exact=True)
             self.assertEqual(self.style(again, "borderTopColor"), self.PRIMARY)
+            # ADR 0026: side by side on a wide screen.
+            self.assertEqual(records.bounding_box()["y"], again.bounding_box()["y"])
             cards = self.page.get_by_role("region", name="您還可以").locator("a.link-card")
             self.assertGreater(cards.count(), 0)
             for card in cards.all():
@@ -5297,6 +5339,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
+    # ADR 0026: at double text size on a phone the elder gives way to the title.
+    def test_welcome_back_elder_gives_way_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.returning_home(), width=320)
+            elder = self.main().locator(".welcome-band .home-illustration")
+            expect(elder).to_be_visible()
+            self.assert_fits_uncut("home, returning")
+            expect(elder).to_be_hidden()
+
     def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
         results = tuple(page for page in WHITE_CARD_PAGES_RECORDS if page[0].endswith(" result"))
         with self.saving_artifacts():

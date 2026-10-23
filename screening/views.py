@@ -1,4 +1,5 @@
 import json
+import math
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -118,6 +119,18 @@ def index(request):
         if last and last.submission.questionnaire.definition.result == NORM
         else None
     )
+    # Welcome back option D (ADR 0026): a life-impact result's gauge and top score.
+    last_gauge = last_max_score = None
+    if last and last.is_life_impact:
+        questionnaire = last.submission.questionnaire
+        last_gauge = _score_gauge(
+            _score_bar(
+                questionnaire.definition,
+                last.submission.total_answer_score,
+                last.submission.classified["level"],
+            )
+        )
+        last_max_score = max_score(questionnaire.code)
     # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
     next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user, today)
     response = render(
@@ -133,6 +146,8 @@ def index(request):
             ),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
+            "last_gauge": last_gauge,
+            "last_max_score": last_max_score,
             "next_step": next_step,
             "more_groups": more_groups,
         },
@@ -1497,6 +1512,45 @@ def _score_bar(definition, score, level):
         "ceiling": ceiling,
         "current_text": next(segment["text"] for segment in segments if segment["current"]),
     }
+
+
+# The welcome-back gauge (option D, ADR 0026): a half circle centred at (110, 105) in its 220 x 130
+# drawing, with a small gap between the levels' arcs.
+# score_gauge.html and site.css use the same centre for the needle.
+GAUGE_CENTRE = (110, 105)
+GAUGE_RADIUS = 80
+GAUGE_GAP = 0.5  # percent of the half circle on each side of a join
+HALF_CIRCLE_DEGREES = 180
+
+
+def _gauge_point(percent):
+    angle = math.pi * (1 - percent / 100)
+    x, y = GAUGE_CENTRE
+    return f"{x + GAUGE_RADIUS * math.cos(angle):.2f} {y - GAUGE_RADIUS * math.sin(angle):.2f}"
+
+
+def _score_gauge(bar):
+    # The score bar's segments as arcs, 0 on the left; the needle turns from 0 by the score's share
+    # of 180 degrees. No bar ("無法判讀", or no levels), no gauge.
+    if bar is None:
+        return None
+    segments = bar["segments"]
+    arcs = []
+    start = 0
+    for number, segment in enumerate(segments, start=1):
+        end = start + segment["width"]
+        arc_start = start + (GAUGE_GAP if number > 1 else 0)
+        arc_end = end - (GAUGE_GAP if number < len(segments) else 0)
+        arcs.append(
+            {
+                "color": segment["color"],
+                "d": f"M{_gauge_point(arc_start)}A{GAUGE_RADIUS} {GAUGE_RADIUS} 0 0 1 "
+                f"{_gauge_point(arc_end)}",
+            }
+        )
+        start = end
+    angle = bar["position"] / 100 * HALF_CIRCLE_DEGREES
+    return {"arcs": arcs, "angle": angle, "ceiling": bar["ceiling"]}
 
 
 @login_required
