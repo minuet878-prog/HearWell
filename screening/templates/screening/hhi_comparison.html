@@ -23,8 +23,8 @@
 </form>
 {# Pages tidy-up: the pair on screen being the one in the report shows once, as the saved card. #}
 {% if preview and not preview_is_saved %}
-<section aria-labelledby="preview-title" class="mt-6">
-    <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
+<section aria-labelledby="preview-title" class="mt-6 tint-block">
+    <h2 id="preview-title" class="tint-block-title">目前查看的兩筆</h2>
     {% include preview.questionnaire.definition.comparison.card_template with comparison=preview %}
     <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
         {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">
@@ -33,8 +33,8 @@
 </section>
 {% endif %}
 {% if saved %}
-<section aria-labelledby="saved-title" class="mt-6">
-    <h2 id="saved-title" class="h4">聽力報告裡的組合</h2>
+<section aria-labelledby="saved-title" class="mt-6 tint-block">
+    <h2 id="saved-title" class="tint-block-title">聽力報告裡的組合</h2>
     {% if preview_is_saved %}<p class="tip-box">這一組已經在聽力報告裡</p>{% endif %}
     {% include saved.questionnaire.definition.comparison.card_template with comparison=saved %}
     <p>新增紀錄不會自動換掉這一組。各問卷分開保留，從報告移除不會刪除作答。</p>
