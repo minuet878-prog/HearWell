@@ -1,4 +1,5 @@
 import re
+from itertools import pairwise
 
 from django.test import TestCase
 from django.urls import reverse
@@ -81,6 +82,26 @@ def assert_footer(testcase, response, checked_on, sources):
             testcase.assertIn(wording, text)
 
 
+def part(response, title):
+    """The HTML of the part (a section named by its h2) titled title, as a screen reader finds
+    it: a region whose aria-labelledby is that heading."""
+    content = response.content.decode()
+    for match in re.finditer(
+        r'<section[^>]*aria-labelledby="([^"]+)"[^>]*>(.*?)</section>', content, re.DOTALL
+    ):
+        heading = re.search(rf'<h2 id="{match[1]}"[^>]*>(.*?)</h2>', match[2], re.DOTALL)
+        if heading and heading[1].strip() == title:
+            return match[2]
+    raise AssertionError(f"No part titled {title}")
+
+
+def heading_levels(response):
+    """The level of every heading in <main>, in order."""
+    content = response.content.decode()
+    main = content[content.index("<main") : content.index("</main>")]
+    return [int(level) for level in re.findall(r"<h([1-6])[\s>]", main)]
+
+
 class GuideContentsTests(TestCase):
     """#221: the contents page of the hearing-aid guide."""
 
@@ -136,6 +157,22 @@ class GuideChapterTests(TestCase):
     def test_user_without_consent_can_read_it(self):
         self.client.force_login(User.objects.create_user(username="guide_old"))
         self.assertEqual(self.client.get(self.url).status_code, 200)
+
+    # #319 (#318 acceptance 11): each chapter's title is the one first-level heading and its parts
+    # second-level ones, the stop's question at the foot included; no level is skipped.
+    def test_every_chapter_titles_its_parts_one_level_below_without_skipping(self):
+        for signed_in in (False, True):
+            if signed_in:
+                self.client.force_login(consented_user(username="guide_levels"))
+            for chapter in GUIDE_CHAPTERS:
+                with self.subTest(chapter=chapter.slug, signed_in=signed_in):
+                    url = reverse("guide_chapter", args=[chapter.slug])
+                    levels = heading_levels(self.client.get(url))
+                    self.assertEqual(levels[0], 1)
+                    self.assertEqual(levels.count(1), 1)
+                    self.assertIn(2, levels)
+                    for above, below in pairwise(levels):
+                        self.assertLessEqual(below, above + 1, levels)
 
     def test_unknown_chapter_is_not_found(self):
         url = reverse("guide_chapter", args=["no-such-chapter"])

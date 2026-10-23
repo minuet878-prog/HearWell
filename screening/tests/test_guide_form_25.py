@@ -13,6 +13,8 @@ from screening.tests.helpers import register
 # owner's request): labelled facts, the things to bring as chips.
 FORM_25 = (
     "「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。",
+    # #319 (ADR 0025): the five facts under a title of their own, in its 段落框.
+    "誰要做、怎麼做",
     "誰要做",
     "買中階型、進階型或雙對側傳聲型的人。簡易型不需要。",
     "什麼時候",
@@ -88,6 +90,13 @@ class Form25ChapterTests(TestCase):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026-10-22", FORM_25_SOURCES)
 
+    # #319: the five facts are a part titled 誰要做、怎麼做, read out as a region by that name.
+    def test_the_five_facts_are_a_titled_part(self):
+        part = test_guide.part(self.client.get(self.url), "誰要做、怎麼做")
+        for label in ("誰要做", "什麼時候", "找誰開", "驗證做什麼", "核銷要帶"):
+            with self.subTest(label=label):
+                self.assertIn(f"<dt>{label}</dt>", part)
+
     def test_preparation_card_after_the_list_links_the_questionnaires_and_report(self):
         response = self.client.get(self.url)
         text = inline_text(response)
@@ -112,6 +121,8 @@ class Form25ChapterTests(TestCase):
 # shortened in the guide chapters tidy-up (2026-10-23, the owner's request): each point's gist
 # as a label.
 AFTER_FITTING = (
+    # #319 (ADR 0025): the four points under a title of their own, in its 段落框.
+    "剛開始戴助聽器",
     "剛開始不習慣是正常的",
     "前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。",
     "每天戴，慢慢拉長",
@@ -161,6 +172,13 @@ class AfterFittingChapterTests(TestCase):
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026-10-22", AFTER_FITTING_SOURCES)
+
+    # #319: the four points are a part titled 剛開始戴助聽器, read out as a region by that name.
+    def test_the_four_points_are_a_titled_part(self):
+        part = test_guide.part(self.client.get(self.url), "剛開始戴助聽器")
+        for point in AFTER_FITTING[1:9:2]:
+            with self.subTest(point=point):
+                self.assertIn(f"<dt>{point}</dt>", part)
 
     def test_links_only_the_follow_up_questionnaires_in_the_catalogue_wording(self):
         # One read of the questionnaire table for their addresses; no user data.

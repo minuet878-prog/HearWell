@@ -4845,6 +4845,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     TINT_LINE = "rgb(201, 187, 163)"
     TINT_RADIUS = "13.5px"
     HEADING = "rgb(33, 37, 41)"
+    # ADR 0025: a 段落框 is a paler beige than a 並列區塊, its title in a deeper beige bar on top.
+    SECTION = "rgb(245, 239, 229)"
+    SECTION_TITLE = "rgb(224, 210, 184)"
+    WARM_BORDER = "rgb(239, 230, 216)"  # the pale line a 段落框 would hide
+    PRINT_GREY = "rgb(173, 181, 189)"
     # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
     # reason) is this deeper light blue, so it still stands out.
     BLUE_DEEP = "rgb(214, 226, 242)"
@@ -5131,6 +5136,33 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             with self.subTest(colour=colour):
                 self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(colour, self.TINT), 4.5)
 
+    def assert_section_box(self, part):
+        """A 段落框 (ADR 0025): the pale beige, no shadow and no border; its title in the deeper
+        beige bar across its top, a block title (1.35 times the body text, bold, the heading
+        colour, no brand-blue bar). The words on each beige keep 4.5:1 or more. Returns the
+        title."""
+        expect(part).to_be_visible()
+        self.assertEqual(self.style(part, "backgroundColor"), self.SECTION)
+        self.assertEqual(self.style(part, "boxShadow"), "none")
+        self.assertEqual(self.style(part, "borderWidth"), "0px")
+        title = part.get_by_role("heading").first
+        self.assertEqual(self.style(title, "backgroundColor"), self.SECTION_TITLE)
+        self.assert_block_title(title)
+        box, bar = part.bounding_box(), title.bounding_box()
+        for edge in ("x", "y", "width"):
+            self.assertAlmostEqual(bar[edge], box[edge], delta=0.5, msg=edge)
+        self.assertGreaterEqual(
+            StyleInBrowserTest.lowest_contrast(self.style(title, "color"), self.SECTION_TITLE), 4.5
+        )
+        colours = set(part.evaluate(self.TEXT_COLOURS, True))
+        self.assertTrue(colours)
+        for colour in colours:
+            with self.subTest(colour=colour):
+                self.assertGreaterEqual(
+                    StyleInBrowserTest.lowest_contrast(colour, self.SECTION), 4.5
+                )
+        return title
+
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
         with self.saving_artifacts():
@@ -5343,52 +5375,53 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             current = self.main().locator(".route-stop[aria-current=step] .route-number")
             self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
 
-    # #302: every chapter's parts are flat blocks framed by their titles, the links still in
-    # them; the question at the foot and its answered form are flat with their buttons.
-    def test_guide_chapters_are_flat_with_their_links(self):
+    # #319 (#318 acceptance 1, 5, 6, 7): every titled part of every chapter, signed in or not, is a
+    # 段落框 with its links in it; outside the boxes only the chapter's title (still blue-barred),
+    # its lead and a tip of its own. The question at the foot and its answered form are 段落框
+    # with their buttons.
+    def test_guide_chapter_parts_are_section_boxes_with_their_links(self):
         linked = set()
         with self.saving_artifacts():
             for slug in HearingAidGuideTest.CHAPTERS:
-                with self.subTest(chapter=slug):
-                    self.visit(True, f"/guide/{slug}")
-                    parts = self.main().get_by_role("article").get_by_role("region")
-                    self.assertGreater(parts.count(), 0)
-                    for part in parts.all():
-                        self.assert_flat(part)
-                        self.assert_titled(part.get_by_role("heading").first)
-                    if parts.get_by_role("link").count():
-                        linked.add(slug)
+                for signed_in in (True, False):
+                    with self.subTest(chapter=slug, signed_in=signed_in):
+                        self.visit(signed_in, f"/guide/{slug}")
+                        article = self.main().get_by_role("article")
+                        self.assert_titled(article.get_by_role("heading", level=1))
+                        parts = article.locator(":scope > section")
+                        self.assertGreater(parts.count(), 0)
+                        for part in parts.all():
+                            self.assert_section_box(part)
+                        outside = article.locator(":scope > :not(section)")
+                        for each in outside.all():
+                            with self.subTest(outside=each.inner_text()[:10]):
+                                self.assertIn(each.evaluate("el => el.tagName"), ("H1", "P"))
+                                self.assertNotEqual(
+                                    self.style(each, "backgroundColor"), self.SECTION
+                                )
+                        self.assert_flat(self.main().locator("footer"))
+                        if parts.get_by_role("link").count():
+                            linked.add(slug)
             # The chapters with links in their parts (the others link only in their sources).
             self.assertEqual(linked, {"form-9", "types-and-prices", "after-fitting", "form-25"})
             self.visit(True, "/guide/assessment")
             question = self.main().get_by_role("region", name="看完了嗎？")
-            self.assert_flat(question)
-            self.assert_titled(question.get_by_role("heading", name="看完了嗎？"))
+            self.assert_section_box(question)
             for answer in ("有", "還沒有，正在申請鑑定", "沒有，不申請身障補助"):
                 with self.subTest(answer=answer):
                     expect(question.get_by_role("button", name=answer, exact=True)).to_be_visible()
             self.visit(True, lambda test: test.answered_chapter())
             answered = self.main().get_by_role("region", name="已記下：有身障證明")
-            self.assert_flat(answered)
+            self.assert_section_box(answered)
             expect(
                 answered.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")
             ).to_be_visible()
             again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
             self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
 
-    # #313: a chapter is an article read in order, so its parts get no tint and no lines; the
-    # space between two parts is at least twice the largest space inside one.
-    PART_SPACING = """(article) => {
-        const shown = (el) => el.getClientRects().length > 0;
-        const gaps = (els) => els.slice(1).map((el, i) =>
-            el.getBoundingClientRect().top - els[i].getBoundingClientRect().bottom);
-        const parts = [...article.children].filter(shown).slice(1);  // after the chapter title
-        return {
-            between: Math.min(...gaps(parts)),
-            within: Math.max(...parts.flatMap((part) => gaps([...part.children].filter(shown)))),
-        };
-    }"""
-    # The bold subheads in each chapter's parts (a fact's label, a step's title, a list's lead).
+    # #319: the boxes stand apart; inside them the facts' labels, steps' titles and lists' leads
+    # are still larger bold subheads, and the lines between labelled facts (and between a
+    # county's hospitals) are the deeper beige, easier to see than the pale line they had.
     GUIDE_SUBHEADS = (
         ("before-you-go", ("適不適合我",)),
         ("assessment", ("雙耳整體障礙比率", "到公所申請")),
@@ -5398,19 +5431,17 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         ("form-25", ("誰要做",)),
     )
 
-    def test_guide_chapter_parts_stand_apart_with_larger_subheads(self):
+    def test_guide_chapter_boxes_stand_apart_with_subheads_and_visible_lines(self):
+        old_line = StyleInBrowserTest.lowest_contrast(self.WARM_BORDER, self.SECTION)
         with self.saving_artifacts():
             for slug, subheads in self.GUIDE_SUBHEADS:
                 with self.subTest(chapter=slug):
-                    self.visit(False, f"/guide/{slug}")
+                    self.visit(False, f"/guide/{slug}?county={HearingAidGuideTest.COUNTY}")
                     article = self.main().get_by_role("article")
-                    for part in article.locator(":scope > :is(section, div)").all():
-                        self.assert_flat(part)
-                        self.assertEqual(self.style(part, "borderTopWidth"), "0px")
-                        self.assertEqual(self.style(part, "borderBottomWidth"), "0px")
-                    spacing = article.evaluate(self.PART_SPACING)
-                    self.assertGreater(spacing["within"], 0)
-                    self.assertGreaterEqual(spacing["between"], 2 * spacing["within"], spacing)
+                    parts = article.locator(":scope > section").all()
+                    boxes = [part.bounding_box() for part in parts]
+                    for above, below in pairwise(boxes):
+                        self.assertGreaterEqual(below["y"] - (above["y"] + above["height"]), 18)
                     body = float(self.style(article.locator("p").first, "fontSize")[:-2])
                     for text in subheads:
                         with self.subTest(subhead=text):
@@ -5420,6 +5451,73 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                             )
                             self.assertEqual(self.style(subhead, "color"), self.HEADING)
                             self.assertEqual(self.style(subhead, "fontWeight"), "700")
+                    lines = article.locator(".key-list > div + div, #hospital-list > li")
+                    for line in lines.all():
+                        with self.subTest(line=line.inner_text()[:10]):
+                            side = "Bottom" if line.evaluate("el => el.tagName") == "LI" else "Top"
+                            colour = self.style(line, f"border{side}Color")
+                            self.assertEqual(colour, self.TINT_LINE)
+                            self.assertGreater(
+                                StyleInBrowserTest.lowest_contrast(colour, self.SECTION), old_line
+                            )
+
+    # #319 (#318 acceptance 12): on paper no beige: each 段落框 is a thin grey frame, its title
+    # bold above a grey line; the chapter's title, lead and tip print as before.
+    def test_printed_guide_chapter_boxes_are_grey_frames(self):
+        with self.saving_artifacts():
+            for slug in HearingAidGuideTest.CHAPTERS:
+                with self.subTest(chapter=slug):
+                    self.visit(True, f"/guide/{slug}")
+                    self.page.emulate_media(media="print")
+                    parts = self.main().locator("article > section, #stop-question")
+                    self.assertGreater(parts.count(), 1)
+                    for part in parts.all():
+                        title = part.get_by_role("heading").first
+                        with self.subTest(part=title.inner_text()):
+                            self.assertEqual(
+                                self.style(part, "backgroundColor"), "rgba(0, 0, 0, 0)"
+                            )
+                            for side in ("Top", "Right", "Bottom", "Left"):
+                                self.assertEqual(self.style(part, f"border{side}Width"), "1px")
+                                self.assertEqual(self.style(part, f"border{side}Style"), "solid")
+                                self.assertEqual(
+                                    self.style(part, f"border{side}Color"), self.PRINT_GREY
+                                )
+                            self.assertEqual(
+                                self.style(title, "backgroundColor"), "rgba(0, 0, 0, 0)"
+                            )
+                            self.assertEqual(self.style(title, "fontWeight"), "700")
+                            self.assertEqual(self.style(title, "borderBottomWidth"), "1px")
+                            self.assertEqual(self.style(title, "borderBottomStyle"), "solid")
+                            self.assertEqual(
+                                self.style(title, "borderBottomColor"), self.PRINT_GREY
+                            )
+                    self.assert_titled(self.main().get_by_role("heading", level=1))
+
+    # #319 (#318 acceptance 13): on a phone at 200% text a long part title wraps inside its
+    # title bar, which stays inside its box.
+    LINES = """(el) => {
+        const style = getComputedStyle(el);
+        const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+        return (el.clientHeight - padding) / parseFloat(style.lineHeight);
+    }"""
+
+    def test_guide_part_titles_wrap_in_their_bars_at_double_text_size(self):
+        wrapped = 0
+        with self.saving_artifacts():
+            for slug in HearingAidGuideTest.CHAPTERS:
+                with self.subTest(chapter=slug):
+                    self.visit(True, f"/guide/{slug}", width=320)
+                    self.assert_fits_uncut(slug)
+                    for part in self.main().locator("article > section, #stop-question").all():
+                        title = part.get_by_role("heading").first
+                        with self.subTest(part=title.inner_text()):
+                            box, bar = part.bounding_box(), title.bounding_box()
+                            self.assertLessEqual(
+                                bar["x"] + bar["width"], box["x"] + box["width"] + 0.5
+                            )
+                            wrapped += title.evaluate(self.LINES) > 1.5
+            self.assertGreater(wrapped, 0)
 
     # #313: the things to bring and the checks to expect are a list, one per line, each with its
     # icon and nothing around it: no white, no frame, no rounded pill.
