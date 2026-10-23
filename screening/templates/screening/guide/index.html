@@ -41,7 +41,7 @@
         {% for label, side, ear in ears %}
         <p class="meter-label"><span>{{ label }}四頻平均</span> <span>{% if ear.pta is None %}資料不足，無法判讀{% else %}{{ ear.pta|stringformat:"g" }} dB HL{% endif %}</span></p>
         {% if ear.pta is not None %}
-        <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-{{ side }}" style="--meter-value: {{ ear.pta|stringformat:"g" }}"></div><span class="meter-line"></span></div>
+        <div class="meter-drawing" aria-hidden="true"><div class="meter-track"><div class="meter-bar meter-bar-{{ side }}" style="--meter-value: {{ ear.pta|stringformat:"g" }}"></div></div><span class="meter-line"></span></div>
         {% endif %}
         {% endfor %}
         <p class="meter-scale">正常上限 25</p>
@@ -66,7 +66,7 @@
     {# Neutral blue, never a level colour (ADR 0007, 0017). #}
     <div class="meter meter-ratio">
         <p class="meter-label"><span>雙耳障礙比率（估算）</span> <span>{% if threshold.no_response %}至少約{% else %}約{% endif %} {{ threshold.ratio }}%</span></p>
-        <div class="meter-track" aria-hidden="true"><div class="meter-bar meter-bar-ratio" style="--meter-value: {{ threshold.ratio }}"></div>{% if threshold.no_response %}<div class="meter-beyond" style="--meter-value: {{ threshold.ratio }}"></div>{% endif %}<span class="meter-line"></span></div>
+        <div class="meter-drawing" aria-hidden="true"><div class="meter-track"><div class="meter-bar meter-bar-ratio" style="--meter-value: {{ threshold.ratio }}"></div>{% if threshold.no_response %}<div class="meter-beyond" style="--meter-value: {{ threshold.ratio }}"></div>{% endif %}</div><span class="meter-line"></span></div>
         <p class="meter-scale">門檻 45%</p>
     </div>
     {% endif %}

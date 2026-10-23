@@ -2241,12 +2241,17 @@
     opacity: 0.5;
   }
 
+  /* The line sticks out above and below the track, so it shows on the page even where it crosses
+     the dark blue bar (1.9:1); a white edge would leave a gap where a bar stops on it. */
+  .meter-drawing {
+    position: relative;
+  }
+
   .meter-line {
     position: absolute;
-    inset: 0 auto 0 calc(var(--meter-line) / var(--meter-max) * 100%);
+    inset: -0.3rem auto -0.3rem calc(var(--meter-line) / var(--meter-max) * 100%);
     width: 0.2rem;
     background-color: var(--color-heading);
-    box-shadow: 0 0 0 0.1rem #fff;
   }
 
   /* The line's label starts where the line is and wraps in the room to its right. */
