@@ -2225,6 +2225,56 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(html).to_have_css("scroll-behavior", "auto")
 
 
+class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#269 (spec #268): the 了解 page, signed out, at 200% text and without JavaScript."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, width, height=900, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    # Acceptance: 390px at 200% text has no sideways scroll; checked at 320px, the narrower
+    # phone the other 200% tests use.
+    def test_fits_a_phone_at_double_text_size(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="了解"
+            ).click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("了解")
+            self.assert_fits_a_phone_at_double_text_size("/learn")
+
+    def test_cards_change_page_without_javascript(self):
+        cards = (
+            ("了解助聽器選配與補助", "/guide", "我的選配指引"),
+            ("給家人看：怎麼跟聽損的家人溝通", "/family", "給家人的溝通與陪伴"),
+        )
+        self.open(390, javascript=False)
+        with self.saving_artifacts():
+            for name, path, heading in cards:
+                with self.subTest(card=name):
+                    self.page.goto(f"{self.live_server_url}/learn")
+                    self.main().get_by_role("link", name=name).click()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
 
