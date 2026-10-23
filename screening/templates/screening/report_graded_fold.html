@@ -1,0 +1,7 @@
+{# #314: a graded questionnaire folded on screen; its summary row says what the report summary says. #}
+<details class="report-fold">
+<summary><h3 class="report-fold-title">{{ section.questionnaire.questionnaire_name }}</h3> <span class="report-fold-meta"><span>最近一次 {{ latest.created_at|date:"Y/m/d" }}</span> <span>{{ latest.total_answer_score }} 分 <span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span></span></span></summary>
+<div class="report-fold-body tint-block">
+{% include "screening/report_graded_section.html" %}{% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
+</div>
+</details>
