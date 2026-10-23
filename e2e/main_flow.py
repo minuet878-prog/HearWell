@@ -204,7 +204,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(toggle).to_have_accessible_name("顯示密碼")
 
     def test_first_visit_pages_fit_a_phone_at_double_text_size(self):
-        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%."""
+        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%.
+
+        The login page too, since layout G put its form on a banner (2026-10-23).
+        """
         self.context.close()
         self.context = self.browser.new_context(
             **{**self.playwright.devices["Pixel 7"], "viewport": {"width": 320, "height": 640}}
@@ -213,6 +216,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
         with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            self.assert_fits_a_phone_at_double_text_size("login")
             self.page.goto(self.live_server_url)
             self.assert_fits_a_phone_at_double_text_size("home")
             self.main().get_by_role("link", name="開始篩檢").click()

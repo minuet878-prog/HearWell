@@ -193,6 +193,23 @@ class LoginViewTests(TestCase):
     def _logged_in_id(self):
         return self.client.session.get("_auth_user_id")
 
+    def test_show_password_button_waits_for_javascript(self):
+        # Layout G (2026-10-23) gives the login page the register page's 顯示 button.
+        content = self.client.get(self.url).content.decode()
+        self.assertIn("screening/password-toggle.js", content)
+        buttons = re.findall(r"<button[^>]*>顯示</button>", content)
+        self.assertEqual(len(buttons), 1)
+        self.assertIn('type="button"', buttons[0])
+        self.assertIn('aria-controls="id_password"', buttons[0])
+        self.assertIn('aria-label="顯示密碼"', buttons[0])
+        self.assertRegex(buttons[0], r"\shidden[\s>]")
+
+    def test_register_button_sits_under_the_login_button(self):
+        main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
+        register = re.search(r'<a [^>]*href="/register"[^>]*>([^<]*)</a>', main)
+        self.assertEqual(register.group(1), "註冊新帳號")
+        self.assertLess(main.index('type="submit" value="登入"'), register.start())
+
     # 4
     def test_wrong_password_stays_on_page(self):
         response = self._login("alice", "wrong-password", next=self.target)
