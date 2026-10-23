@@ -107,7 +107,7 @@ HOME_GROUPS = (
 HIDDEN_IN_APP = "convenience"
 
 
-def home_more(user):
+def home_more(user, today):
     """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty:
     each group (title, cards, hidden in the home-screen app)."""
     cards = {
@@ -117,7 +117,7 @@ def home_more(user):
         "guide": HomeCard("了解助聽器選配與補助", reverse("guide"), "guide"),
         "add-home": HomeCard("加到手機主畫面", reverse("add_to_home"), "add-home"),
     }
-    state = fitting_state(user)
+    state = fitting_state(user, today)
     if state.stop == AUDIOGRAM and state.insufficient:
         suggested = None  # not a card of its own: 記錄醫院的聽力圖 stays in its group
         edit = HomeCard(
