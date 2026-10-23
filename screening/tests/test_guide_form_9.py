@@ -5,8 +5,8 @@ from django.urls import reverse
 
 from screening.tests import test_guide
 
-# Wording finalised in #220 (C2–C31; C31 names the New Taipei centre), shortened in the plan B
-# tidy-up (2026-10-23, the owner's request): step titles, the amounts as rows of numbers.
+# Wording finalised in #220 (C2–C31; C31 names the New Taipei centre), shortened in the guide
+# chapters tidy-up (2026-10-23, the owner's request): step titles, the amounts as rows of numbers.
 FORM_9 = (
     "「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。"
     "有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。",
@@ -20,7 +20,7 @@ FORM_9 = (
     "到公所申請",
     "帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。",
     "等核定通知",
-    "收到評估報告後，10 天內核定。",
+    "主管機關收到評估報告後，10 天內會核定。",
     # Between steps 3 and 4 since the step list (#259).
     "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
     "購買並請款",
@@ -32,13 +32,14 @@ FORM_9 = (
     "帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。",
     "九號表找誰開",
     "聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。",
-    "各縣市輔具中心電話",
+    "各縣市輔具中心",
+    "看各縣市輔具中心電話",
     "補助多少",
-    "每只的上限，依助聽器等級",
-    "2,000 元 簡易型",
-    "10,000 元 中階型",
-    "20,000 元 進階型",
-    "30,000 元 雙對側傳聲型（一組）",
+    "補助上限，依助聽器等級",
+    "2,000 元 簡易型，每只最多",
+    "10,000 元 中階型，每只最多",
+    "20,000 元 進階型，每只最多",
+    "30,000 元 雙對側傳聲型，每組最多",
     "再乘上比例，而且不超過實際購買金額",
     "100% 低收入戶",
     "75% 中低收入戶",
@@ -153,14 +154,23 @@ class Form9ChapterTests(TestCase):
             with self.subTest(entry=entry):
                 self.assertIn(f"<li>{entry}</li>", centres)
         text = test_guide.text_of(response)
-        # Plan B tidy-up: the list is folded away behind its title.
+        self.assertIn('<h3 id="centres-title" class="h5 mt-4">各縣市輔具中心</h3>', content)
+        # Guide chapters tidy-up: the list is folded away under the heading.
         box = content.index('<details class="dropdown-box mb-0">')
-        self.assertIn('<summary id="centres-title">各縣市輔具中心電話</summary>', content)
-        self.assertLess(box, content.index('id="centres-title"'))
-        self.assertLess(content.index('id="centres-title"'), start)
+        self.assertLess(content.index('id="centres-title"'), box)
+        self.assertIn("<summary>看各縣市輔具中心電話</summary>", content[box:start])
         self.assertTrue(centres.rstrip().endswith("</ul>\n    </details>"))
         self.assertLess(text.index(CENTRES_SOURCE), text.index("基隆市輔具資源中心"))
         self.assertIn(f'<p>資料來源：<a href="{PORTAL[1]}">{PORTAL[0]}</a></p>', content)
+
+    def test_amounts_are_rows_of_large_numbers(self):
+        content = self.client.get(self.url).content.decode()
+        start = content.index('<h2 id="amount-title"')
+        section = content[start : content.index("</section>", start)]
+        values = re.findall(r'<span class="fact-rows-value">(.*?)</span>', section)
+        self.assertEqual(
+            values, ["2,000 元", "10,000 元", "20,000 元", "30,000 元", "100%", "75%", "50%"]
+        )
 
     def test_steps_warn_against_buying_before_approval_and_link_to_form_25(self):
         content = self.client.get(self.url).content.decode()

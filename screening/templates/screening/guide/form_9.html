@@ -1,6 +1,6 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Plan B tidy-up: shorter wording, step titles, the amounts as large numbers. #}
+{# Guide chapters tidy-up: step titles, the amounts as large numbers. #}
 <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
 <section class="card card-body mb-4" aria-labelledby="who-title">
     <h2 id="who-title" class="h4">誰可以申請</h2>
@@ -17,7 +17,7 @@
     <ol class="step-list" role="list">
         <li><span class="step-list-number">1</span><span class="step-list-body"><span class="step-list-title">做評估，拿到九號表</span>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="step-when" aria-hidden="true">3 個月內有效</span></span></li>
         <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">到公所申請</span>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">等核定通知</span>收到評估報告後，10 天內核定。<span class="step-when" aria-hidden="true">10 天內核定</span></span></li>
+        <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">等核定通知</span>主管機關收到評估報告後，10 天內會核定。<span class="step-when" aria-hidden="true">10 天內核定</span></span></li>
     </ol>
     <p class="tip-box">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
     <ol class="step-list" role="list" start="4">
@@ -30,9 +30,10 @@
 <section class="card card-body mb-4" aria-labelledby="issuer-title">
     <h2 id="issuer-title" class="h4">九號表找誰開</h2>
     <p>聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。</p>
-    {# The 47 centres folded away: the list is longer than the rest of the chapter. #}
+    {# The 47 centres folded away, longer than the rest of the chapter; the heading stays out for screen readers. #}
+    <h3 id="centres-title" class="h5 mt-4">各縣市輔具中心</h3>
     <details class="dropdown-box mb-0">
-    <summary id="centres-title">各縣市輔具中心電話</summary>
+    <summary>看各縣市輔具中心電話</summary>
     <p>資料來源：<a href="https://newrepat.sfaa.gov.tw/home/repat-center">輔具資源入口網</a></p>
     <ul aria-labelledby="centres-title">
         <li>基隆市
@@ -175,12 +176,12 @@
 </section>
 <section class="card card-body mb-4" aria-labelledby="amount-title">
     <h2 id="amount-title" class="h4">補助多少</h2>
-    <p class="mb-2 font-bold">每只的上限，依助聽器等級</p>
+    <p class="mb-2 font-bold">補助上限，依助聽器等級</p>
     <ul class="fact-rows" role="list">
-        <li><span class="fact-rows-value">2,000 元</span><span>簡易型</span></li>
-        <li><span class="fact-rows-value">10,000 元</span><span>中階型</span></li>
-        <li><span class="fact-rows-value">20,000 元</span><span>進階型</span></li>
-        <li><span class="fact-rows-value">30,000 元</span><span>雙對側傳聲型（一組）</span></li>
+        <li><span class="fact-rows-value">2,000 元</span><span>簡易型，每只最多</span></li>
+        <li><span class="fact-rows-value">10,000 元</span><span>中階型，每只最多</span></li>
+        <li><span class="fact-rows-value">20,000 元</span><span>進階型，每只最多</span></li>
+        <li><span class="fact-rows-value">30,000 元</span><span>雙對側傳聲型，每組最多</span></li>
     </ul>
     <p class="mb-2 font-bold">再乘上比例，而且不超過實際購買金額</p>
     <ul class="fact-rows" role="list">

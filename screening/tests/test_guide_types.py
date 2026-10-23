@@ -5,8 +5,8 @@ from django.urls import reverse
 
 from screening.tests import test_guide
 
-# Wording finalised in #220 (D2–D18a), shortened in the plan B tidy-up (2026-10-23, the owner's
-# request): the limits as rows of numbers, each level's features folded away.
+# Wording finalised in #220 (D2–D18a), shortened in the guide chapters tidy-up (2026-10-23, the
+# owner's request): the limits as rows of numbers, each level's features folded away.
 SENTENCES = (
     "適合哪一種外型，要看聽損程度、耳朵形狀和手的靈活度，請和聽力師討論。",
     "外型",
@@ -23,10 +23,10 @@ SENTENCES = (
     "集音器、輔聽器一般不是醫療器材，依法不能宣稱改善聽損。",
     "買之前，先確認是不是有許可證的助聽器。",
     "補助等級與上限",
-    "2,000 元 簡易型，每只",
-    "10,000 元 中階型，每只",
-    "20,000 元 進階型，每只",
-    "30,000 元 雙對側傳聲型，每組",
+    "2,000 元 簡易型，每只最多補助",
+    "10,000 元 中階型，每只最多補助",
+    "20,000 元 進階型，每只最多補助",
+    "30,000 元 雙對側傳聲型，每組最多補助",
     "各等級有哪些功能",
     "簡易型：類比或數位。",
     "中階型：數位、6 個以上壓縮頻道、多個程式、自動降噪、自動消除回饋音。",

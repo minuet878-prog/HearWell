@@ -24,16 +24,16 @@ CHAPTERS = (
     "二十五號表：使用效益驗證",
 )
 BACK = "回到我的選配指引"
-# Shortened in the plan B tidy-up (2026-10-23, the owner's request): things to bring as chips,
-# the questions grouped under three labels.
+# Shortened in the guide chapters tidy-up (2026-10-23, the owner's request): things to bring
+# as chips, the questions grouped under three labels.
 BEFORE_YOU_GO = (
     "第一次去評估選配助聽器，先準備好下面這些，可以少跑一趟。",
     "要帶的東西",
-    "聽力圖",
+    "醫院的聽力檢查報告（聽力圖）",
     "身分證",
     "身心障礙證明（有的話）",
     "現在用的助聽器（有的話）",
-    "聽力圖可以帶醫院的檢查報告，或在 HearWell 印出聽力報告。",
+    "也可以在 HearWell 印出聽力報告一起帶去。",
     "要申請身障補助，一定要有身心障礙證明。",
     "可以問聽力師的問題",
     "適不適合我",

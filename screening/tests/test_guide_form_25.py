@@ -9,8 +9,8 @@ from screening.questionnaires import hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.tests import test_guide
 from screening.tests.helpers import register
 
-# Wording finalised in #220 (F1-F7), shortened in the plan B tidy-up (2026-10-23, the owner's
-# request): labelled facts, the things to bring as chips.
+# Wording finalised in #220 (F1-F7), shortened in the guide chapters tidy-up (2026-10-23, the
+# owner's request): labelled facts, the things to bring as chips.
 FORM_25 = (
     "「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。",
     "誰要做",
@@ -109,7 +109,8 @@ class Form25ChapterTests(TestCase):
 
 
 # Wording finalised in #220 (H2-H7, H10; H8 and H9 come from the questionnaire definitions),
-# shortened in the plan B tidy-up (2026-10-23, the owner's request): each point's gist as a label.
+# shortened in the guide chapters tidy-up (2026-10-23, the owner's request): each point's gist
+# as a label.
 AFTER_FITTING = (
     "剛開始不習慣是正常的",
     "前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。",

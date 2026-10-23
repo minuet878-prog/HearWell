@@ -2025,9 +2025,16 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.main().get_by_role("heading", level=1)).to_have_text("身障鑑定與鑑定醫院")
             self.main().get_by_label("選擇您的縣市").select_option(self.COUNTY)
             self.main().get_by_role("button", name="查詢").click()
-            expect(self.page).to_have_url(re.compile(r"/guide/assessment\?county="))
+            expect(self.page).to_have_url(
+                re.compile(r"/guide/assessment\?county=.+#hospital-results$")
+            )
             hospitals = self.main().get_by_role("list", name=self.COUNTY).get_by_role("listitem")
             expect(hospitals).to_have_text(list(self.HOSPITALS))
+            # Guide chapters tidy-up: the search lands on its results, not the top of the page.
+            expect(
+                self.main().get_by_text(f"{self.COUNTY}：{len(self.HOSPITALS)} 家醫院")
+            ).to_be_in_viewport()
+            expect(hospitals.first).to_be_in_viewport()
 
             self.main().get_by_role("link", name="回到我的選配指引").click()
             self.main().get_by_role("link", name="看九號表的流程").click()

@@ -2116,7 +2116,7 @@
     font-weight: 700;
   }
 
-  /* Guide chapters, shorter to read (plan B): a step's short title above its details. */
+  /* Guide chapters tidy-up: a step's short title above its details. */
   .step-list-title {
     display: block;
     color: var(--color-heading);
@@ -2235,18 +2235,6 @@
 
   .key-list dd > :last-child {
     margin-bottom: 0;
-  }
-
-  /* A short result list (hospitals of a county): one per line, divided, no bullets. */
-  .plain-rows {
-    margin: 0 0 1rem;
-    padding: 0;
-    list-style: none;
-  }
-
-  .plain-rows li {
-    padding: 0.6rem 0.25rem;
-    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */

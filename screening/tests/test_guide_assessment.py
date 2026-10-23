@@ -10,8 +10,8 @@ from django.urls import reverse
 from screening import assessment_hospitals
 from screening.tests import test_guide
 
-# Wording finalised in #220 (B2–B14, B11a, B11b), shortened in the plan B tidy-up (2026-10-23,
-# the owner's request): the threshold as rows of numbers, the things to bring as chips.
+# Wording finalised in #220 (B2–B14, B11a, B11b), shortened in the guide chapters tidy-up
+# (2026-10-23, the owner's request): the threshold as rows of numbers, the things to bring as chips.
 ASSESSMENT = (
     "要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。",
     "鑑定門檻",
@@ -19,10 +19,11 @@ ASSESSMENT = (
     "45.0% 以上：第 1 級（輕度）",
     "70.1% 以上：第 2 級",
     "90.1% 以上：第 3 級",
-    "一耳 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。",
-    "比率怎麼算、小孩的門檻",
-    "用 500、1000、2000、4000 Hz 的聽力平均計算。",
+    "另外，一耳聽力 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。",
+    # Outside the dropdown: who the page does not apply to stays in sight.
     "未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。",
+    "比率怎麼算",
+    "用 500、1000、2000、4000 Hz 的聽力平均計算。",
     "鑑定時會做什麼",
     "耳鼻喉科專科醫師會做這三項，必要時再加做其他檢查：",
     "純音聽力檢查",
@@ -44,7 +45,7 @@ ASSESSMENT = (
 # Under the menu and any list, as the card's last line.
 ROSTER_NOTE = (
     "名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（1150717）。"
-    "以各縣市衛生局公布為準，去之前先打電話確認。"
+    "實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。"
 )
 CHOOSE_COUNTY = "請先選擇縣市。"
 # B15 without its full stop, as the menu's blank first option.
@@ -102,9 +103,10 @@ class AssessmentChapterTests(TestCase):
         positions = [text.index(s) for s in (*ASSESSMENT, CHOOSE_COUNTY, ROSTER_NOTE)]
         self.assertEqual(positions, sorted(positions))
         content = response.content.decode()
-        # Searching lands back on this card, not at the top of the page.
-        self.assertIn(f'<form method="get" action="{self.url}#hospitals-title">', content)
-        self.assertIn('<h2 id="hospitals-title" class="h4">找鑑定醫院</h2>', content)
+        # Searching lands on the results, not at the top of the page.
+        self.assertIn(f'<form method="get" action="{self.url}#hospital-results">', content)
+        self.assertLess(content.index("</form>"), content.index('<div id="hospital-results"'))
+        self.assertLess(content.index('<div id="hospital-results"'), content.index(CHOOSE_COUNTY))
         self.assertIn('<label for="county"', content)
         self.assertIn('<select id="county" name="county"', content)
         options = [
@@ -118,6 +120,23 @@ class AssessmentChapterTests(TestCase):
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026-10-22", SOURCES)
+
+    def test_the_threshold_is_three_rows_of_ratios_the_first_outlined(self):
+        content = self.client.get(self.url).content.decode()
+        start = content.index('<h2 id="threshold-title"')
+        section = content[start : content.index("</section>", start)]
+        rows = re.findall(
+            r'<li( class="is-key")?><span class="fact-rows-value">(.*?)</span><span>(.*?)</span>',
+            section,
+        )
+        self.assertEqual(
+            rows,
+            [
+                (' class="is-key"', "45.0%", "以上：第 1 級（輕度）"),
+                ("", "70.1%", "以上：第 2 級"),
+                ("", "90.1%", "以上：第 3 級"),
+            ],
+        )
 
     def test_applying_is_a_three_step_list_ending_with_the_wait(self):
         content = self.client.get(self.url).content.decode()
@@ -150,9 +169,9 @@ class AssessmentChapterTests(TestCase):
             "臺中市立老人復健綜合醫院（委託財團法人中國醫藥大學興建經營）",
         ):
             with self.subTest(name=name):
-                self.assertIn(f"<li>{name}</li>", content)
+                self.assertRegex(content, rf"<li[^>]*>{re.escape(name)}</li>")
         listing = content[content.index('id="hospital-list"') :]
-        self.assertEqual(listing[: listing.index("</ul>")].count("<li>"), 3)
+        self.assertEqual(listing[: listing.index("</ul>")].count("</li>"), 3)
         self.assertNotIn("惠民醫院", text)
         self.assertNotIn("臺北榮民總醫院", text)
         # How many before the list, the roster's version after it.

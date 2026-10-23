@@ -1,6 +1,6 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Plan B tidy-up: the wording shortened by the owner's request, the numbers and things to bring set apart. #}
+{# Guide chapters tidy-up: the numbers and the things to bring set apart from the sentences. #}
 <p>要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。</p>
 <section class="card card-body mb-4" aria-labelledby="threshold-title">
     <h2 id="threshold-title" class="h4">鑑定門檻</h2>
@@ -10,11 +10,11 @@
         <li><span class="fact-rows-value">70.1%</span><span>以上：第 2 級</span></li>
         <li><span class="fact-rows-value">90.1%</span><span>以上：第 3 級</span></li>
     </ul>
-    <p class="tip-box">一耳 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。</p>
+    <p>另外，一耳聽力 90 dB 以上、另一耳 48 dB 以上，也算第 1 級。</p>
+    <p>未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。</p>
     <details class="dropdown-line">
-        <summary>比率怎麼算、小孩的門檻</summary>
+        <summary>比率怎麼算</summary>
         <p>用 500、1000、2000、4000 Hz 的聽力平均計算。</p>
-        <p>未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。</p>
     </details>
 </section>
 <section class="card card-body mb-4" aria-labelledby="exam-title">
@@ -40,8 +40,8 @@
 </section>
 <section class="card card-body mb-4" aria-labelledby="hospitals-title">
     <h2 id="hospitals-title" class="h4">找鑑定醫院</h2>
-    {# Back on this card after searching, not at the top of the page. #}
-    <form method="get" action="{% url 'guide_chapter' 'assessment' %}#hospitals-title">
+    {# Searching lands on the results, not at the top of the page. #}
+    <form method="get" action="{% url 'guide_chapter' 'assessment' %}#hospital-results">
         <label for="county" class="form-label text-xl/normal font-bold">選擇您的縣市，列出可以做聽覺機能鑑定的醫院</label>
         <select id="county" name="county" class="form-select form-select-lg mb-2">
             <option value=""{% if not county %} selected{% endif %}>請先選擇縣市</option>
@@ -51,19 +51,21 @@
         </select>
         <button type="submit" class="btn btn-primary btn-lg w-full">查詢</button>
     </form>
+    <div id="hospital-results" class="mt-4">
     {% if not county %}
-    <p class="mt-4">請先選擇縣市。</p>
+    <p>請先選擇縣市。</p>
     {% elif not hospitals %}
-    <p class="mt-4">這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
+    <p>這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
     {% else %}
-    <p class="mt-4 mb-2 text-xl/normal font-bold">{{ county }}：{{ hospitals|length }} 家醫院</p>
-    <ul id="hospital-list" class="plain-rows" role="list" aria-label="{{ county }}">
+    <p class="mb-2 text-xl/normal font-bold">{{ county }}：{{ hospitals|length }} 家醫院</p>
+    <ul id="hospital-list" class="mb-4 list-none p-0" role="list" aria-label="{{ county }}">
         {% for hospital in hospitals %}
-        <li>{{ hospital.name }}</li>
+        <li class="border-b border-border-warm px-1 py-2.5">{{ hospital.name }}</li>
         {% endfor %}
     </ul>
     {% endif %}
-    <p class="guide-source">名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（{{ roster_version }}）。以各縣市衛生局公布為準，去之前先打電話確認。</p>
+    </div>
+    <p class="guide-source">名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（{{ roster_version }}）。實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。</p>
 </section>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}
