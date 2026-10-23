@@ -31,7 +31,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   登入頁加「顯示」密碼；本人在比較頁挑選，PR #273，驗證見 `docs/verification/auth-pages-banner.md`）、e2e 不再等 `networkidle`
   （PR #267，驗證見 `docs/verification/drop-networkidle.md`）、導覽 A 案（母規格 #268，#269–#271，ADR 0019：底部分頁
   「首頁｜篩檢｜紀錄｜了解」、紀錄裡的「問卷｜聽力圖」二選一、新的「了解」入口頁；PR #275，驗證見
-  `docs/verification/issue-268.md`）。
+  `docs/verification/issue-268.md`）、結果頁「接下來建議您」改成一點一張卡（大按鈕改文字連結、報告連結只留在文字
+  有提到的那一點、兩個下拉框放一起；本人在比較頁挑選，PR #274，驗證見
+  `docs/verification/result-next-steps-cards.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
