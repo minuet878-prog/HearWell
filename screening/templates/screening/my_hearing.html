@@ -70,8 +70,22 @@
 {% endfor %}
 <section class="mt-6" aria-labelledby="for-doctor-title">
     <h2 id="for-doctor-title" class="h4">要給醫師或家人看？</h2>
-    <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">聽力報告</a>
-    <p class="mt-1 mb-0">可以印出來或存成 PDF，帶去給醫師看</p>
+    <a class="link-card action-card" href="{% url 'health_report' %}">
+        {% include "screening/action_icon.html" with icon="report" %}
+        <span class="link-card-body">
+            <span class="link-card-title">看／印聽力報告</span>
+            <span>可以印出來或存成 PDF</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>
+    <a class="link-card action-card" href="{% url 'share_report' %}">
+        {% include "screening/action_icon.html" with icon="share" %}
+        <span class="link-card-body">
+            <span class="link-card-title">傳給家人看</span>
+            <span>家人不用登入就能看</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>
     {% if show_comparison %}
     <section class="aided-difference mt-4" aria-labelledby="difference-title">
         <h3 id="difference-title" class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">配戴狀態比較</h3>

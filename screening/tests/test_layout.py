@@ -16,7 +16,7 @@ from screening.models import (
 )
 from screening.scoring import classify
 from screening.tests import test_report
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import action_cards, consented_user
 
 LINK_CARD = re.compile(r'<a\b[^>]*class="[^"]*\blink-card\b[^"]*"[^>]*>.*?</a>', re.S)
 BADGE = re.compile(r'<span class="level-badge level-badge-([a-z_]+)">([^<]*)</span>')
@@ -141,7 +141,7 @@ class LayoutTests(TestCase):
             ),
             "severe": self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=1),
         }
-        cards = _cards(self._get(reverse("my_hearing")))
+        cards = [c for c in _cards(self._get(reverse("my_hearing"))) if "action-card" not in c]
         self.assertEqual(len(cards), 3)
         for level, submission in records.items():
             with self.subTest(level=level):
@@ -230,8 +230,8 @@ class LayoutTests(TestCase):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         main = _main(self._get(reverse("my_hearing")))
         self.assertNotIn("btn-primary", main)
-        self.assertRegex(
-            main, rf'class="btn btn-outline-primary[^"]*" href="{reverse("health_report")}"'
+        self.assertIn(
+            (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"), action_cards(main)
         )
 
     # 10 (#193: sharing moved to its own page; the report keeps one link to it)

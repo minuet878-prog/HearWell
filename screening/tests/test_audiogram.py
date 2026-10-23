@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.tests import test_answering, test_layout, test_pages
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import action_cards, consented_user
 
 SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
@@ -610,8 +610,10 @@ class AudiogramResultPageTests(TestCase):
         for this, before in ((newest, middle), (middle, only), (only, middle)):
             with self.subTest(tested_on=this.tested_on):
                 main = self._page(this)
-                link = re.search(r'<a [^>]*href="([^"]*)"[^>]*>和以前的聽力圖比較</a>', main)
-                self.assertEqual(link.group(1), f"{compare}?a={this.id}&amp;b={before.id}")
+                hrefs = [
+                    href for href, title, _ in action_cards(main) if title == "和以前的聽力圖比較"
+                ]
+                self.assertEqual(hrefs, [f"{compare}?a={this.id}&amp;b={before.id}"])
                 # The pair opens on the compare page, both chosen in their rows.
                 page = self._main(self.client.get(f"{compare}?a={this.id}&b={before.id}"))
                 newer, older = sorted((this, before), key=lambda a: a.tested_on, reverse=True)

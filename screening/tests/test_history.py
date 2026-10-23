@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import consented_user, fake_definition, register
+from screening.tests.helpers import action_cards, consented_user, fake_definition, register
 
 
 class TrendChartPageTests(TestCase):
@@ -401,8 +401,8 @@ class HistoryTabsTests(TestCase):
     def test_ioi_ha_result_links_to_ioi_ha_tab(self):
         submission = self._ioi_ha((3,) * 7, "ungrouped", days_ago=1)
         main = self._main_html(self.client.get(reverse("result", args=[submission.id])))
-        self.assertRegex(
-            main, rf'<a[^>]*href="{re.escape(self._tab_url("ioi-ha"))}"[^>]*>\s*看我的紀錄'
+        self.assertIn(
+            (self._tab_url("ioi-ha"), "看我的紀錄", "每一次的結果都在這裡"), action_cards(main)
         )
 
     # Accessibility (19)

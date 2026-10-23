@@ -272,7 +272,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.get_by_role("navigation", name="主要導覽").get_by_role(
                 "link", name="我的紀錄"
             ).click()
-            expect(self.main().locator("a.link-card")).to_contain_text("總分：20")
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
 
     def test_adult_completes_hhia_s_without_javascript(self):
         """Issue #78: the actual HTML fallback works when scripts never run."""
@@ -337,8 +337,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             ).to_be_visible()
             expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
             self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
-            self.main().get_by_role("link", name="看我的紀錄", exact=True).click()
-            expect(self.main().locator("a.link-card")).to_contain_text("整體平均：6.3")
+            self.main().locator(".result-actions").get_by_role("link", name="看我的紀錄").click()
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text(
+                "整體平均：6.3"
+            )
             expect(self.main().locator("#trend-chart")).to_have_count(0)
             # #83/#84: keep a comparison and follow it through owner/family/print.
             unaided = Submission.objects.get(questionnaire__code="ssq12-tw")
@@ -686,7 +688,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         nav = self.page.get_by_role("navigation", name="主要導覽")
         nav.get_by_role("link", name="我的紀錄").click()
         # Each record is one card link (spec phase9_ui_refresh_1_shared.md 4.5).
-        card = self.main().locator("a.link-card")
+        card = self.main().locator("a.link-card:not(.action-card)")
         expect(card).to_have_count(1)
         expect(card).to_contain_text("總分：20")
         # The record card only: the trend summary above it repeats the level text.
@@ -1502,7 +1504,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             summary = main.get_by_role("region", name="兩耳程度")
             expect(summary).to_have_text(re.compile(r"右耳：\s*中度\s*左耳：\s*中度"))
             expect(main.locator(".audiogram-plot svg")).to_be_visible()
-            main.get_by_role("link", name="和以前的聽力圖比較", exact=True).click()
+            main.get_by_role("link", name="和以前的聽力圖比較").click()
 
             expect(main.locator(".compare-pick summary").nth(0)).to_have_text(
                 re.compile(r"舊\s*2026/09/28\s*換一張")

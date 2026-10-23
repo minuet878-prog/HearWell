@@ -1003,6 +1003,39 @@
     line-height: 1;
   }
 
+  /* Action card: a link-card that leads somewhere else (report, share, home), with an icon
+     tile in front. The tile turns white while the card itself turns pale blue. */
+  .action-card-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+  }
+
+  .action-card-icon svg {
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .link-card:active .action-card-icon {
+    background-color: #fff;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .link-card:hover .action-card-icon {
+      background-color: #fff;
+    }
+  }
+
   /* Login and register forms */
   .narrow-form {
     max-width: var(--container-form);
