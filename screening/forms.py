@@ -9,7 +9,9 @@ from django.utils.html import format_html, format_html_join
 
 from screening.models import (
     AidAndSubsidy,
+    AidLevel,
     Answer,
+    ApprovedEars,
     Certificate,
     Question,
     Submission,
@@ -252,5 +254,49 @@ class CertificateForm(forms.ModelForm):
         fields = ("certificate",)
 
 
-# The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug.
-STOP_QUESTIONS = {"assessment": CertificateForm}
+def _done_or_not_yet(label, done):
+    # #294: 完成了 / 收到了, or 還沒, kept as True or False.
+    return forms.TypedChoiceField(
+        label=label, choices=((True, done), (False, "還沒")), coerce=lambda value: value == "True"
+    )
+
+
+class Form9Form(forms.ModelForm):
+    form_9_done = _done_or_not_yet("九號表完成了嗎？", "完成了")
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("form_9_done",)
+
+
+class NoticeForm(forms.ModelForm):
+    notice_received = _done_or_not_yet("收到核定公文了嗎？", "收到了")
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("notice_received",)
+
+
+class ApprovedEarsForm(forms.ModelForm):
+    approved_ears = forms.ChoiceField(label="核定的是單耳還是雙耳？", choices=ApprovedEars.choices)
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("approved_ears",)
+
+
+class ApprovedLevelForm(forms.ModelForm):
+    level = forms.ChoiceField(label="補助的等級是？", choices=AidLevel.choices)
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("level",)
+
+
+# The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug: each
+# stop's questions in the order they are asked, one at a time (#294: the notice's three).
+STOP_QUESTIONS = {
+    "assessment": (CertificateForm,),
+    "form-9": (Form9Form,),
+    "notice": (NoticeForm, ApprovedEarsForm, ApprovedLevelForm),
+}

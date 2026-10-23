@@ -527,6 +527,12 @@ class Certificate(models.TextChoices):
     NO_SUBSIDY = "no_subsidy", "沒有，不申請身障補助"
 
 
+class ApprovedEars(models.TextChoices):
+    # 等待核定公文 (#294): what the notice approved.
+    ONE = "one", "單耳"
+    BOTH = "both", "雙耳"
+
+
 class AidAndSubsidy(models.Model):
     # 助聽器與補助資料 (GLOSSARY, spec #284): what the user says about their certificate and
     # their current hearing aids. Every field may be left unanswered; only the current pair.
@@ -535,6 +541,11 @@ class AidAndSubsidy(models.Model):
     )
     # 身障鑑定與鑑定醫院's answer (#293); "" is unanswered.
     certificate = models.CharField(max_length=10, choices=Certificate, blank=True, default="")
+    # 九號表 and 等待核定公文's answers (#294): None unanswered, False 還沒, True 完成了 / 收到了.
+    form_9_done = models.BooleanField(null=True, blank=True)
+    notice_received = models.BooleanField(null=True, blank=True)
+    # What the notice approved, kept only once it is received; the level is the one below.
+    approved_ears = models.CharField(max_length=4, choices=ApprovedEars, blank=True, default="")
     # The current pair (#287); "" is unanswered. The level is kept only with 身障補助.
     fitted_on = models.DateField(null=True, blank=True)
     ear = models.CharField(max_length=5, choices=AidEar, blank=True, default="")
@@ -550,18 +561,27 @@ class AidAndSubsidy(models.Model):
         return cls.objects.filter(user=user).first()
 
     def clean(self):
+        # What the notice approved goes with it: 還沒 clears 單耳 or 雙耳 (#294).
+        if not self.notice_received:
+            self.approved_ears = ""
         # A level means a 身障補助 one (#284 acceptance 3, 6): with any other answer, cleared.
         if not self.uses_disability_subsidy:
             self.level = ""
 
     @property
     def uses_disability_subsidy(self):
-        return self.subsidy == Subsidy.DISABILITY
+        # 用身障補助 (spec #291): the notice received, or bought with it as 配戴之後 says.
+        return self.notice_received is True or self.subsidy == Subsidy.DISABILITY
 
     @property
     def unanswered(self):
-        return self.fitted_on is None and not (
-            self.certificate or self.ear or self.subsidy or self.level
+        return (
+            self.fitted_on is None
+            and self.form_9_done is None
+            and self.notice_received is None
+            and not (
+                self.certificate or self.approved_ears or self.ear or self.subsidy or self.level
+            )
         )
 
     @property

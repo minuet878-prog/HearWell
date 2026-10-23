@@ -275,3 +275,83 @@ class CertificateStopTests(TestCase):
         self.assertNotIn("assessment", state.done)
         self.assertEqual(state.not_applicable, frozenset())
         self.assertEqual(state.stop, "assessment")
+
+
+class PurchaseReminderTests(TestCase):
+    """#294 (spec #291 acceptance 10, Q12): 種類與價格 always says the six months to buy in;
+    the notice's date is not asked."""
+
+    REMINDER = '<p class="route-note">收到核定通知後 6 個月內要買。</p>'
+
+    def stop(self):
+        content = self.client.get(reverse("guide")).content.decode()
+        start = content.index('data-stop="types-and-prices"')
+        return content[start : content.index("</li>", start)]
+
+    def test_signed_in_or_out_the_stop_says_it(self):
+        self.assertIn(self.REMINDER, self.stop())
+        self.client.force_login(consented_user(username="reminder_user"))
+        self.assertIn(self.REMINDER, self.stop())
+
+
+class Form9AndNoticeStopTests(TestCase):
+    """#294 (spec #291 acceptance 8, 9): 九號表 is done by 完成了; 等待核定公文 by 收到了 with
+    單耳 or 雙耳 and the level both answered. 還沒 stays."""
+
+    def setUp(self):
+        self.user = consented_user(username="form_9_user")
+        self.make(*OVER_25)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def state(self, **answers):
+        AidAndSubsidy.objects.update_or_create(
+            user=self.user, defaults={"certificate": "yes", **answers}
+        )
+        return fitting_state(self.user, TODAY)
+
+    def test_with_a_certificate_and_form_9_unanswered_here_is_form_9(self):
+        self.assertEqual(self.state().stop, "form-9")
+
+    def test_form_9_not_yet_stays_at_form_9(self):
+        state = self.state(form_9_done=False)
+        self.assertNotIn("form-9", state.done)
+        self.assertEqual(state.stop, "form-9")
+
+    def test_form_9_done_is_done_and_moves_on_to_the_notice(self):
+        state = self.state(form_9_done=True)
+        self.assertIn("form-9", state.done)
+        self.assertEqual(state.stop, "notice")
+
+    def test_notice_not_yet_or_received_alone_stays_at_the_notice(self):
+        for answers in (
+            {"notice_received": False},
+            {"notice_received": True},
+            {"notice_received": True, "approved_ears": "both"},
+            {"notice_received": True, "level": "mid"},
+        ):
+            with self.subTest(**answers):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                state = self.state(form_9_done=True, **answers)
+                self.assertNotIn("notice", state.done)
+                self.assertEqual(state.stop, "notice")
+
+    def test_received_with_the_ears_and_the_level_is_done(self):
+        state = self.state(
+            form_9_done=True, notice_received=True, approved_ears="one", level="basic"
+        )
+        self.assertIn("notice", state.done)
+        self.assertEqual(state.stop, "types-and-prices")
+
+    def test_the_notice_done_out_of_order_is_done_and_here_stays_at_form_9(self):
+        state = self.state(notice_received=True, approved_ears="both", level="mid")
+        self.assertIn("notice", state.done)
+        self.assertEqual(state.stop, "form-9")
+
+    def test_an_answer_at_form_9_starts_the_route_within_25(self):
+        self.user.audiograms.all().delete()
+        GuideChapterView.objects.all().delete()
+        self.make(*WITHIN_25)
+        AidAndSubsidy.objects.create(user=self.user, form_9_done=False)
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "before-you-go")

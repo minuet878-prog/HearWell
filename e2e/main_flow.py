@@ -22,6 +22,7 @@ from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
@@ -2099,8 +2100,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             card.get_by_role("button", name="還沒有，正在申請鑑定").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
             expect(self.main().get_by_role("region", name="看完了嗎？")).to_have_count(0)
+            # #294: the card says what was kept, and its button goes back to the route.
+            kept = self.main().get_by_role("region", name="已記下：正在申請鑑定")
+            expect(kept).to_be_in_viewport()
+            expect(kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment answered card")
+            kept.get_by_role("link", name="回選配路線看下一站").click()
 
-            self.page.goto(f"{self.live_server_url}/guide")
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#contents-title")
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("身障鑑定與鑑定醫院")
             expect(here.locator(".route-answer")).to_have_text("正在申請鑑定")
@@ -2128,6 +2135,54 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 expect(stop.locator(".route-mark")).to_have_text(["不適用"])
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("助聽器的種類與價格")
+
+    # #294 (spec #291 e2e, acceptance 8, 9, 10, 27; no JavaScript, story 40): with a
+    # certificate, answer 九號表 on the route, then 等待核定公文 one question at a time.
+    def test_answering_form_9_and_the_notice_moves_the_route_on(self):
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 320, "height": 640}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("九號表")
+            expect(here.get_by_role("link", name="看九號表的流程")).to_be_visible()
+            expect(here.get_by_role("group", name="九號表完成了嗎？")).to_be_visible()
+            here.get_by_role("button", name="完成了").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-form-9")
+            form_9 = self.main().locator('[data-stop="form-9"]')
+            expect(form_9.locator(".route-mark")).to_have_text(["已完成"])
+            expect(form_9.locator(".route-answer")).to_have_text("九號表完成了 修改")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("等待核定公文")
+            here.get_by_role("button", name="收到了").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-notice")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("等待核定公文")
+            expect(here.get_by_role("group", name="核定的是單耳還是雙耳？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide the notice's ears")
+            here.get_by_role("button", name="雙耳").click()
+
+            here = self.main().locator('[aria-current="step"]')
+            expect(here.get_by_role("group", name="補助的等級是？")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/guide the notice's level")
+            here.get_by_role("button", name="中階型").click()
+
+            notice = self.main().locator('[data-stop="notice"]')
+            expect(notice.locator(".route-mark")).to_have_text(["已完成"])
+            expect(notice.locator(".route-answer")).to_have_text("雙耳、中階型 修改")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("助聽器的種類與價格")
+            expect(here).to_contain_text("收到核定通知後 6 個月內要買。")
 
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
     # with the worked steps open and a county's hospitals listed.

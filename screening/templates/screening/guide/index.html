@@ -118,8 +118,8 @@
                 {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
                 {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
                 {# #293: the answer in short; 修改 opens the question again, without JavaScript. #}
-                {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if not stop.question %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
-                {% if stop.question %}{% url 'guide' as guide_url %}{% include "screening/guide/stop_question.html" with question=stop.question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endif %}
+                {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
+                {% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endfor %}
             </div>
         </li>
         {% endfor %}

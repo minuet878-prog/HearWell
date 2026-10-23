@@ -37,8 +37,10 @@ from screening.forms import (
     AgeGroupForm,
     AnswerFormSet,
     DeleteAccountForm,
+    Form9Form,
     HearingAidForm,
     HhiComparisonForm,
+    NoticeForm,
     RegisterForm,
     WearingNowForm,
     answer_choices,
@@ -284,9 +286,10 @@ class RouteStop:
     tested_on: object | None = None  # the recorded audiogram's date, on the done first stop
     links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the title
     action: tuple[str, str] | None = None  # the 目前這一站's button
-    notes: tuple[str, ...] = ()  # dated wordings under the title (#288)
+    notes: tuple[str, ...] = ()  # dated (#288) or fixed (#294) wordings under the title
     answer: str = ""  # the user's answer in short (#293)
-    question: object | None = None  # the stop's question form, shown open (#293)
+    questions: tuple = ()  # the stop's question forms shown open (#293, #294)
+    editable: bool = False  # 修改 opens questions answered but not shown (#294)
 
     @property
     def here(self):
@@ -307,6 +310,38 @@ CERTIFICATE_ANSWERS = {
     models.Certificate.APPLYING: "正在申請鑑定",
     models.Certificate.NO_SUBSIDY: "不申請身障補助",
 }
+FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  # #294
+# Said under the stop for everyone (#294, spec #291 Q12: the notice's date is not asked).
+ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買。",)}
+
+
+def _answer(slug, aid):
+    """The stop's answer in short, "" unanswered (#293, #294)."""
+    if aid is None:
+        return ""
+    if slug == "assessment":
+        return CERTIFICATE_ANSWERS.get(aid.certificate, "")
+    if slug == "form-9":
+        return FORM_9_ANSWERS.get(aid.form_9_done, "")
+    # The notice: 雙耳、中階型 once both are answered, else how far it has got.
+    if aid.notice_received is None:
+        return ""
+    if not aid.notice_received:
+        return "還沒收到核定公文"
+    if aid.approved_ears and aid.level:
+        return f"{aid.get_approved_ears_display()}、{aid.get_level_display()}"
+    if aid.approved_ears:
+        return f"收到核定公文，{aid.get_approved_ears_display()}"
+    return "收到核定公文"
+
+
+def _reached(slug, aid):
+    """The stop's questions asked so far, in order; the last is the one to answer next. The
+    notice asks 單耳 or 雙耳 once 收到了, then the level (#294)."""
+    questions = STOP_QUESTIONS[slug]
+    if slug != "notice" or aid is None or not aid.notice_received:
+        return questions[:1]
+    return questions if aid.approved_ears else questions[:2]
 
 
 def _route(state, edit=None, question=None):
@@ -322,12 +357,13 @@ def _route(state, edit=None, question=None):
     }
     stops = [(slug, *places[slug]) for slug in STOPS]
     if state is None:
-        return [RouteStop(*stop) for stop in stops]
+        return [RouteStop(*stop, notes=ROUTE_REMINDERS.get(stop[0], ())) for stop in stops]
     return [_route_stop(state, *stop, edit, question) for stop in stops]
 
 
 def _route_stop(state, slug, title, url, edit=None, question=None):
-    marks, links, action, tested_on, notes = [], [], None, None, []
+    marks, links, action, tested_on = [], [], None, None
+    notes = list(ROUTE_REMINDERS.get(slug, ()))
     form_9 = reverse("guide_chapter", args=["form-9"])
     if slug == AUDIOGRAM and state.insufficient:
         # Never 已完成 (grill Q9): the title and a link go to editing it instead.
@@ -377,16 +413,19 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
             notes.append(f"{opens:%Y/%m/%d} 起可以做")
         elif state.today <= closes:
             notes.append(f"{closes:%Y/%m/%d} 前要做完")
-    answer, shown = "", None
-    form_class = STOP_QUESTIONS.get(slug)
-    if form_class is not None:
-        answer = CERTIFICATE_ANSWERS.get(state.aid and state.aid.certificate, "")
-        # Spec #291 Q14: open at the 目前這一站, or where the user chose 修改; a form sent
-        # back with its errors is the edited stop's.
+    answer, shown, editable = "", (), False
+    if slug in STOP_QUESTIONS:
+        answer = _answer(slug, state.aid)
+        reached = _reached(slug, state.aid)
+        # Spec #291 Q14: open at the 目前這一站, the next question only; where the user chose
+        # 修改, every one asked so far. A form sent back with its errors is the edited stop's.
         if slug == edit and question is not None:
-            shown = question
-        elif slug in (state.stop, edit):
-            shown = form_class(instance=state.aid)
+            shown = (question,)
+        elif slug == edit:
+            shown = tuple(form_class(instance=state.aid) for form_class in reached)
+        elif slug == state.stop:
+            shown = (reached[-1](instance=state.aid),)
+        editable = bool(answer) and len(shown) < len(reached)
     return RouteStop(
         slug,
         title,
@@ -398,6 +437,7 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         tuple(notes),
         answer,
         shown,
+        editable,
     )
 
 
@@ -414,16 +454,18 @@ def guide_chapter(request, chapter):
 
 def _chapter_page(request, chapter, question=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
-    user has not answered it; question is a form sent back with its errors."""
+    user has not answered it, and 已記下 with the answer once they have (#294); question is a
+    form sent back with its errors."""
     context = {"chapter": chapter}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
-    form_class = STOP_QUESTIONS.get(chapter.slug)
     user = request.user
-    if question is None and form_class and user.is_authenticated and user.has_consented():
+    asked = chapter.slug in STOP_QUESTIONS and user.is_authenticated and user.has_consented()
+    if question is None and asked:
         aid = models.AidAndSubsidy.for_user(user)
-        if aid is None or not aid.certificate:
-            question = form_class(instance=aid)
+        context["answered"] = _answer(chapter.slug, aid)
+        if not context["answered"]:
+            question = STOP_QUESTIONS[chapter.slug][0](instance=aid)
     context["question"] = question
     response = render(request, chapter.template, context)
     if user.is_authenticated:
@@ -439,9 +481,12 @@ def route_answer(request):
     # #293 (spec #291 acceptance 28): a stop's answer, request.user's own only; back to the
     # stop on the route, or to the chapter's question.
     stop = request.POST.get("stop")
-    form_class = STOP_QUESTIONS.get(stop)
-    if form_class is None:
+    questions = STOP_QUESTIONS.get(stop)
+    if questions is None:
         return HttpResponseBadRequest()
+    # The question whose answer was pressed (#294: the notice has three).
+    form_class = next((q for q in questions if q.base_fields.keys() & request.POST.keys()), None)
+    form_class = form_class or questions[0]
     aid = models.AidAndSubsidy.for_user(request.user)
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
     next_url = _safe_next(request)
@@ -1075,6 +1120,11 @@ def _mark_not_applicable_answers(data):
             answer["choice"] = "不適用"
 
 
+def _offered(form_class, name, value):
+    """The wording the question offers for the answer value; None unanswered."""
+    return dict(form_class.base_fields[name].choices).get(value)
+
+
 @login_required
 @require_http_methods(["GET"])
 @health_data_page
@@ -1154,6 +1204,10 @@ def download_my_data(request):
         # Spec #284, #291: what the user answered, unanswered as null, the certificate included.
         "aid_and_subsidy": {
             "certificate": (aid and aid.get_certificate_display()) or None,
+            # #294: worded as the questions offer them.
+            "form_9_done": _offered(Form9Form, "form_9_done", aid and aid.form_9_done),
+            "notice_received": _offered(NoticeForm, "notice_received", aid and aid.notice_received),
+            "approved_ears": (aid and aid.get_approved_ears_display()) or None,
             "fitted_on": aid.fitted_on.isoformat() if aid and aid.fitted_on else None,
             "ear": (aid and aid.get_ear_display()) or None,
             "subsidy": (aid and aid.get_subsidy_display()) or None,

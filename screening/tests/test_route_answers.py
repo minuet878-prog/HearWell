@@ -271,7 +271,7 @@ class ChapterQuestionTests(TestCase):
         self.assertFalse(AidAndSubsidy.objects.exists())
 
     def test_other_chapters_ask_nothing_yet(self):
-        for slug in ("before-you-go", "form-9", "types-and-prices", "after-fitting", "form-25"):
+        for slug in ("before-you-go", "types-and-prices", "after-fitting", "form-25"):
             with self.subTest(chapter=slug):
                 self.assertNotContains(self.page(slug), 'id="stop-question"')
 
@@ -285,6 +285,51 @@ class ChapterQuestionTests(TestCase):
         other = consented_user(username="chapter_question_other")
         AidAndSubsidy.objects.create(user=other, certificate="yes")
         self.assertContains(self.page(), QUESTION)
+
+
+class AnsweredCardTests(TestCase):
+    """#294 (owner's decision for the chapters' questions): once answered, the chapter's
+    question card says 已記下 with the answer, 修改, and a large button back to the route."""
+
+    setUp = ChapterQuestionTests.setUp
+    page = ChapterQuestionTests.page
+
+    def card(self, slug):
+        content = self.page(slug).content.decode()
+        return content[content.index('<section id="stop-question"') : content.index("<footer")]
+
+    def test_each_answered_chapter_says_what_was_kept(self):
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes", form_9_done=False)
+        for slug, title, answer in (
+            ("assessment", "身障鑑定與鑑定醫院", "有身障證明"),
+            ("form-9", "九號表：申請助聽器補助", "九號表還沒完成"),
+        ):
+            with self.subTest(chapter=slug):
+                card = self.card(slug)
+                self.assertIn(
+                    f'<h2 id="stop-question-title" class="h4">已記下：{answer}</h2>', card
+                )
+                self.assertNotIn("<fieldset", card)
+                edit = reverse("guide") + f"?edit={slug}#stop-{slug}"
+                self.assertIn(f'<a href="{edit}" aria-label="修改{title}的回答">修改</a>', card)
+                self.assertIn(
+                    f'<a class="btn btn-primary btn-lg w-full mt-2" '
+                    f'href="{reverse("guide")}#contents-title">回選配路線看下一站</a>',
+                    card,
+                )
+
+    def test_answering_on_the_chapter_comes_back_to_the_card(self):
+        data = {"stop": "assessment", "certificate": "yes", "next": CHAPTER_CARD}
+        response = self.client.post(reverse("route_answer"), data, follow=True)
+        self.assertEqual(response.redirect_chain, [(CHAPTER_CARD, 302)])
+        self.assertContains(response, "已記下：有身障證明")
+
+    def test_signed_out_or_without_consent_there_is_no_card(self):
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        self.client.logout()
+        self.assertNotContains(self.page(), 'id="stop-question"')
+        self.client.force_login(User.objects.create_user(username="card_not_consented"))
+        self.assertNotContains(self.page(), 'id="stop-question"')
 
 
 class CertificateMigrationTests(TransactionTestCase):
@@ -314,3 +359,220 @@ class CertificateMigrationTests(TransactionTestCase):
         new_aid = self._migrate(self.after).get_model("screening", "AidAndSubsidy")
         certificates = dict(new_aid.objects.values_list("user__username", "certificate"))
         self.assertEqual(certificates, {"has_one": "yes", "not_yet": "applying", "unanswered": ""})
+
+
+def answer_buttons(markup, name):
+    """Each answer button for the field name: (value, wording, filled) in order."""
+    found = re.findall(
+        rf'<button type="submit" name="{name}" value="([^"]+)" class="btn btn-lg '
+        r'(btn-primary|btn-outline-primary)">([^<]+)</button>',
+        markup,
+    )
+    return [(value, wording, kind == "btn-primary") for value, kind, wording in found]
+
+
+class Form9AndNoticeRouteTests(TestCase):
+    """#294 (spec #291 acceptance 8, 9, 18): 九號表 and 等待核定公文 asked at the 目前這一站,
+    one press an answer, the notice's three questions one after another without JavaScript."""
+
+    FORM_9 = "九號表完成了嗎？"
+    NOTICE = "收到核定公文了嗎？"
+    EARS = "核定的是單耳還是雙耳？"
+    LEVEL = "補助的等級是？"
+
+    def setUp(self):
+        self.user = consented_user(username="form_9_route_user")
+        self.client.force_login(self.user)
+        self.make(PTA_55, PTA_55)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+
+    make = test_guide_summary.GuideSummaryTests.make
+    page = RouteQuestionTests.page
+    stop = RouteQuestionTests.stop
+    marks = RouteQuestionTests.marks
+
+    def answer(self, stop, name, value, next_url=None):
+        data = {"stop": stop, name: value, "next": next_url or f"/guide#stop-{stop}"}
+        return self.client.post(reverse("route_answer"), data)
+
+    def aid(self):
+        return AidAndSubsidy.for_user(self.user)
+
+    def test_here_at_form_9_it_shows_the_steps_and_the_question(self):
+        form_9 = self.stop("form-9")
+        self.assertEqual(self.marks("form-9"), ["您在這裡"])
+        self.assertIn(">看九號表的流程</a>", form_9)
+        self.assertIn(f'<legend class="font-bold text-xl/normal">{self.FORM_9}</legend>', form_9)
+        self.assertIn('<input type="hidden" name="stop" value="form-9">', form_9)
+        self.assertEqual(
+            answer_buttons(form_9, "form_9_done"),
+            [("True", "完成了", False), ("False", "還沒", False)],
+        )
+
+    def test_done_moves_on_to_the_notice_and_says_so_with_edit(self):
+        response = self.answer("form-9", "form_9_done", "True")
+        self.assertRedirects(response, "/guide#stop-form-9", fetch_redirect_response=False)
+        self.assertIs(self.aid().form_9_done, True)
+        self.assertEqual(self.marks("form-9"), ["已完成"])
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        edit = re.escape(reverse("guide") + "?edit=form-9#stop-form-9")
+        self.assertRegex(
+            self.stop("form-9"),
+            rf'<p class="route-answer">九號表完成了 <a href="{edit}"[^>]*>修改</a></p>',
+        )
+
+    def test_form_9_not_yet_stays_with_the_question_open_and_filled(self):
+        self.answer("form-9", "form_9_done", "False")
+        self.assertIs(self.aid().form_9_done, False)
+        form_9 = self.stop("form-9")
+        self.assertEqual(self.marks("form-9"), ["您在這裡"])
+        self.assertIn('<p class="route-answer">九號表還沒完成</p>', form_9)
+        self.assertEqual(
+            answer_buttons(form_9, "form_9_done"),
+            [("True", "完成了", False), ("False", "還沒", True)],
+        )
+
+    def test_edit_opens_form_9_again_and_not_yet_takes_the_done_away(self):
+        self.answer("form-9", "form_9_done", "True")
+        form_9 = self.stop("form-9", "?edit=form-9")
+        self.assertEqual(
+            answer_buttons(form_9, "form_9_done"),
+            [("True", "完成了", True), ("False", "還沒", False)],
+        )
+        self.answer("form-9", "form_9_done", "False")
+        self.assertEqual(self.marks("form-9"), ["您在這裡"])
+
+    def test_the_form_9_chapter_asks_too_and_answering_goes_back_to_it(self):
+        chapter = "/guide/form-9#stop-question"
+        content = self.client.get(reverse("guide_chapter", args=["form-9"])).content.decode()
+        card = content[content.index('<section id="stop-question"') : content.index("<footer")]
+        self.assertIn(self.FORM_9, card)
+        self.assertIn(f'<input type="hidden" name="next" value="{chapter}">', card)
+        response = self.answer("form-9", "form_9_done", "True", next_url=chapter)
+        self.assertRedirects(response, chapter, fetch_redirect_response=False)
+        self.assertIs(self.aid().form_9_done, True)
+
+    LEVELS = (
+        ("basic", "簡易型", False),
+        ("mid", "中階型", False),
+        ("advanced", "進階型", False),
+        ("cros", "雙對側傳聲型", False),
+        ("unknown", "不知道", False),
+    )
+
+    def legends(self, markup):
+        return re.findall(r'<legend class="font-bold text-xl/normal">([^<]+)</legend>', markup)
+
+    def at_the_notice(self):
+        AidAndSubsidy.objects.filter(user=self.user).update(form_9_done=True)
+
+    def test_here_at_the_notice_it_asks_whether_it_came(self):
+        self.at_the_notice()
+        notice = self.stop("notice")
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        self.assertEqual(self.legends(notice), [self.NOTICE])
+        self.assertIn('<input type="hidden" name="stop" value="notice">', notice)
+        self.assertEqual(
+            answer_buttons(notice, "notice_received"),
+            [("True", "收到了", False), ("False", "還沒", False)],
+        )
+
+    def test_received_asks_the_ears_then_the_level_and_only_then_is_done(self):
+        self.at_the_notice()
+        response = self.answer("notice", "notice_received", "True")
+        self.assertRedirects(response, "/guide#stop-notice", fetch_redirect_response=False)
+        notice = self.stop("notice")
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        self.assertIn('<p class="route-answer">收到核定公文 <a', notice)
+        self.assertEqual(self.legends(notice), [self.EARS])
+        self.assertEqual(
+            answer_buttons(notice, "approved_ears"),
+            [("one", "單耳", False), ("both", "雙耳", False)],
+        )
+
+        self.answer("notice", "approved_ears", "both")
+        notice = self.stop("notice")
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        self.assertIn('<p class="route-answer">收到核定公文，雙耳 <a', notice)
+        self.assertEqual(self.legends(notice), [self.LEVEL])
+        self.assertEqual(answer_buttons(notice, "level"), list(self.LEVELS))
+
+        self.answer("notice", "level", "mid")
+        notice = self.stop("notice")
+        self.assertEqual(self.marks("notice"), ["已完成"])
+        self.assertEqual(self.marks("types-and-prices"), ["您在這裡"])
+        self.assertEqual(self.legends(notice), [])
+        self.assertIn('<p class="route-answer">雙耳、中階型 <a', notice)
+        aid = self.aid()
+        self.assertEqual((aid.notice_received, aid.approved_ears, aid.level), (True, "both", "mid"))
+
+    def test_notice_not_yet_stays_with_the_question_open_and_filled(self):
+        self.at_the_notice()
+        self.answer("notice", "notice_received", "False")
+        notice = self.stop("notice")
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        self.assertIn('<p class="route-answer">還沒收到核定公文</p>', notice)
+        self.assertEqual(
+            answer_buttons(notice, "notice_received"),
+            [("True", "收到了", False), ("False", "還沒", True)],
+        )
+
+    def test_edit_opens_every_question_asked_with_the_answers_filled(self):
+        self.at_the_notice()
+        AidAndSubsidy.objects.filter(user=self.user).update(
+            notice_received=True, approved_ears="one", level="advanced"
+        )
+        notice = self.stop("notice", "?edit=notice")
+        self.assertEqual(self.legends(notice), [self.NOTICE, self.EARS, self.LEVEL])
+        self.assertEqual(notice.count("<form"), 3)
+        self.assertIn('<p class="route-answer">單耳、進階型</p>', notice)
+        self.assertEqual(
+            answer_buttons(notice, "notice_received"),
+            [("True", "收到了", True), ("False", "還沒", False)],
+        )
+        self.assertEqual(
+            answer_buttons(notice, "approved_ears"),
+            [("one", "單耳", True), ("both", "雙耳", False)],
+        )
+        levels = [(value, wording, value == "advanced") for value, wording, _ in self.LEVELS]
+        self.assertEqual(answer_buttons(notice, "level"), levels)
+
+    def test_halfway_edit_also_opens_the_questions_already_answered(self):
+        self.at_the_notice()
+        self.answer("notice", "notice_received", "True")
+        self.assertEqual(
+            self.legends(self.stop("notice", "?edit=notice")), [self.NOTICE, self.EARS]
+        )
+
+    def test_changing_to_not_yet_takes_the_done_away_and_clears_what_it_approved(self):
+        self.at_the_notice()
+        AidAndSubsidy.objects.filter(user=self.user).update(
+            notice_received=True, approved_ears="both", level="mid"
+        )
+        self.answer("notice", "notice_received", "False")
+        self.assertEqual(self.marks("notice"), ["您在這裡"])
+        aid = self.aid()
+        self.assertEqual((aid.notice_received, aid.approved_ears, aid.level), (False, "", ""))
+
+    def test_an_answer_not_offered_shows_the_notice_again_with_its_error(self):
+        self.at_the_notice()
+        self.answer("notice", "notice_received", "True")
+        response = self.answer("notice", "approved_ears", "three")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.EARS)
+        self.assertContains(response, 'class="text-danger field-error')
+        self.assertEqual(self.aid().approved_ears, "")
+
+    def test_the_notice_has_no_chapter_question(self):
+        self.at_the_notice()
+        self.assertNotContains(
+            self.client.get(reverse("guide_chapter", args=["form-9"])), self.NOTICE
+        )
+
+    def test_an_answer_not_offered_shows_form_9_again_with_its_error(self):
+        response = self.answer("form-9", "form_9_done", "maybe")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.FORM_9)
+        self.assertContains(response, 'class="text-danger field-error')
+        self.assertIsNone(self.aid().form_9_done)

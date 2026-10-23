@@ -132,6 +132,10 @@ def fitting_state(user, today):
     not_applicable = set()
     if aid is not None and aid.certificate in CERTIFICATE_DONE:
         done.add("assessment")
+    if aid is not None and aid.form_9_done:
+        done.add("form-9")
+    if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
+        done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
     if aid is not None and aid.certificate == Certificate.NO_SUBSIDY:
         not_applicable |= WITHOUT_SUBSIDY
     # Q7: within the normal range, the route waits until the user starts on a stop.

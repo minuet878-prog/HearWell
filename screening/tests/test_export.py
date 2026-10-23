@@ -340,6 +340,28 @@ class AidAndSubsidyExportTests(TestCase):
         AidAndSubsidy.objects.create(user=self.user, certificate="")
         self.assertIsNone(self.exported()["certificate"])
 
+    def test_form_9_and_the_notice_as_answered(self):
+        # #294: worded as the questions offer them.
+        aid = AidAndSubsidy.objects.create(user=self.user)
+        for form_9_done, notice_received, ears, wordings in (
+            (True, True, "one", ("完成了", "收到了", "單耳")),
+            (False, True, "both", ("還沒", "收到了", "雙耳")),
+            (None, False, "", (None, "還沒", None)),
+        ):
+            with self.subTest(wordings=wordings):
+                aid.form_9_done, aid.notice_received = form_9_done, notice_received
+                aid.approved_ears = ears
+                aid.save()
+                exported = self.exported()
+                self.assertEqual(
+                    (
+                        exported["form_9_done"],
+                        exported["notice_received"],
+                        exported["approved_ears"],
+                    ),
+                    wordings,
+                )
+
 
 class HearingAidExportTests(TestCase):
     """#287 (spec #284 acceptance 21): all four in the export, the labels as the form shows
@@ -352,6 +374,9 @@ class HearingAidExportTests(TestCase):
         AidAndSubsidy.objects.create(
             user=self.user,
             certificate="yes",
+            form_9_done=True,
+            notice_received=True,
+            approved_ears="both",
             fitted_on=date(2026, 5, 1),
             ear="both",
             subsidy="disability",
@@ -361,6 +386,9 @@ class HearingAidExportTests(TestCase):
             self.exported(),
             {
                 "certificate": "有",
+                "form_9_done": "完成了",
+                "notice_received": "收到了",
+                "approved_ears": "雙耳",
                 "fitted_on": "2026-05-01",
                 "ear": "雙耳",
                 "subsidy": "用身障補助（有九號表）",
@@ -372,6 +400,9 @@ class HearingAidExportTests(TestCase):
     def test_unanswered_are_null(self):
         unanswered = {
             "certificate": None,
+            "form_9_done": None,
+            "notice_received": None,
+            "approved_ears": None,
             "fitted_on": None,
             "ear": None,
             "subsidy": None,
