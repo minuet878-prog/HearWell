@@ -4,7 +4,7 @@
 
 台灣 65 歲以上長者約四成有失能性聽損[^1]，但從察覺聽力問題到尋求協助往往拖延多年，有研究指出可達 10 年[^2]。這段延遲的代價不只是聽不清楚：沒有處理的聽力損失與孤獨、社交孤立有關[^3]，也是可改變的失智風險因子之一[^4]。
 
-HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估聽力對生活的影響，結果用白話說明並告訴下一步該做什麼；已經戴助聽器的人，可以評估助聽器帶來的幫助。每次結果都會留下紀錄，用趨勢圖看自己的變化，也能把聽力圖記下來、整理成報告給醫師或家人看。
+HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估聽力對生活的影響，結果用白話說明並告訴下一步該做什麼；有耳鳴的人，可以評估耳鳴造成的困擾；打算配助聽器的人，有一步一步的選配指引；已經戴助聽器的人，可以評估助聽器帶來的幫助與滿意度。每次結果都會留下紀錄，用趨勢圖看自己的變化，也能把聽力圖記下來、整理成報告給醫師或家人看。
 
 本專案由執業聽力師開發。主要使用者是 65 歲以上的長輩，所以無障礙是基本要求，不是加分項。
 
@@ -16,12 +16,16 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 - 選擇問卷並作答：依年齡與目的推薦問卷，也可以自己選
   - **HHIE-S**（65 歲以上）／**HHIA-S**（18–64 歲）：聽力對生活的影響，10 題，依總分分成三級
   - **SSQ12-TW**：日常聆聽能力，12 題，0–10 分，可答「不適用」，算整體平均
+  - **THI**：耳鳴障礙量表，25 題，每題 0／2／4 分，依總分（0–100）分成五級
   - **IOI-HA**：助聽器效益量表，7 題，不算總分，逐題和常模比較
-- 作答前標記這次「有沒有戴助聽器」；IOI-HA 以外一題一頁，中途離開可以接著答（存在這台裝置）
+  - **SADL**：助聽器滿意度，15 題，1–7 分，算整體與四個子量表的平均，不分級
+- 作答前標記這次「有沒有戴助聽器」（IOI-HA、SADL 不用標）；一題一頁，中途離開可以接著答（存在這台裝置）
 - 結果頁：分級、行動建議、作答明細
-- 我的紀錄：每份問卷一個分頁，用趨勢圖看歷次變化；每份問卷可選一組「戴與不戴助聽器」的結果比較
+- 底部分頁「首頁｜篩檢｜紀錄｜了解」
+- 我的紀錄：分「問卷」和「聽力圖」兩邊；每份問卷一個分頁，用趨勢圖看歷次變化；每份問卷可選一組「戴與不戴助聽器」的結果比較
 - 聽力圖：在圖上拖曳輸入、自動算四頻平均與程度、修改、兩張比較
 - 聽力報告：列印友善的網頁（可存成 PDF），也能產生 7 天有效的分享連結給家人
+- 助聽器選配指引：六個章節，從身障鑑定、補助申請到配戴後驗證；登入後顯示自己的選配路線和目前走到哪一站，可查鑑定醫院名冊，填寫的助聽器與補助資料會印在聽力報告上
 - 給家人的溝通與陪伴頁（不用登入）
 - 帳號設定：下載自己的全部資料（JSON）、刪除帳號與全部資料
 - PWA：可以加到手機主畫面，像 app 一樣開啟
@@ -29,7 +33,7 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 ## 設計重點
 
 - **無障礙優先（accessibility）**：字級一律用 `rem`、基礎字級 18px，觸控目標至少 44 × 44 px。用 axe-core 依 WCAG AA 量測基準線、逐項修正，見 [`docs/accessibility/accessibility_baseline.md`](docs/accessibility/accessibility_baseline.md)。
-- **計分只用規則式程式碼（rule-based）**：分級門檻寫成門檻表（`scoring.THRESHOLDS`），不用 LLM 做分類或計算。總分不存在資料表裡，每次都從作答即時計算，網頁和 API 都走 `Submission` 的同一條計算路徑。見 [`docs/decisions/scoring.md`](docs/decisions/scoring.md) 與 [`docs/adr/`](docs/adr/)。
+- **計分只用規則式程式碼（rule-based）**：分級門檻寫在各問卷的定義檔（`screening/questionnaires/` 的 `THRESHOLDS`），不用 LLM 做分類或計算。總分不存在資料表裡，每次都從作答即時計算，網頁和 API 都走 `Submission` 的同一條計算路徑。見 [`docs/decisions/scoring.md`](docs/decisions/scoring.md) 與 [`docs/adr/`](docs/adr/)。
 - **防止越權存取（IDOR）**：網頁和 API 的每個查詢都限定在登入者自己的資料；查別人的單筆紀錄回 404，和「不存在」無法分辨，有測試保護。見 [`docs/specs/phase-03/phase3.md`](docs/specs/phase-03/phase3.md)。
 - **漸進式改架構（Strangler pattern）**：Django template 頁面與 `/api/` 並存、共用 model 與業務邏輯，只有互動重的頁面改用 React，`main` 任何時候都是完整可用的產品。前端和後端同源部署，沿用 session cookie 登入，不需要 JWT 或 CORS。
 - **冪等寫入（idempotency）**：送出作答的 API 要求帶 `Idempotency-Key`，網路重試不會存成兩筆；同一個 key 送不同內容會回 409。網頁版表單也用同樣的收據編號防止連按兩次。見 [`docs/specs/phase-05/phase5_api_submit.md`](docs/specs/phase-05/phase5_api_submit.md)。
@@ -47,7 +51,7 @@ HearWell 在家就能用：還沒就醫的人，用標準化量表自我評估�
 
 ## 資料模型
 
-`User` 繼承 Django 的 `AbstractUser`。外鍵都是 `PROTECT`（有作答紀錄的資料不能被連帶刪除），例外是 `norm_basis`（`RESTRICT`）和聽力圖的點（跟著聽力圖刪）；刪除帳號一律走 `User.delete_with_data()`，在一個交易裡由下往上刪。
+`User` 繼承 Django 的 `AbstractUser`。外鍵（含 `AidAndSubsidy` 的一對一）都是 `PROTECT`（有作答紀錄的資料不能被連帶刪除），例外是 `norm_basis`（`RESTRICT`）和聽力圖的點（跟著聽力圖刪）；刪除帳號一律走 `User.delete_with_data()`，在一個交易裡由下往上刪。
 總分不存欄位，由 `Submission` 用一次 `aggregate` 即時算出總分與分項。
 
 ```mermaid
@@ -59,7 +63,7 @@ User {
 Questionnaire {
     int id PK
     string questionnaire_name
-    string code "hhie-s、hhia-s、ssq12-tw、ioi-ha"
+    string code "hhie-s、hhia-s、ssq12-tw、thi、ioi-ha、sadl"
 }
 
 Question {
@@ -85,7 +89,7 @@ Answer {
     int id PK
     int submission FK
     int question FK
-    int score "SSQ12-TW 的不適用存成空值"
+    int score "SSQ12-TW、SADL 的不適用存成空值"
 }
 
 ReportComparison {
@@ -133,6 +137,27 @@ ReportShare {
     timestamp last_opened_at
 }
 
+AidAndSubsidy {
+    int id PK
+    int user FK "一人一筆"
+    string certificate "身障證明：有、申請中、不申請"
+    bool form_9_done "九號表"
+    bool notice_received "核定公文"
+    string approved_ears "核定單耳或雙耳"
+    date fitted_on "現在這副開始戴的日期"
+    string ear "左、右、雙耳"
+    string subsidy "身障補助或其他"
+    string level "助聽器等級，只在用身障補助時存"
+    bool form_25_done "二十五號表"
+}
+
+GuideChapterView {
+    int id PK
+    int user FK
+    string chapter "選配指引章節"
+    timestamp first_viewed_at "第一次看的時間"
+}
+
 User ||--o{ Submission : "填寫"
 Questionnaire ||--o{ Question : "包含"
 Questionnaire ||--o{ Submission : "作答"
@@ -146,11 +171,13 @@ User ||--o{ Audiogram : "輸入"
 Audiogram ||--o{ AudiogramPoint : "包含"
 User ||--o{ Consent : "同意"
 User ||--o{ ReportShare : "分享"
+User ||--o| AidAndSubsidy : "填寫"
+User ||--o{ GuideChapterView : "看過"
 ```
 
 ## API
 
-全部需要登入，只回傳登入者自己的資料。IOI-HA 只在網頁版，不在 API 裡。完整規格見 [`docs/api/schema.yaml`](docs/api/schema.yaml)。
+全部需要登入，只回傳登入者自己的資料。IOI-HA 可以查題目、送出作答（多帶 `norm_token` 確認常模依據），但不在問卷列表和作答紀錄裡。完整規格見 [`docs/api/schema.yaml`](docs/api/schema.yaml)。
 
 | 方法與網址 | 用途 |
 |---|---|
@@ -253,7 +280,7 @@ docker exec -it hearwell-db psql -U hearwell -d hearwell_dev
 
 ```bash
 python manage.py test --settings=config.test_settings  # 後端測試（不需要先 collectstatic）
-python manage.py test --settings=config.test_settings e2e.main_flow  # 端對端測試（先建置前端；第一次要 python -m playwright install chromium）
+python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4  # 端對端測試（先建置前端；第一次要 python -m playwright install chromium）
 npm test --prefix frontend                             # 前端測試
 npm run build --prefix frontend                        # 前端建置
 ruff check --fix .                                     # lint
@@ -271,7 +298,7 @@ python manage.py check --deploy                        # 部署前安全檢查�
 4. `collectstatic`
 5. `migrate`
 6. `loaddata questions_fixture.json`：載入 HHIE-S、IOI-HA 題目
-7. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW 題目（不指定 id，不會蓋掉舊題目）
+7. `seed_questionnaires`：依問卷定義載入 HHIA-S、SSQ12-TW、THI、SADL 題目（不指定 id，不會蓋掉舊題目）
 
 因為每次部署都會重新載入題目，已經上線的題目不能直接修改，要改題目就新增一個問卷定義（新 code）。
 
