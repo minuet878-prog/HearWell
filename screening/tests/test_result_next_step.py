@@ -19,7 +19,7 @@ SUGGESTIONS = (
     "印聽力報告給醫師看",
 )
 REPORT_CARD = (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF")
-OTHERS_TITLE = '<h2 class="more-group-title">其他您可以做的</h2>'
+OTHERS_TITLE = "其他您可以做的"
 
 
 class ResultNextStepTests(TestCase):
@@ -87,11 +87,17 @@ class ResultNextStepTests(TestCase):
         for code, submission in submissions.items():
             with self.subTest(questionnaire=code):
                 main = self.result(submission)
-                box = main.index('<div class="next-step">')
                 self.assertEqual(main.count(OTHERS_TITLE), 1)
-                self.assertLess(box, main.index(OTHERS_TITLE))
-                self.assertLess(main.index(OTHERS_TITLE), main.index('class="link-card'))
-        self.assertIn("SSQ12-TW", self.result(submissions["hhie-s"]).split(OTHERS_TITLE)[1])
+                above, below = main.split(OTHERS_TITLE)
+                self.next_step(above)
+                self.assertEqual(action_cards(above), [])
+                self.assertNotEqual(action_cards(below), [])
+        ssq12 = reverse("screening", args=[Questionnaire.objects.get(code="ssq12-tw").pk])
+        above, below = self.result(submissions["hhie-s"]).split(OTHERS_TITLE)
+        self.assertNotIn(f'href="{ssq12}"', above)
+        self.assertIn(f'href="{ssq12}"', below)
+        records = f'href="{reverse("my_hearing")}?'
+        self.assertLess(below.index(f'href="{ssq12}"'), below.index(records))
 
     def test_suggesting_the_report_leaves_out_the_report_card(self):
         # Acceptance 9: only 印聽力報告 has a card of its own below; others keep it.

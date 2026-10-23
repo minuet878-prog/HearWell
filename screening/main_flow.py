@@ -84,6 +84,7 @@ class NextStep:
     card: HomeCard
     because: str
     button: str
+    suggested: str | None  # the key of the card it suggests; None for 修改這張聽力圖
 
 
 # #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use, each
@@ -114,22 +115,22 @@ def home_more(user, today):
         edit = HomeCard(
             "修改這張聽力圖", reverse("audiogram_edit", args=[state.audiogram.pk]), "audiogram"
         )
-        next_step = NextStep(edit, NEXT_STEP_REASONS["edit"], "修改這張聽力圖")
+        next_step = NextStep(edit, NEXT_STEP_REASONS["edit"], "修改這張聽力圖", suggested)
     elif state.stop == AUDIOGRAM:
         suggested = "record"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄")
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄", suggested)
     elif state.stop:
         suggested = "guide"
         because = NEXT_STEP_REASONS[state.stop]
         if state.stop == "form-25":
             because = because.format(deadline=state.form_25[1])  # #296: always dated there
-        next_step = NextStep(cards[suggested], because, "看我的選配指引")
+        next_step = NextStep(cards[suggested], because, "看我的選配指引", suggested)
     elif user.report_shares.exists():  # any link ever made, ended ones too
         suggested = "print"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告")
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告", suggested)
     else:
         suggested = "share"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去分享")
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去分享", suggested)
     groups = (
         (title, [cards[key] for key in keys if key != suggested], group == HIDDEN_IN_APP)
         for group, title, keys in HOME_GROUPS

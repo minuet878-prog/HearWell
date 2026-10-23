@@ -2636,14 +2636,11 @@
   }
 
   /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
-     a thin warm line on its left, no white and no shadow. The result page's advice and THI's
-     support message, and the home page's steps. */
-  .line-list {
-    padding-left: 0;
-    list-style: none;
-  }
-
-  .line-list > * {
+     a thin warm line on its left, no white and no shadow. The result page's advice and the home
+     page's steps; .line-block is one such block on its own (THI's support message). The list
+     itself is unstyled by its own class (.list-unstyled, .next-steps, .step-cards, .ioi-items). */
+  .line-list > *,
+  .line-block {
     padding: 0.1em 0 0.1em 0.7em;
     border-left: 0.18em solid var(--color-line-warm);
   }
@@ -3577,6 +3574,7 @@
   .family-guide .family-urgent {
     border: 0.125rem solid var(--color-primary);
     background-color: var(--color-brand-soft);
+    box-shadow: none;
   }
 
   .family-guide .family-urgent .tips > li {

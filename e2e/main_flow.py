@@ -4792,6 +4792,10 @@ WHITE_CARD_PAGES_LEARN = (
     ("guide, signed out", False, "/guide"),
     ("guide, with records", True, lambda test: test.guide_with_records()),
     *((f"guide chapter {slug}", True, f"/guide/{slug}") for slug in HearingAidGuideTest.CHAPTERS),
+    *(
+        (f"guide chapter {slug}, signed out", False, f"/guide/{slug}")
+        for slug in HearingAidGuideTest.CHAPTERS
+    ),
     ("guide chapter answered", True, lambda test: test.answered_chapter()),
     ("family guide", False, "/family"),
     ("learn", False, "/learn"),
@@ -4834,6 +4838,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         })
         .filter((el) => !el.closest("a, .auth-card"))
         .map((el) => el.outerHTML.slice(0, 120))"""
+    # Spec #297 acceptance 12: a block in main that runs past the screen's right edge, or hides
+    # part of what it holds sideways. The page's own width misses both when a block clips.
+    # Visually hidden text (1px wide on purpose) is left out.
+    CUT_OFF = """() => [...document.querySelectorAll("main *")]
+        .filter((el) => el.clientWidth > 1 || getComputedStyle(el).display === "inline")
+        .filter((el) => el.getBoundingClientRect().right > document.documentElement.clientWidth
+            || (getComputedStyle(el).overflowX !== "visible" && el.scrollWidth > el.clientWidth))
+        .map((el) => el.outerHTML.slice(0, 120))"""
 
     @classmethod
     def setUpClass(cls):
@@ -4857,9 +4869,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             "url": self.live_server_url,
         }
 
-    def open(self, signed_in, width=1024):
+    def open(self, signed_in, width=1024, javascript=True):
         self.context = self.browser.new_context(
-            viewport={"width": width, "height": 900}, reduced_motion="reduce"
+            viewport={"width": width, "height": 900},
+            reduced_motion="reduce",
+            java_script_enabled=javascript,
         )
         if signed_in:
             self.context.add_cookies([self.cookie])
@@ -4918,12 +4932,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # link (all three steps filled in), and the family's copy through that link.
     def report(self):
         self.answered("hhie-s", 2)
-        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
-        AudiogramPoint.objects.bulk_create(
-            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
-            for ear in ("right", "left")
-            for f in (500, 1000, 2000, 4000)
-        )
+        self.audiogram()
         return "/report"
 
     def share_settings(self):
@@ -4938,19 +4947,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # #300's helpers.
     def answering(self, code):
         return f"/questionnaire/{Questionnaire.objects.get(code=code).pk}"
-
-    def visit_without_javascript(self, path, width=1024):
-        """The answering page's Django form, every question at once, as when React does not load."""
-        self.context = self.browser.new_context(
-            viewport={"width": width, "height": 900},
-            reduced_motion="reduce",
-            java_script_enabled=False,
-        )
-        self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-        self.page.goto(f"{self.live_server_url}{path}")
 
     # #301: the records the records pages show.
     def trend_records(self):
@@ -5010,8 +5006,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             f"?unaided={shown.pk}&aided={aided.pk}&action=preview"
         )
 
-    def visit(self, signed_in, path, width=1024):
-        self.open(signed_in, width)
+    def visit(self, signed_in, path, width=1024, javascript=True):
+        self.open(signed_in, width, javascript)
         self.page.goto(f"{self.live_server_url}{path(self) if callable(path) else path}")
 
     def style(self, locator, prop):
@@ -5021,6 +5017,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         expect(block).to_be_visible()
         self.assertEqual(self.style(block, "backgroundColor"), "rgba(0, 0, 0, 0)")
         self.assertEqual(self.style(block, "boxShadow"), "none")
+
+    def assert_fits_uncut(self, where):
+        """Spec #297 acceptance 12: at 200% on a phone, no sideways scrolling and nothing cut."""
+        self.assert_fits_a_phone_at_double_text_size(where)
+        self.assertEqual(self.page.evaluate(self.CUT_OFF), [], where)
+
+    def assert_white_card(self, card):
+        """A tappable card (ADR 0022): white under the warm shadow."""
+        self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
+        self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
 
     def assert_lined(self, block):
         """#298's pick for a list of explanations: flat, with only a thin warm line on the left."""
@@ -5064,8 +5070,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertGreater(cards.count(), 0)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
-                    self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(card)
 
     # #299: advice 1-3 and THI's support message are flat with a thin line; the links in the
     # advice still look like links.
@@ -5093,13 +5098,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(step=step.inner_text()[:10]):
                     self.assert_lined(step)
 
-    # #299: no sideways scrolling on a phone at 200% text, on both homes and the result pages.
+    # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
+    # questionnaire's result page.
     def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
+        results = tuple(page for page in WHITE_CARD_PAGES_RECORDS if page[0].endswith(" result"))
         with self.saving_artifacts():
-            for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT:
+            for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT + results:
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
-                    self.assert_fits_a_phone_at_double_text_size(name)
+                    self.assert_fits_uncut(name)
 
     # #302: my guide's parts and a done stop are flat, their links and buttons as before; the
     # 目前這一站 keeps its pale blue box.
@@ -5158,8 +5165,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             again = answered.get_by_role("link", name="回選配路線看下一站", exact=True)
             self.assertEqual(self.style(again, "backgroundImage"), self.GRADIENT)
 
-    # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and 119's
-    # box as before.
+    # #302: the family guide's topics are flat; the urgent topic keeps its blue frame and pale
+    # blue, without a shadow, like the 建議您下一步 box, and 119's box as before.
     def test_family_guide_topics_are_flat_and_the_urgent_one_stands_out(self):
         with self.saving_artifacts():
             self.visit(False, "/family")
@@ -5173,6 +5180,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
             self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")
             self.assertEqual(self.style(urgent, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(urgent, "boxShadow"), "none")
             call = urgent.get_by_text("如果同時出現", exact=False)
             self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(call, "boxShadow"), "none")
@@ -5185,8 +5193,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(cards.count(), 2)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
-                    self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(card)
 
     # #303: the family's 「您可以怎麼幫忙」 and 「先看重點」 are flat; the three cards in it stay
     # white cards and go where they went before.
@@ -5203,8 +5210,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             )
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
-                    self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(card)
 
     # #302: the privacy notice's highlights and contact, and the consent page's highlights, are
     # flat blocks framed by their titles.
@@ -5226,14 +5232,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_flat(highlights)
             self.assert_titled(highlights.get_by_role("heading", name="重點", exact=True))
 
-    # #302: no sideways scrolling on a phone at 200% text, on my guide, its chapters and the
-    # other learn pages.
+    # #302: no sideways scrolling or cut text on a phone at 200% text, on my guide, its chapters
+    # and the other learn pages.
     def test_learn_pages_fit_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
             for name, signed_in, path in WHITE_CARD_PAGES_LEARN:
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
-                    self.assert_fits_a_phone_at_double_text_size(name)
+                    self.assert_fits_uncut(name)
 
     # #303: the share page's steps 1-3 are flat; their buttons are still buttons.
     def test_share_steps_are_flat_and_keep_their_buttons(self):
@@ -5304,16 +5310,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             )
             for link in links.all():
                 with self.subTest(link=link.get_attribute("href")):
-                    self.assertEqual(self.style(link, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(link, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(link)
 
-    # #303: no sideways scrolling on a phone at 200% text on the report, sharing and account pages.
+    # #303: no sideways scrolling or cut text on a phone at 200% text on the report, sharing and
+    # account pages.
     def test_sharing_and_account_pages_fit_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
             for name, signed_in, path in WHITE_CARD_PAGES_SHARING:
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
-                    self.assert_fits_a_phone_at_double_text_size(name)
+                    self.assert_fits_uncut(name)
 
     # #300: the answering page's questions are flat; its choices stay white with a grey edge.
     GREY_EDGE = "rgb(206, 212, 218)"
@@ -5345,8 +5351,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_flat(question)
             self.assert_white_choices(question)
             self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
-            # The Django form: every question on one page, apart by number, title and space.
-            self.visit_without_javascript(self.answering("hhie-s"))
+            # The Django form, as when React does not load: every question on one page, apart by
+            # number, title and space.
+            self.visit(True, lambda test: test.answering("hhie-s"), javascript=False)
             questions = self.main().locator("#answer-form").get_by_role("group")
             self.assertEqual(questions.count(), 1 + QUESTION_COUNT)
             for question in questions.all():
@@ -5360,9 +5367,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         with self.saving_artifacts():
             self.visit(True, lambda test: test.answering("hhie-s"), width=320)
             expect(self.main().locator(".answer-app").get_by_role("group")).to_be_visible()
-            self.assert_fits_a_phone_at_double_text_size("answering")
-            self.visit_without_javascript(self.answering("hhie-s"), width=320)
-            self.assert_fits_a_phone_at_double_text_size("answering without JavaScript")
+            self.assert_fits_uncut("answering")
+            self.visit(True, lambda test: test.answering("hhie-s"), width=320, javascript=False)
+            self.assert_fits_uncut("answering without JavaScript")
             self.assert_questions_apart(self.main().locator("#answer-form").get_by_role("group"))
 
     # #300: login and register keep their form card white: the rule's one exception.
@@ -5373,8 +5380,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(False, path)
                     form_card = self.main().locator(".auth-card")
                     expect(form_card.get_by_role("button", name=button, exact=True)).to_be_visible()
-                    self.assertEqual(self.style(form_card, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(form_card, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(form_card)
 
     # #300: the suggested questionnaire is flat with its 開始作答 button; whole cards stay white.
     def test_suggested_questionnaire_is_flat_and_questionnaire_cards_stay_white(self):
@@ -5400,8 +5406,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertGreater(cards.count(), 0)
                     for card in cards.all():
                         with self.subTest(card=card.inner_text()[:12]):
-                            self.assertEqual(self.style(card, "backgroundColor"), self.WHITE)
-                            self.assertEqual(self.style(card, "boxShadow"), self.WARM_SHADOW)
+                            self.assert_white_card(card)
 
     # #301: a chart's drawing area is a sheet of paper, not a card to tap.
     def assert_paper(self, canvas, card):
@@ -5470,8 +5475,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(records.count(), 2)
             for record in records.all():
                 with self.subTest(record=record.inner_text()[:10]):
-                    self.assertEqual(self.style(record, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(record, "boxShadow"), self.WARM_SHADOW)
+                    self.assert_white_card(record)
             self.assert_flat(self.page.get_by_role("region", name="和上一次比"))
             # The pale blue summary box above the chart: not white, no shadow (ADR 0022).
             trend = self.page.get_by_role("region", name="HHIE-S 總分變化")
