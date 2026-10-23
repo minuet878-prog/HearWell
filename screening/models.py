@@ -500,6 +500,25 @@ class AudiogramPoint(models.Model):
         return f"{self.ear} {self.conduction} {self.frequency} Hz: {self.db}"
 
 
+class AidEar(models.TextChoices):
+    LEFT = "left", "左耳"
+    RIGHT = "right", "右耳"
+    BOTH = "both", "雙耳"
+
+
+class Subsidy(models.TextChoices):
+    DISABILITY = "disability", "用身障補助（有九號表）"
+    OTHER = "other", "自費或其他補助"
+
+
+class AidLevel(models.TextChoices):
+    BASIC = "basic", "簡易型"
+    MID = "mid", "中階型"
+    ADVANCED = "advanced", "進階型"
+    CROS = "cros", "雙對側傳聲型"
+    UNKNOWN = "unknown", "不知道"
+
+
 class AidAndSubsidy(models.Model):
     # 助聽器與補助資料 (GLOSSARY, spec #284): what the user says about their certificate and
     # their current hearing aids. Every field may be left unanswered; only the current pair.
@@ -508,6 +527,39 @@ class AidAndSubsidy(models.Model):
     )
     # A 聽覺機能 身心障礙證明: None unanswered, True has one, False not yet.
     has_certificate = models.BooleanField(null=True, blank=True)
+    # The current pair (#287); "" is unanswered. The level is kept only with 身障補助.
+    fitted_on = models.DateField(null=True, blank=True)
+    ear = models.CharField(max_length=5, choices=AidEar, blank=True, default="")
+    subsidy = models.CharField(max_length=10, choices=Subsidy, blank=True, default="")
+    level = models.CharField(max_length=8, choices=AidLevel, blank=True, default="")
 
     def __str__(self):
         return f"{self.user} aid and subsidy"
+
+    @property
+    def unanswered(self):
+        return self.has_certificate is None and not self.hearing_aids_text and not self.subsidy
+
+    @property
+    def hearing_aids_text(self):
+        """雙耳，2026/05/01 開始戴: the ear and the fitting date filled in, "" with neither."""
+        parts = [self.get_ear_display()] if self.ear else []
+        if self.fitted_on:
+            parts.append(f"{self.fitted_on:%Y/%m/%d} 開始戴")
+        return "，".join(parts)
+
+    @property
+    def report_text(self):
+        """雙耳，2026/05/01 開始戴，中階型 on the printed report (#284 Q12): no certificate, and
+        a level only when it says something (paying otherwise has none)."""
+        level = "" if self.level == AidLevel.UNKNOWN else self.get_level_display()
+        return "，".join(filter(None, [self.hearing_aids_text, level]))
+
+    @property
+    def subsidy_text(self):
+        """用身障補助，中階型 on the summary card; "" unanswered."""
+        if self.subsidy != Subsidy.DISABILITY:
+            return self.get_subsidy_display()
+        if self.level == AidLevel.UNKNOWN:
+            return "用身障補助，等級不知道"
+        return "，".join(["用身障補助", *([self.get_level_display()] if self.level else [])])

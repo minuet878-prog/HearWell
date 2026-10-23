@@ -322,12 +322,52 @@ class AidAndSubsidyExportTests(TestCase):
         other = consented_user(username="export_aid_other")
         AidAndSubsidy.objects.create(user=other, has_certificate=False)
         aid = AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
-        self.assertEqual(self.exported(), {"has_certificate": True})
+        self.assertIs(self.exported()["has_certificate"], True)
         aid.has_certificate = False
         aid.save()
-        self.assertEqual(self.exported(), {"has_certificate": False})
+        self.assertIs(self.exported()["has_certificate"], False)
 
     def test_unanswered_is_null(self):
-        self.assertEqual(self.exported(), {"has_certificate": None})
+        self.assertIsNone(self.exported()["has_certificate"])
         AidAndSubsidy.objects.create(user=self.user, has_certificate=None)
-        self.assertEqual(self.exported(), {"has_certificate": None})
+        self.assertIsNone(self.exported()["has_certificate"])
+
+
+class HearingAidExportTests(TestCase):
+    """#287 (spec #284 acceptance 21): all four in the export, the labels as the form shows
+    them, unanswered as null."""
+
+    setUp = AidAndSubsidyExportTests.setUp
+    exported = AidAndSubsidyExportTests.exported
+
+    def test_all_four_filled_in(self):
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            has_certificate=True,
+            fitted_on=date(2026, 5, 1),
+            ear="both",
+            subsidy="disability",
+            level="mid",
+        )
+        self.assertEqual(
+            self.exported(),
+            {
+                "has_certificate": True,
+                "fitted_on": "2026-05-01",
+                "ear": "雙耳",
+                "subsidy": "用身障補助（有九號表）",
+                "level": "中階型",
+            },
+        )
+
+    def test_unanswered_are_null(self):
+        unanswered = {
+            "has_certificate": None,
+            "fitted_on": None,
+            "ear": None,
+            "subsidy": None,
+            "level": None,
+        }
+        self.assertEqual(self.exported(), unanswered)
+        AidAndSubsidy.objects.create(user=self.user)
+        self.assertEqual(self.exported(), unanswered)

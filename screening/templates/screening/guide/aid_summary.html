@@ -1,10 +1,12 @@
 {# #286 (spec #284 Q13): what the user filled in on 我的助聽器與補助; a line left blank is not shown. #}
 <section class="card card-body mt-6" aria-labelledby="aid-title">
     <h2 id="aid-title" class="h4">我的助聽器與補助</h2>
-    {% if aid is None or aid.has_certificate is None %}
+    {% if aid is None or aid.unanswered %}
     <p class="mb-0">填了這裡，選配路線才知道您有沒有身障證明、什麼時候開始戴助聽器。<a href="{% url 'my_aid' %}">去填</a></p>
     {% else %}
-    <p>身障證明：{% if aid.has_certificate %}有{% else %}還沒有{% endif %}</p>
+    {% if aid.has_certificate is not None %}<p>身障證明：{% if aid.has_certificate %}有{% else %}還沒有{% endif %}</p>{% endif %}
+    {% if aid.hearing_aids_text %}<p>助聽器：{{ aid.hearing_aids_text }}</p>{% endif %}
+    {% if aid.subsidy_text %}<p>補助：{{ aid.subsidy_text }}</p>{% endif %}
     <p class="mb-0"><a href="{% url 'my_aid' %}">修改</a></p>
     {% endif %}
 </section>

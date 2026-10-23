@@ -157,3 +157,40 @@ class CertificateRouteTests(TestCase):
                 self.make(PTA_55, PTA_55)
                 self.certify(has_certificate)
                 self.assertEqual(self.stop(), "assessment")
+
+
+class FittedOnRouteTests(TestCase):
+    """#287 (spec #284 acceptance 11, story 21): a fitting date the user filled in counts as
+    wearing hearing aids, as the latest questionnaire answered wearing them does."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+
+    def setUp(self):
+        self.user = consented_user(username="fitted_on_user")
+
+    make = test_guide_summary.GuideSummaryTests.make
+    answer = CurrentStopTests.answer
+
+    def state(self):
+        return fitting_state(self.user, TODAY)
+
+    def test_a_fitting_date_without_a_questionnaire_is_after_fitting(self):
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assertEqual(self.state().stop, "after-fitting")
+        self.assertTrue(self.state().wearing)
+
+    def test_a_fitting_date_with_the_latest_answered_without_them_is_after_fitting(self):
+        self.make(PTA_55, PTA_55)
+        self.answer(wearing=False)
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assertEqual(self.state().stop, "after-fitting")
+
+    def test_without_a_fitting_date_the_rest_of_the_row_does_not_count_as_wearing(self):
+        self.make(PTA_55, PTA_55)
+        AidAndSubsidy.objects.create(
+            user=self.user, ear="both", subsidy="disability", level="mid"
+        )
+        self.assertFalse(self.state().wearing)
+        self.assertEqual(self.state().stop, "assessment")

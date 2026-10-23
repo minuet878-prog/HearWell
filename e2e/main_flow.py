@@ -2073,6 +2073,37 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(card).to_contain_text("身障證明：有")
             self.assert_fits_a_phone_at_double_text_size("/guide with a certificate")
 
+    # #287 (spec #284 e2e, acceptance 2, 26): the level question shows only with 用身障補助;
+    # the form with it in sight fits 320px at 200% text, and the card says what was saved.
+    def test_the_level_shows_only_with_the_disability_subsidy(self):
+        self.open(320, 640)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_aid")
+            subsidy = self.main().get_by_role("group", name="這副助聽器有沒有用身障補助買？")
+            level = self.main().get_by_role("group", name="補助的等級是？")
+            expect(level).to_be_hidden()
+            subsidy.get_by_role("radio", name="用身障補助（有九號表）").check()
+            expect(level).to_be_visible()
+            expect(level).to_contain_text("選了用身障補助才需要填")
+            level.get_by_role("radio", name="中階型").check()
+            self.main().get_by_label("目前這副助聽器哪一天開始戴？").fill("2026-05-01")
+            ear = self.main().get_by_role("group", name="戴哪一耳？")
+            ear.get_by_role("radio", name="雙耳").check()
+            self.assert_fits_a_phone_at_double_text_size("/my_aid with the level")
+            subsidy.get_by_role("radio", name="自費或其他補助").check()
+            expect(level).to_be_hidden()
+            subsidy.get_by_role("radio", name="用身障補助（有九號表）").check()
+            expect(level.get_by_role("radio", name="中階型")).to_be_checked()
+            self.main().get_by_role("button", name="儲存").click()
+
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide")
+            card = self.main().get_by_role("region", name="我的助聽器與補助")
+            expect(card).to_contain_text("助聽器：雙耳，2026/05/01 開始戴")
+            expect(card).to_contain_text("補助：用身障補助，中階型")
+            here = self.main().locator('[aria-current="step"]')
+            expect(here).to_contain_text("配戴助聽器之後")
+            self.assert_fits_a_phone_at_double_text_size("/guide with hearing aids")
+
     # #231 (#218 acceptance 共通): my guide and the six chapters, 320px wide at 200% text,
     # with the worked steps open and a county's hospitals listed; #286 adds 我的助聽器與補助.
     def test_pages_fit_a_phone_at_double_text_size(self):

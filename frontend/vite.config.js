@@ -26,6 +26,7 @@ export default defineConfig({
         "pwa-nav": "src/pwa-nav-main.js",
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
+        "my-aid": "src/my-aid.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

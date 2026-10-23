@@ -230,7 +230,8 @@ def guide(request):
         # The same life-impact record the home page shows as the last result.
         last = get_user_state(request.user, today=today).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
-        # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
+        # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4), or
+        # a fitting date is filled in (#287).
         context["wearing"] = state.wearing
         context["aid"] = state.aid  # the 我的助聽器與補助 card (#284 Q13)
         if state.audiogram is not None:
@@ -333,6 +334,8 @@ def _route_stop(state, slug, title, url):
         links.append(("我已經有身障證明", reverse("my_aid")))
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
+    if slug == "after-fitting" and state.wearing and not (state.aid and state.aid.fitted_on):
+        links.append(("記錄我的助聽器", reverse("my_aid")))  # #284 acceptance 18
     return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action)
 
 
@@ -1059,7 +1062,13 @@ def download_my_data(request):
             for share in user.report_shares.all()
         ],
         # Spec #284: what the user filled in, unanswered as null, the certificate included.
-        "aid_and_subsidy": {"has_certificate": aid.has_certificate if aid else None},
+        "aid_and_subsidy": {
+            "has_certificate": aid.has_certificate if aid else None,
+            "fitted_on": aid.fitted_on.isoformat() if aid and aid.fitted_on else None,
+            "ear": (aid and aid.get_ear_display()) or None,
+            "subsidy": (aid and aid.get_subsidy_display()) or None,
+            "level": (aid and aid.get_level_display()) or None,
+        },
     }
     filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(
@@ -1184,6 +1193,9 @@ def _report_context(user):
 def health_report(request):
     # Spec phase8_c3_report.md: only results the site already shows, laid out for printing.
     context = _report_context(request.user)
+    # #287: the owner's report only; the family's copy shares the template but not this.
+    aid = models.AidAndSubsidy.objects.filter(user=request.user).first()
+    context["aid_report_text"] = aid.report_text if aid else ""
     return render(request, "screening/health_report.html", context)
 
 

@@ -7,7 +7,17 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import AidAndSubsidy, Answer, Question, Submission, User, shared_days
+from screening.models import (
+    AidAndSubsidy,
+    AidEar,
+    AidLevel,
+    Answer,
+    Question,
+    Submission,
+    Subsidy,
+    User,
+    shared_days,
+)
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -243,6 +253,52 @@ class AidAndSubsidyForm(forms.ModelForm):
         ),
     )
 
+    # #287: the current pair. The date field is the one recording an audiogram uses.
+    fitted_on = forms.DateField(
+        label="目前這副助聽器哪一天開始戴？",
+        help_text="可以看購買收據或保固書上的日期。",
+        required=False,
+        widget=forms.DateInput(
+            format="%Y-%m-%d", attrs={"type": "date", "class": "form-control form-control-lg"}
+        ),
+    )
+    ear = forms.ChoiceField(
+        label="戴哪一耳？",
+        choices=(("", "不填"), *AidEar.choices),
+        required=False,
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+    )
+    subsidy = forms.ChoiceField(
+        label="這副助聽器有沒有用身障補助買？",
+        choices=(("", "不填"), *Subsidy.choices),
+        required=False,
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+    )
+    level = forms.ChoiceField(
+        label="補助的等級是？",
+        help_text="選了用身障補助才需要填",
+        choices=(("", "不填"), *AidLevel.choices),
+        required=False,
+        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+    )
+
     class Meta:
         model = AidAndSubsidy
-        fields = ("has_certificate",)
+        fields = ("has_certificate", "fitted_on", "ear", "subsidy", "level")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fitted_on"].widget.attrs["max"] = timezone.localdate().isoformat()
+
+    def clean_fitted_on(self):
+        fitted_on = self.cleaned_data["fitted_on"]
+        if fitted_on and fitted_on > timezone.localdate():
+            raise forms.ValidationError("開始配戴日期不能是未來")
+        return fitted_on
+
+    def clean(self):
+        cleaned = super().clean()
+        # A level means a 身障補助 one (#284 acceptance 3, 6): with any other answer, cleared.
+        if cleaned.get("subsidy") != Subsidy.DISABILITY:
+            cleaned["level"] = ""
+        return cleaned

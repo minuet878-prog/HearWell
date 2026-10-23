@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from django.test import TestCase
 from django.urls import reverse
@@ -243,3 +243,46 @@ class CertificateRouteTests(TestCase):
     def test_signed_out_has_no_link_to_the_form(self):
         self.client.logout()
         self.assertNotIn(reverse("my_aid"), self.page())
+
+
+class FittedOnRouteTests(TestCase):
+    """#287 (spec #284 acceptance 11, 18): the route with the fitting date the user filled in."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+
+    def setUp(self):
+        self.user = consented_user(username="fitted_on_reader")
+        self.client.force_login(self.user)
+
+    make = test_guide_summary.GuideSummaryTests.make
+    answer = GuideRouteTests.answer
+    page = GuideRouteTests.page
+    stops = GuideRouteTests.stops
+    stop = GuideRouteTests.stop
+    tags = GuideRouteTests.tags
+    assert_only_here_at = GuideRouteTests.assert_only_here_at
+    assert_link = GuideRouteTests.assert_link
+
+    # 11
+    def test_a_fitting_date_with_the_latest_answered_without_them_is_here_after_fitting(self):
+        self.make(PTA_55, PTA_55)
+        self.answer(wearing=False)
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assert_only_here_at(self.tags(), "after-fitting")
+
+    # 18
+    def test_wearing_without_a_fitting_date_links_after_fitting_to_the_form(self):
+        self.answer(wearing=True)
+        self.assert_only_here_at(self.tags(), "after-fitting")
+        self.assert_link(self.stop("after-fitting"), reverse("my_aid"), "記錄我的助聽器")
+
+    def test_a_fitting_date_has_no_link_to_record_them(self):
+        self.answer(wearing=True)
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        self.assertNotIn(reverse("my_aid"), self.stop("after-fitting"))
+
+    def test_not_wearing_has_no_link_to_record_them(self):
+        self.make(PTA_55, PTA_55)
+        self.assertNotIn("記錄我的助聽器", self.page())

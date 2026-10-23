@@ -273,3 +273,29 @@ class DeleteAccountTests(TestCase):
         self.client.force_login(user)
         self._delete(password=" pad Pass9# ")
         self.assertFalse(User.objects.filter(pk=user.pk).exists())
+
+
+class AidAndSubsidyDeletionTests(TestCase):
+    """#287 (spec #284 acceptance 22, story 31): the 助聽器與補助資料, all four filled in, goes
+    with the account, and the page says so first."""
+
+    setUp = DeleteAccountTests.setUp
+    _delete = DeleteAccountTests._delete
+
+    def test_the_page_lists_it(self):
+        response = self.client.get(self.url)
+        self.assertContains(
+            response,
+            "<li>助聽器與補助資料（有沒有身障證明、開始配戴日期、戴哪一耳、補助方式和等級）</li>",
+            html=True,
+        )
+
+    def test_all_four_filled_in_go_with_the_account(self):
+        fields = {"fitted_on": date(2026, 5, 1), "ear": "both", "subsidy": "disability"}
+        AidAndSubsidy.objects.create(user=self.user, has_certificate=True, level="mid", **fields)
+        AidAndSubsidy.objects.create(user=self.other, has_certificate=False)
+        self._delete()
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertEqual(
+            list(AidAndSubsidy.objects.values_list("user", flat=True)), [self.other.pk]
+        )

@@ -42,12 +42,14 @@ def fitting_state(user, today):
     wearing = latest is not None and (
         latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
     )
+    aid = AidAndSubsidy.objects.filter(user=user).first()
+    # A fitting date the user filled in counts as wearing them too (#284 default 3).
+    wearing = wearing or (aid is not None and aid.fitted_on is not None)
     fitting = threshold = None
     if audiogram is not None:
         points = list(audiogram.points.all())
         fitting = recommends_fitting_assessment(points)
         threshold = assessment_estimate(points)
-    aid = AidAndSubsidy.objects.filter(user=user).first()
     certified = aid is not None and aid.has_certificate is True
     stop = _stop(wearing, certified, audiogram, fitting, threshold)
     return FittingState(latest, audiogram, wearing, fitting, threshold, stop, today, aid)
