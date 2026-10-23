@@ -1,7 +1,8 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
 {# Guide chapters tidy-up: each point's gist as its label, the rest in one short sentence. #}
-<div class="mb-6">
+<section class="section-box mb-6" aria-labelledby="first-weeks-title">
+    <h2 id="first-weeks-title" class="h4 section-box-title">剛開始戴助聽器</h2>
 <dl class="key-list">
     <div>
         <dt>剛開始不習慣是正常的</dt>
@@ -20,9 +21,9 @@
         <dd>在吵雜的餐廳、多人聊天時，還是可能聽不清楚。</dd>
     </div>
 </dl>
-</div>
-<section class="mb-6" aria-labelledby="record-title">
-    <h2 id="record-title" class="h4">記錄配戴的效果</h2>
+</section>
+<section class="section-box mb-6" aria-labelledby="record-title">
+    <h2 id="record-title" class="h4 section-box-title">記錄配戴的效果</h2>
     <p>戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告給聽力師看。</p>
     <ul>
         {% for questionnaire in follow_ups %}

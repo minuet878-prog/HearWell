@@ -313,6 +313,19 @@ class GuideSummaryStatesTests(TestCase):
         self.assertNotIn("建議找聽力師評估選配", text)
         self.assertNotIn(THRESHOLD_TITLE, text)
 
+    # #320 (#318 acceptance 11): my guide's title is the one first-level heading and its status
+    # parts second-level ones, before any record, with a questionnaire only and with both.
+    def test_my_guide_titles_its_parts_one_level_below_without_skipping(self):
+        for records in ("none", "questionnaire", "both"):
+            if records == "questionnaire":
+                self.answer()
+            if records == "both":
+                self.make(PTA_55, PTA_55)
+            with self.subTest(records=records):
+                levels = test_guide.heading_levels(self.client.get(reverse("guide")))
+                test_guide.assert_levels_without_skipping(self, levels)
+                self.assertGreaterEqual(levels.count(2), 1 + (records != "none"))
+
     def test_an_ear_over_25_suggests_an_assessment(self):
         self.make((30, 30, 30, 30), (20, 20, 20, 20))
         response = self.client.get(reverse("guide"))
