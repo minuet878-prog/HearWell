@@ -28,8 +28,9 @@ from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.api.views import _find_by_key
-from screening.audiogram import assessment_estimate, compare, recommends_fitting_assessment
+from screening.audiogram import compare, recommends_fitting_assessment
 from screening.audiogram_thumbnail import thumbnail
+from screening.fitting_route import fitting_state
 from screening.forms import (
     ROC_OFFSET,
     AgeGroupForm,
@@ -211,24 +212,15 @@ def guide(request):
     # Open without logging in (spec #218): the contents are for family too.
     context = {"chapters": GUIDE_CHAPTERS}
     if request.user.is_authenticated:
-        audiogram = request.user.audiograms.prefetch_related("points").first()
-        latest = (
-            request.user.submissions.defined()
-            .select_related("questionnaire")
-            .order_by("-created_at", "-id")
-            .first()
-        )
-        context["has_records"] = audiogram is not None or latest is not None
+        state = fitting_state(request.user)
+        context["has_records"] = state.audiogram is not None or state.latest is not None
         # The same life-impact record the home page shows as the last result.
         last = get_user_state(request.user, today=timezone.localdate()).last_result
         context["life_impact"] = last.submission if last and last.is_life_impact else None
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
-        # IOI-HA saves no wearing answer, but only people wearing hearing aids take it.
-        context["wearing"] = latest is not None and (
-            latest.wearing_hearing_aid is True or latest.questionnaire.code == IOI_HA
-        )
-        if audiogram is not None:
-            context |= _guide_audiogram(audiogram)
+        context["wearing"] = state.wearing
+        if state.audiogram is not None:
+            context |= _guide_audiogram(state)
     response = render(request, "screening/guide/index.html", context)
     if request.user.is_authenticated:
         # Shows this account's records (GLOSSARY 健康資料頁面): never cached.
@@ -241,15 +233,14 @@ def _percent(ratio):
     return format(ratio.normalize(), "f")
 
 
-def _guide_audiogram(audiogram):
+def _guide_audiogram(state):
     # The latest audiogram's 聽力圖, 選配 and 身障鑑定門檻 boxes (#226, #227, ADR 0017).
-    points = list(audiogram.points.all())
-    estimate = assessment_estimate(points)
+    estimate = state.threshold
     ears = [(ear.label, estimate[ear.value]) for ear in (Ear.RIGHT, Ear.LEFT)]
     context = {
-        "audiogram": audiogram,
+        "audiogram": state.audiogram,
         "ears": ears,
-        "fitting": recommends_fitting_assessment(points),
+        "fitting": state.fitting,
         "threshold": estimate,
     }
     if estimate["ratio"] is not None:
