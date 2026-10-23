@@ -1,3 +1,5 @@
+import re
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -15,11 +17,12 @@ FORM_9 = (
     "找聽力師或縣市輔具中心做評估，拿到九號表。九號表 3 個月內有效。",
     "帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。",
     "等核定通知。主管機關收到評估報告後，10 天內會核定。",
+    # Between steps 3 and 4 since the step list (#259).
+    "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
     "收到核定通知後，6 個月內購買並請款。",
     "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內，要做使用效益驗證，"
     "拿到二十五號表。 看二十五號表",
     "帶購買憑證、保固書影本（和二十五號表）去核銷。受理後 1 個月內撥款。",
-    "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
     "九號表找誰開",
     "聽力師，或各縣市輔具中心的評估人員都可以開。您可以找醫院耳鼻喉科的聽力師，或您縣市的輔具中心。",
     "補助多少",
@@ -143,6 +146,37 @@ class Form9ChapterTests(TestCase):
         self.assertIn("重要：一定要先拿到核定通知再買，沒核定就先買的不補助。", steps)
         form_25 = reverse("guide_chapter", args=["form-25"])
         self.assertIn(f'<a href="{form_25}">看二十五號表</a>', steps)
+
+    def test_process_is_a_step_list_split_by_the_warning_after_step_3(self):
+        content = self.client.get(self.url).content.decode()
+        start = content.index('<h2 id="steps-title"')
+        steps = content[start : content.index("</section>", start)]
+        first = steps.index('<ol class="step-list" role="list">')
+        second = steps.index('<ol class="step-list" role="list" start="4">')
+        warning = steps.index("重要：一定要先拿到核定通知再買")
+        self.assertLess(steps.index("</ol>", first), warning)
+        self.assertLess(warning, second)
+        self.assertEqual(steps[first:warning].count("<li>"), 3)
+        self.assertEqual(steps[second:].count("<li>"), 3)
+        # The circles carry the numbers for screen readers too: the list's own markers are off.
+        numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
+        self.assertEqual(numbers, ["1", "2", "3", "4", "5", "6"])
+
+    def test_each_step_has_its_time_limit_tag(self):
+        content = self.client.get(self.url).content.decode()
+        start = content.index('<h2 id="steps-title"')
+        steps = content[start : content.index("</section>", start)]
+        items = re.findall(r"<li>(.*?)</li>", steps, re.S)
+        tags = [re.findall(r'<span class="step-when"[^>]*>(.*?)</span>', item) for item in items]
+        expected = [
+            ["3 個月內有效"],
+            [],
+            ["10 天內核定"],
+            ["6 個月內"],
+            ["配戴 1–3 個月內"],
+            ["1 個月內撥款"],
+        ]
+        self.assertEqual(tags, expected)
 
 
 class BeforeYouGoLinkTests(TestCase):
