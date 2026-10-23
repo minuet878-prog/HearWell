@@ -27,7 +27,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   驗證流程連結（推薦精靈「戴著再做一次」、比較頁預選、選配指引第 5、6 章連結與對調，驗證見
   `docs/verification/aid-verification-links.md`）、報告、分享與下一步按鈕改成有圖示的卡片（我的紀錄、結果頁、聽力圖頁，驗證見 `docs/verification/action-cards.md`）、選配路線與首頁建議下一步（母規格 #257，#258–#261；選配指引的
   儀表、選配路線與目前這一站、章節步驟條，老使用者首頁「您還可以」改推薦一張加分組，驗證見
-  `docs/verification/issue-258.md`–`issue-261.md`）。
+  `docs/verification/issue-258.md`–`issue-261.md`）、登入／註冊頁改成品牌橫幅＋粗框輸入框（框內圖示、填錯變紅、
+  登入頁加「顯示」密碼；本人在比較頁挑選，PR #273，驗證見 `docs/verification/auth-pages-banner.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
@@ -91,6 +92,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 ## 小尾巴（還沒排，做到附近時一起處理）
 
 - **200% 字級會左右捲動**：頁尾 email 在 320px 撐到約 394px（每一頁都有）；標題列「HearWell」和底部分頁列「聽力圖」在 Linux 字型下超出畫面；聽力圖結果 `.ear-results` 已在 #204 修好。聽力報告頁在 200% 字級寬到約 459px（`main` 裡一個空的 span 撐開；家人分享報告已在 #198 修好，本人的報告頁還沒）；225% 字級時紀錄卡片（`.link-card-body`）的日期比卡片內文寬（198px 對 127px），沒撐寬頁面但超出卡片。要在 CI 或 Linux 字型下驗，e2e 可沿用 4a 的 `add_style_tag` 放大字級。
+- **其他頁的輸入框外框太淡**（#272）：共用 `.form-control` 的外框在白底上約 1.3:1，WCAG 要 3:1；登入／註冊頁已在
+  PR #273 改成粗框，帳號設定、刪除帳號、聽力圖數值輸入還沒。要先決定高度要不要跟著加高、聽力圖輸入要不要排除。
 - **無障礙量測剩 7 項**：見 [`accessibility/accessibility_baseline.md`](accessibility/accessibility_baseline.md) 5.4。
 - **HHIE-S 出處頁**：目前只有 IOI-HA 有出處；需本人提供原文與中文版出處。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。
