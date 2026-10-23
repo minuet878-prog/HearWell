@@ -361,6 +361,10 @@ class FittingForm(forms.ModelForm):
             return {}
         if aid.notice_received and aid.approved_ears == ApprovedEars.BOTH:
             aid.ear = AidEar.BOTH
+        # Spec #291 Q16: without the notice the subsidy must be answered. Checked here, not
+        # as a required radio, so 還沒開始戴 still goes through on an older record without it.
+        if "subsidy" in self.fields and not self.cleaned_data.get("subsidy"):
+            self.add_error("subsidy", "請選擇有沒有用身障補助")
         return super().clean()
 
 

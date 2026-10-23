@@ -273,7 +273,7 @@ class CertificateStopTests(TestCase):
 
     def test_wearing_and_not_applying_passes_form_25_and_the_payout_by(self):
         AidAndSubsidy.objects.create(
-            user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1)
+            user=self.user, certificate="no_subsidy", fitted_on=date(2026, 5, 1), subsidy="other"
         )
         state = self.state()
         self.assertLessEqual({"form-25", "payout"}, state.not_applicable)
@@ -425,11 +425,17 @@ class Form25AndPayoutStopTests(TestCase):
         state = self.state(notice_received=True, approved_ears="both", level="advanced")
         self.assertEqual(state.stop, "form-25")
 
-    def test_the_subsidy_unanswered_without_the_notice_may_have_to_do_it(self):
-        # #296 (coordinator's decision): rather a reminder than none.
+    def test_the_subsidy_unanswered_without_the_notice_leaves_after_fitting_not_done(self):
+        # Spec #291 Q16: an older record with the date alone is still at 配戴之後, and the
+        # site does not guess form 25 is needed.
         state = self.state()
-        self.assertEqual(state.not_applicable, frozenset())
-        self.assertEqual(state.stop, "form-25")
+        self.assertNotIn("after-fitting", state.done)
+        self.assertEqual(state.stop, "after-fitting")
+        self.assertIsNone(state.form_25)
+
+    def test_the_notice_needs_no_subsidy_answer_for_after_fitting(self):
+        state = self.state(notice_received=True, approved_ears="both", level="mid")
+        self.assertIn("after-fitting", state.done)
 
     def test_basic_passes_form_25_by_to_the_payout(self):
         state = self.state(subsidy="disability", level="basic")

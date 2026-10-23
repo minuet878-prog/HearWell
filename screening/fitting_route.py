@@ -78,10 +78,11 @@ class FittingState:
     @property
     def form_25(self):
         """(from, by): form 25 is done a month to three months after the fitting date, both
-        days included (#284 Q7); None without the date or when form 25 is 不適用. 要做二十五號表
-        is every case it is not (#296): 身障補助 at a level above 簡易型 or 不知道, or the
-        subsidy unanswered, rather a reminder than none."""
-        if not self.fitted or "form-25" in self.not_applicable:
+        days included (#284 Q7); None without the date, without 身障補助 or when form 25 is
+        不適用. 要做二十五號表 (spec #291): 身障補助 at a level above 簡易型 or 不知道."""
+        if not self.fitted or not self.aid.uses_disability_subsidy:
+            return None
+        if "form-25" in self.not_applicable:
             return None
         return add_months(self.aid.fitted_on, 1), add_months(self.aid.fitted_on, 3)
 
@@ -130,8 +131,9 @@ def fitting_state(user, today):
         done.add("form-9")
     if aid is not None and aid.notice_received and aid.approved_ears and aid.level:
         done.add("notice")  # #294: 收到了 is done only with both of the notice's answers
-    if _fitted(aid):
-        done.add("after-fitting")  # #295: the fitting date alone finishes it
+    if _fitted(aid) and (aid.notice_received or aid.subsidy):
+        # #295, spec #291 Q16: the fitting date, and without the notice the subsidy answered.
+        done.add("after-fitting")
     if aid is not None and aid.form_25_done:
         done.add("form-25")  # #296; 等待補助發放 is never done
     not_applicable = not_applicable_stops(aid)

@@ -154,14 +154,14 @@ class FittedOnRouteTests(TestCase):
 
     def test_a_fitting_date_without_a_questionnaire_looks_on_from_after_fitting(self):
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertEqual(self.state().stop, "form-25")
+        self.assertEqual(self.state().stop, "after-fitting")  # spec #291 Q16
         self.assertTrue(self.state().wearing)
 
     def test_a_fitting_date_with_the_latest_answered_without_them_looks_on_too(self):
         self.make(PTA_55, PTA_55)
         self.answer(wearing=False)
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertEqual(self.state().stop, "form-25")
+        self.assertEqual(self.state().stop, "after-fitting")  # spec #291 Q16
 
     def test_without_a_fitting_date_the_rest_of_the_row_does_not_count_as_wearing(self):
         self.make(PTA_55, PTA_55)
@@ -206,10 +206,10 @@ class Form25DatesTests(TestCase):
                 self.fit(level=level)
                 self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
 
-    def test_the_subsidy_unanswered_is_dated_as_if_it_had_to_be_done(self):
-        # #296 (coordinator's decision): without the notice, form 25 may be needed.
+    def test_the_subsidy_unanswered_has_none(self):
+        # Spec #291 Q16: the site does not guess form 25 is needed.
         self.fit(subsidy="", level="")
-        self.assertEqual(self.form_25(), (date(2026, 6, 1), date(2026, 8, 1)))
+        self.assertIsNone(self.form_25())
 
     def test_basic_or_paying_otherwise_have_none(self):
         for subsidy, level in (("disability", "basic"), ("other", "")):

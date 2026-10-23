@@ -380,16 +380,9 @@ class EveryStopNextStepTests(TestCase):
             self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
         )
 
-    def test_form_25_with_the_subsidy_unanswered_says_its_deadline_too(self):
-        # #296 (coordinator's decision): without the notice or the subsidy answered, form 25
-        # may be needed, so the reason dates it as for 不知道.
+    def test_the_date_with_the_subsidy_unanswered_is_still_after_fitting(self):
+        # Spec #291 Q16: without the notice, 配戴之後 is done only once the subsidy is answered.
         AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
         self.assertEqual(
-            self.next_step(),
-            (
-                "了解助聽器選配與補助",
-                "因為：您的助聽器要在 2026/08/01 前做使用效益驗證（二十五號表），才能核銷補助。",
-                "/guide",
-                "看我的選配指引",
-            ),
+            self.next_step(), ("了解助聽器選配與補助", AFTER_FITTING, "/guide", "看我的選配指引")
         )

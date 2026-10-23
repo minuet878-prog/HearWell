@@ -228,7 +228,9 @@ class FittedOnRouteTests(TestCase):
     def test_a_fitting_date_with_the_latest_answered_without_them_looks_on_from_it(self):
         self.make(PTA_55, PTA_55)
         self.answer(wearing=False)
-        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
+        )
         self.assert_only_here_at(self.tags(), "form-25")
 
 
@@ -296,10 +298,11 @@ class Form25DeadlineTests(TestCase):
                 self.fit(subsidy=subsidy, level=level)
                 self.assertNotIn("2026/", self.stop("form-25"))
 
-    def test_the_subsidy_unanswered_is_dated_as_if_it_had_to_be_done(self):
-        # #296 (coordinator's decision): rather a reminder than none.
+    def test_the_subsidy_unanswered_is_here_at_after_fitting_and_form_25_is_not_dated(self):
+        # Spec #291 Q16: an older record with the date alone has not finished 配戴之後.
         self.fit(subsidy="", level="")
-        self.assertIn("2026/06/01 起可以做", self.stop("form-25"))
+        self.assertIn('<span class="route-mark">您在這裡</span>', self.stop("after-fitting"))
+        self.assertNotIn("2026/", self.stop("form-25"))
 
     GAP = '<p class="route-gap">至少 1 個月</p>'
 

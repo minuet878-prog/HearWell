@@ -777,11 +777,26 @@ class FittingRouteTests(TestCase):
         self.assertEqual((aid.subsidy, aid.level), ("other", ""))
         self.assertIn("2026/05/01 開始戴、雙耳、自費或其他補助", self.stop("after-fitting"))
 
-    def test_the_date_alone_is_enough(self):
+    def test_without_the_notice_the_subsidy_must_be_answered(self):
+        # Spec #291 Q16: nothing is kept, and the error is beside the subsidy question.
         self.without_the_notice()
-        self.fit(fitted_on="2026-05-01")
+        response = self.fit(fitted_on="2026-05-01", ear="left")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        subsidy = content[content.index(self.SUBSIDY) : content.index(self.LEVEL)]
+        self.assertIn("請選擇有沒有用身障補助", subsidy)
+        self.assertIn('class="text-danger field-error', subsidy)
+        aid = self.aid()
+        self.assertEqual((aid.fitted_on, aid.ear), (None, ""))
+
+    def test_the_date_and_the_subsidy_are_enough(self):
+        self.without_the_notice()
+        self.fit(fitted_on="2026-05-01", subsidy="other")
         self.assertEqual(self.marks("after-fitting"), ["已完成"])
-        self.assertIn('<p class="route-answer">2026/05/01 開始戴 <a', self.stop("after-fitting"))
+        self.assertIn(
+            '<p class="route-answer">2026/05/01 開始戴、自費或其他補助 <a',
+            self.stop("after-fitting"),
+        )
 
     def test_the_notice_s_both_ears_are_kept_as_both(self):
         self.with_the_notice("both")
@@ -819,7 +834,7 @@ class FittingRouteTests(TestCase):
 
     def test_today_is_allowed(self):
         self.without_the_notice()
-        self.fit(fitted_on=timezone.localdate().isoformat())
+        self.fit(fitted_on=timezone.localdate().isoformat(), subsidy="other")
         self.assertEqual(self.aid().fitted_on, timezone.localdate())
 
     def test_edit_opens_it_filled_with_not_fitted_yet(self):
@@ -884,10 +899,16 @@ class FittingChapterTests(TestCase):
         card = self.card()
         self.assertIn(FittingRouteTests.DATE, card)
         self.assertIn(f'<input type="hidden" name="next" value="{chapter}">', card)
-        data = {"stop": "after-fitting", "fitted_on": "2026-05-01", "ear": "both", "next": chapter}
+        data = {
+            "stop": "after-fitting",
+            "fitted_on": "2026-05-01",
+            "ear": "both",
+            "subsidy": "other",
+            "next": chapter,
+        }
         response = self.client.post(reverse("route_answer"), data)
         self.assertRedirects(response, chapter, fetch_redirect_response=False)
-        self.assertIn("已記下：2026/05/01 開始戴、雙耳", self.card())
+        self.assertIn("已記下：2026/05/01 開始戴、雙耳、自費或其他補助", self.card())
 
     def test_a_date_after_today_shows_the_chapter_again_with_its_error(self):
         tomorrow = timezone.localdate() + timedelta(days=1)
