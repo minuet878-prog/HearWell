@@ -1639,7 +1639,7 @@
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
 
-  /* Share page (#193): each step card's heading starts with its number in the home page's
+  /* Share page (#193): each step's heading starts with its number in the home page's
      brand-gradient circle; inside the heading it keeps its size and the body font size. */
   .share-step { display: flex; align-items: center; gap: 0.75rem; }
   .share-step .step-number {
@@ -3404,10 +3404,11 @@
     margin-top: 1.5rem;
   }
 
-  /* The report on screen (pages tidy-up): the summary in the brand-blue card, each part's
-     questionnaire, the audiogram and a kept comparison in a card, levels in the site's coloured
-     labels, scores as tags, the answers in the dropdown box, the handwriting line on paper only.
-     Screen only: the printed report stays as it was (the print block below undoes the box). */
+  /* The report on screen (pages tidy-up): the summary in the brand-blue card, levels in the
+     site's coloured labels, scores as tags, the answers in the dropdown box, the handwriting line
+     on paper only. Each part's questionnaire, the audiogram and a kept comparison are flat blocks
+     framed by their titles and spacing (ADR 0022, #303). Screen only: the printed report stays as
+     it was (the print block below undoes the box). */
   @media screen {
     .health-report .report-summary {
       border: 0.125rem solid var(--color-primary);
@@ -3419,22 +3420,6 @@
     /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
     .health-report:has(#family-highlights) .report-summary {
       display: none;
-    }
-
-    .health-report .report-part > section,
-    .health-report #report-audiogram {
-      padding: 1rem;
-      border: 1px solid var(--color-border-warm);
-      border-radius: var(--radius-large);
-      background-color: #fff;
-      box-shadow: var(--shadow-warm);
-    }
-
-    /* The audiogram's card is not a .card, so its title loses the page-title bar here, on
-       screen only (on paper it keeps the bar, as before). */
-    .health-report #report-audiogram > h2 {
-      padding-left: 0;
-      border-left: 0;
     }
 
     .report-handwrite {
@@ -3606,49 +3591,29 @@
     font-size: 1rem;
   }
 
-  /* Account settings (#195): one white card per group, a divider between rows. */
+  /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
+     a thin line between them; each link row is a white card of its own (.link-card). */
   .settings-group {
     margin: 0;
-    overflow: hidden;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
   }
 
-  /* At 200% text a date or an address wraps instead of being cut off by the card. */
+  /* At 200% text a date or an address wraps instead of widening the page. The account rows are a
+     list of terms: the value under its label. */
   .settings-row {
     display: flex;
-    align-items: center;
-    gap: 0.875rem;
+    flex-direction: column;
+    justify-content: center;
     min-height: 4.25rem;
-    padding: 0.75rem 1.125rem;
-    color: inherit;
-    text-decoration: none;
+    padding: 0.75rem 0;
     overflow-wrap: anywhere;
   }
 
   .settings-group > * + * {
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line-warm);
   }
 
-  /* The account rows are a list of terms: the value under its label. */
-  .settings-row-data {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 0;
-  }
-
-  .settings-row-data dd {
+  .settings-row dd {
     margin: 0;
-  }
-
-  .settings-row-body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
   }
 
   .settings-row-title {
@@ -3656,60 +3621,22 @@
     font-weight: 700;
   }
 
-  .settings-row-link .settings-row-title {
-    color: var(--color-primary);
-  }
-
   .settings-row-note {
     font-size: 1rem;
     font-weight: 400;
   }
 
-  .settings-icon {
-    flex: none;
-    width: 1.75rem;
-    height: 1.75rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .settings-row-arrow {
-    color: var(--color-primary);
-    font-size: 2rem;
-    line-height: 1;
-  }
-
-  /* Rows share one card, so they change colour only and never move (ADR 0006). */
-  @media (hover: hover) and (pointer: fine) {
-    .settings-row-link:hover {
-      background-color: var(--color-brand-soft);
-      color: inherit;
-    }
-  }
-
-  .settings-row-link:active {
-    background-color: var(--color-brand-selected);
-    color: inherit;
-  }
-
-  .settings-row-link:focus-visible {
-    outline: 0.25rem solid var(--color-primary);
-    outline-offset: -0.25rem;
-  }
-
-  /* Deleting the account is set apart from everything above it. */
-  .settings-group-danger {
+  /* Deleting the account is set apart from everything above it, in red whatever its state. */
+  .settings-card-danger,
+  .settings-card-danger:is(:hover, :active, :focus-visible) {
     border-color: var(--color-severe);
   }
 
-  .settings-group-danger :is(.settings-row-title, .settings-row-arrow) {
+  .settings-card-danger :is(.link-card-title, .link-card-arrow) {
     color: var(--color-severe);
   }
 
-  .settings-group-danger .settings-icon {
+  .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
   }
 
