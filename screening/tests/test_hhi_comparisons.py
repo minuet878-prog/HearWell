@@ -190,7 +190,9 @@ class HhiComparisonRadioCardTests(TestCase):
         Submission.objects.filter(pk=record.pk).update(created_at=when)
         return record
 
-    def test_cards_show_date_and_score_with_time_on_shared_days_and_none_chosen(self):
+    def test_cards_show_date_and_score_with_time_on_shared_days_and_a_lone_record_chosen(self):
+        # Verification-flow batch F2 (replacing #190's 「沒有時留空」): with no saved pair, a
+        # side with only one record has it chosen; two or more still wait for the user.
         self.record(False, 2, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
         self.record(False, 4, datetime(2026, 4, 20, 15, 5, tzinfo=TAIPEI))
         self.record(True, 0, datetime(2026, 9, 2, 9, 0, tzinfo=TAIPEI))
@@ -202,7 +204,7 @@ class HhiComparisonRadioCardTests(TestCase):
             radio_cards(page, "unaided"),
             [("2026/04/20 10:30・20 分", False), ("2026/04/20 15:05・40 分", False)],
         )
-        self.assertEqual(radio_cards(page, "aided"), [("2026/09/02・0 分", False)])
+        self.assertEqual(radio_cards(page, "aided"), [("2026/09/02・0 分", True)])
 
     def test_preview_without_javascript_then_button_follows_the_saved_pair(self):
         unaided = self.record(False, 4, datetime(2026, 4, 20, 10, 30, tzinfo=TAIPEI))
@@ -243,7 +245,8 @@ class HhiComparisonRadioCardTests(TestCase):
         self.assertContains(page, "已從報告移除這一組，原始作答保持不變。")
         self.assertNotContains(page, "聽力報告裡的組合")
         self.assertNotContains(page, "從報告移除</button>")
-        self.assertIn(("2026/04/20・40 分", False), radio_cards(page, "unaided"))
+        # No saved pair any more and one record on each side: both chosen again (F2).
+        self.assertIn(("2026/04/20・40 分", True), radio_cards(page, "unaided"))
         self.assertEqual(Answer.objects.filter(submission__user=self.user).count(), answers)
         self.assertEqual(self.user.submissions.count(), 2)
 

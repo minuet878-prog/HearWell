@@ -1,0 +1,1 @@
+{# The two life-impact questionnaires, linked by name (F3, F4): the guide is the same for everyone, so both. #}{% for questionnaire in life_impact %}<a href="{% url 'screening' questionnaire.id %}">{{ questionnaire }}</a>{% if not forloop.last %} 或 {% endif %}{% endfor %}

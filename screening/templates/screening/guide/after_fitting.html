@@ -16,7 +16,7 @@
         <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）：{{ questionnaire.definition.audience }}</a></li>
         {% endfor %}
     </ul>
-    <p>也可以戴著助聽器再做一次生活影響問卷，和沒戴時的結果比較。</p>
+    <p>也可以戴著助聽器再做一次生活影響問卷（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較。</p>
 </section>
 {% endblock %}
 {% block checked_on %}2026-10-22{% endblock %}

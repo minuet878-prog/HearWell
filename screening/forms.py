@@ -198,7 +198,8 @@ class ComparisonRecordField(forms.ModelChoiceField):
 
 
 class HhiComparisonForm(forms.Form):
-    # Radio cards, none chosen until the user picks (ADR 0003); #190.
+    # Radio cards (#190). Nothing is saved until the user presses save (ADR 0003); with no saved
+    # pair, a side with only one record has it chosen, two or more wait for the user (F2).
     unaided = ComparisonRecordField(
         label="沒戴助聽器時",
         queryset=Submission.objects.none(),
@@ -219,6 +220,12 @@ class HhiComparisonForm(forms.Form):
         days = shared_days(
             records.filter(wearing_hearing_aid__isnull=False).values_list("created_at", flat=True)
         )
+        choose_lone_records = not self.initial  # no saved pair
         for name, wearing in (("unaided", False), ("aided", True)):
             self.fields[name].queryset = records.filter(wearing_hearing_aid=wearing)
             self.fields[name].shared_days = days
+            if choose_lone_records:
+                # Two are enough to tell a lone record; chosen through initial, as a saved pair is.
+                first_two = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
+                if len(first_two) == 1:
+                    self.initial[name] = first_two[0]

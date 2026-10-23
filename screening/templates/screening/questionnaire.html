@@ -22,6 +22,7 @@
 </section>
 {% if also %}
 <h2 class="h4">也可以做</h2>
+{% if retake %}{% include "screening/questionnaire_card.html" with questionnaire=retake.questionnaire title=retake.title note=retake.note %}{% endif %}
 {% for questionnaire in also %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% endif %}
 {% for questionnaire in offers %}<p class="mt-4"><a href="{% url 'screening' questionnaire.pk %}">{{ questionnaire.definition.wizard_offer }}</a></p>{% endfor %}

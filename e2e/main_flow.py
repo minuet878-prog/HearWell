@@ -1341,8 +1341,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     expect(self.page).to_have_url(
                         re.compile(rf"/comparisons/{aided.questionnaire_id}$")
                     )
-                    # Nothing kept yet, so no card is chosen (ADR 0003).
-                    expect(self.main().get_by_role("radio", checked=True)).to_have_count(0)
+                    # Nothing kept yet (ADR 0003): only the lone aided record is chosen (F2); the
+                    # two unaided ones wait for the user.
+                    checked = self.main().get_by_role("radio", checked=True)
+                    expect(checked).to_have_count(1)
+                    expect(
+                        self.main()
+                        .get_by_role("group", name="戴助聽器時", exact=True)
+                        .get_by_label(aided_card, exact=True)
+                    ).to_be_checked()
                     choices = (("沒戴助聽器時", unaided_card), ("戴助聽器時", aided_card))
                     for legend, card in choices:
                         self.main().get_by_role("group", name=legend, exact=True).get_by_label(
@@ -1834,8 +1841,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         "assessment",
         "form-9",
         "types-and-prices",
-        "form-25",
         "after-fitting",
+        "form-25",
     )
 
     @classmethod
@@ -3626,7 +3633,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_comparison_radio_cards_only_change_colour(self):
         # #190 (ADR 0006): the comparison page's radio cards turn blue on hover and when chosen,
         # and never move.
+        # Two unaided records, so that side starts with none chosen (a lone one is, F2).
         self.submission(self.hhie_s, [2] * 10)
+        self.submission(self.hhie_s, [4] * 10)
         self.submission(self.hhie_s, [0] * 10, wearing=True)
         self.open(motion=True)
         with self.saving_artifacts():
