@@ -11,7 +11,8 @@
 {% include "screening/step_progress.html" %}
 {% if recommended %}
 <h1 class="h3 mt-2">推薦您做這一份</h1>
-<section aria-labelledby="recommended-title" class="card card-body mb-4">
+{# A flat block (ADR 0022): not a link itself, only its 開始作答 button is. #}
+<section aria-labelledby="recommended-title" class="mb-4">
     <div class="recommended-heading flex items-center gap-4">
         {% include "screening/questionnaire_icon.html" with icon=recommended.definition.icon %}
         <h2 id="recommended-title" class="h4 mb-0">{{ recommended.definition.topic }}<span class="block font-normal">{{ recommended }}</span></h2>

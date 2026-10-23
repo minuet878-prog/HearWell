@@ -9,8 +9,8 @@
     <p class="mb-0">{{ submission.questionnaire.definition.result_note }}</p>
 </section>
 <h2 class="h4">四個面向</h2>
-<ul class="list-unstyled">{% for subscale in satisfaction.subscales %}
-    <li class="card card-body mb-3">
+<ul class="list-unstyled line-list">{% for subscale in satisfaction.subscales %}
+    <li class="mb-3">
         <div class="score-card-head"><h3 class="h5 mb-0">{{ subscale.name }}</h3><span class="score-chip">{{ subscale.score }} 分</span></div>
         <p class="mb-0">{{ subscale.explanation }}</p>
     </li>{% endfor %}

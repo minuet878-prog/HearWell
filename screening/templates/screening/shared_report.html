@@ -12,12 +12,12 @@
 {% block body %}
 {# Spec phase8_c1_family_share.md 4.2: the owner's report without name or birth year. #}
 <article class="health-report">
-{# Ticket #194: the line and both cards are for the screen only; the printed report is unchanged. #}
+{# Ticket #194: the line and both blocks are for the screen only; the printed report is unchanged. #}
 <p class="no-print mt-4 mb-0">這是您的家人在 HearWell 自己作答與輸入的自我篩檢結果。</p>
 <h1 class="h3 mt-4">HearWell 聽力報告</h1>
 <p class="font-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"n月j日" }}。</p>
 {% if life_impact or audiogram %}
-<section id="family-highlights" class="card card-body mb-4 no-print" aria-labelledby="highlights-title">
+<section id="family-highlights" class="mb-4 no-print" aria-labelledby="highlights-title">
     <h2 id="highlights-title" class="h4">先看重點</h2>
     <ul class="list-unstyled">
         {% if life_impact %}{% with classified=life_impact.classified %}
@@ -38,7 +38,7 @@
 </section>
 {% endif %}
 {# Plain links to the public guide: no share token in them, and this page sends no referrer. #}
-<section id="family-help" class="card card-body mb-4 no-print" aria-labelledby="help-title">
+<section id="family-help" class="mb-4 no-print" aria-labelledby="help-title">
     <h2 id="help-title" class="h4">您可以怎麼幫忙</h2>
     <ul class="list-unstyled mb-0">
         <li><a class="link-card" href="{% url 'family_guide' %}#talk-title">

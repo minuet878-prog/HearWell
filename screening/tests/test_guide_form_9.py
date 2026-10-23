@@ -121,7 +121,7 @@ class Form9ChapterTests(TestCase):
 
     def test_reapply_and_without_certificate_anchors_land_on_their_headings(self):
         content = self.client.get(self.url).content.decode()
-        # Each part is a card since the text-heavy pages tidy-up, its title without a top margin.
+        # Each part is a flat block (ADR 0022), its title without a top margin.
         self.assertIn('<h2 id="reapply" class="h4">再次申請（換新機）</h2>', content)
         self.assertIn('<h2 id="without-certificate" class="h4">沒有身障證明時</h2>', content)
 

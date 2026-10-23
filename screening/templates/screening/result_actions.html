@@ -1,5 +1,16 @@
-{# The row every result page ends with (result pages tidy-up): this questionnaire's records, the report, home. #}
-<div class="result-actions my-6">
+{# #304 (ADR 0023): the home page's 建議下一步 tops the tappable cards; the others follow under a small title. #}
+<div class="result-more mt-6">
+{% include "screening/next_step.html" with heading=2 %}
+<h2 class="more-group-title">其他您可以做的</h2>
+{% if optional_ssq12 %}
+<p class="mb-2">您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
+<a class="link-card" href="{% url 'screening' optional_ssq12.pk %}">
+    <span class="link-card-body"><span class="link-card-title">了解日常聆聽能力（SSQ12-TW）</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}
+{# The row every result page ends with (result pages tidy-up): this questionnaire's records, the report, home. The report's card goes when the box above suggests printing it. #}
+<div class="result-actions mb-6">
     <a class="link-card action-card" href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">
         {% include "screening/action_icon.html" with icon="records" %}
         <span class="link-card-body">
@@ -8,6 +19,7 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>
+    {% if next_step.suggested != "print" %}
     <a class="link-card action-card" href="{% url 'health_report' %}">
         {% include "screening/action_icon.html" with icon="report" %}
         <span class="link-card-body">
@@ -16,6 +28,7 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>
+    {% endif %}
     <a class="link-card action-card" href="{% url 'index' %}">
         {% include "screening/action_icon.html" with icon="home" %}
         <span class="link-card-body">
@@ -24,4 +37,5 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>
+</div>
 </div>

@@ -43,7 +43,7 @@ class NewUserHomeTests(TestCase):
         return hrefs[0]
 
     def _steps(self, main):
-        steps = re.search(r'<ol class="step-cards".*?</ol>', main, re.DOTALL).group(0)
+        steps = re.search(r'<ol class="step-cards.*?</ol>', main, re.DOTALL).group(0)
         return re.findall(r"<span>([^<]+)</span>", steps)
 
     def test_anonymous_sees_start_and_login_buttons_and_four_steps(self):
@@ -55,7 +55,7 @@ class NewUserHomeTests(TestCase):
 
     def test_hero_labels_sit_above_the_title(self):
         main = self._main()
-        hero = main[main.index('<section class="home-band home-hero') : main.index("<h1")]
+        hero = main[main.index('<section class="home-hero') : main.index("<h1")]
         chips = re.findall(r'<span class="home-chip">.*?</svg>\s*([^<]+?)\s*</span>', hero, re.S)
         self.assertEqual(chips, ["約 3 分鐘", "國際標準量表"])
         self.assertEqual(hero.count('aria-hidden="true"'), hero.count("<svg"))

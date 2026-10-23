@@ -60,6 +60,8 @@
   --color-page: #faf7f2;
   --color-footer-bg: #f3ede3;
   --color-border-warm: #efe6d8;
+  /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
+  --color-line-warm: #d9cdb9;
   --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
   --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
   --radius-large: 1.5rem;
@@ -114,9 +116,9 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card, the report's summary box or the home page's result example has none; the box
-     already frames it. */
-  h1.h3, h2.h4:not(:where(.card, .report-summary, .result-preview) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. Nor does an
+     ear's result on an audiogram: the line in its ear's colour marks it (ADR 0007). */
+  h1.h3, h2.h4:not(:where(.card, .report-summary, .ear-result) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -1261,15 +1263,6 @@
     font-weight: 700;
   }
 
-  /* Home (spec phase9_ui_refresh_4a_home.md): a pale brand band; the first-visit top overrides it
-     with the white card below. */
-  .home-band {
-    background-color: var(--color-brand-soft);
-    border-radius: var(--radius-large);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
   .home-illustration {
     display: block;
     width: 100%;
@@ -1282,12 +1275,10 @@
     stroke-linejoin: round;
   }
 
-  /* Brand refresh (design picker): the first-visit top is a white card, not a pale band. It is
-     not a link, so it has no hover or press effect (ADR 0006). */
+  /* The home page's top, first visit or 歡迎回來: a flat block on the page (ADR 0022, #298's
+     pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
   .home-hero {
-    background-color: #fff;
-    border: 1px solid var(--color-border-warm);
-    box-shadow: var(--shadow-warm);
+    margin-bottom: 1.5rem;
   }
 
   .home-chips {
@@ -1393,17 +1384,12 @@
     }
   }
 
-  /* The audiologist line at the bottom (design picker round 3): a white card with a gradient
-     shield. Not a link, so no hover or press effect (ADR 0006). */
+  /* The audiologist line at the bottom (design picker round 3): a gradient shield before the
+     words, flat on the page since it is not a link (ADR 0022). */
   .home-credential {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
     color: var(--color-heading);
     font-weight: 700;
   }
@@ -1486,7 +1472,8 @@
 
   /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
      few characters; 「（45%）。」 may not break off and would otherwise run past the white box. */
-  .more-section {
+  .more-section,
+  .result-more {
     container-type: inline-size;
   }
 
@@ -1528,18 +1515,13 @@
     gap: 0.75rem;
   }
 
-  /* Number, icon and words in one row (pages tidy-up), so each card is half as tall; at large
-     text sizes the words drop under the number and icon instead of widening the page. */
+  /* Number, icon and words in one row (pages tidy-up); at large text sizes the words drop under
+     the number and icon instead of widening the page. Flat with a thin line (.line-list). */
   .step-cards li {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
   }
 
   .step-number {
@@ -1572,15 +1554,10 @@
     stroke-linejoin: round;
   }
 
-  /* A shrunken result card, clearly marked as an example: a white card with the result page's
-     score bar since design picker round 2. Not a link, so no hover or press effect (ADR 0006). */
+  /* A shrunken result, clearly marked as an example, with the result page's score bar since
+     design picker round 2. Not a link, so a flat block framed by its title (ADR 0022). */
   .result-preview {
     position: relative;
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
     margin-bottom: 1.5rem;
   }
 
@@ -1663,7 +1640,7 @@
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
 
-  /* Share page (#193): each step card's heading starts with its number in the home page's
+  /* Share page (#193): each step's heading starts with its number in the home page's
      brand-gradient circle; inside the heading it keeps its size and the body font size. */
   .share-step { display: flex; align-items: center; gap: 0.75rem; }
   .share-step .step-number {
@@ -1867,14 +1844,14 @@
     justify-content: center;
   }
 
+  /* A stop's box is a flat block (ADR 0022): no white and no shadow, only the thin warm edge
+     that the 目前這一站, the stops below it and 不適用 restyle. Its title is the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
     padding: 0.75rem 1rem;
     border: 1px solid var(--color-border-warm);
     border-radius: var(--radius-medium);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
   }
 
   .route-title {
@@ -1920,7 +1897,6 @@
 
   .route-stop.is-below .route-box {
     background-color: var(--color-surface);
-    box-shadow: none;
   }
 
   .route-stop.is-below .route-mark {
@@ -1939,7 +1915,6 @@
     border-style: dashed;
     border-color: var(--color-border-strong);
     background-color: var(--color-surface);
-    box-shadow: none;
   }
 
   .route-stop.is-na .route-mark {
@@ -2094,11 +2069,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each part in a card; sources and the check date in small print. */
-  .guide-chapter .card > :last-child {
-    margin-bottom: 0;
-  }
-
+  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022); sources
+     and the check date in small print. */
   .guide-source,
   .guide-checked {
     font-size: 0.875rem;
@@ -2303,7 +2275,7 @@
     margin-bottom: 0;
   }
 
-  /* A score as a small tag at the top right of a card (SADL facets, SSQ12-TW's lowest answers). */
+  /* A score as a small tag at the top right of an item (SADL facets, SSQ12-TW's lowest answers). */
   .score-card-head {
     display: flex;
     gap: 0.75rem;
@@ -2663,9 +2635,19 @@
     background-color: var(--color-severe-bg-deep);
   }
 
-  /* Numbered "接下來建議您" steps on the result page (ticket #157). Each step is a white card
-     with its number in a pale circle and its links as text under the words, so the steps read
-     as one list instead of being pushed apart by large buttons (result page tidy-up, option B).
+  /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
+     a thin warm line on its left, no white and no shadow. The result page's advice and the home
+     page's steps; .line-block is one such block on its own (THI's support message). The list
+     itself is unstyled by its own class (.list-unstyled, .next-steps, .step-cards, .ioi-items). */
+  .line-list > *,
+  .line-block {
+    padding: 0.1em 0 0.1em 0.7em;
+    border-left: 0.18em solid var(--color-line-warm);
+  }
+
+  /* Numbered "接下來建議您" steps on the result page (ticket #157), a .line-list: each step has
+     its number in a pale circle and its links as text under the words, so the steps read as one
+     list instead of being pushed apart by large buttons (result page tidy-up, option B).
      Still an <ol>, so screen readers announce the count. */
   .next-steps {
     container-type: inline-size;
@@ -2680,10 +2662,6 @@
     grid-template-columns: 2.25rem 1fr;
     column-gap: 0.75rem;
     margin-bottom: 0.75rem;
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-medium);
-    background-color: #fff;
     counter-increment: next-step;
   }
 
@@ -3060,14 +3038,6 @@
     list-style: none;
   }
 
-  .ioi-item {
-    padding: 1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
-  }
-
   .ioi-item-name {
     margin-bottom: 0.25rem;
     font-size: 1.25rem;
@@ -3114,17 +3084,29 @@
   }
 
   /* Audiogram input and view (spec phase5_audiogram.md). */
-  /* White frame around a chart (#137). Its side padding and border are pushed out by an equal
-     negative margin, so the chart keeps its width and its crop stays pixel-identical (#143); on a
-     phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The top
-     is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
+  /* A chart's drawing area (ADR 0022): white like a sheet of paper, a thin border, no shadow and
+     a small radius, so it never looks like a card to tap. The trend chart, and the audiogram and
+     IOI-HA frames below. */
+  .chart-canvas,
+  .audiogram-chart,
+  .ioi-chart {
+    border: 1px solid var(--color-border-warm);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
+  .chart-canvas {
+    padding: 1rem;
+  }
+
+  /* The audiogram and IOI-HA frames (#137): their side padding and border are pushed out by an
+     equal negative margin, so the chart keeps its width and its crop stays pixel-identical (#143);
+     on a phone the frame reaches the screen edge, never past it (the container pads 0.75rem). The
+     top is 1rem, whole pixels at the 18px base: a half-pixel shift would redraw every line. */
   .audiogram-chart,
   .ioi-chart {
     --chart-frame: 0.75rem;
     padding: calc(1rem - 1px) calc(var(--chart-frame) - 1px);
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
   }
 
   .audiogram-chart {
@@ -3219,6 +3201,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
     gap: 0.75rem;
+  }
+
+  /* Each ear's result is a flat block (ADR 0022) under a line in its ear's colour. */
+  .ear-result {
+    padding-top: 0.75rem;
   }
 
   .ear-result.ear-right {
@@ -3424,10 +3411,11 @@
     margin-top: 1.5rem;
   }
 
-  /* The report on screen (pages tidy-up): the summary in the brand-blue card, each part's
-     questionnaire, the audiogram and a kept comparison in a card, levels in the site's coloured
-     labels, scores as tags, the answers in the dropdown box, the handwriting line on paper only.
-     Screen only: the printed report stays as it was (the print block below undoes the box). */
+  /* The report on screen (pages tidy-up): the summary in the brand-blue card, levels in the
+     site's coloured labels, scores as tags, the answers in the dropdown box, the handwriting line
+     on paper only. Each part's questionnaire, the audiogram and a kept comparison are flat blocks
+     framed by their titles and spacing (ADR 0022, #303). Screen only: the printed report stays as
+     it was (the print block below undoes the box). */
   @media screen {
     .health-report .report-summary {
       border: 0.125rem solid var(--color-primary);
@@ -3439,22 +3427,6 @@
     /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
     .health-report:has(#family-highlights) .report-summary {
       display: none;
-    }
-
-    .health-report .report-part > section,
-    .health-report #report-audiogram {
-      padding: 1rem;
-      border: 1px solid var(--color-border-warm);
-      border-radius: var(--radius-large);
-      background-color: #fff;
-      box-shadow: var(--shadow-warm);
-    }
-
-    /* The audiogram's card is not a .card, so its title loses the page-title bar here, on
-       screen only (on paper it keeps the bar, as before). */
-    .health-report #report-audiogram > h2 {
-      padding-left: 0;
-      border-left: 0;
     }
 
     .report-handwrite {
@@ -3554,14 +3526,10 @@
     }
   }
 
-  /* Privacy notice (#197): the highlights card on top, framed in the brand blue. */
-  .privacy-highlights {
-    border: 0.125rem solid var(--color-primary);
-  }
-
-  /* Family guide (#240): one card per topic, each tip's point on its own line, the urgent
-     topic framed in the brand blue (ADR 0007) with 119 in large type; the sources at the end. */
-  .family-guide .card > h2 {
+  /* Family guide (#240): one flat block per topic framed by its title (ADR 0022), each tip's
+     point on its own line, the urgent topic framed in the brand blue (ADR 0007) with 119 in
+     large type; the sources at the end. */
+  .family-guide section > h2 {
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -3606,6 +3574,7 @@
   .family-guide .family-urgent {
     border: 0.125rem solid var(--color-primary);
     background-color: var(--color-brand-soft);
+    box-shadow: none;
   }
 
   .family-guide .family-urgent .tips > li {
@@ -3630,49 +3599,29 @@
     font-size: 1rem;
   }
 
-  /* Account settings (#195): one white card per group, a divider between rows. */
+  /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
+     a thin line between them; each link row is a white card of its own (.link-card). */
   .settings-group {
     margin: 0;
-    overflow: hidden;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    background-color: #fff;
-    box-shadow: var(--shadow-warm);
   }
 
-  /* At 200% text a date or an address wraps instead of being cut off by the card. */
+  /* At 200% text a date or an address wraps instead of widening the page. The account rows are a
+     list of terms: the value under its label. */
   .settings-row {
     display: flex;
-    align-items: center;
-    gap: 0.875rem;
+    flex-direction: column;
+    justify-content: center;
     min-height: 4.25rem;
-    padding: 0.75rem 1.125rem;
-    color: inherit;
-    text-decoration: none;
+    padding: 0.75rem 0;
     overflow-wrap: anywhere;
   }
 
   .settings-group > * + * {
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line-warm);
   }
 
-  /* The account rows are a list of terms: the value under its label. */
-  .settings-row-data {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 0;
-  }
-
-  .settings-row-data dd {
+  .settings-row dd {
     margin: 0;
-  }
-
-  .settings-row-body {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
   }
 
   .settings-row-title {
@@ -3680,60 +3629,22 @@
     font-weight: 700;
   }
 
-  .settings-row-link .settings-row-title {
-    color: var(--color-primary);
-  }
-
   .settings-row-note {
     font-size: 1rem;
     font-weight: 400;
   }
 
-  .settings-icon {
-    flex: none;
-    width: 1.75rem;
-    height: 1.75rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .settings-row-arrow {
-    color: var(--color-primary);
-    font-size: 2rem;
-    line-height: 1;
-  }
-
-  /* Rows share one card, so they change colour only and never move (ADR 0006). */
-  @media (hover: hover) and (pointer: fine) {
-    .settings-row-link:hover {
-      background-color: var(--color-brand-soft);
-      color: inherit;
-    }
-  }
-
-  .settings-row-link:active {
-    background-color: var(--color-brand-selected);
-    color: inherit;
-  }
-
-  .settings-row-link:focus-visible {
-    outline: 0.25rem solid var(--color-primary);
-    outline-offset: -0.25rem;
-  }
-
-  /* Deleting the account is set apart from everything above it. */
-  .settings-group-danger {
+  /* Deleting the account is set apart from everything above it, in red whatever its state. */
+  .settings-card-danger,
+  .settings-card-danger:is(:hover, :active, :focus-visible) {
     border-color: var(--color-severe);
   }
 
-  .settings-group-danger :is(.settings-row-title, .settings-row-arrow) {
+  .settings-card-danger :is(.link-card-title, .link-card-arrow) {
     color: var(--color-severe);
   }
 
-  .settings-group-danger .settings-icon {
+  .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
   }
 
