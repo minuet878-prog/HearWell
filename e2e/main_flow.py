@@ -3756,14 +3756,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(item.locator("span").last, "color"), colour)
                     self.assertEqual(self.style(swatch, "backgroundColor"), background)
 
-    # Without JavaScript the trend summary stays and the chart card, which would stay empty, hides.
+    # Without JavaScript the trend summary stays and the chart's box, which would stay empty, hides.
     def test_trend_summary_shows_without_javascript(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open(javascript=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
             expect(self.page.locator(".trend-summary")).to_be_visible()
-            expect(self.page.locator("#trend-chart .card")).to_be_hidden()
+            expect(self.page.locator("#trend-plot")).to_be_hidden()
 
     # #126: the badge's class is built from the level code, as the banner's is.
     def test_level_badge_colours(self):
@@ -3976,7 +3976,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         )
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", self.WHITE),
-            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", self.WHITE),
+            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .chart-canvas", self.WHITE),
             ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", self.WHITE),
             (f"/audiograms/{audiogram.pk}", ".audiogram-chart", self.WHITE),
             ("/audiograms/new", "#tested-on", self.WHITE),
@@ -4053,14 +4053,15 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
             ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
-            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card", large),
-            ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", large),
-            (f"/audiograms/{audiogram.pk}", ".audiogram-chart", large),
             (f"/submission/{basis.pk}", ".result-banner", medium),
             (f"/submission/{ioi.pk}", ".ioi-note", medium),
             ("/audiograms/new", "#tested-on", medium),
             ("/audiograms/new", ".audiogram-table .form-select", medium),
             ("/audiograms/new", ".audiogram-symbol", medium),
+            # #301 (ADR 0022): a chart's drawing area has a small radius, like a sheet of paper.
+            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .chart-canvas", "4.5px"),
+            ("/my_hearing?questionnaire=ioi-ha", ".ioi-chart", "4.5px"),
+            (f"/audiograms/{audiogram.pk}", ".audiogram-chart", "4.5px"),
             # Left as they were: badges, thumbnails and the charts themselves.
             ("/my_hearing?questionnaire=hhie-s", ".level-badge", "18px"),
             ("/audiograms", ".audiogram-thumbnail", "4.5px"),
@@ -4079,11 +4080,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
 
     def test_large_white_blocks_have_warm_borders_and_shadows(self):
-        self.submission(self.hhie_s, [2] * 10)
-        cases = (
-            ("/questionnaire_list?choose=self", "main a.link-card"),
-            ("/my_hearing?questionnaire=hhie-s", "#trend-chart .card"),
-        )
+        cases = (("/questionnaire_list?choose=self", "main a.link-card"),)
         with self.saving_artifacts():
             self.open()
             for path, selector in cases:
@@ -4799,7 +4796,17 @@ WHITE_CARD_PAGES_ANSWERING = ()
 
 # #301: the records pages, and the IOI-HA, SADL and SSQ12-TW result pages (their item cards
 # are #301's).
-WHITE_CARD_PAGES_RECORDS = ()
+WHITE_CARD_PAGES_RECORDS = (
+    ("my records, questionnaires", True, lambda test: test.trend_records()),
+    ("my records, IOI-HA", True, lambda test: test.ioi_ha_records()),
+    ("my records, audiograms", True, lambda test: test.audiogram_records()),
+    ("audiogram", True, lambda test: test.audiogram_detail()),
+    ("new audiogram", True, "/audiograms/new"),
+    ("aided and unaided comparison", True, lambda test: test.hhi_comparison()),
+    ("IOI-HA result", True, lambda test: test.ioi_ha_result()),
+    ("SADL result", True, lambda test: test.result("sadl", 4)),
+    ("SSQ12-TW result", True, lambda test: test.result("ssq12-tw", 5)),
+)
 
 # #302: the learn pages.
 WHITE_CARD_PAGES_LEARN = ()
@@ -4885,6 +4892,64 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def returning_home(self):
         self.answered("hhie-s", 2)
         return "/"
+
+    # #301: the records the records pages show.
+    def trend_records(self):
+        self.answered("hhie-s", 2)
+        self.answered("hhie-s", 4)
+        return "/my_hearing?questionnaire=hhie-s"
+
+    def ioi_ha(self):
+        """An IOI-HA record below the norm on every item, grouped by an unaided HHIE-S."""
+        questionnaire = Questionnaire.objects.get(code="ioi-ha")
+        record = Submission.objects.create(
+            user=self.user,
+            questionnaire=questionnaire,
+            norm_group=NormGroup.MILD_MODERATE,
+            norm_basis=self.answered("hhie-s", 2),
+            wearing_hearing_aid=True,
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=1)
+            for question in questionnaire.questions.all()
+        )
+        return record
+
+    def ioi_ha_result(self):
+        return f"/submission/{self.ioi_ha().pk}"
+
+    def ioi_ha_records(self):
+        self.ioi_ha()
+        return "/my_hearing?questionnaire=ioi-ha"
+
+    def audiogram(self):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return audiogram
+
+    def audiogram_records(self):
+        self.audiogram()
+        return "/audiograms"
+
+    def audiogram_detail(self):
+        return f"/audiograms/{self.audiogram().pk}"
+
+    def hhi_comparison(self):
+        """The comparison page with a pair on screen and another kept in the report."""
+        kept, shown = self.answered("hhie-s", 2), self.answered("hhie-s", 4)
+        aided = self.answered("hhie-s", 0)
+        Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
+        ReportComparison.objects.create(
+            user=self.user, questionnaire=kept.questionnaire, unaided=kept, aided=aided
+        )
+        return (
+            f"/comparisons/{kept.questionnaire_id}"
+            f"?unaided={shown.pk}&aided={aided.pk}&action=preview"
+        )
 
     def visit(self, signed_in, path, width=1024):
         self.open(signed_in, width)
@@ -4975,4 +5040,112 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT:
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
+                    self.assert_fits_a_phone_at_double_text_size(name)
+
+    # #301: a chart's drawing area is a sheet of paper, not a card to tap.
+    def assert_paper(self, canvas, card):
+        expect(canvas).to_be_visible()
+        self.assertEqual(self.style(canvas, "backgroundColor"), self.WHITE)
+        self.assertEqual(self.style(canvas, "borderTopStyle"), "solid")
+        self.assertEqual(self.style(canvas, "borderTopWidth"), "1px")
+        self.assertEqual(self.style(canvas, "boxShadow"), "none")
+        radius = float(self.style(canvas, "borderTopLeftRadius").removesuffix("px"))
+        card_radius = float(self.style(card, "borderTopLeftRadius").removesuffix("px"))
+        self.assertLess(radius, card_radius)
+
+    # Spec #297 acceptance 6 (#301): the trend chart, the IOI-HA chart and the audiogram.
+    def test_chart_drawing_areas_are_white_paper_with_a_small_radius(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.trend_records())
+            # The chart grows from 0 to its full width; measure once it is drawn.
+            self.page.locator("#trend-plot .recharts-wrapper").wait_for()
+            card = self.main().locator("a.link-card").first
+            self.assert_paper(self.page.locator("#trend-plot").locator(".."), card)
+            self.visit(True, lambda test: test.ioi_ha_records())
+            card = self.main().locator("a.link-card").first
+            self.assert_paper(self.page.get_by_role("region", name="IOI-HA 各題與常模"), card)
+            self.visit(True, lambda test: test.audiogram_detail())
+            self.page.locator("#audiogram-chart svg").first.wait_for()
+            card = self.main().locator("a.link-card").first
+            self.assert_paper(self.page.locator("#audiogram-chart"), card)
+
+    # #301: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers have a thin line;
+    # IOI-HA's summary and 接下來 are flat.
+    def test_result_item_scores_are_flat_with_a_thin_line(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.ioi_ha_result())
+            self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
+            self.assert_flat(self.page.get_by_role("region", name="接下來", exact=True))
+            items = self.main().locator("ol > li")
+            self.assertEqual(items.count(), 7)
+            for item in items.all():
+                with self.subTest(item=item.inner_text()[:10]):
+                    self.assert_lined(item)
+            self.visit(True, lambda test: test.result("sadl", 4))
+            facets = (
+                self.main()
+                .get_by_role("list")
+                .filter(has=self.page.get_by_role("heading", level=3))
+                .get_by_role("listitem")
+            )
+            self.assertEqual(facets.count(), 4)
+            for facet in facets.all():
+                with self.subTest(facet=facet.inner_text()[:10]):
+                    self.assert_lined(facet)
+            self.visit(True, lambda test: test.result("ssq12-tw", 5))
+            lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
+                "listitem"
+            )
+            self.assertEqual(lowest.count(), 3)
+            for answer in lowest.all():
+                with self.subTest(answer=answer.inner_text()[:10]):
+                    self.assert_lined(answer)
+
+    # #301: 我的紀錄's record cards stay white cards; the summaries above them are not.
+    def test_my_records_keep_white_record_cards_and_flat_summaries(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.trend_records())
+            records = self.main().locator('a.link-card[href^="/submission/"]')
+            self.assertEqual(records.count(), 2)
+            for record in records.all():
+                with self.subTest(record=record.inner_text()[:10]):
+                    self.assertEqual(self.style(record, "backgroundColor"), self.WHITE)
+                    self.assertEqual(self.style(record, "boxShadow"), self.WARM_SHADOW)
+            self.assert_flat(self.page.get_by_role("region", name="和上一次比"))
+            # The pale blue summary box above the chart: not white, no shadow (ADR 0022).
+            trend = self.page.get_by_role("region", name="HHIE-S 總分變化")
+            summary = trend.get_by_text("最近一次（").locator("..")
+            self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(summary, "boxShadow"), "none")
+
+    # #301: the audiogram's summary and ear results, the comparison page's two pairs, and the
+    # new audiogram's how-to on an ear step are flat.
+    def test_audiogram_and_comparison_blocks_are_flat(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.audiogram_detail())
+            self.assert_flat(self.page.get_by_role("region", name="兩耳程度"))
+            for ear in ("右耳", "左耳"):
+                with self.subTest(ear=ear):
+                    heading = self.page.get_by_role("heading", name=ear, exact=True)
+                    self.assert_flat(self.main().locator("section").filter(has=heading))
+            self.visit(True, lambda test: test.hhi_comparison())
+            for title in ("目前查看的兩筆", "聽力報告裡的組合"):
+                with self.subTest(block=title):
+                    self.assert_flat(self.page.get_by_role("region", name=title))
+            self.open(signed_in=True)
+            audiogram_step(self.page, self.live_server_url, 2)
+            expect(self.main().get_by_text("報告上的 O 是右耳")).to_be_visible()
+            self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
+
+    # #301: no sideways scrolling on a phone at 200% text on 我的紀錄's two tabs and an audiogram.
+    def test_records_and_audiogram_fit_a_phone_at_double_text_size(self):
+        pages = (
+            ("my records, questionnaires", lambda test: test.trend_records()),
+            ("my records, audiograms", lambda test: test.audiogram_records()),
+            ("audiogram", lambda test: test.audiogram_detail()),
+        )
+        with self.saving_artifacts():
+            for name, path in pages:
+                with self.subTest(page=name):
+                    self.visit(True, path, width=320)
                     self.assert_fits_a_phone_at_double_text_size(name)

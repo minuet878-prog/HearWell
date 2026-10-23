@@ -4,7 +4,7 @@
 
 {% block body %}
 {% include "screening/result_header.html" %}
-<section class="card card-body mb-6">
+<section class="mb-6">
     {% if grouped %}
     <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
     <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
@@ -23,7 +23,7 @@
 {% if below %}
 <section class="ioi-below" aria-labelledby="ioi-below-title">
     <h2 id="ioi-below-title" class="h4">{{ below_text }}的 {{ below|length }} 項</h2>
-    <ol class="ioi-items">
+    <ol class="ioi-items line-list">
         {% for item in below %}{% include "screening/ioi_ha_item.html" with heading=3 hide_versus=True %}{% endfor %}
     </ol>
 </section>
@@ -31,18 +31,18 @@
 {% if others %}
 <details class="ioi-others dropdown-box">
     <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
-    <ol class="ioi-items">
+    <ol class="ioi-items line-list">
         {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
     </ol>
 </details>
 {% endif %}
 {% else %}
-<ol class="ioi-items">
+<ol class="ioi-items line-list">
     {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
 </ol>
 {% endif %}
 {% if grouped %}
-<section class="card card-body my-6" aria-labelledby="ioi-next-title">
+<section class="my-6" aria-labelledby="ioi-next-title">
     <h2 id="ioi-next-title" class="h4">接下來</h2>
     <p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
 </section>

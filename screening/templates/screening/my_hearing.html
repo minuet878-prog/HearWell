@@ -7,7 +7,7 @@
 {% if current.definition.trend_chart %}
 <script type="module" src="{% static 'screening/frontend/trend-chart.js' %}"></script>
 {# Without JavaScript the chart never draws: keep its text, hide the box that would stay empty. #}
-<noscript><style>#trend-chart .card { display: none; }</style></noscript>
+<noscript><style>#trend-chart .chart-canvas { display: none; }</style></noscript>
 {% endif %}
 {% endblock %}
 
