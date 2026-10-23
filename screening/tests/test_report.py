@@ -393,6 +393,24 @@ class HearingAidReportLineTests(TestCase):
         content = self.client.get(reverse("health_report")).content.decode()
         self.assertNotIn("身障證明", content)
 
+    def test_the_route_s_other_answers_are_not_printed(self):
+        # Spec #291 acceptance 22: only the line on the hearing aids, none of the answers
+        # about form 9, the notice, form 25 or the certificate.
+        self.fill(
+            form_9_done=True,
+            notice_received=True,
+            approved_ears="both",
+            level="mid",
+            form_25_done=True,
+        )
+        summary = self.summary()
+        self.assertIn(f"<li>{self.LINE}</li>", summary)
+        self.assertEqual(summary.count("<li>助聽器："), 1)
+        content = self.client.get(reverse("health_report")).content.decode()
+        for word in ("九號表", "公文", "核定", "二十五號表", "身障證明", "身障補助"):
+            with self.subTest(word=word):
+                self.assertNotIn(word, content)
+
     def test_paying_otherwise_has_no_level(self):
         self.fill(subsidy="other")
         self.assertIn("<li>助聽器：雙耳，2026/05/01 開始戴</li>", self.summary())
