@@ -3567,9 +3567,10 @@
     }
   }
 
-  /* Family guide (#240): one flat block per topic framed by its title (ADR 0022), each tip's
-     point on its own line, the urgent topic framed in the brand blue (ADR 0007) with 119 in
-     large type; the sources at the end. */
+  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
+     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
+     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
+     the sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -3589,27 +3590,11 @@
 
   .family-guide .tips {
     margin: 0;
-    padding: 0;
     list-style: none;
-  }
-
-  .family-guide .tips > li {
-    padding-block: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
-  }
-
-  .family-guide .tips > li:first-child {
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .family-guide .tips > li:last-child {
-    padding-bottom: 0;
   }
 
   .family-guide .tip-point {
     display: block;
-    color: var(--color-heading);
   }
 
   .family-guide .family-urgent {
@@ -3618,8 +3603,22 @@
     box-shadow: none;
   }
 
+  .family-guide .family-urgent .tips {
+    padding: 0;
+  }
+
   .family-guide .family-urgent .tips > li {
-    border-top-color: var(--color-border);
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .family-guide .family-urgent .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .family-urgent .tips > li:last-child {
+    padding-bottom: 0;
   }
 
   .family-guide .urgent-call {

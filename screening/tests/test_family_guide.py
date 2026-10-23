@@ -161,7 +161,7 @@ class FamilyGuideTests(TestCase):
             start = content.index(f'id="{anchor}"')
             section = content[start : content.index("</section>", start)]
             found = re.findall(
-                r'<li><strong class="tip-point">([^<]+)</strong>([^<]+)</li>', section
+                r'<li><strong class="tip-point[^"]*">([^<]+)</strong>([^<]+)</li>', section
             )
             with self.subTest(anchor=anchor):
                 self.assertEqual(tuple(found), tips)
