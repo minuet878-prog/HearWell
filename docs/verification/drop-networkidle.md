@@ -1,7 +1,7 @@
 # e2e 不再等 networkidle
 
 日期：2026-10-23；分支 `test/drop-networkidle`（從 `main` 的 `c381287` 開出）。
-狀態：自動驗證完成；**不需交叉審查**（只改測試，不碰計分、門檻、資料或權限）；本人驗收待確認。
+狀態：自動驗證完成；**不需交叉審查**（只改測試，不碰計分、門檻、資料或權限）；本人 2026-10-23 看 CI 結果後合併 PR #267。
 
 ## 起因
 
@@ -27,4 +27,4 @@ Playwright 官方文件把 `networkidle` 標為 DISCOURAGED：「Don't use this 
 - [x] 截圖不變：`e2e/screenshots.py` 改前、改後各截 434 張，`e2e/compare_shots.py` 比對 434 張畫面全部相同，字型與基礎字級也相同。
 - [x] `test_standards` 8 項通過；Ruff 通過。
 - [x] 自審（`/mattpocock-skills:code-review`）：Standards 軸沒有要修的；Spec 軸一項要修（量寬度前沒等 `/report` 的聽力圖，而且應該先等圖再等字型），已修在 `596c001`。
-- [ ] 推上 GitHub 後 CI 通過。
+- [x] 推上 GitHub 後 CI 通過（PR #267：backend、frontend、e2e 三項 SUCCESS）。
