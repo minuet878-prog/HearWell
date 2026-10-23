@@ -13,6 +13,9 @@ ITEM_CHOICES = {
     7: ("變得更糟", "沒有改變", "稍微提升", "有很大程度的提升", "非常有提升"),
 }
 
+# The result page's 1-to-5 scale under each item, worst answer on the left on every item.
+SCALE_ENDS = ("較差", "較好")
+
 
 def choices(number):
     return list(enumerate(ITEM_CHOICES[number], start=1))

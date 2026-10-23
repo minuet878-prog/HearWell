@@ -2,8 +2,7 @@
 {% block title %}助聽器滿意度結果｜HearWell{% endblock %}
 {% block body %}
 {% with satisfaction=submission.satisfaction %}
-<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
-<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+{% include "screening/result_header.html" %}
 {# Text-heavy pages tidy-up: SADL has no levels, so the blue summary box SSQ12-TW uses (ADR 0007). #}
 <section class="trend-summary mb-6" aria-label="整體滿意度">
     <p class="ssq-average">整體滿意度：<strong>{{ satisfaction.overall }}</strong> 分（滿分 7）</p>

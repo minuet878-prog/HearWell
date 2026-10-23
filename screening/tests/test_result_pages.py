@@ -141,3 +141,15 @@ class ResultPagesTests(TestCase):
             ends,
             ['<div class="ioi-scale-ends" aria-hidden="true">' + ENDS + "</div>"] * 7,
         )
+
+    def test_the_page_s_own_comparison_comes_before_the_closing_row(self):
+        unaided = self.submissions["hhia-s"]
+        aided = Submission.objects.create(
+            user=self.user, questionnaire=unaided.questionnaire, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=aided, question=question, score=0)
+            for question in unaided.questionnaire.questions.all()
+        )
+        main = self._main("hhia-s")
+        self.assertLess(main.index("比較戴與不戴助聽器</a>"), main.index('class="result-actions'))

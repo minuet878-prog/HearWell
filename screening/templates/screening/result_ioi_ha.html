@@ -3,8 +3,7 @@
 {% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
-<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答</p>
+{% include "screening/result_header.html" %}
 <section class="card card-body mb-6">
     {% if grouped %}
     <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>

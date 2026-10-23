@@ -1,6 +1,6 @@
 {# The row every result page ends with (result pages tidy-up): this questionnaire's records, the report, home. #}
 <div class="result-actions flex flex-col min-[576px]:flex-row gap-2 my-6">
-<a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">{% if questionnaire.definition.trend_chart %}看我的紀錄與趨勢{% else %}看我的紀錄{% endif %}</a>
-<a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
-<a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
+    <a class="btn btn-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">{% if questionnaire.definition.trend_chart %}看我的紀錄與趨勢{% else %}看我的紀錄{% endif %}</a>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
+    <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 </div>

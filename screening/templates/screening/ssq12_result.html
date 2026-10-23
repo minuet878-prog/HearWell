@@ -1,9 +1,8 @@
 {% extends "screening/layout.html" %}
 {% block title %}日常聆聽能力結果｜HearWell{% endblock %}
 {% block body %}
-{% with definition=submission.questionnaire.definition since_last=submission.ssq_since_last %}
-<h1 class="h3 mt-2 mb-1">{{ definition.topic }}</h1>
-<p>{{ definition.name }}・{{ submission.created_at|date:"Y/m/d" }} 作答・{{ wearing_text }}</p>
+{% with since_last=submission.ssq_since_last %}
+{% include "screening/result_header.html" %}
 <section class="trend-summary mb-6" aria-label="整體平均">
     {% if submission.ssq_average is not None %}
     <p class="ssq-average">整體平均 <strong>{{ submission.ssq_average }}</strong> 分（滿分 10）</p>

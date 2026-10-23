@@ -3,9 +3,8 @@
 {% block title %}{{ submission.questionnaire.questionnaire_name }} 結果｜HearWell{% endblock %}
 
 {% block body %}
-{# Result pages tidy-up: headed like the other result pages, not 「篩檢結果」 (THI is not a screening). #}
-<h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
-<p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答・{{ wearing_text }}</p>
+{# Headed like the other result pages, not 「篩檢結果」 (THI is not a screening). #}
+{% include "screening/result_header.html" %}
 <div class="result-banner result-banner-{{ classified_score_color }}">
     <div>結果</div>
     <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
