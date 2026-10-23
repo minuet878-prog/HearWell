@@ -397,8 +397,8 @@
   }
   .form-select:-moz-focusring { color: transparent; text-shadow: 0 0 0 var(--color-body); }
   /* #272: a wrong entry (Django sets aria-invalid) shows on the field too, and stays while the
-     person types, so it comes after both :focus rules. */
-  .form-control[aria-invalid="true"], .form-select[aria-invalid="true"] {
+     person types, so it comes after :focus. */
+  .form-control[aria-invalid="true"] {
     border-color: var(--color-severe);
     background-color: var(--color-severe-bg);
   }

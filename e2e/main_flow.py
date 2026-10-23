@@ -3014,9 +3014,17 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             password = self.page.get_by_label("請輸入密碼確認")
             self.assertEqual(self.size(password)[1], 42.5)
             self.assertEqual(
-                self.styles(password, "padding", "borderTopColor", "borderTopLeftRadius", "color"),
+                self.styles(
+                    password,
+                    "padding",
+                    "borderTopWidth",
+                    "borderTopColor",
+                    "borderTopLeftRadius",
+                    "color",
+                ),
                 {
                     "padding": "6.75px 13.5px",
+                    "borderTopWidth": "1px",
                     "borderTopColor": border,
                     "borderTopLeftRadius": "13.5px",  # 0.75rem since #137
                     "color": self.TEXT,
@@ -3098,7 +3106,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.get_by_text("用數值輸入").click()
             select = self.page.get_by_label("右耳氣導 500 Hz", exact=True)
             self.assertEqual(self.size(select)[1], 42.5)
-            self.assertEqual(self.style(select, "borderTopColor"), border)
+            self.assertEqual(
+                self.styles(select, "borderTopWidth", "borderTopColor"),
+                {
+                    "borderTopWidth": "1px",
+                    "borderTopColor": border,
+                },
+            )
             self.assertEqual(self.style(select, "padding"), "6.75px 40.5px 6.75px 13.5px")
             self.assertIn("svg", self.style(select, "backgroundImage"))
             select.focus()
@@ -3123,12 +3137,18 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             date_field = self.page.get_by_label("檢查日期")
             self.assertEqual(
                 self.styles(
-                    date_field, "padding", "fontSize", "borderTopLeftRadius", "borderTopColor"
+                    date_field,
+                    "padding",
+                    "fontSize",
+                    "borderTopLeftRadius",
+                    "borderTopWidth",
+                    "borderTopColor",
                 ),
                 {
                     "padding": "9px 18px",
                     "fontSize": "22.5px",
                     "borderTopLeftRadius": "13.5px",
+                    "borderTopWidth": "1px",
                     "borderTopColor": border,
                 },
             )
@@ -3136,7 +3156,10 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
             # #272: the guide's county picker, the one large select.
             self.page.goto(f"{self.live_server_url}/guide/assessment")
-            self.assertEqual(self.style(self.page.locator("#county"), "borderTopColor"), border)
+            self.assertEqual(
+                self.styles(self.page.locator("#county"), "borderTopWidth", "borderTopColor"),
+                {"borderTopWidth": "1px", "borderTopColor": border},
+            )
 
             # #202: the compare page picks with radio cards in 舊 and 新 rows, not selects; each
             # row is a full touch target.
