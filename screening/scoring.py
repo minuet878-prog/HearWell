@@ -82,6 +82,20 @@ RECOMMENDATION_REASONS = {
         "並和沒戴時困擾程度相近的一般使用者比較。"
     ),
 }
+
+# Why the home page suggests its 建議下一步 (#261), word for word from spec #257's table; the
+# owner settles the drafted ones on review.
+NEXT_STEP_REASONS = {
+    "record": "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
+    "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
+    # 了解助聽器選配與補助, by the 目前這一站 (a guide chapter's slug)
+    "before-you-go": "您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。",
+    "assessment": "依您的聽力圖估算，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。",
+    "after-fitting": "您已在使用助聽器，可以看配戴之後要注意什麼、怎麼記錄效果。",
+    # without a 目前這一站
+    "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
+    "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",
+}
 # The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,
 # worn. The title takes the questionnaire's topic and name.
 AIDED_RETAKE_TITLE = "戴著助聽器再做一次「{topic}」（{name}）"

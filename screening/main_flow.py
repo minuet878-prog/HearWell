@@ -4,10 +4,17 @@ import calendar
 from dataclasses import dataclass
 from datetime import date
 
+from django.urls import reverse
 from django.utils import timezone
 
+from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.questionnaires.definition import RETEST_MONTHS
-from screening.scoring import RETEST_BUTTON_TEXT, RETEST_DUE_TEXT, retest_next_text
+from screening.scoring import (
+    NEXT_STEP_REASONS,
+    RETEST_BUTTON_TEXT,
+    RETEST_DUE_TEXT,
+    retest_next_text,
+)
 
 
 def _add_months(start, months):
@@ -72,3 +79,62 @@ def get_user_state(user, today):
         next_suggested_date=None,
         retest_questionnaire=None,
     )
+
+
+@dataclass(frozen=True)
+class HomeCard:
+    title: str
+    href: str
+    icon: str  # an action_icon.html icon
+
+
+@dataclass(frozen=True)
+class NextStep:
+    card: HomeCard
+    because: str
+    button: str
+
+
+# #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use.
+HOME_GROUPS = (
+    ("記錄", ("record",)),
+    ("給別人看", ("print", "share")),
+    ("了解", ("guide",)),
+    ("方便使用", ("add-home",)),
+)
+# The group pwa-nav.js hides in the home-screen app (ticket #160): it is added already.
+HIDDEN_IN_APP = "方便使用"
+
+
+def home_more(user):
+    """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty."""
+    cards = {
+        "record": HomeCard("記錄醫院的聽力圖", reverse("audiogram_new"), "audiogram"),
+        "print": HomeCard("印聽力報告給醫師看", reverse("health_report"), "report"),
+        "share": HomeCard("分享報告給家人", reverse("share_report"), "share"),
+        "guide": HomeCard("了解助聽器選配與補助", reverse("guide"), "guide"),
+        "add-home": HomeCard("加到手機主畫面", reverse("add_to_home"), "add-home"),
+    }
+    state = fitting_state(user)
+    if state.stop == AUDIOGRAM and state.insufficient:
+        suggested = None  # not a card of its own: 記錄醫院的聽力圖 stays in its group
+        edit = HomeCard(
+            "修改這張聽力圖", reverse("audiogram_edit", args=[state.audiogram.pk]), "audiogram"
+        )
+        next_step = NextStep(edit, NEXT_STEP_REASONS["edit"], "修改這張聽力圖")
+    elif state.stop == AUDIOGRAM:
+        suggested = "record"
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄")
+    elif state.stop:
+        suggested = "guide"
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[state.stop], "看我的選配指引")
+    elif user.report_shares.exists():  # any link ever made, ended ones too
+        suggested = "print"
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告")
+    else:
+        suggested = "share"
+        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去分享")
+    groups = (
+        (title, [cards[key] for key in keys if key != suggested]) for title, keys in HOME_GROUPS
+    )
+    return next_step, [(title, shown) for title, shown in groups if shown]
