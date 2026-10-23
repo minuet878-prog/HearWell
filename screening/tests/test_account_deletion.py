@@ -6,6 +6,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
@@ -55,6 +56,8 @@ class DeleteAccountTests(TestCase):
         AudiogramPoint.objects.create(
             audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=35
         )
+        # #284 acceptance 22: 助聽器與補助資料 is PROTECT too.
+        AidAndSubsidy.objects.create(user=user, has_certificate=True)
 
     def _counts(self, user_id):
         return {
@@ -64,6 +67,7 @@ class DeleteAccountTests(TestCase):
             "answers": Answer.objects.filter(submission__user_id=user_id).count(),
             "audiograms": Audiogram.objects.filter(user_id=user_id).count(),
             "points": AudiogramPoint.objects.filter(audiogram__user_id=user_id).count(),
+            "aid_and_subsidy": AidAndSubsidy.objects.filter(user_id=user_id).count(),
         }
 
     def _delete(self, password=PASSWORD, client=None):
@@ -74,7 +78,7 @@ class DeleteAccountTests(TestCase):
         self._fill(self.user, submissions=2)
         user_id = self.user.pk
         before = {"user": 1, "consents": 1, "submissions": 2}
-        before |= {"answers": 2, "audiograms": 1, "points": 1}
+        before |= {"answers": 2, "audiograms": 1, "points": 1, "aid_and_subsidy": 1}
         self.assertEqual(self._counts(user_id), before)
         self._delete()
         self.assertEqual(set(self._counts(user_id).values()), {0})

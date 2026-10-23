@@ -18,7 +18,7 @@ from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
-CONSENT_VERSION = 1
+CONSENT_VERSION = 2  # 2: the 助聽器與補助資料 (#286, spec #284 Q9)
 PRIVACY_UPDATED_ON = date(2026, 10, 23)
 
 
@@ -48,6 +48,7 @@ class User(AbstractUser):
         self.audiograms.all().delete()  # points go with them (CASCADE)
         self.consents.all().delete()
         self.report_shares.all().delete()
+        AidAndSubsidy.objects.filter(user=self).delete()
         self.delete()
 
 

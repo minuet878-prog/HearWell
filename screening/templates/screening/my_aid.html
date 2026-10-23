@@ -1,0 +1,20 @@
+{% extends "screening/layout.html" %}
+{% block title %}我的助聽器與補助｜HearWell{% endblock %}
+{% block body %}
+{# Spec #284: every question may be left as 不填; saving goes back to 我的選配指引. #}
+<h1 class="h3 mt-2">我的助聽器與補助</h1>
+<form method="post" action="{% url 'my_aid' %}">
+    {% csrf_token %}
+    {% for field in form %}
+    <fieldset class="mb-6"{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
+        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
+        {% include "screening/field_messages.html" with help_class="field-help" %}
+        {{ field }}
+    </fieldset>
+    {% endfor %}
+    <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">儲存</button>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'guide' %}">回我的選配指引</a>
+    </div>
+</form>
+{% endblock %}

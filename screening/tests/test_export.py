@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import (
+    AidAndSubsidy,
     Answer,
     Audiogram,
     AudiogramPoint,
@@ -304,3 +305,29 @@ class DownloadMyDataTests(TestCase):
         answers = self._download()["submissions"][0]["answers"]
         self.assertEqual(answers[1]["score"], 1)
         self.assertIsNone(answers[1]["choice"])
+
+
+class AidAndSubsidyExportTests(TestCase):
+    """#286 (spec #284 acceptance 21): the 助聽器與補助資料 in the export, the certificate too."""
+
+    def setUp(self):
+        self.user = consented_user(username="export_aid")
+        self.client.force_login(self.user)
+
+    def exported(self):
+        response = self.client.get(reverse("download_my_data"))
+        return json.loads(response.content)["aid_and_subsidy"]
+
+    def test_the_certificate_as_answered(self):
+        other = consented_user(username="export_aid_other")
+        AidAndSubsidy.objects.create(user=other, has_certificate=False)
+        aid = AidAndSubsidy.objects.create(user=self.user, has_certificate=True)
+        self.assertEqual(self.exported(), {"has_certificate": True})
+        aid.has_certificate = False
+        aid.save()
+        self.assertEqual(self.exported(), {"has_certificate": False})
+
+    def test_unanswered_is_null(self):
+        self.assertEqual(self.exported(), {"has_certificate": None})
+        AidAndSubsidy.objects.create(user=self.user, has_certificate=None)
+        self.assertEqual(self.exported(), {"has_certificate": None})

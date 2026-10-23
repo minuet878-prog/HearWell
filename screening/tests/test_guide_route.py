@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Questionnaire, Submission
+from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
@@ -169,3 +169,77 @@ class GuideRouteTests(TestCase):
         tags = self.tags()
         self.assertEqual(sum(t.count(HERE) for t in tags.values()), 0)
         self.assertEqual(tags["audiogram"], [DONE])
+
+
+class CertificateRouteTests(TestCase):
+    """#286 (spec #284 acceptance 7-10, 25): the route with the 身障證明 the user filled in."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+
+    def setUp(self):
+        self.user = consented_user(username="certificate_reader")
+        self.client.force_login(self.user)
+
+    make = test_guide_summary.GuideSummaryTests.make
+    page = GuideRouteTests.page
+    stops = GuideRouteTests.stops
+    stop = GuideRouteTests.stop
+    tags = GuideRouteTests.tags
+    assert_only_here_at = GuideRouteTests.assert_only_here_at
+    assert_link = GuideRouteTests.assert_link
+
+    def certify(self, has_certificate):
+        AidAndSubsidy.objects.update_or_create(
+            user=self.user, defaults={"has_certificate": has_certificate}
+        )
+
+    # 7
+    def test_reached_without_an_answer_links_the_assessment_to_the_form(self):
+        self.make(PTA_55, PTA_55)
+        self.assert_only_here_at(self.tags(), "assessment")
+        self.assert_link(self.stop("assessment"), reverse("my_aid"), "我已經有身障證明")
+
+    # 8
+    def test_a_certificate_without_an_audiogram_is_here_at_form_9(self):
+        self.certify(True)
+        tags = self.tags()
+        self.assert_only_here_at(tags, "form-9")
+        self.assertEqual(tags["assessment"], [DONE])
+        self.assertEqual(tags["audiogram"], [])
+        form_9 = re.escape(reverse("guide_chapter", args=["form-9"]))
+        button = rf'<a class="btn[^"]*" href="{form_9}">看九號表的流程</a>'
+        self.assertRegex(self.stop("form-9"), button)
+        self.assertNotIn("我已經有身障證明", self.stop("assessment"))
+
+    # 9
+    def test_a_certificate_below_the_threshold_is_only_done(self):
+        self.make((30, 30, 30, 30), (20, 20, 20, 20))
+        self.certify(True)
+        self.assertEqual(self.tags()["assessment"], [DONE])
+        assessment = self.stop("assessment")
+        self.assertNotIn("看沒有身障證明時", assessment)
+        self.assertNotIn("我已經有身障證明", assessment)
+
+    # 10
+    def test_not_yet_marks_the_route_as_unanswered_does(self):
+        for state, right, left in (
+            ("reached", PTA_55, PTA_55),
+            ("not reached", (30, 30, 30, 30), (20, 20, 20, 20)),
+        ):
+            with self.subTest(state=state):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.make(right, left)  # the newest audiogram decides
+                unanswered = self.stops()
+                self.certify(None)
+                self.assertEqual(self.stops(), unanswered)
+                self.certify(False)
+                self.assertEqual(self.stops(), unanswered)
+                assessment = dict(unanswered)["assessment"]
+                self.assert_link(assessment, reverse("my_aid"), "我已經有身障證明")
+
+    # 25
+    def test_signed_out_has_no_link_to_the_form(self):
+        self.client.logout()
+        self.assertNotIn(reverse("my_aid"), self.page())

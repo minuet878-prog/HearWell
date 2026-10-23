@@ -34,6 +34,7 @@ from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.forms import (
     ROC_OFFSET,
     AgeGroupForm,
+    AidAndSubsidyForm,
     AnswerFormSet,
     DeleteAccountForm,
     HearingAidForm,
@@ -231,6 +232,7 @@ def guide(request):
         context["life_impact"] = last.submission if last and last.is_life_impact else None
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4).
         context["wearing"] = state.wearing
+        context["aid"] = state.aid  # the 我的助聽器與補助 card (#284 Q13)
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
     context["route"] = _route(state)
@@ -304,6 +306,9 @@ def _route_stop(state, slug, title, url):
         else:
             marks.append("已完成")
             tested_on = state.audiogram.tested_on
+    certified = state.aid is not None and state.aid.has_certificate is True
+    if slug == "assessment" and certified:
+        marks.append("已完成")  # #284 Q6: whatever the audiogram estimates (default 4)
     if slug == state.stop:
         marks.append("您在這裡")
     if slug == AUDIOGRAM and state.insufficient:
@@ -317,12 +322,15 @@ def _route_stop(state, slug, title, url):
             AUDIOGRAM: ("記錄醫院的聽力圖", url),
             "before-you-go": ("去之前要準備什麼", url),
             "assessment": ("找鑑定醫院", url),
+            "form-9": ("看九號表的流程", url),
             "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
         }[slug]
     # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
-    if slug == "assessment" and state.threshold and state.threshold["status"] == "not_reached":
-        marks.append("估算未達門檻")
-        links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+    if slug == "assessment" and not certified:
+        if state.threshold and state.threshold["status"] == "not_reached":
+            marks.append("估算未達門檻")
+            links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+        links.append(("我已經有身障證明", reverse("my_aid")))
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
     return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action)
@@ -961,6 +969,21 @@ def _mark_not_applicable_answers(data):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+@health_data_page
+def my_aid(request):
+    # 我的助聽器與補助 (spec #284): only request.user's own, one row made on the first save.
+    aid = models.AidAndSubsidy.objects.filter(user=request.user).first()
+    form = AidAndSubsidyForm(
+        request.POST or None, instance=aid or models.AidAndSubsidy(user=request.user)
+    )
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        return redirect("guide")
+    return render(request, "screening/my_aid.html", {"form": form})
+
+
+@login_required
 @require_http_methods(["GET"])
 @health_data_page
 def download_my_data(request):
@@ -977,6 +1000,7 @@ def download_my_data(request):
     )
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
+    aid = models.AidAndSubsidy.objects.filter(user=user).first()
     data = {
         "account": {
             "username": user.username,
@@ -1034,6 +1058,8 @@ def download_my_data(request):
             }
             for share in user.report_shares.all()
         ],
+        # Spec #284: what the user filled in, unanswered as null, the certificate included.
+        "aid_and_subsidy": {"has_certificate": aid.has_certificate if aid else None},
     }
     filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(

@@ -7,7 +7,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from screening.models import Answer, Question, Submission, User, shared_days
+from screening.models import AidAndSubsidy, Answer, Question, Submission, User, shared_days
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -229,3 +229,20 @@ class HhiComparisonForm(forms.Form):
                 first_two = list(self.fields[name].queryset.values_list("pk", flat=True)[:2])
                 if len(first_two) == 1:
                     self.initial[name] = first_two[0]
+
+
+class AidAndSubsidyForm(forms.ModelForm):
+    # 我的助聽器與補助 (spec #284): every question starts with 不填, which clears the answer.
+    # NullBooleanField reads "True" and "False" back, and "" as None: 不填 (Django 5.2).
+    has_certificate = forms.NullBooleanField(
+        label="您有聽覺機能的身心障礙證明嗎？",
+        help_text="第二類 b230、s260，或舊制 02",
+        widget=forms.RadioSelect(
+            choices=(("", "不填"), (True, "有"), (False, "還沒有")),
+            attrs={"class": "choice-group"},
+        ),
+    )
+
+    class Meta:
+        model = AidAndSubsidy
+        fields = ("has_certificate",)
