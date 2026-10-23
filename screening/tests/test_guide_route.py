@@ -60,6 +60,9 @@ class GuideRouteTests(TestCase):
         """The marks each stop carries, by slug."""
         return {slug: [t for t in TAGS if f">{t}<" in markup] for slug, markup in self.stops()}
 
+    def assert_only_here_at(self, tags, slug):
+        self.assertEqual([s for s, t in tags.items() if HERE in t], [slug])
+
     def assert_link(self, markup, href, text):
         self.assertRegex(markup, rf'<a [^>]*href="{re.escape(href)}"[^>]*>{re.escape(text)}</a>')
 
@@ -112,13 +115,15 @@ class GuideRouteTests(TestCase):
 
     def test_uncertain_leaves_the_assessment_unmarked(self):
         self.make((30, 30, 30, 30), (30, 30, 30, 30), no_response_at=("right", 4000))
-        self.assertEqual(self.tags()["assessment"], [])
+        tags = self.tags()
+        self.assertEqual(tags["assessment"], [])
+        self.assert_only_here_at(tags, "before-you-go")
         self.assertNotIn("看沒有身障證明時", self.stop("assessment"))
 
     def test_reached_is_here_at_the_assessment(self):
         self.make(PTA_55, PTA_55)
         tags = self.tags()
-        self.assertEqual(tags["assessment"], [HERE])
+        self.assert_only_here_at(tags, "assessment")
         self.assertEqual(tags["before-you-go"], [])
         assessment = reverse("guide_chapter", args=["assessment"])
         self.assert_link(self.stop("assessment"), assessment, "找鑑定醫院")
@@ -126,7 +131,20 @@ class GuideRouteTests(TestCase):
     def test_an_audiogram_that_cannot_tell_is_here_with_too_little_data(self):
         audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
         audiogram.points.filter(ear="left", frequency=4000).delete()
-        self.assertEqual(self.tags()["audiogram"], [HERE, TOO_LITTLE])
+        tags = self.tags()
+        self.assertEqual(tags["audiogram"], [HERE, TOO_LITTLE])
+        self.assert_only_here_at(tags, "audiogram")
+        edit = reverse("audiogram_edit", args=[audiogram.pk])
+        self.assert_link(self.stop("audiogram"), edit, "記錄聽力圖")
+        self.assert_link(self.stop("audiogram"), edit, "修改這張聽力圖")
+
+    def test_wearing_with_an_audiogram_that_cannot_tell_marks_too_little_data_only(self):
+        self.answer(wearing=True)
+        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        tags = self.tags()
+        self.assertEqual(tags["audiogram"], [TOO_LITTLE])
+        self.assert_only_here_at(tags, "after-fitting")
         edit = reverse("audiogram_edit", args=[audiogram.pk])
         self.assert_link(self.stop("audiogram"), edit, "修改這張聽力圖")
 

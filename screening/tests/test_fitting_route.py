@@ -67,6 +67,13 @@ class CurrentStopTests(TestCase):
         self.assertEqual(self.stop(), AUDIOGRAM)
         self.assertTrue(fitting_state(self.user).insufficient)
 
+    def test_wearing_with_an_audiogram_that_cannot_tell_still_has_too_little_data(self):
+        self.answer(wearing=True)
+        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        self.assertEqual(self.stop(), "after-fitting")
+        self.assertTrue(fitting_state(self.user).insufficient)
+
     def test_reaching_the_threshold_is_the_assessment(self):
         self.make(PTA_55, PTA_55)
         self.assertEqual(self.stop(), "assessment")

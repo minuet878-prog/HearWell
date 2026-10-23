@@ -1721,7 +1721,7 @@
 
   @media (prefers-reduced-motion: no-preference) {
     .route-stop.is-here .route-number {
-      animation: route-ring 2.4s ease-in-out 3;
+      animation: route-ring 2.4s ease-in-out both;
     }
   }
 
@@ -3255,7 +3255,7 @@
   75% { transform: rotate(3deg); }
 }
 
-/* My guide (#258): the 目前這一站's ring breathes three times, then stays. */
+/* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
 }

@@ -1,9 +1,10 @@
 """Where a user stands on the 選配路線 (GLOSSARY, spec #257): the 目前這一站 and the records
-behind it. My guide and the home page's 建議下一步 both read it, so they never disagree."""
+behind it, kept in one place for every page that shows the route or points along it."""
 
 from dataclasses import dataclass
 
 from screening.audiogram import assessment_estimate, recommends_fitting_assessment
+from screening.models import Audiogram, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 
 # The route's first stop, recording an audiogram; the other stops are the guide's chapters.
@@ -12,8 +13,8 @@ AUDIOGRAM = "audiogram"
 
 @dataclass(frozen=True)
 class FittingState:
-    latest: object | None  # the newest submission of an offered questionnaire
-    audiogram: object | None  # the newest audiogram, its points prefetched
+    latest: Submission | None  # the newest submission of an offered questionnaire
+    audiogram: Audiogram | None  # the newest audiogram, its points prefetched
     wearing: bool
     fitting: bool | None  # recommends_fitting_assessment; None without an audiogram too
     threshold: dict | None  # assessment_estimate, without an audiogram None
@@ -21,8 +22,9 @@ class FittingState:
 
     @property
     def insufficient(self):
-        # 資料不足: the latest audiogram cannot tell whether to suggest an assessment.
-        return self.stop == AUDIOGRAM and self.audiogram is not None
+        # 資料不足: the latest audiogram cannot tell whether to suggest an assessment. Shown
+        # even when another stop comes first (wearing), but then it is not the 目前這一站.
+        return self.audiogram is not None and self.fitting is None
 
 
 def fitting_state(user):

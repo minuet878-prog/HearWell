@@ -267,6 +267,10 @@ class RouteStop:
     def here(self):
         return "您在這裡" in self.marks
 
+    @property
+    def below(self):
+        return "估算未達門檻" in self.marks
+
 
 def _route(state):
     # 選配路線 (#258): recording an audiogram, then the chapters in reading order. Signed out,
@@ -281,21 +285,28 @@ def _route(state):
 def _route_stop(state, slug, title, url):
     marks, links, action, tested_on = [], [], None, None
     form_9 = reverse("guide_chapter", args=["form-9"])
-    if slug == AUDIOGRAM and state.audiogram is not None and not state.insufficient:
-        marks.append("已完成")
-        tested_on = state.audiogram.tested_on
+    if slug == AUDIOGRAM and state.audiogram is not None:
+        if state.insufficient:
+            # Never 已完成 (grill Q9): the title and a link go to editing it instead.
+            url = reverse("audiogram_edit", args=[state.audiogram.pk])
+        else:
+            marks.append("已完成")
+            tested_on = state.audiogram.tested_on
     if slug == state.stop:
         marks.append("您在這裡")
-        if state.insufficient:
-            marks.append("資料不足")
-            action = ("修改這張聽力圖", reverse("audiogram_edit", args=[state.audiogram.pk]))
+    if slug == AUDIOGRAM and state.insufficient:
+        marks.append("資料不足")
+        if slug == state.stop:
+            action = ("修改這張聽力圖", url)
         else:
-            action = {
-                AUDIOGRAM: ("記錄醫院的聽力圖", url),
-                "before-you-go": ("去之前要準備什麼", url),
-                "assessment": ("找鑑定醫院", url),
-                "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
-            }[slug]
+            links.append(("修改這張聽力圖", url))
+    elif slug == state.stop:
+        action = {
+            AUDIOGRAM: ("記錄醫院的聽力圖", url),
+            "before-you-go": ("去之前要準備什麼", url),
+            "assessment": ("找鑑定醫院", url),
+            "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
+        }[slug]
     # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
     if slug == "assessment" and state.threshold and state.threshold["status"] == "not_reached":
         marks.append("估算未達門檻")
