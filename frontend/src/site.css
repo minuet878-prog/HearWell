@@ -3054,7 +3054,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-subhead (#310); nothing
+  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
      here is a link, so no hover (ADR 0006). */
   .ioi-below,
   .ioi-others {

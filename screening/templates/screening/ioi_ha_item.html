@@ -1,7 +1,7 @@
 {# One IOI-HA item on the result page (#187); the words carry the comparison and the answer, the scale only shows them. #}
 {# heading: 3 under a group's h2, 2 when the items sit right under the page's h1 (rule 17). #}
 <li class="ioi-item tint-block">
-    <h{{ heading }} class="tint-subhead">{{ item.name }}</h{{ heading }}>
+    <h{{ heading }} class="tint-block-title">{{ item.name }}</h{{ heading }}>
     {% if item.comparison %}<p class="{% if hide_versus %}visually-hidden{% else %}ioi-versus{% endif %}">{{ item.comparison }}</p>{% endif %}
     <p class="mb-1">{{ item.text }}</p>
     <p class="font-bold mb-0">您的回答：{{ item.label }}</p>

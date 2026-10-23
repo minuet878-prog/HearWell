@@ -5523,9 +5523,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     NORM_GREY = "rgb(206, 212, 218)"
     NORM_EDGE = "rgb(108, 117, 125)"
 
-    def assert_tinted_items(self, items, title, count):
-        """#310: each item its own 並列區塊, its title (found by `title` inside it) a subhead 1.2
-        times the text in the heading colour; the page's cards stay white cards."""
+    def assert_tinted_items(self, items, title, count, ratio, before):
+        """#310: each item its own 並列區塊, its title (found by `title` inside it) `ratio` times
+        the text in the heading colour and larger than the `before` px it had on a phone before
+        ADR 0024; the page's cards stay white cards."""
         self.assertEqual(items.count(), count)
         for item in items.all():
             with self.subTest(item=item.inner_text()[:10]):
@@ -5534,7 +5535,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 name = title(item)
                 size = float(self.style(name, "fontSize").removesuffix("px"))
                 text = float(self.style(item, "fontSize").removesuffix("px"))
-                self.assertAlmostEqual(size / text, 1.2, places=2)
+                self.assertAlmostEqual(size / text, ratio, places=2)
+                self.assertGreater(size, before)
                 self.assertEqual(self.style(name, "color"), self.HEADING)
                 self.assertEqual(self.style(name, "fontWeight"), "700")
         cards = self.main().locator(".result-actions a.link-card")
@@ -5550,8 +5552,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.visit(True, lambda test: test.ioi_ha_result())
             self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
             self.assert_flat(self.page.get_by_role("region", name="接下來", exact=True))
+            # Each item's name is its block's title (1.35 times); it was 1.25rem, 22.5px.
             self.assert_tinted_items(
-                self.main().locator("ol > li"), lambda item: item.get_by_role("heading"), 7
+                self.main().locator("ol > li"),
+                lambda item: item.get_by_role("heading"),
+                7,
+                1.35,
+                22.5,
             )
             self.visit(True, lambda test: test.result("sadl", 4))
             facets = (
@@ -5560,13 +5567,19 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 .filter(has=self.page.get_by_role("heading", level=3))
                 .get_by_role("listitem")
             )
-            self.assert_tinted_items(facets, lambda item: item.get_by_role("heading"), 4)
+            # Each facet's name is its block's title (1.35 times); it was 1.25rem, 22.5px.
+            self.assert_tinted_items(
+                facets, lambda item: item.get_by_role("heading"), 4, 1.35, 22.5
+            )
             self.visit(True, lambda test: test.result("ssq12-tw", 5))
             lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
                 "listitem"
             )
-            # The question is the item's title; its score tag sits beside it.
-            self.assert_tinted_items(lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3)
+            # The question beside its score tag is a bold subhead (1.2 times); it was body text,
+            # 18px.
+            self.assert_tinted_items(
+                lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3, 1.2, 18
+            )
 
     # #310: the IOI-HA scale's empty cells are clear with a thin deeper beige frame, so they do
     # not read as white things to tap; the norm's grey cells, the blue dot and the legend stay.
