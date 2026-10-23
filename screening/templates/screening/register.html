@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block body %}
-{# Layout G with field style 5, chosen from the comparison pages (2026-10-23). #}
+{# Brand banner with the form card over it (owner's pick, 2026-10-23; docs/verification/auth-pages-banner.md). #}
 <div class="narrow-form">
     <div class="auth-hero">
         <h1 class="auth-hero-title">註冊</h1>
@@ -37,7 +37,7 @@
                 {{ field.label_tag }}
                 {% endif %}
                 <div class="auth-input">
-                    {% if field.name == "username" %}{% include "screening/auth_field_icon.html" with icon="user" %}{% elif field.name == "email" %}{% include "screening/auth_field_icon.html" with icon="mail" %}{% else %}{% include "screening/auth_field_icon.html" with icon="lock" %}{% endif %}
+                    {% if field.name == "username" %}{% include "screening/auth_field_icon.html" with icon="user" %}{% elif field.name == "email" %}{% include "screening/auth_field_icon.html" with icon="mail" %}{% elif field.widget_type == "password" %}{% include "screening/auth_field_icon.html" with icon="lock" %}{% endif %}
                     {{ field }}
                 </div>
                 {# Pages tidy-up: help in the body grey under its field; the password rules in a tip box. #}

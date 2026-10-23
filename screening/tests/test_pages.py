@@ -421,7 +421,7 @@ class RedesignLayoutTests(TestCase):
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
             self.assertEqual(scripts(reverse("index")), [pwa_js, wave, smooth])
-        # The 顯示 button on the password fields (#151; on the login page too since layout G).
+        # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         for name in ("login", "register"):
             with self.subTest(url=name):
                 self.assertEqual(

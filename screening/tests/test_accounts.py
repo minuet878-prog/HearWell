@@ -13,6 +13,18 @@ from screening.models import Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
 
 
+def banner(content):
+    """The brand banner on the login and register pages (2026-10-23)."""
+    return re.search(
+        r'<div class="auth-hero">(.*?)</div>\s*<div class="auth-card">', content, re.DOTALL
+    ).group(1)
+
+
+def field_icons(content):
+    """The icon at the start of each field; decoration only, so screen readers skip it."""
+    return re.findall(r'<div class="auth-input">\s*(<svg[^>]*>)', content)
+
+
 class SubmissionResultAccessTests(TestCase):
     def setUp(self):
         self.user_a = consented_user(username="user_a")
@@ -194,7 +206,8 @@ class LoginViewTests(TestCase):
         return self.client.session.get("_auth_user_id")
 
     def test_show_password_button_waits_for_javascript(self):
-        # Layout G (2026-10-23) gives the login page the register page's 顯示 button.
+        # The brand-banner redesign (2026-10-23) gives the login page the register page's
+        # 顯示 button.
         content = self.client.get(self.url).content.decode()
         self.assertIn("screening/password-toggle.js", content)
         buttons = re.findall(r"<button[^>]*>顯示</button>", content)
@@ -209,6 +222,17 @@ class LoginViewTests(TestCase):
         register = re.search(r'<a [^>]*href="/register"[^>]*>([^<]*)</a>', main)
         self.assertEqual(register.group(1), "註冊新帳號")
         self.assertLess(main.index('type="submit" value="登入"'), register.start())
+
+    def test_banner_greets_and_field_icons_stay_silent(self):
+        content = self.client.get(self.url).content.decode()
+        hero = banner(content)
+        self.assertIn('<h1 class="auth-hero-title">登入</h1>', hero)
+        self.assertIn("<p>歡迎回來。</p>", hero)
+        icons = field_icons(content)
+        self.assertEqual(len(icons), 2)
+        for icon in icons:
+            with self.subTest(icon=icon):
+                self.assertIn('aria-hidden="true"', icon)
 
     # 4
     def test_wrong_password_stays_on_page(self):
@@ -476,6 +500,23 @@ class RegisterPageGuidanceTests(TestCase):
         response = self.client.get(self.url)
         self.assertIn("第 1 步／共 2 步：建立帳號", self._main(response))
         self.assertEqual(step_bar(response), (1, 2))
+
+    def test_banner_holds_the_line_and_the_step(self):
+        hero = banner(self.client.get(self.url).content.decode())
+        self.assertIn('<h1 class="auth-hero-title">註冊</h1>', hero)
+        self.assertIn("<p>建立帳號，篩檢結果會幫您存起來。</p>", hero)
+        self.assertIn("第 1 步／共 2 步：建立帳號", hero)
+
+    def test_field_icons_stay_silent_and_birth_year_has_none(self):
+        # The birth year already starts with 民國, so it gets no icon.
+        content = self.client.get(self.url).content.decode()
+        icons = field_icons(content)
+        self.assertEqual(len(icons), 4)  # username, email and the two passwords
+        for icon in icons:
+            with self.subTest(icon=icon):
+                self.assertIn('aria-hidden="true"', icon)
+        group = re.search(r'<div class="input-group">(.*?)</div>', content, re.DOTALL).group(1)
+        self.assertNotIn("<svg", group)
 
     def test_password_rules_are_plain_and_django_text_is_gone(self):
         response = self.client.get(self.url)

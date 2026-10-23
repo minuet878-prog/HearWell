@@ -1061,9 +1061,10 @@
     margin: 0 auto;
   }
 
-  /* Login and register, layout G with field style 5 (chosen 2026-10-23): a brand-gradient
-     banner, the form card laid over its lower edge. The thicker fields stay on these two pages;
-     the rest of the site keeps the plain .form-control for now. */
+  /* Login and register (owner's pick from the design comparison, 2026-10-23; see
+     docs/verification/auth-pages-banner.md): a brand-gradient banner, the form card laid over
+     its lower edge, and thicker fields with an icon inside. The thicker fields stay on these two
+     pages; the rest of the site keeps the plain .form-control for now. */
   .auth-hero {
     position: relative;
     overflow: hidden;
@@ -1083,11 +1084,12 @@
   .auth-hero .step-progress-text { color: #fff; }
   .auth-hero .step-progress-segment { background-color: rgba(255, 255, 255, 0.35); }
   .auth-hero .step-progress-segment.is-done { background-color: #fff; }
-  /* Still bars, like the header wave stopped: decoration only, nothing moves. */
+  /* Still bars, like the header wave stopped: decoration only, nothing moves. They sit just
+     above the card and stay under the banner's padding, clear of the step bar. */
   .auth-hero-bars {
     position: absolute;
     right: 1rem;
-    bottom: 1.25rem;
+    bottom: 3.25rem;
     display: flex;
     align-items: flex-end;
     gap: 0.3rem;
@@ -1098,14 +1100,14 @@
     border-radius: var(--radius-pill);
     background-color: #fff;
   }
-  .auth-hero-bars span:nth-child(1) { height: 1rem; }
-  .auth-hero-bars span:nth-child(2) { height: 2rem; }
-  .auth-hero-bars span:nth-child(3) { height: 3rem; }
-  .auth-hero-bars span:nth-child(4) { height: 1.5rem; }
-  .auth-hero-bars span:nth-child(5) { height: 2.5rem; }
-  .auth-hero-bars span:nth-child(6) { height: 3.5rem; }
-  .auth-hero-bars span:nth-child(7) { height: 2rem; }
-  .auth-hero-bars span:nth-child(8) { height: 1rem; }
+  .auth-hero-bars span:nth-child(1) { height: 0.4rem; }
+  .auth-hero-bars span:nth-child(2) { height: 0.7rem; }
+  .auth-hero-bars span:nth-child(3) { height: 1rem; }
+  .auth-hero-bars span:nth-child(4) { height: 0.55rem; }
+  .auth-hero-bars span:nth-child(5) { height: 0.85rem; }
+  .auth-hero-bars span:nth-child(6) { height: 1rem; }
+  .auth-hero-bars span:nth-child(7) { height: 0.7rem; }
+  .auth-hero-bars span:nth-child(8) { height: 0.4rem; }
 
   .auth-card {
     position: relative;
@@ -1137,13 +1139,16 @@
     font-weight: 700;
   }
   .auth-card .text-danger::before {
+    --auth-warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
     content: "";
     flex: none;
     width: 1.25rem;
     height: 1.25rem;
     margin-top: 0.15rem;
     background-color: currentColor;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E") center / contain no-repeat;
+    /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
+    -webkit-mask: var(--auth-warning-mark) center / contain no-repeat;
+    mask: var(--auth-warning-mark) center / contain no-repeat;
   }
   .auth-input { position: relative; }
   .auth-input > svg {
@@ -1161,6 +1166,7 @@
     pointer-events: none;
   }
   .auth-input:focus-within > svg { stroke: var(--color-primary); }
+  .auth-input:has([aria-invalid="true"]) > svg { stroke: var(--color-severe); }
   .auth-input > .form-control { padding-left: 3rem; }
   .auth-alt {
     margin-top: 1.25rem;

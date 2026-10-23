@@ -201,7 +201,7 @@ describe("progress (#153)", () => {
     const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
     expect(rules.map(([, selector]) => selector.trim())).toEqual([
-      // The register banner (layout G) makes the bar white on blue, colour only as well.
+      // The register page's brand banner makes the bar white on blue, colour only as well.
       ".auth-hero .step-progress-segment",
       ".auth-hero .step-progress-segment.is-done",
       ".step-progress-bar",
