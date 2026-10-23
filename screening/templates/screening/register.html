@@ -9,12 +9,10 @@
 
 {% block body %}
 <div class="narrow-form">
-    {# Issue #151: people who already have an account see the way to log in first. #}
-    <a class="w-full btn btn-lg btn-outline-primary mb-6" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">已經有帳號？登入</a>
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <h1 class="h3 mb-4 font-normal">註冊</h1>
-    <form method="post" action="{% url 'register' %}">
+    <form class="register-form" method="post" action="{% url 'register' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
         {% for error in form.non_field_errors %}
@@ -25,7 +23,7 @@
         <div class="mb-4">
             {% if field.widget_type == "password" %}
             {# Issue #151: the script shows the button; without JavaScript it stays hidden. #}
-            <div class="flex flex-wrap items-end justify-between gap-2 mb-1">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
                 {{ field.label_tag }}
                 <button type="button" class="btn btn-outline-primary password-toggle" aria-controls="{{ field.auto_id }}" aria-label="顯示{{ field.label }}" data-label="{{ field.label }}" hidden>顯示</button>
             </div>
@@ -33,7 +31,12 @@
             {{ field.label_tag }}
             {% endif %}
             {{ field }}
-            {% include "screening/field_messages.html" %}
+            {# Pages tidy-up: help in the body grey under its field; the password rules in a tip box. #}
+            {% if field.name == "password1" %}
+            {% include "screening/field_messages.html" with help_class="tip-box" %}
+            {% else %}
+            {% include "screening/field_messages.html" with help_class="field-help" %}
+            {% endif %}
         </div>
         {% endif %}
         {% endfor %}
@@ -44,10 +47,12 @@
                 {{ form.roc_birth_year }}
                 <span class="input-group-text">年</span>
             </div>
-            {% include "screening/field_messages.html" with field=form.roc_birth_year %}
+            {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
         </div>
-        <p>註冊後，會請您閱讀並同意<a class="btn btn-link px-1 align-baseline" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
+        <p>註冊後，會請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
         <input class="w-full btn btn-lg btn-primary" type="submit" value="註冊">
     </form>
+    {# Issue #151 put this first; the owner moved it under the form in the pages tidy-up (2026-10-23). #}
+    <a class="w-full btn btn-lg btn-outline-primary mt-4" href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">已經有帳號？登入</a>
 </div>
 {% endblock %}

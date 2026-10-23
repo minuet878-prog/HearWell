@@ -1186,6 +1186,30 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             for part in parts:
                 expect(part).to_be_hidden()
 
+    # Pages tidy-up: the report on screen is cards with coloured level labels and no handwriting
+    # line; on paper the line is back and the level is the plain bordered word, as before. The
+    # family's copy shows its 「先看重點」 card on screen and the summary only on paper.
+    def test_report_screen_and_paper_differ_only_where_meant(self):
+        share = ReportShare.objects.create(user=self.user)
+        self.open(390)
+        clear = "rgba(0, 0, 0, 0)"
+        background = "el => getComputedStyle(el).backgroundColor"
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/report")
+            handwrite = self.page.locator(".report-handwrite")
+            level = self.page.locator(".report-summary .report-level").first
+            expect(handwrite).to_be_hidden()
+            self.assertNotEqual(level.evaluate(background), clear)
+            self.page.emulate_media(media="print")
+            expect(handwrite).to_be_visible()
+            self.assertEqual(level.evaluate(background), clear)
+            self.page.emulate_media(media="screen")
+            self.page.goto(f"{self.live_server_url}/shared/{share.token}/report")
+            expect(self.page.locator("#family-highlights")).to_be_visible()
+            expect(self.page.locator(".report-summary")).to_be_hidden()
+            self.page.emulate_media(media="print")
+            expect(self.page.locator(".report-summary")).to_be_visible()
+
     # phase9_ui_refresh_2_data.md acceptance 12
     def test_ioi_ha_numbers_points_and_lines_line_up(self):
         self.open(1280)
@@ -1333,9 +1357,11 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     expect(self.main()).to_contain_text(
                         "已放進聽力報告，新增紀錄不會自動換掉這一組。"
                     )
-                    result = self.main().get_by_role("region", name="目前查看的兩筆")
-                    expect(result.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
+                    # Pages tidy-up: the pair on screen is the saved one, so it shows once.
+                    preview = self.main().get_by_role("region", name="目前查看的兩筆")
+                    expect(preview).to_have_count(0)
                     saved = self.main().get_by_role("region", name="聽力報告裡的組合")
+                    expect(saved.get_by_text("這一組已經在聽力報告裡", exact=True)).to_be_visible()
                     expect(saved.get_by_text(card_texts[2], exact=True)).to_be_visible()
                     self.page.goto(f"{self.live_server_url}/report")
                     for text in report_texts:
@@ -1604,7 +1630,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             for path, selector in (
                 ("/account", "a.settings-row-link"),
-                ("/add_to_home", ".phone-choice > summary"),
+                ("/add_to_home", ".dropdown-box > summary"),
             ):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
@@ -2472,19 +2498,6 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 "rgba(225, 83, 97, 0.5)",
             ),
             (
-                "/account/delete",
-                True,
-                "link",
-                "下載我的資料",
-                {
-                    "backgroundColor": clear,
-                    "color": self.PRIMARY,
-                    "borderTopColor": clear,
-                    "textDecorationLine": "underline",
-                },
-                "rgba(49, 132, 253, 0.5)",
-            ),
-            (
                 "/audiograms/new",
                 True,
                 "button",
@@ -2519,6 +2532,29 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                         self.assertEqual(
                             self.style(button, "boxShadow"), f"{ring} 0px 0px 0px 4.5px"
                         )
+            # Pages tidy-up: a link inside a sentence reads as plain text, yet its tap area is
+            # still 44px tall and its line no taller than the paragraph's other lines.
+            with self.subTest(link="下載我的資料"):
+                self.open(signed_in=True)
+                self.page.goto(f"{self.live_server_url}/account/delete")
+                link = self.page.get_by_role("main").get_by_role(
+                    "link", name="下載我的資料", exact=True
+                )
+                self.assertEqual(
+                    self.styles(link, "color", "textDecorationLine", "backgroundColor"),
+                    {
+                        "color": self.PRIMARY,
+                        "textDecorationLine": "underline",
+                        "backgroundColor": clear,
+                    },
+                )
+                self.assertGreaterEqual(self.size(link)[1], 44)
+                # A stretched line would make the paragraph no whole number of lines tall.
+                lines = link.locator("..").evaluate(
+                    "p => p.getBoundingClientRect().height"
+                    " / parseFloat(getComputedStyle(p).lineHeight)"
+                )
+                self.assertAlmostEqual(lines, round(lines), delta=0.05)
 
     def test_button_hover_and_press_colours(self):
         # The outline variant whose hover and press colours the site set itself; the primary
@@ -2671,7 +2707,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/audiograms/{first.pk}")
             table = self.page.locator("table.table").first
             self.assertEqual(self.style(table, "marginBottom"), "18px")
-            self.assertEqual(self.size(table)[0], self.size(table.locator(".."))[0])
+            # Inside the dropdown box since the pages tidy-up: as wide as the box inside its border.
+            inner = table.locator("..").evaluate("el => el.clientWidth")
+            self.assertEqual(self.size(table)[0], inner)
             cell = table.locator("th").first
             self.assertEqual(
                 self.styles(cell, "padding", "borderBottomWidth", "borderBottomColor", "color"),

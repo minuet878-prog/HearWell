@@ -10,7 +10,6 @@
 {% block body %}
 <h1 class="h3 mt-4">{% if audiogram %}修改聽力圖{% else %}新增聽力圖{% endif %}</h1>
 {# #199: how to mark lives in each ear's step card (AudiogramApp.jsx). #}
-{% if audiogram %}<p>原本標的點已經放在圖上，照報告移動、刪除或補上，再按存檔。</p>{% endif %}
 <div id="audiogram-app" data-today="{{ today|date:'Y-m-d' }}" data-csrf-token="{{ csrf_token }}"{% if audiogram %} data-audiogram-id="{{ audiogram.id }}"{% endif %}></div>
 {% if audiogram %}{{ initial|json_script:"audiogram-initial" }}{% endif %}
 <noscript><p class="text-xl/normal font-bold">需要開啟 JavaScript 才能輸入聽力圖。</p></noscript>

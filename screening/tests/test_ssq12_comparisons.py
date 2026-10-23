@@ -251,7 +251,7 @@ class Ssq12ComparisonResultCardTests(TestCase):
         self.assertIn("差值不能單獨判定助聽器效益", card)
         self.assertIn("兩筆是不同時間填的，不一定是開始戴之前和之後的比較", card)
         details = re.search(
-            r"<details>\s*<summary>看每一題的回答</summary>.*?</details>",
+            r"<details[^>]*>\s*<summary>看每一題的回答</summary>.*?</details>",
             page.content.decode(),
             re.S,
         )

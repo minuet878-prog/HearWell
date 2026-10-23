@@ -10,7 +10,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
 {% endcomment %}
 <article class="privacy wrap-anywhere">
     <h1 class="h3 mt-2">隱私權說明</h1>
-    <p class="text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
+    <p class="source-note text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
     {# #197: the consent page's four highlights first; the full text below stays open. #}
     <section class="card card-body privacy-highlights mb-6" aria-labelledby="highlights-title">
         <h2 id="highlights-title" class="h4">先看重點</h2>
@@ -21,7 +21,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     <h2 class="h4 mt-6">誰在蒐集</h2>
     <ul>
         <li>營運者：HearWell 開發者</li>
-        <li>聯絡信箱：<a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></li>
+        <li>聯絡信箱：<a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></li>
     </ul>
 
     <h2 class="h4 mt-6">為什麼蒐集</h2>
@@ -54,7 +54,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
         <li>Render（網站主機）和 Neon（資料庫）：存放上面所有資料。Render 也會留下連線紀錄（包含 IP 位址），用來維持網站運作。</li>
         <li>Sentry（錯誤監控，資料存放在歐盟）：網站出錯時，只送出錯誤的種類、在程式的哪個位置、網址路徑（不含「?」後面的部分）、時間，以及伺服器的技術資訊（例如程式版本）。<strong>不會</strong>送出您的名稱、電子郵件、出生年、IP 位址、密碼、作答內容或分數。</li>
     </ul>
-    <p>本站只用登入需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
+    <p class="tip-box">本站只用登入需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
 
     <h2 class="h4 mt-6">您主動分享時</h2>
     <p>您可以主動把聽力報告分享給別人：在「分享報告給家人」頁產生分享連結後，拿到連結的人不用登入就看得到這份報告（不含您的使用者名稱與出生年）。連結 7 天後失效，您也可以隨時取消。網站只記錄連結被打開的次數和最後一次的時間，不記錄是誰打開的。</p>
@@ -66,9 +66,9 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
         <li>更正錯誤的資料。</li>
         <li>停止處理您的資料，或刪除您的資料。</li>
     </ul>
-    <p>請寄信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，說明您的使用者名稱和要求。查詢、閱覽、複本會在 15 天內處理；更正、停止處理、刪除會在 30 天內處理。需要延長時，我們會寫信告訴您原因。</p>
-    <p>您也可以隨時下載自己的資料：登入後到「帳號設定」頁按「下載我的資料」，或直接按<a class="btn btn-link px-1 align-baseline" href="{% url 'download_my_data' %}">這裡下載</a>。</p>
-    <p>您也可以自己刪除帳號和全部資料：登入後到「帳號設定」頁按「刪除帳號」，或直接按<a class="btn btn-link px-1 align-baseline" href="{% url 'delete_account' %}">這裡刪除</a>。刪除後無法復原，建議先下載自己的資料。</p>
+    <p>請寄信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，說明您的使用者名稱和要求。查詢、閱覽、複本會在 15 天內處理；更正、停止處理、刪除會在 30 天內處理。需要延長時，我們會寫信告訴您原因。</p>
+    <p>您也可以隨時下載自己的資料：登入後到「帳號設定」頁按「下載我的資料」，或直接按<a class="inline-link" href="{% url 'download_my_data' %}">這裡下載</a>。</p>
+    <p>您也可以自己刪除帳號和全部資料：登入後到「帳號設定」頁按「刪除帳號」，或直接按<a class="inline-link" href="{% url 'delete_account' %}">這裡刪除</a>。刪除後無法復原，建議先下載自己的資料。</p>
 
     <h2 class="h4 mt-6">不提供資料會怎樣</h2>
     <p>您可以不同意。不同意就不能使用篩檢、紀錄和聽力圖功能，但您的帳號會保留，之後想用時再同意即可。</p>
@@ -82,7 +82,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     {# .card resets overflow-wrap to break-word, so the address would not wrap at 200% text. #}
     <section class="card card-body wrap-anywhere mt-6" aria-labelledby="contact-title">
         <h2 id="contact-title" class="h5">有問題或要刪除資料？</h2>
-        <p class="mb-0">寫信到 <a class="btn btn-link px-1 align-baseline" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
+        <p class="mb-0">寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
     </section>
 </article>
 {% endblock %}

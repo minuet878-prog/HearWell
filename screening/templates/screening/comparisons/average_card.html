@@ -1,6 +1,6 @@
 {% extends "screening/comparisons/card.html" %}
 {% block details %}
-<details>
+<details class="dropdown-line">
     <summary>看每一題的回答</summary>
     <ol class="comparison-items">{% for item in comparison.item_pairs %}<li class="mb-4">{{ item.question.question_text }}<br>沒戴：<strong>{{ item.unaided.get_answer_display }}</strong>；有戴：<strong>{{ item.aided.get_answer_display }}</strong></li>{% endfor %}</ol>
 </details>

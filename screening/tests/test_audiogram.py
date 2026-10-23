@@ -1408,6 +1408,7 @@ class AudiogramCompareSummaryTests(TestCase):
         old = self._make(old_points, tested_on=date(2026, 1, 10))
         new = self._make(new_points, tested_on=date(2026, 9, 10))
         main = self._main(self._get(a=new.id, b=old.id))
+        self._summary_page = main
         card = re.search(
             r'<section class="audiogram-chart compare-summary"[^>]*>(.*?)</section>', main, re.S
         )
@@ -1421,8 +1422,19 @@ class AudiogramCompareSummaryTests(TestCase):
         self.assertIn("程度：舊 輕度，新 輕度", text)
         for word in ("都還是", "變成", "變差", "變好", "高音"):
             self.assertNotIn(word, text)
-        self.assertIn("機器、地點、耳機不同，數字本來就會差幾分貝。", text)
-        self.assertIn("dB 數字越大，代表要越大聲才聽得到。", text)
+        # Pages tidy-up: how to read the numbers moved out of the card into one tip box after it.
+        self.assertNotIn("機器、地點、耳機不同", text)
+        self.assertNotIn("dB 數字越大", text)
+        main = self._summary_page
+        tip = re.search(r'<section class="tip-box"[^>]*>(.*?)</section>', main, re.S)
+        self.assertIn("看懂這張比較", tip.group(1))
+        for note in (
+            "dB 數字越大，代表要越大聲才聽得到。",
+            "機器、地點、耳機不同，數字本來就會差幾分貝。",
+            "這只是數字的對照，不能取代聽力師的判讀。",
+        ):
+            self.assertIn(note, tip.group(1))
+        self.assertLess(main.index("compare-summary"), tip.start())
         # The chart sits in the card, under the summary.
         self.assertIn('<div id="audiogram-chart"></div>', card)
         self.assertLess(card.index("右耳四頻平均"), card.index('id="audiogram-chart"'))
