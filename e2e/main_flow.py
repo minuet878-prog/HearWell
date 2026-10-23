@@ -5089,6 +5089,73 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path)
                     self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
 
+    # Spec #308 acceptance 12 (#316): white means tappable. "White" is what a person sees as a
+    # white surface: an element's own background is opaque white (rgb(255, 255, 255), with or
+    # without a shadow), it is on screen, and nothing above it fades it (the login banner's bars
+    # are white at 35% opacity: pale blue on the blue banner, not white). Every such element must
+    # be, or sit inside, one of these:
+    WHITE_ALLOWED = ", ".join(
+        (
+            "a",  # a link, including every white card
+            "button",  # a button, including an outline button given a white fill on a tint (#311)
+            "input, select, textarea",  # a box to type in or a list to pick from
+            "summary",  # a dropdown's bar (看完整建議, 逐題回答, a report's questionnaire)
+            "label:has(input)",  # an answer choice: the label around its radio button
+            "table",  # a table (spec #308: tables are the rule's exception)
+            ".chart-canvas, .audiogram-chart, .ioi-chart",  # a chart's drawing area (#301)
+            ".auth-card",  # the login and register form card (#300)
+        )
+    )
+    # TEMPORARY, awaiting the owner's decision (#316): white and not tappable, and not one of the
+    # kinds spec #308 allows. Each line is a question for the owner; remove it once decided.
+    WHITE_AWAITING_OWNER = ", ".join(
+        (
+            ".site-header, .site-nav",  # the white header and its menu bar on every page
+            ".auth-hero .step-progress-segment",  # register's banner: the done step's white bar
+            ".next-step .action-card-icon, .next-step-because",  # 建議您下一步: icon tile, 因為
+            ".route-number",  # 選配路線: each stop's numbered circle
+        )
+    )
+    # A dropdown (details) is allowed as a box only: what opens inside it is checked like the rest,
+    # so every dropdown is opened first (a report's questionnaires fold into dropdowns, #314).
+    WHITE_BUT_NOT_TAPPABLE = """(allowed) => {
+        document.querySelectorAll("details").forEach((box) => { box.open = true; });
+        const faded = (el) => el
+            && (getComputedStyle(el).opacity !== "1" || faded(el.parentElement));
+        return [...document.querySelectorAll("body *")]
+            .filter((el) => getComputedStyle(el).backgroundColor === "rgb(255, 255, 255)")
+            .filter((el) => el.checkVisibility() && !faded(el))
+            .filter((el) => !el.matches("details") && !el.closest(allowed))
+            .map((el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")} `
+                + el.textContent.trim().replace(/\\s+/g, " ").slice(0, 30));
+    }"""
+    # The answering page of each questionnaire, each with its own intro (spec #308 acceptance 10).
+    WHITE_ANSWERING_PAGES = tuple(
+        (f"answering {code}", True, lambda test, code=code: test.answering(code))
+        for code in ("hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha")
+    )
+    # What React draws after the page loads; wait for it so its white elements are counted too.
+    DRAWN_LATER = (
+        ("#answer-app", "#answer-app fieldset"),
+        ("#audiogram-app", "#audiogram-app > *"),
+        ("#trend-plot", "#trend-plot .recharts-wrapper"),
+        ("#audiogram-chart", "#audiogram-chart svg"),
+    )
+
+    def white_but_not_tappable(self):
+        for mount, drawn in self.DRAWN_LATER:
+            if self.page.locator(mount).count():
+                self.page.locator(drawn).first.wait_for(state="attached")
+        allowed = f"{self.WHITE_ALLOWED}, {self.WHITE_AWAITING_OWNER}"
+        return self.page.evaluate(self.WHITE_BUT_NOT_TAPPABLE, allowed)
+
+    def test_every_white_element_can_be_tapped(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in self.PAGES + self.WHITE_ANSWERING_PAGES:
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    self.assertEqual(self.white_but_not_tappable(), [])
+
     # #299: the signed-out home's four steps, result example and audiologist line are flat.
     def test_first_visit_home_blocks_are_flat(self):
         with self.saving_artifacts():
@@ -5343,9 +5410,21 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     second = urgent_tips.nth(1)
                     self.assertEqual(self.style(second, "borderTopColor"), "rgb(206, 212, 218)")
                     self.assertEqual(self.style(second, "paddingTop"), "13.5px")
+                    # #316: the 119 line is not white (white means tappable) but a light blue a
+                    # little deeper than the box, so it still stands out; 119 stays large and bold.
                     call = urgent.get_by_text("如果同時出現", exact=False)
-                    self.assertEqual(self.style(call, "backgroundColor"), self.WHITE)
+                    call_blue = "rgb(214, 226, 242)"
+                    self.assertEqual(self.style(call, "backgroundColor"), call_blue)
                     self.assertEqual(self.style(call, "boxShadow"), "none")
+                    number = call.get_by_text("119", exact=True)
+                    self.assertEqual(self.style(number, "fontWeight"), "800")
+                    self.assertEqual(self.style(number, "fontSize"), "31.5px")  # 1.75rem
+                    for colour in set(call.evaluate(self.TEXT_COLOURS)):
+                        with self.subTest(colour=colour):
+                            self.assertGreaterEqual(
+                                StyleInBrowserTest.lowest_contrast(colour, "rgb(214, 226, 242)"),
+                                4.5,
+                            )
 
     # #312: the family guide fits a phone at 200% text, signed in and signed out.
     def test_family_guide_fits_a_phone_at_double_text_size(self):
