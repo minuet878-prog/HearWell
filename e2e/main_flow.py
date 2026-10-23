@@ -2013,6 +2013,24 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 390, state)
 
+    # #261 self-review: the action cards (#256) shared by the home page's 您還可以 and the result
+    # pages, 320px wide at 200% text, keep room for four characters a line in their titles.
+    def test_action_card_titles_keep_four_characters_a_line_at_double_text_size(self):
+        self.open(320, 640)
+        submission = Submission.objects.get(user__username="guide_e2e")
+        with self.saving_artifacts():
+            for path in ("/", f"/submission/{submission.pk}"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    titles = self.main().locator(".action-card .link-card-title")
+                    expect(titles.first).to_be_visible()
+                    self.assert_fits_a_phone_at_double_text_size(path)
+                    narrow = titles.evaluate_all(
+                        "titles => titles.filter(t => t.getBoundingClientRect().width"
+                        " < 4 * parseFloat(getComputedStyle(t).fontSize)).map(t => t.textContent)"
+                    )
+                    self.assertEqual(narrow, [], path)
+
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user reaches the
     # threshold, so the stop is the assessment.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):

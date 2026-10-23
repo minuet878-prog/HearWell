@@ -1036,6 +1036,25 @@
     }
   }
 
+  /* The card is its own container: at normal sizes nothing wraps, as the body may shrink. */
+  .action-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  /* At large text sizes the words drop under the icon instead of shrinking to a character a
+     line; the arrow stays on the icon's row. */
+  @container (max-width: 11rem) {
+    .action-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .action-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
   /* Login and register forms */
   .narrow-form {
     max-width: var(--container-form);
