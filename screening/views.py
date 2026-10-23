@@ -474,8 +474,9 @@ def guide_chapter(request, chapter):
     found = next((c for c in GUIDE_CHAPTERS if c.slug == chapter), None)
     if found is None:
         raise Http404
-    if request.user.is_authenticated:
-        # 看過 (spec #291 acceptance 4): the first time stays; signed out, nothing is kept.
+    if request.user.is_authenticated and request.user.has_consented():
+        # 看過 (spec #291 acceptance 4): the first time stays; signed out or before agreeing
+        # to the privacy notice that covers it, nothing is kept.
         models.GuideChapterView.objects.get_or_create(user=request.user, chapter=chapter)
     return _chapter_page(request, found)
 

@@ -6,7 +6,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.models import AidAndSubsidy, GuideChapterView, Questionnaire
+from screening.models import AidAndSubsidy, Consent, GuideChapterView, Questionnaire, User
 from screening.questionnaires import hhie_s, ioi_ha
 from screening.tests import test_fitting_route, test_guide_summary
 from screening.tests.helpers import consented_user
@@ -49,6 +49,16 @@ class ChapterViewTests(TestCase):
         self.client.logout()
         self.assertEqual(self.open("before-you-go").status_code, 200)
         self.assertFalse(GuideChapterView.objects.exists())
+
+    def test_signed_in_without_the_current_consent_records_nothing(self):
+        only_first = User.objects.create_user(username="first_version_reader")
+        Consent.objects.create(user=only_first, version=1)
+        never = User.objects.create_user(username="never_consented_reader")
+        for user in (only_first, never):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+                self.assertEqual(self.open("before-you-go").status_code, 200)
+                self.assertEqual(self.viewed(user), [])
 
     def test_only_the_reader_s_own_views_are_recorded(self):
         other = consented_user(username="other_reader")
