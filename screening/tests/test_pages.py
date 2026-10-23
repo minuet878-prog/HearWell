@@ -103,7 +103,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="h3 mb-4 font-normal">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="auth-hero-title">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -419,14 +419,14 @@ class RedesignLayoutTests(TestCase):
         wave = "<inline>"
         smooth = "<inline>"
         empty_user = consented_user(username="no_records")
-        for url in (reverse("index"), reverse("login")):
-            with self.subTest(url=url):
-                self.assertEqual(scripts(url), [pwa_js, wave, smooth])
-        # The 顯示 button on the password fields (#151).
-        with self.subTest(url="register"):
-            self.assertEqual(
-                scripts(reverse("register")), [pwa_js, "screening/password-toggle.js", wave, smooth]
-            )
+        with self.subTest(url="index"):
+            self.assertEqual(scripts(reverse("index")), [pwa_js, wave, smooth])
+        # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
+        for name in ("login", "register"):
+            with self.subTest(url=name):
+                self.assertEqual(
+                    scripts(reverse(name)), [pwa_js, "screening/password-toggle.js", wave, smooth]
+                )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave, smooth])

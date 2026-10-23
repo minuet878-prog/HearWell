@@ -204,7 +204,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(toggle).to_have_accessible_name("顯示密碼")
 
     def test_first_visit_pages_fit_a_phone_at_double_text_size(self):
-        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%."""
+        """#155: home, register, consent, every wizard step and the answer page, 320px at 200%.
+
+        The login page too, since its form moved onto a brand banner (2026-10-23).
+        """
         self.context.close()
         self.context = self.browser.new_context(
             **{**self.playwright.devices["Pixel 7"], "viewport": {"width": 320, "height": 640}}
@@ -213,6 +216,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
         with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/login")
+            self.assert_fits_a_phone_at_double_text_size("login")
             self.page.goto(self.live_server_url)
             self.assert_fits_a_phone_at_double_text_size("home")
             self.main().get_by_role("link", name="開始篩檢").click()
@@ -2610,7 +2615,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 "/login",
                 False,
                 "link",
-                "註冊",
+                "註冊新帳號",
                 {
                     **large,
                     "backgroundColor": clear,
@@ -2708,7 +2713,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_button_hover_and_press_colours(self):
         # The outline variant whose hover and press colours the site set itself; the primary
         # button's states are in test_primary_button_states_follow_choice_c (#139).
-        cases = (("link", "註冊", self.PRIMARY, "rgb(23, 59, 106)"),)
+        cases = (("link", "註冊新帳號", self.PRIMARY, "rgb(23, 59, 106)"),)
         self.open(signed_in=False)
         with self.saving_artifacts():
             for role, name, hover, pressed in cases:
@@ -2727,17 +2732,20 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # #125: form fields keep their pre-migration size (owner's decision, 2026-10-21):
         # regular fields are 42.5px tall, above WCAG AA's 24px, and checkboxes sit in a
         # clickable 27px-tall label. Buttons are the ones held to 44 x 44.
+        # The login and register pages chose thicker, taller fields (2026-10-23), so the regular
+        # field is measured on the delete-account page.
         primary_ring = "rgba(31, 78, 140, 0.25) 0px 0px 0px 4.5px"
         field_focus_ring = "rgba(13, 110, 253, 0.25) 0px 0px 0px 4.5px"
         border = "rgb(222, 226, 230)"
+        thick_border = "rgb(108, 117, 125)"  # --color-input-border, 4.7:1 on white
         self.audiogram(date(2026, 9, 28))
         with self.saving_artifacts():
-            self.open(signed_in=False)
-            self.page.goto(f"{self.live_server_url}/login")
-            username = self.page.get_by_label("使用者名稱")
-            self.assertEqual(self.size(username)[1], 42.5)
+            self.open()
+            self.page.goto(f"{self.live_server_url}/account/delete")
+            password = self.page.get_by_label("請輸入密碼確認")
+            self.assertEqual(self.size(password)[1], 42.5)
             self.assertEqual(
-                self.styles(username, "padding", "borderTopColor", "borderTopLeftRadius", "color"),
+                self.styles(password, "padding", "borderTopColor", "borderTopLeftRadius", "color"),
                 {
                     "padding": "6.75px 13.5px",
                     "borderTopColor": border,
@@ -2747,6 +2755,34 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             )
             self.assertEqual(
                 self.style(self.page.locator("label.form-label").first, "marginBottom"), "9px"
+            )
+            password.focus()
+            self.assertEqual(self.style(password, "borderTopColor"), self.PRIMARY)
+            self.assertEqual(self.style(password, "boxShadow"), primary_ring)
+
+            # Login and register: 3.25rem tall, a 2px dark edge, room on the left for the icon.
+            self.open(signed_in=False)
+            self.page.goto(f"{self.live_server_url}/login")
+            username = self.page.get_by_label("使用者名稱")
+            self.assertEqual(self.size(username)[1], 58.5)
+            self.assertEqual(
+                self.styles(
+                    username,
+                    "padding",
+                    "borderTopWidth",
+                    "borderTopColor",
+                    "borderTopLeftRadius",
+                    "fontSize",
+                    "color",
+                ),
+                {
+                    "padding": "6.75px 13.5px 6.75px 54px",
+                    "borderTopWidth": "2px",
+                    "borderTopColor": thick_border,
+                    "borderTopLeftRadius": "13.5px",
+                    "fontSize": "22.5px",
+                    "color": self.TEXT,
+                },
             )
             username.focus()
             self.assertEqual(self.style(username, "borderTopColor"), self.PRIMARY)
@@ -2767,25 +2803,26 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 ),
                 {
                     "backgroundColor": "rgb(248, 249, 250)",
-                    "borderTopColor": border,
+                    "borderTopColor": thick_border,
                     "padding": "6.75px 13.5px",
                     "borderTopLeftRadius": "13.5px",
                     "borderTopRightRadius": "0px",
                 },
             )
+            # The 2px edges overlap by 2px, so the joins are no thicker than the outside.
             self.assertEqual(
                 self.styles(field, "borderTopLeftRadius", "borderTopRightRadius", "marginLeft"),
-                {"borderTopLeftRadius": "0px", "borderTopRightRadius": "0px", "marginLeft": "-1px"},
+                {"borderTopLeftRadius": "0px", "borderTopRightRadius": "0px", "marginLeft": "-2px"},
             )
             self.assertEqual(
                 self.styles(unit, "borderTopLeftRadius", "borderTopRightRadius", "marginLeft"),
                 {
                     "borderTopLeftRadius": "0px",
                     "borderTopRightRadius": "13.5px",
-                    "marginLeft": "-1px",
+                    "marginLeft": "-2px",
                 },
             )
-            self.assertEqual({self.size(part)[1] for part in (year, field, unit)}, {42.5})
+            self.assertEqual({self.size(part)[1] for part in (year, field, unit)}, {58.5})
 
             self.open()
             audiogram_step(self.page, self.live_server_url, 2)
@@ -2958,7 +2995,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             submit = self.page.get_by_role("button", name="登入")
             self.assertEqual(self.style(submit, "backgroundColor"), self.PRIMARY)
             self.page.get_by_label("使用者名稱").fill("nobody")
-            self.page.get_by_label("密碼").fill("not-the-password")
+            # exact: the 顯示 button's name, 顯示密碼, holds 密碼 as well.
+            self.page.get_by_label("密碼", exact=True).fill("not-the-password")
             submit.click()
             error = self.page.locator("#login_error")
             expect(error).to_be_visible()
@@ -3591,7 +3629,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # (test_three_radius_levels).
         cases = (
             (False, "/login", "button", "登入"),
-            (False, "/login", "link", "註冊"),
+            (False, "/login", "link", "註冊新帳號"),
             (True, "/", "button", "登出"),
             (True, "/account/delete", "button", "刪除帳號"),
         )
