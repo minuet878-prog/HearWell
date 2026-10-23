@@ -97,6 +97,7 @@ class LayoutTests(TestCase):
             reverse("register"),
             reverse("privacy"),
             reverse("family_guide"),
+            reverse("learn"),
             reverse("shared_cover", args=[share.token]),
             reverse("shared_report", args=[share.token]),
         ]

@@ -217,7 +217,7 @@ class HeaderBrandTests(TestCase):
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
     LOGGED_IN_ITEMS = ("首頁", "開始篩檢", "我的紀錄", "聽力圖")
-    LOGGED_OUT_ITEMS = ("首頁", "登入", "註冊")
+    LOGGED_OUT_ITEMS = ("首頁", "了解", "登入", "註冊")
 
     @classmethod
     def setUpTestData(cls):

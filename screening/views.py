@@ -143,6 +143,12 @@ def family_guide(request):
     return render(request, "screening/family_guide.html")
 
 
+def learn(request):
+    # #269 (spec #268): open without logging in, like the guide and the family page it leads to.
+    # It reads no records, so it is not a 健康資料頁面.
+    return render(request, "screening/learn.html")
+
+
 def _assessment_context(request):
     # An unknown county is treated like none chosen: the menu again, not an error.
     roster = assessment_hospitals.roster()
