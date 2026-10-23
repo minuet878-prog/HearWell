@@ -124,9 +124,8 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card or the report's summary box has none; the box already frames it. Nor does an
-     ear's result on an audiogram: the line in its ear's colour marks it (ADR 0007). */
-  h1.h3, h2.h4:not(:where(.card, .report-summary, .ear-result) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -2645,6 +2644,12 @@
     background-color: var(--color-tint);
   }
 
+  /* An outline button in a 並列區塊 is filled white (#311): white is what can be tapped, and its
+     words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
+  .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
+    --btn-bg: #fff;
+  }
+
   .tint-rows > * + * {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
@@ -3233,11 +3238,8 @@
     gap: 0.75rem;
   }
 
-  /* Each ear's result is a flat block (ADR 0022) under a line in its ear's colour. */
-  .ear-result {
-    padding-top: 0.75rem;
-  }
-
+  /* Each ear's result is a .tint-block (並列區塊, ADR 0024, #311) under a line in its ear's
+     colour. */
   .ear-result.ear-right {
     border-top: 0.375rem solid var(--color-ear-right);
   }
@@ -3556,9 +3558,10 @@
     }
   }
 
-  /* Family guide (#240): one flat block per topic framed by its title (ADR 0022), each tip's
-     point on its own line, the urgent topic framed in the brand blue (ADR 0007) with 119 in
-     large type; the sources at the end. */
+  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
+     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
+     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
+     the sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -3578,27 +3581,11 @@
 
   .family-guide .tips {
     margin: 0;
-    padding: 0;
     list-style: none;
-  }
-
-  .family-guide .tips > li {
-    padding-block: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
-  }
-
-  .family-guide .tips > li:first-child {
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .family-guide .tips > li:last-child {
-    padding-bottom: 0;
   }
 
   .family-guide .tip-point {
     display: block;
-    color: var(--color-heading);
   }
 
   .family-guide .family-urgent {
@@ -3607,8 +3594,22 @@
     box-shadow: none;
   }
 
+  .family-guide .family-urgent .tips {
+    padding: 0;
+  }
+
   .family-guide .family-urgent .tips > li {
-    border-top-color: var(--color-border);
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .family-guide .family-urgent .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .family-urgent .tips > li:last-child {
+    padding-bottom: 0;
   }
 
   .family-guide .urgent-call {
