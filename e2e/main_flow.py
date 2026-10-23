@@ -4838,6 +4838,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     TINT = "rgb(236, 227, 212)"
     TINT_LINE = "rgb(201, 187, 163)"
     TINT_RADIUS = "13.5px"
+    # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
+    # reason) is this deeper light blue, so it still stands out.
+    BLUE_DEEP = "rgb(214, 226, 242)"
+    BLUE_SOFT = "rgb(238, 243, 250)"
     # Every colour of text in an element: its own and its descendants' that hold words directly.
     TEXT_COLOURS = """(el) => [el, ...el.querySelectorAll("*")]
         .filter((node) => [...node.childNodes]
@@ -5104,16 +5108,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             "table",  # a table (spec #308: tables are the rule's exception)
             ".chart-canvas, .audiogram-chart, .ioi-chart",  # a chart's drawing area (#301)
             ".auth-card",  # the login and register form card (#300)
-        )
-    )
-    # TEMPORARY, awaiting the owner's decision (#316): white and not tappable, and not one of the
-    # kinds spec #308 allows. Each line is a question for the owner; remove it once decided.
-    WHITE_AWAITING_OWNER = ", ".join(
-        (
-            ".site-header, .site-nav",  # the white header and its menu bar on every page
-            ".auth-hero .step-progress-segment",  # register's banner: the done step's white bar
-            ".next-step .action-card-icon, .next-step-because",  # 建議您下一步: icon tile, 因為
-            ".route-number",  # 選配路線: each stop's numbered circle
+            # The site's frame, not a block of content: the header and its menu bar are white
+            # since the brand refresh (ADR 0012).
+            ".site-header, .site-nav",
+            # Register's banner: the done step's bar is a thin progress line on the blue, not a
+            # surface.
+            ".auth-hero .step-progress-segment",
         )
     )
     # A dropdown (details) is allowed as a box only: what opens inside it is checked like the rest,
@@ -5146,8 +5146,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         for mount, drawn in self.DRAWN_LATER:
             if self.page.locator(mount).count():
                 self.page.locator(drawn).first.wait_for(state="attached")
-        allowed = f"{self.WHITE_ALLOWED}, {self.WHITE_AWAITING_OWNER}"
-        return self.page.evaluate(self.WHITE_BUT_NOT_TAPPABLE, allowed)
+        return self.page.evaluate(self.WHITE_BUT_NOT_TAPPABLE, self.WHITE_ALLOWED)
 
     def test_every_white_element_can_be_tapped(self):
         with self.saving_artifacts():
@@ -5219,6 +5218,37 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_lined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
         self.assertGreater(links_seen, 0)
 
+    # #316: the 建議您下一步 box (returning home and every result page) has no white left: its icon
+    # tile and its 因為 line are a light blue deeper than the box; only its button is tappable.
+    def test_next_step_box_is_blue_with_only_its_button_to_tap(self):
+        with self.saving_artifacts():
+            for name, signed_in, path in (
+                *WHITE_CARD_PAGES_HOME_RESULT[1:],
+                ("SADL result", True, lambda test: test.result("sadl", 4)),
+            ):
+                with self.subTest(page=name):
+                    self.visit(signed_in, path)
+                    box = self.main().locator(".next-step")
+                    self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
+                    for part in (".action-card-icon", ".next-step-because"):
+                        self.assertEqual(
+                            self.style(box.locator(part), "backgroundColor"), self.BLUE_DEEP
+                        )
+                    because = box.get_by_text("因為：", exact=False)
+                    for colour in set(because.evaluate(self.TEXT_COLOURS)):
+                        with self.subTest(colour=colour):
+                            self.assertGreaterEqual(
+                                StyleInBrowserTest.lowest_contrast(colour, self.BLUE_DEEP), 4.5
+                            )
+                    stroke = self.style(box.locator(".action-card-icon svg"), "stroke")
+                    self.assertGreaterEqual(
+                        StyleInBrowserTest.lowest_contrast(stroke, self.BLUE_DEEP), 4.5
+                    )
+                    self.assertEqual(box.get_by_role("link").count(), 1)
+                    self.assertEqual(
+                        self.style(box.get_by_role("link"), "backgroundImage"), self.GRADIENT
+                    )
+
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
     def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
@@ -5252,6 +5282,20 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(self.style(here, "backgroundColor"), "rgb(238, 243, 250)")
             self.assertEqual(self.style(here, "borderTopColor"), self.PRIMARY)
             self.assertEqual(self.style(here, "boxShadow"), "none")
+            # #316: a stop's number is a pale blue circle with a blue number, like the chapters'
+            # numbered steps, not white; the 目前這一站's stays filled blue.
+            numbers = self.main().locator(".route-stop:not([aria-current], .is-na) .route-number")
+            self.assertGreater(numbers.count(), 1)
+            for number in numbers.all():
+                with self.subTest(stop=number.inner_text()):
+                    self.assertEqual(self.style(number, "backgroundColor"), self.BLUE_SOFT)
+                    self.assertEqual(self.style(number, "color"), self.PRIMARY)
+                    self.assertEqual(self.style(number, "borderTopColor"), self.PRIMARY)
+            self.assertGreaterEqual(
+                StyleInBrowserTest.lowest_contrast(self.PRIMARY, self.BLUE_SOFT), 4.5
+            )
+            current = self.main().locator(".route-stop[aria-current=step] .route-number")
+            self.assertEqual(self.style(current, "backgroundColor"), self.PRIMARY)
 
     # #302: every chapter's parts are flat blocks framed by their titles, the links still in
     # them; the question at the foot and its answered form are flat with their buttons.
@@ -5413,8 +5457,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     # #316: the 119 line is not white (white means tappable) but a light blue a
                     # little deeper than the box, so it still stands out; 119 stays large and bold.
                     call = urgent.get_by_text("如果同時出現", exact=False)
-                    call_blue = "rgb(214, 226, 242)"
-                    self.assertEqual(self.style(call, "backgroundColor"), call_blue)
+                    self.assertEqual(self.style(call, "backgroundColor"), self.BLUE_DEEP)
                     self.assertEqual(self.style(call, "boxShadow"), "none")
                     number = call.get_by_text("119", exact=True)
                     self.assertEqual(self.style(number, "fontWeight"), "800")
