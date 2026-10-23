@@ -17,8 +17,8 @@
 <p>還沒有可以放進報告的紀錄。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% else %}
-<section class="mt-6" aria-labelledby="share-step-1">
-    <h2 id="share-step-1" class="h4 share-step"><span class="step-number" aria-hidden="true">1</span>家人會看到什麼</h2>
+<section class="mt-6 tint-block" aria-labelledby="share-step-1">
+    <h2 id="share-step-1" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">1</span>家人會看到什麼</h2>
     <ul>
         <li>聽力圖</li>
         <li>各問卷的分數、分級和建議</li>
@@ -31,8 +31,8 @@
     <p class="mb-0">連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。</p>
 </section>
 
-<section class="mt-6" aria-labelledby="share-step-2">
-    <h2 id="share-step-2" class="h4 share-step"><span class="step-number" aria-hidden="true">2</span>產生連結</h2>
+<section class="mt-6 tint-block" aria-labelledby="share-step-2">
+    <h2 id="share-step-2" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">2</span>產生連結</h2>
     {% if share %}
     <ul class="mb-0">
         <li>有效到 {{ share.expires_at|date:"n 月 j 日 H:i" }}</li>
@@ -48,8 +48,8 @@
     {% endif %}
 </section>
 
-<section class="mt-6" aria-labelledby="share-step-3">
-    <h2 id="share-step-3" class="h4 share-step"><span class="step-number" aria-hidden="true">3</span>傳給家人</h2>
+<section class="mt-6 tint-block" aria-labelledby="share-step-3">
+    <h2 id="share-step-3" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">3</span>傳給家人</h2>
     {% if share %}
     {# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
     {% url 'shared_cover' share.token as share_path %}
