@@ -118,6 +118,17 @@ class DeleteAccountTests(TestCase):
                 self.assertEqual(self._counts(self.user.pk), before)
         self.assertContains(self._delete(password="wrong-password"), "密碼不正確")
 
+    def test_error_text_is_marked_as_a_field_error(self):
+        # #272: field_messages.html tags each error so site.css puts a warning mark before it,
+        # and the message does not rest on the red alone.
+        response = self._delete(password="wrong-password")
+        self.assertContains(
+            response,
+            '<div id="id_password_error">'
+            '<p class="text-danger field-error mb-0">密碼不正確</p></div>',
+            html=True,
+        )
+
     # 6
     def test_signed_out_goes_to_login_and_back(self):
         self.client.logout()
