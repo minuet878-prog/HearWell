@@ -277,6 +277,7 @@ class RouteStop:
     tested_on: object | None = None  # the recorded audiogram's date, on the done first stop
     links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the title
     action: tuple[str, str] | None = None  # the 目前這一站's button
+    notes: tuple[str, ...] = ()  # dated wordings under the title (#288)
 
     @property
     def here(self):
@@ -298,7 +299,7 @@ def _route(state):
 
 
 def _route_stop(state, slug, title, url):
-    marks, links, action, tested_on = [], [], None, None
+    marks, links, action, tested_on, notes = [], [], None, None, []
     form_9 = reverse("guide_chapter", args=["form-9"])
     if slug == AUDIOGRAM and state.audiogram is not None:
         if state.insufficient:
@@ -325,6 +326,7 @@ def _route_stop(state, slug, title, url):
             "assessment": ("找鑑定醫院", url),
             "form-9": ("看九號表的流程", url),
             "after-fitting": ("記錄配戴的效果", f"{url}#record-title"),
+            "form-25": ("看二十五號表要帶什麼", url),
         }[slug]
     # Only what ADR 0017 lets the page say: 未達到 is said, 無法確定 is not marked.
     if slug == "assessment" and not certified:
@@ -332,11 +334,20 @@ def _route_stop(state, slug, title, url):
             marks.append("估算未達門檻")
             links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
         links.append(("我已經有身障證明", reverse("my_aid")))
+    if slug == "form-9" and state.reapply_on:
+        notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
         links.append(("看再次申請的規定", f"{form_9}#reapply"))
     if slug == "after-fitting" and state.wearing and not (state.aid and state.aid.fitted_on):
         links.append(("記錄我的助聽器", reverse("my_aid")))  # #284 acceptance 18
-    return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action)
+    if slug == "form-25" and state.form_25:
+        # #284 Q7: from when before it opens, by when while open, nothing once it has closed.
+        opens, closes = state.form_25
+        if state.today < opens:
+            notes.append(f"{opens:%Y/%m/%d} 起可以做")
+        elif state.today <= closes:
+            notes.append(f"{closes:%Y/%m/%d} 前要做完")
+    return RouteStop(slug, title, url, tuple(marks), tested_on, tuple(links), action, tuple(notes))
 
 
 def guide_chapter(request, chapter):

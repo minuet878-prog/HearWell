@@ -1,13 +1,12 @@
 """Where a user stands in the main flow: new/old, last result, retest reminder (ADR 0010)."""
 
-import calendar
 from dataclasses import dataclass
 from datetime import date
 
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.fitting_route import AUDIOGRAM, fitting_state
+from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
 from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import (
     NEXT_STEP_REASONS,
@@ -15,14 +14,6 @@ from screening.scoring import (
     RETEST_DUE_TEXT,
     retest_next_text,
 )
-
-
-def _add_months(start, months):
-    month_index = start.month - 1 + months
-    year = start.year + month_index // 12
-    month = month_index % 12 + 1
-    day = min(start.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
 
 
 @dataclass(frozen=True)
@@ -60,7 +51,7 @@ def get_user_state(user, today):
     life_impact = [s for s in submissions if s.questionnaire.definition.life_impact]
     if life_impact:
         latest = life_impact[0]
-        next_date = _add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)
+        next_date = add_months(timezone.localtime(latest.created_at).date(), RETEST_MONTHS)
         due = next_date <= today
         return UserState(
             is_new=False,

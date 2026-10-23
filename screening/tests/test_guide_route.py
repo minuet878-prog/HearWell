@@ -1,5 +1,6 @@
 import re
 from datetime import date, datetime
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
@@ -286,3 +287,107 @@ class FittedOnRouteTests(TestCase):
     def test_not_wearing_has_no_link_to_record_them(self):
         self.make(PTA_55, PTA_55)
         self.assertNotIn("記錄我的助聽器", self.page())
+
+
+class Form25DeadlineTests(TestCase):
+    """#288 (spec #284 acceptance 12-17): the form 25 stop dated from the fitting date."""
+
+    def setUp(self):
+        self.user = consented_user(username="form_25_reader")
+        self.client.force_login(self.user)
+        self.today = date(2026, 5, 20)
+        real_localdate = timezone.localdate
+
+        def localdate(value=None, timezone=None):
+            return self.today if value is None else real_localdate(value, timezone)
+
+        self.enterContext(patch("django.utils.timezone.localdate", localdate))
+
+    page = GuideRouteTests.page
+    stops = GuideRouteTests.stops
+    stop = GuideRouteTests.stop
+    tags = GuideRouteTests.tags
+    assert_only_here_at = GuideRouteTests.assert_only_here_at
+    assert_link = GuideRouteTests.assert_link
+
+    def fit(self, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"):
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=fitted_on, subsidy=subsidy, level=level
+        )
+
+    # 12
+    def test_before_a_month_says_from_when_it_can_be_done(self):
+        self.fit()
+        self.assert_only_here_at(self.tags(), "after-fitting")
+        self.assertIn("2026/06/01 起可以做", self.stop("form-25"))
+
+    # 13
+    def test_from_a_month_to_three_says_by_when_and_is_here(self):
+        self.fit()
+        self.today = date(2026, 7, 15)
+        self.assert_only_here_at(self.tags(), "form-25")
+        form_25 = self.stop("form-25")
+        self.assertIn("2026/08/01 前要做完", form_25)
+        self.assertNotIn("起可以做", form_25)
+        href = re.escape(reverse("guide_chapter", args=["form-25"]))
+        self.assertRegex(form_25, rf'<a class="btn[^"]*" href="{href}">看二十五號表要帶什麼</a>')
+
+    # 14
+    def test_after_three_months_is_after_fitting_with_no_date(self):
+        self.fit()
+        self.today = date(2026, 8, 2)
+        self.assert_only_here_at(self.tags(), "after-fitting")
+        self.assertNotIn("2026/", self.stop("form-25"))
+
+    def test_the_wording_turns_on_the_boundary_days(self):
+        self.fit()
+        for today, wording in (
+            (date(2026, 5, 31), "2026/06/01 起可以做"),
+            (date(2026, 6, 1), "2026/08/01 前要做完"),
+            (date(2026, 8, 1), "2026/08/01 前要做完"),
+        ):
+            with self.subTest(today=today):
+                self.today = today
+                self.assertIn(wording, self.stop("form-25"))
+
+    # 15
+    def test_basic_or_paying_has_no_form_25_date(self):
+        self.today = date(2026, 7, 15)
+        for subsidy, level in (("disability", "basic"), ("other", ""), ("", "")):
+            with self.subTest(subsidy=subsidy, level=level):
+                AidAndSubsidy.objects.filter(user=self.user).delete()
+                self.fit(subsidy=subsidy, level=level)
+                self.assert_only_here_at(self.tags(), "after-fitting")
+                self.assertNotIn("2026/", self.stop("form-25"))
+
+    # 17
+    def test_a_month_after_the_31st_is_the_last_day_of_february(self):
+        self.fit(fitted_on=date(2026, 1, 31))
+        self.today = date(2026, 2, 10)
+        self.assertIn("2026/02/28 起可以做", self.stop("form-25"))
+
+
+class ReapplyDateTests(TestCase):
+    """#288 (spec #284 acceptance 17): the form 9 stop says when 身障補助 can be applied for
+    again, without moving the 目前這一站."""
+
+    def setUp(self):
+        self.user = consented_user(username="reapply_reader")
+        self.client.force_login(self.user)
+
+    stops = GuideRouteTests.stops
+    page = GuideRouteTests.page
+    stop = GuideRouteTests.stop
+    tags = GuideRouteTests.tags
+    assert_only_here_at = GuideRouteTests.assert_only_here_at
+
+    def test_the_subsidy_and_a_fitting_date_say_when_to_apply_again(self):
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
+        )
+        self.assertIn("2030/05/01 起可以再申請補助", self.stop("form-9"))
+        self.assert_only_here_at(self.tags(), "after-fitting")
+
+    def test_paying_has_no_date_to_apply_again(self):
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1), subsidy="other")
+        self.assertNotIn("起可以再申請補助", self.page())

@@ -115,6 +115,7 @@
                 {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
                 <a class="route-title" href="{{ stop.url }}">{{ stop.title }}</a>
                 {% if stop.tested_on %}<p class="route-note">{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖</p>{% endif %}
+                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
                 {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
                 {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
             </div>
