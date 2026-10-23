@@ -124,9 +124,8 @@
   h6, .h6 { font-size: 1rem; }
   /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
      a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card or the report's summary box has none; the box already frames it. Nor does an
-     ear's result on an audiogram: the line in its ear's colour marks it (ADR 0007). */
-  h1.h3, h2.h4:not(:where(.card, .report-summary, .ear-result) *), .heading-bar {
+     inside a card or the report's summary box has none; the box already frames it. */
+  h1.h3, h2.h4:not(:where(.card, .report-summary) *), .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
     color: var(--color-heading);
@@ -1744,26 +1743,12 @@
     color: var(--color-heading);
   }
 
-  /* A preview of the answer buttons; the sentence above already names them, so screen readers
-     skip it (aria-hidden in the templates). */
-  .q-intro-choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .q-intro-choices span {
-    padding: 0 0.6rem;
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-button);
-    background-color: #fff;
-    color: var(--color-heading);
-    font-size: 0.875rem;
-  }
-
+  /* A source may hold a long DOI with no place to break: it breaks anywhere rather than run past
+     a phone's edge at 200% text (#313). */
   .q-intro-source {
     margin-top: 0.5rem;
     font-size: 0.875rem;
+    overflow-wrap: anywhere;
   }
 
   /* A reminder or a short explanation on a text-heavy page (guide chapters, audiogram result):
@@ -2077,8 +2062,13 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022); sources
-     and the check date in small print. */
+  /* Guide chapters: each part a flat block framed by its title and spacing (ADR 0022). An article
+     read in order, so no tint and no lines: two parts stand twice as far apart as two paragraphs
+     inside one (ADR 0024, #313). Sources and the check date in small print. */
+  .guide-chapter > :not(h1) + * {
+    margin-top: 2rem;
+  }
+
   .guide-source,
   .guide-checked {
     font-size: 0.875rem;
@@ -2095,14 +2085,15 @@
     padding: 0;
   }
 
-  .step-list li {
+  /* Its own steps only: a list inside a step (the things to bring) keeps its own layout. */
+  .step-list > li {
     position: relative;
     display: flex;
     gap: 0.75rem;
     padding-bottom: 1rem;
   }
 
-  .step-list li:not(:last-child)::after {
+  .step-list > li:not(:last-child)::after {
     content: "";
     position: absolute;
     top: calc(var(--step-size) + 0.25rem);
@@ -2113,7 +2104,7 @@
     background-color: var(--color-border-warm);
   }
 
-  .step-list li:last-child {
+  .step-list > li:last-child {
     padding-bottom: 0;
   }
 
@@ -2140,12 +2131,12 @@
   /* At large text sizes the words drop under the number instead of shrinking to a few
      characters a line; the joining line would cross them, so it goes. */
   @container (max-width: 13rem) {
-    .step-list li {
+    .step-list > li {
       flex-direction: column;
       gap: 0.4rem;
     }
 
-    .step-list li:not(:last-child)::after {
+    .step-list > li:not(:last-child)::after {
       display: none;
     }
   }
@@ -2162,10 +2153,11 @@
     font-weight: 700;
   }
 
-  /* Guide chapters tidy-up: a step's short title above its details. */
+  /* Guide chapters tidy-up: a step's short title above its details, a subhead (ADR 0024). */
   .step-list-title {
     display: block;
     color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 
@@ -2218,29 +2210,25 @@
     outline-offset: -0.15rem;
   }
 
-  /* Short things to bring or to expect, each with a decorative icon. */
-  .icon-chips {
-    display: flex;
-    flex-wrap: wrap;
+  /* Short things to bring or to expect, one per line after a decorative icon. No frame and no
+     white: white is for what can be tapped (ADR 0024, #313). */
+  .icon-list {
+    display: grid;
     gap: 0.5rem;
     margin: 0.5rem 0 1rem;
     padding: 0;
     list-style: none;
   }
 
-  .icon-chips li {
-    display: inline-flex;
+  .icon-list li {
+    display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.3rem 0.8rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-pill);
-    background-color: #fff;
     color: var(--color-heading);
     font-weight: 700;
   }
 
-  .icon-chips svg {
+  .icon-list svg {
     flex: none;
     width: 1.375rem;
     height: 1.375rem;
@@ -2251,7 +2239,8 @@
     stroke-linejoin: round;
   }
 
-  /* Labelled facts (who, when, what to bring): the label in blue above its sentence. */
+  /* Labelled facts (who, when, what to bring): the label a subhead above its sentence, in the
+     heading colour, not link blue (ADR 0024). */
   .key-list {
     margin: 0 0 1rem;
   }
@@ -2271,7 +2260,8 @@
   }
 
   .key-list dt {
-    color: var(--color-primary);
+    color: var(--color-heading);
+    font-size: var(--text-subhead);
     font-weight: 700;
   }
 
@@ -2660,6 +2650,12 @@
     background-color: var(--color-tint);
   }
 
+  /* An outline button in a 並列區塊 is filled white (#311): white is what can be tapped, and its
+     words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
+  .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
+    --btn-bg: #fff;
+  }
+
   .tint-rows > * + * {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
@@ -2685,7 +2681,7 @@
   /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
      a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
      one such block on its own (THI's support message). The list itself is unstyled by its own
-     class (.list-unstyled, .step-cards, .ioi-items). */
+     class (.step-cards). */
   .line-list > *,
   .line-block {
     padding: 0.1em 0 0.1em 0.7em;
@@ -3060,7 +3056,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one white card per item; nothing here is a link, so no hover (ADR 0006). */
+  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
+     here is a link, so no hover (ADR 0006). */
   .ioi-below,
   .ioi-others {
     margin-bottom: 1.5rem;
@@ -3081,11 +3078,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .ioi-item-name {
-    margin-bottom: 0.25rem;
-    font-size: 1.25rem;
   }
 
   .ioi-versus {
@@ -3114,13 +3106,14 @@
     color: var(--color-body);
   }
 
+  /* An empty cell is clear with a thin deeper beige frame, not white, so it never looks like
+     something to tap (#310); the norm's grey cells keep their own fill. */
   .ioi-cell {
     display: grid;
     place-items: center;
     height: 1.5rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-tint-line);
     border-radius: var(--radius-small);
-    background-color: #fff;
   }
 
   .ioi-cell-band {
@@ -3248,11 +3241,8 @@
     gap: 0.75rem;
   }
 
-  /* Each ear's result is a flat block (ADR 0022) under a line in its ear's colour. */
-  .ear-result {
-    padding-top: 0.75rem;
-  }
-
+  /* Each ear's result is a .tint-block (並列區塊, ADR 0024, #311) under a line in its ear's
+     colour. */
   .ear-result.ear-right {
     border-top: 0.375rem solid var(--color-ear-right);
   }
@@ -3571,9 +3561,10 @@
     }
   }
 
-  /* Family guide (#240): one flat block per topic framed by its title (ADR 0022), each tip's
-     point on its own line, the urgent topic framed in the brand blue (ADR 0007) with 119 in
-     large type; the sources at the end. */
+  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
+     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
+     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
+     the sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -3593,27 +3584,11 @@
 
   .family-guide .tips {
     margin: 0;
-    padding: 0;
     list-style: none;
-  }
-
-  .family-guide .tips > li {
-    padding-block: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
-  }
-
-  .family-guide .tips > li:first-child {
-    padding-top: 0;
-    border-top: 0;
-  }
-
-  .family-guide .tips > li:last-child {
-    padding-bottom: 0;
   }
 
   .family-guide .tip-point {
     display: block;
-    color: var(--color-heading);
   }
 
   .family-guide .family-urgent {
@@ -3622,8 +3597,22 @@
     box-shadow: none;
   }
 
+  .family-guide .family-urgent .tips {
+    padding: 0;
+  }
+
   .family-guide .family-urgent .tips > li {
-    border-top-color: var(--color-border);
+    padding-block: 0.75rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .family-guide .family-urgent .tips > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .family-guide .family-urgent .tips > li:last-child {
+    padding-bottom: 0;
   }
 
   .family-guide .urgent-call {

@@ -23,7 +23,7 @@
 {% if below %}
 <section class="ioi-below" aria-labelledby="ioi-below-title">
     <h2 id="ioi-below-title" class="h4">{{ below_text }}的 {{ below|length }} 項</h2>
-    <ol class="ioi-items line-list">
+    <ol class="ioi-items">
         {% for item in below %}{% include "screening/ioi_ha_item.html" with heading=3 hide_versus=True %}{% endfor %}
     </ol>
 </section>
@@ -31,13 +31,13 @@
 {% if others %}
 <details class="ioi-others dropdown-box">
     <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
-    <ol class="ioi-items line-list">
+    <ol class="ioi-items">
         {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
     </ol>
 </details>
 {% endif %}
 {% else %}
-<ol class="ioi-items line-list">
+<ol class="ioi-items">
     {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
 </ol>
 {% endif %}
