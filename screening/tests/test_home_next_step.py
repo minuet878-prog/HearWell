@@ -34,9 +34,9 @@ BEFORE_YOU_GO = "因為：先看看第一次去找聽力師要準備什麼。"
 ASSESSMENT = "因為：先確認有沒有身障證明，才知道能不能申請補助。"
 FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
 NOTICE = "因為：九號表送出後，等公所的核定公文。"
-TYPES_AND_PRICES = "因為：收到核定公文了，可以看看助聽器的種類與價格。"
+TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之後再買。"
 AFTER_FITTING = "因為：開始戴助聽器後，記下哪一天開始戴。"
-PAYOUT = "因為：二十五號表完成了，接下來等補助發放。"
+PAYOUT = "因為：接下來等補助發放。"
 
 RECORD = ("/audiograms/new", "記錄醫院的聽力圖")
 PRINT = ("/report", "印聽力報告給醫師看")
@@ -366,6 +366,15 @@ class EveryStopNextStepTests(TestCase):
             subsidy="disability",
             level="mid",
             form_25_done=True,
+        )
+        self.assertEqual(
+            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
+        )
+
+    def test_basic_at_the_payout_says_it_comes_next_without_form_25(self):
+        # 簡易型 passes form 25 by (#296): the reason does not say form 25 was done.
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
         )
         self.assertEqual(
             self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
