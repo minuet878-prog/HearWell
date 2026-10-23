@@ -255,7 +255,7 @@ class ReturningUserHomeTests(TestCase):
         self.assertRegex(
             main,
             r'<p class="welcome-reminder welcome-reminder-due"><svg[^>]*><path d="M5 21V4'
-            r'.*?</svg>'
+            r".*?</svg>"
             r"<span>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</span></p>",
         )
         self.assertIn(
