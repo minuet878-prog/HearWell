@@ -8,9 +8,11 @@ from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
 from screening.forms import AgeGroupForm
-from screening.questionnaires import hhia_s, hhie_s
+from screening.ioi_norm import norm_bases
+from screening.questionnaires import hhia_s, hhie_s, ioi_ha
 from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import (
+    CATALOGUE_REASONS,
     NEXT_STEP_REASONS,
     RETEST_BUTTON_TEXT,
     RETEST_DUE_TEXT,
@@ -95,6 +97,34 @@ def life_impact_questionnaire(user, questionnaires, age_group):
         return None
     code = hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE
     return next(q for q in life_impact if q.code == code)
+
+
+@dataclass(frozen=True)
+class Recommendation:
+    questionnaires: list  # two only for a life-impact one when the age is unknown
+    why: str
+
+
+def catalogue_recommendation(user, questionnaires, state):
+    """The 推薦問卷 (GLOSSARY) on top of a returning user's catalogue, apart from the home page's
+    建議下一步 (ADR 0028): by the first of #347's rules that holds, or None when none does.
+    `questionnaires`: the catalogue's, in its order; `state`: the user's get_user_state()."""
+    if state.retest_due or state.retest_questionnaire is None:  # None: no life-impact record
+        why = CATALOGUE_REASONS["retest" if state.retest_due else "no_life_impact"]
+        life_impact = life_impact_questionnaire(user, questionnaires, None)
+        if life_impact is None:  # the age is unknown: both, each saying whom it suits
+            return Recommendation([q for q in questionnaires if q.definition.life_impact], why)
+        return Recommendation([life_impact], why)
+    # Worn: answered wearing hearing aids, SADL always. IOI-HA saves no wearing status, but a
+    # record of it already rules this one out.
+    if (
+        user.submissions.defined().filter(wearing_hearing_aid=True).exists()
+        and norm_bases(user).exists()
+        and not user.submissions.filter(questionnaire__code=ioi_ha.CODE).exists()
+    ):
+        ioi = next(q for q in questionnaires if q.code == ioi_ha.CODE)
+        return Recommendation([ioi], CATALOGUE_REASONS["aided_and_unaided"])
+    return None
 
 
 @dataclass(frozen=True)

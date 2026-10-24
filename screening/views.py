@@ -57,6 +57,7 @@ from screening.forms import (
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
 from screening.main_flow import (
     NEW_USER_STATE,
+    catalogue_recommendation,
     get_user_state,
     home_more,
     life_impact_questionnaire,
@@ -678,7 +679,8 @@ def _wizard_step(request, step, total, **context):
 def questionnaire_list(request):
     questionnaires = Questionnaire.objects.defined().annotate(question_count=Count("questions"))
     user = request.user
-    returning = not get_user_state(user, timezone.localdate()).is_new
+    state = get_user_state(user, timezone.localdate())
+    returning = not state.is_new
     # A returning user sees the catalogue first; the wizard is one link away (ADR 0028).
     if "choose" in request.GET or (
         returning and not any(name in request.GET for name in WIZARD_PARAMS)
@@ -689,11 +691,19 @@ def questionnaire_list(request):
             .order_by("-created_at")
             .values("created_at")[:1]
         )
-        questionnaires = questionnaires.annotate(last_answered_at=Subquery(latest))
+        questionnaires = sorted(
+            questionnaires.annotate(last_answered_at=Subquery(latest)), key=list_order
+        )
         return render(
             request,
             "screening/questionnaire.html",
-            {"questionnaires": sorted(questionnaires, key=list_order), "returning": returning},
+            {
+                "questionnaires": questionnaires,
+                "returning": returning,
+                # A new user has no record to recommend by.
+                "recommendation": returning
+                and catalogue_recommendation(user, questionnaires, state),
+            },
         )
     questionnaires = sorted(questionnaires, key=list_order)
     wizard_url = reverse("questionnaire_list")

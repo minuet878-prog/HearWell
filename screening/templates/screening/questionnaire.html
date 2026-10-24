@@ -5,7 +5,19 @@
 {% block body %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
-{# The catalogue (ADR 0028); #347 puts the returning user's 推薦您做這一份 above the cards. #}
+{# The catalogue (ADR 0028), the returning user's 推薦問卷 above the cards when one fits (#347). #}
+{% if recommendation %}
+<section aria-labelledby="catalogue-recommended" class="mt-6 mb-8">
+    <h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>
+    {% if recommendation.questionnaires|length > 1 %}
+    {# The age is unknown: one reason, then each questionnaire with the ages it suits. #}
+    <p><strong>為什麼推薦：</strong>{{ recommendation.why }}</p>
+    {% for questionnaire in recommendation.questionnaires %}<div class="mt-6">{% include "screening/recommended_questionnaire.html" with level=3 title_id="recommended-"|add:questionnaire.code audience=True %}</div>{% endfor %}
+    {% else %}
+    {% include "screening/recommended_questionnaire.html" with questionnaire=recommendation.questionnaires.0 level=3 title_id="recommended-title" why=recommendation.why %}
+    {% endif %}
+</section>
+{% endif %}
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% if returning %}<p class="mt-6">不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">回答幾個問題，幫您挑</a></p>{% endif %}
 {% else %}
@@ -13,15 +25,8 @@
 {% include "screening/step_progress.html" %}
 {% if recommended %}
 <h1 class="h3 mt-2">推薦您做這一份</h1>
-{# A flat block (ADR 0022): not a link itself, only its 開始作答 button is. #}
 <section aria-labelledby="recommended-title" class="mb-4">
-    <div class="recommended-heading flex items-center gap-4">
-        {% include "screening/questionnaire_icon.html" with icon=recommended.definition.icon %}
-        <h2 id="recommended-title" class="h4 mb-0">{{ recommended.definition.topic }}<span class="block font-normal">{{ recommended }}</span></h2>
-    </div>
-    <p class="card-tags">{% include "screening/card_tags.html" with questionnaire=recommended %}</p>
-    <p><strong>為什麼推薦：</strong>{{ why }}</p>
-    <a class="btn btn-primary btn-lg" href="{{ start_url }}">開始作答</a>
+    {% include "screening/recommended_questionnaire.html" with questionnaire=recommended level=2 title_id="recommended-title" %}
 </section>
 {% if also %}
 <h2 class="h4">也可以做</h2>

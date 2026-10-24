@@ -88,6 +88,16 @@ RECOMMENDATION_REASONS = {
     ),
 }
 
+# Why the returning user's catalogue recommends a questionnaire (#347, ADR 0028), by the rule
+# that picked it; spec #339's drafts, the owner settles them on review.
+CATALOGUE_REASONS = {
+    "retest": RETEST_DUE_TEXT,
+    "no_life_impact": "您還沒做過聽力對生活影響的問卷，做一次之後才有基礎可以比較。",
+    "aided_and_unaided": (
+        "您有戴著助聽器的紀錄，也有沒戴時的紀錄，可以了解助聽器的成效跟一般使用者比起來怎樣。"
+    ),
+}
+
 # Why the home page suggests its 建議下一步 (#261), word for word from spec #257's table; the
 # owner settles the drafted ones on review.
 NEXT_STEP_REASONS = {

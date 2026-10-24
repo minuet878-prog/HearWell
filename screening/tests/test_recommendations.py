@@ -2,7 +2,7 @@
 
 import re
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import StringIO
 from zoneinfo import ZoneInfo
 
@@ -11,6 +11,7 @@ from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.models import (
     Answer,
@@ -21,6 +22,7 @@ from screening.models import (
     Submission,
     User,
 )
+from screening.scoring import RETEST_DUE_TEXT
 from screening.tests.helpers import consented_user, step_bar
 
 
@@ -637,3 +639,170 @@ class ReturningCatalogueTests(TestCase):
         self.assertContains(page, "上次 ")
         self.assertContains(page, "幫您挑")
         self.assertNotContains(page, 'name="concern"')
+
+
+class RecommendedQuestionnaireTests(TestCase):
+    """The 推薦問卷 on top of the returning user's catalogue (#347, ADR 0028)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.by_code = {q.code: q for q in Questionnaire.objects.defined()}
+
+    def login(self, age=70):
+        # age None: no birth year.
+        user = consented_user(
+            username=f"recommended_{uuid.uuid4().hex[:8]}",
+            birth_year=None if age is None else date.today().year - age,
+        )
+        self.client.force_login(user)
+        return user
+
+    def record(self, user, code, *, wearing=None, days_ago=1):
+        # A complete record: every item answered with its lowest choice, an HHI choice on HHI.
+        questionnaire = self.by_code[code]
+        submission = Submission.objects.create(
+            user=user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=0)
+            for question in questionnaire.questions.all()
+        )
+        Submission.objects.filter(pk=submission.pk).update(
+            created_at=timezone.now() - timedelta(days=days_ago)
+        )
+        return submission
+
+    def recommended(self, page=None):
+        # The 推薦您做這一份 block, or None without one.
+        page = page or self.client.get(reverse("questionnaire_list"))
+        block = re.search(
+            r'<section aria-labelledby="catalogue-recommended"[^>]*>(.*?)</section>',
+            page.content.decode(),
+            re.S,
+        )
+        return block and block.group(1)
+
+    def starts(self, block):
+        # The block's 開始作答 links, in order.
+        return re.findall(r'<a class="btn btn-primary btn-lg" href="([^"]+)">開始作答', block)
+
+    def start_url(self, code):
+        return reverse("screening", args=[self.by_code[code].pk])
+
+    def test_a_due_retest_recommends_the_last_life_impact_questionnaire_again(self):
+        # #339 acceptance 3: HHIA-S over six months ago, 65 since.
+        user = self.login(age=70)
+        self.record(user, "hhia-s", wearing=False, days_ago=200)
+        page = self.client.get(reverse("questionnaire_list"))
+        block = self.recommended(page)
+        self.assertIn('<h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>', block)
+        self.assertEqual(self.starts(block), [self.start_url("hhia-s")])
+        self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
+        # Still in the catalogue below, all six cards.
+        main = page.content.decode()
+        cards = re.findall(r'<a class="link-card mt-4 questionnaire-card" href="([^"]+)">', main)
+        self.assertEqual(len(cards), 6)
+        self.assertIn(self.start_url("hhia-s"), cards)
+
+    def test_without_a_life_impact_record_one_is_recommended_by_age(self):
+        # #339 acceptance 4, and its 40-year-old counterpart.
+        for age, code in ((70, "hhie-s"), (40, "hhia-s")):
+            with self.subTest(age=age):
+                user = self.login(age=age)
+                self.record(user, "thi")
+                block = self.recommended()
+                self.assertEqual(self.starts(block), [self.start_url(code)])
+                self.assertIn(
+                    "<strong>為什麼推薦：</strong>您還沒做過聽力對生活影響的問卷，"
+                    "做一次之後才有基礎可以比較。</p>",
+                    block,
+                )
+
+    def test_without_a_life_impact_record_or_an_age_both_are_listed(self):
+        # #339 acceptance 5: no birth year, or one that cannot tell 64 from 65.
+        for age in (None, 65):
+            with self.subTest(age=age):
+                user = self.login(age=age)
+                self.record(user, "thi")
+                block = self.recommended()
+                self.assertEqual(
+                    self.starts(block), [self.start_url("hhie-s"), self.start_url("hhia-s")]
+                )
+                self.assertEqual(block.count("為什麼推薦："), 1)
+                for code in ("hhie-s", "hhia-s"):
+                    questionnaire = self.by_code[code]
+                    item = block[block.index(f'id="recommended-{code}"') :]
+                    item = item[: item.index("開始作答")]
+                    self.assertIn(f"<p>{questionnaire.definition.audience}</p>", item)
+                    # Two 開始作答 buttons, each named after its questionnaire for screen readers.
+                    self.assertIn(
+                        f'開始作答<span class="visually-hidden">：{questionnaire}</span></a>', block
+                    )
+
+    def test_aided_and_unaided_records_without_ioi_ha_recommend_ioi_ha(self):
+        # #339 acceptance 6: an unaided HHIE-S within six months, and a record answered wearing
+        # hearing aids: SADL, always saved as worn, or a life-impact one answered worn.
+        for aided in ("sadl", "hhia-s"):
+            with self.subTest(aided=aided):
+                user = self.login()
+                self.record(user, "hhie-s", wearing=False, days_ago=30)
+                self.record(user, aided, wearing=True)
+                block = self.recommended()
+                self.assertEqual(self.starts(block), [self.start_url("ioi-ha")])
+                self.assertIn(
+                    "<strong>為什麼推薦：</strong>您有戴著助聽器的紀錄，也有沒戴時的紀錄，"
+                    "可以了解助聽器的成效跟一般使用者比起來怎樣。</p>",
+                    block,
+                )
+
+    def test_no_rule_holding_leaves_no_recommendation(self):
+        # #339 acceptance 7, and rule 3 one condition short each.
+        cases = {
+            "recent unaided only": (("hhie-s", False),),
+            "worn without a norm basis": (("hhie-s", True),),
+            "ioi-ha already answered": (("hhie-s", False), ("sadl", True), ("ioi-ha", None)),
+        }
+        for case, records in cases.items():
+            with self.subTest(case):
+                user = self.login()
+                for code, wearing in records:
+                    self.record(user, code, wearing=wearing, days_ago=30)
+                page = self.client.get(reverse("questionnaire_list"))
+                self.assertIsNone(self.recommended(page))
+                self.assertNotContains(page, "推薦您做這一份")
+                self.assertEqual(page.content.decode().count("questionnaire-card"), 6)
+
+    def test_a_due_retest_comes_before_ioi_ha(self):
+        # Rules 1 and 3 both hold: rule 1 wins.
+        user = self.login()
+        self.record(user, "hhie-s", wearing=False, days_ago=200)
+        self.record(user, "sadl", wearing=True, days_ago=10)
+        block = self.recommended()
+        self.assertEqual(self.starts(block), [self.start_url("hhie-s")])
+        self.assertIn(RETEST_DUE_TEXT, block)
+
+    def test_the_recommendation_queries_do_not_grow_with_the_records(self):
+        # Rule 3, the one asking the most: two records, then many of every questionnaire.
+        counts = []
+        for many in (False, True):
+            user = self.login()
+            self.record(user, "hhie-s", wearing=False, days_ago=30)
+            self.record(user, "sadl", wearing=True)
+            if many:
+                for code in ("hhie-s", "hhia-s", "sadl", "ssq12-tw", "thi"):
+                    for days_ago in (2, 3):
+                        self.record(user, code, wearing=code != "thi", days_ago=days_ago)
+            with CaptureQueriesContext(connection) as queries:
+                block = self.recommended()
+            self.assertEqual(self.starts(block), [self.start_url("ioi-ha")])
+            counts.append(len(queries))
+        self.assertEqual(counts[0], counts[1])
+
+    def test_a_new_users_catalogue_recommends_nothing(self):
+        self.login()
+        self.assertIsNone(
+            self.recommended(self.client.get(reverse("questionnaire_list"), {"choose": "self"}))
+        )

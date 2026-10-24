@@ -827,6 +827,10 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             last = cards.locator(".card-tag", has_text="上次")
             expect(last).to_have_count(1)
             expect(cards.first.locator(".card-tag").last).to_have_text(f"上次 {self.old_date}")
+            # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
+            recommended = self.main().get_by_role("region", name="推薦您做這一份")
+            expect(recommended).to_contain_text("HHIE-S")
+            expect(recommended).to_contain_text(self.REMINDER)
             self.assert_fits_a_phone_at_double_text_size("catalogue")
             tag = cards.first.locator(".card-tag").last
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
@@ -836,6 +840,27 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
             expect(cards).to_have_count(6)
+
+    def test_both_recommended_life_impact_questionnaires_fit_a_phone(self):
+        """#347 (#339 acceptance 5, 22): only THI and no birth year, so the recommendation lists
+        HHIE-S and HHIA-S, each with its ages and button; 320px at 200% text."""
+        call_command("seed_questionnaires", verbosity=0)
+        user = consented_user(username="thi_only_e2e")
+        Submission.objects.create(user=user, questionnaire=Questionnaire.objects.get(code="thi"))
+        self.client.force_login(user)
+        self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            recommended = self.main().get_by_role("region", name="推薦您做這一份")
+            starts = recommended.get_by_role("link", name="開始作答")
+            expect(starts).to_have_count(2)
+            expect(starts.first).to_have_accessible_name(re.compile(r"^開始作答\s*：HHIE-S\s*$"))
+            expect(recommended).to_contain_text("適合 65 歲以上的長輩。")
+            expect(recommended).to_contain_text("適合 18–64 歲成人")
+            self.assert_fits_a_phone_at_double_text_size("catalogue, both recommended")
+            content_width, box_width = recommended.evaluate("e => [e.scrollWidth, e.clientWidth]")
+            self.assertLessEqual(content_width, box_width, "推薦您做這一份")
 
     def test_history_fits_a_phone_at_double_text_size(self):
         """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the
