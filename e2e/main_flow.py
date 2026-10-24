@@ -734,6 +734,164 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.page.emulate_media(media="screen")
 
 
+class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#332 (spec #326 B3, D5, D6): copy, show-password and register field feedback."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the site's success green
+    SLASH = "M3 3l18 18"  # the line across the 隱藏 eye
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, width=412, height=900, signed_in=False):
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        if signed_in:
+            user = consented_user(username="feedback_e2e")
+            ReportShare.objects.create(user=user)
+            self.client.force_login(user)
+            self.context.add_cookies(
+                [
+                    {
+                        "name": settings.SESSION_COOKIE_NAME,
+                        "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                        "url": self.live_server_url,
+                    }
+                ]
+            )
+            self.context.grant_permissions(
+                ["clipboard-read", "clipboard-write"], origin=self.live_server_url
+            )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    # Spec #326 acceptance 8 (B3); every press saying it again is in copy-link.test.js.
+    def test_copy_button_turns_green_with_a_tick_then_back(self):
+        self.open(signed_in=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/share")
+            button = self.main().locator("#copy-link")
+            expect(button).to_have_accessible_name("複製連結")
+            expect(button).not_to_have_css("background-color", self.GREEN)
+            button.click()
+            expect(button).to_have_accessible_name("已複製")
+            expect(button).to_have_text("已複製")
+            expect(button.locator("svg")).to_be_visible()
+            expect(button).to_have_css("background-color", self.GREEN)
+            expect(button).to_have_css("color", "rgb(255, 255, 255)")
+            # The words under the button are for screen readers only now.
+            status = self.page.locator("#copy-status")
+            expect(status).to_have_text("已複製")
+            self.assertLessEqual(status.bounding_box()["width"], 1)
+            expect(button).to_have_accessible_name("複製連結", timeout=3000)
+            expect(button.locator("svg")).to_have_count(0)
+            expect(button).not_to_have_css("background-color", self.GREEN)
+
+    # Spec #326 acceptance 18 (D5).
+    def test_show_password_has_an_open_then_a_slashed_eye(self):
+        for page in ("login", "register"):
+            with self.subTest(page=page):
+                self.open()
+                self.page.goto(f"{self.live_server_url}/{page}")
+                toggle = self.main().locator("button.password-toggle").first
+                eye = toggle.locator("svg")
+                expect(eye).to_be_visible()
+                name = toggle.get_attribute("aria-label")
+                self.assertTrue(name.startswith("顯示"), name)
+                self.assertNotIn(self.SLASH, eye.inner_html())
+                # The eye sits on the words' line, about the words' size.
+                size = float(toggle.evaluate("b => getComputedStyle(b).fontSize")[:-2])
+                self.assertLessEqual(eye.bounding_box()["height"], 1.5 * size)
+                toggle.click()
+                expect(toggle).to_have_text("隱藏")
+                expect(toggle).to_have_accessible_name(name.replace("顯示", "隱藏", 1))
+                self.assertIn(self.SLASH, eye.inner_html())
+                toggle.click()
+                expect(toggle).to_have_text("顯示")
+                expect(toggle).to_have_accessible_name(name)
+                self.assertNotIn(self.SLASH, eye.inner_html())
+
+    TICK = "M5 12.5l4.5 4.5L19 7.5"  # the tick's path, drawn in the field
+
+    def tick(self, field):
+        """The tick drawn in the field, or None: its picture, size and room, in px."""
+        drawn = field.evaluate(
+            """input => {
+                const style = getComputedStyle(input);
+                return {
+                    image: style.backgroundImage,
+                    size: parseFloat(style.backgroundSize),
+                    position: style.backgroundPosition,
+                    room: parseFloat(style.paddingRight),
+                    height: input.clientHeight,
+                };
+            }"""
+        )
+        return drawn if self.TICK in drawn["image"] else None
+
+    def assert_tick_inside(self, field, label):
+        """The field shows the green tick at its right end, in room the typing never reaches."""
+        tick = self.tick(field)
+        self.assertIsNotNone(tick, label)
+        self.assertIn("%2314573c", tick["image"], label)  # --color-normal, the success green
+        # Centred down the field, its right side this far in from the field's right edge.
+        gap = re.fullmatch(r"calc\(100% - ([\d.]+)px\) 50%", tick["position"])
+        self.assertIsNotNone(gap, tick["position"])
+        self.assertLessEqual(tick["size"] + float(gap.group(1)), tick["room"], label)
+        self.assertLessEqual(tick["size"], tick["height"], label)
+
+    # Spec #326 acceptance 19 (D6); the year rule's edges are in register-checks.test.js.
+    def test_register_ticks_birth_year_and_confirmation_but_not_password(self):
+        for width, size in ((412, None), (320, "225%")):
+            with self.subTest(width=width, text_size=size):
+                self.open(width=width, height=640)
+                self.page.goto(f"{self.live_server_url}/register")
+                self.page.wait_for_load_state("load")
+                if size:
+                    self.page.locator("html").evaluate(
+                        f"html => html.style.setProperty('font-size', '{size}', 'important')"
+                    )
+                year = self.page.get_by_label("出生年：", exact=True)
+                password = self.page.get_by_label("密碼：", exact=True)
+                confirmation = self.page.get_by_label("密碼確認：", exact=True)
+                for field in (year, password, confirmation):
+                    self.assertIsNone(self.tick(field))
+                year.fill("200")
+                self.assertIsNone(self.tick(year))
+                year.fill("44")
+                # The room for the tick must not squeeze out the typing at double text size:
+                # a field with no room left takes no typing at all.
+                expect(year).to_have_value("44")
+                self.assert_tick_inside(year, "出生年")
+                expect(self.main().get_by_role("status").filter(has_text="格式正確")).to_have_count(
+                    1
+                )
+                year.fill("")
+                self.assertIsNone(self.tick(year))
+                password.fill("Fake-pass-2468")
+                confirmation.fill("Fake-pass-246")
+                self.assertIsNone(self.tick(confirmation))
+                confirmation.fill("Fake-pass-2468")
+                self.assert_tick_inside(confirmation, "密碼確認")
+                expect(
+                    self.main().get_by_role("status").filter(has_text="兩次密碼相同")
+                ).to_have_count(1)
+                # 密碼 itself never gets one.
+                self.assertIsNone(self.tick(password))
+                year.fill("44")
+                if size:
+                    self.assert_fits_a_phone_at_double_text_size("register with ticks", width)
+
+
 class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#163: a returning user whose last HHIE-S is over 6 months old takes it again."""
 
@@ -1543,7 +1701,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
             share = self.user.report_shares.get()
             self.main().get_by_role("button", name="複製連結", exact=True).click()
-            expect(self.main().get_by_text("已複製", exact=True)).to_be_visible()
+            # #332: the button itself says it now.
+            expect(self.main().get_by_role("button", name="已複製", exact=True)).to_be_visible()
             copied = self.page.evaluate("navigator.clipboard.readText()")
             # The site always serves HTTPS; the test server only speaks HTTP, so the family
             # opens the copied path on it.
