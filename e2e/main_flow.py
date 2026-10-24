@@ -7,6 +7,8 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 import calendar
 import os
 import re
+import struct
+import zlib
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
@@ -6826,6 +6828,197 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.scroll_to(self.screens(3))
             self.assertGreater(self.page.evaluate("window.scrollY"), self.screens(2))
             expect(self.page.get_by_text("回到頂端")).to_have_count(0)
+
+
+def png_column(png):
+    """The pixels of a one-pixel-wide PNG screenshot, top to bottom, as (r, g, b): Chromium's 8-bit
+    RGB or RGBA, not interlaced. Just enough PNG reading to see a shadow without an image library.
+    """
+    position, data = 8, b""
+    while position < len(png):
+        length, kind = struct.unpack(">I4s", png[position : position + 8])
+        body = png[position + 8 : position + 8 + length]
+        if kind == b"IHDR":
+            width, height, _, colour_type = struct.unpack(">IIBB", body[:10])
+        elif kind == b"IDAT":
+            data += body
+        position += 12 + length
+    channels = {2: 3, 6: 4}[colour_type]
+    stride = width * channels
+    raw = zlib.decompress(data)
+    previous = bytearray(stride)
+    pixels = []
+    for y in range(height):
+        start = y * (stride + 1)
+        kind, row = raw[start], bytearray(raw[start + 1 : start + 1 + stride])
+        for x in range(stride):
+            left = row[x - channels] if x >= channels else 0
+            up = previous[x]
+            up_left = previous[x - channels] if x >= channels else 0
+            if kind == 1:
+                row[x] = (row[x] + left) % 256
+            elif kind == 2:
+                row[x] = (row[x] + up) % 256
+            elif kind == 3:
+                row[x] = (row[x] + (left + up) // 2) % 256
+            elif kind == 4:
+                guess = left + up - up_left
+                nearest = min((left, up, up_left), key=lambda value: abs(guess - value))
+                row[x] = (row[x] + nearest) % 256
+        pixels.append(tuple(row[:3]))
+        previous = row
+    return pixels
+
+
+class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #344): the compare page's number tables scroll sideways in their box,
+    with a shadow on the side not yet seen and, when they do not fit, 表格可以左右滑動 above."""
+
+    HINT = "表格可以左右滑動"
+    # Under a shadow even the gaps between words are grey; without one some pixel is white.
+    SHADED, CLEAR = 235, 250
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="scroll_hint_e2e")
+        for tested_on, db in ((date(2026, 5, 1), 40), (date(2026, 9, 28), 55)):
+            audiogram = Audiogram.objects.create(user=user, tested_on=tested_on)
+            AudiogramPoint.objects.bulk_create(
+                AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+                for ear in ("right", "left")
+                for f in (500, 1000, 2000, 4000)
+            )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width, javascript=True, double_text=False):
+        """The compare page with its numbers' fold open; the screen is tall enough for both."""
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 1600}, java_script_enabled=javascript
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/audiograms/compare")
+        self.page.wait_for_load_state("load")
+        if double_text:
+            self.double_text()
+        self.numbers().locator("summary").click()
+
+    def double_text(self, on=True):
+        # 2 x the site's 112.5% base, as in OnAPhone.assert_fits_a_phone_at_double_text_size.
+        self.page.locator("html").evaluate(
+            "(html, on) => on ? html.style.setProperty('font-size', '225%', 'important')"
+            " : html.style.removeProperty('font-size')",
+            on,
+        )
+
+    def numbers(self):
+        return self.main().locator("details", has_text="看每個頻率的數字")
+
+    def boxes(self):
+        """The two number tables' scrolling boxes, as a screen reader finds them."""
+        boxes = self.numbers().get_by_role("region", name=re.compile("^右耳 "))
+        expect(boxes).to_have_count(2)
+        return boxes.all()
+
+    def shown_hints(self):
+        return self.main().get_by_text(self.HINT, exact=True).filter(visible=True)
+
+    def overflows(self, box):
+        return box.evaluate("box => box.scrollWidth > box.clientWidth")
+
+    def scroll_to_end(self, box):
+        box.evaluate("box => box.scrollTo({left: box.scrollWidth, behavior: 'instant'})")
+
+    def edge_lightness(self, box):
+        """How light the box's left and right edges are, at their lightest pixel, two pixels in.
+        Measured mid-screen, clear of the bottom tab bar fixed over the page."""
+        box.evaluate("box => box.scrollIntoView({block: 'center', behavior: 'instant'})")
+        rect = box.bounding_box()
+        lightness = []
+        for x in (round(rect["x"]) + 2, round(rect["x"] + rect["width"]) - 3):
+            png = self.page.screenshot(
+                clip={"x": x, "y": round(rect["y"]), "width": 1, "height": int(rect["height"])}
+            )
+            lightness.append(max(sum(pixel) // 3 for pixel in png_column(png)))
+        return lightness
+
+    def assert_shaded(self, box, left, right):
+        for side, shaded, lightness in zip(
+            ("left", "right"), (left, right), self.edge_lightness(box), strict=True
+        ):
+            if shaded:
+                self.assertLess(lightness, self.SHADED, f"{side} edge has no shadow")
+            else:
+                self.assertGreaterEqual(lightness, self.CLEAR, f"{side} edge has a shadow")
+
+    # #338 acceptance 18
+    def test_double_text_shows_the_hint_and_the_shadow_moves_to_the_left_at_the_end(self):
+        self.open(320, double_text=True)
+        with self.saving_artifacts():
+            boxes = self.boxes()
+            expect(self.shown_hints()).to_have_count(len(boxes))
+            for box, hint in zip(boxes, self.shown_hints().all(), strict=True):
+                self.assertTrue(self.overflows(box))
+                # Just above its table.
+                hint_box, table_box = hint.bounding_box(), box.bounding_box()
+                gap = table_box["y"] - (hint_box["y"] + hint_box["height"])
+                self.assertGreaterEqual(gap, 0)
+                self.assertLess(gap, 20)
+                self.assert_shaded(box, left=False, right=True)
+                self.scroll_to_end(box)
+                self.assert_shaded(box, left=True, right=False)
+
+    # #338 acceptance 19; and the hint follows the text size and the screen's width.
+    def test_fitting_tables_have_no_shadow_or_hint_and_the_hint_follows_size_changes(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for box in self.boxes():
+                self.assertFalse(self.overflows(box))
+                self.assert_shaded(box, left=False, right=False)
+            expect(self.shown_hints()).to_have_count(0)
+            self.page.set_viewport_size({"width": 320, "height": 1600})
+            self.double_text()
+            expect(self.shown_hints()).to_have_count(2)
+            self.double_text(on=False)
+            expect(self.shown_hints()).to_have_count(0)
+            self.double_text()
+            expect(self.shown_hints()).to_have_count(2)
+            self.page.set_viewport_size({"width": 1280, "height": 1600})
+            expect(self.shown_hints()).to_have_count(0)
+
+    # #338 acceptance 20
+    def test_without_javascript_the_shadow_stays_and_paper_shows_neither(self):
+        with self.subTest(javascript=False):
+            self.open(320, javascript=False, double_text=True)
+            for box in self.boxes():
+                self.assertTrue(self.overflows(box))
+                self.assert_shaded(box, left=False, right=True)
+            expect(self.main().get_by_text(self.HINT)).to_have_count(0)
+        with self.subTest(media="print"):
+            self.open(320, double_text=True)
+            expect(self.shown_hints()).to_have_count(2)
+            self.page.emulate_media(media="print")
+            expect(self.shown_hints()).to_have_count(0)
+            for box in self.boxes():
+                self.assert_shaded(box, left=False, right=False)
 
 
 class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
