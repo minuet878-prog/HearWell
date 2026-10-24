@@ -782,6 +782,25 @@ class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         expect(icon).to_be_visible()
         expect(icon).to_have_attribute("aria-hidden", "true")
         self.assertGreater(icon.bounding_box()["width"], 10, name)
+        return icon
+
+    def arrow_points(self, icon):
+        """Which way a drawn arrow points: the side its head's two wings sit on."""
+        return icon.locator("path").evaluate(
+            """path => {
+                const length = path.getTotalLength();
+                const box = path.getBBox();
+                const middle = box.y + box.height / 2;
+                const wings = [];
+                for (let at = 0; at <= length; at += length / 200) {
+                    const point = path.getPointAtLength(at);
+                    // Only the head reaches far above and below the shaft.
+                    if (Math.abs(point.y - middle) > box.height / 3) wings.push(point.x);
+                }
+                const x = wings.reduce((sum, value) => sum + value, 0) / wings.length;
+                return x < box.x + box.width / 2 ? "left" : "right";
+            }"""
+        )
 
     def assert_asks_for_a_choice(self, number):
         expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
@@ -791,14 +810,14 @@ class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         with self.saving_artifacts():
             # Nothing chosen: 下一題 is not greyed out; pressing it says what is missing.
             expect(self.main().get_by_role("button", name="下一題")).to_be_enabled()
-            self.assert_icon("下一題", "last")
+            self.assertEqual(self.arrow_points(self.assert_icon("下一題", "last")), "right")
             self.next()
             self.assert_asks_for_a_choice(None)
             expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
             self.answer("沒戴")
             expect(self.main().get_by_role("alert")).to_have_count(0)
             self.next()
-            self.assert_icon("上一題", "first")
+            self.assertEqual(self.arrow_points(self.assert_icon("上一題", "first")), "left")
             for number in range(1, QUESTION_COUNT):
                 self.answer("有時", number)
                 self.next()
