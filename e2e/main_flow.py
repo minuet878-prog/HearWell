@@ -337,8 +337,13 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.answer("沒戴")
             self.next()
             expect(self.main().get_by_text("未作答", exact=True)).to_be_visible()
-            expect(self.main().get_by_role("button", name="下一題")).to_be_disabled()
+            # #326 C5: nothing chosen on the scale, so 下一題 asks for a choice and stays.
+            self.next()
+            expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
+            expect(self.main().get_by_role("group").locator("legend")).to_be_focused()
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 12 題")
             self.main().get_by_role("group").get_by_label("不適用", exact=True).check()
+            expect(self.main().get_by_role("alert")).to_have_count(0)
             self.next()
             slider = self.main().get_by_role("slider")
             slider.press("Home")
@@ -749,6 +754,543 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.page.emulate_media(media="screen")
 
 
+class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#329 (spec #326 A6, C5): the answer page's direction icons, and the hint when 下一題 or
+    送出 is pressed with nothing chosen."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(consented_user(username="answer_hint_e2e"))
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/questionnaire/{hhie_s.pk}")
+
+    def assert_icon(self, name, side):
+        """The button keeps its name; a drawn icon sits on that side of the words."""
+        button = self.main().get_by_role("button", name=name, exact=True)
+        icon = button.locator(f"svg:{side}-child")
+        expect(icon).to_be_visible()
+        expect(icon).to_have_attribute("aria-hidden", "true")
+        self.assertGreater(icon.bounding_box()["width"], 10, name)
+        return icon
+
+    def arrow_points(self, icon):
+        """Which way a drawn arrow points: the side its head's two wings sit on."""
+        return icon.locator("path").evaluate(
+            """path => {
+                const length = path.getTotalLength();
+                const box = path.getBBox();
+                const middle = box.y + box.height / 2;
+                const wings = [];
+                for (let at = 0; at <= length; at += length / 200) {
+                    const point = path.getPointAtLength(at);
+                    // Only the head reaches far above and below the shaft.
+                    if (Math.abs(point.y - middle) > box.height / 3) wings.push(point.x);
+                }
+                const x = wings.reduce((sum, value) => sum + value, 0) / wings.length;
+                return x < box.x + box.width / 2 ? "left" : "right";
+            }"""
+        )
+
+    def assert_asks_for_a_choice(self, number):
+        expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
+        expect(self.question(number).locator("legend")).to_be_focused()
+
+    def test_icons_and_the_choose_first_hint(self):
+        with self.saving_artifacts():
+            # Nothing chosen: 下一題 is not greyed out; pressing it says what is missing.
+            expect(self.main().get_by_role("button", name="下一題")).to_be_enabled()
+            self.assertEqual(self.arrow_points(self.assert_icon("下一題", "last")), "right")
+            self.next()
+            self.assert_asks_for_a_choice(None)
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.answer("沒戴")
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            self.next()
+            self.assertEqual(self.arrow_points(self.assert_icon("上一題", "first")), "left")
+            for number in range(1, QUESTION_COUNT):
+                self.answer("有時", number)
+                self.next()
+            self.assert_icon("送出", "first")
+            self.main().get_by_role("button", name="送出").click()
+            self.assert_asks_for_a_choice(QUESTION_COUNT)
+            self.assert_fits_a_phone_at_double_text_size("answer page hint", width=412)
+            self.answer("有時", QUESTION_COUNT)
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+
+
+class SentMomentTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#330 (spec #326 B1): sending the answers shows a green ✓ 已送出, says 已送出, and only
+    then opens the result page."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(consented_user(username="sent_moment_e2e"))
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_answering_shows_sent_then_opens_the_result(self):
+        with self.saving_artifacts():
+            answer_page = f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}"
+            self.page.goto(answer_page)
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("有時", number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            sent = self.main().get_by_role("button", name="已送出")
+            expect(sent).to_be_visible()
+            # The success green (--color-normal, ADR 0007), white words.
+            expect(sent).to_have_css("background-color", "rgb(20, 87, 60)")
+            expect(sent).to_have_css("color", "rgb(255, 255, 255)")
+            expect(self.main().locator(".answer-app").get_by_role("status")).to_have_text("已送出")
+            self.assertEqual(self.page.url, answer_page)
+            expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+            submission = Submission.objects.get(user__username="sent_moment_e2e")
+            self.assertEqual(self.page.url, f"{self.live_server_url}/submission/{submission.pk}")
+
+
+class ProgressSavedTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#331 (spec #326 B4, C3, C4, ADR 0028): on the answer page the segment a choice just answered
+    fills, another question's text fades in, and ✓ 已儲存 shows when the draft was kept."""
+
+    fixtures = ("questions_fixture.json",)
+    BLUE = "rgb(31, 78, 140)"  # --color-primary
+    SAVED = "✓ 已儲存"
+    ANIMATIONS = """el => el.getAnimations({subtree: true})
+        .map(a => [a.animationName, a.effect.getTiming().duration])"""
+    # The progress line's size and where the choices start below it, whatever the scroll.
+    LAYOUT = """line => {
+        const box = line.getBoundingClientRect();
+        const choices = line.closest("fieldset").querySelector(".choice-group");
+        return [box.width, box.height, choices.getBoundingClientRect().top - box.top];
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="progress_saved_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion="no-preference", refuse_storage=False):
+        """Question 1 of HHIE-S, reached from the hearing aid question."""
+        self.context = self.browser.new_context(
+            **self.playwright.devices["Pixel 7"], reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        if refuse_storage:
+            self.context.add_init_script(
+                "Storage.prototype.setItem = () => {"
+                " throw new DOMException('denied', 'SecurityError'); };"
+            )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.page.goto(f"{self.live_server_url}/questionnaire/{hhie_s.pk}")
+        self.answer("沒戴")
+        self.next()
+        self.question(1)
+
+    def bar(self):
+        return self.main().locator(".step-progress-bar")
+
+    def segment(self, number):
+        return self.bar().locator(".step-progress-segment").nth(number - 1)
+
+    def question_text(self):
+        return self.main().get_by_role("group").locator("legend > span:last-child")
+
+    def back(self, number):
+        self.main().get_by_role("button", name="上一題").click()
+        self.question(number)
+
+    def assert_on_question(self, number, faded):
+        """Focus on the question as before; its text faded in (0.35 s) or is simply there."""
+        expect(self.question(number).locator("legend")).to_be_focused()
+        expect(self.question_text()).to_have_text(re.compile(r"\S"))
+        animations = [["question-fade", 350]] if faded else []
+        self.assertEqual(self.question_text().evaluate(self.ANIMATIONS), animations)
+
+    def assert_fills(self, number):
+        """Only that segment fills, over 0.35 s; with number None, nothing on the bar moves."""
+        fill = [["progress-fill", 350]]
+        self.assertEqual(self.bar().evaluate(self.ANIMATIONS), fill if number else [])
+        if number:
+            self.assertEqual(self.segment(number).evaluate(self.ANIMATIONS), fill)
+
+    # #326 acceptance 12 and 13: answering fills only the new segment, going back fills nothing;
+    # each question shown after moving fades in, with focus on it.
+    def test_new_segment_fills_and_another_question_fades_in(self):
+        self.open()
+        with self.saving_artifacts():
+            self.assert_on_question(1, faded=True)
+            self.assert_fills(None)
+            self.answer("有時", 1)
+            self.assert_fills(1)
+            self.next()
+            self.assert_on_question(2, faded=True)
+            self.assert_fills(None)
+            expect(self.segment(1)).to_have_css("background-color", self.BLUE)
+            self.answer("有時", 2)
+            self.assert_fills(2)
+            self.back(1)
+            self.assert_on_question(1, faded=True)
+            self.assert_fills(None)
+            # Changing an answer fills nothing: the segment already was answered.
+            self.answer("常常", 1)
+            self.assert_fills(None)
+
+    # #326 acceptance 23: with reduced motion nothing fills or fades; it is simply there.
+    def test_reduced_motion_neither_fills_nor_fades(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.assert_on_question(1, faded=False)
+            expect(self.question_text()).to_have_css("opacity", "1")
+            self.answer("有時", 1)
+            self.assert_fills(None)
+            expect(self.segment(1)).to_have_css("background-color", self.BLUE)
+            self.next()
+            self.assert_on_question(2, faded=False)
+
+    # #326 acceptance 9: ✓ 已儲存 shows beside the progress for about 1.5 s once the draft was
+    # kept, without moving anything, at the usual and at double text size; not read aloud; the
+    # footer's autosave note stays.
+    def test_saved_shows_beside_the_progress_for_a_moment(self):
+        self.open()
+        with self.saving_artifacts():
+            for number, double in ((1, False), (2, True)):
+                with self.subTest(double_text_size=double):
+                    if double:
+                        self.page.locator("html").evaluate(
+                            "html => html.style.setProperty('font-size', '225%', 'important')"
+                        )
+                    line = self.main().locator(".question-progress-line")
+                    before = line.evaluate(self.LAYOUT)
+                    self.answer("有時", number)
+                    saved = line.get_by_text(self.SAVED)
+                    expect(saved).to_be_visible()
+                    self.assertEqual(line.evaluate(self.LAYOUT), before)
+                    expect(self.question(number)).not_to_have_accessible_name(re.compile("已儲存"))
+                    expect(saved).to_have_count(0, timeout=2500)
+                    self.assertEqual(line.evaluate(self.LAYOUT), before)
+                    expect(self.main()).to_contain_text(
+                        "答案會自動存在這支手機，中途離開也沒關係。"
+                    )
+                    self.next()
+
+    # #326 acceptance 9: storage refused (private mode, blocked): the answer counts, no 已儲存.
+    def test_no_saved_when_the_draft_cannot_be_kept(self):
+        self.open(refuse_storage=True)
+        with self.saving_artifacts():
+            self.answer("有時", 1)
+            self.assert_fills(1)
+            self.page.wait_for_timeout(500)
+            expect(self.main().get_by_text(self.SAVED)).to_have_count(0)
+
+
+class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#332 (spec #326 B3, D5, D6): copy, show-password and register field feedback."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the site's success green
+    SLASH = "M3 3l18 18"  # the line across the 隱藏 eye
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, width=412, height=900, signed_in=False):
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        if signed_in:
+            user = consented_user(username="feedback_e2e")
+            ReportShare.objects.create(user=user)
+            self.client.force_login(user)
+            self.context.add_cookies(
+                [
+                    {
+                        "name": settings.SESSION_COOKIE_NAME,
+                        "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                        "url": self.live_server_url,
+                    }
+                ]
+            )
+            self.context.grant_permissions(
+                ["clipboard-read", "clipboard-write"], origin=self.live_server_url
+            )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    # Spec #326 acceptance 8 (B3); every press saying it again is in copy-link.test.js.
+    def test_copy_button_turns_green_with_a_tick_then_back(self):
+        self.open(signed_in=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/share")
+            button = self.main().locator("#copy-link")
+            expect(button).to_have_accessible_name("複製連結")
+            expect(button).not_to_have_css("background-color", self.GREEN)
+            button.click()
+            expect(button).to_have_accessible_name("已複製")
+            expect(button).to_have_text("已複製")
+            expect(button.locator("svg")).to_be_visible()
+            expect(button).to_have_css("background-color", self.GREEN)
+            expect(button).to_have_css("color", "rgb(255, 255, 255)")
+            # The words under the button are for screen readers only now.
+            status = self.page.locator("#copy-status")
+            expect(status).to_have_text("已複製")
+            self.assertLessEqual(status.bounding_box()["width"], 1)
+            expect(button).to_have_accessible_name("複製連結", timeout=3000)
+            expect(button.locator("svg")).to_have_count(0)
+            expect(button).not_to_have_css("background-color", self.GREEN)
+
+    # Spec #326 acceptance 18 (D5).
+    def test_show_password_has_an_open_then_a_slashed_eye(self):
+        for page in ("login", "register"):
+            with self.subTest(page=page):
+                self.open()
+                self.page.goto(f"{self.live_server_url}/{page}")
+                toggle = self.main().locator("button.password-toggle").first
+                eye = toggle.locator("svg")
+                expect(eye).to_be_visible()
+                name = toggle.get_attribute("aria-label")
+                self.assertTrue(name.startswith("顯示"), name)
+                self.assertNotIn(self.SLASH, eye.inner_html())
+                # The eye sits on the words' line, about the words' size.
+                size = float(toggle.evaluate("b => getComputedStyle(b).fontSize")[:-2])
+                self.assertLessEqual(eye.bounding_box()["height"], 1.5 * size)
+                toggle.click()
+                expect(toggle).to_have_text("隱藏")
+                expect(toggle).to_have_accessible_name(name.replace("顯示", "隱藏", 1))
+                self.assertIn(self.SLASH, eye.inner_html())
+                toggle.click()
+                expect(toggle).to_have_text("顯示")
+                expect(toggle).to_have_accessible_name(name)
+                self.assertNotIn(self.SLASH, eye.inner_html())
+
+    TICK = "M5 12.5l4.5 4.5L19 7.5"  # the tick's path, drawn in the field
+
+    def tick(self, field):
+        """The tick drawn in the field, or None: its picture, size and room, in px."""
+        drawn = field.evaluate(
+            """input => {
+                const style = getComputedStyle(input);
+                return {
+                    image: style.backgroundImage,
+                    size: parseFloat(style.backgroundSize),
+                    position: style.backgroundPosition,
+                    room: parseFloat(style.paddingRight),
+                    height: input.clientHeight,
+                };
+            }"""
+        )
+        return drawn if self.TICK in drawn["image"] else None
+
+    def assert_tick_inside(self, field, label):
+        """The field shows the green tick at its right end, in room the typing never reaches."""
+        tick = self.tick(field)
+        self.assertIsNotNone(tick, label)
+        self.assertIn("%2314573c", tick["image"], label)  # --color-normal, the success green
+        # Centred down the field, its right side this far in from the field's right edge.
+        gap = re.fullmatch(r"calc\(100% - ([\d.]+)px\) 50%", tick["position"])
+        self.assertIsNotNone(gap, tick["position"])
+        self.assertLessEqual(tick["size"] + float(gap.group(1)), tick["room"], label)
+        self.assertLessEqual(tick["size"], tick["height"], label)
+
+    # Spec #326 acceptance 19 (D6); the year rule's edges are in register-checks.test.js.
+    def test_register_ticks_birth_year_and_confirmation_but_not_password(self):
+        for width, size in ((412, None), (320, "225%")):
+            with self.subTest(width=width, text_size=size):
+                self.open(width=width, height=640)
+                self.page.goto(f"{self.live_server_url}/register")
+                self.page.wait_for_load_state("load")
+                if size:
+                    self.page.locator("html").evaluate(
+                        f"html => html.style.setProperty('font-size', '{size}', 'important')"
+                    )
+                year = self.page.get_by_label("出生年：", exact=True)
+                password = self.page.get_by_label("密碼：", exact=True)
+                confirmation = self.page.get_by_label("密碼確認：", exact=True)
+                for field in (year, password, confirmation):
+                    self.assertIsNone(self.tick(field))
+                year.fill("200")
+                self.assertIsNone(self.tick(year))
+                year.fill("44")
+                # The room for the tick must not squeeze out the typing at double text size:
+                # a field with no room left takes no typing at all.
+                expect(year).to_have_value("44")
+                self.assert_tick_inside(year, "出生年")
+                expect(self.main().get_by_role("status").filter(has_text="格式正確")).to_have_count(
+                    1
+                )
+                year.fill("")
+                self.assertIsNone(self.tick(year))
+                password.fill("Fake-pass-2468")
+                confirmation.fill("Fake-pass-246")
+                self.assertIsNone(self.tick(confirmation))
+                confirmation.fill("Fake-pass-2468")
+                self.assert_tick_inside(confirmation, "密碼確認")
+                expect(
+                    self.main().get_by_role("status").filter(has_text="兩次密碼相同")
+                ).to_have_count(1)
+                # 密碼 itself never gets one.
+                self.assertIsNone(self.tick(password))
+                year.fill("44")
+                if size:
+                    self.assert_fits_a_phone_at_double_text_size("register with ticks", width)
+
+    RED_BG = "rgb(254, 236, 231)"  # --color-severe-bg, the wrong field's fill
+
+    # Owner's call (2026-10-24, #326 self-review): the tick takes the server's red frame and
+    # words for that field away with it; going wrong again does not bring them back.
+    def test_register_tick_takes_the_servers_red_frame_away(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/register")
+            self.page.get_by_label("使用者名稱").fill("tick_e2e")
+            self.page.get_by_label("電子郵件").fill("tick_e2e@example.com")
+            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-246")
+            self.page.get_by_label("出生年：", exact=True).fill("200")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            self.page.wait_for_load_state("load")
+            fields = (
+                (self.page.get_by_label("出生年：", exact=True), "44", "200"),
+                (self.page.get_by_label("密碼確認：", exact=True), "Fake-pass-2468", "x"),
+            )
+            for field, _, _ in fields:
+                expect(field).to_have_attribute("aria-invalid", "true")
+                expect(field).to_have_css("background-color", self.RED_BG)
+                field_id = field.get_attribute("id")
+                expect(self.page.locator(f"#{field_id}_error")).to_be_visible()
+            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+            for field, right, wrong in fields:
+                field_id = field.get_attribute("id")
+                field.fill(right)
+                expect(field).not_to_have_attribute("aria-invalid", "true")
+                expect(field).not_to_have_css("background-color", self.RED_BG)
+                expect(self.page.locator(f"#{field_id}_error")).to_have_count(0)
+                self.assertIsNotNone(self.tick(field), field_id)
+                field.fill(wrong)
+                expect(field).not_to_have_attribute("aria-invalid", "true")
+                expect(self.page.locator(f"#{field_id}_error")).to_have_count(0)
+
+    def send_register(self, password, confirmation):
+        self.page.goto(f"{self.live_server_url}/register")
+        self.page.get_by_label("使用者名稱").fill("weak_e2e")
+        self.page.get_by_label("電子郵件").fill("weak_e2e@example.com")
+        self.page.get_by_label("密碼：", exact=True).fill(password)
+        self.page.get_by_label("密碼確認：", exact=True).fill(confirmation)
+        self.main().get_by_role("button", name="註冊", exact=True).click()
+        self.page.wait_for_load_state("load")
+
+    # Owner's call (2026-10-24): the tick on 密碼確認 answers only 「兩次密碼不一致」; what the
+    # server said about the password itself stays, red frame and all.
+    def test_confirmation_tick_keeps_the_servers_word_on_a_weak_password(self):
+        self.open()
+        with self.saving_artifacts():
+            confirmation = self.page.get_by_label("密碼確認：", exact=True)
+            errors = self.page.locator("#id_password2_error .field-error")
+            # A weak password typed twice differently: the server only says they differ.
+            self.send_register("12345678", "1234567")
+            expect(errors).to_have_count(1)
+            expect(errors).to_have_attribute("data-code", "password_mismatch")
+            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            confirmation.fill("12345678")
+            self.assertIsNotNone(self.tick(confirmation))
+            expect(errors).to_have_count(0)
+            expect(confirmation).not_to_have_attribute("aria-invalid", "true")
+            expect(confirmation).not_to_have_css("background-color", self.RED_BG)
+            # The same weak password twice: the server's words are about the password itself.
+            self.send_register("12345678", "12345678")
+            said = errors.all_inner_texts()
+            self.assertGreaterEqual(len(said), 1)
+            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            confirmation.fill("12345678")
+            self.assertIsNotNone(self.tick(confirmation))
+            expect(errors).to_have_text(said)
+            expect(confirmation).to_have_attribute("aria-invalid", "true")
+            expect(confirmation).to_have_css("background-color", self.RED_BG)
+            expect(confirmation).to_have_attribute(
+                "aria-describedby", re.compile(r"\bid_password2_error\b")
+            )
+
+
 class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#163: a returning user whose last HHIE-S is over 6 months old takes it again."""
 
@@ -974,6 +1516,71 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(since_last).to_contain_text(f"最近一次（{today}）：20 分")
         # 40 then 20 points, both 沒戴.
         expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
+
+
+class ContinueNoticeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#326 E7 (#337): an unfinished draft is offered on the home and screening pages."""
+
+    fixtures = ("questions_fixture.json",)
+    NOTICE = "您上次的「聽力對生活的影響（HHIE-S）」答到第 2 題，答案都還在。"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def log_in(self, username):
+        client = Client()
+        client.force_login(consented_user(username=username))
+        self.context.clear_cookies()
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+
+    def test_draft_is_offered_on_home_and_screening_pages_to_its_account_only(self):
+        with self.saving_artifacts():
+            self.log_in("notice_a")
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            self.answer("有時", 1)
+            self.next()
+            self.question(2)
+            for path in ("/", "/questionnaire_list"):
+                self.page.goto(f"{self.live_server_url}{path}")
+                notice = self.main().locator("#continue-notice p")
+                expect(notice).to_have_count(1)
+                expect(notice).to_have_text(f"{self.NOTICE}接著答")
+                self.assert_fits_a_phone_at_double_text_size(path, width=412)
+            notice.get_by_role("link", name="接著答").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            expect(self.main()).to_contain_text("您上次答到第 2 題，要接著答嗎？")
+            # Another account on the same phone sees nothing of it (#326 user story 49).
+            self.log_in("notice_b")
+            self.page.goto(self.live_server_url)
+            expect(self.main().locator("h1")).to_be_visible()
+            expect(self.main().locator("#continue-notice p")).to_have_count(0)
+            expect(self.main()).not_to_contain_text("您上次的")
 
 
 def six_months_after(day):
@@ -1544,7 +2151,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expect(self.page).to_have_url(f"{self.live_server_url}/share")
             share = self.user.report_shares.get()
             self.main().get_by_role("button", name="複製連結", exact=True).click()
-            expect(self.main().get_by_text("已複製", exact=True)).to_be_visible()
+            # #332: the button itself says it now.
+            expect(self.main().get_by_role("button", name="已複製", exact=True)).to_be_visible()
             copied = self.page.evaluate("navigator.clipboard.readText()")
             # The site always serves HTTPS; the test server only speaks HTTP, so the family
             # opens the copied path on it.
@@ -1814,10 +2422,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             with self.saving_artifacts():
                 main = self.page.get_by_role("main")
                 # #199: the ear steps hold masking and clear; saving is on the confirm step.
-                for step, name in ((2, "遮蔽：關"), (2, "清除剛標的點"), (4, "存檔")):
+                # #333: masking is a switch now.
+                for step, role, name in (
+                    (2, "switch", "遮蔽"),
+                    (2, "button", "清除剛標的點"),
+                    (4, "button", "存檔"),
+                ):
                     audiogram_step(self.page, self.live_server_url, step)
                     with self.subTest(width=width, button=name):
-                        widths = main.get_by_role("button", name=name).evaluate(
+                        widths = main.get_by_role(role, name=name).evaluate(
                             """el => {
                                 const column = el.parentElement;
                                 const style = getComputedStyle(column);
@@ -1913,6 +2526,149 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
 
 
+class MaskingSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#333 (spec #326 D4, ADR 0028): masking on the new-audiogram page is a real switch."""
+
+    ORANGE = "rgb(179, 89, 0)"
+    KNOB_X = "el => el.getBoundingClientRect().x"
+    KNOB_ANIMATIONS = """el => el.getAnimations().map(a => ({
+        property: a.transitionProperty, duration: a.effect.getComputedTiming().duration }))"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="masking_switch_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=390, reduced_motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900}, reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        audiogram_step(self.page, self.live_server_url, 2)
+
+    def switch(self):
+        return self.main().get_by_role("switch", name="遮蔽", exact=True)
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def assert_state(self, on):
+        switch = self.switch()
+        expect(switch).to_have_attribute("aria-checked", "true" if on else "false")
+        expect(switch).to_have_text("遮蔽開" if on else "遮蔽關")
+        track = switch.locator(".audiogram-mask-track")
+        self.assertEqual(self.style(track, "backgroundColor") == self.ORANGE, on)
+        frame = self.main().locator(".audiogram-chart")
+        self.assertEqual(self.style(frame, "outlineStyle"), "dashed" if on else "none")
+        if on:
+            self.assertEqual(self.style(frame, "outlineColor"), self.ORANGE)
+
+    # #326 acceptance 17: the mouse and the space bar change the switch, its 開／關 and the frame.
+    def test_mouse_and_space_bar_switch_masking(self):
+        self.open()
+        with self.saving_artifacts():
+            expect(self.switch()).to_have_accessible_name("遮蔽")
+            self.assert_state(on=False)
+            self.switch().click()
+            self.assert_state(on=True)
+            self.switch().focus()
+            self.page.keyboard.press("Space")
+            self.assert_state(on=False)
+            self.page.keyboard.press("Space")
+            self.assert_state(on=True)
+            box = self.switch().bounding_box()
+            self.assertGreaterEqual(min(box["width"], box["height"]), 44)
+
+    # ADR 0028: hovering, pressing and keyboard focus only change colours; the switch keeps its
+    # border and the keyboard sees a ring.
+    def test_hover_press_and_focus_change_colour_only(self):
+        # Reduced motion, so the buttons' colour transitions are read at their final value.
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            switch = self.switch()
+            border = "rgb(108, 117, 125)"
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(255, 255, 255)")
+            box = switch.bounding_box()
+            switch.hover()
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(238, 243, 250)")
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.page.mouse.down()
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(214, 226, 242)")
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.assertEqual(switch.bounding_box(), box)
+            self.page.mouse.up()
+            self.page.mouse.move(0, 0)
+            self.page.keyboard.press("Shift+Tab")
+            self.page.keyboard.press("Tab")
+            expect(switch).to_be_focused()
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.assertNotEqual(self.style(switch, "boxShadow"), "none")
+
+    # #326 acceptance 17 and 23 (ADR 0028): the knob slides over 0.2 s; with reduced motion it
+    # is already in place.
+    def test_knob_slides_only_without_reduced_motion(self):
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open(reduced_motion=motion)
+                knob = self.switch().locator(".audiogram-mask-knob")
+                off = knob.evaluate(self.KNOB_X)
+                self.switch().click()
+                animations = knob.evaluate(self.KNOB_ANIMATIONS)
+                if motion == "reduce":
+                    self.assertEqual(animations, [])
+                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
+                else:
+                    self.assertEqual(animations, [{"property": "transform", "duration": 200}])
+                    knob.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
+                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
+
+    # #326 (C1's 200% rule, kept for D4): the switch fits a phone at double text size.
+    def test_switch_fits_a_phone_at_double_text_size(self):
+        self.open(width=320)
+        with self.saving_artifacts():
+            self.page.locator("html").evaluate(
+                "html => html.style.setProperty('font-size', '225%', 'important')"
+            )
+            self.switch().click()
+            widths = self.switch().evaluate("el => [el.scrollWidth, el.clientWidth]")
+            self.assertLessEqual(widths[0], widths[1])
+            for part in self.switch().locator("span:not(.audiogram-mask-knob)").all():
+                box = part.bounding_box()
+                self.assertGreaterEqual(box["x"], 0)
+                self.assertLessEqual(box["x"] + box["width"], 320)
+            # 遮蔽 is never broken over two lines, and 開 stays beside its track.
+            lines = self.switch().evaluate(
+                """el => {
+                    const range = document.createRange();
+                    range.selectNodeContents(el.firstChild);
+                    return range.getClientRects().length;
+                }"""
+            )
+            self.assertEqual(lines, 1)
+            track = self.switch().locator(".audiogram-mask-track").bounding_box()
+            state = self.switch().locator(".audiogram-mask-state").bounding_box()
+            self.assertLess(state["y"], track["y"] + track["height"])
+            self.assertLess(track["y"], state["y"] + state["height"])
+
+
 class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#270 (spec #268, ADR 0019): 我的紀錄's questionnaires or audiograms switch in a browser."""
 
@@ -2006,6 +2762,258 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     box = link.bounding_box()
                     self.assertGreaterEqual(box["x"], 0)
                     self.assertLessEqual(box["x"] + box["width"], 390)
+
+
+# Runs before the site's own scripts on every page: notes whether the page arrived with a view
+# transition, which parts of the page it animates, where the pill starts (its group's first
+# keyframe) and where the pill is on the new page, both [left, top] in the viewport.
+REVEAL_WATCH = """
+addEventListener("pagereveal", async (event) => {
+    if (!event.viewTransition) {
+        window.revealed = "none";
+        return;
+    }
+    try {
+        await event.viewTransition.ready;
+    } catch {
+        // switch-reveal.js skipped it: the page painted before its switch was parsed.
+        window.revealed = "skipped";
+        return;
+    }
+    window.revealed = "transition";
+    const html = document.documentElement;
+    const animations = document.getAnimations().filter((a) => a.effect.target === html);
+    window.moving = [...new Set(animations.map((a) => a.effect.pseudoElement))].sort();
+    // Without the new pill (a page painted before its switch was parsed) there is no group to
+    // slide; window.moving then says so and the test fails at once rather than time out.
+    const group = animations.find((a) => a.effect.pseudoElement.includes("-group("));
+    if (group) {
+        const start = new DOMMatrix(group.effect.getKeyframes()[0].transform);
+        const end = document.querySelector("main [aria-current]").getBoundingClientRect();
+        window.pill = [[start.e, start.f], [end.left, end.top]].map((at) => at.map(Math.round));
+    }
+    await event.viewTransition.finished;
+    window.settled = true;
+});
+"""
+PILL_PARTS = [f"::view-transition-{part}(switch-pill)" for part in ("group", "new", "old")]
+# Chromium made into a browser without cross-document view transitions: it never fires pageswap
+# or pagereveal, and it does not know @view-transition, so site.css cannot opt a page in.
+NO_VIEW_TRANSITIONS = """
+const listen = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function (type, ...rest) {
+    if (type === "pageswap" || type === "pagereveal") return;
+    return listen.call(this, type, ...rest);
+};
+const drop = (rules) => {
+    for (let i = rules.cssRules.length - 1; i >= 0; i--) {
+        const rule = rules.cssRules[i];
+        if (rule.cssText.startsWith("@view-transition")) {
+            rules.deleteRule(i);
+            window.droppedRules = (window.droppedRules || 0) + 1;
+        } else if (rule.cssRules) {
+            drop(rule);
+        }
+    }
+};
+addEventListener("load", () => [...document.styleSheets].forEach(drop));
+"""
+
+
+class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#334 (spec #326 D3, ADR 0028): the blue pill of the 問卷 or 聽力圖 and 右耳 or 左耳
+    switches slides to the side pressed, by a cross-document view transition; nothing else on
+    the page fades."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="sliding_pill_e2e")
+        for tested_on in (date(2026, 6, 1), date(2026, 9, 28)):
+            audiogram = Audiogram.objects.create(user=user, tested_on=tested_on)
+            AudiogramPoint.objects.bulk_create(
+                AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+                for ear in ("right", "left")
+                for f in (500, 1000, 2000, 4000)
+            )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion="no-preference", view_transitions=True):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.addCleanup(self.context.close)
+        self.context.add_cookies([self.cookie])
+        self.context.add_init_script(REVEAL_WATCH if view_transitions else NO_VIEW_TRANSITIONS)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+
+    def arrived(self, current):
+        """Waits for the new page's current pill, then says how the page arrived."""
+        expect(self.main().locator("[aria-current]")).to_have_text(current)
+        self.page.wait_for_function("window.revealed")
+        return self.page.evaluate("window.revealed")
+
+    def assert_pill_slid(self):
+        self.page.wait_for_function("window.settled")
+        self.assertEqual(self.page.evaluate("window.moving"), PILL_PARTS)
+        start, end = self.page.evaluate("window.pill")
+        self.assertNotEqual(start, end)
+
+    def assert_slid_unless_too_slow(self, current):
+        """The pill slides; a machine too slow to parse the switch before the first paint (as CI
+        can be) changes page without the transition instead, never fading the pill out."""
+        arrived = self.arrived(current)
+        self.assertIn(arrived, ("transition", "skipped"))
+        if arrived == "transition":
+            self.assert_pill_slid()
+
+    # #334: on a slow phone the next page paints before its switch is parsed; it changes page
+    # without the transition (switch-reveal.js) rather than fade the old pill out.
+    def test_slow_page_changes_page_without_fading_the_pill(self):
+        self.open()
+        cdp = self.context.new_cdp_session(self.page)
+        cdp.send("Emulation.setCPUThrottlingRate", {"rate": 6})
+        with self.saving_artifacts():
+            for start, switch, side in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", "聽力圖"),
+                ("/audiograms/compare", "選耳朵", "左耳"),
+            ):
+                with self.subTest(switch=switch):
+                    self.page.goto(f"{self.live_server_url}{start}")
+                    nav = self.main().get_by_role("navigation", name=switch)
+                    nav.get_by_role("link", name=side).click()
+                    self.assert_slid_unless_too_slow(side)
+
+    def test_pill_slides_between_questionnaires_and_audiograms(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            records.get_by_role("link", name="聽力圖").click()
+            self.assert_slid_unless_too_slow("聽力圖")
+            records.get_by_role("link", name="問卷").click()
+            self.assert_slid_unless_too_slow("問卷")
+
+    def test_pill_slides_between_ears(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            ears = self.main().get_by_role("navigation", name="選耳朵")
+            ears.get_by_role("link", name="左耳").click()
+            self.assert_slid_unless_too_slow("左耳")
+            ears.get_by_role("link", name="右耳").click()
+            self.assert_slid_unless_too_slow("右耳")
+
+    def test_reduced_motion_changes_page_without_sliding(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            records.get_by_role("link", name="聽力圖").click()
+            self.assertEqual(self.arrived("聽力圖"), "none")
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            self.main().get_by_role("navigation", name="選耳朵").get_by_text("左耳").click()
+            self.assertEqual(self.arrived("左耳"), "none")
+
+    # Spec #326 acceptance 16 (D3): a browser without the transition just changes page.
+    def test_browser_without_view_transitions_just_changes_page(self):
+        self.open(view_transitions=False)
+        with self.saving_artifacts():
+            for start, switch, side, url in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", "聽力圖", r"/audiograms$"),
+                ("/audiograms/compare", "選耳朵", "左耳", r"/audiograms/compare\?.*ear=left$"),
+            ):
+                self.page.goto(f"{self.live_server_url}{start}")
+                # The page really has no @view-transition left, so nothing can opt it in.
+                self.page.wait_for_function("window.droppedRules > 0")
+                main = self.main()
+                main.get_by_role("navigation", name=switch).get_by_role("link", name=side).click()
+                expect(self.page).to_have_url(re.compile(url))
+                expect(main.locator("[aria-current]")).to_have_text(side)
+                self.page.wait_for_function("window.droppedRules > 0")
+
+    def test_loading_bar_shows_while_the_next_side_takes_a_while(self):
+        # ADR 0027: the old page still shows the moving bar and 載入中… until the new side
+        # arrives. A page being left cannot be read, so it notes what it showed for the next one.
+        self.open()
+        held = []
+        self.page.route(f"{self.live_server_url}/audiograms", lambda route: held.append(route))
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            self.page.evaluate(
+                """() => {
+                    const html = document.documentElement;
+                    const bar = document.querySelector(".page-loading-bar");
+                    const status = document.getElementById("page-loading-status");
+                    new MutationObserver(() => {
+                        if (!html.classList.contains("page-loading")) return;
+                        const shown = [getComputedStyle(bar).animationName, status.textContent];
+                        sessionStorage.setItem("waiting", shown.join(" "));
+                    }).observe(html, { attributes: true });
+                }"""
+            )
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            # Without no_wait_after the click would wait for the held page.
+            records.get_by_role("link", name="聽力圖").click(no_wait_after=True)
+            self.page.wait_for_timeout(1000)
+            held[0].continue_()
+            self.assert_slid_unless_too_slow("聽力圖")
+            waiting = self.page.evaluate("sessionStorage.getItem('waiting')")
+            self.assertEqual(waiting, "loading-slide 載入中…")
+
+    def changes_page(self, action):
+        """Does action, then says how the page it leads to arrived."""
+        with self.page.expect_navigation():
+            action()
+        self.page.wait_for_function("window.revealed")
+        return self.page.evaluate("window.revealed")
+
+    def test_no_other_change_of_page_transitions(self):
+        self.open()
+        tabs = self.page.get_by_role("navigation", name="主要導覽")
+        with self.saving_artifacts():
+            # 紀錄 comes back to this same list (a redirect), the pill in the same place.
+            for tab in ("紀錄", "首頁"):
+                with self.subTest(tab=tab):
+                    self.page.goto(f"{self.live_server_url}/audiograms")
+                    link = tabs.get_by_role("link", name=tab)
+                    self.assertEqual(self.changes_page(link.click), "none")
+            with self.subTest("an audiogram's card"):
+                self.page.goto(f"{self.live_server_url}/audiograms")
+                card = self.main().locator("a.audiogram-card").first
+                self.assertEqual(self.changes_page(card.click), "none")
+            with self.subTest("比較 with another audiogram"):
+                self.page.goto(f"{self.live_server_url}/audiograms/compare?ear=left")
+                row = self.main().locator(".compare-pick").nth(0)
+                row.locator("summary").click()
+                button = row.get_by_role("button", name="比較", exact=True)
+                self.assertEqual(self.changes_page(button.click), "none")
+                expect(self.main().locator("[aria-current]")).to_have_text("左耳")
+            with self.subTest("the back button after switching"):
+                self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+                records = self.main().get_by_role("navigation", name="紀錄種類")
+                records.get_by_role("link", name="聽力圖").click()
+                self.assert_slid_unless_too_slow("聽力圖")
+                self.assertEqual(self.changes_page(self.page.go_back), "none")
+                expect(self.main().locator("[aria-current]")).to_have_text("問卷")
 
 
 class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -2715,6 +3723,84 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             html = self.page.locator("html")
             expect(html).to_have_class(re.compile(r"\bsmooth-scroll\b"))
             expect(html).to_have_css("scroll-behavior", "auto")
+
+
+class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#336 (spec #326 E5, acceptance 21 and 23): answering the 您在這裡 stop on the route so that
+    it is 已完成 turns its circle green with a white tick drawn once; a refresh shows the number."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal
+    TICK_ANIMATIONS = (
+        "p => p.getAnimations().map(a => [a.animationName, a.effect.getTiming().duration])"
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # 您在這裡 is 身障鑑定與鑑定醫院: 55 dB in both ears reaches the threshold, and
+        # 去找聽力師之前 has been read.
+        self.user = consented_user(username="route_tick_e2e")
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.client.force_login(self.user)
+        cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+        self.context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.context.add_cookies([cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_the_tick_draws_once_or_is_simply_there_with_reduced_motion(self):
+        with self.saving_artifacts():
+            for motion, animations in (
+                ("no-preference", [["gauge-draw", 450]]),
+                ("reduce", []),
+            ):
+                with self.subTest(motion=motion):
+                    AidAndSubsidy.objects.filter(user=self.user).delete()
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    here.get_by_role("button", name="有", exact=True).click()
+
+                    expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-assessment")
+                    number = self.main().locator('[data-stop="assessment"] .route-number')
+                    expect(number).to_have_css("background-color", self.GREEN)
+                    tick = number.locator("svg path")
+                    expect(tick).to_be_visible()
+                    self.assertEqual(tick.evaluate(self.TICK_ANIMATIONS), animations)
+                    if motion == "reduce":
+                        expect(tick).to_have_css("stroke-dashoffset", "0px")
+                    # Only the stop just done: the new 您在這裡 keeps its blue number.
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_contain_text("九號表")
+                    expect(here.locator(".route-number svg")).to_have_count(0)
+                    self.assertEqual(self.main().locator(".route-number svg").count(), 1)
+
+                    self.page.reload()
+                    expect(number.locator("svg")).to_have_count(0)
+                    expect(number).to_have_text("3")
+                    expect(number).to_have_css("background-color", WhiteCardRuleTest.BLUE_SOFT)
 
 
 class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -4310,16 +5396,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open()
         with self.saving_artifacts():
             audiogram_step(self.page, self.live_server_url, 2)
-            self.page.get_by_role("button", name="遮蔽：關").click()
-            switch = self.page.get_by_role("button", name="遮蔽：開（△ □ [ ]）")
-            self.assertEqual(
-                self.styles(switch, "backgroundColor", "borderTopColor", "color"),
-                {
-                    "backgroundColor": "rgb(179, 89, 0)",
-                    "borderTopColor": "rgb(179, 89, 0)",
-                    "color": self.WHITE,
-                },
-            )
+            # #333 (D4): on a switch, the orange is the track's.
+            switch = self.page.get_by_role("switch", name="遮蔽", exact=True)
+            switch.click()
+            track = switch.locator(".audiogram-mask-track")
+            self.assertEqual(self.style(track, "backgroundColor"), "rgb(179, 89, 0)")
 
     # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
     WAVE_ANIMATIONS = """() => document.getAnimations()
@@ -4754,9 +5835,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(card, "transform"), "none")
             self.page.mouse.up()
             self.page.mouse.move(0, 0)
-            # Chosen: blue fill, same place and size.
+            # Chosen: dark blue fill (#328, C1), same place and size.
             self.assertEqual(self.settled(card).bounding_box(), before)
-            self.assertEqual(self.style(card, "backgroundColor"), "rgb(232, 238, 247)")
+            self.assertEqual(self.style(card, "backgroundColor"), self.PRIMARY)
             self.assertEqual(self.style(card, "transform"), "none")
 
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
@@ -5024,6 +6105,420 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     "borderTopColor": self.PRIMARY,
                 },
             )
+
+
+class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#328 (spec #326 A2, A3, A4, C1, C2, D1; ADR 0028): pressing, and hovering with a mouse,
+    changes colour only; nothing moves or changes size. Presses are forced the way DevTools does:
+    headless Chromium on Linux never sets :active from simulated touch (CI probe, 2026-10-22)."""
+
+    fixtures = ("questions_fixture.json",)
+    PRIMARY = "rgb(31, 78, 140)"
+    WHITE = "rgb(255, 255, 255)"
+    CLEAR = "rgba(0, 0, 0, 0)"
+    GREY_EDGE = "rgb(206, 212, 218)"
+    # The light blues the dropdowns' title bars already use, and the deeper one beside them.
+    BRAND_SOFT = "rgb(238, 243, 250)"
+    BRAND_SELECTED = "rgb(232, 238, 247)"
+    BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(24, 95, 131))"
+    # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base, painted on its
+    # background (a 並列區塊 keeps no shadow, ADR 0024).
+    OPEN_EDGE = "linear-gradient(to right, rgb(31, 78, 140) 5.4px, rgba(0, 0, 0, 0) 5.4px)"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="colour_feedback_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=1024, javascript=True, touch=False):
+        # Reduced motion, so a colour is read at its final value; touch is a phone without a mouse.
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900},
+            java_script_enabled=javascript,
+            reduced_motion="reduce",
+            has_touch=touch,
+            is_mobile=touch,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def style(self, locator, prop, pseudo=None):
+        return locator.evaluate(
+            "(el, [prop, pseudo]) => getComputedStyle(el, pseudo)[prop]", [prop, pseudo]
+        )
+
+    def submission(self, questionnaire, scores, wearing=False):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question, score in zip(questionnaire.questions.all(), scores, strict=True)
+        )
+        return record
+
+    def audiogram(self, tested_on):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return audiogram
+
+    def under(self, target, *states, props=("backgroundColor",), of=None):
+        """The props of `of` (the target itself by default) while `states` are forced on the
+        target; neither moves nor changes size meanwhile."""
+        of = of or target
+        before = (target.bounding_box(), of.bounding_box())
+        devtools = self.context.new_cdp_session(self.page)
+        devtools.send("DOM.enable")
+        devtools.send("CSS.enable")
+        target.evaluate("el => el.setAttribute('data-e2e-forced', '')")
+        root = devtools.send("DOM.getDocument")["root"]["nodeId"]
+        node = devtools.send("DOM.querySelector", {"nodeId": root, "selector": "[data-e2e-forced]"})
+        target.evaluate("el => el.removeAttribute('data-e2e-forced')")
+        devtools.send(
+            "CSS.forcePseudoState", {"nodeId": node["nodeId"], "forcedPseudoClasses": list(states)}
+        )
+        try:
+            values = {prop: self.style(of, prop) for prop in props}
+            self.assertEqual((target.bounding_box(), of.bounding_box()), before)
+            self.assertEqual(self.style(target, "transform"), "none")
+        finally:
+            devtools.send(
+                "CSS.forcePseudoState", {"nodeId": node["nodeId"], "forcedPseudoClasses": []}
+            )
+            devtools.detach()
+        return values if len(props) > 1 else values[props[0]]
+
+    # A2: the tab or half not chosen turns light blue under a mouse and a step deeper pressed;
+    # the chosen one stays as it is.
+    def test_tabs_and_switches_change_colour_when_hovered_or_pressed(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7)
+        self.audiogram(date(2026, 9, 1))
+        self.audiogram(date(2026, 9, 28))
+        cases = (
+            # (name, page, navigation, the other one at rest, hovered, pressed)
+            (
+                "questionnaire tabs",
+                "/my_hearing?questionnaire=hhie-s",
+                "問卷",
+                self.WHITE,
+                self.BRAND_SOFT,
+                self.BRAND_SELECTED,
+            ),
+            # The two halves sit on a light blue track: hovered lighter, pressed deeper.
+            (
+                "records switch",
+                "/audiograms",
+                "紀錄種類",
+                self.CLEAR,
+                self.BRAND_SOFT,
+                self.BRAND_SOFT_DEEP,
+            ),
+            (
+                "ear switch",
+                "/audiograms/compare",
+                "選耳朵",
+                self.CLEAR,
+                self.BRAND_SOFT,
+                self.BRAND_SOFT_DEEP,
+            ),
+        )
+        self.open()
+        with self.saving_artifacts():
+            for name, path, label, rest, hovered, pressed in cases:
+                with self.subTest(name):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    nav = self.main().get_by_role("navigation", name=label)
+                    other = nav.locator("a:not([aria-current])").first
+                    track = self.style(nav, "backgroundColor")
+                    self.assertEqual(self.style(other, "backgroundColor"), rest)
+                    self.assertEqual(self.under(other, "hover"), hovered)
+                    self.assertEqual(self.under(other, "hover", "active"), pressed)
+                    for colour in (hovered, pressed):
+                        self.assertNotIn(colour, (rest, track))
+                    current = nav.locator("[aria-current]")
+                    props = ("backgroundColor", "backgroundImage", "color")
+                    at_rest = {prop: self.style(current, prop) for prop in props}
+                    self.assertEqual(at_rest["backgroundImage"], self.GRADIENT)
+                    for states in (("hover",), ("hover", "active")):
+                        self.assertEqual(self.under(current, *states, props=props), at_rest)
+
+    # A3: on a phone the pill behind a tab's icon lights up under the finger; wide screens' top
+    # bar does the same to the whole item.
+    def test_navigation_items_change_colour_when_pressed(self):
+        self.open(width=390, touch=True)
+        self.assertFalse(self.page.evaluate("matchMedia('(hover: hover)').matches"))
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            other = nav.get_by_role("link", name="紀錄")
+            pill = other.locator("svg")
+            self.assertEqual(self.style(pill, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "active", of=pill), self.BRAND_SELECTED)
+            current = nav.locator('a[aria-current="page"]')
+            pill = current.locator("svg")
+            self.assertEqual(self.style(pill, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(
+                self.under(current, "active", props=("backgroundImage",), of=pill),
+                self.PRESSED_GRADIENT,
+            )
+
+            self.open()
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            other = nav.get_by_role("link", name="紀錄")
+            self.assertEqual(self.style(other, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "hover", "active"), self.BRAND_SELECTED)
+            current = nav.locator('a[aria-current="page"]')
+            self.assertEqual(
+                self.under(current, "hover", "active", props=("backgroundImage",)),
+                self.PRESSED_GRADIENT,
+            )
+
+    # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
+    # words while it is pressed.
+    def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
+        record = self.submission(self.hhie_s, [2] * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            steps = self.main().get_by_role("heading", name="接下來建議您")
+            step_link = steps.locator("xpath=following-sibling::ol[1]").get_by_role("link").first
+            footer_link = self.page.get_by_role("contentinfo").get_by_role(
+                "link", name="隱私權說明"
+            )
+            for name, link in (("next step", step_link), ("footer", footer_link)):
+                with self.subTest(name):
+                    link.scroll_into_view_if_needed()
+                    rest = self.style(link, "textDecorationThickness")
+                    self.assertNotEqual(rest, "3px")
+                    self.assertEqual(self.style(link, "backgroundColor"), self.CLEAR)
+                    hovered = self.under(
+                        link, "hover", props=("textDecorationLine", "textDecorationThickness")
+                    )
+                    self.assertEqual(
+                        hovered,
+                        {"textDecorationLine": "underline", "textDecorationThickness": "3px"},
+                    )
+                    self.assertEqual(self.under(link, "hover", "active"), self.BRAND_SELECTED)
+
+    def choices(self, scope):
+        return scope.locator("div.choice-group label")
+
+    def choose_one(self, scope):
+        """Chooses the first answer not yet chosen and gives back its label."""
+        choices = self.choices(scope)
+        expect(choices.first).to_be_visible()
+        checked = choices.evaluate_all("labels => labels.map((l) => l.control.checked)")
+        choice = choices.nth(checked.index(False))
+        # Where each answer is on the page, whatever the click scrolls.
+        on_page = """labels => labels.map((label) => {
+            const box = label.getBoundingClientRect();
+            return [box.x + scrollX, box.y + scrollY, box.width, box.height];
+        })"""
+        boxes = choices.evaluate_all(on_page)
+        choice.click()
+        self.page.mouse.move(0, 0)
+        expect(choice.get_by_role("radio")).to_be_checked()
+        # Every answer keeps the tick's room, so choosing one moves nothing.
+        self.assertEqual(choices.evaluate_all(on_page), boxes)
+        return choice
+
+    def answer_pages(self):
+        """Each kind of answer choice: the React page, the web form without JavaScript, and the
+        comparison pages' cards. (name, JavaScript, path, where the choices are, an opener)."""
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(self.hhie_s, [4] * 10)
+        self.submission(self.hhie_s, [0] * 10, wearing=True)
+        self.audiogram(date(2026, 9, 1))
+        self.audiogram(date(2026, 9, 28))
+
+        def open_first_pick(page):
+            page.get_by_role("main").locator("details summary").first.click()
+
+        return (
+            ("React answer page", True, f"/questionnaire/{self.hhie_s.pk}", "#answer-app", None),
+            ("web form", False, f"/questionnaire/{self.hhie_s.pk}", "#answer-form", None),
+            ("comparison page", True, f"/comparisons/{self.hhie_s.pk}", "main", None),
+            ("audiogram comparison", True, "/audiograms/compare", "main", open_first_pick),
+        )
+
+    # C1: the chosen answer is dark blue with white words and a white tick on its right; the
+    # others stay white.
+    def test_chosen_answers_turn_dark_blue_with_a_tick(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                with self.subTest(name):
+                    self.open(javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    scope = self.page.locator(where)
+                    choice = self.choose_one(scope)
+                    self.assertEqual(
+                        {prop: self.style(choice, prop) for prop in ("backgroundColor", "color")},
+                        {"backgroundColor": self.PRIMARY, "color": self.WHITE},
+                    )
+                    tick = {
+                        prop: self.style(choice, prop, "::after")
+                        for prop in ("content", "backgroundColor", "backgroundImage", "width")
+                    }
+                    self.assertNotEqual(tick["content"], "none")
+                    self.assertEqual(tick["backgroundColor"], self.WHITE)
+                    self.assertIn("svg", tick["backgroundImage"])
+                    self.assertGreater(float(tick["width"].removesuffix("px")), 0)
+                    group = choice.locator(
+                        "xpath=ancestor::div[contains(@class, 'choice-group')][1]"
+                    )
+                    others = group.locator("label").filter(
+                        has=self.page.locator("input:not(:checked)")
+                    )
+                    self.assertGreater(others.count(), 0)
+                    for other in others.all():
+                        self.assertEqual(self.style(other, "backgroundColor"), self.WHITE)
+                        # Only the tick's empty room: no colour, no tick.
+                        room = [
+                            self.style(other, prop, "::after")
+                            for prop in ("backgroundColor", "backgroundImage")
+                        ]
+                        self.assertEqual(room, [self.CLEAR, "none"])
+
+    # C1: at 200% text on a 320px phone the chosen answer, tick and all, stays on the screen.
+    def test_chosen_answer_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                with self.subTest(name):
+                    self.open(width=320, javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    choice = self.choose_one(self.page.locator(where))
+                    self.assert_fits_a_phone_at_double_text_size(name)
+                    widths = choice.evaluate("el => [el.scrollWidth, el.clientWidth]")
+                    self.assertLessEqual(widths[0], widths[1])
+                    box = choice.bounding_box()
+                    self.assertLessEqual(box["x"] + box["width"], 320)
+
+    # C2: an answer under the finger turns light blue with a blue edge before it is let go.
+    def test_answers_turn_light_blue_while_pressed(self):
+        self.open(width=390, touch=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            choice = self.choices(self.page.locator("#answer-app")).first
+            expect(choice).to_be_visible()
+            props = ("backgroundColor", "borderTopColor")
+            self.assertEqual(
+                {prop: self.style(choice, prop) for prop in props},
+                {"backgroundColor": self.WHITE, "borderTopColor": self.GREY_EDGE},
+            )
+            self.assertEqual(
+                self.under(choice, "active", props=props),
+                {"backgroundColor": self.BRAND_SOFT, "borderTopColor": self.PRIMARY},
+            )
+
+    # D1: an open box dropdown or report fold has a thick blue edge on its left and its title bar
+    # stays light blue; closed again, it is as before. A line dropdown gets neither.
+    def test_open_dropdowns_get_a_blue_edge_and_keep_their_bar_tinted(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.open()
+
+        def check(name, path, fold, edges):
+            with self.subTest(name):
+                self.page.goto(f"{self.live_server_url}{path}")
+                details = self.main().locator(fold).first
+                summary = details.locator("> summary")
+                parts = [details.locator(edge) for edge in edges]
+                closed = [self.style(part, "backgroundImage") for part in parts]
+                bar = self.style(summary, "backgroundColor")
+                self.assertNotIn(self.OPEN_EDGE, closed)
+                place = summary.bounding_box()
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).to_have_attribute("open", "")
+                self.assertEqual(summary.bounding_box(), place)
+                self.assertEqual(self.style(summary, "backgroundColor"), self.BRAND_SOFT)
+                for part in parts:
+                    self.assertEqual(self.style(part, "backgroundImage"), self.OPEN_EDGE)
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).not_to_have_attribute("open", "")
+                self.assertEqual([self.style(part, "backgroundImage") for part in parts], closed)
+                self.assertEqual(self.style(summary, "backgroundColor"), bar)
+
+        with self.saving_artifacts():
+            check("box dropdown", "/add_to_home", "details", ("xpath=.", "> summary"))
+            check(
+                "report fold",
+                "/report",
+                "details:has(> summary > h3)",
+                ("> summary", "> summary + *"),
+            )
+            with self.subTest("answer page's box"):
+                # "這份問卷在問什麼？" is the box dropdown with a button, after the first page.
+                self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+                self.main().get_by_role("group").get_by_role("radio").first.check()
+                self.next()
+                about = self.main().get_by_role("button", name="這份問卷在問什麼？")
+                place = about.bounding_box()
+                about.click()
+                self.page.mouse.move(0, 0)
+                expect(about).to_have_attribute("aria-expanded", "true")
+                self.assertEqual(about.bounding_box(), place)
+                self.assertEqual(self.style(about, "backgroundColor"), self.BRAND_SOFT)
+                for part in (about.locator(".."), about):
+                    self.assertEqual(self.style(part, "backgroundImage"), self.OPEN_EDGE)
+            with self.subTest("line dropdown"):
+                self.page.goto(f"{self.live_server_url}/guide/assessment")
+                details = self.main().locator("details").first
+                summary = details.locator("> summary")
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).to_have_attribute("open", "")
+                self.assertEqual(self.style(summary, "backgroundColor"), self.CLEAR)
+                for part in (details, summary):
+                    self.assertEqual(self.style(part, "backgroundImage"), "none")
+
+    # D1: what runs to the box's edges (a table here) starts clear of the blue edge, which would
+    # otherwise be hidden behind a white table on screen and show through it on paper.
+    def test_open_dropdown_contents_start_clear_of_the_blue_edge(self):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.create(
+            audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=40
+        )
+        self.open(390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
+            details = self.main().locator("details", has_text="標記的數值")
+            details.locator("> summary").click()
+            expect(details).to_have_attribute("open", "")
+            box, table = details.bounding_box(), details.locator("> table").bounding_box()
+            edge = float(self.style(details, "borderLeftWidth").removesuffix("px")) + 5.4
+            self.assertGreaterEqual(table["x"], box["x"] + edge - 0.5)
 
 
 # White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket

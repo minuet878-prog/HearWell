@@ -4,6 +4,8 @@
 {% block title %}我的紀錄｜HearWell{% endblock %}
 
 {% block extra_head %}
+{# Before the first paint: a slow page whose switch is not parsed yet skips the pill's slide (#334). #}
+<script src="{% static 'screening/switch-reveal.js' %}"></script>
 {% if current.definition.trend_chart %}
 <script type="module" src="{% static 'screening/frontend/trend-chart.js' %}"></script>
 {# Without JavaScript the chart never draws: keep its text, hide the box that would stay empty. #}

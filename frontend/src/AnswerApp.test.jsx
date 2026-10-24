@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AnswerApp from "./AnswerApp.jsx";
@@ -24,6 +24,7 @@ const QUESTIONNAIRE = {
 const USER_ID = 7;
 const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
+const CHOOSE_FIRST = "請先選一個答案";
 const MINUTES = 3;
 const INTRO = "<p>本問卷的目的在幫助您了解自己的聽力。</p><p>請圈選常常、有時或從未。</p>";
 
@@ -86,6 +87,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   localStorage.clear();
   vi.restoreAllMocks();
@@ -197,7 +199,27 @@ describe("progress (#153)", () => {
     expect(segments().every((s) => !s.hasAttribute("style"))).toBe(true);
   });
 
-  it("styles the bar with colour only: answered blue, no transition, animation or transform", () => {
+  // #326 C3 (ADR 0028): the fill itself is checked in a browser, e2e ProgressSavedTest.
+  it("fills only the segment a choice just answered, and never again after moving (#326 C3)", async () => {
+    const filling = () => segments().filter((s) => s.classList.contains("is-filling")).map((s) => segments().indexOf(s));
+    await answerUpTo(1);
+    expect(filling()).toEqual([0]);
+    choose("常常");
+    expect(filling()).toEqual([0]);
+    next();
+    expect(filling()).toEqual([]);
+    choose("有時");
+    expect(filling()).toEqual([1]);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
+    expect(filling()).toEqual([]);
+    choose("從未");
+    expect(filling()).toEqual([]);
+    expect(done()).toHaveLength(2);
+  });
+
+  // ADR 0028: besides colour, only the fill of a segment just answered, never with reduced motion.
+  it("styles the bar with colour only but for the fill: answered blue, nothing moves", () => {
     const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
     expect(rules.map(([, selector]) => selector.trim())).toEqual([
@@ -207,9 +229,17 @@ describe("progress (#153)", () => {
       ".step-progress-bar",
       ".step-progress-segment",
       ".step-progress-segment.is-done",
+      ".step-progress-segment.is-filling",
     ]);
-    expect(rules.at(-1)[2]).toMatch(/background-color:\s*var\(--color-primary\)/);
-    rules.forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
+    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.step-progress-segment\.is-filling \{/);
+    expect(rules[4][2]).toMatch(/background-color:\s*var\(--color-primary\)/);
+    rules.slice(0, -1).forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
+    const fill = rules.at(-1)[2];
+    expect(fill).toMatch(/animation:\s*progress-fill 0\.35s/);
+    expect(fill).not.toMatch(/transition|transform/);
+    const keyframes = css.match(/@keyframes progress-fill \{([^{}]*\{[^}]*\})*\s*\}/)[0];
+    expect(keyframes).toMatch(/background-size/);
+    expect(keyframes).not.toMatch(/transform|translate|width/);
   });
 });
 
@@ -259,6 +289,59 @@ describe("autosave note (#153)", () => {
     choose("沒戴");
     next();
     expect(screen.getByText(NOTE)).not.toBeNull();
+  });
+});
+
+describe("saved flash (#326 B4)", () => {
+  const SAVED = "✓ 已儲存";
+  const flash = () => screen.queryByText(SAVED);
+
+  async function onQuestion1() {
+    await renderApp();
+    choose("沒戴");
+    next();
+    // Only the 1.5 s the flash stays is faked; loading the questions used real timers.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  }
+
+  afterEach(() => vi.useRealTimers());
+
+  it("shows ✓ 已儲存 beside the progress for 1.5 s once a choice is kept, not read aloud", async () => {
+    await onQuestion1();
+    expect(flash()).toBeNull();
+    choose("有時");
+    expect(flash()).not.toBeNull();
+    expect(flash().closest("legend")).not.toBeNull();
+    expect(flash().closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(document.querySelector(".question-progress").parentElement.contains(flash())).toBe(true);
+    act(() => vi.advanceTimersByTime(1400));
+    expect(flash()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(100));
+    expect(flash()).toBeNull();
+    // The footer's autosave note stays (#326 B4).
+    expect(screen.getByText("答案會自動存在這支手機，中途離開也沒關係。")).not.toBeNull();
+  });
+
+  it("starts the 1.5 s again on another choice, and goes with the question", async () => {
+    await onQuestion1();
+    choose("有時");
+    act(() => vi.advanceTimersByTime(1000));
+    choose("常常");
+    act(() => vi.advanceTimersByTime(1000));
+    expect(flash()).not.toBeNull();
+    next();
+    expect(flash()).toBeNull();
+    expect(legend()).toMatch(/^第 2 題/);
+  });
+
+  it("does not show it when the browser cannot keep the draft", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("denied", "SecurityError");
+    });
+    await onQuestion1();
+    choose("有時");
+    expect(flash()).toBeNull();
+    expect(radio("有時").checked).toBe(true);
   });
 });
 
@@ -320,16 +403,60 @@ describe("catching up an unaided record (#154)", () => {
 });
 
 describe("next and previous", () => {
-  it("keeps 下一題 disabled until a choice is made, then moves focus to the question", async () => {
+  it("without a choice, 下一題 stays on the question, asks for one and puts focus back on it (#326 C5)", async () => {
     await renderApp();
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    const button = screen.getByRole("button", { name: "下一題" });
+    expect(button.disabled).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+    button.focus();
+    next();
+    expect(legend()).toMatch(/有沒有戴助聽器/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    // Under the buttons.
+    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    expect(document.activeElement.tagName).toBe("LEGEND");
     choose("有戴");
+    expect(screen.queryByRole("alert")).toBeNull();
     // A real click leaves focus on the button; the page change must move it to the question.
     screen.getByRole("button", { name: "下一題" }).focus();
     next();
     expect(legend()).toMatch(/^第 1 題／共 10 題/);
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(document.activeElement.tagName).toBe("LEGEND");
+  });
+
+  it("does not carry the hint to another question (#326 C5)", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    next();
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toMatch(/有沒有戴助聽器/));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // #326 C4 (ADR 0028): the fade itself is checked in a browser, e2e ProgressSavedTest.
+  it("fades the question text in on another question, with focus on the question", async () => {
+    const text = () => screen.getByText(/的完整題目文字$|有沒有戴助聽器？$/, { selector: "legend > span" });
+    const fading = () => text().classList.contains("is-fading-in");
+    await renderApp();
+    expect(fading()).toBe(false);
+    choose("沒戴");
+    next();
+    expect(text().textContent).toBe("第1題的完整題目文字");
+    expect(fading()).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("group").querySelector("legend"));
+    const shown = text();
+    choose("有時");
+    expect(text()).toBe(shown);
+    next();
+    expect(text()).not.toBe(shown);
+    expect(fading()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(text().textContent).toBe("第1題的完整題目文字"));
+    expect(fading()).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("group").querySelector("legend"));
   });
 
   it("moves focus to the question after the browser back button too", async () => {
@@ -378,6 +505,37 @@ describe("next and previous", () => {
     const before = history.length;
     await renderApp();
     expect(history.length).toBe(before);
+  });
+});
+
+describe("direction icons (#326 A6)", () => {
+  // The icon each button shows, and whether it comes before or after the words; silent for screen readers.
+  const icon = (name) => {
+    const button = screen.getByRole("button", { name });
+    const svg = button.querySelector("svg");
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    return { first: button.firstElementChild === svg, last: button.lastElementChild === svg, path: svg.innerHTML };
+  };
+
+  it("puts a left arrow before 上一題, a right arrow after 下一題 and a tick before 送出, names unchanged", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    choose("常常");
+    next();
+    const back = icon("上一題");
+    const forward = icon("下一題");
+    expect(back.first).toBe(true);
+    expect(forward.last).toBe(true);
+    expect(back.path).not.toBe(forward.path);
+    for (let i = 2; i < QUESTIONS.length; i++) {
+      choose("常常");
+      next();
+    }
+    choose("常常");
+    const send = icon("送出");
+    expect(send.first).toBe(true);
+    expect([back.path, forward.path]).not.toContain(send.path);
   });
 });
 
@@ -433,8 +591,44 @@ describe("submitting", () => {
     history.back();
     await waitFor(() => expect(legend()).toMatch(/^第 9 題/));
     expect(screen.getAllByRole("radio").every((r) => r.matches(":disabled"))).toBe(true);
+    // #326 C5: 下一題 no longer waits for a choice, but still waits for the sending (ADR 0027).
+    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
     release();
     await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+  });
+
+  // #330 (spec #326 B1, acceptance 5): the moment it is sent, before the result page.
+  it("shows ✓ 已送出, says 已送出, and opens the result page 0.6 seconds later", async () => {
+    await renderApp();
+    answerAll();
+    vi.useFakeTimers();
+    submit();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    const sent = screen.getByRole("button", { name: "已送出" });
+    expect(sent.disabled).toBe(true);
+    expect(sent.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText("已送出", { selector: "[role=status]" })).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(599));
+    expect(navigate).not.toHaveBeenCalled();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(navigate).toHaveBeenCalledWith("/submission/99");
+  });
+
+  // #330 (spec #326 B1, acceptance 7): a failure keeps today's messages and is never green.
+  it.each([
+    ["a network failure", new TypeError("Failed to fetch"), FAILED],
+    ["400", { status: 400, body: { answers: ["有題目沒有作答"] } }, "送出的資料有誤：有題目沒有作答"],
+    ["500", { status: 500 }, FAILED],
+    ["403 (login expired)", { status: 403 }, "登入已經過期，請重新登入"],
+    ["409 (already sent)", { status: 409 }, "這份作答之前已經送出過"],
+  ])("does not say 已送出 after %s", async (_, reply, message) => {
+    mockApi([reply]);
+    await renderApp();
+    answerAll();
+    submit();
+    await screen.findByText(message);
+    expect(screen.queryByText("已送出")).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("after a network failure, sending again reuses the receipt number", async () => {
@@ -510,6 +704,29 @@ describe("submitting", () => {
     saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers, step: 10, savedAt: Date.now() });
     await renderApp();
     expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+  });
+
+  it("without a choice on the last question, 送出 sends nothing, asks for one and puts focus back on it (#326 C5)", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    for (let i = 1; i < QUESTIONS.length; i++) {
+      choose("常常");
+      next();
+    }
+    const button = screen.getByRole("button", { name: "送出" });
+    expect(button.disabled).toBe(false);
+    button.focus();
+    submit();
+    expect(postCalls()).toHaveLength(0);
+    expect(legend()).toMatch(/^第 10 題/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    expect(document.activeElement.tagName).toBe("LEGEND");
+    choose("從未");
+    expect(screen.queryByRole("alert")).toBeNull();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/submission/99"));
   });
 
   it("does not send with a missing answer and goes to the first missing question", async () => {
@@ -710,11 +927,19 @@ describe("SSQ12-TW", () => {
     choose("沒戴");
     next();
     expect(screen.getByText("未作答")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    // #326 C5: the 0–10 scale asks for a choice the same way.
+    next();
+    expect(legend()).toMatch(/^第 1 題/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    expect(document.activeElement.tagName).toBe("LEGEND");
     fireEvent.pointerUp(screen.getByRole("slider"));
     expect(screen.getByText("5 分")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    next();
+    expect(legend()).toMatch(/^第 2 題/);
+    history.back();
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
     choose("不適用");
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
     next();
     fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
     expect(screen.getByText("0 分")).toBeTruthy();

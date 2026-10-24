@@ -2,7 +2,10 @@
 
 {% block title %}HearWell 聽力自我照護{% endblock %}
 
+{% block extra_head %}{% include "screening/continue_notice.html" %}{% endblock %}
+
 {% block body %}
+{% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if user_state.is_new %}
 {# Layout per spec phase9_ui_refresh_4a_home.md 4.1, a flat block since ADR 0022; pictures are decorative, the words carry the meaning. #}
 <section class="home-hero mt-2">

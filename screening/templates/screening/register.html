@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <script defer src="{% static 'screening/password-toggle.js' %}"></script>
+<script defer src="{% static 'screening/register-checks.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -40,6 +41,8 @@
                     {% if field.name == "username" %}{% include "screening/auth_field_icon.html" with icon="user" %}{% elif field.name == "email" %}{% include "screening/auth_field_icon.html" with icon="mail" %}{% elif field.widget_type == "password" %}{% include "screening/auth_field_icon.html" with icon="lock" %}{% endif %}
                     {{ field }}
                 </div>
+                {# #332 (spec #326 D6): register-checks.js says here what the green tick shows. #}
+                {% if field.name == "password2" %}<p class="visually-hidden" role="status"></p>{% endif %}
                 {# Pages tidy-up: help in the body grey under its field; the password rules in a tip box. #}
                 {% if field.name == "password1" %}
                 {% include "screening/field_messages.html" with help_class="tip-box" %}
@@ -56,6 +59,8 @@
                     {{ form.roc_birth_year }}
                     <span class="input-group-text">年</span>
                 </div>
+                {# #332 (spec #326 D6): register-checks.js says here what the green tick shows. #}
+                <p class="visually-hidden" role="status"></p>
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
             <p>註冊後，會請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>

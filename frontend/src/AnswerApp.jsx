@@ -9,6 +9,20 @@ const HEARING_AID_CHOICES = [
   { value: false, label: "沒戴" },
 ];
 const FAILED = "送出失敗，請再按一次送出";
+// #326 B4: how long ✓ 已儲存 stays beside the progress.
+const SAVED_FOR = 1500;
+// #330 (spec #326 B1): how long ✓ 已送出 stays before the result page opens.
+const SENT_FOR = 600;
+
+// #326 A6: the shape says which way each button goes; decoration only, so the name stays the words.
+function NavIcon({ d }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={d} /></svg>
+  );
+}
+const ARROW_LEFT = "M19 12H5M11 6l-6 6 6 6";
+const ARROW_RIGHT = "M5 12h14M13 6l6 6-6 6";
+const TICK = "M5 12.5l4.5 4.5L19 7.5";
 
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
 // so the browser back button is the previous question (spec 4.1). Scores come from the API only.
@@ -37,6 +51,17 @@ export default function AnswerApp({
   const [form, setForm] = useState(null);
   const [status, setStatus] = useState({ type: "idle" });
   const [introOpen, setIntroOpen] = useState(false);
+  // #326 C5: 下一題 or 送出 pressed with nothing chosen on this question.
+  const [chooseFirst, setChooseFirst] = useState(false);
+  // #326 B4: ✓ 已儲存 shows while this is above 0; a new number restarts it.
+  const [savedFlash, setSavedFlash] = useState(0);
+  const savedTimer = useRef(null);
+  // #326 C3: the question whose segment a choice just turned from unanswered to answered.
+  const [justFilled, setJustFilled] = useState(null);
+  // #326 C4: the user has moved to another question, so each question shown from now fades in.
+  const [turned, setTurned] = useState(false);
+  // The form changed because the user chose an answer (not by moving to another question).
+  const chose = useRef(false);
   const moved = useRef(false);
   // Set once the answers were accepted (or already were, 409): nothing may save them again.
   const finished = useRef(false);
@@ -87,11 +112,22 @@ export default function AnswerApp({
       .catch(() => onFail());
   }, []);
 
+  // Feedback on this question's choice goes when the user moves to another question, so it never
+  // plays again there.
+  function leaveQuestion() {
+    clearTimeout(savedTimer.current);
+    setSavedFlash(0);
+    setJustFilled(null);
+    setTurned(true);
+  }
+
   useEffect(() => {
     const onPopState = (event) => {
       const step = event.state?.answerStep;
       if (!Number.isInteger(step)) return;
       moved.current = true;
+      setChooseFirst(false);
+      leaveQuestion();
       setForm((current) => current && { ...current, step });
     };
     window.addEventListener("popstate", onPopState);
@@ -99,8 +135,16 @@ export default function AnswerApp({
   }, []);
 
   useEffect(() => {
-    if (form && hasAnything(form) && !finished.current) saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    const kept = form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    if (kept && chose.current) {
+      clearTimeout(savedTimer.current);
+      setSavedFlash((n) => n + 1);
+      savedTimer.current = setTimeout(() => setSavedFlash(0), SAVED_FOR);
+    }
+    chose.current = false;
   }, [form]);
+
+  useEffect(() => () => clearTimeout(savedTimer.current), []);
 
   useEffect(() => {
     if (moved.current) legend.current?.focus();
@@ -151,22 +195,36 @@ export default function AnswerApp({
   // Only while 沒戴 is chosen: after switching to 有戴 the hint would contradict it (site owner, 1.B).
   const showHint = isHearingAid && preselectUnaided && form.wearing === false;
   const isLast = step === questions.length;
-  const isSending = status.type === "sending";
+  const isSent = status.type === "sent";
+  // Sent: green for a moment, and still nothing to press or change.
+  const isSending = status.type === "sending" || isSent;
   // The questionnaire's minutes shared out over this question and the ones after it, at least 1.
   const minutesLeft = Math.max(1, Math.round((minutes * (questions.length - step + 1)) / questions.length));
 
   function choose(value) {
     setStatus({ type: "idle" });
+    setChooseFirst(false);
+    chose.current = true;
+    if (!isHearingAid && current === undefined) setJustFilled(question.id);
     setForm((f) => (isHearingAid ? { ...f, wearing: value } : { ...f, answers: { ...f.answers, [question.id]: value } }));
   }
 
+  // Not disabled until answered (#326 C5): pressing says what is missing and goes back to the question.
+  function askForAChoice() {
+    setChooseFirst(true);
+    legend.current.focus();
+  }
+
   function goNext() {
+    if (!answered) return askForAChoice();
     history.pushState({ answerStep: step + 1 }, "");
     moved.current = true;
+    leaveQuestion();
     setForm((f) => ({ ...f, step: step + 1 }));
   }
 
   async function submit() {
+    if (!answered) return askForAChoice();
     const missing = [
       asksWearing && form.wearing === null ? 0 : null,
       ...questions.map((q, i) => (form.answers[q.id] === undefined ? i + 1 : null)),
@@ -203,7 +261,8 @@ export default function AnswerApp({
       const { id } = await response.json();
       finished.current = true;
       clearDraft(questionnaireId);
-      navigate(`/submission/${id}`);
+      setStatus({ type: "sent" });
+      setTimeout(() => navigate(`/submission/${id}`), SENT_FOR);
       return;
     }
     if (response?.status === 400) {
@@ -252,16 +311,28 @@ export default function AnswerApp({
           {!isHearingAid && (
             <>
               {/* The register steps' bar (#151), one segment per question answered or not; only the
-                  colour changes (ADR 0006). The text says it all. */}
+                  colour changes, the segment a choice just answered filling once (ADR 0028). The
+                  text says it all. */}
               <span className="step-progress-bar mb-2" aria-hidden="true">
                 {questions.map((q) => (
-                  <span key={q.id} className={form.answers[q.id] === undefined ? "step-progress-segment" : "step-progress-segment is-done"} />
+                  <span
+                    key={q.id}
+                    className={form.answers[q.id] === undefined ? "step-progress-segment" : q.id === justFilled ? "step-progress-segment is-done is-filling" : "step-progress-segment is-done"}
+                  />
                 ))}
               </span>
-              <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
+              {/* #326 B4: the flash keeps its room when empty, so showing it moves nothing; not read
+                  aloud on every answer (the footer note says it once). */}
+              <span className="question-progress-line">
+                <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
+                <span className="answer-saved" aria-hidden="true">
+                  {savedFlash > 0 && <span key={savedFlash}>✓ 已儲存</span>}
+                </span>
+              </span>
             </>
           )}
-          {question.text}
+          {/* Remounted on each question, so the fade plays once per question shown. */}
+          <span key={step} className={turned ? "is-fading-in" : undefined}>{question.text}</span>
         </legend>
         {/* Its own id: the hidden Django form keeps #hearing-aid-hint. */}
         {showHint && <p id="answer-hearing-aid-hint">{unaidedHint}</p>}
@@ -314,26 +385,39 @@ export default function AnswerApp({
             disabled={isSending}
             onClick={() => history.back()}
           >
+            <NavIcon d={ARROW_LEFT} />
             上一題
           </button>
         )}
         {isLast ? (
-          <button type="button" className="btn btn-primary btn-lg" disabled={!answered || isSending} onClick={submit}>
-            {isSending ? (
+          <button type="button" className={`btn btn-primary btn-lg${isSent ? " is-sent" : ""}`} disabled={isSending} onClick={submit}>
+            {isSent ? (
+              <>
+                <NavIcon d={TICK} />
+                已送出
+              </>
+            ) : isSending ? (
               <>
                 <span className="spinner" aria-hidden="true" />
                 送出中…
               </>
             ) : (
-              "送出"
+              <>
+                <NavIcon d={TICK} />
+                送出
+              </>
             )}
           </button>
         ) : (
-          <button type="button" className="btn btn-primary btn-lg" disabled={!answered} onClick={goNext}>
+          <button type="button" className="btn btn-primary btn-lg" disabled={isSending} onClick={goNext}>
             下一題
+            <NavIcon d={ARROW_RIGHT} />
           </button>
         )}
       </div>
+      {chooseFirst && <p className="mt-4 text-xl/normal font-bold text-danger" role="alert">請先選一個答案</p>}
+      {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
+      <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>
       {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
       <p className="answer-autosave">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>

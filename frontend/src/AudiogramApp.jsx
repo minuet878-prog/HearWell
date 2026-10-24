@@ -4,6 +4,8 @@ import AudiogramChart from "./AudiogramChart.jsx";
 import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
 
 const FAILED = "存檔失敗，請再按一次存檔";
+// #330 (spec #326 B1): how long ✓ 已存檔 stays before the saved audiogram opens.
+const SENT_FOR = 600;
 // DRF nests a list item's errors by index ({points: {0: {...}}}), so collect strings at any depth.
 const texts = (value) => (typeof value === "string" ? [value] : Object.values(value ?? {}).flatMap(texts));
 const NO_RESPONSE = "nr";
@@ -96,6 +98,7 @@ export default function AudiogramApp({
   const [testedOn, setTestedOn] = useState(initialTestedOn);
   const [errors, setErrors] = useState([]);
   const [sending, setSending] = useState(false);
+  const [saved, setSaved] = useState(false);
   // One receipt number per page, so a retry after a lost response cannot save twice. Editing needs
   // none: putting the same audiogram again changes nothing.
   const key = useRef(crypto.randomUUID());
@@ -177,7 +180,9 @@ export default function AudiogramApp({
     }
     if (response?.ok) {
       const { id } = await response.json();
-      navigate(`/audiograms/${id}`);
+      // Still sending as far as the button goes: green for a moment, and not pressed again.
+      setSaved(true);
+      setTimeout(() => navigate(`/audiograms/${id}`), SENT_FOR);
       return;
     }
     busy.current = false;
@@ -253,13 +258,23 @@ export default function AudiogramApp({
               </button>
             ))}
           </div>
+          {/* #333 (D4): a switch read as 遮蔽; a button, so the space bar toggles it. 開／關 is
+              hidden from screen readers, which say the state from aria-checked. */}
           <button
             type="button"
-            className={`btn btn-lg w-full mb-2 audiogram-mask-switch${masked ? " on" : ""}`}
-            aria-pressed={masked}
+            role="switch"
+            className="btn btn-lg w-full mb-2 audiogram-mask-switch"
+            aria-checked={masked}
             onClick={() => setMasked(!masked)}
           >
-            {masked ? "遮蔽：開（△ □ [ ]）" : "遮蔽：關"}
+            遮蔽
+            {/* One piece, so at large text it wraps under 遮蔽 as a whole. */}
+            <span className="audiogram-mask-value" aria-hidden="true">
+              <span className="audiogram-mask-track">
+                <span className="audiogram-mask-knob" />
+              </span>
+              <span className="audiogram-mask-state">{masked ? "開" : "關"}</span>
+            </span>
           </button>
           {/* The dashed frame keeps masking in sight while the eyes are on the chart. */}
           <div className={`audiogram-chart${masked ? " masking" : ""}`}>
@@ -293,8 +308,13 @@ export default function AudiogramApp({
           ))}
           <ValueTable points={points} symbols={SYMBOLS} onSet={setFromTable} onMask={maskFromTable} />
           {errorList}
-          <button type="button" className="btn btn-primary btn-lg w-full" disabled={sending} onClick={save}>
-            {sending ? (
+          <button type="button" className={`btn btn-primary btn-lg w-full${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
+            {saved ? (
+              <>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                已存檔
+              </>
+            ) : sending ? (
               <>
                 <span className="spinner" aria-hidden="true" />
                 存檔中…
@@ -303,6 +323,8 @@ export default function AudiogramApp({
               "存檔"
             )}
           </button>
+          {/* Always here, so a screen reader says 已存檔 when it is written in (#330). */}
+          <p className="visually-hidden" role="status">{saved ? "已存檔" : ""}</p>
         </>
       )}
 

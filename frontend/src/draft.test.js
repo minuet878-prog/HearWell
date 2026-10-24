@@ -41,6 +41,15 @@ describe("saveDraft / loadDraft", () => {
     expect(load()).toBeNull();
   });
 
+  // #326 B4: the answer page shows 已儲存 only when the draft was really kept.
+  it("tells whether the draft was kept", () => {
+    expect(saveDraft(draft())).toBe(true);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("full", "QuotaExceededError");
+    });
+    expect(saveDraft(draft())).toBe(false);
+  });
+
   it("keeps HHIE-S and HHIA-S apart", () => {
     saveDraft(draft({ questionnaireId: 1, answers: { 11: 4 } }));
     saveDraft(draft({ questionnaireId: 2, answers: { 21: 2 }, step: 1 }));

@@ -53,6 +53,7 @@ from screening.forms import (
     NoticeForm,
     RegisterForm,
     answer_choices,
+    offers_not_applicable,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
 from screening.main_flow import (
@@ -128,6 +129,33 @@ def health_data_page(view):
 HOME_PREVIEW_SCORE = 18
 
 
+def _continue_notice(user, questionnaires=None):
+    # #326 E7 (#337): the questionnaires this user can open, which the continue notice's script
+    # matches against the drafts in this browser (draft.js); the drafts never reach the server.
+    # A page that has already read them in list order passes them in.
+    if questionnaires is None:
+        questionnaires = sorted(Questionnaire.objects.defined(), key=list_order)
+    prefetch_related_objects(questionnaires, "questions")
+    return {
+        "userId": user.pk,
+        "questionnaires": [
+            {
+                "id": questionnaire.pk,
+                # As the catalog card reads it (questionnaire_card.html).
+                "name": f"{questionnaire.definition.topic}（{questionnaire}）",
+                "url": reverse("screening", args=[questionnaire.pk]),
+                "questionIds": [question.id for question in questionnaire.questions.all()],
+                # As the answer page decides from the API: a draft may hold 「不適用」 when a
+                # question offers it.
+                "allowNotApplicable": any(
+                    offers_not_applicable(question) for question in questionnaire.questions.all()
+                ),
+            }
+            for questionnaire in questionnaires
+        ],
+    }
+
+
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
     today = timezone.localdate()
@@ -173,6 +201,9 @@ def index(request):
             "last_max_score": last_max_score,
             "next_step": next_step,
             "more_groups": more_groups,
+            "continue_notice": _continue_notice(request.user)
+            if request.user.is_authenticated
+            else None,
         },
     )
     if request.user.is_authenticated:
@@ -261,16 +292,22 @@ GUIDE_CHAPTERS = (
 )
 
 
+# #336 (spec #326 E5): the stop an answer on the route just made 已完成, ticked once on the
+# route it goes back to. Kept in the session, which logging out or in as someone else empties.
+DONE_NOW = "screening.route_done_now"
+
+
 def guide(request):
     # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
     # opens an answered stop's question again (#293).
-    return _guide_page(request, edit=request.GET.get("edit"))
+    done_now = request.session.pop(DONE_NOW, None)
+    return _guide_page(request, edit=request.GET.get("edit"), done_now=done_now)
 
 
-def _guide_page(request, edit=None, question=None):
+def _guide_page(request, edit=None, question=None, done_now=None):
     """我的選配指引, the stop being edited showing its question: question, a form sent back
-    with its errors, or else one holding the current answer."""
-    context, state = {}, None
+    with its errors, or else one holding the current answer; done_now, the stop to tick."""
+    context, state = {"done_now": done_now}, None
     if request.user.is_authenticated:
         today = timezone.localdate()
         state = fitting_state(request.user, today)
@@ -563,7 +600,13 @@ def route_answer(request):
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
     next_url = _safe_next(request)
     if form.is_valid():
+        today = timezone.localdate()
+        here = fitting_state(request.user, today).stop
         form.save()
+        on_route = urlsplit(next_url).path in ("", reverse("guide"))
+        # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
+        if on_route and here == stop and stop in fitting_state(request.user, today).done:
+            request.session[DONE_NOW] = stop
         return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
     if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
         chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)
@@ -660,7 +703,7 @@ def list_order(questionnaire):
 WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
 
 
-def _wizard_step(request, step, total, **context):
+def _wizard_step(request, step, total, catalog, **context):
     # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
         request,
@@ -669,6 +712,7 @@ def _wizard_step(request, step, total, **context):
         | {
             "step": step,
             "total": total,
+            "continue_notice": _continue_notice(request.user, catalog),
             # Set by the consent page; only its first screen says the account is ready.
             "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
@@ -701,6 +745,7 @@ def questionnaire_list(request):
             {
                 "questionnaires": questionnaires,
                 "returning": returning,
+                "continue_notice": _continue_notice(user, questionnaires),
                 # A new user has no record to recommend by.
                 "recommendation": catalogue_recommendation(user, questionnaires, state)
                 if returning
@@ -721,6 +766,7 @@ def questionnaire_list(request):
             request,
             1,
             3 if life_impact is None else 2,
+            questionnaires,
             field=concern_form["concern"],
             # A returning user came from the catalogue's 「幫您挑」.
             back_url=wizard_url if returning else reverse("index"),
@@ -733,7 +779,13 @@ def questionnaire_list(request):
         age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
         if not age_form.is_valid():
             return _wizard_step(
-                request, 2, 3, field=age_form["age_group"], concern=concern, back_url=back_url
+                request,
+                2,
+                3,
+                questionnaires,
+                field=age_form["age_group"],
+                concern=concern,
+                back_url=back_url,
             )
         life_impact = life_impact_questionnaire(
             user, questionnaires, state, age_form.cleaned_data["age_group"]
@@ -768,6 +820,7 @@ def questionnaire_list(request):
         request,
         step,
         step,
+        questionnaires,
         recommended=recommended,
         reason=reason,
         why=RECOMMENDATION_REASONS[reason],

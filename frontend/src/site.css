@@ -164,6 +164,13 @@
   small { font-size: 0.875em; }
   a { color: var(--color-primary); text-decoration: underline; }
   a:hover { color: var(--color-primary-hover); }
+  /* #328 (A4, ADR 0028): a text link in the page or the footer gets a thicker underline under a
+     mouse and a light blue behind its words while pressed; colour only. Button links and the
+     tabs and switches set their own, which win over this layer. */
+  @media (hover: hover) and (pointer: fine) {
+    :is(main, .site-footer) a:hover { text-decoration-thickness: 3px; }
+  }
+  :is(main, .site-footer) a:active { background-color: var(--color-brand-selected); }
   a:not([href]):not([class]) { color: inherit; text-decoration: none; }
   img, svg, video, canvas, audio, iframe, embed, object { display: inline; vertical-align: middle; }
   img, video { max-width: none; }
@@ -920,6 +927,16 @@
       background-image: var(--gradient-brand);
       color: #fff;
     }
+
+    /* #328 (A3): pressed, an item turns a light blue pill, the current one's gradient deepens. */
+    .site-nav a:active {
+      border-radius: var(--radius-pill);
+      background-color: var(--color-brand-selected);
+    }
+
+    .site-nav a[aria-current="page"]:active {
+      background-image: linear-gradient(var(--color-primary-hover), #185f83);
+    }
   }
 
   @media (max-width: 47.99em) {
@@ -965,6 +982,16 @@
     .site-nav a[aria-current="page"] svg {
       background-image: var(--gradient-brand);
       stroke: #fff;
+    }
+
+    /* #328 (A3): under the finger the pill behind the icon lights up, the current one's
+       gradient deepens like a pressed primary button; colour only (ADR 0028). */
+    .site-nav a:active svg {
+      background-color: var(--color-brand-selected);
+    }
+
+    .site-nav a[aria-current="page"]:active svg {
+      background-image: linear-gradient(var(--color-primary-hover), #185f83);
     }
   }
 
@@ -1065,12 +1092,16 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-medium);
     font-weight: 500;
-    text-decoration: none;
+    text-decoration-line: none;
   }
 
   .site-footer-links a:hover {
     background-color: #fff;
-    text-decoration: underline;
+    text-decoration-line: underline;
+  }
+
+  .site-footer-links a:active {
+    background-color: var(--color-brand-selected);
   }
 
   .site-footer-icon {
@@ -1335,6 +1366,30 @@
   .auth-input:focus-within > svg { stroke: var(--color-primary); }
   .auth-input:has([aria-invalid="true"]) > svg { stroke: var(--color-severe); }
   .auth-input > .form-control { padding-left: 3rem; }
+  /* #332 (spec #326 D5): the eye beside 顯示／隱藏, the size of the words, on their line. */
+  .password-toggle > svg {
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.35em;
+    vertical-align: -0.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* #332 (spec #326 D6): a green tick inside the right end of 密碼確認 and 出生年 once they are
+     right (register-checks.js). Drawn in the field itself, so it stays inside the box however
+     the 民國／年 row wraps at double text size; the room for it is kept only while it shows,
+     since at double text size on a phone 出生年 has none to spare while it is being typed in.
+     The tick's colour is --color-normal, the success green (ADR 0007). */
+  .form-control.is-right {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3e%3cpath fill='none' stroke='%2314573c' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M5 12.5l4.5 4.5L19 7.5'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem 1.25rem;
+  }
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
@@ -1350,12 +1405,15 @@
     gap: 1rem;
   }
 
+  /* #328: three columns, the radio button, the words and the tick's room (below). The words'
+     column may shrink to nothing and the tick keeps close, so the tick's room never widens a
+     phone page at 200% text, even in the route's indented question cards. */
   div.choice-group label {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.75rem;
     min-height: 3rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem; /* the tick's room takes most of the right padding */
     border: 2px solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
@@ -1374,14 +1432,41 @@
   div.choice-group input {
     width: 1.5rem;
     height: 1.5rem;
+    margin-right: 0.75rem;
     accent-color: var(--color-primary);
+  }
+
+  /* #328 (C2): under the finger, before it is let go: light blue with a blue edge. */
+  div.choice-group label:active {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  /* #328 (C1): chosen is dark blue with white words and a white round tick on the right, so it
+     never rests on telling two light colours apart. The tick is decoration with an empty
+     alternative text; the radio button still tells screen readers what is chosen. Every answer
+     keeps the tick's room, so choosing one moves nothing. */
+  div.choice-group label::after {
+    content: "" / "";
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: 0.375rem;
+    border-radius: 50%;
   }
 
   div.choice-group label:has(input:checked) {
     border-color: var(--color-primary);
-    background-color: var(--color-brand-selected);
-    box-shadow: inset 0 0 0 2px var(--color-primary);
+    background-color: var(--color-primary);
+    color: #fff;
     font-weight: 700;
+  }
+
+  div.choice-group label:has(input:checked) input {
+    accent-color: #fff;
+  }
+
+  div.choice-group label:has(input:checked)::after {
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 0.85rem no-repeat;
   }
 
   div.choice-group label:focus-within {
@@ -2070,6 +2155,16 @@
     background-color: var(--color-border);
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
+  /* #326 C3 (ADR 0028): the answer page's segment a choice just answered fills from the left
+     once; with reduced motion it is simply blue. */
+  @media (prefers-reduced-motion: no-preference) {
+    .step-progress-segment.is-filling {
+      background-color: var(--color-border);
+      background-image: linear-gradient(var(--color-primary), var(--color-primary));
+      background-repeat: no-repeat;
+      animation: progress-fill 0.35s ease-out both;
+    }
+  }
 
   /* Share page (#193): each step's heading starts with its number in the home page's
      brand-gradient circle; inside the heading it keeps its size and the body font size. */
@@ -2086,6 +2181,28 @@
     color: var(--color-body);
   }
 
+  /* React answer page (#326 B4): ✓ 已儲存 follows the progress on its line. Its box is there even
+     when empty, so the line wraps the same with or without it and nothing jumps. */
+  .question-progress-line {
+    display: block;
+    font-size: 1rem;
+  }
+  .question-progress-line .question-progress {
+    display: inline;
+  }
+  .answer-saved {
+    display: inline-block;
+    width: 5.5em;
+    margin-left: 0.5em;
+    white-space: nowrap;
+    color: var(--color-normal);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .answer-saved > span {
+      animation: saved-fade 1.5s linear both;
+    }
+  }
+
   /* React answer page (one question per page): focus moves to the question on each page. The ring
      shows only when the browser judges it useful (keyboard use), not after a tap or click. */
   .answer-app legend:focus {
@@ -2098,10 +2215,37 @@
     border-radius: var(--radius-button);
   }
 
+  /* #326 C4 (ADR 0028): on another question its text fades in, opacity only; with reduced motion
+     it is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    .answer-app legend > .is-fading-in {
+      animation: question-fade 0.35s ease-out both;
+    }
+  }
+
   .answer-nav {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+
+  /* #326 A6: 上一題's arrow before the words, 下一題's after, 送出's tick before; in the text's colour. */
+  .answer-nav .btn svg {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .answer-nav .btn svg:first-child {
+    margin-right: 0.4rem;
+  }
+  .answer-nav .btn svg:last-child {
+    margin-left: 0.4rem;
   }
 
   /* Answer page: one option per row, the whole row a tap target, so short and long choices line up. */
@@ -2185,7 +2329,7 @@
     padding: 0.6rem 0.15rem;
     margin: -0.6rem 0;
     color: var(--color-primary);
-    text-decoration: underline;
+    text-decoration-line: underline;
   }
 
   /* Register form: labels bold, each field's help in the body grey and a step smaller (pages tidy-up). */
@@ -2335,6 +2479,26 @@
     color: var(--color-body);
   }
 
+  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
+     the answer goes back to only: the success green (ADR 0007) with a white tick in place of its
+     number, drawn once in 0.45 s below; with reduced motion it is simply there. */
+  .route-stop.is-done-now .route-number {
+    border-color: var(--color-normal);
+    background-color: var(--color-normal);
+    color: #fff;
+  }
+
+  .route-tick {
+    width: 60%;
+    height: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+  }
+
   /* #296: said on the line on to the next stop, beside it under the box. */
   .route-stop:has(.route-gap) {
     flex-wrap: wrap;
@@ -2376,6 +2540,11 @@
   @media (prefers-reduced-motion: no-preference) {
     .route-stop.is-here .route-number {
       animation: route-ring 2.4s ease-in-out both;
+    }
+
+    /* The tick draws as the score gauge's arcs do. */
+    .route-tick path {
+      animation: gauge-draw 0.45s ease-out both;
     }
   }
 
@@ -2955,6 +3124,34 @@
     stroke-linejoin: round;
   }
 
+  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue and gains a
+     thick blue edge on its left, so a reader deep in its content still sees which one they are
+     in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
+     0024); a line dropdown stays as it is. */
+  .dropdown-box[open], .dropdown-box[open] > summary,
+  .answer-about:has(> button[aria-expanded="true"]), .answer-about > button[aria-expanded="true"],
+  .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
+    background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
+  }
+
+  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"],
+  .report-fold[open] > summary {
+    background-color: var(--color-brand-soft);
+  }
+
+  /* What runs to the box's edges (tables, grouped fields; below) starts after the bar, which
+     would otherwise hide behind a white table on screen and show through it on paper. They show
+     only while the box is open, so nothing visible moves. */
+  .dropdown-box[open] > :is(table, div) {
+    margin-inline-start: 0.3rem;
+  }
+
+  /* Inside the box the bar runs on into the content, so only its top corners are round. */
+  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"] {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
     .answer-about > button:hover {
@@ -3028,6 +3225,18 @@
     color: #fff;
   }
 
+  /* #328 (A2, ADR 0028): the other tabs turn the dropdowns' title bar light blue under a mouse
+     and a step deeper while pressed; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .history-tabs a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .history-tabs a:not([aria-current]):active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill, the
      current one a gradient pill (shape as well as colour). At 200% text the two halves stack
      instead of running off a phone. */
@@ -3057,6 +3266,37 @@
     background-color: var(--color-primary);
     background-image: var(--gradient-brand);
     color: #fff;
+  }
+
+  /* #328 (A2): the other half sits on the light blue track, so it turns lighter under a mouse
+     and deeper while pressed, either way apart from the track; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .records-switch a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .records-switch a:not([aria-current]):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  /* #334 (spec #326 D3, ADR 0028): pressing the other half of this switch or 右耳｜左耳, the
+     blue pill slides from the old side to the new, by the browser's cross-document view
+     transition; browsers without it just change page. Only the pill takes part: the page itself
+     (the root) neither fades out nor in, and switch-slide.js skips every other change of page.
+     With reduced motion there is no transition at all. */
+  @media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+      navigation: auto;
+    }
+  }
+
+  :root {
+    view-transition-name: none;
+  }
+
+  :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
+    view-transition-name: switch-pill;
   }
 
   /* Aided vs unaided HHIE-S, styled like the trend summary box. */
@@ -3162,6 +3402,37 @@
   .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
     --btn-bg: #fff;
   }
+  /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
+     seconds, whether pressed, hovered or not. After the white fill above, which it replaces.
+     #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button
+     stays disabled, so its disabled colours are the green too. */
+  .btn.is-copied, .btn.is-sent {
+    --btn-color: #fff;
+    --btn-bg: var(--color-normal);
+    --btn-border-color: var(--color-normal);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-normal);
+    --btn-hover-border-color: var(--color-normal);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-normal);
+    --btn-active-border-color: var(--color-normal);
+  }
+  .btn.is-sent {
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-normal);
+    --btn-disabled-border-color: var(--color-normal);
+  }
+  .is-copied > svg, .is-sent > svg {
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.35em;
+    vertical-align: -0.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 
   .tint-rows > * + * {
     margin-top: 0.75rem;
@@ -3261,7 +3532,7 @@
     padding: 0.55rem 0;
     color: var(--color-primary);
     font-weight: 700;
-    text-decoration: underline;
+    text-decoration-line: underline;
     text-underline-offset: 0.25em;
   }
 
@@ -3789,19 +4060,68 @@
     transform: translate(calc(-100% - 1.5rem), -50%);
   }
 
-  /* Masking switch: orange when on (white on #b35900 is 4.83:1), with a matching chart frame. */
+  /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
+     (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
+     with the user's font size. Hover, press and focus only change colours (ADR 0028). */
   .audiogram-mask-switch {
-    border: 0.125rem solid var(--color-input-border);
-    background-color: #fff;
-    color: var(--color-heading);
+    --btn-color: var(--color-heading);
+    --btn-bg: #fff;
+    --btn-border-color: var(--color-input-border);
+    --btn-hover-color: var(--color-heading);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-input-border);
+    --btn-active-color: var(--color-heading);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-input-border);
+    --btn-focus-ring: var(--color-focus-ring);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    border-width: 0.125rem;
     font-weight: 700;
+    white-space: nowrap;
   }
 
-  .audiogram-mask-switch.on,
-  .audiogram-mask-switch.on:hover {
-    border-color: var(--color-masking);
+  .audiogram-mask-value {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .audiogram-mask-track {
+    position: relative;
+    flex: none;
+    width: 3rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-input-border);
+  }
+
+  .audiogram-mask-knob {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-track {
     background-color: var(--color-masking);
-    color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-knob {
+    transform: translateX(1.25rem);
+  }
+
+  /* ADR 0028: the knob slides once, as the user's own tap; with reduced motion it jumps. */
+  @media (prefers-reduced-motion: no-preference) {
+    .audiogram-mask-knob {
+      transition: transform 0.2s ease-in-out;
+    }
   }
 
   .audiogram-chart.masking {
@@ -3927,6 +4247,17 @@
     background-color: var(--color-primary);
     background-image: var(--gradient-brand);
     color: #fff;
+  }
+
+  /* #328 (A2): as 我的紀錄's switch. */
+  @media (hover: hover) and (pointer: fine) {
+    .ear-switch a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .ear-switch a:not([aria-current]):active {
+    background-color: var(--color-brand-soft-deep);
   }
 
   /* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */
@@ -4233,13 +4564,37 @@
     color: var(--color-primary-hover);
   }
 
-  /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1). */
-  .questionnaire-guide {
+  /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
+     notice on the home and screening pages (#337) is framed the same way. */
+  .questionnaire-guide, .continue-notice {
     padding: 0.75rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
     border-radius: var(--radius-large);
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
+  }
+
+  .continue-notice {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .continue-notice-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.125rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .continue-notice a {
+    margin-left: 0.25rem;
+    font-weight: 700;
   }
 
   .questionnaire-icon {
@@ -4378,6 +4733,7 @@
     .health-report .report-answers.dropdown-box > summary {
       display: list-item;
       padding: 0.5rem 0;
+      background: none;
       list-style: revert;
     }
 
@@ -4548,9 +4904,26 @@
   75% { transform: rotate(3deg); }
 }
 
+/* Answer page (#326 C3): a segment just answered fills from the left; its size never changes. */
+@keyframes progress-fill {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+
+/* Answer page (#326 C4): another question's text fades in. */
+@keyframes question-fade {
+  from { opacity: 0; }
+}
+
 /* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
+}
+
+/* Answer page (#326 B4): ✓ 已儲存 stays, then fades in its last 0.3 s. */
+@keyframes saved-fade {
+  80% { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* A jump's box (#343): held for the first half, then faded out. The start is written out, not

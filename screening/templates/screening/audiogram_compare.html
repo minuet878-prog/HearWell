@@ -4,6 +4,8 @@
 {% block title %}比較聽力圖｜HearWell{% endblock %}
 
 {% block extra_head %}
+{# Before the first paint: a slow page whose switch is not parsed yet skips the pill's slide (#334). #}
+<script src="{% static 'screening/switch-reveal.js' %}"></script>
 {% if result %}<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>{% endif %}
 {% endblock %}
 

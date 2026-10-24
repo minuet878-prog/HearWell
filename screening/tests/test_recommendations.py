@@ -308,7 +308,7 @@ class ConcernWizardTests(TestCase):
                 self.assertContains(
                     page,
                     f'<div id="id_{name}_error">\n    \n    '
-                    f'<p class="text-danger field-error mb-0">{error}</p>',
+                    f'<p class="text-danger field-error mb-0" data-code="required">{error}</p>',
                 )
                 self.assertContains(page, 'aria-invalid="true"')
         page = self.wizard(concern="anything")
