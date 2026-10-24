@@ -159,6 +159,13 @@
   small { font-size: 0.875em; }
   a { color: var(--color-primary); text-decoration: underline; }
   a:hover { color: var(--color-primary-hover); }
+  /* #328 (A4, ADR 0028): a text link in the page or the footer gets a thicker underline under a
+     mouse and a light blue behind its words while pressed; colour only. Button links and the
+     tabs and switches set their own, which win over this layer. */
+  @media (hover: hover) and (pointer: fine) {
+    :is(main, .site-footer) a:hover { text-decoration-thickness: 3px; }
+  }
+  :is(main, .site-footer) a:active { background-color: var(--color-brand-selected); }
   a:not([href]):not([class]) { color: inherit; text-decoration: none; }
   img, svg, video, canvas, audio, iframe, embed, object { display: inline; vertical-align: middle; }
   img, video { max-width: none; }
@@ -818,6 +825,16 @@
       background-image: var(--gradient-brand);
       color: #fff;
     }
+
+    /* #328 (A3): pressed, an item turns a light blue pill, the current one's gradient deepens. */
+    .site-nav a:active {
+      border-radius: var(--radius-pill);
+      background-color: var(--color-brand-selected);
+    }
+
+    .site-nav a[aria-current="page"]:active {
+      background-image: linear-gradient(var(--color-primary-hover), #185f83);
+    }
   }
 
   @media (max-width: 47.99em) {
@@ -863,6 +880,16 @@
     .site-nav a[aria-current="page"] svg {
       background-image: var(--gradient-brand);
       stroke: #fff;
+    }
+
+    /* #328 (A3): under the finger the pill behind the icon lights up, the current one's
+       gradient deepens like a pressed primary button; colour only (ADR 0028). */
+    .site-nav a:active svg {
+      background-color: var(--color-brand-selected);
+    }
+
+    .site-nav a[aria-current="page"]:active svg {
+      background-image: linear-gradient(var(--color-primary-hover), #185f83);
     }
   }
 
@@ -918,12 +945,16 @@
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-medium);
     font-weight: 500;
-    text-decoration: none;
+    text-decoration-line: none;
   }
 
   .site-footer-links a:hover {
     background-color: #fff;
-    text-decoration: underline;
+    text-decoration-line: underline;
+  }
+
+  .site-footer-links a:active {
+    background-color: var(--color-brand-selected);
   }
 
   .site-footer-icon {
@@ -1208,7 +1239,7 @@
     align-items: center;
     gap: 0.75rem;
     min-height: 3rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 1rem; /* #328: the tick's room (below) takes most of the right */
     border: 2px solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
@@ -1230,11 +1261,38 @@
     accent-color: var(--color-primary);
   }
 
+  /* #328 (C2): under the finger, before it is let go: light blue with a blue edge. */
+  div.choice-group label:active {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  /* #328 (C1): chosen is dark blue with white words and a white round tick on the right, so it
+     never rests on telling two light colours apart. The tick is decoration with an empty
+     alternative text; the radio button still tells screen readers what is chosen. Every answer
+     keeps the tick's room, so choosing one moves nothing. */
+  div.choice-group label::after {
+    content: "" / "";
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: auto;
+    border-radius: 50%;
+  }
+
   div.choice-group label:has(input:checked) {
     border-color: var(--color-primary);
-    background-color: var(--color-brand-selected);
-    box-shadow: inset 0 0 0 2px var(--color-primary);
+    background-color: var(--color-primary);
+    color: #fff;
     font-weight: 700;
+  }
+
+  div.choice-group label:has(input:checked) input {
+    accent-color: #fff;
+  }
+
+  div.choice-group label:has(input:checked)::after {
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 1rem no-repeat;
   }
 
   div.choice-group label:focus-within {
@@ -2038,7 +2096,7 @@
     padding: 0.6rem 0.15rem;
     margin: -0.6rem 0;
     color: var(--color-primary);
-    text-decoration: underline;
+    text-decoration-line: underline;
   }
 
   /* Register form: labels bold, each field's help in the body grey and a step smaller (pages tidy-up). */
@@ -2775,6 +2833,26 @@
     stroke-linejoin: round;
   }
 
+  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue and gains a
+     thick blue edge on its left, so a reader deep in its content still sees which one they are
+     in. An inset shadow, so nothing inside moves; a line dropdown stays as it is. */
+  .dropdown-box[open], .dropdown-box[open] > summary,
+  .answer-about:has(> button[aria-expanded="true"]), .answer-about > button[aria-expanded="true"],
+  .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
+    box-shadow: inset 0.3rem 0 0 var(--color-primary);
+  }
+
+  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"],
+  .report-fold[open] > summary {
+    background-color: var(--color-brand-soft);
+  }
+
+  /* Inside the box the bar runs on into the content, so only its top corners are round. */
+  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"] {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
     .answer-about > button:hover {
@@ -2848,6 +2926,18 @@
     color: #fff;
   }
 
+  /* #328 (A2, ADR 0028): the other tabs turn the dropdowns' title bar light blue under a mouse
+     and a step deeper while pressed; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .history-tabs a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .history-tabs a:not([aria-current]):active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill, the
      current one a gradient pill (shape as well as colour). At 200% text the two halves stack
      instead of running off a phone. */
@@ -2877,6 +2967,18 @@
     background-color: var(--color-primary);
     background-image: var(--gradient-brand);
     color: #fff;
+  }
+
+  /* #328 (A2): the other half sits on the light blue track, so it turns lighter under a mouse
+     and deeper while pressed, either way apart from the track; colour only. */
+  @media (hover: hover) and (pointer: fine) {
+    .records-switch a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .records-switch a:not([aria-current]):active {
+    background-color: var(--color-brand-soft-deep);
   }
 
   /* Aided vs unaided HHIE-S, styled like the trend summary box. */
@@ -3081,7 +3183,7 @@
     padding: 0.55rem 0;
     color: var(--color-primary);
     font-weight: 700;
-    text-decoration: underline;
+    text-decoration-line: underline;
     text-underline-offset: 0.25em;
   }
 
@@ -3716,6 +3818,17 @@
     color: #fff;
   }
 
+  /* #328 (A2): as 我的紀錄's switch. */
+  @media (hover: hover) and (pointer: fine) {
+    .ear-switch a:not([aria-current]):hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .ear-switch a:not([aria-current]):active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
   /* Health report (spec phase8_c3_report.md): readable on screen, and on paper in black and white. */
   .health-report section {
     margin-top: 1.5rem;
@@ -4165,6 +4278,7 @@
     .health-report .report-answers.dropdown-box > summary {
       display: list-item;
       padding: 0.5rem 0;
+      background: none;
       list-style: revert;
     }
 

@@ -4606,9 +4606,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(card, "transform"), "none")
             self.page.mouse.up()
             self.page.mouse.move(0, 0)
-            # Chosen: blue fill, same place and size.
+            # Chosen: dark blue fill (#328, C1), same place and size.
             self.assertEqual(self.settled(card).bounding_box(), before)
-            self.assertEqual(self.style(card, "backgroundColor"), "rgb(232, 238, 247)")
+            self.assertEqual(self.style(card, "backgroundColor"), self.PRIMARY)
             self.assertEqual(self.style(card, "transform"), "none")
 
     # #141 (2a): only clickable cards move (ADR 0006); boxes that cannot be clicked stay still.
@@ -4876,6 +4876,402 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     "borderTopColor": self.PRIMARY,
                 },
             )
+
+
+class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#328 (spec #326 A2, A3, A4, C1, C2, D1; ADR 0028): pressing, and hovering with a mouse,
+    changes colour only; nothing moves or changes size. Presses are forced the way DevTools does:
+    headless Chromium on Linux never sets :active from simulated touch (CI probe, 2026-10-22)."""
+
+    fixtures = ("questions_fixture.json",)
+    PRIMARY = "rgb(31, 78, 140)"
+    WHITE = "rgb(255, 255, 255)"
+    CLEAR = "rgba(0, 0, 0, 0)"
+    GREY_EDGE = "rgb(206, 212, 218)"
+    # The light blues the dropdowns' title bars already use, and the deeper one beside them.
+    BRAND_SOFT = "rgb(238, 243, 250)"
+    BRAND_SELECTED = "rgb(232, 238, 247)"
+    BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
+    GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
+    PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(24, 95, 131))"
+    # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base.
+    OPEN_EDGE = "rgb(31, 78, 140) 5.4px 0px 0px 0px inset"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="colour_feedback_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=1024, javascript=True, touch=False):
+        # Reduced motion, so a colour is read at its final value; touch is a phone without a mouse.
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900},
+            java_script_enabled=javascript,
+            reduced_motion="reduce",
+            has_touch=touch,
+            is_mobile=touch,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def style(self, locator, prop, pseudo=None):
+        return locator.evaluate(
+            "(el, [prop, pseudo]) => getComputedStyle(el, pseudo)[prop]", [prop, pseudo]
+        )
+
+    def submission(self, questionnaire, scores, wearing=False):
+        record = Submission.objects.create(
+            user=self.user, questionnaire=questionnaire, wearing_hearing_aid=wearing
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question, score in zip(questionnaire.questions.all(), scores, strict=True)
+        )
+        return record
+
+    def audiogram(self, tested_on):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return audiogram
+
+    def under(self, target, *states, props=("backgroundColor",), of=None):
+        """The props of `of` (the target itself by default) while `states` are forced on the
+        target; neither moves nor changes size meanwhile."""
+        of = of or target
+        before = (target.bounding_box(), of.bounding_box())
+        devtools = self.context.new_cdp_session(self.page)
+        devtools.send("DOM.enable")
+        devtools.send("CSS.enable")
+        target.evaluate("el => el.setAttribute('data-e2e-forced', '')")
+        root = devtools.send("DOM.getDocument")["root"]["nodeId"]
+        node = devtools.send("DOM.querySelector", {"nodeId": root, "selector": "[data-e2e-forced]"})
+        target.evaluate("el => el.removeAttribute('data-e2e-forced')")
+        devtools.send(
+            "CSS.forcePseudoState", {"nodeId": node["nodeId"], "forcedPseudoClasses": list(states)}
+        )
+        try:
+            values = {prop: self.style(of, prop) for prop in props}
+            self.assertEqual((target.bounding_box(), of.bounding_box()), before)
+            self.assertEqual(self.style(target, "transform"), "none")
+        finally:
+            devtools.send(
+                "CSS.forcePseudoState", {"nodeId": node["nodeId"], "forcedPseudoClasses": []}
+            )
+            devtools.detach()
+        return values if len(props) > 1 else values[props[0]]
+
+    # A2: the tab or half not chosen turns light blue under a mouse and a step deeper pressed;
+    # the chosen one stays as it is.
+    def test_tabs_and_switches_change_colour_when_hovered_or_pressed(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7)
+        self.audiogram(date(2026, 9, 1))
+        self.audiogram(date(2026, 9, 28))
+        cases = (
+            # (name, page, navigation, the other one at rest, hovered, pressed)
+            (
+                "questionnaire tabs",
+                "/my_hearing?questionnaire=hhie-s",
+                "問卷",
+                self.WHITE,
+                self.BRAND_SOFT,
+                self.BRAND_SELECTED,
+            ),
+            # The two halves sit on a light blue track: hovered lighter, pressed deeper.
+            (
+                "records switch",
+                "/audiograms",
+                "紀錄種類",
+                self.CLEAR,
+                self.BRAND_SOFT,
+                self.BRAND_SOFT_DEEP,
+            ),
+            (
+                "ear switch",
+                "/audiograms/compare",
+                "選耳朵",
+                self.CLEAR,
+                self.BRAND_SOFT,
+                self.BRAND_SOFT_DEEP,
+            ),
+        )
+        self.open()
+        with self.saving_artifacts():
+            for name, path, label, rest, hovered, pressed in cases:
+                with self.subTest(name):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    nav = self.main().get_by_role("navigation", name=label)
+                    other = nav.locator("a:not([aria-current])").first
+                    track = self.style(nav, "backgroundColor")
+                    self.assertEqual(self.style(other, "backgroundColor"), rest)
+                    self.assertEqual(self.under(other, "hover"), hovered)
+                    self.assertEqual(self.under(other, "hover", "active"), pressed)
+                    for colour in (hovered, pressed):
+                        self.assertNotIn(colour, (rest, track))
+                    current = nav.locator("[aria-current]")
+                    props = ("backgroundColor", "backgroundImage", "color")
+                    at_rest = {prop: self.style(current, prop) for prop in props}
+                    self.assertEqual(at_rest["backgroundImage"], self.GRADIENT)
+                    for states in (("hover",), ("hover", "active")):
+                        self.assertEqual(self.under(current, *states, props=props), at_rest)
+
+    # A3: on a phone the pill behind a tab's icon lights up under the finger; wide screens' top
+    # bar does the same to the whole item.
+    def test_navigation_items_change_colour_when_pressed(self):
+        self.open(width=390, touch=True)
+        self.assertFalse(self.page.evaluate("matchMedia('(hover: hover)').matches"))
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            other = nav.get_by_role("link", name="紀錄")
+            pill = other.locator("svg")
+            self.assertEqual(self.style(pill, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "active", of=pill), self.BRAND_SELECTED)
+            current = nav.locator('a[aria-current="page"]')
+            pill = current.locator("svg")
+            self.assertEqual(self.style(pill, "backgroundImage"), self.GRADIENT)
+            self.assertEqual(
+                self.under(current, "active", props=("backgroundImage",), of=pill),
+                self.PRESSED_GRADIENT,
+            )
+
+            self.open()
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            other = nav.get_by_role("link", name="紀錄")
+            self.assertEqual(self.style(other, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "hover", "active"), self.BRAND_SELECTED)
+            current = nav.locator('a[aria-current="page"]')
+            self.assertEqual(
+                self.under(current, "hover", "active", props=("backgroundImage",)),
+                self.PRESSED_GRADIENT,
+            )
+
+    # A4: a text link's underline thickens under a mouse, and a light blue shows behind its
+    # words while it is pressed.
+    def test_text_links_thicken_when_hovered_and_tint_when_pressed(self):
+        record = self.submission(self.hhie_s, [2] * 10)
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            steps = self.main().get_by_role("heading", name="接下來建議您")
+            step_link = steps.locator("xpath=following-sibling::ol[1]").get_by_role("link").first
+            footer_link = self.page.get_by_role("contentinfo").get_by_role(
+                "link", name="隱私權說明"
+            )
+            for name, link in (("next step", step_link), ("footer", footer_link)):
+                with self.subTest(name):
+                    link.scroll_into_view_if_needed()
+                    rest = self.style(link, "textDecorationThickness")
+                    self.assertNotEqual(rest, "3px")
+                    self.assertEqual(self.style(link, "backgroundColor"), self.CLEAR)
+                    hovered = self.under(
+                        link, "hover", props=("textDecorationLine", "textDecorationThickness")
+                    )
+                    self.assertEqual(
+                        hovered,
+                        {"textDecorationLine": "underline", "textDecorationThickness": "3px"},
+                    )
+                    self.assertEqual(self.under(link, "hover", "active"), self.BRAND_SELECTED)
+
+    def choices(self, scope):
+        return scope.locator("div.choice-group label")
+
+    def choose_one(self, scope):
+        """Chooses the first answer not yet chosen and gives back its label."""
+        choices = self.choices(scope)
+        expect(choices.first).to_be_visible()
+        checked = choices.evaluate_all("labels => labels.map((l) => l.control.checked)")
+        choice = choices.nth(checked.index(False))
+        # Where each answer is on the page, whatever the click scrolls.
+        on_page = """labels => labels.map((label) => {
+            const box = label.getBoundingClientRect();
+            return [box.x + scrollX, box.y + scrollY, box.width, box.height];
+        })"""
+        boxes = choices.evaluate_all(on_page)
+        choice.click()
+        self.page.mouse.move(0, 0)
+        expect(choice.get_by_role("radio")).to_be_checked()
+        # Every answer keeps the tick's room, so choosing one moves nothing.
+        self.assertEqual(choices.evaluate_all(on_page), boxes)
+        return choice
+
+    def answer_pages(self):
+        """Each kind of answer choice: the React page, the web form without JavaScript, and the
+        comparison pages' cards. (name, JavaScript, path, where the choices are, an opener)."""
+        self.submission(self.hhie_s, [2] * 10)
+        self.submission(self.hhie_s, [4] * 10)
+        self.submission(self.hhie_s, [0] * 10, wearing=True)
+        self.audiogram(date(2026, 9, 1))
+        self.audiogram(date(2026, 9, 28))
+
+        def open_first_pick(page):
+            page.get_by_role("main").locator("details summary").first.click()
+
+        return (
+            ("React answer page", True, f"/questionnaire/{self.hhie_s.pk}", "#answer-app", None),
+            ("web form", False, f"/questionnaire/{self.hhie_s.pk}", "#answer-form", None),
+            ("comparison page", True, f"/comparisons/{self.hhie_s.pk}", "main", None),
+            ("audiogram comparison", True, "/audiograms/compare", "main", open_first_pick),
+        )
+
+    # C1: the chosen answer is dark blue with white words and a white tick on its right; the
+    # others stay white.
+    def test_chosen_answers_turn_dark_blue_with_a_tick(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                with self.subTest(name):
+                    self.open(javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    scope = self.page.locator(where)
+                    choice = self.choose_one(scope)
+                    self.assertEqual(
+                        {prop: self.style(choice, prop) for prop in ("backgroundColor", "color")},
+                        {"backgroundColor": self.PRIMARY, "color": self.WHITE},
+                    )
+                    tick = {
+                        prop: self.style(choice, prop, "::after")
+                        for prop in ("content", "backgroundColor", "backgroundImage", "width")
+                    }
+                    self.assertNotEqual(tick["content"], "none")
+                    self.assertEqual(tick["backgroundColor"], self.WHITE)
+                    self.assertIn("svg", tick["backgroundImage"])
+                    self.assertGreater(float(tick["width"].removesuffix("px")), 0)
+                    group = choice.locator(
+                        "xpath=ancestor::div[contains(@class, 'choice-group')][1]"
+                    )
+                    others = group.locator("label").filter(
+                        has=self.page.locator("input:not(:checked)")
+                    )
+                    self.assertGreater(others.count(), 0)
+                    for other in others.all():
+                        self.assertEqual(self.style(other, "backgroundColor"), self.WHITE)
+                        # Only the tick's empty room: no colour, no tick.
+                        room = [
+                            self.style(other, prop, "::after")
+                            for prop in ("backgroundColor", "backgroundImage")
+                        ]
+                        self.assertEqual(room, [self.CLEAR, "none"])
+
+    # C1: at 200% text on a 320px phone the chosen answer, tick and all, stays on the screen.
+    def test_chosen_answer_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for name, javascript, path, where, opener in self.answer_pages():
+                with self.subTest(name):
+                    self.open(width=320, javascript=javascript)
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    if opener:
+                        opener(self.page)
+                    choice = self.choose_one(self.page.locator(where))
+                    self.assert_fits_a_phone_at_double_text_size(name)
+                    widths = choice.evaluate("el => [el.scrollWidth, el.clientWidth]")
+                    self.assertLessEqual(widths[0], widths[1])
+                    box = choice.bounding_box()
+                    self.assertLessEqual(box["x"] + box["width"], 320)
+
+    # C2: an answer under the finger turns light blue with a blue edge before it is let go.
+    def test_answers_turn_light_blue_while_pressed(self):
+        self.open(width=390, touch=True)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            choice = self.choices(self.page.locator("#answer-app")).first
+            expect(choice).to_be_visible()
+            props = ("backgroundColor", "borderTopColor")
+            self.assertEqual(
+                {prop: self.style(choice, prop) for prop in props},
+                {"backgroundColor": self.WHITE, "borderTopColor": self.GREY_EDGE},
+            )
+            self.assertEqual(
+                self.under(choice, "active", props=props),
+                {"backgroundColor": self.BRAND_SOFT, "borderTopColor": self.PRIMARY},
+            )
+
+    # D1: an open box dropdown or report fold has a thick blue edge on its left and its title bar
+    # stays light blue; closed again, it is as before. A line dropdown gets neither.
+    def test_open_dropdowns_get_a_blue_edge_and_keep_their_bar_tinted(self):
+        self.submission(self.hhie_s, [2] * 10)
+        self.open()
+
+        def check(name, path, fold, edges):
+            with self.subTest(name):
+                self.page.goto(f"{self.live_server_url}{path}")
+                details = self.main().locator(fold).first
+                summary = details.locator("> summary")
+                parts = [details.locator(edge) for edge in edges]
+                closed = [self.style(part, "boxShadow") for part in parts]
+                bar = self.style(summary, "backgroundColor")
+                self.assertNotIn(self.OPEN_EDGE, closed)
+                place = summary.bounding_box()
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).to_have_attribute("open", "")
+                self.assertEqual(summary.bounding_box(), place)
+                self.assertEqual(self.style(summary, "backgroundColor"), self.BRAND_SOFT)
+                for part in parts:
+                    self.assertEqual(self.style(part, "boxShadow"), self.OPEN_EDGE)
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).not_to_have_attribute("open", "")
+                self.assertEqual([self.style(part, "boxShadow") for part in parts], closed)
+                self.assertEqual(self.style(summary, "backgroundColor"), bar)
+
+        with self.saving_artifacts():
+            check("box dropdown", "/add_to_home", "details", ("xpath=.", "> summary"))
+            check(
+                "report fold",
+                "/report",
+                "details:has(> summary > h3)",
+                ("> summary", "> summary + *"),
+            )
+            with self.subTest("answer page's box"):
+                # "這份問卷在問什麼？" is the box dropdown with a button, after the first page.
+                self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+                self.main().get_by_role("group").get_by_role("radio").first.check()
+                self.next()
+                about = self.main().get_by_role("button", name="這份問卷在問什麼？")
+                place = about.bounding_box()
+                about.click()
+                self.page.mouse.move(0, 0)
+                expect(about).to_have_attribute("aria-expanded", "true")
+                self.assertEqual(about.bounding_box(), place)
+                self.assertEqual(self.style(about, "backgroundColor"), self.BRAND_SOFT)
+                for part in (about.locator(".."), about):
+                    self.assertEqual(self.style(part, "boxShadow"), self.OPEN_EDGE)
+            with self.subTest("line dropdown"):
+                self.page.goto(f"{self.live_server_url}/guide/assessment")
+                details = self.main().locator("details").first
+                summary = details.locator("> summary")
+                summary.click()
+                self.page.mouse.move(0, 0)
+                expect(details).to_have_attribute("open", "")
+                self.assertEqual(self.style(summary, "backgroundColor"), self.CLEAR)
+                for part in (details, summary):
+                    self.assertEqual(self.style(part, "boxShadow"), "none")
 
 
 # White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket
