@@ -43,8 +43,12 @@ function isUsable(draft, questionIds, allowNotApplicable) {
   );
 }
 
+// True only when the browser kept it (#326 B4: the answer page says 已儲存 only then).
 export function saveDraft(draft) {
-  attempt(() => localStorage.setItem(DRAFT_PREFIX + draft.questionnaireId, JSON.stringify(draft)));
+  return attempt(() => {
+    localStorage.setItem(DRAFT_PREFIX + draft.questionnaireId, JSON.stringify(draft));
+    return true;
+  }) ?? false;
 }
 
 export function clearDraft(questionnaireId) {

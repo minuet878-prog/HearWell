@@ -2134,6 +2134,16 @@
     background-color: var(--color-border);
   }
   .step-progress-segment.is-done { background-color: var(--color-primary); }
+  /* #326 C3 (ADR 0028): the answer page's segment a choice just answered fills from the left
+     once; with reduced motion it is simply blue. */
+  @media (prefers-reduced-motion: no-preference) {
+    .step-progress-segment.is-filling {
+      background-color: var(--color-border);
+      background-image: linear-gradient(var(--color-primary), var(--color-primary));
+      background-repeat: no-repeat;
+      animation: progress-fill 0.35s ease-out both;
+    }
+  }
 
   /* Share page (#193): each step's heading starts with its number in the home page's
      brand-gradient circle; inside the heading it keeps its size and the body font size. */
@@ -2150,6 +2160,28 @@
     color: var(--color-body);
   }
 
+  /* React answer page (#326 B4): ✓ 已儲存 follows the progress on its line. Its box is there even
+     when empty, so the line wraps the same with or without it and nothing jumps. */
+  .question-progress-line {
+    display: block;
+    font-size: 1rem;
+  }
+  .question-progress-line .question-progress {
+    display: inline;
+  }
+  .answer-saved {
+    display: inline-block;
+    width: 5.5em;
+    margin-left: 0.5em;
+    white-space: nowrap;
+    color: var(--color-normal);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .answer-saved > span {
+      animation: saved-fade 1.5s linear both;
+    }
+  }
+
   /* React answer page (one question per page): focus moves to the question on each page. The ring
      shows only when the browser judges it useful (keyboard use), not after a tap or click. */
   .answer-app legend:focus {
@@ -2160,6 +2192,14 @@
     outline: 3px solid var(--color-primary);
     outline-offset: 4px;
     border-radius: var(--radius-button);
+  }
+
+  /* #326 C4 (ADR 0028): on another question its text fades in, opacity only; with reduced motion
+     it is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    .answer-app legend > .is-fading-in {
+      animation: question-fade 0.35s ease-out both;
+    }
   }
 
   .answer-nav {
@@ -4771,9 +4811,26 @@
   75% { transform: rotate(3deg); }
 }
 
+/* Answer page (#326 C3): a segment just answered fills from the left; its size never changes. */
+@keyframes progress-fill {
+  from { background-size: 0% 100%; }
+  to { background-size: 100% 100%; }
+}
+
+/* Answer page (#326 C4): another question's text fades in. */
+@keyframes question-fade {
+  from { opacity: 0; }
+}
+
 /* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
+}
+
+/* Answer page (#326 B4): ✓ 已儲存 stays, then fades in its last 0.3 s. */
+@keyframes saved-fade {
+  80% { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes start-ring {
