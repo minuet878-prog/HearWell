@@ -6648,6 +6648,51 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(summary, "boxShadow"), "none")
 
+    # 2026-10-24 comparison page, option A: 和上一次比's two records side by side.
+    def test_since_last_sets_the_two_records_side_by_side(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.trend_records(), width=320)
+            since_last = self.page.get_by_role("region", name="和上一次比")
+            previous = since_last.locator(".since-last-cell").first
+            latest = since_last.locator(".since-last-latest")
+            # 上一次 on a 並列區塊's beige, 最近一次 pale blue in a brand-blue frame; neither white.
+            self.assertEqual(self.style(previous, "backgroundColor"), self.TINT)
+            self.assertEqual(self.style(latest, "backgroundColor"), self.BLUE_SOFT)
+            self.assert_every_side(latest, Color=self.PRIMARY, Style="solid", Width="2px")
+            for cell in (previous, latest):
+                self.assertEqual(self.style(cell, "boxShadow"), "none")
+                score = float(self.style(cell.locator(".since-last-score"), "fontSize")[:-2])
+                label = float(self.style(cell.locator(".since-last-label"), "fontSize")[:-2])
+                date = float(self.style(cell.locator(".since-last-date"), "fontSize")[:-2])
+                self.assertGreater(score, label * 1.5)
+                self.assertLess(date, label)
+            arrow = since_last.locator(".since-last-arrow")
+            self.assertEqual(self.style(arrow, "color"), self.PRIMARY)
+            # Screen readers hear each record as one line, the brackets and colon included.
+            # trend_records makes both on the same day, so each date has its time.
+            expect(since_last).to_match_aria_snapshot(
+                '- heading "和上一次比" [level=2]\n'
+                "- paragraph: /上一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 20 分/\n"
+                "- paragraph: /最近一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 40 分/\n"
+                "- paragraph:\n"
+                "  - strong: 比上一次多 20 分（分數越低越好）"
+            )
+
+            def boxes():
+                return [cell.bounding_box() for cell in (previous, latest)]
+
+            # Side by side on the smallest phone, the arrow pointing right...
+            before, after = boxes()
+            self.assertEqual(before["y"], after["y"])
+            self.assertLess(before["x"], after["x"])
+            self.assertEqual(self.style(arrow, "transform"), "none")
+            # ...one above the other at 200% text, nothing cut, the arrow turned to point down.
+            self.assert_fits_uncut("和上一次比")
+            before, after = boxes()
+            self.assertEqual(before["x"], after["x"])
+            self.assertLess(before["y"] + before["height"], after["y"])
+            self.assertNotEqual(self.style(arrow, "transform"), "none")
+
     def assert_outline_button_readable(self, button):
         """#311: an outline button in a 並列區塊 is filled white (white is what can be tapped), so
         its words keep 4.5:1; the danger red on the beige alone is 3.6:1."""
