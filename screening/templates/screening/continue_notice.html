@@ -1,7 +1,6 @@
 {% load static %}
 {% if continue_notice %}
-{# #326 E7 (#337): continue-notice.js adds a line per unfinished draft of this account; without JavaScript or a draft it stays empty. #}
+{# #326 E7 (#337): continue-notice.js fills #continue-notice with a line per unfinished draft of this account. In the head, so the list stays out of the page's main text. #}
 {{ continue_notice|json_script:"continue-notice-data" }}
-<div id="continue-notice"></div>
 <script type="module" src="{% static 'screening/frontend/continue-notice.js' %}"></script>
 {% endif %}

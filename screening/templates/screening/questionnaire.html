@@ -2,8 +2,10 @@
 
 {% block title %}選擇問卷｜HearWell{% endblock %}
 
+{% block extra_head %}{% include "screening/continue_notice.html" %}{% endblock %}
+
 {% block body %}
-{% include "screening/continue_notice.html" %}
+{% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}

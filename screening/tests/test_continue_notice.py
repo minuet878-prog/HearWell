@@ -97,9 +97,12 @@ class ContinueNoticeDataTests(TestCase):
         self.client.force_login(self.user)
         for url in (reverse("index"), reverse("questionnaire_list")):
             with self.subTest(url=url):
-                response = self.client.get(url)
-                self.assertContains(response, '<div id="continue-notice"></div>', html=True)
-                self.assertContains(response, SCRIPT)
+                content = self.client.get(url).content.decode()
+                main = content[content.index("<main") : content.index("</main>")]
+                self.assertIn('<div id="continue-notice"></div>', main)
+                self.assertIn(SCRIPT, content)
+                # The list is not page text: the head keeps its names and links out of <main>.
+                self.assertNotIn("continue-notice-data", main)
 
     def test_nothing_without_logging_in(self):
         response = self.client.get(reverse("index"))

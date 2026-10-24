@@ -25,7 +25,7 @@ from screening.models import (
 )
 from screening.questionnaires import hhie_s
 from screening.scoring import classify, get_advice
-from screening.tests import test_answering, test_history
+from screening.tests import test_answering, test_continue_notice, test_history
 from screening.tests.helpers import action_cards, consented_user, fake_definition, register
 
 
@@ -437,9 +437,11 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave, smooth])
         self.client.force_login(self.user)
+        # The continue notice (#337): its script and, inline, the questionnaires it matches.
+        notice = [test_continue_notice.SCRIPT, wave, smooth, "<inline>"]
         expected = {
-            reverse("index"): [pwa_js, logout_js, wave, smooth],
-            reverse("questionnaire_list"): [pwa_js, logout_js, wave, smooth],
+            reverse("index"): [pwa_js, logout_js, *notice],
+            reverse("questionnaire_list"): [pwa_js, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
