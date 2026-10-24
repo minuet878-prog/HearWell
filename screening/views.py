@@ -105,6 +105,33 @@ def health_data_page(view):
 HOME_PREVIEW_SCORE = 18
 
 
+def _continue_notice(user):
+    # #326 E7 (#337): the questionnaires this user can open, which the continue notice's script
+    # matches against the drafts in this browser (draft.js); the drafts never reach the server.
+    questionnaires = sorted(
+        Questionnaire.objects.defined().prefetch_related("questions"), key=list_order
+    )
+    return {
+        "userId": user.pk,
+        "questionnaires": [
+            {
+                "id": questionnaire.pk,
+                # As the catalog card reads it (questionnaire_card.html).
+                "name": f"{questionnaire.definition.topic}（{questionnaire}）",
+                "url": reverse("screening", args=[questionnaire.pk]),
+                "questionIds": [question.id for question in questionnaire.questions.all()],
+                # As the answer page decides from the API: a draft may hold 「不適用」 when a
+                # question offers it.
+                "allowNotApplicable": any(
+                    "na" in dict(answer_choices(question))
+                    for question in questionnaire.questions.all()
+                ),
+            }
+            for questionnaire in questionnaires
+        ],
+    }
+
+
 def index(request):
     preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
     today = timezone.localdate()
@@ -150,6 +177,9 @@ def index(request):
             "last_max_score": last_max_score,
             "next_step": next_step,
             "more_groups": more_groups,
+            "continue_notice": _continue_notice(request.user)
+            if request.user.is_authenticated
+            else None,
         },
     )
     if request.user.is_authenticated:
@@ -641,6 +671,7 @@ def _wizard_step(request, step, total, **context):
         | {
             "step": step,
             "total": total,
+            "continue_notice": _continue_notice(request.user),
             # Set by the consent page; only its first screen says the account is ready.
             "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
@@ -655,7 +686,11 @@ def questionnaire_list(request):
         key=list_order,
     )
     if "choose" in request.GET:
-        return render(request, "screening/questionnaire.html", {"questionnaires": questionnaires})
+        return render(
+            request,
+            "screening/questionnaire.html",
+            {"questionnaires": questionnaires, "continue_notice": _continue_notice(request.user)},
+        )
     by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
     wizard_url = reverse("questionnaire_list")
     age = request.user.age

@@ -910,6 +910,71 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
 
 
+class ContinueNoticeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#326 E7 (#337): an unfinished draft is offered on the home and screening pages."""
+
+    fixtures = ("questions_fixture.json",)
+    NOTICE = "您上次的「聽力對生活的影響（HHIE-S）」答到第 2 題，答案都還在。"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def log_in(self, username):
+        client = Client()
+        client.force_login(consented_user(username=username))
+        self.context.clear_cookies()
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+
+    def test_draft_is_offered_on_home_and_screening_pages_to_its_account_only(self):
+        with self.saving_artifacts():
+            self.log_in("notice_a")
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            self.answer("有時", 1)
+            self.next()
+            self.question(2)
+            for path in ("/", "/questionnaire_list"):
+                self.page.goto(f"{self.live_server_url}{path}")
+                notice = self.main().locator("#continue-notice p")
+                expect(notice).to_have_count(1)
+                expect(notice).to_have_text(f"{self.NOTICE}接著答")
+                self.assert_fits_a_phone_at_double_text_size(path, width=412)
+            notice.get_by_role("link", name="接著答").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            expect(self.main()).to_contain_text("您上次答到第 2 題，要接著答嗎？")
+            # Another account on the same phone sees nothing of it (#326 user story 49).
+            self.log_in("notice_b")
+            self.page.goto(self.live_server_url)
+            expect(self.main().locator("h1")).to_be_visible()
+            expect(self.main().locator("#continue-notice p")).to_have_count(0)
+            expect(self.main()).not_to_contain_text("您上次的")
+
+
 def six_months_after(day):
     """The same day six calendar months on, or that month's last day (ADR 0010)."""
     month_index = day.month + 5  # 0-based month, six months on
@@ -2643,6 +2708,143 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             html = self.page.locator("html")
             expect(html).to_have_class(re.compile(r"\bsmooth-scroll\b"))
             expect(html).to_have_css("scroll-behavior", "auto")
+
+
+class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#335 (spec #326 E1, acceptance 20 and 23): 回到頂端 on the long pages."""
+
+    fixtures = ("questions_fixture.json",)
+    PAGES = ("/guide", "/guide/form-9", "/report", "/privacy", "/family")
+    # Clicks and reads the scroll position in the same task, before a smooth scroll has moved.
+    CLICK_AND_READ = "button => { button.click(); return scrollY; }"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # A questionnaire and an audiogram, so my guide and the report have their full length.
+        user = consented_user(username="back_to_top_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=390, height=640, javascript=True):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=javascript
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def button(self):
+        return self.page.get_by_role("button", name="回到頂端")
+
+    def scroll(self, screens):
+        self.page.evaluate(
+            "screens => scrollTo({top: innerHeight * screens, behavior: 'instant'})", screens
+        )
+
+    def test_shows_past_one_screen_and_returns_to_the_title(self):
+        self.open()
+        with self.saving_artifacts():
+            for path in self.PAGES:
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    expect(self.button()).to_be_hidden()
+                    self.scroll(0.9)
+                    expect(self.button()).to_be_hidden()
+                    self.scroll(1.5)
+                    expect(self.button()).to_be_visible()
+                    self.button().click()
+                    self.page.wait_for_function("scrollY === 0")
+                    expect(self.main().get_by_role("heading", level=1)).to_be_focused()
+                    expect(self.button()).to_be_hidden()
+
+    def test_scrolls_smoothly_or_jumps_with_reduced_motion(self):
+        self.open()
+        with self.saving_artifacts():
+            for motion in ("no-preference", "reduce"):
+                with self.subTest(motion=motion):
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/privacy")
+                    self.scroll(1.5)
+                    expect(self.button()).to_be_visible()
+                    after_click = self.button().evaluate(self.CLICK_AND_READ)
+                    if motion == "reduce":
+                        self.assertEqual(after_click, 0)
+                    else:
+                        self.assertGreater(after_click, 0)
+                    self.page.wait_for_function("scrollY === 0")
+                    expect(self.main().get_by_role("heading", level=1)).to_be_focused()
+
+    # #335 acceptance: on a phone it sits above the bottom tab bar, at normal and double text.
+    def test_sits_above_the_bottom_tabs_on_a_phone(self):
+        nav = "主要導覽"
+        for width in (320, 390):
+            for text_size in (None, "225%"):
+                with self.subTest(width=width, text_size=text_size):
+                    self.open(width)
+                    with self.saving_artifacts():
+                        self.page.goto(f"{self.live_server_url}/family")
+                        if text_size:
+                            self.page.locator("html").evaluate(
+                                "(html, size) => html.style.setProperty('font-size', size)",
+                                text_size,
+                            )
+                        self.scroll(1.5)
+                        expect(self.button()).to_be_visible()
+                        button = self.button().bounding_box()
+                        tabs = self.page.get_by_role("navigation", name=nav).bounding_box()
+                        self.assertLessEqual(button["y"] + button["height"], tabs["y"])
+                        self.assertLessEqual(button["x"] + button["width"], width)
+                        # The tab nearest the button is still the one a tap reaches.
+                        learn = self.page.get_by_role("navigation", name=nav).get_by_role(
+                            "link", name="了解"
+                        )
+                        learn.click(trial=True)
+
+    def test_hidden_without_javascript_and_on_paper(self):
+        with self.subTest(javascript=False):
+            self.open(javascript=False)
+            with self.saving_artifacts():
+                self.page.goto(f"{self.live_server_url}/privacy")
+                self.scroll(1.5)
+                expect(self.page.locator("#back-to-top")).to_be_hidden()
+        with self.subTest(media="print"):
+            self.open(width=1280)
+            with self.saving_artifacts():
+                self.page.goto(f"{self.live_server_url}/report")
+                self.scroll(1.5)
+                expect(self.button()).to_be_visible()
+                self.page.emulate_media(media="print")
+                expect(self.button()).to_be_hidden()
 
 
 class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
