@@ -26,7 +26,6 @@
 {% if retake %}{% include "screening/questionnaire_card.html" with questionnaire=retake.questionnaire title=retake.title note=retake.note %}{% endif %}
 {% for questionnaire in also %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% endif %}
-{% for questionnaire in offers %}<p class="mt-4"><a href="{% url 'screening' questionnaire.pk %}">{{ questionnaire.definition.wizard_offer }}</a></p>{% endfor %}
 <p class="mt-6"><a class="btn btn-outline-primary btn-lg" href="{{ back_url }}">上一步</a></p>
 <details class="dropdown-box mt-4">
     <summary>看其他問卷</summary>
@@ -35,7 +34,7 @@
 {% else %}
 <h1 class="h3 mt-2">幫您找適合的問卷</h1>
 <form method="get" action="{% url 'questionnaire_list' %}">
-    {% if age_group %}<input type="hidden" name="age_group" value="{{ age_group }}">{% endif %}
+    {% if concern %}<input type="hidden" name="concern" value="{{ concern }}">{% endif %}
     <fieldset>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
         {% include "screening/field_messages.html" %}
@@ -46,7 +45,7 @@
         <button type="submit" class="btn btn-primary btn-lg">下一步</button>
     </div>
 </form>
-<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>
 {% endif %}
+<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>
 {% endif %}
 {% endblock %}

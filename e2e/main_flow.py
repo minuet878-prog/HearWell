@@ -241,14 +241,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assert_fits_a_phone_at_double_text_size("consent")
             self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
             expect(self.main().locator(".questionnaire-guide")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard concern")
+            self.main().get_by_role("group", name="您最想了解什麼？").get_by_label(
+                "聽不清楚對生活、心情的影響", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
             self.assert_fits_a_phone_at_double_text_size("wizard age")
             self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
                 "65 歲以上", exact=True
-            ).check()
-            self.main().get_by_role("button", name="下一步").click()
-            self.assert_fits_a_phone_at_double_text_size("wizard hearing aid")
-            self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-                "沒有戴", exact=True
             ).check()
             self.main().get_by_role("button", name="下一步").click()
             self.main().get_by_text("看其他問卷", exact=True).click()
@@ -492,25 +492,29 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         # #151: without JavaScript the 顯示 button could not work, so none shows.
         expect(self.main().get_by_role("button", name=re.compile("顯示"))).to_have_count(0)
         self.step2_register()
+        # #345: the five answers are one named group (#339 acceptance 21).
+        concern = self.main().get_by_role("group", name="您最想了解什麼？")
+        expect(concern.get_by_role("radio")).to_have_count(5)
+        hearing_aid_answer = concern.get_by_role("radio", name="助聽器戴得好不好", exact=True)
+        hearing_aid_answer.check()
+        self.main().get_by_role("button", name="下一步").click()
+        # No birth year, and a life-impact questionnaire to catch up: the age comes second. Back
+        # on step 1 the answer is still chosen (#339 acceptance 19).
+        self.main().get_by_role("link", name="上一步").click()
+        expect(hearing_aid_answer).to_be_checked()
+        self.main().get_by_role("button", name="下一步").click()
         age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
         age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
         self.page.keyboard.press("Space")
         self.main().get_by_role("button", name="下一步").click()
-        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-            "有戴", exact=True
-        ).check()
-        self.main().get_by_role("button", name="下一步").click()
-        # Wearing one with no unaided record: HHIA-S first, SSQ12 listed as also worth doing.
+        # Wearing one with no unaided record: HHIA-S first, IOI-HA listed as also worth doing.
         recommended = self.main().locator("#recommended-title")
         expect(recommended).to_contain_text("HHIA-S")
-        self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
+        self.main().get_by_role("link", name=re.compile("IOI-HA")).click()
         # Answer page tidy-up: the topic is the title, the code is on the line under it.
-        expect(self.page.get_by_role("heading", name="日常聆聽能力", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("heading", name="助聽器使用成效", exact=True)).to_be_visible()
         self.page.go_back()
         expect(recommended).to_contain_text("HHIA-S")
-        # #216: the THI line is on every wizard result, so this width check covers it too.
-        tinnitus = self.main().get_by_role("link", name="如果您有耳鳴：耳鳴障礙量表（THI）")
-        expect(tinnitus).to_be_visible()
         self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
         self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
@@ -626,22 +630,23 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.main().get_by_role("link", name="自己選問卷").click()
 
     def step3_choose_hhie_s(self):
-        # #152 wizard: no birth year, so it asks the age, then the hearing aid, then recommends.
+        # #345 wizard: what the user most wants to know, then the age (no birth year), then the
+        # recommendation.
         guide = self.main().locator(".questionnaire-guide")
         steps = self.main().locator(".step-progress-text")
         # Coming from consent: the first screen says the account is done, so 第 1 步 is new.
         expect(guide).to_have_text("帳號建好了\N{FULLWIDTH EXCLAMATION MARK}接下來幫您找適合的問卷")
         expect(steps).to_have_text("第 1 步／共 3 步")
         self.assert_step_bar(1, 3)
-        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
-            "65 歲以上", exact=True
+        self.main().get_by_role("group", name="您最想了解什麼？").get_by_label(
+            "聽不清楚對生活、心情的影響", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
         expect(guide).to_have_count(0)
         expect(steps).to_have_text("第 2 步／共 3 步")
         self.assert_step_bar(2, 3)
-        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-            "沒有戴", exact=True
+        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+            "65 歲以上", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
         expect(steps).to_have_text("第 3 步／共 3 步")
@@ -649,9 +654,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(self.main().get_by_role("heading", name="推薦您做這一份")).to_be_visible()
         expect(self.main().locator("#recommended-title")).to_contain_text("HHIE-S")
         expect(self.main()).to_contain_text(
-            "為什麼推薦：您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。"
+            "為什麼推薦：這份問卷幫您了解聽力對日常生活和心情的影響。"
         )
-        # SSQ12 is only also worth doing for people wearing hearing aids.
+        # Only the hearing-aid answer has more worth doing.
         expect(self.main().get_by_role("heading", name="也可以做")).to_have_count(0)
         self.main().get_by_role("link", name="開始作答").click()
         # Unaided: no 沒戴 preselection (#154).
@@ -4967,7 +4972,11 @@ WHITE_CARD_PAGES_HOME_RESULT = (
 # #300: the answering pages, and login and register, whose form card is the rule's one exception.
 WHITE_CARD_PAGES_ANSWERING = (
     ("answering", True, lambda test: test.answering("hhie-s")),
-    ("questionnaire list, suggested", True, "/questionnaire_list?age_group=older&hearing_aid=yes"),
+    (
+        "questionnaire list, suggested",
+        True,
+        "/questionnaire_list?concern=hearing_aid&age_group=older",
+    ),
     ("questionnaire list, choose yourself", True, "/questionnaire_list?choose=self"),
     ("login", False, "/login"),
     ("register", False, "/register"),
@@ -6482,7 +6491,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # #300: the suggested questionnaire is flat with its 開始作答 button; whole cards stay white.
     def test_suggested_questionnaire_is_flat_and_questionnaire_cards_stay_white(self):
         with self.saving_artifacts():
-            self.visit(True, "/questionnaire_list?age_group=older&hearing_aid=yes")
+            self.visit(True, "/questionnaire_list?concern=hearing_aid&age_group=older")
             suggested = (
                 self.main()
                 .get_by_role("region")
@@ -6494,7 +6503,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.GRADIENT,
             )
             for path in (
-                "/questionnaire_list?age_group=older&hearing_aid=yes",
+                "/questionnaire_list?concern=hearing_aid&age_group=older",
                 "/questionnaire_list?choose=self",
             ):
                 with self.subTest(page=path):

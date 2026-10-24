@@ -1,4 +1,4 @@
-"""THI on the wizard result: one line for anyone with tinnitus, no extra step (#216, spec #208)."""
+"""THI in the recommendation wizard: the tinnitus answer recommends it, no other line (#345)."""
 
 import uuid
 from datetime import date
@@ -32,47 +32,34 @@ class ThiWizardTests(TestCase):
     def wizard(self, **params):
         return self.client.get(reverse("questionnaire_list"), params)
 
-    def assert_tinnitus_line(self, page):
+    def test_no_result_links_thi_on_a_line_of_its_own(self):
+        # #345: the tinnitus answer recommends THI, so the #216 line under every result is gone.
         thi = reverse("screening", args=[self.by_code["thi"].pk])
-        self.assertContains(page, f'<a href="{thi}">如果您有耳鳴：耳鳴障礙量表（THI）</a>', count=1)
+        for concern in ("life_impact", "listening", "hearing_aid", "unsure"):
+            for norm_basis in (False, True):
+                with self.subTest(concern=concern, norm_basis=norm_basis):
+                    user = self.login_age(80)
+                    if norm_basis:
+                        # An unaided HHIE-S answered in full sets the IOI-HA norm group.
+                        hhie = self.by_code["hhie-s"]
+                        submission = Submission.objects.create(
+                            user=user, questionnaire=hhie, wearing_hearing_aid=False
+                        )
+                        Answer.objects.bulk_create(
+                            Answer(submission=submission, question=question, score=2)
+                            for question in hhie.questions.all()
+                        )
+                    main = self.wizard(concern=concern).content.decode()
+                    self.assertIn("推薦您做這一份", main)
+                    self.assertNotIn("如果您有耳鳴", main)
+                    # THI is only in the 看其他問卷 list.
+                    self.assertEqual(main.count(f'href="{thi}"'), 1)
+                    details = main[main.index("<details") : main.index("</details>")]
+                    self.assertIn(f'href="{thi}"', details)
 
-    def test_unaided_result_offers_thi_to_anyone_with_tinnitus(self):
-        for age in (30, 80):
-            with self.subTest(age=age):
-                self.login_age(age)
-                self.assert_tinnitus_line(self.wizard(hearing_aid="no"))
-
-    def test_aided_result_offers_thi_and_keeps_also_worth_doing(self):
-        for norm_basis in (False, True):
-            with self.subTest(norm_basis=norm_basis):
-                user = self.login_age(80)
-                if norm_basis:
-                    # An unaided HHIE-S answered in full sets the IOI-HA norm group.
-                    hhie = self.by_code["hhie-s"]
-                    submission = Submission.objects.create(
-                        user=user, questionnaire=hhie, wearing_hearing_aid=False
-                    )
-                    Answer.objects.bulk_create(
-                        Answer(submission=submission, question=question, score=2)
-                        for question in hhie.questions.all()
-                    )
-                page = self.wizard(hearing_aid="yes")
-                recommended = "ioi-ha" if norm_basis else "hhie-s"
-                self.assertEqual(page.context["recommended"], self.by_code[recommended])
-                self.assert_tinnitus_line(page)
-                main = page.content.decode()
-                also = main[main.index("也可以做") : main.index("看其他問卷")]
-                for code in ("ssq12-tw", "sadl"):
-                    self.assertIn(
-                        f'href="{reverse("screening", args=[self.by_code[code].pk])}"', also
-                    )
-                # With a norm basis, the aided life-impact retake comes first (F1).
-                self.assertEqual(also.count("questionnaire-card"), 3 if norm_basis else 2)
-
-    def test_asking_age_still_takes_three_steps(self):
+    def test_the_tinnitus_answer_never_asks_the_age(self):
         self.login_age(None)
         self.assertEqual(step_bar(self.wizard()), (1, 3))
-        self.assertEqual(step_bar(self.wizard(age_group="older")), (2, 3))
-        page = self.wizard(age_group="older", hearing_aid="no")
-        self.assertEqual(step_bar(page), (3, 3))
-        self.assert_tinnitus_line(page)
+        page = self.wizard(concern="tinnitus")
+        self.assertEqual(step_bar(page), (2, 2))
+        self.assertEqual(page.context["recommended"], self.by_code["thi"])

@@ -1,5 +1,11 @@
 from screening.questionnaires.comparison import TotalComparison
-from screening.questionnaires.definition import GUIDE_ACTION, LEVEL, RETEST_STEP, Definition
+from screening.questionnaires.definition import (
+    GUIDE_ACTION,
+    LEVEL,
+    LIFE_IMPACT,
+    RETEST_STEP,
+    Definition,
+)
 
 CODE = "hhie-s"
 
@@ -102,6 +108,7 @@ DEFINITION = Definition(
     intro_template="screening/questionnaires/hhie_s_intro.html",
     result=LEVEL,
     life_impact=True,
+    concern=LIFE_IMPACT,
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,

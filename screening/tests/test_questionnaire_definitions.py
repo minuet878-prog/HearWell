@@ -100,7 +100,7 @@ class UndefinedQuestionnaireTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "無定義")
         self.assertNotContains(response, reverse("screening", args=[self.undefined.pk]))
-        response = self.client.get(reverse("questionnaire_list"), {"hearing_aid": "no"})
+        response = self.client.get(reverse("questionnaire_list"), {"concern": "life_impact"})
         self.assertNotContains(response, "無定義")
         self.assertEqual(response.context["recommended"], self.hhie_s)
 

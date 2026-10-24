@@ -1,5 +1,5 @@
 from screening.questionnaires.comparison import AverageComparison
-from screening.questionnaires.definition import AVERAGE, Definition
+from screening.questionnaires.definition import AVERAGE, LISTENING, Definition
 
 CODE = "ssq12-tw"
 
@@ -40,6 +40,7 @@ DEFINITION = Definition(
     minutes=5,
     icon="clipboard",
     list_rank=2,
+    concern=LISTENING,
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
     result=AVERAGE,
     choices=choices,

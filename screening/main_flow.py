@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
+from screening.forms import AgeGroupForm
+from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import (
     NEXT_STEP_REASONS,
@@ -70,6 +72,29 @@ def get_user_state(user, today):
         next_suggested_date=None,
         retest_questionnaire=None,
     )
+
+
+def life_impact_questionnaire(user, questionnaires, age_group):
+    """The life-impact questionnaire to recommend (ADR 0028), one of `questionnaires`: the one of
+    the latest life-impact record, so retests compare and the trend chart goes on; without one,
+    by age, from the birth year or else `age_group` (AgeGroupForm's value, or None). None when
+    the age is still needed: no birth year, or one that cannot tell 64 from 65."""
+    life_impact = [q for q in questionnaires if q.definition.life_impact]
+    latest = (
+        user.submissions.filter(questionnaire__in=life_impact)
+        .order_by("-created_at", "-id")
+        .values_list("questionnaire_id", flat=True)
+        .first()
+    )
+    if latest is not None:
+        return next(q for q in life_impact if q.pk == latest)
+    age = user.age
+    if age is not None and age != 65:
+        age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
+    if age_group is None:
+        return None
+    code = hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE
+    return next(q for q in life_impact if q.code == code)
 
 
 @dataclass(frozen=True)

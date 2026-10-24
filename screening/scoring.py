@@ -68,9 +68,14 @@ IOI_HA_BELOW_NORM_NOTES = {
     "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
 }
 
-# Why the wizard recommends a questionnaire (#152), word for word as the site owner reviewed it.
+# Why the wizard recommends a questionnaire (#152), by the first answer's value or, for the
+# hearing-aid answer, by the unaided record (ADR 0028); spec #339's drafts, the owner settles them
+# on review.
 RECOMMENDATION_REASONS = {
-    "unaided": "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。",
+    "life_impact": "這份問卷幫您了解聽力對日常生活和心情的影響。",
+    "tinnitus": "這份問卷幫您了解耳鳴對生活和情緒的影響。",
+    "listening": "這份問卷問您在吵雜環境、多人說話時聽得懂多少。",
+    "unsure": "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
     "needs_norm_basis": (
         "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
         "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"

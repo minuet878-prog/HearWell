@@ -20,6 +20,7 @@ from screening.models import (
     User,
     shared_days,
 )
+from screening.questionnaires.definition import HEARING_AID, LIFE_IMPACT, LISTENING, TINNITUS
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -187,14 +188,20 @@ class AgeGroupForm(forms.Form):
     )
 
 
-class WearingNowForm(forms.Form):
-    # The wizard's second question (#152); the answer page still asks about this answering.
-    hearing_aid = forms.TypedChoiceField(
-        label="您現在有戴助聽器嗎？",
-        choices=(("no", "沒有戴"), ("yes", "有戴")),
-        coerce=lambda value: value == "yes",
+class ConcernForm(forms.Form):
+    # The recommendation wizard's first question (ADR 0028); 不確定 recommends as LIFE_IMPACT.
+    UNSURE = "unsure"
+    concern = forms.ChoiceField(
+        label="您最想了解什麼？",
+        choices=(
+            (LIFE_IMPACT, "聽不清楚對生活、心情的影響"),
+            (TINNITUS, "耳鳴的困擾"),
+            (LISTENING, "吵雜地方、多人說話聽不懂"),
+            (HEARING_AID, "助聽器戴得好不好"),
+            (UNSURE, "不確定"),
+        ),
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
-        error_messages={"required": "請選擇您現在有沒有戴助聽器"},
+        error_messages={"required": "請選擇您最想了解的事"},
     )
 
 
