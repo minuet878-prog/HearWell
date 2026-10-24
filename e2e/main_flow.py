@@ -7213,6 +7213,19 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.animations(self.WAVE), [])
 
+    # #338 review: the layout changing without a scroll (here the text going back to its usual
+    # size; a fold opening, a late font or a chart growing does the same) brings the gauge into
+    # view, and it plays.
+    def test_gauge_plays_when_the_layout_brings_it_into_view(self):
+        self.open("/", width=320, double=True)
+        with self.saving_artifacts():
+            expect(self.page.locator(self.GAUGE)).to_be_attached()
+            self.page.wait_for_timeout(300)
+            self.assertEqual(self.states(self.GAUGE), {"paused"})
+            self.page.locator("html").evaluate("html => html.style.removeProperty('font-size')")
+            self.wait_until(self.GAUGE, "finished")
+            self.assertEqual(self.page.evaluate("window.scrollY"), 0)
+
     # #338 review: when scroll-helpers.js never runs (here it fails to load), nothing waits for
     # ever: about 3 seconds after the page starts, the animations play as without JavaScript,
     # the ring below the screen too.

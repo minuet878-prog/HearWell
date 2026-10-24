@@ -22,6 +22,7 @@ export function setUpPlayInView(win = window) {
   const doc = win.document;
 
   let waiting = [...doc.querySelectorAll("[data-play-in-view]")];
+  let layout;
   const check = () => {
     const inset = tabBarInset(win);
     waiting = waiting.filter((element) => {
@@ -32,6 +33,7 @@ export function setUpPlayInView(win = window) {
     if (waiting.length === 0) {
       win.removeEventListener("scroll", check);
       win.removeEventListener("resize", check);
+      layout?.disconnect();
     }
   };
   win.addEventListener("scroll", check, { passive: true });
@@ -39,4 +41,10 @@ export function setUpPlayInView(win = window) {
   check();
   // Taken over: layout.html's fallback, which would play them all at once, is called off.
   win.clearTimeout(win.playInViewFallback);
+
+  // The page changing height without a scroll (a fold opening, a late font, a chart growing, the
+  // text size) can bring an element into view too. Last, as iPhones before iOS 13.4 have no
+  // ResizeObserver: there this stops with an error, and scrolling still starts the animations.
+  layout = new win.ResizeObserver(check);
+  layout.observe(doc.body);
 }
