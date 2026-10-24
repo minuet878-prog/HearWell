@@ -77,7 +77,7 @@ def get_user_state(user, today):
 
 
 def life_impact_questionnaire(user, questionnaires, state, age_group):
-    """The life-impact questionnaire to recommend (ADR 0028), one of `questionnaires`: the one of
+    """The life-impact questionnaire to recommend (ADR 0030), one of `questionnaires`: the one of
     the latest life-impact record (`state`, the user's get_user_state()), so retests compare and
     the trend chart goes on; without one, by age, from the birth year or else `age_group`
     (AgeGroupForm's value, or None). None when the age is still needed: no birth year, or one
@@ -102,7 +102,7 @@ class Recommendation:
 
 def catalogue_recommendation(user, questionnaires, state):
     """The 推薦問卷 (GLOSSARY) on top of a returning user's catalogue, apart from the home page's
-    建議下一步 (ADR 0028): by the first of #347's rules that holds, or None when none does.
+    建議下一步 (ADR 0030): by the first of #347's rules that holds, or None when none does.
     `questionnaires`: the catalogue's, in its order; `state`: the user's get_user_state()."""
     if state.retest_due or state.retest_questionnaire is None:  # None: no life-impact record
         why = CATALOGUE_REASONS["retest" if state.retest_due else "no_life_impact"]

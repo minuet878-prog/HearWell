@@ -195,7 +195,7 @@ class AgeGroupForm(forms.Form):
 
 
 class ConcernForm(forms.Form):
-    # The recommendation wizard's first question (ADR 0028).
+    # The recommendation wizard's first question (ADR 0030).
     concern = forms.ChoiceField(
         label="您最想了解什麼？",
         choices=(

@@ -682,7 +682,7 @@ def questionnaire_list(request):
     user = request.user
     state = get_user_state(user, timezone.localdate())
     returning = not state.is_new
-    # A returning user sees the catalogue first; the wizard is one link away (ADR 0028).
+    # A returning user sees the catalogue first; the wizard is one link away (ADR 0030).
     if "choose" in request.GET or (
         returning and not any(name in request.GET for name in WIZARD_PARAMS)
     ):

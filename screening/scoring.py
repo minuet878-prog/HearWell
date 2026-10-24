@@ -75,7 +75,7 @@ IOI_HA_BELOW_NORM_NOTES = {
 }
 
 # Why the wizard recommends a questionnaire (#152), by the first answer's value or, for the
-# hearing-aid answer, by the unaided record (ADR 0028); spec #339's drafts, the owner settles them
+# hearing-aid answer, by the unaided record (ADR 0030); spec #339's drafts, the owner settles them
 # on review.
 RECOMMENDATION_REASONS = {
     LIFE_IMPACT: "這份問卷幫您了解聽力對日常生活和心情的影響。",
@@ -94,7 +94,7 @@ RECOMMENDATION_REASONS = {
     ),
 }
 
-# Why the returning user's catalogue recommends a questionnaire (#347, ADR 0028), by the rule
+# Why the returning user's catalogue recommends a questionnaire (#347, ADR 0030), by the rule
 # that picked it; spec #339's drafts, the owner settles them on review.
 CATALOGUE_REASONS = {
     "retest": RETEST_DUE_TEXT,

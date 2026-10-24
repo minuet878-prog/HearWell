@@ -72,7 +72,7 @@ class RecommendationTests(TestCase):
 
 
 class ConcernWizardTests(TestCase):
-    """The recommendation wizard asking what the user most wants to know (#345, ADR 0028)."""
+    """The recommendation wizard asking what the user most wants to know (#345, ADR 0030)."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -226,7 +226,7 @@ class ConcernWizardTests(TestCase):
         self.assertNotIn(self.by_code["hhie-s"].definition.audience, cards[0][1])
 
     def test_the_aided_retake_is_the_latest_life_impact_questionnaire(self):
-        # An HHIA-S answered unaided at 64 stays the one to answer again worn past 65 (ADR 0028).
+        # An HHIA-S answered unaided at 64 stays the one to answer again worn past 65 (ADR 0030).
         user = self.login_age(70)
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
         cards = self.also_cards(self.wizard(concern="hearing_aid"))
@@ -513,7 +513,7 @@ class ConcernWizardTests(TestCase):
 
 
 class ReturningCatalogueTests(TestCase):
-    """The screening tab's questionnaire catalogue for returning users (#346, ADR 0028)."""
+    """The screening tab's questionnaire catalogue for returning users (#346, ADR 0030)."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -650,7 +650,7 @@ class ReturningCatalogueTests(TestCase):
 
 
 class RecommendedQuestionnaireTests(TestCase):
-    """The 推薦問卷 on top of the returning user's catalogue (#347, ADR 0028)."""
+    """The 推薦問卷 on top of the returning user's catalogue (#347, ADR 0030)."""
 
     fixtures = ("questions_fixture.json",)
 
