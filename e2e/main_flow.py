@@ -6,9 +6,8 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
 
 import calendar
 import os
+import base64
 import re
-import struct
-import zlib
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
@@ -6833,46 +6832,6 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.page.get_by_text("回到頂端")).to_have_count(0)
 
 
-def png_column(png):
-    """The pixels of a one-pixel-wide PNG screenshot, top to bottom, as (r, g, b): Chromium's 8-bit
-    RGB or RGBA, not interlaced. Just enough PNG reading to see a shadow without an image library.
-    """
-    position, data = 8, b""
-    while position < len(png):
-        length, kind = struct.unpack(">I4s", png[position : position + 8])
-        body = png[position + 8 : position + 8 + length]
-        if kind == b"IHDR":
-            width, height, _, colour_type = struct.unpack(">IIBB", body[:10])
-        elif kind == b"IDAT":
-            data += body
-        position += 12 + length
-    channels = {2: 3, 6: 4}[colour_type]
-    stride = width * channels
-    raw = zlib.decompress(data)
-    previous = bytearray(stride)
-    pixels = []
-    for y in range(height):
-        start = y * (stride + 1)
-        kind, row = raw[start], bytearray(raw[start + 1 : start + 1 + stride])
-        for x in range(stride):
-            left = row[x - channels] if x >= channels else 0
-            up = previous[x]
-            up_left = previous[x - channels] if x >= channels else 0
-            if kind == 1:
-                row[x] = (row[x] + left) % 256
-            elif kind == 2:
-                row[x] = (row[x] + up) % 256
-            elif kind == 3:
-                row[x] = (row[x] + (left + up) // 2) % 256
-            elif kind == 4:
-                guess = left + up - up_left
-                nearest = min((left, up, up_left), key=lambda value: abs(guess - value))
-                row[x] = (row[x] + nearest) % 256
-        pixels.append(tuple(row[:3]))
-        previous = row
-    return pixels
-
-
 class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec #338 (ticket #344): the compare page's number tables scroll sideways in their box,
     with a shadow on the side not yet seen and, when they do not fit, 表格可以左右滑動 above."""
@@ -6880,12 +6839,33 @@ class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     HINT = "表格可以左右滑動"
     # Under a shadow even the gaps between words are grey; without one some pixel is white.
     SHADED, CLEAR = 235, 250
+    # The lightness of a screenshot's lightest pixel, read in a canvas as e2e/compare_shots.py
+    # reads its screenshots: on a page of its own, as the page under test may have no JavaScript.
+    LIGHTEST = """async (src) => {
+        const image = await new Promise((resolve, reject) => {
+            const loaded = new Image();
+            loaded.onload = () => resolve(loaded);
+            loaded.onerror = reject;
+            loaded.src = src;
+        });
+        const canvas = new OffscreenCanvas(image.width, image.height);
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, image.width, image.height).data;
+        let lightest = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+            const [r, g, b] = pixels.subarray(i, i + 3);
+            lightest = Math.max(lightest, Math.floor((r + g + b) / 3));
+        }
+        return lightest;
+    }"""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.playwright = sync_playwright().start()
         cls.browser = cls.playwright.chromium.launch()
+        cls.pixels = cls.browser.new_page()
 
     @classmethod
     def tearDownClass(cls):
@@ -6960,7 +6940,8 @@ class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             png = self.page.screenshot(
                 clip={"x": x, "y": round(rect["y"]), "width": 1, "height": int(rect["height"])}
             )
-            lightness.append(max(sum(pixel) // 3 for pixel in png_column(png)))
+            source = "data:image/png;base64," + base64.b64encode(png).decode()
+            lightness.append(self.pixels.evaluate(self.LIGHTEST, source))
         return lightness
 
     def assert_shaded(self, box, left, right):
