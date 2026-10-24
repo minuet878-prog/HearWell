@@ -10,6 +10,16 @@ const HEARING_AID_CHOICES = [
 ];
 const FAILED = "送出失敗，請再按一次送出";
 
+// #326 A6: the shape says which way each button goes; decoration only, so the name stays the words.
+function NavIcon({ d }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={d} /></svg>
+  );
+}
+const ARROW_LEFT = "M19 12H5M11 6l-6 6 6 6";
+const ARROW_RIGHT = "M5 12h14M13 6l6 6-6 6";
+const TICK = "M5 12.5l4.5 4.5L19 7";
+
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
 // so the browser back button is the previous question (spec 4.1). Scores come from the API only.
 export default function AnswerApp({
@@ -37,6 +47,8 @@ export default function AnswerApp({
   const [form, setForm] = useState(null);
   const [status, setStatus] = useState({ type: "idle" });
   const [introOpen, setIntroOpen] = useState(false);
+  // #326 C5: 下一題 or 送出 pressed with nothing chosen on this question.
+  const [chooseFirst, setChooseFirst] = useState(false);
   const moved = useRef(false);
   // Set once the answers were accepted (or already were, 409): nothing may save them again.
   const finished = useRef(false);
@@ -92,6 +104,7 @@ export default function AnswerApp({
       const step = event.state?.answerStep;
       if (!Number.isInteger(step)) return;
       moved.current = true;
+      setChooseFirst(false);
       setForm((current) => current && { ...current, step });
     };
     window.addEventListener("popstate", onPopState);
@@ -157,16 +170,25 @@ export default function AnswerApp({
 
   function choose(value) {
     setStatus({ type: "idle" });
+    setChooseFirst(false);
     setForm((f) => (isHearingAid ? { ...f, wearing: value } : { ...f, answers: { ...f.answers, [question.id]: value } }));
   }
 
+  // Not disabled until answered (#326 C5): pressing says what is missing and goes back to the question.
+  function askForAChoice() {
+    setChooseFirst(true);
+    legend.current.focus();
+  }
+
   function goNext() {
+    if (!answered) return askForAChoice();
     history.pushState({ answerStep: step + 1 }, "");
     moved.current = true;
     setForm((f) => ({ ...f, step: step + 1 }));
   }
 
   async function submit() {
+    if (!answered) return askForAChoice();
     const missing = [
       asksWearing && form.wearing === null ? 0 : null,
       ...questions.map((q, i) => (form.answers[q.id] === undefined ? i + 1 : null)),
@@ -314,26 +336,32 @@ export default function AnswerApp({
             disabled={isSending}
             onClick={() => history.back()}
           >
+            <NavIcon d={ARROW_LEFT} />
             上一題
           </button>
         )}
         {isLast ? (
-          <button type="button" className="btn btn-primary btn-lg" disabled={!answered || isSending} onClick={submit}>
+          <button type="button" className="btn btn-primary btn-lg" disabled={isSending} onClick={submit}>
             {isSending ? (
               <>
                 <span className="spinner" aria-hidden="true" />
                 送出中…
               </>
             ) : (
-              "送出"
+              <>
+                <NavIcon d={TICK} />
+                送出
+              </>
             )}
           </button>
         ) : (
-          <button type="button" className="btn btn-primary btn-lg" disabled={!answered} onClick={goNext}>
+          <button type="button" className="btn btn-primary btn-lg" disabled={isSending} onClick={goNext}>
             下一題
+            <NavIcon d={ARROW_RIGHT} />
           </button>
         )}
       </div>
+      {chooseFirst && <p className="mt-4 text-xl/normal font-bold text-danger" role="alert">請先選一個答案</p>}
       {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
       <p className="answer-autosave">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>

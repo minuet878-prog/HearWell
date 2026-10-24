@@ -2168,6 +2168,25 @@
     gap: 1rem;
   }
 
+  /* #326 A6: 上一題's arrow before the words, 下一題's after, 送出's tick before; in the text's colour. */
+  .answer-nav .btn svg {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .answer-nav .btn svg:first-child {
+    margin-right: 0.4rem;
+  }
+  .answer-nav .btn svg:last-child {
+    margin-left: 0.4rem;
+  }
+
   /* Answer page: one option per row, the whole row a tap target, so short and long choices line up. */
   .answer-app div.choice-group, #answer-form div.choice-group {
     flex-direction: column;
@@ -2399,6 +2418,26 @@
     color: var(--color-body);
   }
 
+  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
+     the answer goes back to only: the success green (ADR 0007) with a white tick in place of its
+     number, drawn once in 0.45 s below; with reduced motion it is simply there. */
+  .route-stop.is-done-now .route-number {
+    border-color: var(--color-normal);
+    background-color: var(--color-normal);
+    color: #fff;
+  }
+
+  .route-tick {
+    width: 60%;
+    height: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+  }
+
   /* #296: said on the line on to the next stop, beside it under the box. */
   .route-stop:has(.route-gap) {
     flex-wrap: wrap;
@@ -2440,6 +2479,11 @@
   @media (prefers-reduced-motion: no-preference) {
     .route-stop.is-here .route-number {
       animation: route-ring 2.4s ease-in-out both;
+    }
+
+    /* The tick draws as the score gauge's arcs do. */
+    .route-tick path {
+      animation: gauge-draw 0.45s ease-out both;
     }
   }
 
@@ -3908,19 +3952,68 @@
     transform: translate(calc(-100% - 1.5rem), -50%);
   }
 
-  /* Masking switch: orange when on (white on #b35900 is 4.83:1), with a matching chart frame. */
+  /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
+     (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
+     with the user's font size. Hover, press and focus only change colours (ADR 0028). */
   .audiogram-mask-switch {
-    border: 0.125rem solid var(--color-input-border);
-    background-color: #fff;
-    color: var(--color-heading);
+    --btn-color: var(--color-heading);
+    --btn-bg: #fff;
+    --btn-border-color: var(--color-input-border);
+    --btn-hover-color: var(--color-heading);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-input-border);
+    --btn-active-color: var(--color-heading);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-input-border);
+    --btn-focus-ring: var(--color-focus-ring);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    border-width: 0.125rem;
     font-weight: 700;
+    white-space: nowrap;
   }
 
-  .audiogram-mask-switch.on,
-  .audiogram-mask-switch.on:hover {
-    border-color: var(--color-masking);
+  .audiogram-mask-value {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .audiogram-mask-track {
+    position: relative;
+    flex: none;
+    width: 3rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-input-border);
+  }
+
+  .audiogram-mask-knob {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-track {
     background-color: var(--color-masking);
-    color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-knob {
+    transform: translateX(1.25rem);
+  }
+
+  /* ADR 0028: the knob slides once, as the user's own tap; with reduced motion it jumps. */
+  @media (prefers-reduced-motion: no-preference) {
+    .audiogram-mask-knob {
+      transition: transform 0.2s ease-in-out;
+    }
   }
 
   .audiogram-chart.masking {

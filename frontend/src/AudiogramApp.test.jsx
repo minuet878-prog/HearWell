@@ -57,7 +57,8 @@ const magnifier = () => document.querySelector(".audiogram-magnifier");
 const select = (name) => screen.getByRole("combobox", { name });
 const setDate = (value) => fireEvent.change(screen.getByLabelText("檢查日期"), { target: { value } });
 const save = () => fireEvent.click(screen.getByRole("button", { name: "存檔" }));
-const maskToggle = () => screen.getByRole("button", { name: /^遮蔽：/ });
+// #333 (D4): a switch named 遮蔽, with 開 or 關 written beside it.
+const maskToggle = () => screen.getByRole("switch", { name: "遮蔽" });
 const framed = () => chart().closest(".audiogram-chart").classList.contains("masking");
 const maskBox = (name) => screen.getByRole("checkbox", { name: `${name} 遮蔽` });
 
@@ -68,8 +69,8 @@ describe("input", () => {
     forward();
     expect(chart().querySelectorAll("[data-point]")).toHaveLength(0);
     expect(screen.getByRole("button", { name: /右耳氣導/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(maskToggle().getAttribute("aria-pressed")).toBe("false");
-    expect(maskToggle().textContent).toBe("遮蔽：關");
+    expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+    expect(maskToggle().textContent).toBe("遮蔽關");
     expect(framed()).toBe(false);
     expect(screen.getByRole("button", { name: /清除/ }).disabled).toBe(true);
   });
@@ -229,8 +230,8 @@ describe("masking", () => {
   it("the switch changes the marks and marks new points masked (acceptance 34)", () => {
     renderRight();
     fireEvent.click(maskToggle());
-    expect(maskToggle().getAttribute("aria-pressed")).toBe("true");
-    expect(maskToggle().textContent).toBe("遮蔽：開（△ □ [ ]）");
+    expect(maskToggle().getAttribute("aria-checked")).toBe("true");
+    expect(maskToggle().textContent).toBe("遮蔽開");
     expect(framed()).toBe(true);
     for (const [name, mark] of [["右耳氣導", "△"], ["右耳骨導", "["]]) {
       expect(screen.getByRole("button", { name: new RegExp(name) }).textContent).toContain(mark);
@@ -242,7 +243,8 @@ describe("masking", () => {
     expect(marked.dataset.masked).toBe("true");
     expect(marked.querySelector("polygon").getAttribute("stroke")).toBe("#c0392b");
     fireEvent.click(maskToggle());
-    expect(maskToggle().textContent).toBe("遮蔽：關");
+    expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+    expect(maskToggle().textContent).toBe("遮蔽關");
     expect(framed()).toBe(false);
     press(2000, 50);
     expect(magnifier().textContent).toBe("2000 Hz 50 dB");
