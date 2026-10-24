@@ -27,6 +27,7 @@ export default defineConfig({
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
         "fitting-level": "src/fitting-level.js",
+        "continue-notice": "src/continue-notice-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

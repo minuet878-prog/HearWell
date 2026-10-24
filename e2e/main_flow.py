@@ -910,6 +910,71 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
 
 
+class ContinueNoticeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#326 E7 (#337): an unfinished draft is offered on the home and screening pages."""
+
+    fixtures = ("questions_fixture.json",)
+    NOTICE = "您上次的「聽力對生活的影響（HHIE-S）」答到第 2 題，答案都還在。"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def log_in(self, username):
+        client = Client()
+        client.force_login(consented_user(username=username))
+        self.context.clear_cookies()
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+
+    def test_draft_is_offered_on_home_and_screening_pages_to_its_account_only(self):
+        with self.saving_artifacts():
+            self.log_in("notice_a")
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            self.answer("有時", 1)
+            self.next()
+            self.question(2)
+            for path in ("/", "/questionnaire_list"):
+                self.page.goto(f"{self.live_server_url}{path}")
+                notice = self.main().locator("#continue-notice p")
+                expect(notice).to_have_count(1)
+                expect(notice).to_have_text(f"{self.NOTICE}接著答")
+                self.assert_fits_a_phone_at_double_text_size(path, width=412)
+            notice.get_by_role("link", name="接著答").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            expect(self.main()).to_contain_text("您上次答到第 2 題，要接著答嗎？")
+            # Another account on the same phone sees nothing of it (#326 user story 49).
+            self.log_in("notice_b")
+            self.page.goto(self.live_server_url)
+            expect(self.main().locator("h1")).to_be_visible()
+            expect(self.main().locator("#continue-notice p")).to_have_count(0)
+            expect(self.main()).not_to_contain_text("您上次的")
+
+
 def six_months_after(day):
     """The same day six calendar months on, or that month's last day (ADR 0010)."""
     month_index = day.month + 5  # 0-based month, six months on
