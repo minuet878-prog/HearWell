@@ -4,9 +4,9 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
     python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4
 """
 
+import base64
 import calendar
 import os
-import base64
 import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
@@ -108,18 +108,27 @@ def open_report_folds(page):
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
+    # Text at 200%: 2 x the site's 112.5% base, as in SharedLayoutTest.
+    DOUBLE_TEXT_SIZE = "225%"
+
     def main(self):
         return self.page.get_by_role("main")
 
-    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
-        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is width px wide. Not
-        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
-        # Wait for the stylesheet first: a click only waits until the new page starts, and an
-        # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
-        self.page.wait_for_load_state("load")
+    def double_text(self, on=True):
+        """Sets the page's text to 200%, or (on=False) back to its usual size. Not add_style_tag:
+        it waits for the style's load event, which never fires without JavaScript."""
         self.page.locator("html").evaluate(
-            "html => html.style.setProperty('font-size', '225%', 'important')"
+            "(html, [on, size]) => on ? html.style.setProperty('font-size', size, 'important')"
+            " : html.style.removeProperty('font-size')",
+            [on, self.DOUBLE_TEXT_SIZE],
         )
+
+    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
+        # The page is width px wide. Wait for the stylesheet first: a click only waits until the
+        # new page starts, and an unstyled page is wider than 320px (unsized SVG icons), which
+        # failed CI at random.
+        self.page.wait_for_load_state("load")
+        self.double_text()
         scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
         self.assertLessEqual(scroll_width, width, where)
 
@@ -6904,14 +6913,6 @@ class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.double_text()
         self.numbers().locator("summary").click()
 
-    def double_text(self, on=True):
-        # 2 x the site's 112.5% base, as in OnAPhone.assert_fits_a_phone_at_double_text_size.
-        self.page.locator("html").evaluate(
-            "(html, on) => on ? html.style.setProperty('font-size', '225%', 'important')"
-            " : html.style.removeProperty('font-size')",
-            on,
-        )
-
     def numbers(self):
         return self.main().locator("details", has_text="看每個頻率的數字")
 
@@ -7005,11 +7006,60 @@ class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 self.assert_shaded(box, left=False, right=False)
 
 
-class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """Spec #338 (ticket #341, ADR 0028): entrance animations play once they are in view; on a
-    phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站."""
+class ScrollHelpersOnAPhone(OnAPhone):
+    """Spec #338's play-in-view, meter and jump tests: on a phone, signed in as a returning user
+    with an HHIE-S record (every answer 2, so 20 of 40) and an audiogram, each ear at one level
+    across the four frequencies (RIGHT_DB, LEFT_DB)."""
 
     fixtures = ("questions_fixture.json",)
+    RIGHT_DB = LEFT_DB = 55
+
+    def setUp(self):
+        self.user = consented_user(username="scroll_helpers_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.submission = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=self.submission, question=question, score=2)
+            for question in self.hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, db in (("right", self.RIGHT_DB), ("left", self.LEFT_DB))
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def bring_into_view(self, selector):
+        self.page.locator(selector).evaluate(
+            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+        )
+
+    def wait_until(self, selector, state):
+        """Until every animation in the first match of selector (itself, what is inside it and
+        their ::before and ::after) is in that state, each one started."""
+        self.page.wait_for_function(
+            """([selector, state]) => {
+                const all = document.querySelector(selector).getAnimations({subtree: true});
+                return all.length && all.every(a => a.playState === state && a.startTime !== null);
+            }""",
+            arg=[selector, state],
+        )
+
+
+class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #341, ADR 0028): entrance animations play once they are in view; on a
+    phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站. Having
+    read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); HHIE-S at 20 of
+    40 puts the home gauge's needle at 90 degrees."""
+
     # Each animation's name and state, by what it moves: route-ring on the 目前這一站, gauge-draw
     # and gauge-needle on the home's gauge, wave-jump and wave-sweep on the header.
     ANIMATIONS = """(within) => document.getAnimations()
@@ -7018,11 +7068,6 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     STOP = '[aria-current="step"]'
     GAUGE = ".score-gauge"
     WAVE = ".site-wave"
-    # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size, set before the
-    # page's scripts run, so the page is judged at that size from the start.
-    DOUBLE_TEXT = """document.addEventListener("readystatechange", () => {
-        document.documentElement.style.setProperty("font-size", "225%", "important");
-    }, { once: true });"""
 
     @classmethod
     def setUpClass(cls):
@@ -7035,31 +7080,6 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         cls.browser.close()
         cls.playwright.stop()
         super().tearDownClass()
-
-    def setUp(self):
-        # Has read nothing, so the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest);
-        # HHIE-S at 20 of 40 puts the home gauge's needle at 90 degrees.
-        user = consented_user(username="in_view_e2e")
-        hhie_s = Questionnaire.objects.get(code="hhie-s")
-        submission = Submission.objects.create(
-            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=submission, question=question, score=2)
-            for question in hhie_s.questions.all()
-        )
-        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 10, 1))
-        AudiogramPoint.objects.bulk_create(
-            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
-            for ear in ("right", "left")
-            for f in (500, 1000, 2000, 4000)
-        )
-        self.client.force_login(user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
 
     def open(
         self,
@@ -7079,7 +7099,13 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         )
         self.context.add_cookies([self.cookie])
         if double:
-            self.context.add_init_script(self.DOUBLE_TEXT)
+            # Set before the page's scripts run, so the page is judged at that size from the start.
+            self.context.add_init_script(
+                f"""document.addEventListener("readystatechange", () => {{
+                    document.documentElement.style.setProperty(
+                        "font-size", "{self.DOUBLE_TEXT_SIZE}", "important");
+                }}, {{ once: true }});"""
+            )
         if prepare:
             prepare(self.context)
         self.context.tracing.start(screenshots=True, snapshots=True)
@@ -7095,19 +7121,6 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
     def scroll_by(self, y):
         self.page.evaluate("y => window.scrollBy({top: y, behavior: 'instant'})", y)
-
-    def bring_into_view(self, selector):
-        self.page.locator(selector).evaluate(
-            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
-        )
-
-    def wait_until(self, within, state):
-        self.page.wait_for_function(
-            """([within, state]) => document.getAnimations()
-                .filter(a => a.effect.target.closest(within))
-                .every(a => a.playState === state)""",
-            arg=[within, state],
-        )
 
     # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
     # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
@@ -7203,7 +7216,7 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.page.locator(self.GAUGE)).to_be_attached()
             self.page.wait_for_timeout(300)
             self.assertEqual(self.states(self.GAUGE), {"paused"})
-            self.page.locator("html").evaluate("html => html.style.removeProperty('font-size')")
+            self.double_text(on=False)
             self.wait_until(self.GAUGE, "finished")
             self.assertEqual(self.page.evaluate("window.scrollY"), 0)
 
@@ -7249,12 +7262,12 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(route).to_have_css("outline-style", "solid")
 
 
-class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
     """Spec #338 (ticket #342, ADR 0028): my guide's meters fill from 0 once they are in view,
     the two ears together, the ratio on its own; on a phone, for a user with an HHIE-S record
     (so the meters start below the screen) and an audiogram of 60 and 50 dB HL (a 40.0% ratio)."""
 
-    fixtures = ("questions_fixture.json",)
+    RIGHT_DB, LEFT_DB = 60, 50
     EARS = 'section[aria-labelledby="fitting-title"] .meter'
     RATIO = 'section[aria-labelledby="threshold-title"] .meter'
     # Each animation in the meter: its name, state, time, start, length, and the class of what
@@ -7293,29 +7306,6 @@ class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
         cls.playwright.stop()
         super().tearDownClass()
 
-    def setUp(self):
-        self.user = consented_user(username="meter_fill_e2e")
-        hhie_s = Questionnaire.objects.get(code="hhie-s")
-        self.submission = Submission.objects.create(
-            user=self.user, questionnaire=hhie_s, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=self.submission, question=question, score=2)
-            for question in hhie_s.questions.all()
-        )
-        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
-        AudiogramPoint.objects.bulk_create(
-            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
-            for ear, db in (("right", 60), ("left", 50))
-            for f in (500, 1000, 2000, 4000)
-        )
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
     def open(self, path="/guide", javascript=True, motion="no-preference"):
         self.context = self.browser.new_context(
             viewport={"width": 390, "height": 640},
@@ -7336,20 +7326,6 @@ class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
         self.assertEqual(len(found), len(expected))
         for fill, share in zip(found, expected, strict=True):
             self.assertAlmostEqual(fill, share, delta=0.01)
-
-    def bring_into_view(self, meter):
-        self.page.locator(meter).evaluate(
-            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
-        )
-
-    def wait_until(self, meter, state):
-        self.page.wait_for_function(
-            """([meter, state]) => {
-                const all = document.querySelector(meter).getAnimations({subtree: true});
-                return all.length && all.every(a => a.playState === state && a.startTime !== null);
-            }""",
-            arg=[meter, state],
-        )
 
     def assert_below_the_tab_bar(self, meter):
         """The meter is not wholly in view: its foot is under the tab bar or below the screen."""
@@ -7496,11 +7472,13 @@ class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 )
 
 
-class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
     """Spec #338 (ticket #343, ADR 0028): the box a jump lands on lights up in the brand blue
     with a pale blue glow, about 3 seconds; on a phone, signed in as a returning user."""
 
-    fixtures = ("questions_fixture.json",)
+    # 50 dB in both ears is a 37.5% ratio, short of the threshold, so my guide offers
+    # 「看沒有身障證明時」.
+    RIGHT_DB = LEFT_DB = 50
     # Every frame for a while, what the reader sees of one box: its outline and glow, where it
     # is on the screen (and where the tab bar starts), and how far the page has scrolled.
     SAMPLE = """([selector, ms]) => {
@@ -7538,31 +7516,6 @@ class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         cls.browser.close()
         cls.playwright.stop()
         super().tearDownClass()
-
-    def setUp(self):
-        # 50 dB in both ears is a 37.5% ratio, short of the threshold, so my guide offers
-        # 「看沒有身障證明時」.
-        self.user = consented_user(username="jump_e2e")
-        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
-        submission = Submission.objects.create(
-            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=submission, question=question, score=2)
-            for question in self.hhie_s.questions.all()
-        )
-        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
-        AudiogramPoint.objects.bulk_create(
-            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=50)
-            for ear in ("right", "left")
-            for f in (500, 1000, 2000, 4000)
-        )
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
 
     def open(self, path, motion="no-preference"):
         self.context = self.browser.new_context(
