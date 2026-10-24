@@ -32,23 +32,24 @@ export function setUpJumpHighlight(win = window) {
       timer = setTimeout(settle, PAUSE);
     };
     const scrolled = endsScrolls ? () => clearTimeout(timer) : pause;
-    const watch = (method) => {
-      win[method]("scroll", scrolled, { passive: true });
-      win[method]("scrollend", settle);
-    };
     // Not yet in view, it waits for the next scroll to stop.
-    function settle() {
+    const settle = () => {
       if (!isInView(box.getBoundingClientRect(), win.innerHeight, tabBarInset(win))) return;
-      watch("removeEventListener");
+      stopWatchingScrolls();
       box.classList.add("jump-highlight");
       timer = setTimeout(() => box.classList.remove("jump-highlight"), LIT_FOR);
-    }
+    };
+    const stopWatchingScrolls = () => {
+      win.removeEventListener("scroll", scrolled);
+      win.removeEventListener("scrollend", settle);
+    };
     stop = () => {
-      watch("removeEventListener");
+      stopWatchingScrolls();
       clearTimeout(timer);
       box.classList.remove("jump-highlight");
     };
-    watch("addEventListener");
+    win.addEventListener("scroll", scrolled, { passive: true });
+    win.addEventListener("scrollend", settle);
     pause();
   };
 
