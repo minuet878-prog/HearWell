@@ -2050,10 +2050,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             with self.saving_artifacts():
                 main = self.page.get_by_role("main")
                 # #199: the ear steps hold masking and clear; saving is on the confirm step.
-                for step, name in ((2, "遮蔽：關"), (2, "清除剛標的點"), (4, "存檔")):
+                # #333: masking is a switch now.
+                for step, role, name in (
+                    (2, "switch", "遮蔽"),
+                    (2, "button", "清除剛標的點"),
+                    (4, "button", "存檔"),
+                ):
                     audiogram_step(self.page, self.live_server_url, step)
                     with self.subTest(width=width, button=name):
-                        widths = main.get_by_role("button", name=name).evaluate(
+                        widths = main.get_by_role(role, name=name).evaluate(
                             """el => {
                                 const column = el.parentElement;
                                 const style = getComputedStyle(column);
@@ -2147,6 +2152,149 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                             or b["y"] + b["height"] <= a["y"] + 1
                         )
                         self.assertTrue(apart, f"controls overlap: {a} {b}")
+
+
+class MaskingSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#333 (spec #326 D4, ADR 0028): masking on the new-audiogram page is a real switch."""
+
+    ORANGE = "rgb(179, 89, 0)"
+    KNOB_X = "el => el.getBoundingClientRect().x"
+    KNOB_ANIMATIONS = """el => el.getAnimations().map(a => ({
+        property: a.transitionProperty, duration: a.effect.getComputedTiming().duration }))"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="masking_switch_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=390, reduced_motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 900}, reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        audiogram_step(self.page, self.live_server_url, 2)
+
+    def switch(self):
+        return self.main().get_by_role("switch", name="遮蔽", exact=True)
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def assert_state(self, on):
+        switch = self.switch()
+        expect(switch).to_have_attribute("aria-checked", "true" if on else "false")
+        expect(switch).to_have_text("遮蔽開" if on else "遮蔽關")
+        track = switch.locator(".audiogram-mask-track")
+        self.assertEqual(self.style(track, "backgroundColor") == self.ORANGE, on)
+        frame = self.main().locator(".audiogram-chart")
+        self.assertEqual(self.style(frame, "outlineStyle"), "dashed" if on else "none")
+        if on:
+            self.assertEqual(self.style(frame, "outlineColor"), self.ORANGE)
+
+    # #326 acceptance 17: the mouse and the space bar change the switch, its 開／關 and the frame.
+    def test_mouse_and_space_bar_switch_masking(self):
+        self.open()
+        with self.saving_artifacts():
+            expect(self.switch()).to_have_accessible_name("遮蔽")
+            self.assert_state(on=False)
+            self.switch().click()
+            self.assert_state(on=True)
+            self.switch().focus()
+            self.page.keyboard.press("Space")
+            self.assert_state(on=False)
+            self.page.keyboard.press("Space")
+            self.assert_state(on=True)
+            box = self.switch().bounding_box()
+            self.assertGreaterEqual(min(box["width"], box["height"]), 44)
+
+    # ADR 0028: hovering, pressing and keyboard focus only change colours; the switch keeps its
+    # border and the keyboard sees a ring.
+    def test_hover_press_and_focus_change_colour_only(self):
+        # Reduced motion, so the buttons' colour transitions are read at their final value.
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            switch = self.switch()
+            border = "rgb(108, 117, 125)"
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(255, 255, 255)")
+            box = switch.bounding_box()
+            switch.hover()
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(238, 243, 250)")
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.page.mouse.down()
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(214, 226, 242)")
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.assertEqual(switch.bounding_box(), box)
+            self.page.mouse.up()
+            self.page.mouse.move(0, 0)
+            self.page.keyboard.press("Shift+Tab")
+            self.page.keyboard.press("Tab")
+            expect(switch).to_be_focused()
+            self.assertEqual(self.style(switch, "borderTopColor"), border)
+            self.assertNotEqual(self.style(switch, "boxShadow"), "none")
+
+    # #326 acceptance 17 and 23 (ADR 0028): the knob slides over 0.2 s; with reduced motion it
+    # is already in place.
+    def test_knob_slides_only_without_reduced_motion(self):
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open(reduced_motion=motion)
+                knob = self.switch().locator(".audiogram-mask-knob")
+                off = knob.evaluate(self.KNOB_X)
+                self.switch().click()
+                animations = knob.evaluate(self.KNOB_ANIMATIONS)
+                if motion == "reduce":
+                    self.assertEqual(animations, [])
+                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
+                else:
+                    self.assertEqual(animations, [{"property": "transform", "duration": 200}])
+                    knob.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
+                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
+
+    # #326 (C1's 200% rule, kept for D4): the switch fits a phone at double text size.
+    def test_switch_fits_a_phone_at_double_text_size(self):
+        self.open(width=320)
+        with self.saving_artifacts():
+            self.page.locator("html").evaluate(
+                "html => html.style.setProperty('font-size', '225%', 'important')"
+            )
+            self.switch().click()
+            widths = self.switch().evaluate("el => [el.scrollWidth, el.clientWidth]")
+            self.assertLessEqual(widths[0], widths[1])
+            for part in self.switch().locator("span:not(.audiogram-mask-knob)").all():
+                box = part.bounding_box()
+                self.assertGreaterEqual(box["x"], 0)
+                self.assertLessEqual(box["x"] + box["width"], 320)
+            # 遮蔽 is never broken over two lines, and 開 stays beside its track.
+            lines = self.switch().evaluate(
+                """el => {
+                    const range = document.createRange();
+                    range.selectNodeContents(el.firstChild);
+                    return range.getClientRects().length;
+                }"""
+            )
+            self.assertEqual(lines, 1)
+            track = self.switch().locator(".audiogram-mask-track").bounding_box()
+            state = self.switch().locator(".audiogram-mask-state").bounding_box()
+            self.assertLess(state["y"], track["y"] + track["height"])
+            self.assertLess(track["y"], state["y"] + state["height"])
 
 
 class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -4754,16 +4902,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open()
         with self.saving_artifacts():
             audiogram_step(self.page, self.live_server_url, 2)
-            self.page.get_by_role("button", name="遮蔽：關").click()
-            switch = self.page.get_by_role("button", name="遮蔽：開（△ □ [ ]）")
-            self.assertEqual(
-                self.styles(switch, "backgroundColor", "borderTopColor", "color"),
-                {
-                    "backgroundColor": "rgb(179, 89, 0)",
-                    "borderTopColor": "rgb(179, 89, 0)",
-                    "color": self.WHITE,
-                },
-            )
+            # #333 (D4): on a switch, the orange is the track's.
+            switch = self.page.get_by_role("switch", name="遮蔽", exact=True)
+            switch.click()
+            track = switch.locator(".audiogram-mask-track")
+            self.assertEqual(self.style(track, "backgroundColor"), "rgb(179, 89, 0)")
 
     # #138 (2a): the header gradient and its wave, which plays once per tab (ADR 0006).
     WAVE_ANIMATIONS = """() => document.getAnimations()

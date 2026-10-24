@@ -3933,19 +3933,68 @@
     transform: translate(calc(-100% - 1.5rem), -50%);
   }
 
-  /* Masking switch: orange when on (white on #b35900 is 4.83:1), with a matching chart frame. */
+  /* Masking switch (#333): 遮蔽, a track and knob, then 開／關. The track is grey off and orange on
+     (the white knob is 4.69:1 and 4.83:1 on them), with a matching chart frame; rem, so it grows
+     with the user's font size. Hover, press and focus only change colours (ADR 0028). */
   .audiogram-mask-switch {
-    border: 0.125rem solid var(--color-input-border);
-    background-color: #fff;
-    color: var(--color-heading);
+    --btn-color: var(--color-heading);
+    --btn-bg: #fff;
+    --btn-border-color: var(--color-input-border);
+    --btn-hover-color: var(--color-heading);
+    --btn-hover-bg: var(--color-brand-soft);
+    --btn-hover-border-color: var(--color-input-border);
+    --btn-active-color: var(--color-heading);
+    --btn-active-bg: var(--color-brand-soft-deep);
+    --btn-active-border-color: var(--color-input-border);
+    --btn-focus-ring: var(--color-focus-ring);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    border-width: 0.125rem;
     font-weight: 700;
+    white-space: nowrap;
   }
 
-  .audiogram-mask-switch.on,
-  .audiogram-mask-switch.on:hover {
-    border-color: var(--color-masking);
+  .audiogram-mask-value {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .audiogram-mask-track {
+    position: relative;
+    flex: none;
+    width: 3rem;
+    height: 1.75rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-input-border);
+  }
+
+  .audiogram-mask-knob {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-track {
     background-color: var(--color-masking);
-    color: #fff;
+  }
+
+  .audiogram-mask-switch[aria-checked="true"] .audiogram-mask-knob {
+    transform: translateX(1.25rem);
+  }
+
+  /* ADR 0028: the knob slides once, as the user's own tap; with reduced motion it jumps. */
+  @media (prefers-reduced-motion: no-preference) {
+    .audiogram-mask-knob {
+      transition: transform 0.2s ease-in-out;
+    }
   }
 
   .audiogram-chart.masking {

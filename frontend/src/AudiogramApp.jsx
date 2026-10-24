@@ -253,13 +253,23 @@ export default function AudiogramApp({
               </button>
             ))}
           </div>
+          {/* #333 (D4): a switch read as 遮蔽; a button, so the space bar toggles it. 開／關 is
+              hidden from screen readers, which say the state from aria-checked. */}
           <button
             type="button"
-            className={`btn btn-lg w-full mb-2 audiogram-mask-switch${masked ? " on" : ""}`}
-            aria-pressed={masked}
+            role="switch"
+            className="btn btn-lg w-full mb-2 audiogram-mask-switch"
+            aria-checked={masked}
             onClick={() => setMasked(!masked)}
           >
-            {masked ? "遮蔽：開（△ □ [ ]）" : "遮蔽：關"}
+            遮蔽
+            {/* One piece, so at large text it wraps under 遮蔽 as a whole. */}
+            <span className="audiogram-mask-value" aria-hidden="true">
+              <span className="audiogram-mask-track">
+                <span className="audiogram-mask-knob" />
+              </span>
+              <span className="audiogram-mask-state">{masked ? "開" : "關"}</span>
+            </span>
           </button>
           {/* The dashed frame keeps masking in sight while the eyes are on the chart. */}
           <div className={`audiogram-chart${masked ? " masking" : ""}`}>
