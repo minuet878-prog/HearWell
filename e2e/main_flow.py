@@ -7654,7 +7654,8 @@ class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual({self.light(s) for s in after}, {(0, 0)})
 
     def assert_never_lights(self, samples):
-        self.assertEqual({self.light(s)[1] for s in samples}, {0})
+        """Neither the brand-blue outline nor the glow, at any moment."""
+        self.assertEqual({self.light(s) for s in samples}, {(0, 0)})
 
     # #338 acceptance 13: from my guide to the form 9 chapter, landing on 沒有身障證明時; the
     # 段落框 lights once the page is still, holds, and fades within about 3 seconds.
@@ -7728,3 +7729,26 @@ class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             summary.get_by_role("link", name="第 3 題").click()
             expect(self.page).to_have_url(re.compile(r"#question-3$"))
             self.assert_never_lights(self.samples())
+            # Its red marking is still there: the error under the question, in the error red.
+            error = self.page.locator("#question-3").get_by_text("這一題還沒有回答")
+            expect(error).to_be_visible()
+            expect(error).to_have_css("color", "rgb(143, 42, 18)")
+
+    # Acceptance 17's other error summary: the 配戴比較 form's links light nothing either.
+    def test_comparison_form_error_links_light_nothing(self):
+        aided = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=aided, question=question, score=0)
+            for question in self.hhie_s.questions.all()
+        )
+        # 查看比較 with neither record chosen.
+        self.open(f"/comparisons/{self.hhie_s.pk}?action=preview")
+        with self.saving_artifacts():
+            errors = self.page.locator("#comparison-errors")
+            for name, target in (("沒戴助聽器時", "#id_unaided_0"), ("戴助聽器時", "#id_aided_0")):
+                self.sample_this_page(target, ms=1500)
+                errors.get_by_role("link", name=name, exact=True).click()
+                expect(self.page).to_have_url(re.compile(f"{target}$"))
+                self.assert_never_lights(self.samples())
