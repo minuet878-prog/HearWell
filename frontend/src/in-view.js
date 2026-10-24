@@ -9,17 +9,21 @@ export function isInView(rect, viewportHeight, bottomInset) {
   return (rect.top >= 0 && rect.bottom <= visible) || shown >= visible / 2;
 }
 
+// The bottomInset for isInView: on phones the tab bar is fixed over the foot of the screen; on
+// wide screens it is in the page.
+export function tabBarInset(win) {
+  const nav = win.document.querySelector(".site-nav");
+  return win.getComputedStyle(nav).position === "fixed" ? nav.offsetHeight : 0;
+}
+
 // Starts each [data-play-in-view] animation (site.css holds it until then) the first time it is
 // in view, and stops watching it: scrolling away and back does not play it again.
 export function setUpPlayInView(win = window) {
   const doc = win.document;
-  // On phones the tab bar is fixed over the foot of the screen; on wide screens it is in the page.
-  const nav = doc.querySelector(".site-nav");
-  const bottomInset = () => (win.getComputedStyle(nav).position === "fixed" ? nav.offsetHeight : 0);
 
   let waiting = [...doc.querySelectorAll("[data-play-in-view]")];
   const check = () => {
-    const inset = bottomInset();
+    const inset = tabBarInset(win);
     waiting = waiting.filter((element) => {
       if (!isInView(element.getBoundingClientRect(), win.innerHeight, inset)) return true;
       element.setAttribute("data-in-view", "");

@@ -2377,6 +2377,25 @@
     }
   }
 
+  /* #343 (ADR 0028): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
+     itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
+     level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
+     seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
+     takes it off after 3 seconds. Only the look changes: the focus stays where it was. */
+  .jump-highlight:not(.route-stop),
+  .route-stop.jump-highlight .route-box {
+    outline: 0.1875rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+    box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .jump-highlight:not(.route-stop),
+    .route-stop.jump-highlight .route-box {
+      animation: jump-highlight 3s both;
+    }
+  }
+
   .guide-source,
   .guide-checked {
     font-size: 0.875rem;
@@ -4352,6 +4371,12 @@
 /* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
+}
+
+/* A jump's box (#343): held for the first half, then faded out. */
+@keyframes jump-highlight {
+  50% { outline-color: var(--color-primary); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25); }
+  to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
 }
 
 @keyframes start-ring {
