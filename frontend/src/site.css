@@ -2275,6 +2275,18 @@
     width: calc(clamp(0, var(--meter-value), var(--meter-max)) / var(--meter-max) * 100%);
   }
 
+  /* Once in view (ADR 0028), each bar grows from 0 to its number in 1.2 seconds, quickly at
+     first, then slowly, stopping without a bounce; scaled from its left edge, so nothing around
+     it moves: the lines, their labels and the hatching stay put, the numbers are the end ones.
+     The ears' two bars share a box (data-play-in-view) and so grow together. Reduced motion
+     draws them full at once. */
+  @media (prefers-reduced-motion: no-preference) {
+    .meter-bar {
+      transform-origin: left;
+      animation: meter-fill 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+  }
+
   .meter-bar-right {
     background-color: var(--color-ear-right);
   }
@@ -4377,6 +4389,11 @@
 @keyframes jump-highlight {
   50% { outline-color: var(--color-primary); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25); }
   to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
+}
+
+/* My guide's meters (#342): a bar grows from 0 to its number. */
+@keyframes meter-fill {
+  from { transform: scaleX(0); }
 }
 
 @keyframes start-ring {
