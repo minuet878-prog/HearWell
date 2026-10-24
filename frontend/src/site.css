@@ -1188,6 +1188,30 @@
   .auth-input:focus-within > svg { stroke: var(--color-primary); }
   .auth-input:has([aria-invalid="true"]) > svg { stroke: var(--color-severe); }
   .auth-input > .form-control { padding-left: 3rem; }
+  /* #332 (spec #326 D5): the eye beside 顯示／隱藏, the size of the words, on their line. */
+  .password-toggle > svg {
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.35em;
+    vertical-align: -0.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* #332 (spec #326 D6): a green tick inside the right end of 密碼確認 and 出生年 once they are
+     right (register-checks.js). Drawn in the field itself, so it stays inside the box however
+     the 民國／年 row wraps at double text size; the room for it is kept only while it shows,
+     since at double text size on a phone 出生年 has none to spare while it is being typed in.
+     The tick's colour is --color-normal, the success green (ADR 0007). */
+  .form-control.is-right {
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3e%3cpath fill='none' stroke='%2314573c' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M5 12.5l4.5 4.5L19 7.5'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem 1.25rem;
+  }
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
@@ -2981,6 +3005,30 @@
      words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
   .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
     --btn-bg: #fff;
+  }
+  /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
+     seconds, whether pressed, hovered or not. After the white fill above, which it replaces. */
+  .btn.is-copied {
+    --btn-color: #fff;
+    --btn-bg: var(--color-normal);
+    --btn-border-color: var(--color-normal);
+    --btn-hover-color: #fff;
+    --btn-hover-bg: var(--color-normal);
+    --btn-hover-border-color: var(--color-normal);
+    --btn-active-color: #fff;
+    --btn-active-bg: var(--color-normal);
+    --btn-active-border-color: var(--color-normal);
+  }
+  .is-copied > svg {
+    width: 1.25em;
+    height: 1.25em;
+    margin-right: 0.35em;
+    vertical-align: -0.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .tint-rows > * + * {

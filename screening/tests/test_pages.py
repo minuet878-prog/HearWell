@@ -428,10 +428,12 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="index"):
             self.assertEqual(scripts(reverse("index")), [pwa_js, wave, smooth])
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
-        for name in ("login", "register"):
+        # register-checks.js: the green ticks on the register page (#332).
+        for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
             with self.subTest(url=name):
                 self.assertEqual(
-                    scripts(reverse(name)), [pwa_js, "screening/password-toggle.js", wave, smooth]
+                    scripts(reverse(name)),
+                    [pwa_js, "screening/password-toggle.js", *extra, wave, smooth],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
