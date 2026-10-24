@@ -2399,6 +2399,26 @@
     color: var(--color-body);
   }
 
+  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
+     the answer goes back to only: the success green (ADR 0007) with a white tick in place of its
+     number, drawn once in 0.45 s below; with reduced motion it is simply there. */
+  .route-stop.is-done-now .route-number {
+    border-color: var(--color-normal);
+    background-color: var(--color-normal);
+    color: #fff;
+  }
+
+  .route-tick {
+    width: 60%;
+    height: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+  }
+
   /* #296: said on the line on to the next stop, beside it under the box. */
   .route-stop:has(.route-gap) {
     flex-wrap: wrap;
@@ -2440,6 +2460,11 @@
   @media (prefers-reduced-motion: no-preference) {
     .route-stop.is-here .route-number {
       animation: route-ring 2.4s ease-in-out both;
+    }
+
+    /* The tick draws as the score gauge's arcs do. */
+    .route-tick path {
+      animation: gauge-draw 0.45s ease-out both;
     }
   }
 

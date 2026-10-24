@@ -268,16 +268,22 @@ GUIDE_CHAPTERS = (
 )
 
 
+# #336 (spec #326 E5): the stop an answer on the route just made 已完成, ticked once on the
+# route it goes back to. Kept in the session, which logging out or in as someone else empties.
+DONE_NOW = "screening.route_done_now"
+
+
 def guide(request):
     # Open without logging in (spec #218): the contents are for family too. ?edit=<slug>
     # opens an answered stop's question again (#293).
-    return _guide_page(request, edit=request.GET.get("edit"))
+    done_now = request.session.pop(DONE_NOW, None)
+    return _guide_page(request, edit=request.GET.get("edit"), done_now=done_now)
 
 
-def _guide_page(request, edit=None, question=None):
+def _guide_page(request, edit=None, question=None, done_now=None):
     """我的選配指引, the stop being edited showing its question: question, a form sent back
-    with its errors, or else one holding the current answer."""
-    context, state = {}, None
+    with its errors, or else one holding the current answer; done_now, the stop to tick."""
+    context, state = {"done_now": done_now}, None
     if request.user.is_authenticated:
         today = timezone.localdate()
         state = fitting_state(request.user, today)
@@ -570,7 +576,13 @@ def route_answer(request):
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
     next_url = _safe_next(request)
     if form.is_valid():
+        today = timezone.localdate()
+        here = fitting_state(request.user, today).stop
         form.save()
+        on_route = urlsplit(next_url).path in ("", reverse("guide"))
+        # #336: only the 您在這裡 stop turning 已完成, which a stop turning 不適用 is not.
+        if on_route and here == stop and stop in fitting_state(request.user, today).done:
+            request.session[DONE_NOW] = stop
         return HttpResponseRedirect(next_url or f"{reverse('guide')}#stop-{stop}")
     if urlsplit(next_url).path == reverse("guide_chapter", args=[stop]):
         chapter = next(c for c in GUIDE_CHAPTERS if c.slug == stop)

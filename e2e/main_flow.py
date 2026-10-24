@@ -2869,6 +2869,84 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(html).to_have_css("scroll-behavior", "auto")
 
 
+class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#336 (spec #326 E5, acceptance 21 and 23): answering the 您在這裡 stop on the route so that
+    it is 已完成 turns its circle green with a white tick drawn once; a refresh shows the number."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal
+    TICK_ANIMATIONS = (
+        "p => p.getAnimations().map(a => [a.animationName, a.effect.getTiming().duration])"
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # 您在這裡 is 身障鑑定與鑑定醫院: 55 dB in both ears reaches the threshold, and
+        # 去找聽力師之前 has been read.
+        self.user = consented_user(username="route_tick_e2e")
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.client.force_login(self.user)
+        cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+        self.context = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.context.add_cookies([cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_the_tick_draws_once_or_is_simply_there_with_reduced_motion(self):
+        with self.saving_artifacts():
+            for motion, animations in (
+                ("no-preference", [["gauge-draw", 450]]),
+                ("reduce", []),
+            ):
+                with self.subTest(motion=motion):
+                    AidAndSubsidy.objects.filter(user=self.user).delete()
+                    self.page.emulate_media(reduced_motion=motion)
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    here.get_by_role("button", name="有", exact=True).click()
+
+                    expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-assessment")
+                    number = self.main().locator('[data-stop="assessment"] .route-number')
+                    expect(number).to_have_css("background-color", self.GREEN)
+                    tick = number.locator("svg path")
+                    expect(tick).to_be_visible()
+                    self.assertEqual(tick.evaluate(self.TICK_ANIMATIONS), animations)
+                    if motion == "reduce":
+                        expect(tick).to_have_css("stroke-dashoffset", "0px")
+                    # Only the stop just done: the new 您在這裡 keeps its blue number.
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_contain_text("九號表")
+                    expect(here.locator(".route-number svg")).to_have_count(0)
+                    self.assertEqual(self.main().locator(".route-number svg").count(), 1)
+
+                    self.page.reload()
+                    expect(number.locator("svg")).to_have_count(0)
+                    expect(number).to_have_text("3")
+                    expect(number).to_have_css("background-color", WhiteCardRuleTest.BLUE_SOFT)
+
+
 class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#335 (spec #326 E1, acceptance 20 and 23): 回到頂端 on the long pages."""
 
