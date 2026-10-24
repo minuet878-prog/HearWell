@@ -3648,14 +3648,46 @@
     margin-bottom: 1rem;
   }
 
-  /* #204: at 200% text the four-column number tables scroll in their own box, not the page. */
-  .compare-table-scroll {
+  /* #204: at 200% text the four-column number tables scroll in their own box, not the page.
+     Ticket #344 (spec #338): a shadow on each side not yet scrolled to, in CSS alone, so it is
+     there without JavaScript too. The shadows stay at the box's edges (scroll); a white cover
+     at each end of the content (local) slides over a shadow once that end is in view, and over
+     both when the table fits. The cells let the box's background through, or their white would
+     hide the shadows; the table's space below moves outside the box, so no shadow runs past it. */
+  .scroll-box {
     overflow-x: auto;
+    margin-bottom: 1rem;
+    background:
+      linear-gradient(to right, #fff 50%, rgb(255 255 255 / 0)) left / 2rem 100% no-repeat local,
+      linear-gradient(to left, #fff 50%, rgb(255 255 255 / 0)) right / 2rem 100% no-repeat local,
+      linear-gradient(to right, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0)) left / 1rem 100% no-repeat scroll,
+      linear-gradient(to left, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0)) right / 1rem 100% no-repeat scroll,
+      #fff;
   }
 
-  .compare-table-scroll:focus-visible {
+  .scroll-box > .table {
+    margin-bottom: 0;
+  }
+
+  .scroll-box > .table > :not(caption) > * > * {
+    background-color: transparent;
+  }
+
+  .scroll-box:focus-visible {
     outline: 0.25rem solid var(--color-primary);
     outline-offset: 0.125rem;
+  }
+
+  /* Made by scroll-hint.js above each box, and shown only while its table does not fit. */
+  .scroll-hint {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  @media print {
+    .scroll-box { background: none; }
+    .scroll-hint { display: none; }
   }
 
   /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202). */
