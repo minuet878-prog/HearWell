@@ -5,7 +5,7 @@ import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audi
 
 const FAILED = "存檔失敗，請再按一次存檔";
 // #330 (spec #326 B1): how long ✓ 已存檔 stays before the saved audiogram opens.
-const SAVED_FOR = 600;
+const SENT_FOR = 600;
 // DRF nests a list item's errors by index ({points: {0: {...}}}), so collect strings at any depth.
 const texts = (value) => (typeof value === "string" ? [value] : Object.values(value ?? {}).flatMap(texts));
 const NO_RESPONSE = "nr";
@@ -182,7 +182,7 @@ export default function AudiogramApp({
       const { id } = await response.json();
       // Still sending as far as the button goes: green for a moment, and not pressed again.
       setSaved(true);
-      setTimeout(() => navigate(`/audiograms/${id}`), SAVED_FOR);
+      setTimeout(() => navigate(`/audiograms/${id}`), SENT_FOR);
       return;
     }
     busy.current = false;
@@ -311,7 +311,7 @@ export default function AudiogramApp({
           <button type="button" className={`btn btn-primary btn-lg w-full${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
             {saved ? (
               <>
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
                 已存檔
               </>
             ) : sending ? (

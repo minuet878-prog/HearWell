@@ -22,7 +22,7 @@ function NavIcon({ d }) {
 }
 const ARROW_LEFT = "M19 12H5M11 6l-6 6 6 6";
 const ARROW_RIGHT = "M5 12h14M13 6l6 6-6 6";
-const TICK = "M5 12.5l4.5 4.5L19 7";
+const TICK = "M5 12.5l4.5 4.5L19 7.5";
 
 // One page per question, step 0 being the hearing aid question. Each step is a history entry,
 // so the browser back button is the previous question (spec 4.1). Scores come from the API only.
