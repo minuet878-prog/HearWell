@@ -26,6 +26,7 @@ export default defineConfig({
         "pwa-nav": "src/pwa-nav-main.js",
         "page-loading": "src/page-loading-main.js",
         "switch-slide": "src/switch-slide-main.js",
+        "scroll-helpers": "src/scroll-helpers-main.js",
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
         "fitting-level": "src/fitting-level.js",

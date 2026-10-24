@@ -73,7 +73,7 @@
     {# <wbr>: on narrow phones a date header may wrap after the year, so all four columns fit. #}
     <p>差值＝新 − 舊，正數＝要更大聲才聽得到。</p>
     {# Focusable and named, so a keyboard can scroll a table wider than the phone (#204). #}
-    <div class="compare-table-scroll" role="region" aria-label="{{ ear_label }} 四頻平均" tabindex="0">
+    <div class="scroll-box" role="region" aria-label="{{ ear_label }} 四頻平均" tabindex="0">
     <table class="table compare-table" data-section="pta">
         <caption>{{ ear_label }} 四頻平均</caption>
         <thead><tr data-row="head"><th scope="col">項目</th><th scope="col">{{ old.tested_on|date:"Y/" }}<wbr>{{ old.tested_on|date:"m/d" }}</th><th scope="col">{{ new.tested_on|date:"Y/" }}<wbr>{{ new.tested_on|date:"m/d" }}</th><th scope="col">差值</th></tr></thead>
@@ -91,7 +91,7 @@
     </div>
     {% for section, label, rows in sections %}
     {% if rows %}
-    <div class="compare-table-scroll" role="region" aria-label="{{ ear_label }} {{ label }}" tabindex="0">
+    <div class="scroll-box" role="region" aria-label="{{ ear_label }} {{ label }}" tabindex="0">
     <table class="table compare-table" data-section="{{ section }}">
         <caption>{{ ear_label }} {{ label }}</caption>
         <thead><tr data-row="head"><th scope="col">頻率</th><th scope="col">{{ old.tested_on|date:"Y/" }}<wbr>{{ old.tested_on|date:"m/d" }}</th><th scope="col">{{ new.tested_on|date:"Y/" }}<wbr>{{ new.tested_on|date:"m/d" }}</th><th scope="col">差值</th></tr></thead>

@@ -22,6 +22,8 @@
     <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
     {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides; every other change of page skips the transition. #}
     <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
+    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, and the line over a table that scrolls sideways. #}
+    <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
         if (sessionStorage.getItem("header-wave-played")) {
@@ -29,6 +31,14 @@
         } else {
             sessionStorage.setItem("header-wave-played", "1");
         }
+    </script>
+    {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
+    {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
+    <script>
+        document.documentElement.classList.add("play-in-view");
+        window.playInViewFallback = setTimeout(function () {
+            document.documentElement.classList.remove("play-in-view");
+        }, 3000);
     </script>
     {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
     <script>
@@ -51,7 +61,7 @@
     <p id="page-loading-status" class="page-loading-note" role="status"></p>
     <header class="site-header">
         {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
-        <div class="site-wave" aria-hidden="true">{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
+        <div class="site-wave" aria-hidden="true" data-play-in-view>{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
         <div class="container site-header-bar py-2">
             <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}

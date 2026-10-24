@@ -424,73 +424,65 @@ class RedesignLayoutTests(TestCase):
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         # And the bar with 載入中… while the next page loads (ADR 0027).
         loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
+        # Every page: the scroll helpers, such as the back-to-top button (spec #338).
+        scroll_js = "screening/frontend/scroll-helpers.js"
         # And the script that lets only the switches' pill slide to the next page (#334).
         slide_js = "screening/frontend/switch-slide.js"
         # On the pages with a switch, the one that skips the slide when the switch is not parsed
         # by the first paint (#334).
         reveal_js = "screening/switch-reveal.js"
         wave = "<inline>"
+        # Every page: the inline mark that holds entrance animations until in view (#341).
+        play_in_view = "<inline>"
         smooth = "<inline>"
+        every = [pwa_js, loading_js, slide_js, scroll_js]
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(
-                scripts(reverse("index")), [pwa_js, loading_js, slide_js, wave, smooth]
-            )
+            self.assertEqual(scripts(reverse("index")), [*every, wave, play_in_view, smooth])
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332).
         for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
             with self.subTest(url=name):
                 self.assertEqual(
                     scripts(reverse(name)),
-                    [
-                        pwa_js,
-                        loading_js,
-                        slide_js,
-                        "screening/password-toggle.js",
-                        *extra,
-                        wave,
-                        smooth,
-                    ],
+                    [*every, "screening/password-toggle.js", *extra, wave, play_in_view, smooth],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [pwa_js, loading_js, slide_js, logout_js, reveal_js, wave, smooth],
+                [*every, logout_js, reveal_js, wave, play_in_view, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
-        notice = [test_continue_notice.SCRIPT, wave, smooth, "<inline>"]
+        notice = [test_continue_notice.SCRIPT, wave, play_in_view, smooth, "<inline>"]
         expected = {
-            reverse("index"): [pwa_js, loading_js, slide_js, logout_js, *notice],
-            reverse("questionnaire_list"): [pwa_js, loading_js, slide_js, logout_js, *notice],
+            reverse("index"): [*every, logout_js, *notice],
+            reverse("questionnaire_list"): [*every, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
-                pwa_js,
-                loading_js,
-                slide_js,
+                *every,
                 logout_js,
                 answer_js,
                 wave,
+                play_in_view,
                 smooth,
                 "<inline>",
             ],
             reverse("result", args=[self.submission.id]): [
-                pwa_js,
-                loading_js,
-                slide_js,
+                *every,
                 logout_js,
                 wave,
+                play_in_view,
                 smooth,
             ],
             reverse("my_hearing"): [
-                pwa_js,
-                loading_js,
-                slide_js,
+                *every,
                 logout_js,
                 reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
+                play_in_view,
                 smooth,
             ],
         }

@@ -18,10 +18,10 @@
     <p class="text-center">聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。</p>
     {% url 'questionnaire_list' as list_url %}
     {% if user.is_authenticated %}
-    <a class="btn btn-primary btn-lg btn-start w-full" href="{{ list_url }}">開始篩檢</a>
+    <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
     {% else %}
     {# Spec #148: first-time visitors register first, then come back to choose a questionnaire. #}
-    <a class="btn btn-primary btn-lg btn-start w-full" href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
+    <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
     <p class="text-center mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
     {% endif %}
 </section>
