@@ -1253,6 +1253,82 @@
     overflow-wrap: anywhere;
   }
 
+  /* 和上一次比 (my_hearing; 2026-10-24 comparison page, option A): 上一次 → 最近一次 side by
+     side, each a 並列區塊 with its date and a score as large as the trend summary's; 最近一次 pale
+     blue in a brand-blue frame (ADR 0007: decoration is blue). The section is the container: at
+     200% text the two stack and the arrow points down. */
+  .since-last {
+    container-type: inline-size;
+  }
+
+  .since-last-pair {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .since-last-cell {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-tint);
+  }
+
+  .since-last-latest {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  .since-last-label,
+  .since-last-date,
+  .since-last-score {
+    display: block;
+  }
+
+  .since-last-label {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .since-last-date {
+    font-size: 0.875rem;
+  }
+
+  .since-last-score {
+    margin-top: 0.25rem;
+    color: var(--color-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .since-last-unit {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .since-last-arrow {
+    align-self: center;
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  @container (max-width: 15rem) {
+    .since-last-pair {
+      flex-direction: column;
+    }
+
+    .since-last-arrow {
+      align-self: flex-start;
+      margin-left: 1rem;
+      transform: rotate(90deg);
+    }
+  }
+
   /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. */
   .trend-summary {
     padding: 1.25rem 1.5rem;

@@ -501,8 +501,10 @@ class HistoryTabsTests(TestCase):
         legend = re.search(r'class="trend-legend">(.*?)</ul>', trend, re.DOTALL).group(1)
         return re.findall(r"<li>(.*?)</li>", legend, re.DOTALL)
 
-    def _since_last_html(self, main):
-        return re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
+    def _since_last_text(self, main):
+        # Its text as read out: the side-by-side records keep their brackets hidden on screen.
+        html = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
+        return re.sub(r"<[^>]+>", "", html)
 
     def test_trend_summary_leaves_the_comparison_to_since_last(self):
         # phase9_ui_refresh_2_data.md acceptance 5 (unaided 26, 24, 20 and aided 14, 10), now
@@ -519,7 +521,7 @@ class HistoryTabsTests(TestCase):
             [f"最近一次（{self._date(latest)}，有戴助聽器）", "10 分 輕度到中度影響"],
         )
         self.assertIn("<strong>10 分</strong>", trend)
-        since_last = self._since_last_html(main)
+        since_last = self._since_last_text(main)
         self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
         self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
 
@@ -537,7 +539,7 @@ class HistoryTabsTests(TestCase):
         for days_ago in range(6, 1, -1):
             self._hhie_s(20, False, days_ago=days_ago)
         self._hhie_s(12, True, days_ago=1)
-        since_last = self._since_last_html(
+        since_last = self._since_last_text(
             self._main_html(self.client.get(self._tab_url("hhie-s")))
         )
         self.assertIn(f"上一次（{self._date(aided)}）：8 分", since_last)
@@ -786,6 +788,43 @@ class HistoryRetestTests(TestCase):
         )
         # Above the trend chart.
         self.assertLess(main.index('id="since-last"'), main.index('id="trend-chart"'))
+
+    def test_since_last_sets_the_two_records_side_by_side(self):
+        # 2026-10-24 comparison page, option A: 上一次 → 最近一次, each with its date and a large
+        # score; the lines above still read the same, the brackets only hidden on screen.
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 16, 2026/09/12
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, 2026/10/12
+        main = self._fetch_main_html()
+        pair = re.search(r'<div class="since-last-pair">(.*?)</div>', main, re.S).group(1)
+        cells = re.findall(r'<p class="since-last-cell([^"]*)">(.*?)</p>', pair, re.S)
+        self.assertEqual([extra for extra, _ in cells], ["", " since-last-latest"])
+        for (_, cell), label, day, score in zip(
+            cells, ("上一次", "最近一次"), ("2026/09/12", "2026/10/12"), ("16", "12"), strict=True
+        ):
+            with self.subTest(label):
+                self.assertIn(f'<span class="since-last-label">{label}</span>', cell)
+                self.assertIn(
+                    '<span class="since-last-date"><span class="visually-hidden">（</span>'
+                    f'{day}<span class="visually-hidden">）：</span></span>',
+                    cell,
+                )
+                self.assertIn(
+                    f'<span class="since-last-score">{score}'
+                    '<span class="since-last-unit"> 分</span></span>',
+                    cell,
+                )
+        # The arrow between them is only drawn: screen readers hear the two lines.
+        self.assertIn('<span class="since-last-arrow" aria-hidden="true">→</span>', pair)
+
+    def test_since_last_dates_have_their_time_on_the_same_day(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=10)  # 16
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, the same day
+        days = re.findall(
+            r'<span class="since-last-date">(.*?)</span></span>', self._fetch_main_html()
+        )
+        self.assertEqual(len(days), 2)
+        for day in days:
+            self.assertRegex(day, r"\d{4}/\d\d/\d\d \d\d:\d\d<span")
 
     def test_since_last_says_the_same(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
