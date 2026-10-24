@@ -4,12 +4,12 @@
 
 狀態：**等本人實際操作驗收。** 自動測試與自審（Standards／Spec）都已通過，自審找到的 12 項已修完或經本人決定保留。這次 #336 在 session 存「剛完成的站」、#337 只讀目前帳號的草稿，依 AGENTS.md 應做交叉審查；2026-10-24 本人決定這次略過交叉審查。沒有操作真實資料，也沒有新增 migration。
 
-## 測試結果（整合分支 `a6bf528`）
+## 測試結果（整合分支，CI 抓到「慢的時候藥丸淡出」並修正之後）
 
-- `ruff check .` 通過；前端建置成功。
+- `ruff check .`、`ruff format --check .` 通過；前端建置成功。
 - 單元測試 1393 項通過（`--parallel 4`）。
-- 前端測試 315 項通過。
-- 整套 e2e 213 項通過（`e2e.main_flow --parallel 4`）。
+- 前端測試 319 項通過。
+- 整套 e2e 214 項通過（`e2e.main_flow --parallel 4`）；`SlidingPillTest` 另外連跑 4 次都通過。
 
 ## 做了什麼
 
@@ -29,6 +29,7 @@
 - **路線綠勾**只在回答完轉回的那一頁出現，重新整理後回到一般已完成的樣子。
 - **接著答**的問卷名稱寫成「主題（代碼）」；首頁只讀草稿、不刪別人的草稿（刪除仍只在打開作答頁時）。
 - **藥丸滑動**：Safari 有沒有 `pageswap` 事件沒能核實；如果沒有，從有藥丸的頁面去別頁時藥丸可能淡出。請用 iPhone 實機看。
+- **慢的時候不滑**（PR 開出後 CI 抓到，本人決定）：新頁畫第一個畫面時藥丸還沒解析好（手機或網路慢），原本只剩舊藥丸淡出；現在 `switch-reveal.js` 在 `<head>` 取消這次轉場，直接換頁。MDN 建議的 `<link rel="expect" blocking="render">` 實測 Chromium 156 不生效，所以沒用。
 - **已知、沒修**：聽力圖比較頁的選擇卡在 200% 字級、320px 寬時超出外框右側約 21px（原本就有，加勾後更明顯），建議另開票。
 
 ## 驗收對照（#326）
@@ -52,7 +53,7 @@
 | 13 | C4 換題淡入、焦點在題目 | ✅ 自動 | `AnswerApp.test.jsx`；e2e `ProgressSavedTest.test_new_segment_fills_and_another_question_fades_in` |
 | 14 | C5 未作答按下一題／送出出現提示、焦點回題目 | ✅ 自動 | `AnswerApp.test.jsx`（下一題、送出、SSQ12 分數題）；e2e `AnswerIconsHintTest.test_icons_and_the_choose_first_hint` |
 | 15 | D1 打開的下拉框藍邊、標題列淺藍 | ✅ 自動 | e2e `ColourOnlyFeedbackTest.test_open_dropdowns_get_a_blue_edge_and_keep_their_bar_tinted` |
-| 16 | D3 藥丸滑動；不支援時照常換頁；其他換頁不轉場 | ✅ 自動 | e2e `SlidingPillTest`（六項，含 `test_browser_without_view_transitions_just_changes_page`、`test_no_other_change_of_page_transitions`）；`switch-slide.test.js` |
+| 16 | D3 藥丸滑動；不支援時照常換頁；其他換頁不轉場；慢的時候直接換頁、不淡出 | ✅ 自動 | e2e `SlidingPillTest`（七項，含 `test_browser_without_view_transitions_just_changes_page`、`test_no_other_change_of_page_transitions`、`test_slow_page_changes_page_without_fading_the_pill`：CPU 慢 6 倍，拿掉修正時這項會失敗）；`switch-slide.test.js`、`switch-reveal.test.js` |
 | 17 | D4 遮蔽開關，滑鼠與空白鍵切換，唸成開關 | ✅ 自動 | e2e `MaskingSwitchTest.test_mouse_and_space_bar_switch_masking`；`AudiogramApp.test.jsx` |
 | 18 | D5 密碼眼睛圖示 | ✅ 自動 | `password-toggle.test.js`；e2e `CopyPasswordRegisterFeedbackTest.test_show_password_has_an_open_then_a_slashed_eye` |
 | 19 | D6 出生年、確認密碼綠勾，密碼欄沒有 | ✅ 自動 | `register-checks.test.js`、`test_accounts.py`；e2e `CopyPasswordRegisterFeedbackTest` 的三項 register 測試 |

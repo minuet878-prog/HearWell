@@ -2759,16 +2759,29 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 # keyframe) and where the pill is on the new page, both [left, top] in the viewport.
 REVEAL_WATCH = """
 addEventListener("pagereveal", async (event) => {
-    window.revealed = event.viewTransition ? "transition" : "none";
-    if (!event.viewTransition) return;
-    await event.viewTransition.ready;
+    if (!event.viewTransition) {
+        window.revealed = "none";
+        return;
+    }
+    try {
+        await event.viewTransition.ready;
+    } catch {
+        // switch-reveal.js skipped it: the page painted before its switch was parsed.
+        window.revealed = "skipped";
+        return;
+    }
+    window.revealed = "transition";
     const html = document.documentElement;
     const animations = document.getAnimations().filter((a) => a.effect.target === html);
     window.moving = [...new Set(animations.map((a) => a.effect.pseudoElement))].sort();
+    // Without the new pill (a page painted before its switch was parsed) there is no group to
+    // slide; window.moving then says so and the test fails at once rather than time out.
     const group = animations.find((a) => a.effect.pseudoElement.includes("-group("));
-    const start = new DOMMatrix(group.effect.getKeyframes()[0].transform);
-    const end = document.querySelector("main [aria-current]").getBoundingClientRect();
-    window.pill = [[start.e, start.f], [end.left, end.top]].map((at) => at.map(Math.round));
+    if (group) {
+        const start = new DOMMatrix(group.effect.getKeyframes()[0].transform);
+        const end = document.querySelector("main [aria-current]").getBoundingClientRect();
+        window.pill = [[start.e, start.f], [end.left, end.top]].map((at) => at.map(Math.round));
+    }
     await event.viewTransition.finished;
     window.settled = true;
 });
@@ -2854,17 +2867,40 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         start, end = self.page.evaluate("window.pill")
         self.assertNotEqual(start, end)
 
+    def assert_slid_unless_too_slow(self, current):
+        """The pill slides; a machine too slow to parse the switch before the first paint (as CI
+        can be) changes page without the transition instead, never fading the pill out."""
+        arrived = self.arrived(current)
+        self.assertIn(arrived, ("transition", "skipped"))
+        if arrived == "transition":
+            self.assert_pill_slid()
+
+    # #334: on a slow phone the next page paints before its switch is parsed; it changes page
+    # without the transition (switch-reveal.js) rather than fade the old pill out.
+    def test_slow_page_changes_page_without_fading_the_pill(self):
+        self.open()
+        cdp = self.context.new_cdp_session(self.page)
+        cdp.send("Emulation.setCPUThrottlingRate", {"rate": 6})
+        with self.saving_artifacts():
+            for start, switch, side in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", "聽力圖"),
+                ("/audiograms/compare", "選耳朵", "左耳"),
+            ):
+                with self.subTest(switch=switch):
+                    self.page.goto(f"{self.live_server_url}{start}")
+                    nav = self.main().get_by_role("navigation", name=switch)
+                    nav.get_by_role("link", name=side).click()
+                    self.assert_slid_unless_too_slow(side)
+
     def test_pill_slides_between_questionnaires_and_audiograms(self):
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
             records = self.main().get_by_role("navigation", name="紀錄種類")
             records.get_by_role("link", name="聽力圖").click()
-            self.assertEqual(self.arrived("聽力圖"), "transition")
-            self.assert_pill_slid()
+            self.assert_slid_unless_too_slow("聽力圖")
             records.get_by_role("link", name="問卷").click()
-            self.assertEqual(self.arrived("問卷"), "transition")
-            self.assert_pill_slid()
+            self.assert_slid_unless_too_slow("問卷")
 
     def test_pill_slides_between_ears(self):
         self.open()
@@ -2872,11 +2908,9 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             self.page.goto(f"{self.live_server_url}/audiograms/compare")
             ears = self.main().get_by_role("navigation", name="選耳朵")
             ears.get_by_role("link", name="左耳").click()
-            self.assertEqual(self.arrived("左耳"), "transition")
-            self.assert_pill_slid()
+            self.assert_slid_unless_too_slow("左耳")
             ears.get_by_role("link", name="右耳").click()
-            self.assertEqual(self.arrived("右耳"), "transition")
-            self.assert_pill_slid()
+            self.assert_slid_unless_too_slow("右耳")
 
     def test_reduced_motion_changes_page_without_sliding(self):
         self.open(reduced_motion="reduce")
@@ -2931,8 +2965,7 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             records.get_by_role("link", name="聽力圖").click(no_wait_after=True)
             self.page.wait_for_timeout(1000)
             held[0].continue_()
-            self.assertEqual(self.arrived("聽力圖"), "transition")
-            self.assert_pill_slid()
+            self.assert_slid_unless_too_slow("聽力圖")
             waiting = self.page.evaluate("sessionStorage.getItem('waiting')")
             self.assertEqual(waiting, "loading-slide 載入中…")
 

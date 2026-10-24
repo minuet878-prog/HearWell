@@ -426,6 +426,9 @@ class RedesignLayoutTests(TestCase):
         loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
         # And the script that lets only the switches' pill slide to the next page (#334).
         slide_js = "screening/frontend/switch-slide.js"
+        # On the pages with a switch, the one that skips the slide when the switch is not parsed
+        # by the first paint (#334).
+        reveal_js = "screening/switch-reveal.js"
         wave = "<inline>"
         smooth = "<inline>"
         empty_user = consented_user(username="no_records")
@@ -453,7 +456,7 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [pwa_js, loading_js, slide_js, logout_js, wave, smooth],
+                [pwa_js, loading_js, slide_js, logout_js, reveal_js, wave, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
@@ -485,6 +488,7 @@ class RedesignLayoutTests(TestCase):
                 loading_js,
                 slide_js,
                 logout_js,
+                reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
                 smooth,
