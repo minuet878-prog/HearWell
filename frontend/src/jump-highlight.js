@@ -2,14 +2,10 @@
 import { isInView, tabBarInset } from "./in-view.js";
 
 // The box to light: the nearest 段落框, 並列區塊 or route stop the target is in (a stop before
-// the route's 段落框 around it); else the topic a heading titles, heading and block together
-// (the family page's); else the target itself.
+// the route's 段落框 around it), else the target itself. A 並列區塊 is beige (.tint-block), or
+// marked data-parallel-block where its heading sits above the beige (the family page's topics).
 export function jumpBox(target) {
-  const titled = target.closest("section");
-  return (
-    target.closest(".section-box, .tint-block, .route-stop") ??
-    (titled?.getAttribute("aria-labelledby") === target.id ? titled : target)
-  );
+  return target.closest(".section-box, .tint-block, [data-parallel-block], .route-stop") ?? target;
 }
 
 // Their links already mark the question in red (the answer page's, the 配戴比較 form's).

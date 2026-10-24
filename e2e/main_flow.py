@@ -7672,7 +7672,8 @@ class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     if motion == "reduce":
                         self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
-    # Acceptance 14: the family page's topic cards, on the page and from the shared report.
+    # Acceptance 14: the family page's topic cards, on the page and from the shared report; the
+    # whole topic lights, heading and block (marked a 並列區塊).
     def test_family_topic_lights_on_the_page_and_from_the_shared_report(self):
         topic = 'section[aria-labelledby="{}"]'
         self.open("/family")

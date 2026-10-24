@@ -28,9 +28,12 @@ beforeEach(() => {
           <li class="route-stop" id="stop-form-9"><div class="route-box"></div></li>
         </ol>
       </section>
-      <section aria-labelledby="talk-title">
+      <section data-parallel-block aria-labelledby="talk-title">
         <h2 id="talk-title">怎麼跟聽損的家人說話</h2>
         <ul class="tips tint-block"><li>先叫名字</li></ul>
+      </section>
+      <section aria-labelledby="share-title">
+        <h2 id="share-title">把這一頁傳給家人</h2>
       </section>
       <section class="tint-block" aria-labelledby="saved-title">
         <h2 id="saved-title">聽力報告裡的組合</h2>
@@ -55,9 +58,14 @@ describe("jumpBox", () => {
     expect(jumpBox(byId("stop-form-9"))).toBe(byId("stop-form-9"));
   });
 
-  // The family page's topic is a 並列區塊 with its heading above the beige block: all of it.
-  it("is the whole topic a heading titles, heading and block together", () => {
+  // The family page's topic is a 並列區塊 with its heading above the beige block, marked as
+  // one: all of it.
+  it("is the whole family topic, heading and block together", () => {
     expect(jumpBox(byId("talk-title"))).toBe(titledBy("talk-title"));
+  });
+
+  it("is the heading itself when the section it titles is no box", () => {
+    expect(jumpBox(byId("share-title"))).toBe(byId("share-title"));
   });
 
   it("is the 並列區塊 a target is in", () => {
