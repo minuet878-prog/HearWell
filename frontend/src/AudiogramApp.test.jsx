@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AudiogramApp from "./AudiogramApp.jsx";
@@ -20,7 +20,10 @@ beforeEach(() => {
     Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 42 }) }),
   );
 });
-afterEach(cleanup);
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
 
 // #199, #200: four steps (date, right ear, left ear, confirm) on one screen.
 const forward = () => fireEvent.click(screen.getByRole("button", { name: /^下一步：標右耳$|^右耳標完了，換左耳$|^左耳標完了，確認存檔$/ }));
@@ -446,6 +449,44 @@ describe("save", () => {
         { ear: "left", conduction: "bone", frequency: 1000, db: 80, no_response: true, masked: false },
       ],
     });
+  });
+
+  // #330 (spec #326 B1, acceptance 6): the moment it is saved, before the saved audiogram opens.
+  it("shows ✓ 已存檔, says 已存檔, and opens the audiogram 0.6 seconds later", async () => {
+    renderApp();
+    setDate(TODAY);
+    forward();
+    drag(1000, 40, 40);
+    vi.useFakeTimers();
+    confirmAndSave();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    const saved = screen.getByRole("button", { name: "已存檔" });
+    expect(saved.disabled).toBe(true);
+    expect(saved.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText("已存檔", { selector: "[role=status]" })).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(599));
+    expect(navigate).not.toHaveBeenCalled();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(navigate).toHaveBeenCalledWith("/audiograms/42");
+  });
+
+  // #330 (spec #326 B1, acceptance 7): a failure keeps today's messages and is never green.
+  it.each([
+    ["a network failure", () => Promise.reject(new Error("offline")), "存檔失敗"],
+    ["500", () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }), "存檔失敗"],
+    ["403 (login expired)", () => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }), "登入已經過期"],
+    ["409 (already saved)", () => Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({}) }), "已經存過了"],
+  ])("does not say 已存檔 after %s", async (_, reply, message) => {
+    fetch.mockImplementationOnce(reply);
+    renderApp();
+    setDate(TODAY);
+    forward();
+    drag(1000, 40, 40);
+    confirmAndSave();
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toContain(message));
+    expect(screen.queryByText("已存檔")).toBeNull();
+    expect(screen.getByRole("button", { name: "存檔" }).disabled).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("needs a date that is not in the future (acceptance 13)", () => {

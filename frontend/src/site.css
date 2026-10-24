@@ -3302,8 +3302,10 @@
     --btn-bg: #fff;
   }
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
-     seconds, whether pressed, hovered or not. After the white fill above, which it replaces. */
-  .btn.is-copied {
+     seconds, whether pressed, hovered or not. After the white fill above, which it replaces.
+     #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button
+     stays disabled, so its disabled colours are the green too. */
+  .btn.is-copied, .btn.is-sent {
     --btn-color: #fff;
     --btn-bg: var(--color-normal);
     --btn-border-color: var(--color-normal);
@@ -3314,7 +3316,12 @@
     --btn-active-bg: var(--color-normal);
     --btn-active-border-color: var(--color-normal);
   }
-  .is-copied > svg {
+  .btn.is-sent {
+    --btn-disabled-color: #fff;
+    --btn-disabled-bg: var(--color-normal);
+    --btn-disabled-border-color: var(--color-normal);
+  }
+  .is-copied > svg, .is-sent > svg {
     width: 1.25em;
     height: 1.25em;
     margin-right: 0.35em;

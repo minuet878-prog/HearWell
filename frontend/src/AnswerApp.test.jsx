@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AnswerApp from "./AnswerApp.jsx";
@@ -87,6 +87,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   localStorage.clear();
   vi.restoreAllMocks();
@@ -490,6 +491,40 @@ describe("submitting", () => {
     expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
     release();
     await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
+  });
+
+  // #330 (spec #326 B1, acceptance 5): the moment it is sent, before the result page.
+  it("shows ✓ 已送出, says 已送出, and opens the result page 0.6 seconds later", async () => {
+    await renderApp();
+    answerAll();
+    vi.useFakeTimers();
+    submit();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    const sent = screen.getByRole("button", { name: "已送出" });
+    expect(sent.disabled).toBe(true);
+    expect(sent.querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+    expect(screen.getByText("已送出", { selector: "[role=status]" })).toBeTruthy();
+    await act(() => vi.advanceTimersByTimeAsync(599));
+    expect(navigate).not.toHaveBeenCalled();
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(navigate).toHaveBeenCalledWith("/submission/99");
+  });
+
+  // #330 (spec #326 B1, acceptance 7): a failure keeps today's messages and is never green.
+  it.each([
+    ["a network failure", new TypeError("Failed to fetch"), FAILED],
+    ["400", { status: 400, body: { answers: ["有題目沒有作答"] } }, "送出的資料有誤：有題目沒有作答"],
+    ["500", { status: 500 }, FAILED],
+    ["403 (login expired)", { status: 403 }, "登入已經過期，請重新登入"],
+    ["409 (already sent)", { status: 409 }, "這份作答之前已經送出過"],
+  ])("does not say 已送出 after %s", async (_, reply, message) => {
+    mockApi([reply]);
+    await renderApp();
+    answerAll();
+    submit();
+    await screen.findByText(message);
+    expect(screen.queryByText("已送出")).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it("after a network failure, sending again reuses the receipt number", async () => {
