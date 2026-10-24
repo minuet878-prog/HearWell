@@ -441,7 +441,7 @@ class ThiNotLifeImpactTests(ThiTestCase):
 
     def test_an_unaided_thi_changes_neither_the_wizard_nor_the_ioi_ha_norm(self):
         ioi_ha = Questionnaire.objects.get(code="ioi-ha")
-        params = {"age_group": "older", "hearing_aid": "yes"}
+        params = {"concern": "hearing_aid", "age_group": "older"}
         before = self.client.get(reverse("questionnaire_list"), params).context
         self._record(self.thi, 0, date(2026, 3, 1))
         after = self.client.get(reverse("questionnaire_list"), params).context

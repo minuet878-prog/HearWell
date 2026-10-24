@@ -2,7 +2,13 @@ import logging
 
 from screening import questionnaires
 from screening.questionnaires import hhie_s
-from screening.questionnaires.definition import RETEST_MONTHS
+from screening.questionnaires.definition import (
+    LIFE_IMPACT,
+    LISTENING,
+    RETEST_MONTHS,
+    TINNITUS,
+    UNSURE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +74,14 @@ IOI_HA_BELOW_NORM_NOTES = {
     "可以想想有哪些想做、卻因為聽不清楚而放棄的事，和聽力師討論怎麼幫上忙。",
 }
 
-# Why the wizard recommends a questionnaire (#152), word for word as the site owner reviewed it.
+# Why the wizard recommends a questionnaire (#152), by the first answer's value or, for the
+# hearing-aid answer, by the unaided record (ADR 0030); spec #339's drafts, the owner settles them
+# on review.
 RECOMMENDATION_REASONS = {
-    "unaided": "您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。",
+    LIFE_IMPACT: "這份問卷幫您了解聽力對日常生活和心情的影響。",
+    TINNITUS: "這份問卷幫您了解耳鳴對生活和情緒的影響。",
+    LISTENING: "這份問卷問您在吵雜環境、多人說話時聽得懂多少。",
+    UNSURE: "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
     "needs_norm_basis": (
         "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
         "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"
@@ -80,6 +91,16 @@ RECOMMENDATION_REASONS = {
     "has_norm_basis": (
         "您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，"
         "並和沒戴時困擾程度相近的一般使用者比較。"
+    ),
+}
+
+# Why the returning user's catalogue recommends a questionnaire (#347, ADR 0030), by the rule
+# that picked it; spec #339's drafts, the owner settles them on review.
+CATALOGUE_REASONS = {
+    "retest": RETEST_DUE_TEXT,
+    "no_life_impact": "您還沒做過聽力對生活影響的問卷，做一次之後才有基礎可以比較。",
+    "aided_and_unaided": (
+        "您有戴著助聽器的紀錄，也有沒戴時的紀錄，可以了解助聽器的成效跟一般使用者比起來怎樣。"
     ),
 }
 

@@ -251,14 +251,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assert_fits_a_phone_at_double_text_size("consent")
             self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
             expect(self.main().locator(".questionnaire-guide")).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("wizard concern")
+            self.main().get_by_role("group", name="您最想了解什麼？").get_by_label(
+                "聽不清楚對生活、心情的影響", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
             self.assert_fits_a_phone_at_double_text_size("wizard age")
             self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
                 "65 歲以上", exact=True
-            ).check()
-            self.main().get_by_role("button", name="下一步").click()
-            self.assert_fits_a_phone_at_double_text_size("wizard hearing aid")
-            self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-                "沒有戴", exact=True
             ).check()
             self.main().get_by_role("button", name="下一步").click()
             self.main().get_by_text("看其他問卷", exact=True).click()
@@ -502,25 +502,29 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         # #151: without JavaScript the 顯示 button could not work, so none shows.
         expect(self.main().get_by_role("button", name=re.compile("顯示"))).to_have_count(0)
         self.step2_register()
+        # #345: the five answers are one named group (#339 acceptance 21).
+        concern = self.main().get_by_role("group", name="您最想了解什麼？")
+        expect(concern.get_by_role("radio")).to_have_count(5)
+        hearing_aid_answer = concern.get_by_role("radio", name="助聽器戴得好不好", exact=True)
+        hearing_aid_answer.check()
+        self.main().get_by_role("button", name="下一步").click()
+        # No birth year, and a life-impact questionnaire to catch up: the age comes second. Back
+        # on step 1 the answer is still chosen (#339 acceptance 19).
+        self.main().get_by_role("link", name="上一步").click()
+        expect(hearing_aid_answer).to_be_checked()
+        self.main().get_by_role("button", name="下一步").click()
         age_group = self.main().get_by_role("group", name="您目前的實際年齡？")
         age_group.get_by_role("radio", name="18–64 歲", exact=True).focus()
         self.page.keyboard.press("Space")
         self.main().get_by_role("button", name="下一步").click()
-        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-            "有戴", exact=True
-        ).check()
-        self.main().get_by_role("button", name="下一步").click()
-        # Wearing one with no unaided record: HHIA-S first, SSQ12 listed as also worth doing.
+        # Wearing one with no unaided record: HHIA-S first, IOI-HA listed as also worth doing.
         recommended = self.main().locator("#recommended-title")
         expect(recommended).to_contain_text("HHIA-S")
-        self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
+        self.main().get_by_role("link", name=re.compile("IOI-HA")).click()
         # Answer page tidy-up: the topic is the title, the code is on the line under it.
-        expect(self.page.get_by_role("heading", name="日常聆聽能力", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("heading", name="助聽器使用成效", exact=True)).to_be_visible()
         self.page.go_back()
         expect(recommended).to_contain_text("HHIA-S")
-        # #216: the THI line is on every wizard result, so this width check covers it too.
-        tinnitus = self.main().get_by_role("link", name="如果您有耳鳴：耳鳴障礙量表（THI）")
-        expect(tinnitus).to_be_visible()
         self.page.locator("html").evaluate("element => element.style.fontSize = '200%'")
         self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
         self.page.screenshot(path="/tmp/hearwell-recommendations-200.png", full_page=True)
@@ -636,22 +640,23 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.main().get_by_role("link", name="自己選問卷").click()
 
     def step3_choose_hhie_s(self):
-        # #152 wizard: no birth year, so it asks the age, then the hearing aid, then recommends.
+        # #345 wizard: what the user most wants to know, then the age (no birth year), then the
+        # recommendation.
         guide = self.main().locator(".questionnaire-guide")
         steps = self.main().locator(".step-progress-text")
         # Coming from consent: the first screen says the account is done, so 第 1 步 is new.
         expect(guide).to_have_text("帳號建好了\N{FULLWIDTH EXCLAMATION MARK}接下來幫您找適合的問卷")
         expect(steps).to_have_text("第 1 步／共 3 步")
         self.assert_step_bar(1, 3)
-        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
-            "65 歲以上", exact=True
+        self.main().get_by_role("group", name="您最想了解什麼？").get_by_label(
+            "聽不清楚對生活、心情的影響", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
         expect(guide).to_have_count(0)
         expect(steps).to_have_text("第 2 步／共 3 步")
         self.assert_step_bar(2, 3)
-        self.main().get_by_role("group", name="您現在有戴助聽器嗎？").get_by_label(
-            "沒有戴", exact=True
+        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+            "65 歲以上", exact=True
         ).check()
         self.main().get_by_role("button", name="下一步").click()
         expect(steps).to_have_text("第 3 步／共 3 步")
@@ -659,9 +664,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(self.main().get_by_role("heading", name="推薦您做這一份")).to_be_visible()
         expect(self.main().locator("#recommended-title")).to_contain_text("HHIE-S")
         expect(self.main()).to_contain_text(
-            "為什麼推薦：您沒有戴助聽器，這份問卷供您了解聽力對日常生活和心情的影響。"
+            "為什麼推薦：這份問卷幫您了解聽力對日常生活和心情的影響。"
         )
-        # SSQ12 is only also worth doing for people wearing hearing aids.
+        # Only the hearing-aid answer has more worth doing.
         expect(self.main().get_by_role("heading", name="也可以做")).to_have_count(0)
         self.main().get_by_role("link", name="開始作答").click()
         # Unaided: no 沒戴 preselection (#154).
@@ -815,6 +820,57 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.page.goto(self.live_server_url)
             expect(self.main()).to_contain_text("下次建議")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
+
+    def test_screening_tab_shows_the_catalogue_with_last_dates(self):
+        """#346 (#339 acceptance 1, 2, 8, 22): 篩檢 opens the catalogue, not the wizard."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="篩檢").click()
+            expect(nav.locator('a[aria-current="page"]')).to_have_text("篩檢")
+            expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_have_count(0)
+            cards = self.main().locator("a.questionnaire-card")
+            expect(cards).to_have_count(6)
+            expect(cards.first).to_contain_text("HHIE-S")
+            last = cards.locator(".card-tag", has_text="上次")
+            expect(last).to_have_count(1)
+            expect(cards.first.locator(".card-tag").last).to_have_text(f"上次 {self.old_date}")
+            # #347: the retest is due, so HHIE-S is recommended on top, and still a card below.
+            recommended = self.main().get_by_role("region", name="推薦您做這一份")
+            expect(recommended).to_contain_text("HHIE-S")
+            expect(recommended).to_contain_text(self.REMINDER)
+            self.assert_fits_a_phone_at_double_text_size("catalogue")
+            tag = cards.first.locator(".card-tag").last
+            self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
+            self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
+            self.main().get_by_role("link", name="回答幾個問題，幫您挑").click()
+            expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
+            self.main().get_by_role("link", name="上一步").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+            expect(cards).to_have_count(6)
+
+    def test_both_recommended_life_impact_questionnaires_fit_a_phone(self):
+        """#347 (#339 acceptance 5, 22): only THI and no birth year, so the recommendation lists
+        HHIE-S and HHIA-S, each with its ages and button; 320px at 200% text."""
+        call_command("seed_questionnaires", verbosity=0)
+        user = consented_user(username="thi_only_e2e")
+        Submission.objects.create(user=user, questionnaire=Questionnaire.objects.get(code="thi"))
+        self.client.force_login(user)
+        self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            recommended = self.main().get_by_role("region", name="推薦您做這一份")
+            starts = recommended.get_by_role("link", name="開始作答")
+            expect(starts).to_have_count(2)
+            expect(starts.first).to_have_accessible_name(re.compile(r"^開始作答\s*：HHIE-S\s*$"))
+            expect(recommended).to_contain_text("適合 65 歲以上的長輩。")
+            expect(recommended).to_contain_text("適合 18–64 歲成人")
+            self.assert_fits_a_phone_at_double_text_size("catalogue, both recommended")
+            content_width, box_width = recommended.evaluate("e => [e.scrollWidth, e.clientWidth]")
+            self.assertLessEqual(content_width, box_width, "推薦您做這一份")
 
     def test_history_fits_a_phone_at_double_text_size(self):
         """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the
@@ -2568,7 +2624,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertLessEqual(room["overflow"], 0, path)
 
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
-    # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0028): it plays once the
+    # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0029): it plays once the
     # stop is in view, so the route is scrolled to first.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
         self.open(390)
@@ -2709,6 +2765,81 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     self.main().get_by_role("link", name=name).click()
                     expect(self.page).to_have_url(f"{self.live_server_url}{path}")
                     expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+
+class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """ADR 0027 (A3 and C1 on the loading comparison page) in a real browser, with the site's
+    script and styles (timings and exceptions: page-loading.test.js)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, reduced_motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def stay_on_this_page(self):
+        # Listeners on window run after page-loading.js's on document: the wait starts, but the
+        # browser never leaves, so this page can still be read (a page being left cannot).
+        self.page.evaluate(
+            """() => {
+                addEventListener("click", (event) => {
+                    if (event.target.closest("a")) event.preventDefault();
+                });
+                addEventListener("submit", (event) => event.preventDefault());
+            }"""
+        )
+
+    def wait_for_learn(self):
+        self.page.goto(f"{self.live_server_url}/")
+        self.stay_on_this_page()
+        nav = self.page.get_by_role("navigation", name="主要導覽")
+        nav.get_by_role("link", name="了解").click()
+        expect(self.page.locator("html")).to_have_class(re.compile(r"\bpage-loading\b"))
+        expect(self.page.get_by_role("status").filter(has_text="載入中…")).to_be_visible()
+
+    def send_login(self):
+        self.page.goto(f"{self.live_server_url}/login")
+        self.stay_on_this_page()
+        self.main().get_by_label("使用者名稱").fill("someone")
+        self.main().get_by_label("密碼", exact=True).fill("secret")
+        self.main().get_by_role("button", name="登入").click()
+        button = self.main().get_by_role("button", name="送出中…")
+        expect(button).to_be_disabled()
+        return button.locator(".spinner")
+
+    def test_bar_and_spinner_move_while_waiting(self):
+        self.open()
+        with self.saving_artifacts():
+            self.wait_for_learn()
+            bar = self.page.locator(".page-loading-bar")
+            expect(bar).to_have_css("animation-name", "loading-slide")
+            expect(bar).to_have_css("animation-iteration-count", "8")
+            spinner = self.send_login()
+            expect(spinner).to_be_visible()
+            expect(spinner).to_have_css("animation-name", "loading-appear, loading-spin")
+
+    def test_reduced_motion_keeps_the_bar_still_and_drops_the_spinner(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.wait_for_learn()
+            bar = self.page.locator(".page-loading-bar")
+            expect(bar).to_be_visible()
+            expect(bar).to_have_css("animation-name", "none")
+            expect(self.send_login()).to_be_hidden()
 
 
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
@@ -4129,7 +4260,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", large),
-            ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
+            # A returning user: the wizard only by 「幫您挑」 (#346).
+            ("/questionnaire_list?wizard=1&from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
             ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
             (f"/submission/{basis.pk}", ".result-banner", medium),
@@ -4908,7 +5040,11 @@ WHITE_CARD_PAGES_HOME_RESULT = (
 # #300: the answering pages, and login and register, whose form card is the rule's one exception.
 WHITE_CARD_PAGES_ANSWERING = (
     ("answering", True, lambda test: test.answering("hhie-s")),
-    ("questionnaire list, suggested", True, "/questionnaire_list?age_group=older&hearing_aid=yes"),
+    (
+        "questionnaire list, suggested",
+        True,
+        "/questionnaire_list?concern=hearing_aid&age_group=older",
+    ),
     ("questionnaire list, choose yourself", True, "/questionnaire_list?choose=self"),
     ("login", False, "/login"),
     ("register", False, "/register"),
@@ -6423,7 +6559,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # #300: the suggested questionnaire is flat with its 開始作答 button; whole cards stay white.
     def test_suggested_questionnaire_is_flat_and_questionnaire_cards_stay_white(self):
         with self.saving_artifacts():
-            self.visit(True, "/questionnaire_list?age_group=older&hearing_aid=yes")
+            self.visit(True, "/questionnaire_list?concern=hearing_aid&age_group=older")
             suggested = (
                 self.main()
                 .get_by_role("region")
@@ -6435,7 +6571,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.GRADIENT,
             )
             for path in (
-                "/questionnaire_list?age_group=older&hearing_aid=yes",
+                "/questionnaire_list?concern=hearing_aid&age_group=older",
                 "/questionnaire_list?choose=self",
             ):
                 with self.subTest(page=path):
@@ -6588,6 +6724,51 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             summary = trend.get_by_text("最近一次（").locator("..")
             self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
             self.assertEqual(self.style(summary, "boxShadow"), "none")
+
+    # 2026-10-24 comparison page, option A: 和上一次比's two records side by side.
+    def test_since_last_sets_the_two_records_side_by_side(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.trend_records(), width=320)
+            since_last = self.page.get_by_role("region", name="和上一次比")
+            previous = since_last.locator(".since-last-cell").first
+            latest = since_last.locator(".since-last-latest")
+            # 上一次 on a 並列區塊's beige, 最近一次 pale blue in a brand-blue frame; neither white.
+            self.assertEqual(self.style(previous, "backgroundColor"), self.TINT)
+            self.assertEqual(self.style(latest, "backgroundColor"), self.BLUE_SOFT)
+            self.assert_every_side(latest, Color=self.PRIMARY, Style="solid", Width="2px")
+            for cell in (previous, latest):
+                self.assertEqual(self.style(cell, "boxShadow"), "none")
+                score = float(self.style(cell.locator(".since-last-score"), "fontSize")[:-2])
+                label = float(self.style(cell.locator(".since-last-label"), "fontSize")[:-2])
+                date = float(self.style(cell.locator(".since-last-date"), "fontSize")[:-2])
+                self.assertGreater(score, label * 1.5)
+                self.assertLess(date, label)
+            arrow = since_last.locator(".since-last-arrow")
+            self.assertEqual(self.style(arrow, "color"), self.PRIMARY)
+            # Screen readers hear each record as one line, the brackets and colon included.
+            # trend_records makes both on the same day, so each date has its time.
+            expect(since_last).to_match_aria_snapshot(
+                '- heading "和上一次比" [level=2]\n'
+                "- paragraph: /上一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 20 分/\n"
+                "- paragraph: /最近一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 40 分/\n"
+                "- paragraph:\n"
+                "  - strong: 比上一次多 20 分（分數越低越好）"
+            )
+
+            def boxes():
+                return [cell.bounding_box() for cell in (previous, latest)]
+
+            # Side by side on the smallest phone, the arrow pointing right...
+            before, after = boxes()
+            self.assertEqual(before["y"], after["y"])
+            self.assertLess(before["x"], after["x"])
+            self.assertEqual(self.style(arrow, "transform"), "none")
+            # ...one above the other at 200% text, nothing cut, the arrow turned to point down.
+            self.assert_fits_uncut("和上一次比")
+            before, after = boxes()
+            self.assertEqual(before["x"], after["x"])
+            self.assertLess(before["y"] + before["height"], after["y"])
+            self.assertNotEqual(self.style(arrow, "transform"), "none")
 
     def assert_outline_button_readable(self, button):
         """#311: an outline button in a 並列區塊 is filled white (white is what can be tapped), so
@@ -7063,7 +7244,7 @@ class ScrollHelpersOnAPhone(OnAPhone):
 
 
 class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
-    """Spec #338 (ticket #341, ADR 0028): entrance animations play once they are in view; on a
+    """Spec #338 (ticket #341, ADR 0029): entrance animations play once they are in view; on a
     phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站. Having
     read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); HHIE-S at 20 of
     40 puts the home gauge's needle at 90 degrees."""
@@ -7271,7 +7452,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
 
 
 class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
-    """Spec #338 (ticket #342, ADR 0028): my guide's meters fill from 0 once they are in view,
+    """Spec #338 (ticket #342, ADR 0029): my guide's meters fill from 0 once they are in view,
     the two ears together, the ratio on its own; on a phone, for a user with an HHIE-S record
     (so the meters start below the screen) and an audiogram of 60 and 50 dB HL (a 40.0% ratio)."""
 
@@ -7481,7 +7662,7 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
 
 
 class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
-    """Spec #338 (ticket #343, ADR 0028): the box a jump lands on lights up in the brand blue
+    """Spec #338 (ticket #343, ADR 0029): the box a jump lands on lights up in the brand blue
     with a pale blue glow, about 3 seconds; on a phone, signed in as a returning user."""
 
     # 50 dB in both ears is a 37.5% ratio, short of the threshold, so my guide offers

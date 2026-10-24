@@ -88,7 +88,7 @@ export default function TrendChart({ code }) {
   // Screen readers skip the loading text and the chart, but hear when the chart cannot show.
   if (state.status === "loading") {
     return (
-      <p className="trend-plot-message" aria-hidden="true">
+      <p className="trend-plot-message loading-message" aria-hidden="true">
         {LOADING_TEXT}
       </p>
     );

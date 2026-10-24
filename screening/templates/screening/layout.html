@@ -18,6 +18,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
+    {# Bar and 載入中… while the next page loads; 送出中… on the pressed button (page-loading.js). #}
+    <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
     {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, and the line over a table that scrolls sideways. #}
     <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
@@ -28,7 +30,7 @@
             sessionStorage.setItem("header-wave-played", "1");
         }
     </script>
-    {# Entrance animations wait until they are in view (#341, ADR 0028): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
+    {# Entrance animations wait until they are in view (#341, ADR 0029): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
     {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
     <script>
         document.documentElement.classList.add("play-in-view");
@@ -53,6 +55,8 @@
 <body>
     <a class="skip-link visually-hidden-focusable" href="#main-content">跳到主要內容</a>
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
+    <div class="page-loading-bar" aria-hidden="true"></div>
+    <p id="page-loading-status" class="page-loading-note" role="status"></p>
     <header class="site-header">
         {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
         <div class="site-wave" aria-hidden="true" data-play-in-view>{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>

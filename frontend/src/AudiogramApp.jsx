@@ -294,7 +294,14 @@ export default function AudiogramApp({
           <ValueTable points={points} symbols={SYMBOLS} onSet={setFromTable} onMask={maskFromTable} />
           {errorList}
           <button type="button" className="btn btn-primary btn-lg w-full" disabled={sending} onClick={save}>
-            存檔
+            {sending ? (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                存檔中…
+              </>
+            ) : (
+              "存檔"
+            )}
           </button>
         </>
       )}

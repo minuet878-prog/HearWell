@@ -37,7 +37,7 @@
     <p>依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
     {% else %}
     <p>依您 {{ date }} 的聽力圖：</p>
-    {# Both ears fill together once their box is in view (ADR 0028). #}
+    {# Both ears fill together once their box is in view (ADR 0029). #}
     <div class="meter" data-play-in-view>
         {% for label, side, ear in ears %}
         <p class="meter-label"><span>{{ label }}四頻平均</span> <span>{% if ear.pta is None %}資料不足，無法判讀{% else %}{{ ear.pta|stringformat:"g" }} dB HL{% endif %}</span></p>

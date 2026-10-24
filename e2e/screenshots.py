@@ -227,7 +227,13 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("public", "consent", reverse("consent"), who="new"),
             Shot("public", "account", reverse("account_settings")),
             Shot("public", "account-delete", reverse("delete_account")),
+            # #346: a returning user's 篩檢 is the catalogue; the wizard is behind 「幫您挑」.
             Shot("answering", "questionnaire-list", reverse("questionnaire_list")),
+            Shot(
+                "answering",
+                "questionnaire-list-wizard",
+                f"{reverse('questionnaire_list')}?wizard=1",
+            ),
             # #152 moved the full list behind the wizard's 自己選問卷.
             Shot(
                 "answering",

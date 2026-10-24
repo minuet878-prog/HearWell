@@ -605,7 +605,7 @@
     position: relative;
   }
 
-  /* Entrance animations wait until they are in view (#341, ADR 0028). With JavaScript, layout.html
+  /* Entrance animations wait until they are in view (#341, ADR 0029). With JavaScript, layout.html
      marks the page play-in-view before it is drawn, so whatever is marked data-play-in-view (an
      element, or the box of a group that plays together) holds its first frame until in-view.js
      adds data-in-view. Without JavaScript nothing waits; reduced motion has no animation to hold. */
@@ -772,6 +772,90 @@
     font-size: 1rem;
     font-weight: 700;
     text-align: center;
+  }
+
+  /* Waiting for the next page (page-loading.js; A3 on the loading comparison page, ADR 0027): a bar
+     along the top and 載入中… under it, once the page has waited 0.3 s. Fixed, so a link pressed low
+     on a long page still shows them. */
+  .page-loading-bar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    height: 6px;
+  }
+  .page-loading .page-loading-bar { display: block; }
+  .page-loading .page-loading-note {
+    position: fixed;
+    top: calc(6px + 0.5rem);
+    right: 1rem;
+    z-index: 1050;
+    margin: 0;
+    padding: 0.25rem 0.75rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-button);
+  }
+  /* Otherwise out of sight but still read out: 送出中… is said the moment a form is sent. */
+  html:not(.page-loading) .page-loading-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* 題目載入中… and 趨勢圖載入中… (B1) get the same sliding piece under the text, after 0.3 s. */
+  .loading-message::after {
+    content: "";
+    display: block;
+    width: min(100%, 16rem);
+    height: 6px;
+    margin-top: 0.75rem;
+    border-radius: 3px;
+    visibility: hidden;
+  }
+
+  /* A3 and B1 share one look: a short blue piece sliding along a light track. Waiting may loop,
+     for at most about 10 seconds (ADR 0027, an exception to ADR 0006): 8 rounds of 1.3 s here,
+     12 of 0.8 s for the spinner, to match GIVE_BACK_AFTER in page-loading.js. The 0.3 s delays
+     match its SHOW_AFTER. */
+  .page-loading-bar, .loading-message::after {
+    background: linear-gradient(var(--color-primary), var(--color-primary)) no-repeat
+      var(--color-brand-soft-deep);
+    background-size: 35% 100%;
+  }
+  .page-loading-bar { animation: loading-slide 1.3s ease-in-out 8 both; }
+  .loading-message::after {
+    animation: loading-appear 0s 0.3s forwards, loading-slide 1.3s ease-in-out 0.3s 8 both;
+  }
+
+  /* C1: before 送出中… on the pressed button (page-loading.js and the React pages). */
+  .spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.5rem;
+    vertical-align: -0.125em;
+    border: 0.15em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    visibility: hidden;
+    animation: loading-appear 0s 0.3s forwards, loading-spin 0.8s linear 0.3s 12;
+  }
+
+  /* ADR 0006: nothing moves. The bar stays full and the spinner is left out; 載入中… and 送出中…
+     still say it. */
+  @media (prefers-reduced-motion: reduce) {
+    .page-loading-bar { animation: none; background-size: 100% 100%; }
+    .loading-message::after { animation: loading-appear 0s 0.3s forwards; background-size: 100% 100%; }
+    .spinner { display: none; }
   }
 
   /* Navigation: one list; top bar on wide screens, fixed bottom tab bar on phones. */
@@ -1314,6 +1398,82 @@
   /* A long date wraps rather than widening a phone page at large text sizes. */
   div.choice-group.choice-stack label {
     overflow-wrap: anywhere;
+  }
+
+  /* 和上一次比 (my_hearing; 2026-10-24 comparison page, option A): 上一次 → 最近一次 side by
+     side, each a 並列區塊 with its date and a score as large as the trend summary's; 最近一次 pale
+     blue in a brand-blue frame (ADR 0007: decoration is blue). The section is the container: at
+     200% text the two stack and the arrow points down. */
+  .since-last {
+    container-type: inline-size;
+  }
+
+  .since-last-pair {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .since-last-cell {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0.6rem 0.75rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-tint);
+  }
+
+  .since-last-latest {
+    border-color: var(--color-primary);
+    background-color: var(--color-brand-soft);
+  }
+
+  .since-last-label,
+  .since-last-date,
+  .since-last-score {
+    display: block;
+  }
+
+  .since-last-label {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .since-last-date {
+    font-size: 0.875rem;
+  }
+
+  .since-last-score {
+    margin-top: 0.25rem;
+    color: var(--color-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .since-last-unit {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .since-last-arrow {
+    align-self: center;
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  @container (max-width: 15rem) {
+    .since-last-pair {
+      flex-direction: column;
+    }
+
+    .since-last-arrow {
+      align-self: flex-start;
+      margin-left: 1rem;
+      transform: rotate(90deg);
+    }
   }
 
   /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. */
@@ -2280,7 +2440,7 @@
     width: calc(clamp(0, var(--meter-value), var(--meter-max)) / var(--meter-max) * 100%);
   }
 
-  /* Once in view (ADR 0028), each bar grows from 0 to its number in 1.2 seconds, quickly at
+  /* Once in view (ADR 0029), each bar grows from 0 to its number in 1.2 seconds, quickly at
      first, then slowly, stopping without a bounce; scaled from its left edge, so nothing around
      it moves: the lines, their labels and the hatching stay put, the numbers are the end ones.
      The ears' two bars share a box (data-play-in-view) and so grow together. Reduced motion
@@ -2394,7 +2554,7 @@
     }
   }
 
-  /* #343 (ADR 0028): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
+  /* #343 (ADR 0029): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
      itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
      level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
@@ -3308,6 +3468,7 @@
     text-align: center;
     color: var(--color-body);
   }
+  .trend-plot-message.loading-message { flex-direction: column; }
 
   /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
   .ioi-columns {
@@ -4421,4 +4582,19 @@
 
 @keyframes gauge-needle {
   from { transform: rotate(0deg); }
+}
+
+/* Waiting (ADR 0027): a piece slides across its track; spinner; shown only after 0.3 s. With a 35%
+   wide piece, -54% and 154% put it just outside each end. */
+@keyframes loading-slide {
+  from { background-position: -54% 0; }
+  to { background-position: 154% 0; }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loading-appear {
+  to { visibility: visible; }
 }

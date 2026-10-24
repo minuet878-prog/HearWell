@@ -1,4 +1,4 @@
-// Spec #338 (ticket #343, ADR 0028): the box a jump lands on lights up for a moment.
+// Spec #338 (ticket #343, ADR 0029): the box a jump lands on lights up for a moment.
 import { isInView, tabBarInset } from "./in-view.js";
 
 // The box to light: the nearest 段落框, 並列區塊 or route stop the target is in (a stop before

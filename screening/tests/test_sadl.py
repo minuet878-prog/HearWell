@@ -487,7 +487,7 @@ class SadlRecommendationTests(SadlTestCase):
     def setUp(self):
         super().setUp()
         self.hhie = Questionnaire.objects.get(code="hhie-s")
-        self.ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        self.ioi_ha = Questionnaire.objects.get(code="ioi-ha")
 
     def wizard(self, **params):
         return self.client.get(reverse("questionnaire_list"), params)
@@ -496,19 +496,19 @@ class SadlRecommendationTests(SadlTestCase):
         main = page.content.decode()
         return main[main.index("也可以做") : main.index("看其他問卷")]
 
-    def test_aided_also_lists_ssq12_and_sadl_when_sadl_is_visible(self):
-        page = self.wizard(age_group="older", hearing_aid="yes")
+    def test_hearing_aid_answer_also_lists_ioi_ha_and_sadl_when_sadl_is_visible(self):
+        page = self.wizard(concern="hearing_aid", age_group="older")
         also = self.also_list(page)
-        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertIn(f'href="{reverse("screening", args=[self.ioi_ha.pk])}"', also)
         self.assertIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
         self.assertEqual(also.count("questionnaire-card"), 2)
 
     def test_unlisted_sadl_is_not_in_the_also_list_in_production(self):
         with override_settings(DEBUG=False), register(replace(sadl.DEFINITION, listed=False)):
-            page = self.wizard(age_group="older", hearing_aid="yes")
+            page = self.wizard(concern="hearing_aid", age_group="older")
         self.assertNotContains(page, "SADL")
         also = self.also_list(page)
-        self.assertIn(f'href="{reverse("screening", args=[self.ssq12.pk])}"', also)
+        self.assertIn(f'href="{reverse("screening", args=[self.ioi_ha.pk])}"', also)
         self.assertNotIn(f'href="{reverse("screening", args=[self.questionnaire.pk])}"', also)
         self.assertEqual(also.count("questionnaire-card"), 1)
 
@@ -516,7 +516,7 @@ class SadlRecommendationTests(SadlTestCase):
         # SADL is not a life-impact record (#166): having only one still needs the unaided
         # HHIE-S/HHIA-S catch-up, same as having no records at all.
         sadl_submission(self.user, self.questionnaire)
-        page = self.wizard(age_group="older", hearing_aid="yes")
+        page = self.wizard(concern="hearing_aid", age_group="older")
         self.assertEqual(page.context["recommended"], self.hhie)
         self.assertEqual(page.context["reason"], "needs_norm_basis")
         self.assertContains(

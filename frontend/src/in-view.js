@@ -1,4 +1,4 @@
-// Spec #338 (ticket #341, ADR 0028): entrance animations wait until they are in view.
+// Spec #338 (ticket #341, ADR 0029): entrance animations wait until they are in view.
 
 // In view: wholly inside what shows above the bottom tab bar (bottomInset), or, for an element
 // taller than half of that, filling at least half of it. Only something that tall can fill half,
