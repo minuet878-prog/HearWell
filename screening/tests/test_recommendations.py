@@ -2,14 +2,25 @@
 
 import re
 import uuid
-from datetime import date
+from datetime import date, datetime
 from io import StringIO
+from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from screening.models import Answer, Consent, Question, Questionnaire, Submission, User
+from screening.models import (
+    Answer,
+    Audiogram,
+    Consent,
+    Question,
+    Questionnaire,
+    Submission,
+    User,
+)
 from screening.tests.helpers import consented_user, step_bar
 
 
@@ -258,7 +269,7 @@ class ConcernWizardTests(TestCase):
         # #339 acceptance 17: the latest life-impact record, not the age, picks it.
         user = self.login_age(65)
         self.hhi_record(user, wearing=False, questionnaire="hhia-s")
-        page = self.wizard()
+        page = self.wizard(wizard="1")
         self.assertEqual(step_bar(page), (1, 2))
         page = self.wizard(concern="life_impact")
         self.assertEqual(step_bar(page), (2, 2))
@@ -493,3 +504,136 @@ class ConcernWizardTests(TestCase):
         answer = self.client.get(start)
         self.assertEqual(answer.context["questionnaire"], self.by_code["hhia-s"])
         self.assertContains(answer, 'id="answer-form"')
+
+
+class ReturningCatalogueTests(TestCase):
+    """The screening tab's questionnaire catalogue for returning users (#346, ADR 0028)."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_questionnaires", stdout=StringIO())
+        cls.ordered = sorted(
+            Questionnaire.objects.defined(),
+            key=lambda q: (q.definition.list_rank, q.pk),
+        )
+        cls.by_code = {q.code: q for q in cls.ordered}
+
+    def login(self, *codes, birth_year=1956):
+        # A user with one record of each of `codes`; none makes a new user.
+        user = consented_user(username=f"catalogue_{uuid.uuid4().hex[:8]}", birth_year=birth_year)
+        for code in codes:
+            self.record(user, code)
+        self.client.force_login(user)
+        return user
+
+    def record(self, user, code, when=None):
+        submission = Submission.objects.create(user=user, questionnaire=self.by_code[code])
+        if when:
+            Submission.objects.filter(pk=submission.pk).update(created_at=when)
+        return submission
+
+    def catalogue(self, **params):
+        return self.client.get(reverse("questionnaire_list"), params)
+
+    def cards(self, page):
+        # Each catalogue card as (href, text), in order.
+        return re.findall(
+            r'<a class="link-card mt-4 questionnaire-card" href="([^"]+)">(.*?)</a>',
+            page.content.decode(),
+            re.S,
+        )
+
+    def test_a_returning_user_sees_the_catalogue_not_the_wizard(self):
+        # #339 acceptance 1.
+        self.login("thi")
+        page = self.catalogue()
+        self.assertNotContains(page, 'name="concern"')
+        self.assertNotContains(page, "step-progress")
+        self.assertEqual(
+            [href for href, _ in self.cards(page)],
+            [reverse("screening", args=[q.pk]) for q in self.ordered],
+        )
+        self.assertEqual(len(self.cards(page)), 6)
+        self.assertContains(page, f'<a href="{reverse("questionnaire_list")}" aria-current="page">')
+
+    def test_answered_questionnaires_show_the_taipei_date_of_their_latest_record(self):
+        # #339 acceptance 2: several records over several days, the latest just after midnight
+        # in Taipei (still the day before in UTC) or just before it.
+        taipei = ZoneInfo("Asia/Taipei")
+        user = self.login()
+        for code, when in (
+            ("hhie-s", datetime(2026, 2, 1, 10, 0, tzinfo=taipei)),
+            ("hhie-s", datetime(2026, 3, 2, 0, 10, tzinfo=taipei)),
+            ("hhie-s", datetime(2026, 2, 20, 9, 0, tzinfo=taipei)),
+            ("thi", datetime(2026, 1, 5, 8, 0, tzinfo=taipei)),
+            ("thi", datetime(2026, 2, 10, 23, 50, tzinfo=taipei)),
+        ):
+            self.record(user, code, when)
+        cards = dict(self.cards(self.catalogue()))
+        for questionnaire in self.ordered:
+            text = cards[reverse("screening", args=[questionnaire.pk])]
+            with self.subTest(code=questionnaire.code):
+                tags = re.findall(r'<span class="card-tag">([^<]*)</span>', text)
+                last = {"hhie-s": ["上次 2026/03/02"], "thi": ["上次 2026/02/10"]}
+                self.assertEqual(tags[2:], last.get(questionnaire.code, []))
+                self.assertEqual(tags[0], f"{questionnaire.questions.count()} 題")
+
+    def test_the_dates_come_in_one_query_however_many_cards_have_one(self):
+        counts = []
+        for codes in (("thi",), ("thi", "hhie-s", "ssq12-tw", "sadl")):
+            self.login(*codes)
+            with CaptureQueriesContext(connection) as queries:
+                self.catalogue()
+            counts.append(len(queries))
+        self.assertEqual(counts[0], counts[1])
+
+    def test_help_me_choose_opens_step_one_whose_back_returns_to_the_catalogue(self):
+        # #339 acceptance 8.
+        self.login("hhie-s")
+        catalogue = reverse("questionnaire_list")
+        main = self.catalogue().content.decode()
+        link = f'<a href="{catalogue}?wizard=1">回答幾個問題，幫您挑</a>'
+        self.assertIn(f'<p class="mt-6">不確定做哪一份？{link}</p>', main)
+        # The last line of the page, under every card.
+        self.assertGreater(main.index(link), main.rindex("questionnaire-card"))
+        page = self.catalogue(wizard="1")
+        self.assertContains(
+            page, '<legend class="font-bold text-xl/normal">您最想了解什麼？</legend>'
+        )
+        self.assertContains(page, f'href="{catalogue}">上一步</a>')
+        # Back from step 2 to step 1, whose back still returns to the catalogue.
+        page = self.catalogue(chosen="tinnitus")
+        self.assertContains(page, 'name="concern"')
+        self.assertContains(page, f'href="{catalogue}">上一步</a>')
+        self.assertNotContains(self.catalogue(), 'name="concern"')
+
+    def test_a_new_user_still_gets_the_wizard_whose_back_goes_home(self):
+        # #339 acceptance 9: no questionnaire record, an audiogram or not.
+        user = self.login()
+        for audiogram in (False, True):
+            if audiogram:
+                Audiogram.objects.create(user=user, tested_on=date(2026, 10, 1))
+            with self.subTest(audiogram=audiogram):
+                page = self.catalogue()
+                self.assertContains(
+                    page, '<legend class="font-bold text-xl/normal">您最想了解什麼？</legend>'
+                )
+                self.assertContains(page, f'href="{reverse("index")}">上一步</a>')
+                self.assertEqual(self.cards(page), [])
+
+    def test_a_new_users_choose_yourself_has_no_dates_and_no_help_me_choose(self):
+        self.login()
+        page = self.catalogue(choose="self")
+        self.assertEqual(len(self.cards(page)), 6)
+        self.assertNotContains(page, "上次")
+        self.assertNotContains(page, "幫您挑")
+
+    def test_a_returning_users_choose_yourself_is_the_same_catalogue(self):
+        # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫您挑」.
+        self.login("thi")
+        page = self.catalogue(choose="self")
+        self.assertContains(page, "上次 ")
+        self.assertContains(page, "幫您挑")
+        self.assertNotContains(page, 'name="concern"')

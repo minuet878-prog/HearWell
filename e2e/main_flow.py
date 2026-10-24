@@ -811,6 +811,32 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             expect(self.main()).to_contain_text("下次建議")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
+    def test_screening_tab_shows_the_catalogue_with_last_dates(self):
+        """#346 (#339 acceptance 1, 2, 8, 22): 篩檢 opens the catalogue, not the wizard."""
+        call_command("seed_questionnaires", verbosity=0)
+        self.open(viewport={"width": 320, "height": 640})
+        with self.saving_artifacts():
+            self.page.goto(self.live_server_url)
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="篩檢").click()
+            expect(nav.locator('a[aria-current="page"]')).to_have_text("篩檢")
+            expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_have_count(0)
+            cards = self.main().locator("a.questionnaire-card")
+            expect(cards).to_have_count(6)
+            expect(cards.first).to_contain_text("HHIE-S")
+            last = cards.locator(".card-tag", has_text="上次")
+            expect(last).to_have_count(1)
+            expect(cards.first.locator(".card-tag").last).to_have_text(f"上次 {self.old_date}")
+            self.assert_fits_a_phone_at_double_text_size("catalogue")
+            tag = cards.first.locator(".card-tag").last
+            self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
+            self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
+            self.main().get_by_role("link", name="回答幾個問題，幫您挑").click()
+            expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
+            self.main().get_by_role("link", name="上一步").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+            expect(cards).to_have_count(6)
+
     def test_history_fits_a_phone_at_double_text_size(self):
         """#163 acceptance 3: 我的紀錄 due, with the reminder and its button, and after the
         retest, with 和上一次比 and the trend chart."""
@@ -4193,7 +4219,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", large),
-            ("/questionnaire_list?from=consent", ".questionnaire-guide", large),
+            # A returning user: the wizard only by 「幫您挑」 (#346).
+            ("/questionnaire_list?wizard=1&from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
             ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
             (f"/submission/{basis.pk}", ".result-banner", medium),

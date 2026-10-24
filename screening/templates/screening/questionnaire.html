@@ -5,7 +5,9 @@
 {% block body %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
+{# The catalogue (ADR 0028); #347 puts the returning user's 推薦您做這一份 above the cards. #}
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
+{% if returning %}<p class="mt-6">不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">回答幾個問題，幫您挑</a></p>{% endif %}
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
 {% include "screening/step_progress.html" %}

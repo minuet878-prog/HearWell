@@ -11,7 +11,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Prefetch, prefetch_related_objects
+from django.db.models import (
+    Count,
+    F,
+    OuterRef,
+    Prefetch,
+    Subquery,
+    prefetch_related_objects,
+)
 from django.http import (
     Http404,
     HttpRequest,
@@ -646,6 +653,11 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
+# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫您挑」, the rest
+# its answers. Without any, a returning user sees the catalogue.
+WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
+
+
 def _wizard_step(request, step, total, **context):
     # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
@@ -664,14 +676,27 @@ def _wizard_step(request, step, total, **context):
 @login_required
 @health_data_page
 def questionnaire_list(request):
-    questionnaires = sorted(
-        Questionnaire.objects.defined().annotate(question_count=Count("questions")),
-        key=list_order,
-    )
-    if "choose" in request.GET:
-        return render(request, "screening/questionnaire.html", {"questionnaires": questionnaires})
-    wizard_url = reverse("questionnaire_list")
+    questionnaires = Questionnaire.objects.defined().annotate(question_count=Count("questions"))
     user = request.user
+    returning = not get_user_state(user, timezone.localdate()).is_new
+    # A returning user sees the catalogue first; the wizard is one link away (ADR 0028).
+    if "choose" in request.GET or (
+        returning and not any(name in request.GET for name in WIZARD_PARAMS)
+    ):
+        # Each card's 「上次」 date in the same query, not one query per card.
+        latest = (
+            Submission.objects.filter(user=user, questionnaire=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("created_at")[:1]
+        )
+        questionnaires = questionnaires.annotate(last_answered_at=Subquery(latest))
+        return render(
+            request,
+            "screening/questionnaire.html",
+            {"questionnaires": sorted(questionnaires, key=list_order), "returning": returning},
+        )
+    questionnaires = sorted(questionnaires, key=list_order)
+    wizard_url = reverse("questionnaire_list")
     # None while the age is still needed: then step 1 says 共 3 步, as a life-impact result asks it.
     life_impact = life_impact_questionnaire(user, questionnaires, None)
     concern_form = ConcernForm(
@@ -685,7 +710,8 @@ def questionnaire_list(request):
             1,
             3 if life_impact is None else 2,
             field=concern_form["concern"],
-            back_url=reverse("index"),
+            # A returning user came from the catalogue's 「幫您挑」.
+            back_url=wizard_url if returning else reverse("index"),
         )
     concern = concern_form.cleaned_data["concern"]
     back_url = f"{wizard_url}?{urlencode({'chosen': concern})}"
