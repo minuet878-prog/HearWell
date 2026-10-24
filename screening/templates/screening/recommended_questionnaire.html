@@ -1,0 +1,9 @@
+{# One recommended questionnaire in a flat block (ADR 0022), the wizard's result and the returning user's catalogue alike: not a link itself, only its 開始作答 button is. `level` and `title_id`: its heading's; `audience` and `why` shown when given; `start_url`, else its answer page. #}
+<div class="recommended-heading flex items-center gap-4">
+    {% include "screening/questionnaire_icon.html" with icon=questionnaire.definition.icon %}
+    <h{{ level }} id="{{ title_id }}" class="h4 mb-0">{{ questionnaire.definition.topic }}<span class="block font-normal">{{ questionnaire }}</span></h{{ level }}>
+</div>
+<p class="card-tags">{% include "screening/card_tags.html" %}</p>
+{% if audience %}<p>{{ questionnaire.definition.audience }}</p>{% endif %}
+{% if why %}<p><strong>為什麼推薦：</strong>{{ why }}</p>{% endif %}
+<a class="btn btn-primary btn-lg" href="{% if start_url %}{{ start_url }}{% else %}{% url 'screening' questionnaire.id %}{% endif %}">開始作答{% if audience %}<span class="visually-hidden">：{{ questionnaire }}</span>{% endif %}</a>

@@ -9,6 +9,14 @@ AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
 NORM = "norm"  # each item against the norms, no total (IOI-HA)
 SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SADL)
 
+# What a questionnaire tells about among the recommendation wizard's first answers (ADR 0030),
+# the values of a definition's `concern` and of that answer alike; their words are ConcernForm's.
+LIFE_IMPACT = "life_impact"
+TINNITUS = "tinnitus"
+LISTENING = "listening"
+HEARING_AID = "hearing_aid"
+UNSURE = "unsure"  # an answer alone, no definition's concern: recommended as LIFE_IMPACT
+
 # The retest reminder (ADR 0010): months after the latest life-impact record, and the last
 # next step of every life-impact questionnaire, the one step not traced to its advice.
 RETEST_MONTHS = 6
@@ -63,9 +71,9 @@ class Definition:
     # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded
     # is not enough: a graded questionnaire about something else (THI) is not one.
     life_impact: bool = False
-    # A line every wizard result shows, whatever it recommends, linking to this questionnaire:
-    # who it is for is said here rather than asked as a wizard step (spec #208 Q3). "": none.
-    wizard_offer: str = ""
+    # Which of the recommendation wizard's first answers it tells about: LIFE_IMPACT, TINNITUS,
+    # LISTENING or HEARING_AID (ADR 0030). "": none.
+    concern: str = ""
     support_message: SupportMessage | None = None  # LEVEL only
     trend_chart: bool = False  # the history page draws a score trend chart
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
