@@ -756,6 +756,88 @@
     text-align: center;
   }
 
+  /* Waiting for the next page (page-loading.js; A3 on the loading comparison page, ADR 0027): a bar
+     along the top and 載入中… under it, once the page has waited 0.3 s. Fixed, so a link pressed low
+     on a long page still shows them. */
+  .page-loading-bar {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    height: 6px;
+  }
+  .page-loading .page-loading-bar { display: block; }
+  .page-loading .page-loading-note {
+    position: fixed;
+    top: calc(6px + 0.5rem);
+    right: 1rem;
+    z-index: 1050;
+    margin: 0;
+    padding: 0.25rem 0.75rem;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-button);
+  }
+  /* Otherwise out of sight but still read out: 送出中… is said the moment a form is sent. */
+  html:not(.page-loading) .page-loading-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  /* 題目載入中… and 趨勢圖載入中… (B1) get the same sliding piece under the text, after 0.3 s. */
+  .loading-message::after {
+    content: "";
+    display: block;
+    width: min(100%, 16rem);
+    height: 6px;
+    margin-top: 0.75rem;
+    border-radius: 3px;
+    visibility: hidden;
+  }
+
+  /* A3 and B1 share one look: a short blue piece sliding along a light track. Waiting may loop,
+     for at most about 10 seconds (ADR 0027, an exception to ADR 0006). */
+  .page-loading-bar, .loading-message::after {
+    background: linear-gradient(var(--color-primary), var(--color-primary)) no-repeat
+      var(--color-brand-soft-deep);
+    background-size: 35% 100%;
+  }
+  .page-loading-bar { animation: loading-slide 1.3s ease-in-out 8 both; }
+  .loading-message::after {
+    animation: loading-appear 0s 0.3s forwards, loading-slide 1.3s ease-in-out 0.3s 8 both;
+  }
+
+  /* C1: before 送出中… on the pressed button (page-loading.js and the React pages). */
+  .spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.5rem;
+    vertical-align: -0.125em;
+    border: 0.15em solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    visibility: hidden;
+    animation: loading-appear 0s 0.3s forwards, loading-spin 0.8s linear 0.3s 12;
+  }
+
+  /* ADR 0006: nothing moves. The bar stays full and the spinner is left out; 載入中… and 送出中…
+     still say it. */
+  @media (prefers-reduced-motion: reduce) {
+    .page-loading-bar { animation: none; background-size: 100% 100%; }
+    .loading-message::after { animation: loading-appear 0s 0.3s forwards; background-size: 100% 100%; }
+    .spinner { display: none; }
+  }
+
   /* Navigation: one list; top bar on wide screens, fixed bottom tab bar on phones. */
   .site-nav {
     background-color: #fff;
@@ -3212,6 +3294,7 @@
     text-align: center;
     color: var(--color-body);
   }
+  .trend-plot-message.loading-message { flex-direction: column; }
 
   /* IOI-HA norm chart: 7 columns x 5 rows, row 1 is a score of 5 (the book's scoring sheet). */
   .ioi-columns {
@@ -4281,4 +4364,19 @@
 
 @keyframes gauge-needle {
   from { transform: rotate(0deg); }
+}
+
+/* Waiting (ADR 0027): a piece slides across its track; spinner; shown only after 0.3 s. With a 35%
+   wide piece, -54% and 154% put it just outside each end. */
+@keyframes loading-slide {
+  from { background-position: -54% 0; }
+  to { background-position: 154% 0; }
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loading-appear {
+  to { visibility: visible; }
 }

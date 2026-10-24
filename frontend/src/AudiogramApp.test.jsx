@@ -474,7 +474,11 @@ describe("save", () => {
     forward();
     drag(1000, 40, 40);
     confirmAndSave();
-    save();
+    // C1 on the loading comparison page: 存檔中… with a spinner, and it cannot be pressed again.
+    const saving = screen.getByRole("button", { name: "存檔中…" });
+    expect(saving.disabled).toBe(true);
+    expect(saving.querySelector(".spinner").getAttribute("aria-hidden")).toBe("true");
+    fireEvent.click(saving);
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("存檔失敗"));
     expect(fetch).toHaveBeenCalledTimes(1);
     save();
@@ -596,7 +600,7 @@ describe("edit", () => {
   it("a double click sends once (acceptance 7)", async () => {
     renderEdit();
     confirmAndSave();
-    save();
+    fireEvent.click(screen.getByRole("button", { name: "存檔中…" }));
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(fetch).toHaveBeenCalledTimes(1);
   });

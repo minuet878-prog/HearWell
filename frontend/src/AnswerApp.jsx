@@ -319,7 +319,14 @@ export default function AnswerApp({
         )}
         {isLast ? (
           <button type="button" className="btn btn-primary btn-lg" disabled={!answered || isSending} onClick={submit}>
-            {isSending ? "送出中…" : "送出"}
+            {isSending ? (
+              <>
+                <span className="spinner" aria-hidden="true" />
+                送出中…
+              </>
+            ) : (
+              "送出"
+            )}
           </button>
         ) : (
           <button type="button" className="btn btn-primary btn-lg" disabled={!answered} onClick={goNext}>
