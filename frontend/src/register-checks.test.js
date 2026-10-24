@@ -8,22 +8,43 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const SCRIPT = resolve(process.cwd(), "../screening/static/screening/register-checks.js");
 const STATUS = '<p class="visually-hidden" role="status"></p>';
 
-function page({ latestYear = "97", year = "" } = {}) {
+// With `wrong`, the page as the server sends it back after a mistake in that field: Django's
+// red frame (aria-invalid) and the error words the field's aria-describedby points at.
+function wrongAttrs(id, wrong) {
+  return wrong
+    ? `aria-invalid="true" aria-describedby="${id}_helptext ${id}_error"`
+    : `aria-describedby="${id}_helptext"`;
+}
+
+function serverWords(id, wrong) {
+  return wrong ? `<div id="${id}_error"><p class="text-danger field-error">伺服器說錯了</p></div>` : "";
+}
+
+function page({ latestYear = "97", year = "", wrong = [] } = {}) {
+  const password2 = "id_password2";
+  const birthYear = "id_roc_birth_year";
   document.body.innerHTML = `
     <div class="auth-field">
       <div class="auth-input"><input type="password" id="id_password1"></div>
     </div>
     <div class="auth-field">
-      <div class="auth-input"><input type="password" id="id_password2"></div>
+      <div class="auth-input">
+        <input type="password" id="${password2}" ${wrongAttrs(password2, wrong.includes(password2))}>
+      </div>
       ${STATUS}
+      ${serverWords(password2, wrong.includes(password2))}
+      <div id="${password2}_helptext">請再輸入一次同樣的密碼。</div>
     </div>
     <div class="auth-field">
       <div class="input-group">
         <span class="input-group-text">民國</span>
-        <input type="text" id="id_roc_birth_year" data-max="${latestYear}" value="${year}">
+        <input type="text" id="${birthYear}" data-max="${latestYear}" value="${year}"
+          ${wrongAttrs(birthYear, wrong.includes(birthYear))}>
         <span class="input-group-text">年</span>
       </div>
       ${STATUS}
+      ${serverWords(birthYear, wrong.includes(birthYear))}
+      <div id="${birthYear}_helptext">選填。</div>
     </div>`;
   new Function(readFileSync(SCRIPT, "utf-8"))();
 }
@@ -109,5 +130,53 @@ describe("register field ticks", () => {
   it("ticks a right 出生年 already in the field when the page opens", () => {
     page({ year: "44" });
     expect(tickShown("id_roc_birth_year")).toBe(true);
+  });
+});
+
+// Owner's call (2026-10-24, #326 self-review): once the tick shows, the field drops the red
+// frame and the server's words for it; going wrong again does not bring them back.
+describe("a field the server called wrong", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  const input = (id) => document.getElementById(id);
+  const red = (id) => input(id).getAttribute("aria-invalid") === "true";
+  const serverError = (id) => document.getElementById(`${id}_error`);
+
+  it.each([
+    ["id_roc_birth_year", () => type("id_roc_birth_year", "44"), () => type("id_roc_birth_year", "0")],
+    [
+      "id_password2",
+      () => {
+        type("id_password1", "Fake-pass-2468");
+        type("id_password2", "Fake-pass-2468");
+      },
+      () => type("id_password2", "Fake-pass-246"),
+    ],
+  ])("%s keeps the red frame until the tick shows, then drops it for good", (id, right, wrongAgain) => {
+    page({ wrong: [id] });
+    type(id, "0");
+    expect(red(id)).toBe(true);
+    expect(serverError(id)).not.toBeNull();
+
+    right();
+    expect(tickShown(id)).toBe(true);
+    expect(red(id)).toBe(false);
+    expect(serverError(id)).toBeNull();
+    // The help words stay described; the gone error is no longer pointed at.
+    expect(input(id).getAttribute("aria-describedby")).toBe(`${id}_helptext`);
+
+    wrongAgain();
+    expect(tickShown(id)).toBe(false);
+    expect(red(id)).toBe(false);
+    expect(serverError(id)).toBeNull();
+  });
+
+  it("leaves the other field's red frame alone", () => {
+    page({ wrong: ["id_roc_birth_year", "id_password2"] });
+    type("id_roc_birth_year", "44");
+    expect(red("id_password2")).toBe(true);
+    expect(serverError("id_password2")).not.toBeNull();
   });
 });

@@ -15,6 +15,21 @@
     const text = right ? words : "";
     // Only on a change, so typing on in a right field does not repeat the words.
     if (status.textContent !== text) status.textContent = text;
+    if (right) clearServerError(input);
+  }
+
+  // Once the tick shows, the server's red frame and words for that field go (owner's call,
+  // 2026-10-24); going wrong again does not bring them back: the server says so on sending.
+  function clearServerError(input) {
+    input.removeAttribute("aria-invalid");
+    const errorId = `${input.id}_error`;
+    document.getElementById(errorId)?.remove();
+    const described = (input.getAttribute("aria-describedby") || "")
+      .split(" ")
+      .filter((id) => id && id !== errorId)
+      .join(" ");
+    if (described) input.setAttribute("aria-describedby", described);
+    else input.removeAttribute("aria-describedby");
   }
 
   // The server's rule (RegisterForm.clean_roc_birth_year), whose latest year the page gives:

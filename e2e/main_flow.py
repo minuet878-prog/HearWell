@@ -1180,6 +1180,42 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 if size:
                     self.assert_fits_a_phone_at_double_text_size("register with ticks", width)
 
+    RED_BG = "rgb(254, 236, 231)"  # --color-severe-bg, the wrong field's fill
+
+    # Owner's call (2026-10-24, #326 self-review): the tick takes the server's red frame and
+    # words for that field away with it; going wrong again does not bring them back.
+    def test_register_tick_takes_the_servers_red_frame_away(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/register")
+            self.page.get_by_label("使用者名稱").fill("tick_e2e")
+            self.page.get_by_label("電子郵件").fill("tick_e2e@example.com")
+            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-246")
+            self.page.get_by_label("出生年：", exact=True).fill("200")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            self.page.wait_for_load_state("load")
+            fields = (
+                (self.page.get_by_label("出生年：", exact=True), "44", "200"),
+                (self.page.get_by_label("密碼確認：", exact=True), "Fake-pass-2468", "x"),
+            )
+            for field, _, _ in fields:
+                expect(field).to_have_attribute("aria-invalid", "true")
+                expect(field).to_have_css("background-color", self.RED_BG)
+                field_id = field.get_attribute("id")
+                expect(self.page.locator(f"#{field_id}_error")).to_be_visible()
+            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+            for field, right, wrong in fields:
+                field_id = field.get_attribute("id")
+                field.fill(right)
+                expect(field).not_to_have_attribute("aria-invalid", "true")
+                expect(field).not_to_have_css("background-color", self.RED_BG)
+                expect(self.page.locator(f"#{field_id}_error")).to_have_count(0)
+                self.assertIsNotNone(self.tick(field), field_id)
+                field.fill(wrong)
+                expect(field).not_to_have_attribute("aria-invalid", "true")
+                expect(self.page.locator(f"#{field_id}_error")).to_have_count(0)
+
 
 class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#163: a returning user whose last HHIE-S is over 6 months old takes it again."""
