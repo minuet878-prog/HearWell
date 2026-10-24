@@ -8,28 +8,34 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
+{# The catalogue (ADR 0030), the returning user's 推薦問卷 above the cards when one fits (#347). #}
+{% if recommendation %}
+<section aria-labelledby="catalogue-recommended" class="mt-6 mb-8">
+    <h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>
+    {% if recommendation.questionnaires|length > 1 %}
+    {# The age is unknown: one reason, then each questionnaire with the ages it suits. #}
+    <p><strong>為什麼推薦：</strong>{{ recommendation.why }}</p>
+    {% for questionnaire in recommendation.questionnaires %}<div class="mt-6">{% include "screening/recommended_questionnaire.html" with level=3 title_id="recommended-"|add:questionnaire.code audience=True %}</div>{% endfor %}
+    {% else %}
+    {% include "screening/recommended_questionnaire.html" with questionnaire=recommendation.questionnaires.0 level=3 title_id="recommended-title" why=recommendation.why %}
+    {% endif %}
+</section>
+{% endif %}
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
+{% if returning %}<p class="mt-6">不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">回答幾個問題，幫您挑</a></p>{% endif %}
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
 {% include "screening/step_progress.html" %}
 {% if recommended %}
 <h1 class="h3 mt-2">推薦您做這一份</h1>
-{# A flat block (ADR 0022): not a link itself, only its 開始作答 button is. #}
 <section aria-labelledby="recommended-title" class="mb-4">
-    <div class="recommended-heading flex items-center gap-4">
-        {% include "screening/questionnaire_icon.html" with icon=recommended.definition.icon %}
-        <h2 id="recommended-title" class="h4 mb-0">{{ recommended.definition.topic }}<span class="block font-normal">{{ recommended }}</span></h2>
-    </div>
-    <p class="card-tags">{% include "screening/card_tags.html" with questionnaire=recommended %}</p>
-    <p><strong>為什麼推薦：</strong>{{ why }}</p>
-    <a class="btn btn-primary btn-lg" href="{{ start_url }}">開始作答</a>
+    {% include "screening/recommended_questionnaire.html" with questionnaire=recommended level=2 title_id="recommended-title" %}
 </section>
 {% if also %}
 <h2 class="h4">也可以做</h2>
 {% if retake %}{% include "screening/questionnaire_card.html" with questionnaire=retake.questionnaire title=retake.title note=retake.note %}{% endif %}
 {% for questionnaire in also %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% endif %}
-{% for questionnaire in offers %}<p class="mt-4"><a href="{% url 'screening' questionnaire.pk %}">{{ questionnaire.definition.wizard_offer }}</a></p>{% endfor %}
 <p class="mt-6"><a class="btn btn-outline-primary btn-lg" href="{{ back_url }}">上一步</a></p>
 <details class="dropdown-box mt-4">
     <summary>看其他問卷</summary>
@@ -38,7 +44,7 @@
 {% else %}
 <h1 class="h3 mt-2">幫您找適合的問卷</h1>
 <form method="get" action="{% url 'questionnaire_list' %}">
-    {% if age_group %}<input type="hidden" name="age_group" value="{{ age_group }}">{% endif %}
+    {% if concern %}<input type="hidden" name="concern" value="{{ concern }}">{% endif %}
     <fieldset>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
         {% include "screening/field_messages.html" %}
@@ -49,7 +55,7 @@
         <button type="submit" class="btn btn-primary btn-lg">下一步</button>
     </div>
 </form>
-<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>
 {% endif %}
+<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>
 {% endif %}
 {% endblock %}

@@ -11,7 +11,14 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Prefetch, prefetch_related_objects
+from django.db.models import (
+    Count,
+    F,
+    OuterRef,
+    Prefetch,
+    Subquery,
+    prefetch_related_objects,
+)
 from django.http import (
     Http404,
     HttpRequest,
@@ -37,6 +44,7 @@ from screening.forms import (
     STOP_QUESTIONS,
     AgeGroupForm,
     AnswerFormSet,
+    ConcernForm,
     DeleteAccountForm,
     Form9Form,
     Form25Form,
@@ -44,14 +52,29 @@ from screening.forms import (
     HhiComparisonForm,
     NoticeForm,
     RegisterForm,
-    WearingNowForm,
     answer_choices,
     offers_not_applicable,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
-from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
+from screening.main_flow import (
+    NEW_USER_STATE,
+    catalogue_recommendation,
+    get_user_state,
+    home_more,
+    life_impact_questionnaire,
+)
 from screening.questionnaires import hhia_s, hhie_s
-from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
+from screening.questionnaires.definition import (
+    AVERAGE,
+    HEARING_AID,
+    LEVEL,
+    LIFE_IMPACT,
+    LISTENING,
+    NORM,
+    SUBSCALES,
+    TINNITUS,
+    UNSURE,
+)
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.questionnaires.ioi_ha import SCALE_ENDS as IOI_HA_SCALE_ENDS
@@ -675,6 +698,11 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
+# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫您挑」, the rest
+# its answers. Without any, a returning user sees the catalogue.
+WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
+
+
 def _wizard_step(request, step, total, catalog, **context):
     # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
@@ -694,75 +722,104 @@ def _wizard_step(request, step, total, catalog, **context):
 @login_required
 @health_data_page
 def questionnaire_list(request):
-    questionnaires = sorted(
-        Questionnaire.objects.defined().annotate(question_count=Count("questions")),
-        key=list_order,
-    )
-    if "choose" in request.GET:
+    questionnaires = Questionnaire.objects.defined().annotate(question_count=Count("questions"))
+    user = request.user
+    state = get_user_state(user, timezone.localdate())
+    returning = not state.is_new
+    # A returning user sees the catalogue first; the wizard is one link away (ADR 0030).
+    if "choose" in request.GET or (
+        returning and not any(name in request.GET for name in WIZARD_PARAMS)
+    ):
+        # Each card's 「上次」 date in the same query, not one query per card.
+        latest = (
+            Submission.objects.filter(user=user, questionnaire=OuterRef("pk"))
+            .order_by("-created_at")
+            .values("created_at")[:1]
+        )
+        questionnaires = sorted(
+            questionnaires.annotate(last_answered_at=Subquery(latest)), key=list_order
+        )
         return render(
             request,
             "screening/questionnaire.html",
             {
                 "questionnaires": questionnaires,
-                "continue_notice": _continue_notice(request.user, questionnaires),
+                "returning": returning,
+                "continue_notice": _continue_notice(user, questionnaires),
+                # A new user has no record to recommend by.
+                "recommendation": catalogue_recommendation(user, questionnaires, state)
+                if returning
+                else None,
             },
         )
-    by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
+    questionnaires = sorted(questionnaires, key=list_order)
     wizard_url = reverse("questionnaire_list")
-    age = request.user.age
-    # A birth year alone cannot tell 64 from 65 in the year someone turns 65.
-    ask_age = age is None or age == 65
-    total = 3 if ask_age else 2
-    if ask_age:
+    # None while the age is still needed: then step 1 says 共 3 步, as a life-impact result asks it.
+    life_impact = life_impact_questionnaire(user, questionnaires, state, None)
+    concern_form = ConcernForm(
+        request.GET if "concern" in request.GET else None,
+        # Back from a later step: the answer chosen there is still chosen.
+        initial={"concern": request.GET.get("chosen")},
+    )
+    if not concern_form.is_valid():
+        return _wizard_step(
+            request,
+            1,
+            3 if life_impact is None else 2,
+            questionnaires,
+            field=concern_form["concern"],
+            # A returning user came from the catalogue's 「幫您挑」.
+            back_url=wizard_url if returning else reverse("index"),
+        )
+    concern = concern_form.cleaned_data["concern"]
+    back_url = f"{wizard_url}?{urlencode({'chosen': concern})}"
+    has_norm_basis = concern == HEARING_AID and norm_bases(user).exists()
+    step = 2
+    if concern in (LIFE_IMPACT, UNSURE, HEARING_AID) and life_impact is None:
         age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
         if not age_form.is_valid():
             return _wizard_step(
                 request,
-                1,
-                total,
+                2,
+                3,
                 questionnaires,
                 field=age_form["age_group"],
-                back_url=reverse("index"),
+                concern=concern,
+                back_url=back_url,
             )
-        age_group = age_form.cleaned_data["age_group"]
-    else:
-        age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
-    wearing_form = WearingNowForm(request.GET if "hearing_aid" in request.GET else None)
-    if not wearing_form.is_valid():
-        return _wizard_step(
-            request,
-            total - 1,
-            total,
-            questionnaires,
-            field=wearing_form["hearing_aid"],
-            age_group=age_group if ask_age else None,
-            back_url=wizard_url if ask_age else reverse("index"),
+        life_impact = life_impact_questionnaire(
+            user, questionnaires, state, age_form.cleaned_data["age_group"]
         )
-    life_impact = by_code[hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE]
-    wearing = wearing_form.cleaned_data["hearing_aid"]
-    if not wearing:
-        recommended, reason = life_impact, "unaided"
-    elif norm_bases(request.user).exists():
-        recommended, reason = by_code[IOI_HA], "has_norm_basis"
+        step = 3
+        back_url = f"{wizard_url}?{urlencode({'concern': concern})}"
+    # Asks the definitions, not the codes, per CODING_STANDARDS.md rule 9; IOI-HA alone is
+    # named, as the hearing-aid answer's recommendation once there is a norm basis.
+    hearing_aid = [q for q in questionnaires if q.definition.concern == HEARING_AID]
+    also, retake = [], None
+    if concern in (TINNITUS, LISTENING):
+        recommended = next(q for q in questionnaires if q.definition.concern == concern)
+        reason = concern
+    elif concern != HEARING_AID:
+        recommended, reason = life_impact, concern
+    elif has_norm_basis:
+        recommended, reason = next(q for q in hearing_aid if q.code == IOI_HA), "has_norm_basis"
+        # Answering the life-impact questionnaire again worn compares with the unaided record
+        # (F1); it comes first.
+        title = AIDED_RETAKE_TITLE.format(topic=life_impact.definition.topic, name=life_impact)
+        retake = {"questionnaire": life_impact, "title": title, "note": AIDED_RETAKE_NOTE}
+        also = [q for q in hearing_aid if q != recommended]
     else:
         # IOI-HA compares with the norm group of an unaided record, so that record comes first.
         recommended, reason = life_impact, "needs_norm_basis"
+        also = hearing_aid
     start_url = reverse("screening", args=[recommended.pk])
     if reason == "needs_norm_basis":
         # The answer page starts on "沒戴", which the user may still change (#154).
         start_url += "?preselect=unaided"
-    # IOI-HA is the recommendation itself or waits for a norm basis; the rest is 「也可以做」.
-    also = [q for q in _wearing_follow_ups(questionnaires) if q.code != IOI_HA] if wearing else []
-    # With an unaided record, answering the life-impact questionnaire again worn compares the two
-    # (F1); it comes first.
-    retake = None
-    if reason == "has_norm_basis":
-        title = AIDED_RETAKE_TITLE.format(topic=life_impact.definition.topic, name=life_impact)
-        retake = {"questionnaire": life_impact, "title": title, "note": AIDED_RETAKE_NOTE}
     return _wizard_step(
         request,
-        total,
-        total,
+        step,
+        step,
         questionnaires,
         recommended=recommended,
         reason=reason,
@@ -770,10 +827,8 @@ def questionnaire_list(request):
         start_url=start_url,
         also=also,
         retake=retake,
-        # Asks the definitions, not THI's code, per CODING_STANDARDS.md rule 9.
-        offers=[q for q in questionnaires if q.definition.wizard_offer],
         questionnaires=questionnaires,
-        back_url=f"{wizard_url}?{urlencode({'age_group': age_group})}" if ask_age else wizard_url,
+        back_url=back_url,
     )
 
 
