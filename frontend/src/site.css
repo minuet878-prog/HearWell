@@ -600,6 +600,19 @@
     position: relative;
   }
 
+  /* Entrance animations wait until they are in view (#341, ADR 0028). With JavaScript, layout.html
+     marks the page play-in-view before it is drawn, so whatever is marked data-play-in-view (an
+     element, or the box of a group that plays together) holds its first frame until in-view.js
+     adds data-in-view. Without JavaScript nothing waits; reduced motion has no animation to hold. */
+  :root.play-in-view [data-play-in-view]:not([data-in-view]),
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::after,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::after {
+    animation-play-state: paused;
+  }
+
   /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
      soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
      is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.

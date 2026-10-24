@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
-    {# Scroll helpers (spec #338): the back-to-top button. #}
+    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view. #}
     <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
@@ -28,6 +28,8 @@
             sessionStorage.setItem("header-wave-played", "1");
         }
     </script>
+    {# Entrance animations wait until they are in view (#341, ADR 0028): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
+    <script>document.documentElement.classList.add("play-in-view");</script>
     {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
     <script>
         addEventListener("load", () => {
@@ -47,7 +49,7 @@
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <header class="site-header">
         {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
-        <div class="site-wave" aria-hidden="true">{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
+        <div class="site-wave" aria-hidden="true" data-play-in-view>{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
         <div class="container site-header-bar py-2">
             <div class="flex flex-wrap items-center gap-2">
                 {% if request.resolver_match.url_name != "index" %}
