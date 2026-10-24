@@ -423,7 +423,11 @@ class ConcernWizardTests(TestCase):
         for age in (None, 66):
             with self.subTest(age=age):
                 self.login_age(age)
-                self.assertContains(self.wizard(**{"from": "consent"}), greeting)
+                main = self.wizard(**{"from": "consent"}).content.decode()
+                self.assertIn(greeting, main)
+                # #339 acceptance 10: above step 1, its progress and its form alike.
+                self.assertLess(main.index(greeting), main.index('<div class="step-progress">'))
+                self.assertLess(main.index(greeting), main.index('<form method="get"'))
                 self.assertNotContains(self.wizard(), greeting)
         self.login_age(None)
         self.assertNotContains(
@@ -583,11 +587,15 @@ class ReturningCatalogueTests(TestCase):
                 self.assertEqual(tags[0], f"{questionnaire.questions.count()} 題")
 
     def test_the_dates_come_in_one_query_however_many_cards_have_one(self):
+        # A recent life-impact record on both sides, none answered worn: the recommendation asks
+        # the same queries each time and finds none, so only the dates could differ.
         counts = []
-        for codes in (("thi",), ("thi", "hhie-s", "ssq12-tw", "sadl")):
+        for codes in (("hhie-s",), ("hhie-s", "thi", "ssq12-tw", "sadl")):
             self.login(*codes)
             with CaptureQueriesContext(connection) as queries:
-                self.catalogue()
+                page = self.catalogue()
+            self.assertIsNone(page.context["recommendation"])
+            self.assertEqual(page.content.decode().count("上次 "), len(codes))
             counts.append(len(queries))
         self.assertEqual(counts[0], counts[1])
 
@@ -701,9 +709,13 @@ class RecommendedQuestionnaireTests(TestCase):
         self.assertIn('<h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>', block)
         self.assertEqual(self.starts(block), [self.start_url("hhia-s")])
         self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
-        # Still in the catalogue below, all six cards.
+        # On top: the whole block comes before the first card.
         main = page.content.decode()
-        cards = re.findall(r'<a class="link-card mt-4 questionnaire-card" href="([^"]+)">', main)
+        card = '<a class="link-card mt-4 questionnaire-card"'
+        section = main.index('<section aria-labelledby="catalogue-recommended"')
+        self.assertLess(main.index("</section>", section), main.index(card))
+        # Still in the catalogue below, all six cards.
+        cards = re.findall(rf'{card} href="([^"]+)">', main)
         self.assertEqual(len(cards), 6)
         self.assertIn(self.start_url("hhia-s"), cards)
 
