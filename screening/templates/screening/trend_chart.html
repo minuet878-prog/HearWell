@@ -13,7 +13,7 @@
         <div id="trend-plot" class="h-[20rem]" data-questionnaire="{{ questionnaire.code }}">
             {# Shown until React draws; TrendChart.jsx shows the same text while it loads. Hidden #}
             {# from screen readers like the chart: the summary box and the cards say the same. #}
-            <p class="trend-plot-message" aria-hidden="true">趨勢圖載入中…</p>
+            <p class="trend-plot-message loading-message" aria-hidden="true">趨勢圖載入中…</p>
         </div>
         {# Same shapes as the chart's points: filled circle, hollow square, hollow triangle. #}
         <ul class="trend-legend">

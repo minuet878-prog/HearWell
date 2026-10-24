@@ -64,7 +64,7 @@
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
             <p>註冊後，會請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>，才能開始使用。</p>
-            <input class="w-full btn btn-lg btn-primary" type="submit" value="註冊">
+            <button class="w-full btn btn-lg btn-primary" type="submit">註冊</button>
         </form>
     </div>
     {# Issue #151 put this first; the owner moved it under the form in the pages tidy-up (2026-10-23). #}

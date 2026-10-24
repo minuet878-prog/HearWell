@@ -425,6 +425,8 @@ describe("submitting", () => {
     fireEvent.click(button);
     expect(postCalls()).toHaveLength(1);
     expect(screen.getByRole("button", { name: "送出中…" }).disabled).toBe(true);
+    // C1 on the loading comparison page: a spinner before 送出中…, silent for screen readers.
+    expect(button.querySelector(".spinner").getAttribute("aria-hidden")).toBe("true");
     // While sending, answers cannot change, not even after the browser back button.
     expect(screen.getByRole("button", { name: "上一題" }).disabled).toBe(true);
     expect(screen.getAllByRole("radio").every((r) => r.matches(":disabled"))).toBe(true);

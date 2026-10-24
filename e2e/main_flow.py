@@ -3056,6 +3056,81 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
 
 
+class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """ADR 0027 (A3 and C1 on the loading comparison page) in a real browser, with the site's
+    script and styles (timings and exceptions: page-loading.test.js)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, reduced_motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def stay_on_this_page(self):
+        # Listeners on window run after page-loading.js's on document: the wait starts, but the
+        # browser never leaves, so this page can still be read (a page being left cannot).
+        self.page.evaluate(
+            """() => {
+                addEventListener("click", (event) => {
+                    if (event.target.closest("a")) event.preventDefault();
+                });
+                addEventListener("submit", (event) => event.preventDefault());
+            }"""
+        )
+
+    def wait_for_learn(self):
+        self.page.goto(f"{self.live_server_url}/")
+        self.stay_on_this_page()
+        nav = self.page.get_by_role("navigation", name="主要導覽")
+        nav.get_by_role("link", name="了解").click()
+        expect(self.page.locator("html")).to_have_class(re.compile(r"\bpage-loading\b"))
+        expect(self.page.get_by_role("status").filter(has_text="載入中…")).to_be_visible()
+
+    def send_login(self):
+        self.page.goto(f"{self.live_server_url}/login")
+        self.stay_on_this_page()
+        self.main().get_by_label("使用者名稱").fill("someone")
+        self.main().get_by_label("密碼", exact=True).fill("secret")
+        self.main().get_by_role("button", name="登入").click()
+        button = self.main().get_by_role("button", name="送出中…")
+        expect(button).to_be_disabled()
+        return button.locator(".spinner")
+
+    def test_bar_and_spinner_move_while_waiting(self):
+        self.open()
+        with self.saving_artifacts():
+            self.wait_for_learn()
+            bar = self.page.locator(".page-loading-bar")
+            expect(bar).to_have_css("animation-name", "loading-slide")
+            expect(bar).to_have_css("animation-iteration-count", "8")
+            spinner = self.send_login()
+            expect(spinner).to_be_visible()
+            expect(spinner).to_have_css("animation-name", "loading-appear, loading-spin")
+
+    def test_reduced_motion_keeps_the_bar_still_and_drops_the_spinner(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.wait_for_learn()
+            bar = self.page.locator(".page-loading-bar")
+            expect(bar).to_be_visible()
+            expect(bar).to_have_css("animation-name", "none")
+            expect(self.send_login()).to_be_hidden()
+
+
 class PwaNavTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """Spec phase10_pwa_back_refresh.md acceptance 1-4, 12 and 13 (gestures are in Vitest)."""
 

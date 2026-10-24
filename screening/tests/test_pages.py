@@ -422,42 +422,52 @@ class RedesignLayoutTests(TestCase):
         # (spec phase10_pwa_back_refresh.md), the header wave's inline check (#138), and the
         # inline switch that turns on smooth scrolling once the page and fonts have loaded.
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
+        # And the bar with 載入中… while the next page loads (ADR 0027).
+        loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
         wave = "<inline>"
         smooth = "<inline>"
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [pwa_js, wave, smooth])
+            self.assertEqual(scripts(reverse("index")), [pwa_js, loading_js, wave, smooth])
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332).
         for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
             with self.subTest(url=name):
                 self.assertEqual(
                     scripts(reverse(name)),
-                    [pwa_js, "screening/password-toggle.js", *extra, wave, smooth],
+                    [pwa_js, loading_js, "screening/password-toggle.js", *extra, wave, smooth],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave, smooth])
+            self.assertEqual(
+                scripts(reverse("my_hearing")), [pwa_js, loading_js, logout_js, wave, smooth]
+            )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
         notice = [test_continue_notice.SCRIPT, wave, smooth, "<inline>"]
         expected = {
-            reverse("index"): [pwa_js, logout_js, *notice],
-            reverse("questionnaire_list"): [pwa_js, logout_js, *notice],
+            reverse("index"): [pwa_js, loading_js, logout_js, *notice],
+            reverse("questionnaire_list"): [pwa_js, loading_js, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
-            # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 pwa_js,
+                loading_js,
                 logout_js,
                 answer_js,
-                "screening/submit-button.js",
                 wave,
                 smooth,
                 "<inline>",
             ],
-            reverse("result", args=[self.submission.id]): [pwa_js, logout_js, wave, smooth],
+            reverse("result", args=[self.submission.id]): [
+                pwa_js,
+                loading_js,
+                logout_js,
+                wave,
+                smooth,
+            ],
             reverse("my_hearing"): [
                 pwa_js,
+                loading_js,
                 logout_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
@@ -1203,3 +1213,44 @@ class HomeTests(TestCase):
         for band in bands:
             self.assertNotIn("step-cards", band)
             self.assertNotIn("result-preview", band)
+
+
+class PageLoadingTests(TestCase):
+    """The bar with 載入中… and 送出中… on the pressed button (ADR 0027; A3 and C1 chosen by the
+    site owner on the loading comparison page). How they behave: page-loading.test.js."""
+
+    SCRIPT = "/static/screening/frontend/page-loading.js"
+    TEMPLATES = Path(__file__).resolve().parent.parent / "templates"
+
+    def test_every_page_has_the_bar_and_its_status(self):
+        self.client.force_login(consented_user(username="loadingtester"))
+        for url in (reverse("index"), reverse("account_settings")):
+            with self.subTest(url=url):
+                content = self.client.get(url).content.decode()
+                self.assertIn(f'<script type="module" src="{self.SCRIPT}"></script>', content)
+                self.assertIn('<div class="page-loading-bar" aria-hidden="true"></div>', content)
+                self.assertIn(
+                    '<p id="page-loading-status" class="page-loading-note" role="status"></p>',
+                    content,
+                )
+
+    def test_download_links_say_so(self):
+        # A download leaves the page where it is, so the bar must not start for it.
+        self.client.force_login(consented_user(username="downloader"))
+        link = re.compile(rf'<a [^>]*href="{reverse("download_my_data")}"[^>]*>')
+        for url in (reverse("account_settings"), reverse("delete_account"), reverse("privacy")):
+            with self.subTest(url=url):
+                links = link.findall(self.client.get(url).content.decode())
+                self.assertTrue(links)
+                for tag in links:
+                    self.assertRegex(tag, r"\sdownload[\s>]")
+        # Signed out, the link leads to the login page, which must open rather than be saved.
+        self.client.logout()
+        tag = link.search(self.client.get(reverse("privacy")).content.decode()).group()
+        self.assertNotRegex(tag, r"\sdownload[\s>]")
+
+    def test_submit_buttons_can_hold_the_spinner(self):
+        # An <input type="submit"> shows only its value, so the spinner needs a <button>.
+        for template in self.TEMPLATES.rglob("*.html"):
+            with self.subTest(template=template.name):
+                self.assertNotRegex(template.read_text(), r'<input[^>]*type="submit"')

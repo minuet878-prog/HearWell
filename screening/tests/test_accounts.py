@@ -221,7 +221,7 @@ class LoginViewTests(TestCase):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
         register = re.search(r'<a [^>]*href="/register"[^>]*>([^<]*)</a>', main)
         self.assertEqual(register.group(1), "註冊新帳號")
-        self.assertLess(main.index('type="submit" value="登入"'), register.start())
+        self.assertLess(main.index('type="submit">登入</button>'), register.start())
 
     def test_banner_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
