@@ -424,50 +424,55 @@ class RedesignLayoutTests(TestCase):
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         # And the bar with 載入中… while the next page loads (ADR 0027).
         loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
+        # Every page: the scroll helpers, such as the back-to-top button (spec #338).
+        scroll_js = "screening/frontend/scroll-helpers.js"
         wave = "<inline>"
+        # Every page: the inline mark that holds entrance animations until in view (#341).
+        play_in_view = "<inline>"
         smooth = "<inline>"
+        every = [pwa_js, loading_js, scroll_js]
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [pwa_js, loading_js, wave, smooth])
+            self.assertEqual(scripts(reverse("index")), [*every, wave, play_in_view, smooth])
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         for name in ("login", "register"):
             with self.subTest(url=name):
                 self.assertEqual(
                     scripts(reverse(name)),
-                    [pwa_js, loading_js, "screening/password-toggle.js", wave, smooth],
+                    [*every, "screening/password-toggle.js", wave, play_in_view, smooth],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
-                scripts(reverse("my_hearing")), [pwa_js, loading_js, logout_js, wave, smooth]
+                scripts(reverse("my_hearing")), [*every, logout_js, wave, play_in_view, smooth]
             )
         self.client.force_login(self.user)
         expected = {
-            reverse("index"): [pwa_js, loading_js, logout_js, wave, smooth],
-            reverse("questionnaire_list"): [pwa_js, loading_js, logout_js, wave, smooth],
+            reverse("index"): [*every, logout_js, wave, play_in_view, smooth],
+            reverse("questionnaire_list"): [*every, logout_js, wave, play_in_view, smooth],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
-                pwa_js,
-                loading_js,
+                *every,
                 logout_js,
                 answer_js,
                 wave,
+                play_in_view,
                 smooth,
                 "<inline>",
             ],
             reverse("result", args=[self.submission.id]): [
-                pwa_js,
-                loading_js,
+                *every,
                 logout_js,
                 wave,
+                play_in_view,
                 smooth,
             ],
             reverse("my_hearing"): [
-                pwa_js,
-                loading_js,
+                *every,
                 logout_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
+                play_in_view,
                 smooth,
             ],
         }

@@ -44,11 +44,16 @@
   --container-form: 30rem;
   --root-font-size: 112.5%;
   --spacing-touch: 2.75rem;
+  /* The phone's fixed bottom tab bar: about this tall, until back-to-top.js (#340) keeps its
+     measured height here. */
+  --tab-bar-height: 5rem;
   --radius-button: 0.5rem;
   --radius-badge: 1rem;
   --radius-tab: 1.5rem;
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
+  /* The pale blue glow around the box a jump lands on (#343). */
+  --shadow-jump-highlight: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25);
   /* Pre-migration framework defaults the site never overrode, shared by form fields and alerts (#125). */
   --radius-field: 0.375rem;
   --color-field-focus: #86b7fe;
@@ -600,6 +605,19 @@
     position: relative;
   }
 
+  /* Entrance animations wait until they are in view (#341, ADR 0029). With JavaScript, layout.html
+     marks the page play-in-view before it is drawn, so whatever is marked data-play-in-view (an
+     element, or the box of a group that plays together) holds its first frame until in-view.js
+     adds data-in-view. Without JavaScript nothing waits; reduced motion has no animation to hold. */
+  :root.play-in-view [data-play-in-view]:not([data-in-view]),
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view])::after,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::before,
+  :root.play-in-view [data-play-in-view]:not([data-in-view]) *::after {
+    animation-play-state: paused;
+  }
+
   /* The header wave chosen in #136 (values in docs/verification/issue-136.md): bars jump and a
      soft light sweeps once, about 3.7 seconds, then the bars stay level and low. The resting look
      is the plain style, so no animation (reduced motion, a tab's later pages) means a still row.
@@ -950,6 +968,35 @@
     }
   }
 
+  /* Back to top (#340, spec #338): made by back-to-top.js, so absent without JavaScript. Shown
+     past two screens down; folded away it is out of the Tab order and unread (visibility). On
+     phones it sits above the tab bar (--tab-bar-height). */
+  .back-to-top {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1020;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .back-to-top[data-shown] {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* A short fade in and out (spec #338); with reduced motion it simply appears and goes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .back-to-top {
+      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out;
+    }
+  }
+
+  @media print {
+    .back-to-top { display: none; }
+  }
+
   /* Site-wide footer: grey band, apart from the content without competing with it. */
   .site-footer {
     margin-top: 3rem;
@@ -963,7 +1010,23 @@
   @media (max-width: 47.99em) {
     /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
     .site-footer {
-      padding-bottom: calc(1.5rem + 5rem);
+      padding-bottom: calc(1.5rem + var(--tab-bar-height));
+    }
+  }
+
+  /* With the back-to-top button (#340) the page's end also clears the button, so at the very
+     bottom its last line is not under it. */
+  .back-to-top ~ .site-footer {
+    padding-bottom: calc(1.5rem + 1rem + var(--spacing-touch));
+  }
+
+  @media (max-width: 47.99em) {
+    .back-to-top {
+      bottom: calc(var(--tab-bar-height) + 0.75rem);
+    }
+
+    .back-to-top ~ .site-footer {
+      padding-bottom: calc(1.5rem + var(--tab-bar-height) + 0.75rem + var(--spacing-touch));
     }
   }
 
@@ -2377,6 +2440,18 @@
     width: calc(clamp(0, var(--meter-value), var(--meter-max)) / var(--meter-max) * 100%);
   }
 
+  /* Once in view (ADR 0029), each bar grows from 0 to its number in 1.2 seconds, quickly at
+     first, then slowly, stopping without a bounce; scaled from its left edge, so nothing around
+     it moves: the lines, their labels and the hatching stay put, the numbers are the end ones.
+     The ears' two bars share a box (data-play-in-view) and so grow together. Reduced motion
+     draws them full at once. */
+  @media (prefers-reduced-motion: no-preference) {
+    .meter-bar {
+      transform-origin: left;
+      animation: meter-fill 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    }
+  }
+
   .meter-bar-right {
     background-color: var(--color-ear-right);
   }
@@ -2476,6 +2551,27 @@
     .section-box-title {
       border-bottom: 1px solid var(--color-border-strong);
       background-color: transparent;
+    }
+  }
+
+  /* #343 (ADR 0029): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
+     itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
+     level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
+     seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
+     takes it off after 3 seconds. Only the look changes: the focus stays where it was.
+     :root puts it above a box's own look, which may come later with as many classes (the
+     family page's urgent card takes its shadow off: .family-guide .family-urgent). */
+  :root .jump-highlight:not(.route-stop),
+  :root .route-stop.jump-highlight .route-box {
+    outline: 0.1875rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+    box-shadow: var(--shadow-jump-highlight);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .jump-highlight:not(.route-stop),
+    .route-stop.jump-highlight .route-box {
+      animation: jump-highlight 3s both;
     }
   }
 
@@ -3764,14 +3860,46 @@
     margin-bottom: 1rem;
   }
 
-  /* #204: at 200% text the four-column number tables scroll in their own box, not the page. */
-  .compare-table-scroll {
+  /* #204: at 200% text the four-column number tables scroll in their own box, not the page.
+     Ticket #344 (spec #338): a shadow on each side not yet scrolled to, in CSS alone, so it is
+     there without JavaScript too. The shadows stay at the box's edges (scroll); a white cover
+     at each end of the content (local) slides over a shadow once that end is in view, and over
+     both when the table fits. The cells let the box's background through, or their white would
+     hide the shadows; the table's space below moves outside the box, so no shadow runs past it. */
+  .scroll-box {
     overflow-x: auto;
+    margin-bottom: 1rem;
+    background:
+      linear-gradient(to right, #fff 50%, rgba(255, 255, 255, 0)) left / 2rem 100% no-repeat local,
+      linear-gradient(to left, #fff 50%, rgba(255, 255, 255, 0)) right / 2rem 100% no-repeat local,
+      linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) left / 1rem 100% no-repeat scroll,
+      linear-gradient(to left, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) right / 1rem 100% no-repeat scroll,
+      #fff;
   }
 
-  .compare-table-scroll:focus-visible {
+  .scroll-box > .table {
+    margin-bottom: 0;
+  }
+
+  .scroll-box > .table > :not(caption) > * > * {
+    background-color: transparent;
+  }
+
+  .scroll-box:focus-visible {
     outline: 0.25rem solid var(--color-primary);
     outline-offset: 0.125rem;
+  }
+
+  /* Made by scroll-hint.js above each box, and shown only while its table does not fit. */
+  .scroll-hint {
+    margin-bottom: 0.25rem;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  @media print {
+    .scroll-box { background: none; }
+    .scroll-hint { display: none; }
   }
 
   /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202). */
@@ -4423,6 +4551,18 @@
 /* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
+}
+
+/* A jump's box (#343): held for the first half, then faded out. The start is written out, not
+   taken from the box's own look, so the glow is there from the first frame. */
+@keyframes jump-highlight {
+  0%, 50% { outline-color: var(--color-primary); box-shadow: var(--shadow-jump-highlight); }
+  to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
+}
+
+/* My guide's meters (#342): a bar grows from 0 to its number. */
+@keyframes meter-fill {
+  from { transform: scaleX(0); }
 }
 
 @keyframes start-ring {

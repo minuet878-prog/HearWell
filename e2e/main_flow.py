@@ -4,6 +4,7 @@ Not named test_*.py, so the normal test run skips it; run it by name after build
     python manage.py test --settings=config.test_settings e2e.main_flow --parallel 4
 """
 
+import base64
 import calendar
 import os
 import re
@@ -107,18 +108,27 @@ def open_report_folds(page):
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
+    # Text at 200%: 2 x the site's 112.5% base, as in SharedLayoutTest.
+    DOUBLE_TEXT_SIZE = "225%"
+
     def main(self):
         return self.page.get_by_role("main")
 
-    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
-        # 2 x the site's 112.5% base, as in SharedLayoutTest; the page is width px wide. Not
-        # add_style_tag: it waits for the style's load event, which never fires without JavaScript.
-        # Wait for the stylesheet first: a click only waits until the new page starts, and an
-        # unstyled page is wider than 320px (unsized SVG icons), which failed CI at random.
-        self.page.wait_for_load_state("load")
+    def double_text(self, on=True):
+        """Sets the page's text to 200%, or (on=False) back to its usual size. Not add_style_tag:
+        it waits for the style's load event, which never fires without JavaScript."""
         self.page.locator("html").evaluate(
-            "html => html.style.setProperty('font-size', '225%', 'important')"
+            "(html, [on, size]) => on ? html.style.setProperty('font-size', size, 'important')"
+            " : html.style.removeProperty('font-size')",
+            [on, self.DOUBLE_TEXT_SIZE],
         )
+
+    def assert_fits_a_phone_at_double_text_size(self, where, width=320):
+        # The page is width px wide. Wait for the stylesheet first: a click only waits until the
+        # new page starts, and an unstyled page is wider than 320px (unsized SVG icons), which
+        # failed CI at random.
+        self.page.wait_for_load_state("load")
+        self.double_text()
         scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
         self.assertLessEqual(scroll_width, width, where)
 
@@ -2483,8 +2493,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # The meters' lines (25 dB HL, 45%) without a white edge: a bar stopping on the line meets it
     # with no gap, and the line sticks out 0.3rem above and below its track onto the page, where
     # it shows even over the dark blue bar. The last line in a meter runs into its label's.
+    # #342: the bars are measured where they end, so with reduced motion, which draws them full
+    # at once (GuideMeterFillTest watches them grow).
     def test_meter_lines_stick_out_of_their_tracks_without_a_gap(self):
         self.open(390)
+        self.page.emulate_media(reduced_motion="reduce")
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         measure = """el => {
             const box = selector => {
@@ -2611,7 +2624,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertLessEqual(room["overflow"], 0, path)
 
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
-    # nothing, so the stop is 去找聽力師之前 (spec #291).
+    # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0029): it plays once the
+    # stop is in view, so the route is scrolled to first.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
         self.open(390)
         with self.saving_artifacts():
@@ -2622,8 +2636,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     here = self.main().locator('[aria-current="step"]')
                     expect(here).to_have_count(1)
                     expect(here).to_contain_text("去找聽力師之前")
+                    here.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
+                    expect(number).to_have_css("animation-play-state", "running")
 
     # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
     # reader goes on from there; smoothly, or straight there with reduced motion. #321 (#318
@@ -6827,3 +6843,1044 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(page=name):
                     self.visit(True, path, width=320)
                     self.assert_fits_a_phone_at_double_text_size(name)
+
+
+class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #340): the back-to-top button, signed out, on a guide chapter (a long
+    page) and the login page (a short one)."""
+
+    LONG = "/guide/form-9"
+    SHORT = "/login"
+    # Whether the focus is on the first element after the page's title that Tab can reach.
+    ON_NEXT_AFTER_TITLE = """() => {
+        const title = document.querySelector("main h1");
+        const reachable = [...document.querySelectorAll(
+            "a[href], button, input, select, textarea, summary, [tabindex]"
+        )].filter((el) => el.tabIndex >= 0 && el.checkVisibility({visibilityProperty: true})
+            && title.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        return document.activeElement === reachable[0];
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390, height=700, javascript=True, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def scroll_to(self, y):
+        self.page.evaluate("y => window.scrollTo({top: y, behavior: 'instant'})", y)
+
+    def screens(self, count):
+        """count viewport heights, in pixels."""
+        return self.page.evaluate("count => count * window.innerHeight", count)
+
+    def button(self):
+        """What a screen reader finds: nothing while the button is folded away."""
+        return self.page.get_by_role("button", name="回到頂端", exact=True)
+
+    def tab_from_end_of_content(self):
+        """Focuses the content's last link, button or fold where the page is, then presses Tab."""
+        last = self.page.evaluate("""() => {
+            const shown = [...document.querySelectorAll("main :is(a[href], button, summary)")]
+                .filter((el) => el.checkVisibility());
+            shown.at(-1).focus({preventScroll: true});
+            return document.activeElement === shown.at(-1);
+        }""")
+        self.assertTrue(last)
+        self.page.keyboard.press("Tab")
+
+    # #338 acceptance 1
+    def test_shows_past_two_screens_above_the_tabs_and_folds_away(self):
+        self.open(self.LONG)
+        footer_link = self.page.get_by_role("contentinfo").get_by_role("link").first
+        with self.saving_artifacts():
+            expect(self.button()).to_have_count(0)
+            self.scroll_to(self.screens(2) + 10)
+            button = self.button()
+            expect(button).to_be_visible()
+            expect(button).to_have_text("↑ 回到頂端")
+            box = button.bounding_box()
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertGreater(box["x"], 390 / 2)
+            self.assertLessEqual(box["x"] + box["width"], 390)
+            self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
+            colour, background = button.evaluate(
+                "b => [getComputedStyle(b).color, getComputedStyle(b).backgroundImage]"
+            )
+            self.assertEqual(colour, "rgb(255, 255, 255)")
+            self.assertIn("rgb(31, 78, 140)", background)
+            # Tab goes from the end of the content to the button, then on to the footer.
+            self.tab_from_end_of_content()
+            expect(button).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(footer_link).to_be_focused()
+
+            # The focus scrolls the footer link into view, smoothly; let that end first.
+            self.page.wait_for_function(
+                "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+                "return still; }",
+                polling=200,
+            )
+            self.scroll_to(self.screens(2))
+            expect(self.button()).to_have_count(0)
+            self.tab_from_end_of_content()
+            expect(footer_link).to_be_focused()
+
+    # #338 acceptance 2 and 3
+    def test_goes_to_the_title_smoothly_or_straight_with_reduced_motion(self):
+        for motion, smooth in (("no-preference", True), ("reduce", False)):
+            with self.subTest(motion=motion):
+                self.open(self.LONG, motion=motion)
+                # Smooth scrolling starts once the page and fonts are in (layout.html).
+                expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+                # Fades in, or with reduced motion is simply there: read as it shows, before a
+                # fade could end.
+                fading = self.page.evaluate(
+                    """async (y) => {
+                        const scrolled = new Promise((done) => {
+                            addEventListener("scroll", done, {once: true});
+                        });
+                        window.scrollTo({top: y, behavior: "instant"});
+                        await scrolled;
+                        const button = [...document.querySelectorAll("button")]
+                            .find((b) => b.textContent.includes("回到頂端"));
+                        return button.getAnimations()
+                            .some((a) => a.transitionProperty === "opacity");
+                    }""",
+                    self.screens(3),
+                )
+                self.assertEqual(fading, smooth)
+                button = self.button()
+                expect(button).to_be_visible()
+                # Right after the click a smooth scroll has only just begun.
+                at_top = button.evaluate("b => { b.click(); return window.scrollY === 0; }")
+                self.assertEqual(at_top, not smooth)
+                self.page.wait_for_function("window.scrollY === 0")
+                title = self.main().get_by_role("heading", level=1)
+                expect(title).to_be_focused()
+                expect(title).to_be_in_viewport()
+                self.page.keyboard.press("Tab")
+                self.assertTrue(self.page.evaluate(self.ON_NEXT_AFTER_TITLE))
+
+    # #338 acceptance 4
+    def test_short_page_has_no_button_at_its_foot(self):
+        self.open(self.SHORT, height=844)
+        with self.saving_artifacts():
+            bottom = self.page.evaluate("document.documentElement.scrollHeight - innerHeight")
+            self.assertLessEqual(bottom, self.screens(2))
+            self.scroll_to(bottom)
+            expect(self.button()).to_have_count(0)
+
+    # #338 acceptance 5: at the foot of a long page the footer's last line stays above the
+    # button; at 200% text, 320px wide, nothing scrolls sideways.
+    def test_last_line_clears_the_button_and_double_text_fits(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double):
+                self.open(self.LONG, width=width, height=640)
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size(self.LONG, width)
+                # The footer's room for the button follows the tab bar's height, which the page
+                # takes in a frame after the text grows: wait for it, or the page grows after the
+                # scroll and its foot is no longer in view.
+                self.page.wait_for_function(
+                    """() => document.documentElement.style.getPropertyValue("--tab-bar-height")
+                        === `${document.querySelector(".site-nav").offsetHeight}px`""",
+                    timeout=5000,
+                )
+                self.scroll_to(self.page.evaluate("document.documentElement.scrollHeight"))
+                button = self.button()
+                expect(button).to_be_visible()
+                last = self.page.get_by_role("contentinfo").locator("p").last.bounding_box()
+                self.assertLessEqual(last["y"] + last["height"], button.bounding_box()["y"])
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), width
+                )
+
+    # #338 acceptance 6
+    def test_no_button_on_paper_or_without_javascript(self):
+        with self.subTest(media="print"):
+            self.open(self.LONG)
+            self.scroll_to(self.screens(3))
+            expect(self.button()).to_be_visible()
+            self.page.emulate_media(media="print")
+            expect(self.button()).to_be_hidden()
+        with self.subTest(javascript=False):
+            self.open(self.LONG, javascript=False)
+            self.scroll_to(self.screens(3))
+            self.assertGreater(self.page.evaluate("window.scrollY"), self.screens(2))
+            expect(self.page.get_by_text("回到頂端")).to_have_count(0)
+
+
+class ScrollHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #344): the compare page's number tables scroll sideways in their box,
+    with a shadow on the side not yet seen and, when they do not fit, 表格可以左右滑動 above."""
+
+    HINT = "表格可以左右滑動"
+    # Under a shadow even the gaps between words are grey; without one some pixel is white.
+    SHADED, CLEAR = 235, 250
+    # The lightness of a screenshot's lightest pixel, read in a canvas as e2e/compare_shots.py
+    # reads its screenshots: on a page of its own, as the page under test may have no JavaScript.
+    LIGHTEST = """async (src) => {
+        const image = await new Promise((resolve, reject) => {
+            const loaded = new Image();
+            loaded.onload = () => resolve(loaded);
+            loaded.onerror = reject;
+            loaded.src = src;
+        });
+        const canvas = new OffscreenCanvas(image.width, image.height);
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, image.width, image.height).data;
+        let lightest = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+            const [r, g, b] = pixels.subarray(i, i + 3);
+            lightest = Math.max(lightest, Math.floor((r + g + b) / 3));
+        }
+        return lightest;
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+        cls.pixels = cls.browser.new_page()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="scroll_hint_e2e")
+        for tested_on, db in ((date(2026, 5, 1), 40), (date(2026, 9, 28), 55)):
+            audiogram = Audiogram.objects.create(user=user, tested_on=tested_on)
+            AudiogramPoint.objects.bulk_create(
+                AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+                for ear in ("right", "left")
+                for f in (500, 1000, 2000, 4000)
+            )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width, javascript=True, double_text=False):
+        """The compare page with its numbers' fold open; the screen is tall enough for both."""
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 1600}, java_script_enabled=javascript
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/audiograms/compare")
+        self.page.wait_for_load_state("load")
+        if double_text:
+            self.double_text()
+        self.numbers().locator("summary").click()
+
+    def numbers(self):
+        return self.main().locator("details", has_text="看每個頻率的數字")
+
+    def boxes(self):
+        """The two number tables' scrolling boxes, as a screen reader finds them."""
+        boxes = self.numbers().get_by_role("region", name=re.compile("^右耳 "))
+        expect(boxes).to_have_count(2)
+        return boxes.all()
+
+    def shown_hints(self):
+        return self.main().get_by_text(self.HINT, exact=True).filter(visible=True)
+
+    def overflows(self, box):
+        return box.evaluate("box => box.scrollWidth > box.clientWidth")
+
+    def scroll_to_end(self, box):
+        box.evaluate("box => box.scrollTo({left: box.scrollWidth, behavior: 'instant'})")
+
+    def edge_lightness(self, box):
+        """How light the box's left and right edges are, at their lightest pixel, two pixels in.
+        Measured mid-screen, clear of the bottom tab bar fixed over the page."""
+        box.evaluate("box => box.scrollIntoView({block: 'center', behavior: 'instant'})")
+        rect = box.bounding_box()
+        lightness = []
+        for x in (round(rect["x"]) + 2, round(rect["x"] + rect["width"]) - 3):
+            png = self.page.screenshot(
+                clip={"x": x, "y": round(rect["y"]), "width": 1, "height": int(rect["height"])}
+            )
+            source = "data:image/png;base64," + base64.b64encode(png).decode()
+            lightness.append(self.pixels.evaluate(self.LIGHTEST, source))
+        return lightness
+
+    def assert_shaded(self, box, left, right):
+        for side, shaded, lightness in zip(
+            ("left", "right"), (left, right), self.edge_lightness(box), strict=True
+        ):
+            if shaded:
+                self.assertLess(lightness, self.SHADED, f"{side} edge has no shadow")
+            else:
+                self.assertGreaterEqual(lightness, self.CLEAR, f"{side} edge has a shadow")
+
+    # #338 acceptance 18
+    def test_double_text_shows_the_hint_and_the_shadow_moves_to_the_left_at_the_end(self):
+        self.open(320, double_text=True)
+        with self.saving_artifacts():
+            boxes = self.boxes()
+            expect(self.shown_hints()).to_have_count(len(boxes))
+            for box, hint in zip(boxes, self.shown_hints().all(), strict=True):
+                self.assertTrue(self.overflows(box))
+                # Just above its table.
+                hint_box, table_box = hint.bounding_box(), box.bounding_box()
+                gap = table_box["y"] - (hint_box["y"] + hint_box["height"])
+                self.assertGreaterEqual(gap, 0)
+                self.assertLess(gap, 20)
+                self.assert_shaded(box, left=False, right=True)
+                self.scroll_to_end(box)
+                self.assert_shaded(box, left=True, right=False)
+
+    # #338 acceptance 19; and the hint follows the text size and the screen's width.
+    def test_fitting_tables_have_no_shadow_or_hint_and_the_hint_follows_size_changes(self):
+        self.open(390)
+        with self.saving_artifacts():
+            for box in self.boxes():
+                self.assertFalse(self.overflows(box))
+                self.assert_shaded(box, left=False, right=False)
+            expect(self.shown_hints()).to_have_count(0)
+            self.page.set_viewport_size({"width": 320, "height": 1600})
+            self.double_text()
+            expect(self.shown_hints()).to_have_count(2)
+            self.double_text(on=False)
+            expect(self.shown_hints()).to_have_count(0)
+            self.double_text()
+            expect(self.shown_hints()).to_have_count(2)
+            self.page.set_viewport_size({"width": 1280, "height": 1600})
+            expect(self.shown_hints()).to_have_count(0)
+
+    # #338 acceptance 20
+    def test_without_javascript_the_shadow_stays_and_paper_shows_neither(self):
+        with self.subTest(javascript=False):
+            self.open(320, javascript=False, double_text=True)
+            for box in self.boxes():
+                self.assertTrue(self.overflows(box))
+                self.assert_shaded(box, left=False, right=True)
+            expect(self.main().get_by_text(self.HINT)).to_have_count(0)
+        with self.subTest(media="print"):
+            self.open(320, double_text=True)
+            expect(self.shown_hints()).to_have_count(2)
+            self.page.emulate_media(media="print")
+            expect(self.shown_hints()).to_have_count(0)
+            for box in self.boxes():
+                self.assert_shaded(box, left=False, right=False)
+
+
+class ScrollHelpersOnAPhone(OnAPhone):
+    """Spec #338's play-in-view, meter and jump tests: on a phone, signed in as a returning user
+    with an HHIE-S record (every answer 2, so 20 of 40) and an audiogram, each ear at one level
+    across the four frequencies (RIGHT_DB, LEFT_DB)."""
+
+    fixtures = ("questions_fixture.json",)
+    RIGHT_DB = LEFT_DB = 55
+
+    def setUp(self):
+        self.user = consented_user(username="scroll_helpers_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.submission = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=self.submission, question=question, score=2)
+            for question in self.hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, db in (("right", self.RIGHT_DB), ("left", self.LEFT_DB))
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def bring_into_view(self, selector):
+        self.page.locator(selector).evaluate(
+            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+        )
+
+    def wait_until(self, selector, state):
+        """Until every animation in the first match of selector (itself, what is inside it and
+        their ::before and ::after) is in that state, each one started."""
+        self.page.wait_for_function(
+            """([selector, state]) => {
+                const all = document.querySelector(selector).getAnimations({subtree: true});
+                return all.length && all.every(a => a.playState === state && a.startTime !== null);
+            }""",
+            arg=[selector, state],
+        )
+
+
+class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #341, ADR 0029): entrance animations play once they are in view; on a
+    phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站. Having
+    read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); HHIE-S at 20 of
+    40 puts the home gauge's needle at 90 degrees."""
+
+    # Each animation's name and state, by what it moves: route-ring on the 目前這一站, gauge-draw
+    # and gauge-needle on the home's gauge, wave-jump and wave-sweep on the header.
+    ANIMATIONS = """(within) => document.getAnimations()
+        .filter(a => a.effect.target.closest(within))
+        .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
+    STOP = '[aria-current="step"]'
+    GAUGE = ".score-gauge"
+    WAVE = ".site-wave"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(
+        self,
+        path,
+        width=390,
+        height=640,
+        javascript=True,
+        motion="no-preference",
+        double=False,
+        prepare=None,
+    ):
+        """prepare, if given, is called with the browser context before the page opens."""
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.add_cookies([self.cookie])
+        if double:
+            # Set before the page's scripts run, so the page is judged at that size from the start.
+            self.context.add_init_script(
+                f"""document.addEventListener("readystatechange", () => {{
+                    document.documentElement.style.setProperty(
+                        "font-size", "{self.DOUBLE_TEXT_SIZE}", "important");
+                }}, {{ once: true }});"""
+            )
+        if prepare:
+            prepare(self.context)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+
+    def animations(self, within):
+        return self.page.evaluate(self.ANIMATIONS, within)
+
+    def states(self, within):
+        return {a["state"] for a in self.animations(within)}
+
+    def scroll_by(self, y):
+        self.page.evaluate("y => window.scrollBy({top: y, behavior: 'instant'})", y)
+
+    # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
+    # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
+    def test_current_stop_ring_plays_once_in_view(self):
+        self.open("/guide")
+        with self.saving_artifacts():
+            here = self.main().locator(self.STOP)
+            expect(here).to_contain_text("去找聽力師之前")
+            expect(here).not_to_be_in_viewport()
+            self.assertEqual(
+                self.animations(self.STOP), [{"name": "route-ring", "state": "paused", "time": 0}]
+            )
+            # Its top just showing above the tab bar.
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            self.scroll_by(here.bounding_box()["y"] - tab_bar["y"] + 20)
+            expect(here).to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            # On the screen, but its foot 10px under the tab bar.
+            box = here.bounding_box()
+            self.assertLess(box["height"], tab_bar["y"] / 2)
+            self.scroll_by(box["y"] + box["height"] - tab_bar["y"] - 10)
+            self.assertGreaterEqual(here.bounding_box()["y"], 0)
+            self.assertEqual(self.states(self.STOP), {"paused"})
+
+            self.bring_into_view(self.STOP)
+            self.wait_until(self.STOP, "finished")
+            ended = self.animations(self.STOP)
+            # Away and back again: still ended, not playing a second time.
+            self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+            self.bring_into_view(self.STOP)
+            self.page.wait_for_timeout(300)
+            self.assertEqual(self.animations(self.STOP), ended)
+
+    # #338 acceptance 10 (this ticket's part): with reduced motion the route's ring and the
+    # home's gauge are their end look from the start, nothing playing or waiting to play.
+    def test_reduced_motion_shows_the_end_at_once(self):
+        self.open("/guide", motion="reduce")
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).to_have_count(1)
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+            self.page.goto(f"{self.live_server_url}/")
+            needle = self.page.locator(".score-gauge-needle")
+            expect(needle).to_be_attached()
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+            # At the score, 90 degrees: rotate(90deg) as a matrix.
+            expect(needle).to_have_css("transform", "matrix(0, 1, -1, 0, 0, 0)")
+
+    # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
+    # the ring below it and the gauge play on arrival, and the header wave on every page.
+    def test_without_javascript_animations_play_on_arrival(self):
+        self.open("/guide", javascript=False)
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"running"})
+            self.assertEqual(self.states(self.WAVE), {"running"})
+            self.page.goto(f"{self.live_server_url}/")
+            self.assertEqual(self.states(self.GAUGE), {"running"})
+            self.assertEqual(self.states(self.WAVE), {"running"})
+
+    # #338 acceptance 12: at 200% text on a phone the returning user's gauge is below the screen
+    # and waits; the header wave, on screen, plays at once (on the tab's first page only).
+    def test_double_text_gauge_waits_and_header_wave_plays_at_once(self):
+        self.open("/", width=320, double=True)
+        with self.saving_artifacts():
+            gauge = self.page.locator(self.GAUGE)
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            box = gauge.bounding_box()
+            self.assertGreater(box["y"] + box["height"], tab_bar["y"])
+            self.assertEqual(
+                {a["name"]: a["state"] for a in self.animations(self.GAUGE)},
+                {"gauge-draw": "paused", "gauge-needle": "paused"},
+            )
+            self.assertEqual(self.states(self.WAVE), {"running"})
+            # Not yet drawn: the needle still at 0, rotate(0deg) as a matrix.
+            expect(gauge.locator(".score-gauge-needle")).to_have_css(
+                "transform", "matrix(1, 0, 0, 1, 0, 0)"
+            )
+
+            self.bring_into_view(self.GAUGE)
+            self.wait_until(self.GAUGE, "finished")
+            expect(gauge.locator(".score-gauge-needle")).to_have_css(
+                "transform", "matrix(0, 1, -1, 0, 0, 0)"
+            )
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assertEqual(self.animations(self.WAVE), [])
+
+    # #338 review: the layout changing without a scroll (here the text going back to its usual
+    # size; a fold opening, a late font or a chart growing does the same) brings the gauge into
+    # view, and it plays.
+    def test_gauge_plays_when_the_layout_brings_it_into_view(self):
+        self.open("/", width=320, double=True)
+        with self.saving_artifacts():
+            expect(self.page.locator(self.GAUGE)).to_be_attached()
+            self.page.wait_for_timeout(300)
+            self.assertEqual(self.states(self.GAUGE), {"paused"})
+            self.double_text(on=False)
+            self.wait_until(self.GAUGE, "finished")
+            self.assertEqual(self.page.evaluate("window.scrollY"), 0)
+
+    # #338 review: when scroll-helpers.js never runs (here it fails to load), nothing waits for
+    # ever: about 3 seconds after the page starts, the animations play as without JavaScript,
+    # the ring below the screen too.
+    def test_animations_play_anyway_when_the_scroll_helpers_fail_to_load(self):
+        self.open(
+            "/guide",
+            prepare=lambda context: context.route("**/scroll-helpers.js", lambda r: r.abort()),
+        )
+        with self.saving_artifacts():
+            here = self.main().locator(self.STOP)
+            expect(here).not_to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            self.wait_until(self.STOP, "finished")
+            expect(here).not_to_be_in_viewport()
+            # Started about 3 seconds after the page did (the document timeline's 0).
+            start = here.evaluate("el => el.getAnimations({subtree: true})[0].startTime")
+            self.assertGreaterEqual(start, 3000)
+            self.assertLess(start, 4500)
+
+    # #338 review: each helper sets up on its own. Without ResizeObserver (iPhones before iOS
+    # 13.4) the back-to-top button, set up before the others, cannot finish; the entrance
+    # animations still wait to be in view, and a jump still lights its box.
+    def test_one_helper_failing_leaves_the_others_working(self):
+        self.open(
+            "/guide",
+            prepare=lambda context: context.add_init_script("delete window.ResizeObserver"),
+        )
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
+            # Past the 3 seconds after which the animations would stop waiting.
+            self.page.wait_for_timeout(3500)
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            self.bring_into_view(self.STOP)
+            self.wait_until(self.STOP, "finished")
+
+            self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+            self.main().get_by_role("link", name="看我的路線").click()
+            route = self.main().locator('section[aria-labelledby="contents-title"]')
+            expect(route).to_have_css("outline-color", "rgb(31, 78, 140)")
+            expect(route).to_have_css("outline-style", "solid")
+
+
+class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #342, ADR 0029): my guide's meters fill from 0 once they are in view,
+    the two ears together, the ratio on its own; on a phone, for a user with an HHIE-S record
+    (so the meters start below the screen) and an audiogram of 60 and 50 dB HL (a 40.0% ratio)."""
+
+    RIGHT_DB, LEFT_DB = 60, 50
+    EARS = 'section[aria-labelledby="fitting-title"] .meter'
+    RATIO = 'section[aria-labelledby="threshold-title"] .meter'
+    # Each animation in the meter: its name, state, time, start, length, and the class of what
+    # it moves.
+    ANIMATIONS = """(meter) => meter.getAnimations({subtree: true}).map(a => ({
+        name: a.animationName, state: a.playState, time: a.currentTime, start: a.startTime,
+        duration: a.effect.getComputedTiming().duration, target: a.effect.target.className,
+    }))"""
+    # How full each bar is drawn, as a share of its track.
+    FILLS = """(meter) => [...meter.querySelectorAll(".meter-bar")].map(
+        bar => bar.getBoundingClientRect().width / bar.parentElement.clientWidth)"""
+    # The first bar's fill, as a share of where it ends, every 100ms through its animation.
+    CURVE = """(meter) => {
+        const bar = meter.querySelector(".meter-bar");
+        const [fill] = bar.getAnimations();
+        const end = bar.getBoundingClientRect().width;
+        fill.pause();
+        const shares = [];
+        for (let time = 0; time <= 1200; time += 100) {
+            fill.currentTime = time;
+            shares.push(bar.getBoundingClientRect().width / end);
+        }
+        fill.finish();
+        return shares;
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path="/guide", javascript=True, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 640},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+
+    def animations(self, meter):
+        return self.page.locator(meter).evaluate(self.ANIMATIONS)
+
+    def assert_fills(self, meter, expected):
+        found = self.page.locator(meter).evaluate(self.FILLS)
+        self.assertEqual(len(found), len(expected))
+        for fill, share in zip(found, expected, strict=True):
+            self.assertAlmostEqual(fill, share, delta=0.01)
+
+    def assert_below_the_tab_bar(self, meter):
+        """The meter is not wholly in view: its foot is under the tab bar or below the screen."""
+        tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+        box = self.page.locator(meter).bounding_box()
+        self.assertGreater(box["y"] + box["height"], tab_bar["y"])
+
+    def assert_ear_numbers(self):
+        ears = self.page.locator(self.EARS)
+        expect(ears).to_contain_text("右耳四頻平均 60 dB HL")
+        expect(ears).to_contain_text("左耳四頻平均 50 dB HL")
+
+    # #338 acceptance 8: below the screen both ear bars wait at 0; with their box wholly in
+    # view they grow together, from 0 to their numbers over 1.2 seconds, quickly at first, then
+    # slowly, never past the end. Only the bars move, not the line or its label, and the numbers
+    # beside them are the end ones throughout.
+    def test_ear_bars_fill_together_once_in_view(self):
+        self.open()
+        with self.saving_artifacts():
+            ears = self.page.locator(self.EARS)
+            self.assert_below_the_tab_bar(self.EARS)
+            waiting = self.animations(self.EARS)
+            self.assertEqual(
+                [(a["name"], a["state"], a["time"], a["target"]) for a in waiting],
+                [("meter-fill", "paused", 0, f"meter-bar meter-bar-{side}")
+                 for side in ("right", "left")],
+            )  # fmt: skip
+            self.assert_fills(self.EARS, (0, 0))
+            self.assert_ear_numbers()
+
+            self.bring_into_view(self.EARS)
+            self.wait_until(self.EARS, "running")
+            playing = self.animations(self.EARS)
+            self.assertEqual(len({a["start"] for a in playing}), 1)
+            self.assertEqual({a["duration"] for a in playing}, {1200})
+            self.assert_ear_numbers()
+
+            self.wait_until(self.EARS, "finished")
+            self.assert_fills(self.EARS, (60 / 120, 50 / 120))
+            self.assert_ear_numbers()
+            curve = ears.evaluate(self.CURVE)
+            self.assertEqual(curve[0], 0)
+            self.assertAlmostEqual(curve[-1], 1, delta=0.001)
+            self.assertEqual(curve, sorted(curve))
+            self.assertLessEqual(max(curve), 1.001)
+            # Quick at first: three quarters of the way by half time.
+            self.assertGreater(curve[6], 0.75)
+
+    # #338 acceptance 9: the ratio's bar, in a box of its own, still waits at 0 after the ears
+    # have filled, and fills only once it is in view. With a no-response point its hatched part
+    # is in place from the start and only the bar grows into it.
+    def test_ratio_bar_waits_for_its_own_box(self):
+        self.open()
+        with self.saving_artifacts():
+            ratio = self.page.locator(self.RATIO)
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 約 40.0%")
+            # The ears' box wholly in view just above the tab bar, the ratio's still below it.
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            ears = self.page.locator(self.EARS).bounding_box()
+            self.page.evaluate(
+                "y => window.scrollBy({top: y, behavior: 'instant'})",
+                ears["y"] + ears["height"] - tab_bar["y"] + 10,
+            )
+            self.wait_until(self.EARS, "finished")
+            self.assert_below_the_tab_bar(self.RATIO)
+            self.assertEqual(
+                [(a["state"], a["time"]) for a in self.animations(self.RATIO)], [("paused", 0)]
+            )
+            self.assert_fills(self.RATIO, (0,))
+
+            self.bring_into_view(self.RATIO)
+            self.wait_until(self.RATIO, "finished")
+            self.assert_fills(self.RATIO, (0.40,))
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 約 40.0%")
+
+            # 40 and 80 dB HL, the left unheard at 4000 Hz: at least about 35.0%.
+            points = AudiogramPoint.objects.filter(audiogram__user=self.user)
+            points.filter(ear="right").update(db=40)
+            points.filter(ear="left").update(db=80)
+            points.filter(ear="left", frequency=4000).update(db=DB_MAX["air"], no_response=True)
+            self.page.goto(f"{self.live_server_url}/guide")
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 至少約 35.0%")
+            self.assertEqual(
+                [(a["state"], a["time"], a["target"]) for a in self.animations(self.RATIO)],
+                [("paused", 0, "meter-bar meter-bar-ratio")],
+            )
+            self.assert_fills(self.RATIO, (0,))
+            hatched_from = ratio.evaluate(
+                """meter => {
+                    const track = meter.querySelector(".meter-track");
+                    const beyond = meter.querySelector(".meter-beyond").getBoundingClientRect();
+                    return (beyond.left - track.getBoundingClientRect().left - track.clientLeft)
+                        / track.clientWidth;
+                }"""
+            )
+            self.assertAlmostEqual(hatched_from, 0.35, delta=0.01)
+
+    # #338 acceptance 10 (this ticket's part): with reduced motion the meters are drawn to their
+    # numbers from the start, below the screen, with nothing playing.
+    def test_reduced_motion_draws_the_meters_full_at_once(self):
+        self.open(motion="reduce")
+        with self.saving_artifacts():
+            self.assert_below_the_tab_bar(self.RATIO)
+            for meter, fills in ((self.EARS, (60 / 120, 50 / 120)), (self.RATIO, (0.40,))):
+                self.assertEqual(self.animations(meter), [], meter)
+                self.assert_fills(meter, fills)
+
+    # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
+    # both meters fill on arrival, though below it.
+    def test_without_javascript_meters_fill_on_arrival(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.assert_below_the_tab_bar(self.RATIO)
+            for meter, count in ((self.EARS, 2), (self.RATIO, 1)):
+                self.assertEqual(
+                    [(a["name"], a["state"]) for a in self.animations(meter)],
+                    [("meter-fill", "running")] * count,
+                    meter,
+                )
+
+    # #338 acceptance 21: the result page's score position bar and SSQ12's position bar stay
+    # still, scrolled to or not.
+    def test_result_position_bars_stay_still(self):
+        call_command("seed_questionnaires", verbosity=0)
+        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        ssq12_record = Submission.objects.create(
+            user=self.user, questionnaire=ssq12, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=ssq12_record, question=question, score=5)
+            for question in ssq12.questions.all()
+        )
+        self.open(f"/submission/{self.submission.pk}")
+        with self.saving_artifacts():
+            for record, bar in ((self.submission, ".score-bar"), (ssq12_record, ".ssq-bar")):
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                found = self.page.locator(bar)
+                expect(found).to_be_attached()
+                self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
+                found.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
+                self.page.wait_for_timeout(300)
+                self.assertEqual(
+                    found.evaluate("el => el.getAnimations({subtree: true}).length"), 0, bar
+                )
+
+
+class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #343, ADR 0029): the box a jump lands on lights up in the brand blue
+    with a pale blue glow, about 3 seconds; on a phone, signed in as a returning user."""
+
+    # 50 dB in both ears is a 37.5% ratio, short of the threshold, so my guide offers
+    # 「看沒有身障證明時」.
+    RIGHT_DB = LEFT_DB = 50
+    # Every frame for a while, what the reader sees of one box: its outline and glow, where it
+    # is on the screen (and where the tab bar starts), and how far the page has scrolled.
+    SAMPLE = """([selector, ms]) => {
+        const start = () => {
+            const samples = window.samples = [];
+            const t0 = performance.now();
+            const tick = () => {
+                const box = document.querySelector(selector);
+                const style = getComputedStyle(box);
+                const rect = box.getBoundingClientRect();
+                samples.push({
+                    t: performance.now() - t0, y: scrollY,
+                    outline: style.outlineStyle === "none" ? "none" : style.outlineColor,
+                    glow: style.boxShadow, top: rect.top, bottom: rect.bottom,
+                    visible: document.querySelector(".site-nav").getBoundingClientRect().top,
+                });
+                if (samples.at(-1).t < ms) requestAnimationFrame(tick); else window.sampled = true;
+            };
+            tick();
+        };
+        if (document.readyState === "loading") addEventListener("DOMContentLoaded", start);
+        else start();
+    }"""
+    COLOUR = re.compile(r"rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)")
+    CERTIFICATE = 'section[aria-labelledby="without-certificate"]'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 640}, reduced_motion=motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        # Smooth scrolling starts once the page and its fonts are in (layout.html).
+        expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+
+    def sample_next_page(self, selector, ms=6000):
+        self.context.add_init_script(f"({self.SAMPLE})(['{selector}', {ms}])")
+
+    def sample_this_page(self, selector, ms=6000):
+        self.page.evaluate(self.SAMPLE, [selector, ms])
+
+    def samples(self):
+        self.page.wait_for_function("window.sampled", timeout=15000)
+        return self.page.evaluate("window.samples")
+
+    def light(self, sample):
+        """How strongly the outline and the glow show the brand blue, 0 to 1 (0.25 is the
+        glow's full strength): 0 for none, or another colour."""
+
+        def alpha(text):
+            found = self.COLOUR.search(text)
+            if not found or tuple(map(int, found.groups()[:3])) != (31, 78, 140):
+                return 0
+            return float(found.group(4) or 1)
+
+        return alpha(sample["outline"]), alpha(sample["glow"])
+
+    def assert_lights(self, samples, reduced=False, scrolled=False):
+        lit = [s for s in samples if self.light(s)[0] > 0]
+        self.assertTrue(lit, "the box never lit")
+        on, off = lit[0]["t"], lit[-1]["t"]
+        # Lit once, in one go.
+        self.assertEqual(lit, [s for s in samples if on <= s["t"] <= off])
+        after = [s for s in samples if s["t"] > off]
+        # Only once the page had stopped moving (after scrolling there, when it did), with the
+        # box in view above the tab bar, wholly or filling half of what shows.
+        first = lit[0]
+        if scrolled:
+            self.assertNotEqual(samples[0]["y"], first["y"])
+        # Not moving from then on. (A scroll event may still come a frame later for a scroll
+        # already done, as the page opens: the position is what counts.)
+        self.assertEqual({s["y"] for s in lit + after}, {first["y"]})
+        visible = first["visible"]
+        shown = min(first["bottom"], visible) - max(first["top"], 0)
+        self.assertTrue(
+            (first["top"] >= 0 and first["bottom"] <= visible) or shown >= visible / 2, first
+        )
+        # Held at full strength about 1.5 seconds: the brand blue, a pale blue glow.
+        for sample in samples:
+            if on <= sample["t"] <= on + 1300:
+                self.assertEqual(self.light(sample), (1, 0.25), sample)
+        # Then fading for 1.5 seconds, or, with reduced motion, full until it goes at once.
+        fading = [s for s in lit if 0 < self.light(s)[0] < 1]
+        if reduced:
+            self.assertEqual(fading, [])
+        else:
+            self.assertTrue([s for s in fading if on + 1700 <= s["t"] <= on + 2700], lit)
+        self.assertGreater(off - on, 2800)
+        self.assertLess(off - on, 3300)
+        # And back as it was.
+        self.assertTrue(after)
+        self.assertEqual({self.light(s) for s in after}, {(0, 0)})
+
+    def assert_never_lights(self, samples):
+        """Neither the brand-blue outline nor the glow, at any moment."""
+        self.assertEqual({self.light(s) for s in samples}, {(0, 0)})
+
+    # #338 acceptance 13: from my guide to the form 9 chapter, landing on 沒有身障證明時; the
+    # 段落框 lights once the page is still, holds, and fades within about 3 seconds.
+    # Acceptance 16: with reduced motion it shows at once and goes at once 3 seconds later.
+    def test_section_box_lights_after_a_jump_from_another_page(self):
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open("/guide", motion=motion)
+                with self.saving_artifacts():
+                    self.sample_next_page(self.CERTIFICATE)
+                    self.main().get_by_role("link", name="看沒有身障證明時").first.click()
+                    expect(self.page).to_have_url(re.compile(r"/guide/form-9#without-certificate$"))
+                    samples = self.samples()
+                    self.assert_lights(samples, reduced=motion == "reduce")
+                    if motion == "reduce":
+                        self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+
+    # Acceptance 14: the family page's topic cards, on the page and from the shared report; the
+    # whole topic lights, heading and block (marked a 並列區塊).
+    def test_family_topic_lights_on_the_page_and_from_the_shared_report(self):
+        topic = 'section[aria-labelledby="{}"]'
+        self.open("/family")
+        with self.saving_artifacts():
+            self.sample_this_page(topic.format("aid-title"))
+            self.main().get_by_role("link", name="陪伴配戴助聽器").click()
+            self.assert_lights(self.samples(), scrolled=True)
+
+            share = ReportShare.objects.create(user=self.user)
+            self.page.goto(f"{self.live_server_url}/shared/{share.token}/report")
+            self.sample_next_page(topic.format("talk-title"))
+            self.page.get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            expect(self.page).to_have_url(re.compile(r"/family#talk-title$"))
+            self.assert_lights(self.samples())
+
+        # The urgent topic is a card of its own, with a look of its own; it lights the same way,
+        # with reduced motion too.
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open("/family", motion=motion)
+                self.sample_this_page(topic.format("urgent-title"))
+                self.main().get_by_role("link", name="什麼時候要馬上就醫").click()
+                self.assert_lights(self.samples(), reduced=motion == "reduce", scrolled=True)
+
+    # Acceptance 15: 看我的路線 lights the route's 段落框, the focus still on its heading; a
+    # stop's 修改 lights that stop.
+    def test_route_and_its_stop_light(self):
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        self.open("/guide")
+        with self.saving_artifacts():
+            self.sample_this_page('section[aria-labelledby="contents-title"]')
+            self.main().get_by_role("link", name="看我的路線").click()
+            heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
+            expect(heading).to_be_focused()
+            self.assert_lights(self.samples(), scrolled=True)
+            expect(heading).to_be_focused()
+
+            self.sample_next_page("#stop-assessment .route-box")
+            self.main().get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+            expect(self.page).to_have_url(re.compile(r"\?edit=assessment#stop-assessment$"))
+            self.assert_lights(self.samples())
+
+    # Acceptance 17: the skip link and the answer page's error summary light nothing; the
+    # question keeps only its red marking.
+    def test_skip_link_and_error_summary_light_nothing(self):
+        self.open("/family")
+        with self.saving_artifacts():
+            self.sample_this_page("main", ms=1500)
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Enter")
+            expect(self.main()).to_be_focused()
+            self.assert_never_lights(self.samples())
+
+            # Sent with nothing answered, past the browser's own check, for the server's summary.
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            with self.page.expect_navigation():
+                self.page.evaluate("document.getElementById('answer-form').submit()")
+            expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+            summary = self.page.locator("#error-summary")
+            self.sample_this_page("#question-3", ms=1500)
+            summary.get_by_role("link", name="第 3 題").click()
+            expect(self.page).to_have_url(re.compile(r"#question-3$"))
+            self.assert_never_lights(self.samples())
+            # Its red marking is still there: the error under the question, in the error red.
+            error = self.page.locator("#question-3").get_by_text("這一題還沒有回答")
+            expect(error).to_be_visible()
+            expect(error).to_have_css("color", "rgb(143, 42, 18)")
+
+    # Acceptance 17's other error summary: the 配戴比較 form's links light nothing either.
+    def test_comparison_form_error_links_light_nothing(self):
+        aided = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=True
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=aided, question=question, score=0)
+            for question in self.hhie_s.questions.all()
+        )
+        # 查看比較 with neither record chosen.
+        self.open(f"/comparisons/{self.hhie_s.pk}?action=preview")
+        with self.saving_artifacts():
+            errors = self.page.locator("#comparison-errors")
+            for name, target in (("沒戴助聽器時", "#id_unaided_0"), ("戴助聽器時", "#id_aided_0")):
+                self.sample_this_page(target, ms=1500)
+                errors.get_by_role("link", name=name, exact=True).click()
+                expect(self.page).to_have_url(re.compile(f"{target}$"))
+                self.assert_never_lights(self.samples())
