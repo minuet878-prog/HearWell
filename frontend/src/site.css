@@ -1317,11 +1317,6 @@
     font-weight: 700;
   }
 
-  .since-last-text {
-    color: var(--color-heading);
-    font-size: var(--text-subhead);
-  }
-
   @container (max-width: 15rem) {
     .since-last-pair {
       flex-direction: column;

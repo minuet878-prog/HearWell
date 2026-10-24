@@ -816,6 +816,16 @@ class HistoryRetestTests(TestCase):
         # The arrow between them is only drawn: screen readers hear the two lines.
         self.assertIn('<span class="since-last-arrow" aria-hidden="true">→</span>', pair)
 
+    def test_since_last_dates_have_their_time_on_the_same_day(self):
+        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=10)  # 16
+        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, the same day
+        days = re.findall(
+            r'<span class="since-last-date">(.*?)</span></span>', self._fetch_main_html()
+        )
+        self.assertEqual(len(days), 2)
+        for day in days:
+            self.assertRegex(day, r"\d{4}/\d\d/\d\d \d\d:\d\d<span")
+
     def test_since_last_says_the_same(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently

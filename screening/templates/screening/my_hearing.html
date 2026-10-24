@@ -32,16 +32,13 @@
 {% if since_last %}
 <section id="since-last" class="since-last mb-6 wrap-anywhere" aria-labelledby="since-last-title">
     <h2 id="since-last-title" class="h4">和上一次比</h2>
-    {# The two records side by side (2026-10-24 comparison page, option A); screen readers hear #}
-    {# 「上一次（日期）：分數 分」 as before, the brackets only hidden on screen. #}
-    {% with previous=since_last.previous latest=since_last.latest %}
+    {# The two records side by side (2026-10-24 comparison page, option A). #}
     <div class="since-last-pair">
-        <p class="since-last-cell"><span class="since-last-label">上一次</span><span class="since-last-date"><span class="visually-hidden">（</span>{{ previous.created_at|date:"Y/m/d" }}{% if previous.id in same_day %} {{ previous.created_at|date:"H:i" }}{% endif %}<span class="visually-hidden">）：</span></span><span class="since-last-score">{{ previous.total_answer_score }}<span class="since-last-unit"> 分</span></span></p>
+        {% include "screening/since_last_record.html" with label="上一次" record=since_last.previous %}
         <span class="since-last-arrow" aria-hidden="true">→</span>
-        <p class="since-last-cell since-last-latest"><span class="since-last-label">最近一次</span><span class="since-last-date"><span class="visually-hidden">（</span>{{ latest.created_at|date:"Y/m/d" }}{% if latest.id in same_day %} {{ latest.created_at|date:"H:i" }}{% endif %}<span class="visually-hidden">）：</span></span><span class="since-last-score">{{ latest.total_answer_score }}<span class="since-last-unit"> 分</span></span></p>
+        {% include "screening/since_last_record.html" with label="最近一次" record=since_last.latest newest=True %}
     </div>
-    {% endwith %}
-    <p class="since-last-text mb-0"><strong>{{ since_last.text }}</strong></p>
+    <p class="mb-0 text-subhead text-heading"><strong>{{ since_last.text }}</strong></p>
     {% if since_last.wearing_change %}<p class="mt-1 mb-0">{{ since_last.wearing_change }}</p>{% endif %}
 </section>
 {% endif %}

@@ -1,0 +1,3 @@
+{# One record in my_hearing.html's 和上一次比: its name, date and large score. Screen readers #}
+{# hear 「上一次（日期）：分數 分」 as before the side-by-side layout, the brackets only hidden on screen. #}
+<p class="since-last-cell{% if newest %} since-last-latest{% endif %}"><span class="since-last-label">{{ label }}</span><span class="since-last-date"><span class="visually-hidden">（</span>{{ record.created_at|date:"Y/m/d" }}{% if record.id in same_day %} {{ record.created_at|date:"H:i" }}{% endif %}<span class="visually-hidden">）：</span></span><span class="since-last-score">{{ record.total_answer_score }}<span class="since-last-unit"> 分</span></span></p>
