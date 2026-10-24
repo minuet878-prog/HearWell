@@ -3011,7 +3011,7 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
                 self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
                 records = self.main().get_by_role("navigation", name="紀錄種類")
                 records.get_by_role("link", name="聽力圖").click()
-                self.assertEqual(self.arrived("聽力圖"), "transition")
+                self.assert_slid_unless_too_slow("聽力圖")
                 self.assertEqual(self.changes_page(self.page.go_back), "none")
                 expect(self.main().locator("[aria-current]")).to_have_text("問卷")
 
