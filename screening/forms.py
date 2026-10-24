@@ -20,7 +20,13 @@ from screening.models import (
     User,
     shared_days,
 )
-from screening.questionnaires.definition import HEARING_AID, LIFE_IMPACT, LISTENING, TINNITUS
+from screening.questionnaires.definition import (
+    HEARING_AID,
+    LIFE_IMPACT,
+    LISTENING,
+    TINNITUS,
+    UNSURE,
+)
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -189,8 +195,7 @@ class AgeGroupForm(forms.Form):
 
 
 class ConcernForm(forms.Form):
-    # The recommendation wizard's first question (ADR 0028); 不確定 recommends as LIFE_IMPACT.
-    UNSURE = "unsure"
+    # The recommendation wizard's first question (ADR 0028).
     concern = forms.ChoiceField(
         label="您最想了解什麼？",
         choices=(

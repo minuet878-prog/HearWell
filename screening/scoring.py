@@ -2,7 +2,13 @@ import logging
 
 from screening import questionnaires
 from screening.questionnaires import hhie_s
-from screening.questionnaires.definition import RETEST_MONTHS
+from screening.questionnaires.definition import (
+    LIFE_IMPACT,
+    LISTENING,
+    RETEST_MONTHS,
+    TINNITUS,
+    UNSURE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,10 +78,10 @@ IOI_HA_BELOW_NORM_NOTES = {
 # hearing-aid answer, by the unaided record (ADR 0028); spec #339's drafts, the owner settles them
 # on review.
 RECOMMENDATION_REASONS = {
-    "life_impact": "這份問卷幫您了解聽力對日常生活和心情的影響。",
-    "tinnitus": "這份問卷幫您了解耳鳴對生活和情緒的影響。",
-    "listening": "這份問卷問您在吵雜環境、多人說話時聽得懂多少。",
-    "unsure": "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
+    LIFE_IMPACT: "這份問卷幫您了解聽力對日常生活和心情的影響。",
+    TINNITUS: "這份問卷幫您了解耳鳴對生活和情緒的影響。",
+    LISTENING: "這份問卷問您在吵雜環境、多人說話時聽得懂多少。",
+    UNSURE: "不確定的話，先從這份開始，了解聽力對日常生活和心情的影響。",
     "needs_norm_basis": (
         "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
         "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。"

@@ -10,11 +10,12 @@ NORM = "norm"  # each item against the norms, no total (IOI-HA)
 SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SADL)
 
 # What a questionnaire tells about among the recommendation wizard's first answers (ADR 0028),
-# the values of a definition's `concern` and of that answer alike.
-LIFE_IMPACT = "life_impact"  # 聽不清楚對生活、心情的影響
-TINNITUS = "tinnitus"  # 耳鳴的困擾
-LISTENING = "listening"  # 吵雜地方、多人說話聽不懂
-HEARING_AID = "hearing_aid"  # 助聽器戴得好不好
+# the values of a definition's `concern` and of that answer alike; their words are ConcernForm's.
+LIFE_IMPACT = "life_impact"
+TINNITUS = "tinnitus"
+LISTENING = "listening"
+HEARING_AID = "hearing_aid"
+UNSURE = "unsure"  # an answer alone, no definition's concern: recommended as LIFE_IMPACT
 
 # The retest reminder (ADR 0010): months after the latest life-impact record, and the last
 # next step of every life-impact questionnaire, the one step not traced to its advice.

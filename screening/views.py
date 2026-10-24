@@ -72,6 +72,7 @@ from screening.questionnaires.definition import (
     NORM,
     SUBSCALES,
     TINNITUS,
+    UNSURE,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
@@ -728,7 +729,7 @@ def questionnaire_list(request):
     back_url = f"{wizard_url}?{urlencode({'chosen': concern})}"
     has_norm_basis = concern == HEARING_AID and norm_bases(user).exists()
     step = 2
-    if concern in (LIFE_IMPACT, ConcernForm.UNSURE, HEARING_AID) and life_impact is None:
+    if concern in (LIFE_IMPACT, UNSURE, HEARING_AID) and life_impact is None:
         age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
         if not age_form.is_valid():
             return _wizard_step(
