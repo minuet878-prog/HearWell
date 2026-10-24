@@ -10,7 +10,9 @@ const HEARING_AID_CHOICES = [
 ];
 const FAILED = "送出失敗，請再按一次送出";
 // #326 B4: how long ✓ 已儲存 stays beside the progress.
-const SAVED_FOR_MS = 1500;
+const SAVED_FOR = 1500;
+// #330 (spec #326 B1): how long ✓ 已送出 stays before the result page opens.
+const SENT_FOR = 600;
 
 // #326 A6: the shape says which way each button goes; decoration only, so the name stays the words.
 function NavIcon({ d }) {
@@ -137,7 +139,7 @@ export default function AnswerApp({
     if (kept && chose.current) {
       clearTimeout(savedTimer.current);
       setSavedFlash((n) => n + 1);
-      savedTimer.current = setTimeout(() => setSavedFlash(0), SAVED_FOR_MS);
+      savedTimer.current = setTimeout(() => setSavedFlash(0), SAVED_FOR);
     }
     chose.current = false;
   }, [form]);
@@ -193,7 +195,9 @@ export default function AnswerApp({
   // Only while 沒戴 is chosen: after switching to 有戴 the hint would contradict it (site owner, 1.B).
   const showHint = isHearingAid && preselectUnaided && form.wearing === false;
   const isLast = step === questions.length;
-  const isSending = status.type === "sending";
+  const isSent = status.type === "sent";
+  // Sent: green for a moment, and still nothing to press or change.
+  const isSending = status.type === "sending" || isSent;
   // The questionnaire's minutes shared out over this question and the ones after it, at least 1.
   const minutesLeft = Math.max(1, Math.round((minutes * (questions.length - step + 1)) / questions.length));
 
@@ -257,7 +261,8 @@ export default function AnswerApp({
       const { id } = await response.json();
       finished.current = true;
       clearDraft(questionnaireId);
-      navigate(`/submission/${id}`);
+      setStatus({ type: "sent" });
+      setTimeout(() => navigate(`/submission/${id}`), SENT_FOR);
       return;
     }
     if (response?.status === 400) {
@@ -385,8 +390,13 @@ export default function AnswerApp({
           </button>
         )}
         {isLast ? (
-          <button type="button" className="btn btn-primary btn-lg" disabled={isSending} onClick={submit}>
-            {isSending ? (
+          <button type="button" className={`btn btn-primary btn-lg${isSent ? " is-sent" : ""}`} disabled={isSending} onClick={submit}>
+            {isSent ? (
+              <>
+                <NavIcon d={TICK} />
+                已送出
+              </>
+            ) : isSending ? (
               <>
                 <span className="spinner" aria-hidden="true" />
                 送出中…
@@ -406,6 +416,8 @@ export default function AnswerApp({
         )}
       </div>
       {chooseFirst && <p className="mt-4 text-xl/normal font-bold text-danger" role="alert">請先選一個答案</p>}
+      {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
+      <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>
       {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
       <p className="answer-autosave">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
