@@ -18,6 +18,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
+    {# Scroll helpers (spec #338): the back-to-top button. #}
+    <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
         if (sessionStorage.getItem("header-wave-played")) {

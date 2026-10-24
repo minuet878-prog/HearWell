@@ -866,6 +866,35 @@
     }
   }
 
+  /* Back to top (#340, spec #338): made by back-to-top.js, so absent without JavaScript. Shown
+     past two screens down; folded away it is out of the Tab order and unread (visibility). On
+     phones it sits above the tab bar, whose height the script keeps in --tab-bar-height. */
+  .back-to-top {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 1020;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .back-to-top[data-shown] {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  /* A short fade in and out (spec #338); with reduced motion it simply appears and goes. */
+  @media (prefers-reduced-motion: no-preference) {
+    .back-to-top {
+      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out;
+    }
+  }
+
+  @media print {
+    .back-to-top { display: none; }
+  }
+
   /* Site-wide footer: grey band, apart from the content without competing with it. */
   .site-footer {
     margin-top: 3rem;
@@ -880,6 +909,22 @@
     /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
     .site-footer {
       padding-bottom: calc(1.5rem + 5rem);
+    }
+  }
+
+  /* With the back-to-top button (#340) the page's end also clears the button, so at the very
+     bottom its last line is not under it. */
+  .back-to-top ~ .site-footer {
+    padding-bottom: calc(1.5rem + 1rem + var(--spacing-touch));
+  }
+
+  @media (max-width: 47.99em) {
+    .back-to-top {
+      bottom: calc(var(--tab-bar-height, 5rem) + 0.75rem);
+    }
+
+    .back-to-top ~ .site-footer {
+      padding-bottom: calc(1.5rem + var(--tab-bar-height, 5rem) + 0.75rem + var(--spacing-touch));
     }
   }
 

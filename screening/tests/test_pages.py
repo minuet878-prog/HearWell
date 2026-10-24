@@ -422,28 +422,34 @@ class RedesignLayoutTests(TestCase):
         # (spec phase10_pwa_back_refresh.md), the header wave's inline check (#138), and the
         # inline switch that turns on smooth scrolling once the page and fonts have loaded.
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
+        # Every page: the scroll helpers, such as the back-to-top button (spec #338).
+        scroll_js = "screening/frontend/scroll-helpers.js"
         wave = "<inline>"
         smooth = "<inline>"
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [pwa_js, wave, smooth])
+            self.assertEqual(scripts(reverse("index")), [pwa_js, scroll_js, wave, smooth])
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         for name in ("login", "register"):
             with self.subTest(url=name):
                 self.assertEqual(
-                    scripts(reverse(name)), [pwa_js, "screening/password-toggle.js", wave, smooth]
+                    scripts(reverse(name)),
+                    [pwa_js, scroll_js, "screening/password-toggle.js", wave, smooth],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
-            self.assertEqual(scripts(reverse("my_hearing")), [pwa_js, logout_js, wave, smooth])
+            self.assertEqual(
+                scripts(reverse("my_hearing")), [pwa_js, scroll_js, logout_js, wave, smooth]
+            )
         self.client.force_login(self.user)
         expected = {
-            reverse("index"): [pwa_js, logout_js, wave, smooth],
-            reverse("questionnaire_list"): [pwa_js, logout_js, wave, smooth],
+            reverse("index"): [pwa_js, scroll_js, logout_js, wave, smooth],
+            reverse("questionnaire_list"): [pwa_js, scroll_js, logout_js, wave, smooth],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             # submit-button.js: "送出中…" on the web form (spec phase6_web_double_submit.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 pwa_js,
+                scroll_js,
                 logout_js,
                 answer_js,
                 "screening/submit-button.js",
@@ -451,9 +457,16 @@ class RedesignLayoutTests(TestCase):
                 smooth,
                 "<inline>",
             ],
-            reverse("result", args=[self.submission.id]): [pwa_js, logout_js, wave, smooth],
+            reverse("result", args=[self.submission.id]): [
+                pwa_js,
+                scroll_js,
+                logout_js,
+                wave,
+                smooth,
+            ],
             reverse("my_hearing"): [
                 pwa_js,
+                scroll_js,
                 logout_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
