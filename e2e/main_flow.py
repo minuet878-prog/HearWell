@@ -5096,8 +5096,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
     GRADIENT = "linear-gradient(rgb(31, 78, 140), rgb(29, 111, 153))"
     PRESSED_GRADIENT = "linear-gradient(rgb(23, 59, 106), rgb(24, 95, 131))"
-    # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base.
-    OPEN_EDGE = "rgb(31, 78, 140) 5.4px 0px 0px 0px inset"
+    # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base, painted on its
+    # background (a 並列區塊 keeps no shadow, ADR 0024).
+    OPEN_EDGE = "linear-gradient(to right, rgb(31, 78, 140) 5.4px, rgba(0, 0, 0, 0) 5.4px)"
 
     @classmethod
     def setUpClass(cls):
@@ -5425,7 +5426,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 details = self.main().locator(fold).first
                 summary = details.locator("> summary")
                 parts = [details.locator(edge) for edge in edges]
-                closed = [self.style(part, "boxShadow") for part in parts]
+                closed = [self.style(part, "backgroundImage") for part in parts]
                 bar = self.style(summary, "backgroundColor")
                 self.assertNotIn(self.OPEN_EDGE, closed)
                 place = summary.bounding_box()
@@ -5435,11 +5436,11 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 self.assertEqual(summary.bounding_box(), place)
                 self.assertEqual(self.style(summary, "backgroundColor"), self.BRAND_SOFT)
                 for part in parts:
-                    self.assertEqual(self.style(part, "boxShadow"), self.OPEN_EDGE)
+                    self.assertEqual(self.style(part, "backgroundImage"), self.OPEN_EDGE)
                 summary.click()
                 self.page.mouse.move(0, 0)
                 expect(details).not_to_have_attribute("open", "")
-                self.assertEqual([self.style(part, "boxShadow") for part in parts], closed)
+                self.assertEqual([self.style(part, "backgroundImage") for part in parts], closed)
                 self.assertEqual(self.style(summary, "backgroundColor"), bar)
 
         with self.saving_artifacts():
@@ -5463,7 +5464,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 self.assertEqual(about.bounding_box(), place)
                 self.assertEqual(self.style(about, "backgroundColor"), self.BRAND_SOFT)
                 for part in (about.locator(".."), about):
-                    self.assertEqual(self.style(part, "boxShadow"), self.OPEN_EDGE)
+                    self.assertEqual(self.style(part, "backgroundImage"), self.OPEN_EDGE)
             with self.subTest("line dropdown"):
                 self.page.goto(f"{self.live_server_url}/guide/assessment")
                 details = self.main().locator("details").first
@@ -5473,7 +5474,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 expect(details).to_have_attribute("open", "")
                 self.assertEqual(self.style(summary, "backgroundColor"), self.CLEAR)
                 for part in (details, summary):
-                    self.assertEqual(self.style(part, "boxShadow"), "none")
+                    self.assertEqual(self.style(part, "backgroundImage"), "none")
 
 
 # White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket
