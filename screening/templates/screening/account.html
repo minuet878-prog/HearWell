@@ -60,7 +60,7 @@
     <ul class="list-unstyled">
         {# A download, not another page: the icon says so and there is no arrow. #}
         {# The whole card is one link, so it is a white card all the same (ADR 0022). #}
-        <li><a class="link-card action-card" href="{% url 'download_my_data' %}">
+        <li><a class="link-card action-card" href="{% url 'download_my_data' %}" download>
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">下載我的資料</span>

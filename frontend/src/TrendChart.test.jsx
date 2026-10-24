@@ -107,6 +107,8 @@ describe("TrendChart", () => {
     expect(message.textContent).toBe(LOADING_TEXT);
     // Screen readers skip it, as they skip the chart: the summary box says the same in text.
     expect(message.getAttribute("aria-hidden")).toBe("true");
+    // B1 (ADR 0027): the sliding track under the text.
+    expect(message.classList.contains("loading-message")).toBe(true);
   });
 
   it("hides the chart from screen readers", async () => {

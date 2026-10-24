@@ -520,6 +520,8 @@ class AnswerFlashTests(TestCase):
                 status = re.search(r'<p id="answer-loading"[^>]*>', content)
                 self.assertIsNotNone(status)
                 self.assertIn('role="status"', status.group())
+                # B1 (ADR 0027): the sliding track under 題目載入中….
+                self.assertRegex(status.group(), r'class="[^"]*\bloading-message\b')
                 self.assertLess(status.start(), form_start)
                 inline = answer_loading_script(content)
                 self.assertIsNotNone(inline)
@@ -675,16 +677,19 @@ class WebDoubleSubmitTests(TestCase):
                 self.assertRedirects(response, self._result_url(Submission.objects.latest("id")))
         self.assertEqual(Submission.objects.count(), 3)
 
-    # 10: the page parts submit-button.js needs, on every web questionnaire's fallback form.
+    # 10: every web questionnaire's fallback form is a POST form in main with a submit <button>,
+    # which page-loading.js turns into 送出中… (ADR 0027; it replaced submit-button.js).
     def test_submit_feedback_markup(self):
         for code in ("hhie-s", "ioi-ha"):
             with self.subTest(code=code):
                 content = self.client.get(self._url(code)).content.decode()
-                self.assertRegex(content, r'<script defer src="/static/screening/submit-button\.js')
-                self.assertIn('id="submit-status" class="visually-hidden" role="status"', content)
-                start = content.index('id="answer-form"')
-                form = content[start : content.index("</form>", start)]
-                self.assertIn('id="submit-status"', form)
+                main = content[content.index('id="main-content"') :]
+                start = main.index('id="answer-form"')
+                form = main[start : main.index("</form>", start)]
+                self.assertIn('method="POST"', form)
+                self.assertIn(
+                    '<button class="btn btn-primary btn-lg" type="submit">送出</button>', form
+                )
 
     # Review 1-1: only a clash with this page's own earlier save counts as "already sent";
     # any other IntegrityError must surface, not send the user to an unrelated result.
