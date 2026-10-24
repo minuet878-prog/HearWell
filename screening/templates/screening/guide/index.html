@@ -108,8 +108,9 @@
     {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
     <ol class="route" role="list">
         {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
-            <span class="route-number">{{ forloop.counter }}</span>
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}{% if stop.slug == done_now %} is-done-now{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
+            {# #336: the stop an answer here just made 已完成 is ticked once; its number stays for screen readers. #}
+            <span class="route-number">{% if stop.slug == done_now %}<svg class="route-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% else %}{{ forloop.counter }}{% endif %}</span>
             <div class="route-box">
                 {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
                 <a class="route-title" href="{{ stop.url }}">{{ stop.title }}</a>
