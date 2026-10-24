@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AnswerApp from "./AnswerApp.jsx";
@@ -198,7 +198,27 @@ describe("progress (#153)", () => {
     expect(segments().every((s) => !s.hasAttribute("style"))).toBe(true);
   });
 
-  it("styles the bar with colour only: answered blue, no transition, animation or transform", () => {
+  // #326 C3 (ADR 0028): the fill itself is checked in a browser, e2e ProgressSavedTest.
+  it("fills only the segment a choice just answered, and never again after moving (#326 C3)", async () => {
+    const filling = () => segments().filter((s) => s.classList.contains("is-filling")).map((s) => segments().indexOf(s));
+    await answerUpTo(1);
+    expect(filling()).toEqual([0]);
+    choose("常常");
+    expect(filling()).toEqual([0]);
+    next();
+    expect(filling()).toEqual([]);
+    choose("有時");
+    expect(filling()).toEqual([1]);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
+    expect(filling()).toEqual([]);
+    choose("從未");
+    expect(filling()).toEqual([]);
+    expect(done()).toHaveLength(2);
+  });
+
+  // ADR 0028: besides colour, only the fill of a segment just answered, never with reduced motion.
+  it("styles the bar with colour only but for the fill: answered blue, nothing moves", () => {
     const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
     expect(rules.map(([, selector]) => selector.trim())).toEqual([
@@ -208,9 +228,17 @@ describe("progress (#153)", () => {
       ".step-progress-bar",
       ".step-progress-segment",
       ".step-progress-segment.is-done",
+      ".step-progress-segment.is-filling",
     ]);
-    expect(rules.at(-1)[2]).toMatch(/background-color:\s*var\(--color-primary\)/);
-    rules.forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
+    expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.step-progress-segment\.is-filling \{/);
+    expect(rules[4][2]).toMatch(/background-color:\s*var\(--color-primary\)/);
+    rules.slice(0, -1).forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
+    const fill = rules.at(-1)[2];
+    expect(fill).toMatch(/animation:\s*progress-fill 0\.35s/);
+    expect(fill).not.toMatch(/transition|transform/);
+    const keyframes = css.match(/@keyframes progress-fill \{([^{}]*\{[^}]*\})*\s*\}/)[0];
+    expect(keyframes).toMatch(/background-size/);
+    expect(keyframes).not.toMatch(/transform|translate|width/);
   });
 });
 
@@ -260,6 +288,59 @@ describe("autosave note (#153)", () => {
     choose("沒戴");
     next();
     expect(screen.getByText(NOTE)).not.toBeNull();
+  });
+});
+
+describe("saved flash (#326 B4)", () => {
+  const SAVED = "✓ 已儲存";
+  const flash = () => screen.queryByText(SAVED);
+
+  async function onQuestion1() {
+    await renderApp();
+    choose("沒戴");
+    next();
+    // Only the 1.5 s the flash stays is faked; loading the questions used real timers.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  }
+
+  afterEach(() => vi.useRealTimers());
+
+  it("shows ✓ 已儲存 beside the progress for 1.5 s once a choice is kept, not read aloud", async () => {
+    await onQuestion1();
+    expect(flash()).toBeNull();
+    choose("有時");
+    expect(flash()).not.toBeNull();
+    expect(flash().closest("legend")).not.toBeNull();
+    expect(flash().closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(document.querySelector(".question-progress").parentElement.contains(flash())).toBe(true);
+    act(() => vi.advanceTimersByTime(1400));
+    expect(flash()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(100));
+    expect(flash()).toBeNull();
+    // The footer's autosave note stays (#326 B4).
+    expect(screen.getByText("答案會自動存在這支手機，中途離開也沒關係。")).not.toBeNull();
+  });
+
+  it("starts the 1.5 s again on another choice, and goes with the question", async () => {
+    await onQuestion1();
+    choose("有時");
+    act(() => vi.advanceTimersByTime(1000));
+    choose("常常");
+    act(() => vi.advanceTimersByTime(1000));
+    expect(flash()).not.toBeNull();
+    next();
+    expect(flash()).toBeNull();
+    expect(legend()).toMatch(/^第 2 題/);
+  });
+
+  it("does not show it when the browser cannot keep the draft", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("denied", "SecurityError");
+    });
+    await onQuestion1();
+    choose("有時");
+    expect(flash()).toBeNull();
+    expect(radio("有時").checked).toBe(true);
   });
 });
 
@@ -352,6 +433,29 @@ describe("next and previous", () => {
     fireEvent.click(screen.getByRole("button", { name: "上一題" }));
     await waitFor(() => expect(legend()).toMatch(/有沒有戴助聽器/));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  // #326 C4 (ADR 0028): the fade itself is checked in a browser, e2e ProgressSavedTest.
+  it("fades the question text in on another question, with focus on the question", async () => {
+    const text = () => screen.getByText(/的完整題目文字$|有沒有戴助聽器？$/, { selector: "legend > span" });
+    const fading = () => text().classList.contains("is-fading-in");
+    await renderApp();
+    expect(fading()).toBe(false);
+    choose("沒戴");
+    next();
+    expect(text().textContent).toBe("第1題的完整題目文字");
+    expect(fading()).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("group").querySelector("legend"));
+    const shown = text();
+    choose("有時");
+    expect(text()).toBe(shown);
+    next();
+    expect(text()).not.toBe(shown);
+    expect(fading()).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(text().textContent).toBe("第1題的完整題目文字"));
+    expect(fading()).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole("group").querySelector("legend"));
   });
 
   it("moves focus to the question after the browser back button too", async () => {

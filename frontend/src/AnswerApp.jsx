@@ -9,6 +9,8 @@ const HEARING_AID_CHOICES = [
   { value: false, label: "沒戴" },
 ];
 const FAILED = "送出失敗，請再按一次送出";
+// #326 B4: how long ✓ 已儲存 stays beside the progress.
+const SAVED_FOR_MS = 1500;
 
 // #326 A6: the shape says which way each button goes; decoration only, so the name stays the words.
 function NavIcon({ d }) {
@@ -49,6 +51,15 @@ export default function AnswerApp({
   const [introOpen, setIntroOpen] = useState(false);
   // #326 C5: 下一題 or 送出 pressed with nothing chosen on this question.
   const [chooseFirst, setChooseFirst] = useState(false);
+  // #326 B4: ✓ 已儲存 shows while this is above 0; a new number restarts it.
+  const [savedFlash, setSavedFlash] = useState(0);
+  const savedTimer = useRef(null);
+  // #326 C3: the question whose segment a choice just turned from unanswered to answered.
+  const [justFilled, setJustFilled] = useState(null);
+  // #326 C4: the user has moved to another question, so each question shown from now fades in.
+  const [turned, setTurned] = useState(false);
+  // The form changed because the user chose an answer (not by moving to another question).
+  const chose = useRef(false);
   const moved = useRef(false);
   // Set once the answers were accepted (or already were, 409): nothing may save them again.
   const finished = useRef(false);
@@ -99,12 +110,22 @@ export default function AnswerApp({
       .catch(() => onFail());
   }, []);
 
+  // Feedback on this question's choice goes when the user moves to another question, so it never
+  // plays again there.
+  function leaveQuestion() {
+    clearTimeout(savedTimer.current);
+    setSavedFlash(0);
+    setJustFilled(null);
+    setTurned(true);
+  }
+
   useEffect(() => {
     const onPopState = (event) => {
       const step = event.state?.answerStep;
       if (!Number.isInteger(step)) return;
       moved.current = true;
       setChooseFirst(false);
+      leaveQuestion();
       setForm((current) => current && { ...current, step });
     };
     window.addEventListener("popstate", onPopState);
@@ -112,8 +133,16 @@ export default function AnswerApp({
   }, []);
 
   useEffect(() => {
-    if (form && hasAnything(form) && !finished.current) saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    const kept = form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    if (kept && chose.current) {
+      clearTimeout(savedTimer.current);
+      setSavedFlash((n) => n + 1);
+      savedTimer.current = setTimeout(() => setSavedFlash(0), SAVED_FOR_MS);
+    }
+    chose.current = false;
   }, [form]);
+
+  useEffect(() => () => clearTimeout(savedTimer.current), []);
 
   useEffect(() => {
     if (moved.current) legend.current?.focus();
@@ -171,6 +200,8 @@ export default function AnswerApp({
   function choose(value) {
     setStatus({ type: "idle" });
     setChooseFirst(false);
+    chose.current = true;
+    if (!isHearingAid && current === undefined) setJustFilled(question.id);
     setForm((f) => (isHearingAid ? { ...f, wearing: value } : { ...f, answers: { ...f.answers, [question.id]: value } }));
   }
 
@@ -184,6 +215,7 @@ export default function AnswerApp({
     if (!answered) return askForAChoice();
     history.pushState({ answerStep: step + 1 }, "");
     moved.current = true;
+    leaveQuestion();
     setForm((f) => ({ ...f, step: step + 1 }));
   }
 
@@ -274,16 +306,28 @@ export default function AnswerApp({
           {!isHearingAid && (
             <>
               {/* The register steps' bar (#151), one segment per question answered or not; only the
-                  colour changes (ADR 0006). The text says it all. */}
+                  colour changes, the segment a choice just answered filling once (ADR 0028). The
+                  text says it all. */}
               <span className="step-progress-bar mb-2" aria-hidden="true">
                 {questions.map((q) => (
-                  <span key={q.id} className={form.answers[q.id] === undefined ? "step-progress-segment" : "step-progress-segment is-done"} />
+                  <span
+                    key={q.id}
+                    className={form.answers[q.id] === undefined ? "step-progress-segment" : q.id === justFilled ? "step-progress-segment is-done is-filling" : "step-progress-segment is-done"}
+                  />
                 ))}
               </span>
-              <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
+              {/* #326 B4: the flash keeps its room when empty, so showing it moves nothing; not read
+                  aloud on every answer (the footer note says it once). */}
+              <span className="question-progress-line">
+                <span className="question-progress">第 {step} 題／共 {questions.length} 題・還剩大約 {minutesLeft} 分鐘</span>
+                <span className="answer-saved" aria-hidden="true">
+                  {savedFlash > 0 && <span key={savedFlash}>✓ 已儲存</span>}
+                </span>
+              </span>
             </>
           )}
-          {question.text}
+          {/* Remounted on each question, so the fade plays once per question shown. */}
+          <span key={step} className={turned ? "is-fading-in" : undefined}>{question.text}</span>
         </legend>
         {/* Its own id: the hidden Django form keeps #hearing-aid-hint. */}
         {showHint && <p id="answer-hearing-aid-hint">{unaidedHint}</p>}

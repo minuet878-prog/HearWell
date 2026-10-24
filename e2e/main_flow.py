@@ -812,6 +812,159 @@ class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
 
 
+class ProgressSavedTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#331 (spec #326 B4, C3, C4, ADR 0028): on the answer page the segment a choice just answered
+    fills, another question's text fades in, and ✓ 已儲存 shows when the draft was kept."""
+
+    fixtures = ("questions_fixture.json",)
+    BLUE = "rgb(31, 78, 140)"  # --color-primary
+    SAVED = "✓ 已儲存"
+    ANIMATIONS = """el => el.getAnimations({subtree: true})
+        .map(a => [a.animationName, a.effect.getTiming().duration])"""
+    # The progress line's size and where the choices start below it, whatever the scroll.
+    LAYOUT = """line => {
+        const box = line.getBoundingClientRect();
+        const choices = line.closest("fieldset").querySelector(".choice-group");
+        return [box.width, box.height, choices.getBoundingClientRect().top - box.top];
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="progress_saved_e2e"))
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion="no-preference", refuse_storage=False):
+        """Question 1 of HHIE-S, reached from the hearing aid question."""
+        self.context = self.browser.new_context(
+            **self.playwright.devices["Pixel 7"], reduced_motion=reduced_motion
+        )
+        self.context.add_cookies([self.cookie])
+        if refuse_storage:
+            self.context.add_init_script(
+                "Storage.prototype.setItem = () => {"
+                " throw new DOMException('denied', 'SecurityError'); };"
+            )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.page.goto(f"{self.live_server_url}/questionnaire/{hhie_s.pk}")
+        self.answer("沒戴")
+        self.next()
+        self.question(1)
+
+    def bar(self):
+        return self.main().locator(".step-progress-bar")
+
+    def segment(self, number):
+        return self.bar().locator(".step-progress-segment").nth(number - 1)
+
+    def question_text(self):
+        return self.main().get_by_role("group").locator("legend > span:last-child")
+
+    def back(self, number):
+        self.main().get_by_role("button", name="上一題").click()
+        self.question(number)
+
+    def assert_on_question(self, number, faded):
+        """Focus on the question as before; its text faded in (0.35 s) or is simply there."""
+        expect(self.question(number).locator("legend")).to_be_focused()
+        expect(self.question_text()).to_have_text(re.compile(r"\S"))
+        animations = [["question-fade", 350]] if faded else []
+        self.assertEqual(self.question_text().evaluate(self.ANIMATIONS), animations)
+
+    def assert_fills(self, number):
+        """Only that segment fills, over 0.35 s; with number None, nothing on the bar moves."""
+        fill = [["progress-fill", 350]]
+        self.assertEqual(self.bar().evaluate(self.ANIMATIONS), fill if number else [])
+        if number:
+            self.assertEqual(self.segment(number).evaluate(self.ANIMATIONS), fill)
+
+    # #326 acceptance 12 and 13: answering fills only the new segment, going back fills nothing;
+    # each question shown after moving fades in, with focus on it.
+    def test_new_segment_fills_and_another_question_fades_in(self):
+        self.open()
+        with self.saving_artifacts():
+            self.assert_on_question(1, faded=True)
+            self.assert_fills(None)
+            self.answer("有時", 1)
+            self.assert_fills(1)
+            self.next()
+            self.assert_on_question(2, faded=True)
+            self.assert_fills(None)
+            expect(self.segment(1)).to_have_css("background-color", self.BLUE)
+            self.answer("有時", 2)
+            self.assert_fills(2)
+            self.back(1)
+            self.assert_on_question(1, faded=True)
+            self.assert_fills(None)
+            # Changing an answer fills nothing: the segment already was answered.
+            self.answer("常常", 1)
+            self.assert_fills(None)
+
+    # #326 acceptance 23: with reduced motion nothing fills or fades; it is simply there.
+    def test_reduced_motion_neither_fills_nor_fades(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.assert_on_question(1, faded=False)
+            expect(self.question_text()).to_have_css("opacity", "1")
+            self.answer("有時", 1)
+            self.assert_fills(None)
+            expect(self.segment(1)).to_have_css("background-color", self.BLUE)
+            self.next()
+            self.assert_on_question(2, faded=False)
+
+    # #326 acceptance 9: ✓ 已儲存 shows beside the progress for about 1.5 s once the draft was
+    # kept, without moving anything, at the usual and at double text size; not read aloud; the
+    # footer's autosave note stays.
+    def test_saved_shows_beside_the_progress_for_a_moment(self):
+        self.open()
+        with self.saving_artifacts():
+            for number, double in ((1, False), (2, True)):
+                with self.subTest(double_text_size=double):
+                    if double:
+                        self.page.locator("html").evaluate(
+                            "html => html.style.setProperty('font-size', '225%', 'important')"
+                        )
+                    line = self.main().locator(".question-progress-line")
+                    before = line.evaluate(self.LAYOUT)
+                    self.answer("有時", number)
+                    saved = line.get_by_text(self.SAVED)
+                    expect(saved).to_be_visible()
+                    self.assertEqual(line.evaluate(self.LAYOUT), before)
+                    expect(self.question(number)).not_to_have_accessible_name(re.compile("已儲存"))
+                    expect(saved).to_have_count(0, timeout=2500)
+                    self.assertEqual(line.evaluate(self.LAYOUT), before)
+                    expect(self.main()).to_contain_text(
+                        "答案會自動存在這支手機，中途離開也沒關係。"
+                    )
+                    self.next()
+
+    # #326 acceptance 9: storage refused (private mode, blocked): the answer counts, no 已儲存.
+    def test_no_saved_when_the_draft_cannot_be_kept(self):
+        self.open(refuse_storage=True)
+        with self.saving_artifacts():
+            self.answer("有時", 1)
+            self.assert_fills(1)
+            self.page.wait_for_timeout(500)
+            expect(self.main().get_by_text(self.SAVED)).to_have_count(0)
+
+
 class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#332 (spec #326 B3, D5, D6): copy, show-password and register field feedback."""
 
