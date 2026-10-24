@@ -701,14 +701,15 @@ def questionnaire_list(request):
                 "questionnaires": questionnaires,
                 "returning": returning,
                 # A new user has no record to recommend by.
-                "recommendation": returning
-                and catalogue_recommendation(user, questionnaires, state),
+                "recommendation": catalogue_recommendation(user, questionnaires, state)
+                if returning
+                else None,
             },
         )
     questionnaires = sorted(questionnaires, key=list_order)
     wizard_url = reverse("questionnaire_list")
     # None while the age is still needed: then step 1 says 共 3 步, as a life-impact result asks it.
-    life_impact = life_impact_questionnaire(user, questionnaires, None)
+    life_impact = life_impact_questionnaire(user, questionnaires, state, None)
     concern_form = ConcernForm(
         request.GET if "concern" in request.GET else None,
         # Back from a later step: the answer chosen there is still chosen.
@@ -734,7 +735,7 @@ def questionnaire_list(request):
                 request, 2, 3, field=age_form["age_group"], concern=concern, back_url=back_url
             )
         life_impact = life_impact_questionnaire(
-            user, questionnaires, age_form.cleaned_data["age_group"]
+            user, questionnaires, state, age_form.cleaned_data["age_group"]
         )
         step = 3
         back_url = f"{wizard_url}?{urlencode({'concern': concern})}"
