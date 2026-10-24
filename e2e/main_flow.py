@@ -7199,3 +7199,218 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             )
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.animations(self.WAVE), [])
+
+
+class JumpHighlightTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #343, ADR 0028): the box a jump lands on lights up in the brand blue
+    with a pale blue glow, about 3 seconds; on a phone, signed in as a returning user."""
+
+    fixtures = ("questions_fixture.json",)
+    # Every frame for a while, what the reader sees of one box: its outline and glow, where it
+    # is on the screen (and where the tab bar starts), and how far the page has scrolled.
+    SAMPLE = """([selector, ms]) => {
+        const start = () => {
+            const samples = window.samples = [];
+            const t0 = performance.now();
+            let last = null;
+            addEventListener("scroll", () => { last = performance.now() - t0; });
+            const tick = () => {
+                const box = document.querySelector(selector);
+                const style = getComputedStyle(box);
+                const rect = box.getBoundingClientRect();
+                samples.push({
+                    t: performance.now() - t0, y: scrollY, last,
+                    outline: style.outlineStyle === "none" ? "none" : style.outlineColor,
+                    glow: style.boxShadow, top: rect.top, bottom: rect.bottom,
+                    visible: document.querySelector(".site-nav").getBoundingClientRect().top,
+                });
+                if (samples.at(-1).t < ms) requestAnimationFrame(tick); else window.sampled = true;
+            };
+            tick();
+        };
+        if (document.readyState === "loading") addEventListener("DOMContentLoaded", start);
+        else start();
+    }"""
+    COLOUR = re.compile(r"rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)")
+    CERTIFICATE = 'section[aria-labelledby="without-certificate"]'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # 50 dB in both ears is a 37.5% ratio, short of the threshold, so my guide offers
+        # 「看沒有身障證明時」.
+        self.user = consented_user(username="jump_e2e")
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in self.hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=50)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 640}, reduced_motion=motion
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        # Smooth scrolling starts once the page and its fonts are in (layout.html).
+        expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+
+    def sample_next_page(self, selector, ms=6000):
+        self.context.add_init_script(f"({self.SAMPLE})(['{selector}', {ms}])")
+
+    def sample_this_page(self, selector, ms=6000):
+        self.page.evaluate(self.SAMPLE, [selector, ms])
+
+    def samples(self):
+        self.page.wait_for_function("window.sampled", timeout=15000)
+        return self.page.evaluate("window.samples")
+
+    def light(self, sample):
+        """How strongly the outline and the glow show the brand blue, 0 to 1 (0.25 is the
+        glow's full strength): 0 for none, or another colour."""
+
+        def alpha(text):
+            found = self.COLOUR.search(text)
+            if not found or tuple(map(int, found.groups()[:3])) != (31, 78, 140):
+                return 0
+            return float(found.group(4) or 1)
+
+        return alpha(sample["outline"]), alpha(sample["glow"])
+
+    def assert_lights(self, samples, reduced=False, scrolled=False):
+        lit = [s for s in samples if self.light(s)[0] > 0]
+        self.assertTrue(lit, "the box never lit")
+        on, off = lit[0]["t"], lit[-1]["t"]
+        # Lit once, in one go.
+        self.assertEqual(lit, [s for s in samples if on <= s["t"] <= off])
+        after = [s for s in samples if s["t"] > off]
+        # Only once the page had stopped moving (after scrolling there, when it did), with the
+        # box in view above the tab bar, wholly or filling half of what shows.
+        first = lit[0]
+        if scrolled:
+            self.assertNotEqual(samples[0]["y"], first["y"])
+        # No scroll from then on: the last scroll event was before it lit.
+        self.assertEqual({(s["y"], s["last"]) for s in lit + after}, {(first["y"], first["last"])})
+        visible = first["visible"]
+        shown = min(first["bottom"], visible) - max(first["top"], 0)
+        self.assertTrue(
+            (first["top"] >= 0 and first["bottom"] <= visible) or shown >= visible / 2, first
+        )
+        # Held at full strength about 1.5 seconds: the brand blue, a pale blue glow.
+        for sample in samples:
+            if on <= sample["t"] <= on + 1300:
+                self.assertEqual(self.light(sample), (1, 0.25), sample)
+        # Then fading for 1.5 seconds, or, with reduced motion, full until it goes at once.
+        fading = [s for s in lit if 0 < self.light(s)[0] < 1]
+        if reduced:
+            self.assertEqual(fading, [])
+        else:
+            self.assertTrue([s for s in fading if on + 1700 <= s["t"] <= on + 2700], lit)
+        self.assertGreater(off - on, 2800)
+        self.assertLess(off - on, 3300)
+        # And back as it was.
+        self.assertTrue(after)
+        self.assertEqual({self.light(s) for s in after}, {(0, 0)})
+
+    def assert_never_lights(self, samples):
+        self.assertEqual({self.light(s)[1] for s in samples}, {0})
+
+    # #338 acceptance 13: from my guide to the form 9 chapter, landing on 沒有身障證明時; the
+    # 段落框 lights once the page is still, holds, and fades within about 3 seconds.
+    # Acceptance 16: with reduced motion it shows at once and goes at once 3 seconds later.
+    def test_section_box_lights_after_a_jump_from_another_page(self):
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open("/guide", motion=motion)
+                with self.saving_artifacts():
+                    self.sample_next_page(self.CERTIFICATE)
+                    self.main().get_by_role("link", name="看沒有身障證明時").first.click()
+                    expect(self.page).to_have_url(re.compile(r"/guide/form-9#without-certificate$"))
+                    samples = self.samples()
+                    self.assert_lights(samples, reduced=motion == "reduce")
+                    if motion == "reduce":
+                        self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+
+    # Acceptance 14: the family page's topic cards, on the page and from the shared report.
+    def test_family_topic_lights_on_the_page_and_from_the_shared_report(self):
+        topic = 'section[aria-labelledby="{}"]'
+        self.open("/family")
+        with self.saving_artifacts():
+            self.sample_this_page(topic.format("aid-title"))
+            self.main().get_by_role("link", name="陪伴配戴助聽器").click()
+            self.assert_lights(self.samples(), scrolled=True)
+
+            share = ReportShare.objects.create(user=self.user)
+            self.page.goto(f"{self.live_server_url}/shared/{share.token}/report")
+            self.sample_next_page(topic.format("talk-title"))
+            self.page.get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            expect(self.page).to_have_url(re.compile(r"/family#talk-title$"))
+            self.assert_lights(self.samples())
+
+    # Acceptance 15: 看我的路線 lights the route's 段落框, the focus still on its heading; a
+    # stop's 修改 lights that stop.
+    def test_route_and_its_stop_light(self):
+        AidAndSubsidy.objects.create(user=self.user, certificate="yes")
+        self.open("/guide")
+        with self.saving_artifacts():
+            self.sample_this_page('section[aria-labelledby="contents-title"]')
+            self.main().get_by_role("link", name="看我的路線").click()
+            heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
+            expect(heading).to_be_focused()
+            self.assert_lights(self.samples(), scrolled=True)
+            expect(heading).to_be_focused()
+
+            self.sample_next_page("#stop-assessment .route-box")
+            self.main().get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
+            expect(self.page).to_have_url(re.compile(r"\?edit=assessment#stop-assessment$"))
+            self.assert_lights(self.samples())
+
+    # Acceptance 17: the skip link and the answer page's error summary light nothing; the
+    # question keeps only its red marking.
+    def test_skip_link_and_error_summary_light_nothing(self):
+        self.open("/family")
+        with self.saving_artifacts():
+            self.sample_this_page("main", ms=1500)
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Enter")
+            expect(self.main()).to_be_focused()
+            self.assert_never_lights(self.samples())
+
+            # Sent with nothing answered, past the browser's own check, for the server's summary.
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            with self.page.expect_navigation():
+                self.page.evaluate("document.getElementById('answer-form').submit()")
+            expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+            summary = self.page.locator("#error-summary")
+            self.sample_this_page("#question-3", ms=1500)
+            summary.get_by_role("link", name="第 3 題").click()
+            expect(self.page).to_have_url(re.compile(r"#question-3$"))
+            self.assert_never_lights(self.samples())
