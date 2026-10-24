@@ -6646,3 +6646,180 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(page=name):
                     self.visit(True, path, width=320)
                     self.assert_fits_a_phone_at_double_text_size(name)
+
+
+class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #340): the back-to-top button, signed out, on a guide chapter (a long
+    page) and the login page (a short one)."""
+
+    LONG = "/guide/form-9"
+    SHORT = "/login"
+    # Whether the focus is on the first element after the page's title that Tab can reach.
+    ON_NEXT_AFTER_TITLE = """() => {
+        const title = document.querySelector("main h1");
+        const reachable = [...document.querySelectorAll(
+            "a[href], button, input, select, textarea, summary, [tabindex]"
+        )].filter((el) => el.tabIndex >= 0 && el.checkVisibility({visibilityProperty: true})
+            && title.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        return document.activeElement === reachable[0];
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390, height=700, javascript=True, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def scroll_to(self, y):
+        self.page.evaluate("y => window.scrollTo({top: y, behavior: 'instant'})", y)
+
+    def screens(self, count):
+        """count viewport heights, in pixels."""
+        return self.page.evaluate("count => count * window.innerHeight", count)
+
+    def button(self):
+        """What a screen reader finds: nothing while the button is folded away."""
+        return self.page.get_by_role("button", name="回到頂端", exact=True)
+
+    def tab_from_end_of_content(self):
+        """Focuses the content's last link, button or fold where the page is, then presses Tab."""
+        last = self.page.evaluate("""() => {
+            const shown = [...document.querySelectorAll("main :is(a[href], button, summary)")]
+                .filter((el) => el.checkVisibility());
+            shown.at(-1).focus({preventScroll: true});
+            return document.activeElement === shown.at(-1);
+        }""")
+        self.assertTrue(last)
+        self.page.keyboard.press("Tab")
+
+    # #338 acceptance 1
+    def test_shows_past_two_screens_above_the_tabs_and_folds_away(self):
+        self.open(self.LONG)
+        footer_link = self.page.get_by_role("contentinfo").get_by_role("link").first
+        with self.saving_artifacts():
+            expect(self.button()).to_have_count(0)
+            self.scroll_to(self.screens(2) + 10)
+            button = self.button()
+            expect(button).to_be_visible()
+            expect(button).to_have_text("↑ 回到頂端")
+            box = button.bounding_box()
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertGreater(box["x"], 390 / 2)
+            self.assertLessEqual(box["x"] + box["width"], 390)
+            self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
+            colour, background = button.evaluate(
+                "b => [getComputedStyle(b).color, getComputedStyle(b).backgroundImage]"
+            )
+            self.assertEqual(colour, "rgb(255, 255, 255)")
+            self.assertIn("rgb(31, 78, 140)", background)
+            # Tab goes from the end of the content to the button, then on to the footer.
+            self.tab_from_end_of_content()
+            expect(button).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(footer_link).to_be_focused()
+
+            # The focus scrolls the footer link into view, smoothly; let that end first.
+            self.page.wait_for_function(
+                "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+                "return still; }",
+                polling=200,
+            )
+            self.scroll_to(self.screens(2))
+            expect(self.button()).to_have_count(0)
+            self.tab_from_end_of_content()
+            expect(footer_link).to_be_focused()
+
+    # #338 acceptance 2 and 3
+    def test_goes_to_the_title_smoothly_or_straight_with_reduced_motion(self):
+        for motion, smooth in (("no-preference", True), ("reduce", False)):
+            with self.subTest(motion=motion):
+                self.open(self.LONG, motion=motion)
+                # Smooth scrolling starts once the page and fonts are in (layout.html).
+                expect(self.page.locator("html")).to_have_class(re.compile(r"\bsmooth-scroll\b"))
+                # Fades in, or with reduced motion is simply there: read as it shows, before a
+                # fade could end.
+                fading = self.page.evaluate(
+                    """async (y) => {
+                        const scrolled = new Promise((done) => {
+                            addEventListener("scroll", done, {once: true});
+                        });
+                        window.scrollTo({top: y, behavior: "instant"});
+                        await scrolled;
+                        const button = [...document.querySelectorAll("button")]
+                            .find((b) => b.textContent.includes("回到頂端"));
+                        return button.getAnimations()
+                            .some((a) => a.transitionProperty === "opacity");
+                    }""",
+                    self.screens(3),
+                )
+                self.assertEqual(fading, smooth)
+                button = self.button()
+                expect(button).to_be_visible()
+                # Right after the click a smooth scroll has only just begun.
+                at_top = button.evaluate("b => { b.click(); return window.scrollY === 0; }")
+                self.assertEqual(at_top, not smooth)
+                self.page.wait_for_function("window.scrollY === 0")
+                title = self.main().get_by_role("heading", level=1)
+                expect(title).to_be_focused()
+                expect(title).to_be_in_viewport()
+                self.page.keyboard.press("Tab")
+                self.assertTrue(self.page.evaluate(self.ON_NEXT_AFTER_TITLE))
+
+    # #338 acceptance 4
+    def test_short_page_has_no_button_at_its_foot(self):
+        self.open(self.SHORT, height=844)
+        with self.saving_artifacts():
+            bottom = self.page.evaluate("document.documentElement.scrollHeight - innerHeight")
+            self.assertLessEqual(bottom, self.screens(2))
+            self.scroll_to(bottom)
+            expect(self.button()).to_have_count(0)
+
+    # #338 acceptance 5: at the foot of a long page the footer's last line stays above the
+    # button; at 200% text, 320px wide, nothing scrolls sideways.
+    def test_last_line_clears_the_button_and_double_text_fits(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double):
+                self.open(self.LONG, width=width, height=640)
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size(self.LONG, width)
+                self.scroll_to(self.page.evaluate("document.documentElement.scrollHeight"))
+                button = self.button()
+                expect(button).to_be_visible()
+                last = self.page.get_by_role("contentinfo").locator("p").last.bounding_box()
+                self.assertLessEqual(last["y"] + last["height"], button.bounding_box()["y"])
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), width
+                )
+
+    # #338 acceptance 6
+    def test_no_button_on_paper_or_without_javascript(self):
+        with self.subTest(media="print"):
+            self.open(self.LONG)
+            self.scroll_to(self.screens(3))
+            expect(self.button()).to_be_visible()
+            self.page.emulate_media(media="print")
+            expect(self.button()).to_be_hidden()
+        with self.subTest(javascript=False):
+            self.open(self.LONG, javascript=False)
+            self.scroll_to(self.screens(3))
+            self.assertGreater(self.page.evaluate("window.scrollY"), self.screens(2))
+            expect(self.page.get_by_text("回到頂端")).to_have_count(0)
