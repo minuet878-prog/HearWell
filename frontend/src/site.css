@@ -2398,9 +2398,11 @@
      itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
      level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
-     takes it off after 3 seconds. Only the look changes: the focus stays where it was. */
-  .jump-highlight:not(.route-stop),
-  .route-stop.jump-highlight .route-box {
+     takes it off after 3 seconds. Only the look changes: the focus stays where it was.
+     :root puts it above a box's own look, which may come later with as many classes (the
+     family page's urgent card takes its shadow off: .family-guide .family-urgent). */
+  :root .jump-highlight:not(.route-stop),
+  :root .route-stop.jump-highlight .route-box {
     outline: 0.1875rem solid var(--color-primary);
     outline-offset: 0.125rem;
     box-shadow: var(--shadow-jump-highlight);
@@ -4390,9 +4392,10 @@
   50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
 }
 
-/* A jump's box (#343): held for the first half, then faded out. */
+/* A jump's box (#343): held for the first half, then faded out. The start is written out, not
+   taken from the box's own look, so the glow is there from the first frame. */
 @keyframes jump-highlight {
-  50% { outline-color: var(--color-primary); box-shadow: var(--shadow-jump-highlight); }
+  0%, 50% { outline-color: var(--color-primary); box-shadow: var(--shadow-jump-highlight); }
   to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
 }
 

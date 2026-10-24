@@ -7624,6 +7624,15 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             expect(self.page).to_have_url(re.compile(r"/family#talk-title$"))
             self.assert_lights(self.samples())
 
+        # The urgent topic is a card of its own, with a look of its own; it lights the same way,
+        # with reduced motion too.
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open("/family", motion=motion)
+                self.sample_this_page(topic.format("urgent-title"))
+                self.main().get_by_role("link", name="什麼時候要馬上就醫").click()
+                self.assert_lights(self.samples(), reduced=motion == "reduce", scrolled=True)
+
     # Acceptance 15: 看我的路線 lights the route's 段落框, the focus still on its heading; a
     # stop's 修改 lights that stop.
     def test_route_and_its_stop_light(self):
