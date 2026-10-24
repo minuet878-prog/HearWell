@@ -624,6 +624,8 @@ class HistoryTabsTests(TestCase):
         self.assertIn('data-questionnaire="hhie-s"', plot.group(1))
         self.assertNotIn("aria-hidden", plot.group(1))
         self.assertRegex(plot.group(2), r'<p[^>]*aria-hidden="true"[^>]*>趨勢圖載入中…</p>')
+        # B1 (ADR 0027): the sliding track under the text.
+        self.assertRegex(plot.group(2), r'<p class="[^"]*\bloading-message\b[^"]*"[^>]*>趨勢圖')
 
     def test_trend_chart_card_hidden_without_javascript(self):
         # The summary stays; the chart box would only say it is loading, forever.

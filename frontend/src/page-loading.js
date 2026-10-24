@@ -2,8 +2,8 @@
 // on the loading comparison page: A3, a bar along the top with 載入中…, and C1, 送出中… with a
 // spinner on the pressed button of a form that saves something. Moving parts wait 0.3 s (site.css).
 export const SHOW_AFTER = 300;
-// Same as the answer form had (spec docs/specs/phase-06/phase6_web_double_submit.md 4.2): the
-// server refuses a second save, so giving the button back is always safe.
+// Same as the answer form had (spec docs/specs/phase-06/phase6_web_double_submit.md 4.2), so a
+// lost answer never leaves the button stuck. Only the answer form's server refuses a second save.
 export const GIVE_BACK_AFTER = 10000;
 const LOADING = "載入中…";
 const SENDING = "送出中…";

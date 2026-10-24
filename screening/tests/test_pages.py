@@ -1241,6 +1241,10 @@ class PageLoadingTests(TestCase):
                 self.assertTrue(links)
                 for tag in links:
                     self.assertRegex(tag, r"\sdownload[\s>]")
+        # Signed out, the link leads to the login page, which must open rather than be saved.
+        self.client.logout()
+        tag = link.search(self.client.get(reverse("privacy")).content.decode()).group()
+        self.assertNotRegex(tag, r"\sdownload[\s>]")
 
     def test_submit_buttons_can_hold_the_spinner(self):
         # An <input type="submit"> shows only its value, so the spinner needs a <button>.

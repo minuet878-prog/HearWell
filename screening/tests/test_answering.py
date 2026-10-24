@@ -520,6 +520,8 @@ class AnswerFlashTests(TestCase):
                 status = re.search(r'<p id="answer-loading"[^>]*>', content)
                 self.assertIsNotNone(status)
                 self.assertIn('role="status"', status.group())
+                # B1 (ADR 0027): the sliding track under 題目載入中….
+                self.assertRegex(status.group(), r'class="[^"]*\bloading-message\b')
                 self.assertLess(status.start(), form_start)
                 inline = answer_loading_script(content)
                 self.assertIsNotNone(inline)

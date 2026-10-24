@@ -805,7 +805,9 @@
   }
 
   /* A3 and B1 share one look: a short blue piece sliding along a light track. Waiting may loop,
-     for at most about 10 seconds (ADR 0027, an exception to ADR 0006). */
+     for at most about 10 seconds (ADR 0027, an exception to ADR 0006): 8 rounds of 1.3 s here,
+     12 of 0.8 s for the spinner, to match GIVE_BACK_AFTER in page-loading.js. The 0.3 s delays
+     match its SHOW_AFTER. */
   .page-loading-bar, .loading-message::after {
     background: linear-gradient(var(--color-primary), var(--color-primary)) no-repeat
       var(--color-brand-soft-deep);
