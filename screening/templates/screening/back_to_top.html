@@ -1,0 +1,4 @@
+{% load static %}
+{# #335 (spec #326 E1): long pages only. Hidden until back-to-top.js shows it after one screen of scrolling, so it never shows without JavaScript. #}
+<button id="back-to-top" type="button" class="btn btn-outline-primary back-to-top" hidden><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到頂端</button>
+<script defer src="{% static 'screening/back-to-top.js' %}"></script>

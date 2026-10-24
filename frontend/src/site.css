@@ -866,6 +866,48 @@
     }
   }
 
+  /* 回到頂端 on the long pages (#335, spec #326 E1): a white pill at the bottom right, over the
+     page. Hover and press are the outline button's colours only (ADR 0006). Its shadow is the
+     tab bar's grey, not the cards' warm one: a floating button, not a white card (ADR 0022). */
+  .back-to-top {
+    --btn-bg: #fff;
+    position: fixed;
+    right: calc(1.5rem + env(safe-area-inset-right));
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    z-index: 1020;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-weight: 600;
+    box-shadow: 0 0.25rem 0.75rem rgba(20, 30, 50, 0.25);
+  }
+
+  .back-to-top svg {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Phones: just above the fixed tab bar. back-to-top.js gives the bar's height, which grows
+     with the text size and already holds the safe area below it. */
+  @media (max-width: 47.99em) {
+    .back-to-top {
+      right: calc(1rem + env(safe-area-inset-right));
+      bottom: calc(var(--tab-bar-height) + 0.75rem);
+    }
+  }
+
+  @media print {
+    .back-to-top {
+      display: none !important;
+    }
+  }
+
   /* Site-wide footer: grey band, apart from the content without competing with it. */
   .site-footer {
     margin-top: 3rem;
