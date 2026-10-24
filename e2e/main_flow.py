@@ -1235,6 +1235,46 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 expect(field).not_to_have_attribute("aria-invalid", "true")
                 expect(self.page.locator(f"#{field_id}_error")).to_have_count(0)
 
+    def send_register(self, password, confirmation):
+        self.page.goto(f"{self.live_server_url}/register")
+        self.page.get_by_label("使用者名稱").fill("weak_e2e")
+        self.page.get_by_label("電子郵件").fill("weak_e2e@example.com")
+        self.page.get_by_label("密碼：", exact=True).fill(password)
+        self.page.get_by_label("密碼確認：", exact=True).fill(confirmation)
+        self.main().get_by_role("button", name="註冊", exact=True).click()
+        self.page.wait_for_load_state("load")
+
+    # Owner's call (2026-10-24): the tick on 密碼確認 answers only 「兩次密碼不一致」; what the
+    # server said about the password itself stays, red frame and all.
+    def test_confirmation_tick_keeps_the_servers_word_on_a_weak_password(self):
+        self.open()
+        with self.saving_artifacts():
+            confirmation = self.page.get_by_label("密碼確認：", exact=True)
+            errors = self.page.locator("#id_password2_error .field-error")
+            # A weak password typed twice differently: the server only says they differ.
+            self.send_register("12345678", "1234567")
+            expect(errors).to_have_count(1)
+            expect(errors).to_have_attribute("data-code", "password_mismatch")
+            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            confirmation.fill("12345678")
+            self.assertIsNotNone(self.tick(confirmation))
+            expect(errors).to_have_count(0)
+            expect(confirmation).not_to_have_attribute("aria-invalid", "true")
+            expect(confirmation).not_to_have_css("background-color", self.RED_BG)
+            # The same weak password twice: the server's words are about the password itself.
+            self.send_register("12345678", "12345678")
+            said = errors.all_inner_texts()
+            self.assertGreaterEqual(len(said), 1)
+            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            confirmation.fill("12345678")
+            self.assertIsNotNone(self.tick(confirmation))
+            expect(errors).to_have_text(said)
+            expect(confirmation).to_have_attribute("aria-invalid", "true")
+            expect(confirmation).to_have_css("background-color", self.RED_BG)
+            expect(confirmation).to_have_attribute(
+                "aria-describedby", re.compile(r"\bid_password2_error\b")
+            )
+
 
 class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#163: a returning user whose last HHIE-S is over 6 months old takes it again."""

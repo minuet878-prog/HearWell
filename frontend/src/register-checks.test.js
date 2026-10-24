@@ -8,19 +8,25 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const SCRIPT = resolve(process.cwd(), "../screening/static/screening/register-checks.js");
 const STATUS = '<p class="visually-hidden" role="status"></p>';
 
-// With `wrong`, the page as the server sends it back after a mistake in that field: Django's
-// red frame (aria-invalid) and the error words the field's aria-describedby points at.
-function wrongAttrs(id, wrong) {
-  return wrong
+// With `wrong` ({field id: [Django error codes]}), the page as the server sends it back after
+// mistakes in that field: Django's red frame (aria-invalid) and one line of error words per code
+// (field_messages.html marks each with its code; "" for an error without one), which the field's
+// aria-describedby points at.
+function wrongAttrs(id, codes) {
+  return codes
     ? `aria-invalid="true" aria-describedby="${id}_helptext ${id}_error"`
     : `aria-describedby="${id}_helptext"`;
 }
 
-function serverWords(id, wrong) {
-  return wrong ? `<div id="${id}_error"><p class="text-danger field-error">伺服器說錯了</p></div>` : "";
+function serverWords(id, codes) {
+  if (!codes) return "";
+  const lines = codes.map(
+    (code) => `<p class="text-danger field-error"${code ? ` data-code="${code}"` : ""}>伺服器說錯了</p>`,
+  );
+  return `<div id="${id}_error">${lines.join("")}</div>`;
 }
 
-function page({ latestYear = "97", year = "", wrong = [] } = {}) {
+function page({ latestYear = "97", year = "", wrong = {} } = {}) {
   const password2 = "id_password2";
   const birthYear = "id_roc_birth_year";
   document.body.innerHTML = `
@@ -29,21 +35,21 @@ function page({ latestYear = "97", year = "", wrong = [] } = {}) {
     </div>
     <div class="auth-field">
       <div class="auth-input">
-        <input type="password" id="${password2}" ${wrongAttrs(password2, wrong.includes(password2))}>
+        <input type="password" id="${password2}" ${wrongAttrs(password2, wrong[password2])}>
       </div>
       ${STATUS}
-      ${serverWords(password2, wrong.includes(password2))}
+      ${serverWords(password2, wrong[password2])}
       <div id="${password2}_helptext">請再輸入一次同樣的密碼。</div>
     </div>
     <div class="auth-field">
       <div class="input-group">
         <span class="input-group-text">民國</span>
         <input type="text" id="${birthYear}" data-max="${latestYear}" value="${year}"
-          ${wrongAttrs(birthYear, wrong.includes(birthYear))}>
+          ${wrongAttrs(birthYear, wrong[birthYear])}>
         <span class="input-group-text">年</span>
       </div>
       ${STATUS}
-      ${serverWords(birthYear, wrong.includes(birthYear))}
+      ${serverWords(birthYear, wrong[birthYear])}
       <div id="${birthYear}_helptext">選填。</div>
     </div>`;
   new Function(readFileSync(SCRIPT, "utf-8"))();
@@ -144,18 +150,17 @@ describe("a field the server called wrong", () => {
   const red = (id) => input(id).getAttribute("aria-invalid") === "true";
   const serverError = (id) => document.getElementById(`${id}_error`);
 
+  const matchPasswords = () => {
+    type("id_password1", "Fake-pass-2468");
+    type("id_password2", "Fake-pass-2468");
+  };
+
+  // 出生年's one error has no code; 密碼確認 here only says the two passwords differ.
   it.each([
-    ["id_roc_birth_year", () => type("id_roc_birth_year", "44"), () => type("id_roc_birth_year", "0")],
-    [
-      "id_password2",
-      () => {
-        type("id_password1", "Fake-pass-2468");
-        type("id_password2", "Fake-pass-2468");
-      },
-      () => type("id_password2", "Fake-pass-246"),
-    ],
-  ])("%s keeps the red frame until the tick shows, then drops it for good", (id, right, wrongAgain) => {
-    page({ wrong: [id] });
+    ["id_roc_birth_year", "", () => type("id_roc_birth_year", "44"), () => type("id_roc_birth_year", "0")],
+    ["id_password2", "password_mismatch", matchPasswords, () => type("id_password2", "Fake-pass-246")],
+  ])("%s keeps the red frame until the tick shows, then drops it for good", (id, code, right, wrongAgain) => {
+    page({ wrong: { [id]: [code] } });
     type(id, "0");
     expect(red(id)).toBe(true);
     expect(serverError(id)).not.toBeNull();
@@ -173,8 +178,30 @@ describe("a field the server called wrong", () => {
     expect(serverError(id)).toBeNull();
   });
 
+  // Owner's call (2026-10-24): the tick only answers "the two passwords differ"; what the
+  // server said about the password itself (too short, too common...) stays, red frame and all.
+  it("drops only the mismatch from 密碼確認, keeping the password's own errors and red frame", () => {
+    page({ wrong: { id_password2: ["password_mismatch", "password_too_short", "password_too_common"] } });
+    matchPasswords();
+    expect(tickShown("id_password2")).toBe(true);
+    const left = [...serverError("id_password2").querySelectorAll("p")].map((line) => line.dataset.code);
+    expect(left).toEqual(["password_too_short", "password_too_common"]);
+    expect(red("id_password2")).toBe(true);
+    expect(input("id_password2").getAttribute("aria-describedby")).toBe(
+      "id_password2_helptext id_password2_error",
+    );
+  });
+
+  it("keeps the password's own errors when there was no mismatch to drop", () => {
+    page({ wrong: { id_password2: ["password_entirely_numeric"] } });
+    matchPasswords();
+    expect(tickShown("id_password2")).toBe(true);
+    expect(serverError("id_password2").textContent).toContain("伺服器說錯了");
+    expect(red("id_password2")).toBe(true);
+  });
+
   it("leaves the other field's red frame alone", () => {
-    page({ wrong: ["id_roc_birth_year", "id_password2"] });
+    page({ wrong: { id_roc_birth_year: [""], id_password2: ["password_mismatch"] } });
     type("id_roc_birth_year", "44");
     expect(red("id_password2")).toBe(true);
     expect(serverError("id_password2")).not.toBeNull();

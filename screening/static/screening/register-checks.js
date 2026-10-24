@@ -9,21 +9,28 @@
 
   // site.css draws the tick inside the field's right end; inside the field, it stays there
   // however narrow the row gets at double text size.
-  function show(input, right, words) {
+  // `answers` picks the server's errors the tick answers (field_messages.html marks each line
+  // with Django's error code); without it, the tick answers them all.
+  function show(input, right, words, answers = ".field-error") {
     input.classList.toggle("is-right", right);
     const status = input.closest(".auth-field").querySelector('[role="status"]');
     const text = right ? words : "";
     // Only on a change, so typing on in a right field does not repeat the words.
     if (status.textContent !== text) status.textContent = text;
-    if (right) clearServerError(input);
+    if (right) clearServerError(input, answers);
   }
 
-  // Once the tick shows, the server's red frame and words for that field go (owner's call,
-  // 2026-10-24); going wrong again does not bring them back: the server says so on sending.
-  function clearServerError(input) {
-    input.removeAttribute("aria-invalid");
+  // Once the tick shows, the server's words it answers go, and with the field's last one its red
+  // frame (owner's call, 2026-10-24); going wrong again does not bring them back: the server says
+  // so on sending.
+  function clearServerError(input, answers) {
     const errorId = `${input.id}_error`;
-    document.getElementById(errorId)?.remove();
+    const box = document.getElementById(errorId);
+    if (!box) return;
+    box.querySelectorAll(answers).forEach((line) => line.remove());
+    if (box.querySelector(".field-error")) return;
+    box.remove();
+    input.removeAttribute("aria-invalid");
     const described = (input.getAttribute("aria-describedby") || "")
       .split(" ")
       .filter((id) => id && id !== errorId)
@@ -44,7 +51,8 @@
 
   function checkConfirmation() {
     const same = confirmation.value !== "" && confirmation.value === password.value;
-    show(confirmation, same, "兩次密碼相同");
+    // Only 「兩次密碼不一致」: what the server said about the password itself still stands.
+    show(confirmation, same, "兩次密碼相同", '[data-code="password_mismatch"]');
   }
 
   year.addEventListener("input", checkYear);

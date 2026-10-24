@@ -1,8 +1,9 @@
 {# Errors and help text with the ids Django puts in the input's aria-describedby. #}
 {% if field.errors %}
 <div id="{{ field.auto_id }}_error">
-    {% for error in field.errors %}
-    <p class="text-danger field-error mb-0">{{ error }}</p>
+    {# Each line carries Django's error code, for scripts that answer one kind (register-checks.js). #}
+    {% for error in field.errors.as_data %}
+    <p class="text-danger field-error mb-0"{% if error.code %} data-code="{{ error.code }}"{% endif %}>{% for message in error %}{{ message }}{% endfor %}</p>
     {% endfor %}
 </div>
 {% endif %}
