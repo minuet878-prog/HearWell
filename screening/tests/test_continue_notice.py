@@ -8,7 +8,9 @@ can open.
 import json
 import re
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
@@ -92,6 +94,21 @@ class ContinueNoticeDataTests(TestCase):
         ):
             with self.subTest(url=url):
                 self.assertEqual(self._data(url), self._expected())
+
+    def test_screening_pages_read_the_questionnaires_once(self):
+        # The page has already read the questionnaires; the notice uses those (#326 review).
+        self.client.force_login(self.user)
+        wizard = reverse("questionnaire_list")
+        for url in (
+            wizard,
+            wizard + "?age_group=older",
+            wizard + "?age_group=older&hearing_aid=no",
+            wizard + "?choose=self",
+        ):
+            with self.subTest(url=url), CaptureQueriesContext(connection) as queries:
+                self.assertEqual(self._data(url), self._expected())
+            reads = [q["sql"] for q in queries if 'FROM "screening_questionnaire"' in q["sql"]]
+            self.assertEqual(len(reads), 1, reads)
 
     def test_the_page_loads_the_script_with_its_list(self):
         self.client.force_login(self.user)

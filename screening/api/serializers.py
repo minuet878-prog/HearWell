@@ -10,7 +10,7 @@ from screening.audiogram import (
     DB_MIN,
     DB_STEP,
 )
-from screening.forms import AnswerFormSet, answer_choices
+from screening.forms import AnswerFormSet, answer_choices, offers_not_applicable
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm
 from screening.models import (
     Answer,
@@ -266,9 +266,7 @@ class SubmissionCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"questionnaire": "這份問卷沒有題目"})
         # Questions that list 「不適用」 take an empty score as that answer; there, an answer
         # must be exactly an integer or empty.
-        not_applicable = {
-            question.id for question in questions if "na" in dict(answer_choices(question))
-        }
+        not_applicable = {question.id for question in questions if offers_not_applicable(question)}
         if not_applicable:
             for answer in self.initial_data.get("answers", []):
                 value = answer.get("score")

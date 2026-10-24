@@ -46,6 +46,7 @@ from screening.forms import (
     RegisterForm,
     WearingNowForm,
     answer_choices,
+    offers_not_applicable,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
 from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
@@ -105,12 +106,13 @@ def health_data_page(view):
 HOME_PREVIEW_SCORE = 18
 
 
-def _continue_notice(user):
+def _continue_notice(user, questionnaires=None):
     # #326 E7 (#337): the questionnaires this user can open, which the continue notice's script
     # matches against the drafts in this browser (draft.js); the drafts never reach the server.
-    questionnaires = sorted(
-        Questionnaire.objects.defined().prefetch_related("questions"), key=list_order
-    )
+    # A page that has already read them in list order passes them in.
+    if questionnaires is None:
+        questionnaires = sorted(Questionnaire.objects.defined(), key=list_order)
+    prefetch_related_objects(questionnaires, "questions")
     return {
         "userId": user.pk,
         "questionnaires": [
@@ -123,8 +125,7 @@ def _continue_notice(user):
                 # As the answer page decides from the API: a draft may hold 「不適用」 when a
                 # question offers it.
                 "allowNotApplicable": any(
-                    "na" in dict(answer_choices(question))
-                    for question in questionnaire.questions.all()
+                    offers_not_applicable(question) for question in questionnaire.questions.all()
                 ),
             }
             for questionnaire in questionnaires
@@ -674,7 +675,7 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
-def _wizard_step(request, step, total, **context):
+def _wizard_step(request, step, total, catalog, **context):
     # Steps go forward by GET parameters, so the wizard works without JavaScript (#152).
     return render(
         request,
@@ -683,7 +684,7 @@ def _wizard_step(request, step, total, **context):
         | {
             "step": step,
             "total": total,
-            "continue_notice": _continue_notice(request.user),
+            "continue_notice": _continue_notice(request.user, catalog),
             # Set by the consent page; only its first screen says the account is ready.
             "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
@@ -701,7 +702,10 @@ def questionnaire_list(request):
         return render(
             request,
             "screening/questionnaire.html",
-            {"questionnaires": questionnaires, "continue_notice": _continue_notice(request.user)},
+            {
+                "questionnaires": questionnaires,
+                "continue_notice": _continue_notice(request.user, questionnaires),
+            },
         )
     by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
     wizard_url = reverse("questionnaire_list")
@@ -713,7 +717,12 @@ def questionnaire_list(request):
         age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
         if not age_form.is_valid():
             return _wizard_step(
-                request, 1, total, field=age_form["age_group"], back_url=reverse("index")
+                request,
+                1,
+                total,
+                questionnaires,
+                field=age_form["age_group"],
+                back_url=reverse("index"),
             )
         age_group = age_form.cleaned_data["age_group"]
     else:
@@ -724,6 +733,7 @@ def questionnaire_list(request):
             request,
             total - 1,
             total,
+            questionnaires,
             field=wearing_form["hearing_aid"],
             age_group=age_group if ask_age else None,
             back_url=wizard_url if ask_age else reverse("index"),
@@ -753,6 +763,7 @@ def questionnaire_list(request):
         request,
         total,
         total,
+        questionnaires,
         recommended=recommended,
         reason=reason,
         why=RECOMMENDATION_REASONS[reason],

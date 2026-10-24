@@ -86,6 +86,11 @@ def answer_choices(question):
     return question.questionnaire.definition.choices(question.question_number)
 
 
+def offers_not_applicable(question):
+    """Whether the question lists 「不適用」, whose answer is an empty score."""
+    return "na" in dict(answer_choices(question))
+
+
 class DeleteAccountForm(forms.Form):
     # strip=False like Django's login and register forms: spaces are part of a password.
     password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
