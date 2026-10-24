@@ -2678,6 +2678,27 @@ addEventListener("pagereveal", async (event) => {
 });
 """
 PILL_PARTS = [f"::view-transition-{part}(switch-pill)" for part in ("group", "new", "old")]
+# Chromium made into a browser without cross-document view transitions: it never fires pageswap
+# or pagereveal, and it does not know @view-transition, so site.css cannot opt a page in.
+NO_VIEW_TRANSITIONS = """
+const listen = EventTarget.prototype.addEventListener;
+EventTarget.prototype.addEventListener = function (type, ...rest) {
+    if (type === "pageswap" || type === "pagereveal") return;
+    return listen.call(this, type, ...rest);
+};
+const drop = (rules) => {
+    for (let i = rules.cssRules.length - 1; i >= 0; i--) {
+        const rule = rules.cssRules[i];
+        if (rule.cssText.startsWith("@view-transition")) {
+            rules.deleteRule(i);
+            window.droppedRules = (window.droppedRules || 0) + 1;
+        } else if (rule.cssRules) {
+            drop(rule);
+        }
+    }
+};
+addEventListener("load", () => [...document.styleSheets].forEach(drop));
+"""
 
 
 class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -2715,13 +2736,13 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             "url": self.live_server_url,
         }
 
-    def open(self, reduced_motion="no-preference"):
+    def open(self, reduced_motion="no-preference", view_transitions=True):
         self.context = self.browser.new_context(
             viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
         )
         self.addCleanup(self.context.close)
         self.context.add_cookies([self.cookie])
-        self.context.add_init_script(REVEAL_WATCH)
+        self.context.add_init_script(REVEAL_WATCH if view_transitions else NO_VIEW_TRANSITIONS)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
 
@@ -2771,6 +2792,23 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             self.page.goto(f"{self.live_server_url}/audiograms/compare")
             self.main().get_by_role("navigation", name="選耳朵").get_by_text("左耳").click()
             self.assertEqual(self.arrived("左耳"), "none")
+
+    # Spec #326 acceptance 16 (D3): a browser without the transition just changes page.
+    def test_browser_without_view_transitions_just_changes_page(self):
+        self.open(view_transitions=False)
+        with self.saving_artifacts():
+            for start, switch, side, url in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", "聽力圖", r"/audiograms$"),
+                ("/audiograms/compare", "選耳朵", "左耳", r"/audiograms/compare\?.*ear=left$"),
+            ):
+                self.page.goto(f"{self.live_server_url}{start}")
+                # The page really has no @view-transition left, so nothing can opt it in.
+                self.page.wait_for_function("window.droppedRules > 0")
+                main = self.main()
+                main.get_by_role("navigation", name=switch).get_by_role("link", name=side).click()
+                expect(self.page).to_have_url(re.compile(url))
+                expect(main.locator("[aria-current]")).to_have_text(side)
+                self.page.wait_for_function("window.droppedRules > 0")
 
     def test_loading_bar_shows_while_the_next_side_takes_a_while(self):
         # ADR 0027: the old page still shows the moving bar and 載入中… until the new side
