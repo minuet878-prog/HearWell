@@ -1234,6 +1234,16 @@ class PageLoadingTests(TestCase):
                     content,
                 )
 
+    def test_every_page_skips_view_transitions_its_switch_did_not_start(self):
+        # #334 (spec #326 D3): site.css opts every page in, so every page needs the script that
+        # skips the rest. How it behaves: switch-slide.test.js; in a browser: SlidingPillTest.
+        script = '<script type="module" src="/static/screening/frontend/switch-slide.js"></script>'
+        self.assertIn(script, self.client.get(reverse("privacy")).content.decode())
+        self.client.force_login(consented_user(username="switchslider"))
+        for url in (reverse("index"), reverse("audiogram_list")):
+            with self.subTest(url=url):
+                self.assertIn(script, self.client.get(url).content.decode())
+
     def test_download_links_say_so(self):
         # A download leaves the page where it is, so the bar must not start for it.
         self.client.force_login(consented_user(username="downloader"))

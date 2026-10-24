@@ -2166,6 +2166,187 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertLessEqual(box["x"] + box["width"], 390)
 
 
+# Runs before the site's own scripts on every page: notes whether the page arrived with a view
+# transition, which parts of the page it animates, where the pill starts (its group's first
+# keyframe) and where the pill is on the new page, both [left, top] in the viewport.
+REVEAL_WATCH = """
+addEventListener("pagereveal", async (event) => {
+    window.revealed = event.viewTransition ? "transition" : "none";
+    if (!event.viewTransition) return;
+    await event.viewTransition.ready;
+    const html = document.documentElement;
+    const animations = document.getAnimations().filter((a) => a.effect.target === html);
+    window.moving = [...new Set(animations.map((a) => a.effect.pseudoElement))].sort();
+    const group = animations.find((a) => a.effect.pseudoElement.includes("-group("));
+    const start = new DOMMatrix(group.effect.getKeyframes()[0].transform);
+    const end = document.querySelector("main [aria-current]").getBoundingClientRect();
+    window.pill = [[start.e, start.f], [end.left, end.top]].map((at) => at.map(Math.round));
+    await event.viewTransition.finished;
+    window.settled = true;
+});
+"""
+PILL_PARTS = [f"::view-transition-{part}(switch-pill)" for part in ("group", "new", "old")]
+
+
+class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#334 (spec #326 D3, ADR 0028): the blue pill of the 問卷 or 聽力圖 and 右耳 or 左耳
+    switches slides to the side pressed, by a cross-document view transition; nothing else on
+    the page fades."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        user = consented_user(username="sliding_pill_e2e")
+        for tested_on in (date(2026, 6, 1), date(2026, 9, 28)):
+            audiogram = Audiogram.objects.create(user=user, tested_on=tested_on)
+            AudiogramPoint.objects.bulk_create(
+                AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+                for ear in ("right", "left")
+                for f in (500, 1000, 2000, 4000)
+            )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, reduced_motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
+        )
+        self.addCleanup(self.context.close)
+        self.context.add_cookies([self.cookie])
+        self.context.add_init_script(REVEAL_WATCH)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+
+    def arrived(self, current):
+        """Waits for the new page's current pill, then says how the page arrived."""
+        expect(self.main().locator("[aria-current]")).to_have_text(current)
+        self.page.wait_for_function("window.revealed")
+        return self.page.evaluate("window.revealed")
+
+    def assert_pill_slid(self):
+        self.page.wait_for_function("window.settled")
+        self.assertEqual(self.page.evaluate("window.moving"), PILL_PARTS)
+        start, end = self.page.evaluate("window.pill")
+        self.assertNotEqual(start, end)
+
+    def test_pill_slides_between_questionnaires_and_audiograms(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            records.get_by_role("link", name="聽力圖").click()
+            self.assertEqual(self.arrived("聽力圖"), "transition")
+            self.assert_pill_slid()
+            records.get_by_role("link", name="問卷").click()
+            self.assertEqual(self.arrived("問卷"), "transition")
+            self.assert_pill_slid()
+
+    def test_pill_slides_between_ears(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            ears = self.main().get_by_role("navigation", name="選耳朵")
+            ears.get_by_role("link", name="左耳").click()
+            self.assertEqual(self.arrived("左耳"), "transition")
+            self.assert_pill_slid()
+            ears.get_by_role("link", name="右耳").click()
+            self.assertEqual(self.arrived("右耳"), "transition")
+            self.assert_pill_slid()
+
+    def test_reduced_motion_changes_page_without_sliding(self):
+        self.open(reduced_motion="reduce")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            records.get_by_role("link", name="聽力圖").click()
+            self.assertEqual(self.arrived("聽力圖"), "none")
+            self.page.goto(f"{self.live_server_url}/audiograms/compare")
+            self.main().get_by_role("navigation", name="選耳朵").get_by_text("左耳").click()
+            self.assertEqual(self.arrived("左耳"), "none")
+
+    def test_loading_bar_shows_while_the_next_side_takes_a_while(self):
+        # ADR 0027: the old page still shows the moving bar and 載入中… until the new side
+        # arrives. A page being left cannot be read, so it notes what it showed for the next one.
+        self.open()
+        held = []
+        self.page.route(f"{self.live_server_url}/audiograms", lambda route: held.append(route))
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+            self.page.evaluate(
+                """() => {
+                    const html = document.documentElement;
+                    const bar = document.querySelector(".page-loading-bar");
+                    const status = document.getElementById("page-loading-status");
+                    new MutationObserver(() => {
+                        if (!html.classList.contains("page-loading")) return;
+                        const shown = [getComputedStyle(bar).animationName, status.textContent];
+                        sessionStorage.setItem("waiting", shown.join(" "));
+                    }).observe(html, { attributes: true });
+                }"""
+            )
+            records = self.main().get_by_role("navigation", name="紀錄種類")
+            # Without no_wait_after the click would wait for the held page.
+            records.get_by_role("link", name="聽力圖").click(no_wait_after=True)
+            self.page.wait_for_timeout(1000)
+            held[0].continue_()
+            self.assertEqual(self.arrived("聽力圖"), "transition")
+            self.assert_pill_slid()
+            waiting = self.page.evaluate("sessionStorage.getItem('waiting')")
+            self.assertEqual(waiting, "loading-slide 載入中…")
+
+    def changes_page(self, action):
+        """Does action, then says how the page it leads to arrived."""
+        with self.page.expect_navigation():
+            action()
+        self.page.wait_for_function("window.revealed")
+        return self.page.evaluate("window.revealed")
+
+    def test_no_other_change_of_page_transitions(self):
+        self.open()
+        tabs = self.page.get_by_role("navigation", name="主要導覽")
+        with self.saving_artifacts():
+            # 紀錄 comes back to this same list (a redirect), the pill in the same place.
+            for tab in ("紀錄", "首頁"):
+                with self.subTest(tab=tab):
+                    self.page.goto(f"{self.live_server_url}/audiograms")
+                    link = tabs.get_by_role("link", name=tab)
+                    self.assertEqual(self.changes_page(link.click), "none")
+            with self.subTest("an audiogram's card"):
+                self.page.goto(f"{self.live_server_url}/audiograms")
+                card = self.main().locator("a.audiogram-card").first
+                self.assertEqual(self.changes_page(card.click), "none")
+            with self.subTest("比較 with another audiogram"):
+                self.page.goto(f"{self.live_server_url}/audiograms/compare?ear=left")
+                row = self.main().locator(".compare-pick").nth(0)
+                row.locator("summary").click()
+                button = row.get_by_role("button", name="比較", exact=True)
+                self.assertEqual(self.changes_page(button.click), "none")
+                expect(self.main().locator("[aria-current]")).to_have_text("左耳")
+            with self.subTest("the back button after switching"):
+                self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
+                records = self.main().get_by_role("navigation", name="紀錄種類")
+                records.get_by_role("link", name="聽力圖").click()
+                self.assertEqual(self.arrived("聽力圖"), "transition")
+                self.assertEqual(self.changes_page(self.page.go_back), "none")
+                expect(self.main().locator("[aria-current]")).to_have_text("問卷")
+
+
 class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Spec #218 (ticket #231): the guide's route, and its pages at 200% text on a phone."""
 
