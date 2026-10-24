@@ -24,6 +24,7 @@ const QUESTIONNAIRE = {
 const USER_ID = 7;
 const DRAFT_KEY = `${DRAFT_PREFIX}1`;
 const FAILED = "送出失敗，請再按一次送出";
+const CHOOSE_FIRST = "請先選一個答案";
 const MINUTES = 3;
 const INTRO = "<p>本問卷的目的在幫助您了解自己的聽力。</p><p>請圈選常常、有時或從未。</p>";
 
@@ -320,16 +321,37 @@ describe("catching up an unaided record (#154)", () => {
 });
 
 describe("next and previous", () => {
-  it("keeps 下一題 disabled until a choice is made, then moves focus to the question", async () => {
+  it("without a choice, 下一題 stays on the question, asks for one and puts focus back on it (#326 C5)", async () => {
     await renderApp();
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    const button = screen.getByRole("button", { name: "下一題" });
+    expect(button.disabled).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+    button.focus();
+    next();
+    expect(legend()).toMatch(/有沒有戴助聽器/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    // Under the buttons.
+    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    expect(document.activeElement.tagName).toBe("LEGEND");
     choose("有戴");
+    expect(screen.queryByRole("alert")).toBeNull();
     // A real click leaves focus on the button; the page change must move it to the question.
     screen.getByRole("button", { name: "下一題" }).focus();
     next();
     expect(legend()).toMatch(/^第 1 題／共 10 題/);
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(document.activeElement.tagName).toBe("LEGEND");
+  });
+
+  it("does not carry the hint to another question (#326 C5)", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    next();
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    fireEvent.click(screen.getByRole("button", { name: "上一題" }));
+    await waitFor(() => expect(legend()).toMatch(/有沒有戴助聽器/));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("moves focus to the question after the browser back button too", async () => {
@@ -378,6 +400,37 @@ describe("next and previous", () => {
     const before = history.length;
     await renderApp();
     expect(history.length).toBe(before);
+  });
+});
+
+describe("direction icons (#326 A6)", () => {
+  // The icon each button shows, and whether it comes before or after the words; silent for screen readers.
+  const icon = (name) => {
+    const button = screen.getByRole("button", { name });
+    const svg = button.querySelector("svg");
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    return { first: button.firstElementChild === svg, last: button.lastElementChild === svg, path: svg.innerHTML };
+  };
+
+  it("puts a left arrow before 上一題, a right arrow after 下一題 and a tick before 送出, names unchanged", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    choose("常常");
+    next();
+    const back = icon("上一題");
+    const forward = icon("下一題");
+    expect(back.first).toBe(true);
+    expect(forward.last).toBe(true);
+    expect(back.path).not.toBe(forward.path);
+    for (let i = 2; i < QUESTIONS.length; i++) {
+      choose("常常");
+      next();
+    }
+    choose("常常");
+    const send = icon("送出");
+    expect(send.first).toBe(true);
+    expect([back.path, forward.path]).not.toContain(send.path);
   });
 });
 
@@ -433,6 +486,8 @@ describe("submitting", () => {
     history.back();
     await waitFor(() => expect(legend()).toMatch(/^第 9 題/));
     expect(screen.getAllByRole("radio").every((r) => r.matches(":disabled"))).toBe(true);
+    // #326 C5: 下一題 no longer waits for a choice, but still waits for the sending (ADR 0027).
+    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
     release();
     await waitFor(() => expect(navigate).toHaveBeenCalledTimes(1));
   });
@@ -510,6 +565,29 @@ describe("submitting", () => {
     saveDraft({ userId: USER_ID, questionnaireId: 1, key: crypto.randomUUID(), wearing: false, answers, step: 10, savedAt: Date.now() });
     await renderApp();
     expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+  });
+
+  it("without a choice on the last question, 送出 sends nothing, asks for one and puts focus back on it (#326 C5)", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    for (let i = 1; i < QUESTIONS.length; i++) {
+      choose("常常");
+      next();
+    }
+    const button = screen.getByRole("button", { name: "送出" });
+    expect(button.disabled).toBe(false);
+    button.focus();
+    submit();
+    expect(postCalls()).toHaveLength(0);
+    expect(legend()).toMatch(/^第 10 題/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    expect(document.activeElement.tagName).toBe("LEGEND");
+    choose("從未");
+    expect(screen.queryByRole("alert")).toBeNull();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/submission/99"));
   });
 
   it("does not send with a missing answer and goes to the first missing question", async () => {
@@ -710,11 +788,19 @@ describe("SSQ12-TW", () => {
     choose("沒戴");
     next();
     expect(screen.getByText("未作答")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(true);
+    // #326 C5: the 0–10 scale asks for a choice the same way.
+    next();
+    expect(legend()).toMatch(/^第 1 題/);
+    expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
+    expect(document.activeElement.tagName).toBe("LEGEND");
     fireEvent.pointerUp(screen.getByRole("slider"));
     expect(screen.getByText("5 分")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    next();
+    expect(legend()).toMatch(/^第 2 題/);
+    history.back();
+    await waitFor(() => expect(legend()).toMatch(/^第 1 題/));
     choose("不適用");
-    expect(screen.getByRole("button", { name: "下一題" }).disabled).toBe(false);
     next();
     fireEvent.change(screen.getByRole("slider"), { target: { value: "0" } });
     expect(screen.getByText("0 分")).toBeTruthy();

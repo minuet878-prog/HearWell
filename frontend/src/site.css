@@ -2168,6 +2168,25 @@
     gap: 1rem;
   }
 
+  /* #326 A6: 上一題's arrow before the words, 下一題's after, 送出's tick before; in the text's colour. */
+  .answer-nav .btn svg {
+    display: inline-block;
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .answer-nav .btn svg:first-child {
+    margin-right: 0.4rem;
+  }
+  .answer-nav .btn svg:last-child {
+    margin-left: 0.4rem;
+  }
+
   /* Answer page: one option per row, the whole row a tap target, so short and long choices line up. */
   .answer-app div.choice-group, #answer-form div.choice-group {
     flex-direction: column;

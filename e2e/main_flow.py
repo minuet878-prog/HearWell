@@ -327,8 +327,13 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.answer("沒戴")
             self.next()
             expect(self.main().get_by_text("未作答", exact=True)).to_be_visible()
-            expect(self.main().get_by_role("button", name="下一題")).to_be_disabled()
+            # #326 C5: nothing chosen on the scale, so 下一題 asks for a choice and stays.
+            self.next()
+            expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
+            expect(self.main().get_by_role("group").locator("legend")).to_be_focused()
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 12 題")
             self.main().get_by_role("group").get_by_label("不適用", exact=True).check()
+            expect(self.main().get_by_role("alert")).to_have_count(0)
             self.next()
             slider = self.main().get_by_role("slider")
             slider.press("Home")
@@ -732,6 +737,79 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(part).to_be_hidden()
         expect(self.page.get_by_role("heading", name="重點摘要")).to_be_visible()
         self.page.emulate_media(media="screen")
+
+
+class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#329 (spec #326 A6, C5): the answer page's direction icons, and the hint when 下一題 or
+    送出 is pressed with nothing chosen."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(consented_user(username="answer_hint_e2e"))
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/questionnaire/{hhie_s.pk}")
+
+    def assert_icon(self, name, side):
+        """The button keeps its name; a drawn icon sits on that side of the words."""
+        button = self.main().get_by_role("button", name=name, exact=True)
+        icon = button.locator(f"svg:{side}-child")
+        expect(icon).to_be_visible()
+        expect(icon).to_have_attribute("aria-hidden", "true")
+        self.assertGreater(icon.bounding_box()["width"], 10, name)
+
+    def assert_asks_for_a_choice(self, number):
+        expect(self.main().get_by_role("alert")).to_have_text("請先選一個答案")
+        expect(self.question(number).locator("legend")).to_be_focused()
+
+    def test_icons_and_the_choose_first_hint(self):
+        with self.saving_artifacts():
+            # Nothing chosen: 下一題 is not greyed out; pressing it says what is missing.
+            expect(self.main().get_by_role("button", name="下一題")).to_be_enabled()
+            self.assert_icon("下一題", "last")
+            self.next()
+            self.assert_asks_for_a_choice(None)
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.answer("沒戴")
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            self.next()
+            self.assert_icon("上一題", "first")
+            for number in range(1, QUESTION_COUNT):
+                self.answer("有時", number)
+                self.next()
+            self.assert_icon("送出", "first")
+            self.main().get_by_role("button", name="送出").click()
+            self.assert_asks_for_a_choice(QUESTION_COUNT)
+            self.assert_fits_a_phone_at_double_text_size("answer page hint", width=412)
+            self.answer("有時", QUESTION_COUNT)
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
 
 
 class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
