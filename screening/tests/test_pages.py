@@ -424,34 +424,48 @@ class RedesignLayoutTests(TestCase):
         pwa_js = PwaNavTests.SCRIPT.removeprefix("/static/")
         # And the bar with 載入中… while the next page loads (ADR 0027).
         loading_js = PageLoadingTests.SCRIPT.removeprefix("/static/")
+        # And the script that lets only the switches' pill slide to the next page (#334).
+        slide_js = "screening/frontend/switch-slide.js"
         wave = "<inline>"
         smooth = "<inline>"
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [pwa_js, loading_js, wave, smooth])
+            self.assertEqual(
+                scripts(reverse("index")), [pwa_js, loading_js, slide_js, wave, smooth]
+            )
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332).
         for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
             with self.subTest(url=name):
                 self.assertEqual(
                     scripts(reverse(name)),
-                    [pwa_js, loading_js, "screening/password-toggle.js", *extra, wave, smooth],
+                    [
+                        pwa_js,
+                        loading_js,
+                        slide_js,
+                        "screening/password-toggle.js",
+                        *extra,
+                        wave,
+                        smooth,
+                    ],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
-                scripts(reverse("my_hearing")), [pwa_js, loading_js, logout_js, wave, smooth]
+                scripts(reverse("my_hearing")),
+                [pwa_js, loading_js, slide_js, logout_js, wave, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
         notice = [test_continue_notice.SCRIPT, wave, smooth, "<inline>"]
         expected = {
-            reverse("index"): [pwa_js, loading_js, logout_js, *notice],
-            reverse("questionnaire_list"): [pwa_js, loading_js, logout_js, *notice],
+            reverse("index"): [pwa_js, loading_js, slide_js, logout_js, *notice],
+            reverse("questionnaire_list"): [pwa_js, loading_js, slide_js, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 pwa_js,
                 loading_js,
+                slide_js,
                 logout_js,
                 answer_js,
                 wave,
@@ -461,6 +475,7 @@ class RedesignLayoutTests(TestCase):
             reverse("result", args=[self.submission.id]): [
                 pwa_js,
                 loading_js,
+                slide_js,
                 logout_js,
                 wave,
                 smooth,
@@ -468,6 +483,7 @@ class RedesignLayoutTests(TestCase):
             reverse("my_hearing"): [
                 pwa_js,
                 loading_js,
+                slide_js,
                 logout_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
@@ -1233,6 +1249,16 @@ class PageLoadingTests(TestCase):
                     '<p id="page-loading-status" class="page-loading-note" role="status"></p>',
                     content,
                 )
+
+    def test_every_page_skips_view_transitions_its_switch_did_not_start(self):
+        # #334 (spec #326 D3): site.css opts every page in, so every page needs the script that
+        # skips the rest. How it behaves: switch-slide.test.js; in a browser: SlidingPillTest.
+        script = '<script type="module" src="/static/screening/frontend/switch-slide.js"></script>'
+        self.assertIn(script, self.client.get(reverse("privacy")).content.decode())
+        self.client.force_login(consented_user(username="switchslider"))
+        for url in (reverse("index"), reverse("audiogram_list")):
+            with self.subTest(url=url):
+                self.assertIn(script, self.client.get(url).content.decode())
 
     def test_download_links_say_so(self):
         # A download leaves the page where it is, so the bar must not start for it.

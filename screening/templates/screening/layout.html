@@ -20,6 +20,8 @@
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
     {# Bar and 載入中… while the next page loads; 送出中… on the pressed button (page-loading.js). #}
     <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
+    {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides; every other change of page skips the transition. #}
+    <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
         if (sessionStorage.getItem("header-wave-played")) {

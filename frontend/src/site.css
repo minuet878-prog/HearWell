@@ -3219,6 +3219,25 @@
     background-color: var(--color-brand-soft-deep);
   }
 
+  /* #334 (spec #326 D3, ADR 0028): pressing the other half of this switch or 右耳｜左耳, the
+     blue pill slides from the old side to the new, by the browser's cross-document view
+     transition; browsers without it just change page. Only the pill takes part: the page itself
+     (the root) neither fades out nor in, and switch-slide.js skips every other change of page.
+     With reduced motion there is no transition at all. */
+  @media (prefers-reduced-motion: no-preference) {
+    @view-transition {
+      navigation: auto;
+    }
+  }
+
+  :root {
+    view-transition-name: none;
+  }
+
+  :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
+    view-transition-name: switch-pill;
+  }
+
   /* Aided vs unaided HHIE-S, styled like the trend summary box. */
   .aided-difference {
     margin-bottom: 1.5rem;
