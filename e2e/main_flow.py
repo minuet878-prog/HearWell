@@ -2555,7 +2555,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertLessEqual(room["overflow"], 0, path)
 
     # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
-    # nothing, so the stop is 去找聽力師之前 (spec #291).
+    # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0028): it plays once the
+    # stop is in view, so the route is scrolled to first.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
         self.open(390)
         with self.saving_artifacts():
@@ -2566,8 +2567,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     here = self.main().locator('[aria-current="step"]')
                     expect(here).to_have_count(1)
                     expect(here).to_contain_text("去找聽力師之前")
+                    here.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
                     number = here.locator(".route-number")
                     expect(number).to_have_css("animation-name", animation)
+                    expect(number).to_have_css("animation-play-state", "running")
 
     # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
     # reader goes on from there; smoothly, or straight there with reduced motion. #321 (#318
@@ -6823,3 +6826,183 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.scroll_to(self.screens(3))
             self.assertGreater(self.page.evaluate("window.scrollY"), self.screens(2))
             expect(self.page.get_by_text("回到頂端")).to_have_count(0)
+
+
+class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #341, ADR 0028): entrance animations play once they are in view; on a
+    phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站."""
+
+    fixtures = ("questions_fixture.json",)
+    # Each animation's name and state, by what it moves: route-ring on the 目前這一站, gauge-draw
+    # and gauge-needle on the home's gauge, wave-jump and wave-sweep on the header.
+    ANIMATIONS = """(within) => document.getAnimations()
+        .filter(a => a.effect.target.closest(within))
+        .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
+    STOP = '[aria-current="step"]'
+    GAUGE = ".score-gauge"
+    WAVE = ".site-wave"
+    # 2 x the site's 112.5% base, as in assert_fits_a_phone_at_double_text_size, set before the
+    # page's scripts run, so the page is judged at that size from the start.
+    DOUBLE_TEXT = """document.addEventListener("readystatechange", () => {
+        document.documentElement.style.setProperty("font-size", "225%", "important");
+    }, { once: true });"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # Has read nothing, so the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest);
+        # HHIE-S at 20 of 40 puts the home gauge's needle at 90 degrees.
+        user = consented_user(username="in_view_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        submission = Submission.objects.create(
+            user=user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(
+        self, path, width=390, height=640, javascript=True, motion="no-preference", double=False
+    ):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.add_cookies([self.cookie])
+        if double:
+            self.context.add_init_script(self.DOUBLE_TEXT)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+
+    def animations(self, within):
+        return self.page.evaluate(self.ANIMATIONS, within)
+
+    def states(self, within):
+        return {a["state"] for a in self.animations(within)}
+
+    def scroll_by(self, y):
+        self.page.evaluate("y => window.scrollBy({top: y, behavior: 'instant'})", y)
+
+    def bring_into_view(self, selector):
+        self.page.locator(selector).evaluate(
+            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+        )
+
+    def wait_until(self, within, state):
+        self.page.wait_for_function(
+            """([within, state]) => document.getAnimations()
+                .filter(a => a.effect.target.closest(within))
+                .every(a => a.playState === state)""",
+            arg=[within, state],
+        )
+
+    # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
+    # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
+    def test_current_stop_ring_plays_once_in_view(self):
+        self.open("/guide")
+        with self.saving_artifacts():
+            here = self.main().locator(self.STOP)
+            expect(here).to_contain_text("去找聽力師之前")
+            expect(here).not_to_be_in_viewport()
+            self.assertEqual(
+                self.animations(self.STOP), [{"name": "route-ring", "state": "paused", "time": 0}]
+            )
+            # Its top just showing above the tab bar.
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            self.scroll_by(here.bounding_box()["y"] - tab_bar["y"] + 20)
+            expect(here).to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            # On the screen, but its foot 10px under the tab bar.
+            box = here.bounding_box()
+            self.assertLess(box["height"], tab_bar["y"] / 2)
+            self.scroll_by(box["y"] + box["height"] - tab_bar["y"] - 10)
+            self.assertGreaterEqual(here.bounding_box()["y"], 0)
+            self.assertEqual(self.states(self.STOP), {"paused"})
+
+            self.bring_into_view(self.STOP)
+            self.wait_until(self.STOP, "finished")
+            ended = self.animations(self.STOP)
+            # Away and back again: still ended, not playing a second time.
+            self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+            self.bring_into_view(self.STOP)
+            self.page.wait_for_timeout(300)
+            self.assertEqual(self.animations(self.STOP), ended)
+
+    # #338 acceptance 10 (this ticket's part): with reduced motion the route's ring and the
+    # home's gauge are their end look from the start, nothing playing or waiting to play.
+    def test_reduced_motion_shows_the_end_at_once(self):
+        self.open("/guide", motion="reduce")
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).to_have_count(1)
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+            self.page.goto(f"{self.live_server_url}/")
+            needle = self.page.locator(".score-gauge-needle")
+            expect(needle).to_be_attached()
+            self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
+            # At the score, 90 degrees: rotate(90deg) as a matrix.
+            expect(needle).to_have_css("transform", "matrix(0, 1, -1, 0, 0, 0)")
+
+    # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
+    # the ring below it and the gauge play on arrival, and the header wave on every page.
+    def test_without_javascript_animations_play_on_arrival(self):
+        self.open("/guide", javascript=False)
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"running"})
+            self.assertEqual(self.states(self.WAVE), {"running"})
+            self.page.goto(f"{self.live_server_url}/")
+            self.assertEqual(self.states(self.GAUGE), {"running"})
+            self.assertEqual(self.states(self.WAVE), {"running"})
+
+    # #338 acceptance 12: at 200% text on a phone the returning user's gauge is below the screen
+    # and waits; the header wave, on screen, plays at once (on the tab's first page only).
+    def test_double_text_gauge_waits_and_header_wave_plays_at_once(self):
+        self.open("/", width=320, double=True)
+        with self.saving_artifacts():
+            gauge = self.page.locator(self.GAUGE)
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            box = gauge.bounding_box()
+            self.assertGreater(box["y"] + box["height"], tab_bar["y"])
+            self.assertEqual(
+                {a["name"]: a["state"] for a in self.animations(self.GAUGE)},
+                {"gauge-draw": "paused", "gauge-needle": "paused"},
+            )
+            self.assertEqual(self.states(self.WAVE), {"running"})
+            # Not yet drawn: the needle still at 0, rotate(0deg) as a matrix.
+            expect(gauge.locator(".score-gauge-needle")).to_have_css(
+                "transform", "matrix(1, 0, 0, 1, 0, 0)"
+            )
+
+            self.bring_into_view(self.GAUGE)
+            self.wait_until(self.GAUGE, "finished")
+            expect(gauge.locator(".score-gauge-needle")).to_have_css(
+                "transform", "matrix(0, 1, -1, 0, 0, 0)"
+            )
+            self.page.goto(f"{self.live_server_url}/questionnaire_list")
+            self.assertEqual(self.animations(self.WAVE), [])
