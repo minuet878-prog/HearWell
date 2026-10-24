@@ -2429,8 +2429,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # The meters' lines (25 dB HL, 45%) without a white edge: a bar stopping on the line meets it
     # with no gap, and the line sticks out 0.3rem above and below its track onto the page, where
     # it shows even over the dark blue bar. The last line in a meter runs into its label's.
+    # #342: the bars are measured where they end, so with reduced motion, which draws them full
+    # at once (GuideMeterFillTest watches them grow).
     def test_meter_lines_stick_out_of_their_tracks_without_a_gap(self):
         self.open(390)
+        self.page.emulate_media(reduced_motion="reduce")
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         measure = """el => {
             const box = selector => {
@@ -7199,3 +7202,250 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             )
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.animations(self.WAVE), [])
+
+
+class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #338 (ticket #342, ADR 0028): my guide's meters fill from 0 once they are in view,
+    the two ears together, the ratio on its own; on a phone, for a user with an HHIE-S record
+    (so the meters start below the screen) and an audiogram of 60 and 50 dB HL (a 40.0% ratio)."""
+
+    fixtures = ("questions_fixture.json",)
+    EARS = 'section[aria-labelledby="fitting-title"] .meter'
+    RATIO = 'section[aria-labelledby="threshold-title"] .meter'
+    # Each animation in the meter: its name, state, time, start, length, and the class of what
+    # it moves.
+    ANIMATIONS = """(meter) => meter.getAnimations({subtree: true}).map(a => ({
+        name: a.animationName, state: a.playState, time: a.currentTime, start: a.startTime,
+        duration: a.effect.getComputedTiming().duration, target: a.effect.target.className,
+    }))"""
+    # How full each bar is drawn, as a share of its track.
+    FILLS = """(meter) => [...meter.querySelectorAll(".meter-bar")].map(
+        bar => bar.getBoundingClientRect().width / bar.parentElement.clientWidth)"""
+    # The first bar's fill, as a share of where it ends, every 100ms through its animation.
+    CURVE = """(meter) => {
+        const bar = meter.querySelector(".meter-bar");
+        const [fill] = bar.getAnimations();
+        const end = bar.getBoundingClientRect().width;
+        fill.pause();
+        const shares = [];
+        for (let time = 0; time <= 1200; time += 100) {
+            fill.currentTime = time;
+            shares.push(bar.getBoundingClientRect().width / end);
+        }
+        fill.finish();
+        return shares;
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="meter_fill_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.submission = Submission.objects.create(
+            user=self.user, questionnaire=hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=self.submission, question=question, score=2)
+            for question in hhie_s.questions.all()
+        )
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, db in (("right", 60), ("left", 50))
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path="/guide", javascript=True, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": 390, "height": 640},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+
+    def animations(self, meter):
+        return self.page.locator(meter).evaluate(self.ANIMATIONS)
+
+    def assert_fills(self, meter, expected):
+        found = self.page.locator(meter).evaluate(self.FILLS)
+        self.assertEqual(len(found), len(expected))
+        for fill, share in zip(found, expected, strict=True):
+            self.assertAlmostEqual(fill, share, delta=0.01)
+
+    def bring_into_view(self, meter):
+        self.page.locator(meter).evaluate(
+            "el => el.scrollIntoView({block: 'center', behavior: 'instant'})"
+        )
+
+    def wait_until(self, meter, state):
+        self.page.wait_for_function(
+            """([meter, state]) => {
+                const all = document.querySelector(meter).getAnimations({subtree: true});
+                return all.length && all.every(a => a.playState === state && a.startTime !== null);
+            }""",
+            arg=[meter, state],
+        )
+
+    def assert_below_the_tab_bar(self, meter):
+        """The meter is not wholly in view: its foot is under the tab bar or below the screen."""
+        tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+        box = self.page.locator(meter).bounding_box()
+        self.assertGreater(box["y"] + box["height"], tab_bar["y"])
+
+    def assert_ear_numbers(self):
+        ears = self.page.locator(self.EARS)
+        expect(ears).to_contain_text("右耳四頻平均 60 dB HL")
+        expect(ears).to_contain_text("左耳四頻平均 50 dB HL")
+
+    # #338 acceptance 8: below the screen both ear bars wait at 0; with their box wholly in
+    # view they grow together, from 0 to their numbers over 1.2 seconds, quickly at first, then
+    # slowly, never past the end. Only the bars move, not the line or its label, and the numbers
+    # beside them are the end ones throughout.
+    def test_ear_bars_fill_together_once_in_view(self):
+        self.open()
+        with self.saving_artifacts():
+            ears = self.page.locator(self.EARS)
+            self.assert_below_the_tab_bar(self.EARS)
+            waiting = self.animations(self.EARS)
+            self.assertEqual(
+                [(a["name"], a["state"], a["time"], a["target"]) for a in waiting],
+                [("meter-fill", "paused", 0, f"meter-bar meter-bar-{side}")
+                 for side in ("right", "left")],
+            )  # fmt: skip
+            self.assert_fills(self.EARS, (0, 0))
+            self.assert_ear_numbers()
+
+            self.bring_into_view(self.EARS)
+            self.wait_until(self.EARS, "running")
+            playing = self.animations(self.EARS)
+            self.assertEqual(len({a["start"] for a in playing}), 1)
+            self.assertEqual({a["duration"] for a in playing}, {1200})
+            self.assert_ear_numbers()
+
+            self.wait_until(self.EARS, "finished")
+            self.assert_fills(self.EARS, (60 / 120, 50 / 120))
+            self.assert_ear_numbers()
+            curve = ears.evaluate(self.CURVE)
+            self.assertEqual(curve[0], 0)
+            self.assertAlmostEqual(curve[-1], 1, delta=0.001)
+            self.assertEqual(curve, sorted(curve))
+            self.assertLessEqual(max(curve), 1.001)
+            # Quick at first: three quarters of the way by half time.
+            self.assertGreater(curve[6], 0.75)
+
+    # #338 acceptance 9: the ratio's bar, in a box of its own, still waits at 0 after the ears
+    # have filled, and fills only once it is in view. With a no-response point its hatched part
+    # is in place from the start and only the bar grows into it.
+    def test_ratio_bar_waits_for_its_own_box(self):
+        self.open()
+        with self.saving_artifacts():
+            ratio = self.page.locator(self.RATIO)
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 約 40.0%")
+            # The ears' box wholly in view just above the tab bar, the ratio's still below it.
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            ears = self.page.locator(self.EARS).bounding_box()
+            self.page.evaluate(
+                "y => window.scrollBy({top: y, behavior: 'instant'})",
+                ears["y"] + ears["height"] - tab_bar["y"] + 10,
+            )
+            self.wait_until(self.EARS, "finished")
+            self.assert_below_the_tab_bar(self.RATIO)
+            self.assertEqual(
+                [(a["state"], a["time"]) for a in self.animations(self.RATIO)], [("paused", 0)]
+            )
+            self.assert_fills(self.RATIO, (0,))
+
+            self.bring_into_view(self.RATIO)
+            self.wait_until(self.RATIO, "finished")
+            self.assert_fills(self.RATIO, (0.40,))
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 約 40.0%")
+
+            # 40 and 80 dB HL, the left unheard at 4000 Hz: at least about 35.0%.
+            points = AudiogramPoint.objects.filter(audiogram__user=self.user)
+            points.filter(ear="right").update(db=40)
+            points.filter(ear="left").update(db=80)
+            points.filter(ear="left", frequency=4000).update(db=DB_MAX["air"], no_response=True)
+            self.page.goto(f"{self.live_server_url}/guide")
+            expect(ratio).to_contain_text("雙耳障礙比率（估算） 至少約 35.0%")
+            self.assertEqual(
+                [(a["state"], a["time"], a["target"]) for a in self.animations(self.RATIO)],
+                [("paused", 0, "meter-bar meter-bar-ratio")],
+            )
+            self.assert_fills(self.RATIO, (0,))
+            hatched_from = ratio.evaluate(
+                """meter => {
+                    const track = meter.querySelector(".meter-track");
+                    const beyond = meter.querySelector(".meter-beyond").getBoundingClientRect();
+                    return (beyond.left - track.getBoundingClientRect().left - track.clientLeft)
+                        / track.clientWidth;
+                }"""
+            )
+            self.assertAlmostEqual(hatched_from, 0.35, delta=0.01)
+
+    # #338 acceptance 10 (this ticket's part): with reduced motion the meters are drawn to their
+    # numbers from the start, below the screen, with nothing playing.
+    def test_reduced_motion_draws_the_meters_full_at_once(self):
+        self.open(motion="reduce")
+        with self.saving_artifacts():
+            self.assert_below_the_tab_bar(self.RATIO)
+            for meter, fills in ((self.EARS, (60 / 120, 50 / 120)), (self.RATIO, (0.40,))):
+                self.assertEqual(self.animations(meter), [], meter)
+                self.assert_fills(meter, fills)
+
+    # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
+    # both meters fill on arrival, though below it.
+    def test_without_javascript_meters_fill_on_arrival(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.assert_below_the_tab_bar(self.RATIO)
+            for meter, count in ((self.EARS, 2), (self.RATIO, 1)):
+                self.assertEqual(
+                    [(a["name"], a["state"]) for a in self.animations(meter)],
+                    [("meter-fill", "running")] * count,
+                    meter,
+                )
+
+    # #338 acceptance 21: the result page's score position bar and SSQ12's position bar stay
+    # still, scrolled to or not.
+    def test_result_position_bars_stay_still(self):
+        call_command("seed_questionnaires", verbosity=0)
+        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
+        ssq12_record = Submission.objects.create(
+            user=self.user, questionnaire=ssq12, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=ssq12_record, question=question, score=5)
+            for question in ssq12.questions.all()
+        )
+        self.open(f"/submission/{self.submission.pk}")
+        with self.saving_artifacts():
+            for record, bar in ((self.submission, ".score-bar"), (ssq12_record, ".ssq-bar")):
+                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+                found = self.page.locator(bar)
+                expect(found).to_be_attached()
+                self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
+                found.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
+                self.page.wait_for_timeout(300)
+                self.assertEqual(
+                    found.evaluate("el => el.getAnimations({subtree: true}).length"), 0, bar
+                )
