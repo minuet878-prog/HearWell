@@ -59,7 +59,8 @@
         <button id="share-button" type="button" class="btn btn-primary btn-lg" data-url="{{ share_url }}" data-title="HearWell 聽力報告" hidden>再傳一次給家人</button>
         <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg" data-url="{{ share_url }}" hidden>複製連結</button>
     </p>
-    <p id="copy-status" class="font-bold" aria-live="polite"></p>
+    {# #332 (spec #326 B3): the button itself shows ✓ 已複製; this area only says it to screen readers. #}
+    <p id="copy-status" class="visually-hidden" aria-live="polite"></p>
     <p id="share-url">可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">{{ share_url }}</span></p>
     {% endwith %}
     <form method="post" action="{% url 'report_share_cancel' share.pk %}">

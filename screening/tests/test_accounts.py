@@ -375,6 +375,29 @@ class RegisterFormTests(TestCase):
                 self.assertIn(self.range_error, response.context["form"].errors["roc_birth_year"])
                 self.assertContains(response, self.range_error)
 
+    # #332 (spec #326 D6): the page's green tick uses the latest year this form accepts, so the
+    # rule is written once, here on the server.
+    def test_birth_year_field_carries_the_latest_accepted_year(self):
+        content = self.client.get(self.url).content.decode()
+        field = re.search(r'<input[^>]*name="roc_birth_year"[^>]*>', content).group()
+        self.assertIn(f'data-max="{self.max_roc}"', field)
+
+    # #332 (spec #326 D6): a status area for the green tick's words in 出生年 and 密碼確認;
+    # never in 密碼 itself. The tick is drawn in the field (e2e CopyPasswordRegisterFeedbackTest).
+    def test_birth_year_and_confirmation_have_a_tick_status_and_password_does_not(self):
+        content = self.client.get(self.url).content.decode()
+        self.assertIn("screening/register-checks.js", content)
+        fields = re.findall(
+            r'<div class="mb-4 auth-field">(.*?)\n            </div>', content, re.S
+        )
+        by_name = {re.search(r'name="(\w+)"', field).group(1): field for field in fields}
+        for name in ("roc_birth_year", "password2"):
+            with self.subTest(field=name):
+                self.assertRegex(by_name[name], r'<p class="visually-hidden" role="status"></p>')
+        for name in ("username", "email", "password1"):
+            with self.subTest(field=name):
+                self.assertNotIn('role="status"', by_name[name])
+
     def test_password_mismatch_keeps_input(self):
         response = self._post(password2="Different#123", roc_birth_year="44")
         self.assertFalse(User.objects.exists())

@@ -30,6 +30,11 @@ PASSWORD_RULES = ("至少 8 個字", "不要全部是數字", "不要跟您的�
 USERNAME_HELP = "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。"
 
 
+def latest_roc_birth_year():
+    """The latest 民國 birth year registering accepts: someone who turns 18 this year."""
+    return date.today().year - 18 - ROC_OFFSET
+
+
 class RegisterForm(UserCreationForm):
     email = forms.EmailField(label="電子郵件")
     roc_birth_year = forms.CharField(
@@ -55,12 +60,14 @@ class RegisterForm(UserCreationForm):
             format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
         )
         self.fields["password2"].help_text = "請再輸入一次同樣的密碼。"
+        # #332 (spec #326 D6): the page's green tick checks against the same latest year.
+        self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]
         if not value:
             return None
-        max_roc = date.today().year - 18 - ROC_OFFSET
+        max_roc = latest_roc_birth_year()
         # isdecimal() accepts exactly what int() accepts; isdigit() also lets through "²".
         if not value.isdecimal() or not 1 <= int(value) <= max_roc:
             raise forms.ValidationError(f"請輸入民國 1 到 {max_roc} 年之間的數字")
