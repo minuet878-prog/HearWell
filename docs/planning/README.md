@@ -10,6 +10,6 @@
 | 選配路線與首頁建議下一步 | [拷問決定](hearing-aid-guide/route-grill-decisions.md) | [#257](https://github.com/minuet878-prog/HearWell/issues/257) |
 | 導覽 A 案（紀錄、了解分頁） | [拷問決定](navigation/grill-decisions.md) | [#268](https://github.com/minuet878-prog/HearWell/issues/268) |
 | 選配路線推進（助聽器與補助資料） | [拷問決定](hearing-aid-guide/route-progress-grill-decisions.md)、[九站拷問](hearing-aid-guide/route-steps-grill-decisions.md) | [#284](https://github.com/minuet878-prog/HearWell/issues/284)，九站改版 [#291](https://github.com/minuet878-prog/HearWell/issues/291) |
-| 捲動輔助（回到頂端、捲到才播、跳轉亮框、還有內容提示） | [拷問決定](scroll-helpers/grill-decisions.md) | 待寫 |
+| 捲動輔助（回到頂端、捲到才播、跳轉亮框、還有內容提示） | [拷問決定](scroll-helpers/grill-decisions.md) | [#338](https://github.com/minuet878-prog/HearWell/issues/338) |
 
 此處保存需求討論與來源研究，正式工作票及驗收進度在 GitHub Issues。歸檔不代表新增功能已上線。
