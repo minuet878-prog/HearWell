@@ -812,6 +812,64 @@ class AnswerIconsHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
 
 
+class SentMomentTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#330 (spec #326 B1): sending the answers shows a green ✓ 已送出, says 已送出, and only
+    then opens the result page."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.client.force_login(consented_user(username="sent_moment_e2e"))
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_answering_shows_sent_then_opens_the_result(self):
+        with self.saving_artifacts():
+            answer_page = f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}"
+            self.page.goto(answer_page)
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("有時", number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            sent = self.main().get_by_role("button", name="已送出")
+            expect(sent).to_be_visible()
+            # The success green (--color-normal, ADR 0007), white words.
+            expect(sent).to_have_css("background-color", "rgb(20, 87, 60)")
+            expect(sent).to_have_css("color", "rgb(255, 255, 255)")
+            expect(self.main().locator(".answer-app").get_by_role("status")).to_have_text("已送出")
+            self.assertEqual(self.page.url, answer_page)
+            expect(self.page).to_have_url(re.compile(r"/submission/\d+$"))
+            submission = Submission.objects.get(user__username="sent_moment_e2e")
+            self.assertEqual(self.page.url, f"{self.live_server_url}/submission/{submission.pk}")
+
+
 class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#332 (spec #326 B3, D5, D6): copy, show-password and register field feedback."""
 
