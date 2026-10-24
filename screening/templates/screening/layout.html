@@ -29,7 +29,13 @@
         }
     </script>
     {# Entrance animations wait until they are in view (#341, ADR 0028): marked before the page is drawn, so they hold their first frame until scroll-helpers.js starts them. Without JavaScript they play at once. #}
-    <script>document.documentElement.classList.add("play-in-view");</script>
+    {# If in-view.js has not taken over 3 seconds after the page starts (scroll-helpers.js failed to load or stopped), they play at once too, rather than hold for ever: long enough for a slow phone to load that small file, short enough that a still first frame does not look broken. #}
+    <script>
+        document.documentElement.classList.add("play-in-view");
+        window.playInViewFallback = setTimeout(function () {
+            document.documentElement.classList.remove("play-in-view");
+        }, 3000);
+    </script>
     {# Smooth scrolling waits for the page and its fonts: a link into a page jumps straight to its section. #}
     <script>
         addEventListener("load", () => {

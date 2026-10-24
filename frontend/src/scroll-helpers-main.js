@@ -4,7 +4,12 @@ import { setUpPlayInView } from "./in-view.js";
 import { setUpJumpHighlight } from "./jump-highlight.js";
 import { setUpScrollHint } from "./scroll-hint.js";
 
-setUpBackToTop();
-setUpPlayInView();
-setUpJumpHighlight();
-setUpScrollHint();
+// Each on its own: one that stops with an error leaves the others working. Play-in-view first,
+// as the page's entrance animations hold their first frame until it takes over.
+for (const setUp of [setUpPlayInView, setUpBackToTop, setUpJumpHighlight, setUpScrollHint]) {
+  try {
+    setUp();
+  } catch (error) {
+    console.error(error);
+  }
+}

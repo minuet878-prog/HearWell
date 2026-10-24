@@ -37,4 +37,6 @@ export function setUpPlayInView(win = window) {
   win.addEventListener("scroll", check, { passive: true });
   win.addEventListener("resize", check);
   check();
+  // Taken over: layout.html's fallback, which would play them all at once, is called off.
+  win.clearTimeout(win.playInViewFallback);
 }

@@ -7081,8 +7081,16 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         }
 
     def open(
-        self, path, width=390, height=640, javascript=True, motion="no-preference", double=False
+        self,
+        path,
+        width=390,
+        height=640,
+        javascript=True,
+        motion="no-preference",
+        double=False,
+        prepare=None,
     ):
+        """prepare, if given, is called with the browser context before the page opens."""
         self.context = self.browser.new_context(
             viewport={"width": width, "height": height},
             java_script_enabled=javascript,
@@ -7091,6 +7099,8 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         self.context.add_cookies([self.cookie])
         if double:
             self.context.add_init_script(self.DOUBLE_TEXT)
+        if prepare:
+            prepare(self.context)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
@@ -7202,6 +7212,47 @@ class PlayInViewTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             )
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.animations(self.WAVE), [])
+
+    # #338 review: when scroll-helpers.js never runs (here it fails to load), nothing waits for
+    # ever: about 3 seconds after the page starts, the animations play as without JavaScript,
+    # the ring below the screen too.
+    def test_animations_play_anyway_when_the_scroll_helpers_fail_to_load(self):
+        self.open(
+            "/guide",
+            prepare=lambda context: context.route("**/scroll-helpers.js", lambda r: r.abort()),
+        )
+        with self.saving_artifacts():
+            here = self.main().locator(self.STOP)
+            expect(here).not_to_be_in_viewport()
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            self.wait_until(self.STOP, "finished")
+            expect(here).not_to_be_in_viewport()
+            # Started about 3 seconds after the page did (the document timeline's 0).
+            start = here.evaluate("el => el.getAnimations({subtree: true})[0].startTime")
+            self.assertGreaterEqual(start, 3000)
+            self.assertLess(start, 4500)
+
+    # #338 review: each helper sets up on its own. Without ResizeObserver (iPhones before iOS
+    # 13.4) the back-to-top button, set up before the others, cannot finish; the entrance
+    # animations still wait to be in view, and a jump still lights its box.
+    def test_one_helper_failing_leaves_the_others_working(self):
+        self.open(
+            "/guide",
+            prepare=lambda context: context.add_init_script("delete window.ResizeObserver"),
+        )
+        with self.saving_artifacts():
+            expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
+            # Past the 3 seconds after which the animations would stop waiting.
+            self.page.wait_for_timeout(3500)
+            self.assertEqual(self.states(self.STOP), {"paused"})
+            self.bring_into_view(self.STOP)
+            self.wait_until(self.STOP, "finished")
+
+            self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
+            self.main().get_by_role("link", name="看我的路線").click()
+            route = self.main().locator('section[aria-labelledby="contents-title"]')
+            expect(route).to_have_css("outline-color", "rgb(31, 78, 140)")
+            expect(route).to_have_css("outline-style", "solid")
 
 
 class GuideMeterFillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
