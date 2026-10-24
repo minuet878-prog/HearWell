@@ -44,11 +44,16 @@
   --container-form: 30rem;
   --root-font-size: 112.5%;
   --spacing-touch: 2.75rem;
+  /* The phone's fixed bottom tab bar: about this tall, until back-to-top.js (#340) keeps its
+     measured height here. */
+  --tab-bar-height: 5rem;
   --radius-button: 0.5rem;
   --radius-badge: 1rem;
   --radius-tab: 1.5rem;
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
   --color-focus-ring: rgba(31, 78, 140, 0.5);
+  /* The pale blue glow around the box a jump lands on (#343). */
+  --shadow-jump-highlight: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25);
   /* Pre-migration framework defaults the site never overrode, shared by form fields and alerts (#125). */
   --radius-field: 0.375rem;
   --color-field-focus: #86b7fe;
@@ -881,7 +886,7 @@
 
   /* Back to top (#340, spec #338): made by back-to-top.js, so absent without JavaScript. Shown
      past two screens down; folded away it is out of the Tab order and unread (visibility). On
-     phones it sits above the tab bar, whose height the script keeps in --tab-bar-height. */
+     phones it sits above the tab bar (--tab-bar-height). */
   .back-to-top {
     position: fixed;
     right: 1rem;
@@ -921,7 +926,7 @@
   @media (max-width: 47.99em) {
     /* Keep the end of the page clear of the fixed tab bar; the footer's grey runs behind it. */
     .site-footer {
-      padding-bottom: calc(1.5rem + 5rem);
+      padding-bottom: calc(1.5rem + var(--tab-bar-height));
     }
   }
 
@@ -933,11 +938,11 @@
 
   @media (max-width: 47.99em) {
     .back-to-top {
-      bottom: calc(var(--tab-bar-height, 5rem) + 0.75rem);
+      bottom: calc(var(--tab-bar-height) + 0.75rem);
     }
 
     .back-to-top ~ .site-footer {
-      padding-bottom: calc(1.5rem + var(--tab-bar-height, 5rem) + 0.75rem + var(--spacing-touch));
+      padding-bottom: calc(1.5rem + var(--tab-bar-height) + 0.75rem + var(--spacing-touch));
     }
   }
 
@@ -2398,7 +2403,7 @@
   .route-stop.jump-highlight .route-box {
     outline: 0.1875rem solid var(--color-primary);
     outline-offset: 0.125rem;
-    box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25);
+    box-shadow: var(--shadow-jump-highlight);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -3702,10 +3707,10 @@
     overflow-x: auto;
     margin-bottom: 1rem;
     background:
-      linear-gradient(to right, #fff 50%, rgb(255 255 255 / 0)) left / 2rem 100% no-repeat local,
-      linear-gradient(to left, #fff 50%, rgb(255 255 255 / 0)) right / 2rem 100% no-repeat local,
-      linear-gradient(to right, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0)) left / 1rem 100% no-repeat scroll,
-      linear-gradient(to left, rgb(0 0 0 / 0.2), rgb(0 0 0 / 0)) right / 1rem 100% no-repeat scroll,
+      linear-gradient(to right, #fff 50%, rgba(255, 255, 255, 0)) left / 2rem 100% no-repeat local,
+      linear-gradient(to left, #fff 50%, rgba(255, 255, 255, 0)) right / 2rem 100% no-repeat local,
+      linear-gradient(to right, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) left / 1rem 100% no-repeat scroll,
+      linear-gradient(to left, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0)) right / 1rem 100% no-repeat scroll,
       #fff;
   }
 
@@ -4387,7 +4392,7 @@
 
 /* A jump's box (#343): held for the first half, then faded out. */
 @keyframes jump-highlight {
-  50% { outline-color: var(--color-primary); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0.25); }
+  50% { outline-color: var(--color-primary); box-shadow: var(--shadow-jump-highlight); }
   to { outline-color: rgba(31, 78, 140, 0); box-shadow: 0 0 0.5rem 0.5rem rgba(31, 78, 140, 0); }
 }
 

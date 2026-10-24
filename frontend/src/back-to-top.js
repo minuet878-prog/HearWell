@@ -1,5 +1,7 @@
 // Spec #338 (ticket #340): a "↑ 回到頂端" button on long pages. Made here, so there is none
 // without JavaScript; the CSS fades it in and out, and keeps it off paper.
+import { tabBarInset } from "./in-view.js";
+
 export const shouldShowBackToTop = (scrollY, viewportHeight) => scrollY > 2 * viewportHeight;
 
 export function setUpBackToTop(win = window) {
@@ -20,11 +22,11 @@ export function setUpBackToTop(win = window) {
   win.addEventListener("resize", update);
   update();
 
-  // On phones it sits above the bottom tab bar, whose height grows with the text size.
-  const nav = doc.querySelector(".site-nav");
+  // On phones it sits above the bottom tab bar, whose height grows with the text size; measured
+  // as in-view.js measures it (0 on wide screens, where site.css does not use it).
   new win.ResizeObserver(() => {
-    doc.documentElement.style.setProperty("--tab-bar-height", `${nav.offsetHeight}px`);
-  }).observe(nav);
+    doc.documentElement.style.setProperty("--tab-bar-height", `${tabBarInset(win)}px`);
+  }).observe(doc.querySelector(".site-nav"));
 
   // The scroll follows the site's smooth scrolling (instant with reduced motion); the focus moves
   // to the page's title without a jump of its own, so the next Tab goes on from there.
