@@ -6817,6 +6817,14 @@ class BackToTopTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                 self.open(self.LONG, width=width, height=640)
                 if double:
                     self.assert_fits_a_phone_at_double_text_size(self.LONG, width)
+                # The footer's room for the button follows the tab bar's height, which the page
+                # takes in a frame after the text grows: wait for it, or the page grows after the
+                # scroll and its foot is no longer in view.
+                self.page.wait_for_function(
+                    """() => document.documentElement.style.getPropertyValue("--tab-bar-height")
+                        === `${document.querySelector(".site-nav").offsetHeight}px`""",
+                    timeout=5000,
+                )
                 self.scroll_to(self.page.evaluate("document.documentElement.scrollHeight"))
                 button = self.button()
                 expect(button).to_be_visible()
