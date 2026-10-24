@@ -55,16 +55,27 @@ export function clearAllDrafts() {
   draftKeys().forEach((key) => attempt(() => localStorage.removeItem(key)));
 }
 
+// This account's and at most 7 days old.
+function isCurrent(draft, userId, now) {
+  return draft?.userId === userId && now - draft?.savedAt <= MAX_AGE_MS;
+}
+
 // Also deletes drafts that must not stay: another account's, expired or broken ones.
 export function loadDraft({ questionnaireId, userId, questionIds, allowNotApplicable = false, now = Date.now() }) {
   for (const key of draftKeys()) {
     const draft = parse(attempt(() => localStorage.getItem(key)));
-    const expired = !(now - draft?.savedAt <= MAX_AGE_MS);
-    if (draft?.userId !== userId || expired) attempt(() => localStorage.removeItem(key));
+    if (!isCurrent(draft, userId, now)) attempt(() => localStorage.removeItem(key));
   }
   const draft = parse(attempt(() => localStorage.getItem(DRAFT_PREFIX + questionnaireId)));
   if (draft === null) return null;
   if (isUsable(draft, questionIds, allowNotApplicable)) return draft;
   clearDraft(questionnaireId);
   return null;
+}
+
+// What loadDraft would return, deleting nothing: the pages that only mention a draft (#337)
+// leave the clearing to the answer page.
+export function peekDraft({ questionnaireId, userId, questionIds, allowNotApplicable = false, now = Date.now() }) {
+  const draft = parse(attempt(() => localStorage.getItem(DRAFT_PREFIX + questionnaireId)));
+  return isCurrent(draft, userId, now) && isUsable(draft, questionIds, allowNotApplicable) ? draft : null;
 }
