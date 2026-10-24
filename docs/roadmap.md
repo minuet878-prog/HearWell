@@ -46,7 +46,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   首頁歡迎回來改成藍色招呼區＋儀表（分級色框裡的半圓儀表依門檻分段、指針指在分數，進來時播一次；本人在比較頁選
   D 案，ADR 0026，驗證見 `docs/verification/welcome-back-gauge.md`）、
   選配指引每一段放進段落框（母規格 #318，#319–#321，ADR 0025：淺米色框＋頂端標題列，選配路線整條一個框、
-  各站米色底；本人在比較頁選 M、驗收時選 G，驗證見 `docs/verification/issue-318.md`）。
+  各站米色底；本人在比較頁選 M、驗收時選 G，驗證見 `docs/verification/issue-318.md`）、
+  讀取動畫（換頁時頂端跑條＋「載入中…」、載入文字下加跑條、送出按鈕轉圈＋「送出中…」不能連按；本人在比較頁選
+  A3、B1、C1，等待中的動畫可循環約 10 秒是 ADR 0006 的例外，ADR 0027，驗證見 `docs/verification/loading-indicators.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
@@ -54,6 +56,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
+  「更多互動式頁面」（2026-10-24 本人提出，跟讀取動畫分開）：還沒定義，先跑 `/mattpocock-skills:grill-with-docs`。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
