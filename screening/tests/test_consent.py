@@ -162,9 +162,13 @@ class PrivacyHighlightsTests(TestCase):
             test_layout._text(collected),
         )
 
+    def test_spec_354_wording_is_a_minor_fix_that_moves_only_the_date(self):
+        # #354 (owner, 2026-10-25): a minor fix, so the date moves and nobody agrees again.
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
+        self.assertEqual(models.CONSENT_VERSION, 2)
+
     def test_aid_and_subsidy_raises_the_version_so_everyone_agrees_again(self):
         # #286 (spec #284 acceptance 23): what is collected changed, so version 2.
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 23))
         self.assertEqual(models.CONSENT_VERSION, 2)
         user = User.objects.create_user(username="agreed_to_version_1")
         Consent.objects.create(user=user, version=1)

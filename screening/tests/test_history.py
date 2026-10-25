@@ -107,9 +107,10 @@ class HistoryTabsTests(TestCase):
     CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"
     UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
-    # Ticket #161: tabs read 「主題（代碼）」; #364: HHIE-S and HHIA-S add their ages.
-    HHIE_S_TAB = "聽力對生活的影響（HHIE-S（65 歲以上））"
-    HHIA_S_TAB = "聽力對生活的影響（HHIA-S（65 歲以下））"
+    # Ticket #161: tabs read 「主題（代碼）」; #364: HHIE-S and HHIA-S add their ages, read
+    # 「主題，代碼（年齡）」 so a screen reader hears one pair of brackets (owner, 2026-10-25).
+    HHIE_S_TAB = "聽力對生活的影響，HHIE-S（65 歲以上）"
+    HHIA_S_TAB = "聽力對生活的影響，HHIA-S（65 歲以下）"
     IOI_HA_TAB = "助聽器使用成效（IOI-HA）"
 
     @classmethod

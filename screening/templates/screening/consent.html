@@ -20,9 +20,10 @@
     <form method="post" action="{% url 'consent' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="consent-buttons">
-            <button class="btn btn-lg btn-primary" type="submit" name="agree">我同意，開始篩檢</button>
-            <button class="btn btn-lg btn-outline-primary" type="submit" name="decline">不同意</button>
+        {# On a phone 我同意，開始篩檢 above 不同意, each the whole row; side by side when wider. #}
+        <div class="flex flex-col gap-2 md:flex-row">
+            <button class="btn btn-lg btn-primary md:flex-1" type="submit" name="agree">我同意，開始篩檢</button>
+            <button class="btn btn-lg btn-outline-primary md:flex-1" type="submit" name="decline">不同意</button>
         </div>
     </form>
     <p class="tip-box mt-4">按「不同意」會登出。您的帳號會保留，之後想用時再登入同意即可。</p>

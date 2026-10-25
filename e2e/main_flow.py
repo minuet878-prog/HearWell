@@ -7018,7 +7018,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             ".auth-card",  # the login and register form card (#300)
             # The report's blue-framed summary, and the family's 「先看重點」 in the same box since
             # #366: ADR 0022 leaves the report summary's blue frame as it is.
-            ".report-summary, #family-highlights",
+            ".report-summary, .family-highlights",
             # The site's frame, not a block of content: the header and its menu bar are white
             # since the brand refresh (ADR 0012).
             ".site-header, .site-nav",
@@ -7946,8 +7946,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(row=row.inner_text()):
                     self.assertEqual(self.style(row, "borderTopWidth"), "1px")
                     self.assertEqual(self.style(row, "borderTopColor"), self.LINE)
-            # #361: a blank row's 要修改請寫信到 address is a plain link inside the flat row.
-            self.assertEqual(details.get_by_role("link", name="hearwellweb@gmail.com").count(), 2)
+            # #361: with blank rows, 要修改請寫信到 is said once under them, the address a plain
+            # link.
+            account = self.main().get_by_role("region", name="我的帳號")
+            address = account.get_by_role("link", name="hearwellweb@gmail.com")
+            self.assertEqual(address.count(), 1)
+            self.assert_flat(address)
             links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
@@ -9405,19 +9409,38 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                 self.assert_never_lights(self.samples())
 
 
-class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#359 (spec #354, 全站共通): the footer at the window's foot on short pages, the gap between
-    the danger and cancel buttons, and the step-by-step button rows on phones."""
+class LayoutOnAPhone(OnAPhone):
+    """Spec #354's layout tests: one browser for the class, a signed-in user's session cookie,
+    pages opened at a size, and what is measured on them."""
 
-    fixtures = ("questions_fixture.json",)
-    DESKTOP = (1440, 900)
     PHONE = (390, 844)
-    SHORT_PAGES = ("/shared/no-such-link", "/add_to_home", "/audiograms/new")
-    # The footer's top edge and the box above it, both in pixels from the page's top.
-    FOOTER_GAP = """() => {
-        const footer = document.querySelector(".site-footer").getBoundingClientRect();
-        const main = document.getElementById("main-content").getBoundingClientRect();
-        return footer.top - main.bottom;
+    DESKTOP = (1440, 900)
+    SHARE_SHEET = "navigator.share = () => Promise.resolve();"
+    NO_SHARE_SHEET = "delete Navigator.prototype.share;"
+    # Each line an element's words take, as [its words without spaces, its width]: a range per
+    # character, a new line wherever one starts lower than the last.
+    LINES = """el => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const lines = [];
+        let top = null;
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            for (let i = 0; i < node.length; i++) {
+                if (!node.data[i].trim()) continue;
+                const range = document.createRange();
+                range.setStart(node, i);
+                range.setEnd(node, i + 1);
+                const box = range.getBoundingClientRect();
+                if (top === null || box.top > top + box.height / 2) {
+                    lines.push({ text: "", left: box.left, right: box.right });
+                    top = box.top;
+                }
+                const line = lines[lines.length - 1];
+                line.text += node.data[i];
+                line.left = Math.min(line.left, box.left);
+                line.right = Math.max(line.right, box.right);
+            }
+        }
+        return lines.map((line) => [line.text, line.right - line.left]);
     }"""
 
     @classmethod
@@ -9432,8 +9455,9 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
         cls.playwright.stop()
         super().tearDownClass()
 
-    def setUp(self):
-        self.user = consented_user(username="footer_pin_e2e", password="Fake-pass-2468")
+    def sign_in(self, user):
+        """Signs user in; the pages opened carry their session cookie."""
+        self.user = user
         self.client.force_login(self.user)
         self.cookie = {
             "name": settings.SESSION_COOKIE_NAME,
@@ -9441,18 +9465,54 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
             "url": self.live_server_url,
         }
 
-    def open(self, path, size):
+    def open(self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True):
+        """Opens path in a fresh browser window of size; script runs before the page's own."""
         width, height = size
-        self.context = self.browser.new_context(viewport={"width": width, "height": height})
-        self.context.add_cookies([self.cookie])
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=java_script_enabled
+        )
+        # The family page's 複製網址 reads back what it copied.
+        self.context.grant_permissions(
+            ["clipboard-read", "clipboard-write"], origin=self.live_server_url
+        )
+        if signed_in:
+            self.context.add_cookies([self.cookie])
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
+        if script:
+            self.page.add_init_script(script)
         self.page.goto(f"{self.live_server_url}{path}")
         self.page.wait_for_load_state("load")
 
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
     def rem(self):
         return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+
+    def font_size(self, locator):
+        return float(self.style(locator, "fontSize")[:-2])
+
+    def lines(self, locator):
+        return locator.evaluate(self.LINES)
+
+
+class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#359 (spec #354, 全站共通): the footer at the window's foot on short pages, the gap between
+    the danger and cancel buttons, and the step-by-step button rows on phones."""
+
+    fixtures = ("questions_fixture.json",)
+    SHORT_PAGES = ("/shared/no-such-link", "/add_to_home", "/audiograms/new")
+    # The footer's top edge and the box above it, both in pixels from the page's top.
+    FOOTER_GAP = """() => {
+        const footer = document.querySelector(".site-footer").getBoundingClientRect();
+        const main = document.getElementById("main-content").getBoundingClientRect();
+        return footer.top - main.bottom;
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="footer_pin_e2e", password="Fake-pass-2468"))
 
     # Acceptance 1: a short page's footer ends at the window's foot, the arch keeps at least its
     # 5.5rem above it, and on a phone the tab bar covers none of the footer's words.
@@ -9568,7 +9628,7 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
             self.assert_words_wide((("button", "確定刪除"), ("link", "取消")))
 
 
-class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#357 (spec #354): text a reader needs is at least 1rem, and the site-wide small styles."""
 
     fixtures = ("questions_fixture.json",)
@@ -9580,7 +9640,6 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # do not run twice.
     open = WhiteCardRuleTest.open
     visit = WhiteCardRuleTest.visit
-    style = WhiteCardRuleTest.style
     answered = WhiteCardRuleTest.answered
     result = WhiteCardRuleTest.result
     ioi_ha = WhiteCardRuleTest.ioi_ha
@@ -9593,27 +9652,9 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     trend_records = WhiteCardRuleTest.trend_records
     answering = WhiteCardRuleTest.answering
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
-        self.user = consented_user(username="type_sizes_e2e")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
+        self.sign_in(consented_user(username="type_sizes_e2e"))
 
     def two_audiograms(self):
         """The audiogram comparison, which needs two audiograms."""
@@ -9625,9 +9666,6 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         """My guide with the assessment stop answered, so its kept answer shows on the route."""
         self.answered_chapter()
         return "/guide"
-
-    def font_size(self, locator):
-        return float(self.style(locator, "fontSize")[:-2])
 
     # Acceptance 2: the score bar's level and both ends, IOI-HA's scale ends and the guide's
     # meter label are 1rem; on a narrow phone the bar's level stays whole inside the bar.
@@ -9659,6 +9697,15 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertLessEqual(level["x"] + level["width"], bar["x"] + bar["width"])
                     self.assertGreaterEqual(level["y"], row["y"])
                     self.assertLessEqual(level["y"] + level["height"], row["y"] + row["height"])
+                    # Both ends, 0 and 40, whole on the screen and under the bar's own ends.
+                    ends = self.main().locator(".score-bar-ends > span")
+                    expect(ends).to_have_text(["0", "40"])
+                    first, last = (end.bounding_box() for end in ends.all())
+                    self.assertGreaterEqual(first["x"], bar["x"] - 0.5)
+                    self.assertLessEqual(last["x"] + last["width"], bar["x"] + bar["width"] + 0.5)
+                    self.assertLessEqual(bar["x"] + bar["width"], 320)
+                    for end in ends.all():
+                        self.assertEqual(end.evaluate("el => el.scrollWidth - el.clientWidth"), 0)
 
     # Acceptance 3: the footer, the report's and the family's copy's two reminders (the
     # audiogram's under it), form help and the route's gap and kept answer are at least 1rem;
@@ -9749,6 +9796,24 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.assertEqual(self.style(box, "borderBottomLeftRadius"), "0px")
                 self.assertEqual(self.style(box, "borderTopRightRadius"), "27px")
 
+    # Owner, 2026-10-25 (#354 self-review): the questionnaire guide and the continue notice, framed
+    # the same way, keep their thick left line straight too. The notice is drawn from a draft in
+    # the browser, so one is put on the page to read its style.
+    def test_guide_and_continue_notice_have_a_straight_left_line(self):
+        self.visit(True, "/questionnaire_list?wizard=1&from=consent", width=390)
+        self.main().evaluate(
+            "main => { const p = document.createElement('p'); p.className = 'continue-notice';"
+            " p.textContent = '接著答'; main.prepend(p); }"
+        )
+        for selector in (".questionnaire-guide", ".continue-notice"):
+            with self.subTest(box=selector):
+                box = self.main().locator(selector)
+                expect(box).to_be_visible()
+                self.assertEqual(self.style(box, "borderLeftWidth"), "6px")
+                self.assertEqual(self.style(box, "borderTopLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderBottomLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderTopRightRadius"), "27px")
+
     # Acceptance 7: on a phone the signed-in line has an opaque background over the header wave.
     def test_signed_in_line_hides_the_header_wave_on_a_phone(self):
         self.visit(True, "/", width=390)
@@ -9762,11 +9827,10 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)
 
 
-class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class AudiogramPagesT365Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#365 (spec #354): the delete page's title and preview on a phone, and the compare page's
     line samples in the chosen ear's colours."""
 
-    PHONE = (390, 844)
     # The chart's colours (AudiogramChart.jsx): each ear's own, lighter for the older one.
     LINE_COLOURS = (
         (("right", False), "rgb(192, 57, 43)"),
@@ -9775,36 +9839,8 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         (("left", True), "rgb(157, 181, 214)"),
     )
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
-        self.user = consented_user(username="audiogram_pages_e2e")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
-    def open(self, path, size):
-        width, height = size
-        self.context = self.browser.new_context(viewport={"width": width, "height": height})
-        self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-        self.page.goto(f"{self.live_server_url}{path}")
-        self.page.wait_for_load_state("load")
+        self.sign_in(consented_user(username="audiogram_pages_e2e"))
 
     def audiogram(self, tested_on, db):
         audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
@@ -9817,11 +9853,7 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
 
     def assert_word_on_one_line(self):
         word = self.main().get_by_role("heading", level=1).locator("span", has_text="聽力圖")
-        lines = word.evaluate(
-            "span => { const range = document.createRange(); range.selectNodeContents(span);"
-            " return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size; }"
-        )
-        self.assertEqual(lines, 1)
+        self.assertEqual(len(self.lines(word)), 1)
 
     # Acceptance 5: on a 390 phone the title keeps 聽力圖 whole and the audiogram shows under it;
     # at 200% text on 320 it still does, without widening the page.
@@ -9842,6 +9874,17 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             self.open(f"/audiograms/{audiogram.pk}/delete", (320, 640))
             self.assert_fits_a_phone_at_double_text_size("delete audiogram")
             self.assert_word_on_one_line()
+            # Wider than a phone the title's date has room even at 200%: it needs no breaking
+            # (site.css breaks a page title anywhere on a phone only), here or when editing. The
+            # title alone: at this width and size the tab bar's 了解 already runs past the edge.
+            for path in (f"/audiograms/{audiogram.pk}/delete", f"/audiograms/{audiogram.pk}/edit"):
+                with self.subTest(path=path, width=768):
+                    self.open(path, (768, 900))
+                    self.double_text()
+                    title = self.main().get_by_role("heading", level=1)
+                    self.assertLessEqual(
+                        title.evaluate("h1 => h1.scrollWidth - h1.clientWidth"), 0, path
+                    )
 
     # Acceptance 4: 舊 and 新 each have their line sample in the chosen ear's colour, and the
     # legend stays under the chart.
@@ -9870,7 +9913,7 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     )
 
 
-class MyRecordsT364Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class MyRecordsT364Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#364 (spec #354): 我的紀錄's questionnaire tabs, as laid out in the browser."""
 
     fixtures = ("questions_fixture.json",)
@@ -9880,34 +9923,15 @@ class MyRecordsT364Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # do not run twice.
     open = WhiteCardRuleTest.open
     visit = WhiteCardRuleTest.visit
-    style = WhiteCardRuleTest.style
     answered = WhiteCardRuleTest.answered
     ioi_ha = WhiteCardRuleTest.ioi_ha
     ioi_ha_records = WhiteCardRuleTest.ioi_ha_records
     assert_fits_uncut = WhiteCardRuleTest.assert_fits_uncut
     CUT_OFF = WhiteCardRuleTest.CUT_OFF
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
-        self.user = consented_user(username="my_records_e2e")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
+        self.sign_in(consented_user(username="my_records_e2e"))
 
     def hhia_s_records(self):
         self.answered("hhia-s", 2)
@@ -9956,7 +9980,7 @@ class MyRecordsT364Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(columns["width"], content["width"])
 
 
-class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#360 (spec #354): the first-visit home's title and steps, and the consent page's banner and
     buttons."""
 
@@ -9967,40 +9991,10 @@ class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # do not run twice.
     open = WhiteCardRuleTest.open
     visit = WhiteCardRuleTest.visit
-    style = WhiteCardRuleTest.style
     undecided = WhiteCardRuleTest.undecided
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
-        self.user = consented_user(username="home_consent_e2e")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
-    def lines(self, locator):
-        """How many lines of text an element's words take."""
-        return locator.evaluate(
-            """el => {
-                const style = getComputedStyle(el);
-                const inner = el.clientHeight - parseFloat(style.paddingTop)
-                    - parseFloat(style.paddingBottom);
-                return Math.round(inner / parseFloat(style.lineHeight));
-            }"""
-        )
+        self.sign_in(consented_user(username="home_consent_e2e"))
 
     # Acceptance 1: the title is bold in the heading colour, about 31.5px on a phone and 40.5px
     # on a wide screen; step 4 keeps to one line on a desktop.
@@ -10015,7 +10009,7 @@ class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 if width == 1024:
                     step = self.main().locator(".step-cards li > span").filter(has_text="半年後")
                     expect(step).to_have_text("半年後再做，看分數變化。")
-                    self.assertEqual(self.lines(step), 1)
+                    self.assertEqual(len(self.lines(step)), 1)
 
     # Acceptance 5 and 6: on a 390 phone 我同意，開始篩檢 is on top, on one line, and each button
     # fills the row; on a desktop they stay side by side. The title and step sit in the blue
@@ -10046,56 +10040,24 @@ class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     for box in (yes, no):
                         self.assertAlmostEqual(box["x"], row["x"], delta=1)
                         self.assertAlmostEqual(box["width"], row["width"], delta=1)
-                    self.assertEqual(self.lines(agree), 1)
+                    self.assertEqual(len(self.lines(agree)), 1)
                 else:
                     self.assertAlmostEqual(yes["y"], no["y"], delta=1)
                     self.assertLess(yes["x"] + yes["width"], no["x"])
 
 
-class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class ChooserAndAnsweringT362Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#362 (spec #354, 選問卷與作答): the wizard's choices one per row, the sources under the
     answers so a phone's first screen holds the question, and IOI-HA's room under its intro."""
 
     fixtures = ("questions_fixture.json",)
-    PHONE = (390, 844)
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
 
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
-        self.user = consented_user(username="chooser_e2e", password="Fake-pass-2468")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
-    def open(self, path):
-        width, height = self.PHONE
-        self.context = self.browser.new_context(viewport={"width": width, "height": height})
-        self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-        self.page.goto(f"{self.live_server_url}{path}")
-        self.page.wait_for_load_state("load")
+        self.sign_in(consented_user(username="chooser_e2e", password="Fake-pass-2468"))
 
     def answer_page(self, code):
         self.open(f"/questionnaire/{Questionnaire.objects.get(code=code).pk}")
-
-    def rem(self):
-        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
 
     # Acceptance 1: each of the wizard's answers is a row of its own, as wide as the question, so
     # a tap anywhere on the row chooses it.
@@ -10133,12 +10095,11 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
                     app = self.main().locator(".answer-app")
                     group = app.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
                     expect(group).to_be_visible()
-                    # The question and 沒戴 clear the tab bar; on HHIA-S the tab bar still covers
-                    # the lower part of 有戴, which is inside the window (left to the owner).
+                    # The question and both answers clear the tab bar.
                     tab_bar = self.page.locator(".site-nav").bounding_box()
-                    for name, bottom in (("沒戴", tab_bar["y"]), ("有戴", self.PHONE[1])):
+                    for name in ("沒戴", "有戴"):
                         choice = group.locator("label").filter(has_text=name).bounding_box()
-                        self.assertLessEqual(choice["y"] + choice["height"], bottom, name)
+                        self.assertLessEqual(choice["y"] + choice["height"], tab_bar["y"], name)
                     buttons = app.locator(".answer-nav").bounding_box()
                     for text in texts:
                         line = self.main().get_by_text(text)
@@ -10173,53 +10134,14 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
                 self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")
 
 
-class ReportShareLearnT366Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#366 (spec #354, 報告、了解與選配指引): the share page's buttons, the family's cover
     title and 「先看重點」 box, and the 了解 page's card titles."""
 
-    DESKTOP = (1440, 900)
-    PHONE = (390, 844)
     PRIMARY = "rgb(31, 78, 140)"
-    # Each line an element's words take, as [its words without spaces, its width]: a range per
-    # character, a new line wherever one starts lower than the last.
-    LINES = """el => {
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        const lines = [];
-        let top = null;
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            for (let i = 0; i < node.length; i++) {
-                if (!node.data[i].trim()) continue;
-                const range = document.createRange();
-                range.setStart(node, i);
-                range.setEnd(node, i + 1);
-                const box = range.getBoundingClientRect();
-                if (top === null || box.top > top + box.height / 2) {
-                    lines.push({ text: "", left: box.left, right: box.right });
-                    top = box.top;
-                }
-                const line = lines[lines.length - 1];
-                line.text += node.data[i];
-                line.left = Math.min(line.left, box.left);
-                line.right = Math.max(line.right, box.right);
-            }
-        }
-        return lines.map((line) => [line.text, line.right - line.left]);
-    }"""
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
 
     def setUp(self):
-        self.user = consented_user(username="report_share_e2e", password="Fake-pass-2468")
+        self.sign_in(consented_user(username="report_share_e2e", password="Fake-pass-2468"))
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
         AudiogramPoint.objects.bulk_create(
             AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
@@ -10227,37 +10149,10 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, OnAPhone, StaticLiveServer
             for f in (500, 1000, 2000, 4000)
         )
         self.share = ReportShare.objects.create(user=self.user)
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
 
     def open(self, path, size, signed_in=True, share_sheet=False):
-        width, height = size
-        self.context = self.browser.new_context(viewport={"width": width, "height": height})
-        if signed_in:
-            self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-        self.page.add_init_script(
-            "navigator.share = () => Promise.resolve();"
-            if share_sheet
-            else "delete Navigator.prototype.share;"
-        )
-        self.page.goto(f"{self.live_server_url}{path}")
-        self.page.wait_for_load_state("load")
-
-    def style(self, locator, prop):
-        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
-
-    def rem(self):
-        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
-
-    def lines(self, locator):
-        return locator.evaluate(self.LINES)
+        script = self.SHARE_SHEET if share_sheet else self.NO_SHARE_SHEET
+        super().open(path, size, signed_in, script=script)
 
     # Acceptance 2: without the share sheet 複製連結 is the solid main button, and 取消分享 sits
     # under a dividing line with 1.25rem on both sides of it.
@@ -10340,7 +10235,7 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, OnAPhone, StaticLiveServer
                         self.assertTrue(any("聽損" in words for words, _ in lines))
 
 
-class ResultPagesT363Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class ResultPagesT363Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#363 (spec #354): the result pages' spacing, the optional SSQ12-TW card and SSQ12-TW's
     lowest items, measured in the browser."""
 
@@ -10350,34 +10245,12 @@ class ResultPagesT363Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
     # The white card rule's page-making helpers, borrowed as TypeSizesT357Test does.
     open = WhiteCardRuleTest.open
     visit = WhiteCardRuleTest.visit
-    style = WhiteCardRuleTest.style
     answered = WhiteCardRuleTest.answered
     result = WhiteCardRuleTest.result
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
-        self.user = consented_user(username="result_pages_t363")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
-    def font_size(self, locator):
-        return float(self.style(locator, "fontSize")[:-2])
+        self.sign_in(consented_user(username="result_pages_t363"))
 
     # Acceptance 2: 0.75rem between HHIA-S's steps and its limits, still in small type.
     def test_hhia_s_limits_sit_apart_from_the_steps_above(self):
@@ -10404,25 +10277,8 @@ class ResultPagesT363Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             card = self.main().locator("a.link-card").filter(has_text="日常聆聽能力")
             expect(card).to_contain_text("選填，12 題")
             expect(card.locator(".action-card-icon")).to_be_visible()
-            lines = card.locator(".link-card-title").evaluate(
-                """title => {
-                    const start = title.textContent.indexOf("（SSQ12-TW）");
-                    const walker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
-                    const tops = new Set();
-                    let offset = 0;
-                    for (let node; (node = walker.nextNode()); ) {
-                        for (let i = 0; i < node.length; i++, offset++) {
-                            if (offset < start || offset >= start + 10) continue;
-                            const range = document.createRange();
-                            range.setStart(node, i);
-                            range.setEnd(node, i + 1);
-                            tops.add(Math.round(range.getBoundingClientRect().top));
-                        }
-                    }
-                    return tops.size;
-                }"""
-            )
-            self.assertEqual(lines, 1)
+            lines = self.lines(card.locator(".link-card-title"))
+            self.assertTrue(any("（SSQ12-TW）" in words for words, _ in lines), lines)
 
     # Acceptance 4: the lowest items' questions in normal weight, at the size they had.
     def test_ssq12_lowest_questions_are_in_normal_weight(self):
@@ -10435,12 +10291,11 @@ class ResultPagesT363Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 self.assertAlmostEqual(self.font_size(question), 1.2 * self.REM)
 
 
-class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class FittingGuideT367Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#367 (spec #354): the guide's route and chapters, measured on a phone and a desktop."""
 
     fixtures = ("questions_fixture.json",)
-    PHONE = 390
-    DESKTOP = 1024
+    DESKTOP = (1024, 900)
     # The last line of a sentence: its width in ems, the line's fragments taken together.
     LAST_LINE_EMS = """el => {
         const range = document.createRange();
@@ -10456,27 +10311,9 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     visit = WhiteCardRuleTest.visit
     answering = WhiteCardRuleTest.answering
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
         call_command("seed_questionnaires", verbosity=0)
-        self.user = consented_user(username="fitting_guide_t367_e2e")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
+        self.sign_in(consented_user(username="fitting_guide_t367_e2e"))
 
     def route_at_the_assessment(self):
         """My guide here at the assessment, its question open: 55 dB both ears, 去找聽力師之前
@@ -10515,7 +10352,7 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             ),
         )
         for name, path, group, option in cases:
-            for width in (self.PHONE, self.DESKTOP):
+            for width in (self.PHONE[0], self.DESKTOP[0]):
                 with self.subTest(page=name, width=width):
                     self.visit(True, path, width=width)
                     group_box = self.main().locator(group).bounding_box()
@@ -10524,12 +10361,12 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                     widths = [box["width"] for box in boxes]
                     self.assertLessEqual(max(widths) - min(widths), 1, widths)
                     tops = [round(box["y"]) for box in boxes]
-                    if width == self.PHONE:
+                    if width == self.PHONE[0]:
                         self.assertEqual(tops, sorted(set(tops)))
                         self.assertAlmostEqual(widths[0], group_box["width"], delta=1)
                     else:
                         self.assertEqual(len(set(tops)), 1, tops)
-        for width in (self.PHONE, self.DESKTOP):
+        for width in (self.PHONE[0], self.DESKTOP[0]):
             with self.subTest(page="answer page", width=width):
                 self.visit(True, self.answering("hhie-s"), width=width)
                 labels = self.main().locator("div.choice-group label:visible")
@@ -10541,7 +10378,7 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     def test_large_number_rows_line_up_on_a_phone(self):
         for slug in ("assessment", "form-9", "types-and-prices"):
             with self.subTest(chapter=slug):
-                self.visit(False, f"/guide/{slug}", width=self.PHONE)
+                self.visit(False, f"/guide/{slug}", width=self.PHONE[0])
                 groups = self.main().locator(".fact-rows")
                 expect(groups.first).to_be_visible()
                 for group in groups.all():
@@ -10554,7 +10391,7 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                     for meaning in meanings.all():
                         self.assertGreater(meaning.evaluate(self.LAST_LINE_EMS), 2.5)
             with self.subTest(chapter=slug, double_text_size=True):
-                self.assert_fits_a_phone_at_double_text_size(slug, width=self.PHONE)
+                self.assert_fits_a_phone_at_double_text_size(slug, width=self.PHONE[0])
                 for row in self.main().locator(".fact-rows li").all():
                     value = row.locator(".fact-rows-value").bounding_box()
                     meaning = row.locator(":scope > :last-child").bounding_box()
@@ -10562,7 +10399,7 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     # Acceptance 7: form 9's jump to its six parts, two columns on a phone.
     def test_form_9_jumps_to_its_parts_in_two_columns_on_a_phone(self):
-        self.visit(False, "/guide/form-9", width=self.PHONE)
+        self.visit(False, "/guide/form-9", width=self.PHONE[0])
         jump = self.main().get_by_role("navigation", name="本頁段落")
         boxes = self.boxes(jump.get_by_role("link"))
         self.assertEqual(len(boxes), 6)
@@ -10572,11 +10409,11 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         expect(self.page).to_have_url(re.compile(r"/guide/form-9#amount-title$"))
         expect(self.main().get_by_role("heading", name="補助多少")).to_be_in_viewport()
         self.page.goto(f"{self.live_server_url}/guide/form-9")
-        self.assert_fits_a_phone_at_double_text_size("form 9 at 200%", width=self.PHONE)
+        self.assert_fits_a_phone_at_double_text_size("form 9 at 200%", width=self.PHONE[0])
 
     # Acceptance 8: 1.5rem between 配戴之後's title and its first box.
     def test_after_fitting_keeps_its_title_off_the_first_box(self):
-        for width in (self.PHONE, self.DESKTOP):
+        for width in (self.PHONE[0], self.DESKTOP[0]):
             with self.subTest(width=width):
                 self.visit(False, "/guide/after-fitting", width=width)
                 title = self.main().get_by_role("heading", level=1).bounding_box()
@@ -10584,60 +10421,19 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 self.assertAlmostEqual(box["y"] - (title["y"] + title["height"]), 27, delta=0.5)
 
 
-class FamilyAndAccountT361Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#361 (spec #354): the family page's 複製網址, the delete-account form lined up with its
     text, the expired link's button set apart, and the phone makers under each phone choice."""
 
-    DESKTOP = (1440, 900)
-    PHONE = (390, 844)
     HEADING = "rgb(33, 37, 41)"  # --color-heading
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.playwright = sync_playwright().start()
-        cls.browser = cls.playwright.chromium.launch()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close()
-        cls.playwright.stop()
-        super().tearDownClass()
-
     def setUp(self):
-        self.user = consented_user(username="t361_e2e", password="Fake-pass-2468")
-        self.client.force_login(self.user)
-        self.cookie = {
-            "name": settings.SESSION_COOKIE_NAME,
-            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
-            "url": self.live_server_url,
-        }
-
-    def open(self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True):
-        width, height = size
-        self.context = self.browser.new_context(
-            viewport={"width": width, "height": height}, java_script_enabled=java_script_enabled
-        )
-        self.context.grant_permissions(
-            ["clipboard-read", "clipboard-write"], origin=self.live_server_url
-        )
-        if signed_in:
-            self.context.add_cookies([self.cookie])
-        self.context.tracing.start(screenshots=True, snapshots=True)
-        self.page = self.context.new_page()
-        self.addCleanup(self.context.close)
-        if script:
-            self.page.add_init_script(script)
-        self.page.goto(f"{self.live_server_url}{path}")
-        self.page.wait_for_load_state("load")
-
-    def rem(self):
-        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+        self.sign_in(consented_user(username="t361_e2e", password="Fake-pass-2468"))
 
     # Acceptance 3: on a computer (no share sheet) 複製網址 sits under the address and copies it.
     def test_copy_address_without_a_share_sheet(self):
         with self.saving_artifacts():
-            self.open("/family", self.DESKTOP, script="delete Navigator.prototype.share;")
+            self.open("/family", self.DESKTOP, script=self.NO_SHARE_SHEET)
             section = self.main().get_by_role("region", name="傳給家人")
             address = section.get_by_text(re.compile(r"^https://.*/family$"))
             # Found by id: its name turns into 已複製 once pressed.
@@ -10657,7 +10453,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, OnAPhone, StaticLiveServer
     # Acceptance 3: with the phone's share sheet, 傳給家人 is the only button.
     def test_no_copy_button_with_a_share_sheet(self):
         with self.saving_artifacts():
-            self.open("/family", script="navigator.share = () => Promise.resolve();")
+            self.open("/family", script=self.SHARE_SHEET)
             section = self.main().get_by_role("region", name="傳給家人")
             expect(section.get_by_role("button", name="傳給家人")).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()

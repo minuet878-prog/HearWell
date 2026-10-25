@@ -2,15 +2,18 @@
 
 import ast
 import re
+import string
 from io import StringIO
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management import call_command
+from django.forms import BaseForm, Form
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.urls.converters import IntConverter
 
+from screening import forms as screening_forms
 from screening import questionnaires
 from screening import urls as screening_urls
 from screening.views import health_data_page
@@ -239,14 +242,45 @@ def date_format_lines(text, exceptions=()):
     return sorted(set(found))
 
 
-def strftime_formats(source):
-    """Every format string handed to strftime in a Python source."""
+# A strftime directive such as %Y; a percentage's lone % (f"{x:.0%}") has none.
+STRFTIME_DIRECTIVE = re.compile(r"%[A-Za-z]")
+
+
+def placeholder_formats(text):
+    """The format of each {name:format} placeholder in a str.format template."""
+    try:
+        return [spec for _, _, spec, _ in string.Formatter().parse(text) if spec]
+    except ValueError:  # not a template: a lone brace
+        return []
+
+
+def python_date_formats(source):
+    """Every date format in a Python source: handed to strftime or format(), or after the colon
+    of an f-string's or a str.format template's placeholder."""
     for node in ast.walk(ast.parse(source)):
-        if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "strftime":
-            for arg in node.args:
+        if isinstance(node, ast.Call):
+            strftime = getattr(node.func, "attr", None) == "strftime"
+            if strftime:
+                args = node.args
+            elif isinstance(node.func, ast.Name) and node.func.id == "format":
+                args = node.args[1:]  # format(ratio, "f") is a number's
+            else:
+                continue
+            for arg in args:
                 for part in ast.walk(arg):
                     if isinstance(part, ast.Constant) and isinstance(part.value, str):
-                        yield part.lineno, part.value
+                        if strftime or STRFTIME_DIRECTIVE.search(part.value):
+                            yield part.lineno, part.value
+        elif isinstance(node, ast.FormattedValue) and node.format_spec is not None:
+            spec = "".join(
+                part.value for part in node.format_spec.values if isinstance(part, ast.Constant)
+            )
+            if STRFTIME_DIRECTIVE.search(spec):
+                yield node.lineno, spec
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            for spec in placeholder_formats(node.value):
+                if STRFTIME_DIRECTIVE.search(spec):
+                    yield node.lineno, spec
 
 
 class DateFormatT358Tests(SimpleTestCase):
@@ -265,10 +299,10 @@ class DateFormatT358Tests(SimpleTestCase):
             f"{path.relative_to(BASE_DIR)}:{lineno} {fmt}"
             for path in python_sources()
             if "tests" not in path.parts
-            for lineno, fmt in strftime_formats(path.read_text())
+            for lineno, fmt in python_date_formats(path.read_text())
             if fmt not in STRFTIME_FORMATS
         ]
-        self.assertEqual(found, [], 'strftime a full date as "%Y/%m/%d" (or "%Y/%m/%d %H:%M")')
+        self.assertEqual(found, [], 'format a full date as "%Y/%m/%d" (or "%Y/%m/%d %H:%M")')
 
     def test_other_date_formats_are_caught(self):
         source = (
@@ -284,8 +318,51 @@ class DateFormatT358Tests(SimpleTestCase):
         )
         self.assertEqual(date_format_lines(source), [2, 3, 4, 5, 6, 11])
         self.assertEqual(date_format_lines(source, {"Y/", "m/d"}), [2, 3, 4, 5, 6])
-        formats = [fmt for _, fmt in strftime_formats('a.strftime("%Y/%m/%d" if x else "%m/%d")')]
+        formats = [
+            fmt for _, fmt in python_date_formats('a.strftime("%Y/%m/%d" if x else "%m/%d")')
+        ]
         self.assertEqual(sorted(formats), ["%Y/%m/%d", "%m/%d"])
+        # Dates formatted without strftime: an f-string, format() and a str.format template,
+        # each placeholder's format; a percentage's % is not a date.
+        source = (
+            'f"{a:%Y-%m-%d} {b:%Y/%m/%d} {c:.0%}"\n'
+            'format(a, "%m/%d/%Y") + format(b, "f")\n'
+            'NOTE = "要在 {deadline:%Y-%m-%d} 前做完"\n'
+            '"{:%d.%m.%Y}".format(a)\n'
+        )
+        self.assertEqual(
+            sorted(python_date_formats(source)),
+            [(1, "%Y-%m-%d"), (1, "%Y/%m/%d"), (2, "%m/%d/%Y"), (3, "%Y-%m-%d"), (4, "%d.%m.%Y")],
+        )
+
+
+def forms_keeping_the_colon(module):
+    """Form classes defined in module that still add Django's colon after each field name."""
+    return [
+        name
+        for name, cls in vars(module).items()
+        if isinstance(cls, type)
+        and issubclass(cls, BaseForm)
+        and cls.__module__ == module.__name__
+        and not issubclass(cls, screening_forms.NoLabelSuffix)
+    ]
+
+
+class FormLabelSuffixT358Tests(SimpleTestCase):
+    """#354: a field name never ends in a colon: every form drops the one Django adds."""
+
+    def test_every_form_drops_the_django_colon(self):
+        self.assertEqual(forms_keeping_the_colon(screening_forms), [])
+        self.assertEqual(screening_forms.RegisterForm().label_suffix, "")
+
+    def test_a_form_keeping_the_colon_is_caught(self):
+        module = type(screening_forms)("fake_forms")
+        module.Kept = type("Kept", (Form,), {"__module__": "fake_forms"})
+        module.Dropped = type(
+            "Dropped", (screening_forms.NoLabelSuffix, Form), {"__module__": "fake_forms"}
+        )
+        self.assertEqual(forms_keeping_the_colon(module), ["Kept"])
+        self.assertEqual(module.Dropped().label_suffix, "")
 
 
 def questionnaire_code_lines(text, codes):

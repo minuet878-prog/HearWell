@@ -142,7 +142,7 @@
      inside a card, the report's summary box (and the family's 「先看重點」 since #366) or a 段落框
      has none; the box already frames it. */
   h1.h3,
-  h2.h4:not(:where(.card, .report-summary, #family-highlights, .section-box) *),
+  h2.h4:not(:where(.card, .report-summary, .family-highlights, .section-box) *),
   .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
@@ -1414,16 +1414,6 @@
     border-radius: var(--radius-large);
   }
   .consent-hero .auth-hero-bars { bottom: 1rem; }
-  /* On a phone 我同意，開始篩檢 above 不同意, each the whole row; side by side when wider. */
-  .consent-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  @media (min-width: 48em) {
-    .consent-buttons { flex-direction: row; }
-    .consent-buttons > .btn { flex: 1 1 0; }
-  }
 
   .auth-card {
     position: relative;
@@ -1660,15 +1650,18 @@
     }
   }
 
-  /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. Its
-     left corners are square, so the thick line stays straight instead of bending round them;
-     the right corners keep the large radius (#357). */
-  .trend-summary {
-    padding: 1.25rem 1.5rem;
+  /* The blue summary box: the trend chart's (my_hearing), the latest score at a glance above
+     the chart, and aided vs unaided HHIE-S. Its left corners are square, so the thick line stays
+     straight instead of bending round them; the right corners keep the large radius (#357). */
+  .trend-summary, .aided-difference {
     border-left: 0.375rem solid var(--color-primary);
     border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
+  }
+
+  .trend-summary {
+    padding: 1.25rem 1.5rem;
     /* A date that still does not fit breaks rather than widening the page (#163). */
     overflow-wrap: anywhere;
   }
@@ -1705,17 +1698,6 @@
      pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
   .home-hero {
     margin-bottom: 1.5rem;
-  }
-
-  /* #360 (spec #354): the first-visit title, bold in the heading colour, 31.5px on a phone and
-     40.5px on a wider screen. */
-  .home-title {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--color-heading);
-  }
-  @media (min-width: 48em) {
-    .home-title { font-size: 2.25rem; }
   }
 
   .home-chips {
@@ -2820,22 +2802,6 @@
     margin-top: 1.5rem;
   }
 
-  /* #367 (spec #354): 本頁段落, a long chapter's jump to each of its parts, in two columns so a
-     phone shows six in three rows. Each link a full line tall to tap. */
-  .page-jump ul {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 1rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .page-jump a {
-    display: block;
-    padding: 0.6rem 0;
-  }
-
   /* A 段落框 (ADR 0025): a titled part of an article read in order, on a pale beige with no
      shadow and no border, its title (.section-box-title, first in the box) in a deeper beige bar
      across its top: bold, the heading colour, a 並列區塊's title size, no brand-blue bar; a long
@@ -3478,14 +3444,10 @@
     view-transition-name: switch-pill;
   }
 
-  /* Aided vs unaided HHIE-S, styled like the trend summary box. */
+  /* Aided vs unaided HHIE-S, in the blue summary box. */
   .aided-difference {
     margin-bottom: 1.5rem;
     padding: 1rem 1.25rem;
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-selected);
-    color: var(--color-heading);
   }
 
   /* Legend under both charts. */
@@ -4532,7 +4494,7 @@
      it was (the print block below undoes the box). */
   @media screen {
     /* #366: the family's 「先看重點」 in the same box. */
-    .health-report .report-summary, #family-highlights {
+    .health-report .report-summary, .family-highlights {
       border: 0.125rem solid var(--color-primary);
       border-radius: var(--radius-large);
       background-color: #fff;
@@ -4540,7 +4502,7 @@
     }
 
     /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
-    .health-report:has(#family-highlights) .report-summary {
+    .health-report:has(.family-highlights) .report-summary {
       display: none;
     }
 
@@ -4769,11 +4731,12 @@
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
-     notice on the home and screening pages (#337) is framed the same way. */
+     notice on the home and screening pages (#337) is framed the same way. Like the blue summary
+     boxes, the left corners are square so the thick line stays straight (owner, 2026-10-25). */
   .questionnaire-guide, .continue-notice {
     padding: 0.75rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-large);
+    border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
   }

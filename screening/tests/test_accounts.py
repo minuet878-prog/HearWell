@@ -5,11 +5,9 @@ from unittest import mock
 from django.contrib.auth import password_validation
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
-from django.forms import BaseForm, Form
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
-from screening import forms as screening_forms
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
@@ -35,20 +33,9 @@ def field_names(content):
     ]
 
 
-def forms_keeping_the_colon(module):
-    """Form classes defined in module that still add Django's colon after each field name."""
-    return [
-        name
-        for name, cls in vars(module).items()
-        if isinstance(cls, type)
-        and issubclass(cls, BaseForm)
-        and cls.__module__ == module.__name__
-        and not issubclass(cls, screening_forms.NoLabelSuffix)
-    ]
-
-
 class FieldNameColonT358Tests(TestCase):
-    """#354: a field name never ends in a colon, on every form."""
+    """#354: a field name never ends in a colon, on every form page (test_standards.py checks
+    every form drops Django's)."""
 
     def test_form_pages_show_field_names_without_a_colon(self):
         pages = {
@@ -67,19 +54,6 @@ class FieldNameColonT358Tests(TestCase):
         register = field_names(self.client.get(reverse("register")).content.decode())
         self.assertIn("使用者名稱", register)
         self.assertIn("出生年（選填）", register)
-
-    def test_every_form_drops_the_django_colon(self):
-        self.assertEqual(forms_keeping_the_colon(screening_forms), [])
-        self.assertEqual(RegisterForm().label_suffix, "")
-
-    def test_a_form_keeping_the_colon_is_caught(self):
-        module = type(screening_forms)("fake_forms")
-        module.Kept = type("Kept", (Form,), {"__module__": "fake_forms"})
-        module.Dropped = type(
-            "Dropped", (screening_forms.NoLabelSuffix, Form), {"__module__": "fake_forms"}
-        )
-        self.assertEqual(forms_keeping_the_colon(module), ["Kept"])
-        self.assertEqual(module.Dropped().label_suffix, "")
 
 
 class SubmissionResultAccessTests(TestCase):
@@ -390,7 +364,8 @@ class LoginViewTests(TestCase):
 class RegisterFormTests(TestCase):
     PASSWORD = "Xk9#mPq2vLw"
     # Issue #151: says what filling it in saves the user.
-    NOTE = "選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。"
+    # Owner, 2026-10-25: the field name already says 選填.
+    NOTE = "填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。"
 
     def setUp(self):
         self.url = reverse("register")

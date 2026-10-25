@@ -11,7 +11,7 @@
 <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
 <ul class="list-unstyled mt-8">
     <li><a class="link-card action-card" href="{% url 'family_guide' %}">
-        <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+        {% include "screening/action_icon.html" with icon="family" %}
         <span class="link-card-body">
             <span class="link-card-title">給家人看：怎麼跟聽損的家人溝通</span>
         </span>

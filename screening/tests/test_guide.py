@@ -227,12 +227,10 @@ class ChapterTidyT367Tests(TestCase):
 
     def test_form_9_opens_with_a_jump_to_each_of_its_six_parts(self):
         content = self.chapter("form-9")
-        nav = re.search(
-            r'<nav class="page-jump" aria-labelledby="page-jump-title">(.*?)</nav>', content, re.S
-        )
+        nav = re.search(r'<nav aria-labelledby="page-jump-title">(.*?)</nav>', content, re.S)
         self.assertIsNotNone(nav)
         self.assertIn('<p id="page-jump-title" class="tint-subhead mb-2">本頁段落</p>', nav[1])
-        links = re.findall(r'<a href="#([^"]+)">([^<]+)</a>', nav[1])
+        links = re.findall(r'<a [^>]*href="#([^"]+)">([^<]+)</a>', nav[1])
         self.assertEqual(
             links,
             [

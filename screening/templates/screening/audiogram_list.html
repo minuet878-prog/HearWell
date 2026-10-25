@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters static %}
+{% load static %}
 
 {% block title %}聽力圖｜HearWell{% endblock %}
 
@@ -26,9 +26,7 @@
     {% include "screening/audiogram_thumbnail.html" %}
     <span class="link-card-body">
         <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
-        {# One ear per line, so a badge is never split (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.2). #}
-        <span class="audiogram-ear">右耳：{% include "screening/level_badge.html" with text=result.right.degree|default:"資料不足" color=result.right.degree|degree_level %}</span>
-        <span class="audiogram-ear">左耳：{% include "screening/level_badge.html" with text=result.left.degree|default:"資料不足" color=result.left.degree|degree_level %}</span>
+        {% include "screening/audiogram_ears.html" %}
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>

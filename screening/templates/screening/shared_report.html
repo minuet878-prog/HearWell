@@ -17,7 +17,7 @@
 <h1 class="h3 mt-4">HearWell 聽力報告</h1>
 <p class="font-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
 {% if life_impact or audiogram %}
-<section id="family-highlights" class="mb-4 no-print" aria-labelledby="highlights-title">
+<section id="family-highlights" class="family-highlights mb-4 no-print" aria-labelledby="highlights-title">
     <h2 id="highlights-title" class="h4">先看重點</h2>
     <ul class="list-unstyled">
         {% if life_impact %}{% with classified=life_impact.classified %}
