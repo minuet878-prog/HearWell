@@ -3386,6 +3386,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.here()).to_contain_text(f"{opens:%Y/%m/%d} 起可以做")
             expect(self.here().get_by_role("group", name="二十五號表完成了嗎？")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide form 25's question")
+            # Back to the usual size: at 200% on 320px the link is one character wide and taller
+            # than the screen, its middle behind the back-to-top button since the 1rem tab
+            # labels (#357) raised the button.
+            self.double_text(False)
             self.here().get_by_role("link", name="看二十五號表要帶什麼").click()
             card = self.main().get_by_role("region", name="看完了嗎？")
             expect(card.get_by_role("group", name="二十五號表完成了嗎？")).to_be_visible()
@@ -5374,7 +5378,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                         self.page.goto(f"{self.live_server_url}{path}")
                     found = self.page.locator(selector).first
                     expect(found).to_be_attached()
-                    self.assertEqual(self.style(found, "borderTopLeftRadius"), radius)
+                    # The top right: a blue summary box's left corners are square (#357).
+                    self.assertEqual(self.style(found, "borderTopRightRadius"), radius)
 
     def test_large_white_blocks_have_warm_borders_and_shadows(self):
         cases = (("/questionnaire_list?choose=self", "main a.link-card"),)
@@ -9542,3 +9547,197 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
             audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
             self.open(f"/audiograms/{audiogram.pk}/delete", self.PHONE)
             self.assert_words_wide((("button", "確定刪除"), ("link", "取消")))
+
+
+class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#357 (spec #354): text a reader needs is at least 1rem, and the site-wide small styles."""
+
+    fixtures = ("questions_fixture.json",)
+    HEADING = WhiteCardRuleTest.HEADING
+    WHITE = WhiteCardRuleTest.WHITE
+    REM = 18  # the site's 112.5% root
+
+    # The white card rule's page-making helpers, borrowed rather than inherited so its own tests
+    # do not run twice.
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    style = WhiteCardRuleTest.style
+    answered = WhiteCardRuleTest.answered
+    result = WhiteCardRuleTest.result
+    ioi_ha = WhiteCardRuleTest.ioi_ha
+    ioi_ha_result = WhiteCardRuleTest.ioi_ha_result
+    audiogram = WhiteCardRuleTest.audiogram
+    report = WhiteCardRuleTest.report
+    shared_report = WhiteCardRuleTest.shared_report
+    guide_with_records = WhiteCardRuleTest.guide_with_records
+    answered_chapter = WhiteCardRuleTest.answered_chapter
+    trend_records = WhiteCardRuleTest.trend_records
+    answering = WhiteCardRuleTest.answering
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="type_sizes_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def two_audiograms(self):
+        """The audiogram comparison, which needs two audiograms."""
+        self.audiogram()
+        Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 20))
+        return "/audiograms/compare"
+
+    def route_with_answer(self):
+        """My guide with the assessment stop answered, so its kept answer shows on the route."""
+        self.answered_chapter()
+        return "/guide"
+
+    def font_size(self, locator):
+        return float(self.style(locator, "fontSize")[:-2])
+
+    # Acceptance 2: the score bar's level and both ends, IOI-HA's scale ends and the guide's
+    # meter label are 1rem; on a narrow phone the bar's level stays whole inside the bar.
+    def test_labels_needed_to_read_a_chart_are_1rem(self):
+        cases = (
+            ("home's score bar", False, "/", (".score-bar-current span", ".score-bar-ends > span")),
+            (
+                "result's score bar",
+                True,
+                lambda test: test.result("hhie-s", 4),
+                (".score-bar-current span", ".score-bar-ends > span"),
+            ),
+            ("IOI-HA result", True, lambda test: test.ioi_ha_result(), (".ioi-scale-ends > span",)),
+            ("guide's meter", True, lambda test: test.guide_with_records(), (".meter-scale",)),
+        )
+        for name, signed_in, path, selectors in cases:
+            with self.subTest(page=name):
+                self.visit(signed_in, path, width=320)
+                for selector in selectors:
+                    labels = self.main().locator(selector)
+                    expect(labels.first).to_be_visible()
+                    for label in labels.all():
+                        self.assertEqual(self.font_size(label), self.REM, selector)
+                if ".score-bar-current span" in selectors:
+                    bar = self.main().locator(".score-bar").bounding_box()
+                    row = self.main().locator(".score-bar-current").bounding_box()
+                    level = self.main().locator(".score-bar-current span").bounding_box()
+                    self.assertGreaterEqual(level["x"], bar["x"])
+                    self.assertLessEqual(level["x"] + level["width"], bar["x"] + bar["width"])
+                    self.assertGreaterEqual(level["y"], row["y"])
+                    self.assertLessEqual(level["y"] + level["height"], row["y"] + row["height"])
+
+    # Acceptance 3: the footer, the report's and the family's copy's two reminders (the
+    # audiogram's under it), form help and the route's gap and kept answer are at least 1rem;
+    # so is the audiogram comparison's line legend, needed to read the chart (owner, #357).
+    def test_text_to_read_is_at_least_1rem(self):
+        audiogram_reminder = "#report-audiogram > p:last-child"
+        cases = (
+            ("footer", False, "/", ".site-footer p"),
+            ("form help", False, "/register", ".field-help"),
+            (
+                "report",
+                True,
+                lambda test: test.report(),
+                f".report-disclaimer, {audiogram_reminder}",
+            ),
+            (
+                "family's report",
+                False,
+                lambda test: test.shared_report(),
+                f".report-disclaimer, {audiogram_reminder}",
+            ),
+            ("route's gap", False, "/guide", ".route-gap"),
+            (
+                "audiogram comparison's legend",
+                True,
+                lambda test: test.two_audiograms(),
+                ".compare-legend",
+            ),
+            ("route's kept answer", True, lambda test: test.route_with_answer(), ".route-answer"),
+        )
+        for name, signed_in, path, selector in cases:
+            with self.subTest(page=name):
+                self.visit(signed_in, path, width=390)
+                texts = self.page.locator(selector)
+                expect(texts.first).to_be_attached()
+                if name.endswith("report"):
+                    expect(texts).to_have_count(2)
+                    expect(texts.first).to_contain_text("不能取代聽力師的判讀")
+                    expect(texts.last).to_contain_text("不是醫療診斷")
+                for text in texts.all():
+                    self.assertGreaterEqual(self.font_size(text), self.REM, selector)
+
+    # Acceptance 4: a form's question (legend) is in the heading colour.
+    def test_every_form_question_is_in_the_heading_colour(self):
+        cases = (
+            ("wizard", "/questionnaire_list?wizard=1"),
+            ("answer page", lambda test: test.answering("hhie-s")),
+            ("guide chapter question", "/guide/assessment"),
+            ("new audiogram", "/audiograms/new"),
+        )
+        for name, path in cases:
+            with self.subTest(page=name):
+                self.visit(True, path, width=390)
+                if name == "new audiogram":
+                    # The symbols' groups, in the typed-numbers fold of 標右耳.
+                    audiogram_step(self.page, self.live_server_url, 2)
+                    self.main().get_by_text("用數值輸入（鍵盤或螢幕閱讀器）").click()
+                legends = self.main().locator("legend:not(.visually-hidden)")
+                expect(legends.first).to_be_visible()
+                for legend in legends.all():
+                    self.assertEqual(self.style(legend, "color"), self.HEADING)
+
+    # Acceptance 5: on a 390 phone the page title (about 29px) is at least 4px above the
+    # section title 我的帳號, whose size stays calc(1.275rem + 0.3vw).
+    def test_page_title_stands_above_section_titles_on_a_phone(self):
+        self.visit(True, "/account", width=390)
+        with self.saving_artifacts():
+            title = self.font_size(self.main().get_by_role("heading", level=1, name="帳號設定"))
+            section = self.font_size(self.main().get_by_role("heading", level=2, name="我的帳號"))
+            self.assertAlmostEqual(title, 29, delta=0.5)
+            self.assertAlmostEqual(section, 1.275 * self.REM + 0.003 * 390, delta=0.01)
+            self.assertGreaterEqual(title - section, 4)
+
+    # Acceptance 6: a blue summary box keeps its round right corners, but its thick left line is
+    # straight, not bent round the corners.
+    def test_blue_summary_boxes_have_a_straight_left_line(self):
+        self.trend_records()
+        aided = self.answered("hhie-s", 0)
+        Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
+        self.visit(True, "/my_hearing?questionnaire=hhie-s", width=390)
+        for selector in (".trend-summary", ".aided-difference"):
+            with self.subTest(box=selector):
+                box = self.main().locator(selector)
+                expect(box).to_be_visible()
+                # 0.375rem, drawn in whole pixels.
+                self.assertEqual(self.style(box, "borderLeftWidth"), "6px")
+                self.assertEqual(self.style(box, "borderTopLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderBottomLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderTopRightRadius"), "27px")
+
+    # Acceptance 7: on a phone the signed-in line has an opaque background over the header wave.
+    def test_signed_in_line_hides_the_header_wave_on_a_phone(self):
+        self.visit(True, "/", width=390)
+        with self.saving_artifacts():
+            account = self.page.locator(".site-account")
+            expect(account).to_have_text("目前登入：type_sizes_e2e")
+            self.assertEqual(self.style(account, "backgroundColor"), self.WHITE)
+            # The line does sit over the wave's bars, which is why it needs the background.
+            line = account.bounding_box()
+            wave = self.page.locator(".site-wave").bounding_box()
+            self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)

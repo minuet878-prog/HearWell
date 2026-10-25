@@ -56,7 +56,7 @@
     {% if result.largest %}<p>差最多的頻率：{{ result.largest.text }}</p>{% endif %}
     <div id="audiogram-chart"></div>
     {# #202: the legend is text outside the drawing, so it grows with the text size. #}
-    <p class="compare-legend source-note mb-0">舊（{{ old.tested_on|date:"Y/m/d" }}）虛線、新（{{ new.tested_on|date:"Y/m/d" }}）實線</p>
+    <p class="compare-legend mb-0">舊（{{ old.tested_on|date:"Y/m/d" }}）虛線、新（{{ new.tested_on|date:"Y/m/d" }}）實線</p>
 </section>
 {# Pages tidy-up: the card keeps the numbers and the chart; how to read them sits in one tip box. #}
 <section class="tip-box" aria-labelledby="read-compare-title">

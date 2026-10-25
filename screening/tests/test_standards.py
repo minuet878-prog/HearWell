@@ -59,6 +59,128 @@ class FontSizeUnitTests(SimpleTestCase):
         self.assertEqual(found, [], "use rem for font-size")
 
 
+# Small print (CODING_STANDARDS.md 16, #357): the only selectors that may set text under 1rem,
+# each with what it holds. Sources and the like first, then small text the owner chose to keep.
+SOURCES = {
+    ".q-intro-source": "a questionnaire's source on its answer page",
+    ".source-note": "a source, HHIA-S's result limits, the privacy notice's version date",
+    ".guide-source": "a guide chapter's sources",
+    ".guide-checked": "the date a guide chapter was checked",
+    ".history-tab-code": "a records tab's questionnaire code",
+}
+OWNER_KEPT = {
+    ".since-last-date": "和上一次比's dates, under their labels (2026-10-24 comparison, A)",
+    ".ioi-axis .ioi-grid": "the IOI-HA chart's axis numbers; the chart stays as drawn (#364)",
+    ".ioi-name": "the IOI-HA chart's item names; the chart stays as drawn (#364)",
+}
+SMALL_PRINT = SOURCES | OWNER_KEPT
+
+SIZE = re.compile(r"(\d*\.?\d+)(rem|em|%)")
+SMALL_KEYWORD = re.compile(r"\b(?:smaller|small|x-small|xx-small)\b")
+
+
+def is_small(value, variables):
+    """True when a font-size value, or a custom property it reads, is under 1rem."""
+    values = [value] + [
+        defined
+        for name in re.findall(r"var\((--[\w-]+)", value)
+        for defined in variables.get(name, ())
+    ]
+    return any(
+        SMALL_KEYWORD.search(v)
+        or any(float(n) / (100 if unit == "%" else 1) < 1 for n, unit in SIZE.findall(v))
+        for v in values
+    )
+
+
+def small_font_sizes(css):
+    """(line, selector) for each font-size under 1rem set outside SMALL_PRINT. A rule's selector
+    is its innermost style rule, inside whatever @layer, @media or @container wraps it."""
+    css = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group().count("\n"), css, flags=re.S)
+    variables = {}
+    for name, value in re.findall(r"(--[\w-]+)\s*:\s*([^;{}]+)", css):
+        variables.setdefault(name, []).append(value)
+    found, preludes, text, line = [], [], "", 1
+    for char in css:
+        if char == "{":
+            preludes.append(" ".join(text.split()))
+            text = ""
+        elif char == "}":
+            if preludes:
+                preludes.pop()
+            text = ""
+        elif char == ";":
+            declaration = re.match(r"\s*font-size\s*:(.*)", text, flags=re.S)
+            selector = next((p for p in reversed(preludes) if not p.startswith("@")), "")
+            if declaration and is_small(declaration.group(1), variables):
+                selectors = [s.strip() for s in selector.split(",")]
+                if not all(s in SMALL_PRINT for s in selectors):
+                    found.append((line, selector))
+            text = ""
+        else:
+            text += char
+        line += char == "\n"
+    return found
+
+
+def small_tailwind_text(line):
+    """True when a template line uses Tailwind's text-xs or text-sm, or an arbitrary size
+    under 1rem such as text-[0.875rem]."""
+    sizes = re.findall(r"\btext-\[(\d*\.?\d+)(?:rem|em)\]", line)
+    return bool(re.search(r"\btext-(?:xs|sm)\b", line)) or any(float(n) < 1 for n in sizes)
+
+
+class SmallPrintTests(SimpleTestCase):
+    """#357: text a reader needs is at least 1rem; only small print may be smaller."""
+
+    def test_only_small_print_is_under_1rem(self):
+        path = BASE_DIR / "frontend" / "src" / "site.css"
+        found = [f"{line} {selector}" for line, selector in small_font_sizes(path.read_text())]
+        self.assertEqual(found, [], "use 1rem or more, or add a source-like class to SMALL_PRINT")
+
+    def test_no_small_tailwind_text_in_templates(self):
+        sources = [
+            *sorted((BASE_DIR / "screening" / "templates").rglob("*.html")),
+            *sorted((BASE_DIR / "frontend" / "src").rglob("*.jsx")),
+        ]
+        found = [
+            f"{path.relative_to(BASE_DIR)}:{lineno}"
+            for path in sources
+            for lineno, line in enumerate(path.read_text().splitlines(), start=1)
+            if small_tailwind_text(line)
+        ]
+        self.assertEqual(found, [], "small print takes a SMALL_PRINT class from site.css")
+
+    def test_small_tailwind_text_is_caught(self):
+        self.assertTrue(small_tailwind_text('<p class="text-sm mb-0">'))
+        self.assertTrue(small_tailwind_text('<span className="text-[0.875rem]">'))
+        self.assertFalse(small_tailwind_text('<legend class="text-[calc(1.275rem+0.3vw)]">'))
+        self.assertFalse(small_tailwind_text('<p class="text-body text-xl/normal">'))
+
+    def test_a_small_size_outside_the_list_is_caught(self):
+        css = """@layer components {
+  .source-note { font-size: 0.875rem; }
+  .guide-source,
+  .guide-checked { font-size: 0.875rem; }
+  @media (max-width: 47.99em) {
+    .score-bar-ends { font-size: 0.875rem; } /* a label needed to read the bar */
+  }
+  .tag { --tag-size: 0.9em; font-size: var(--tag-size); }
+  .source-note, .field-help { font-size: 90%; }
+  small { font-size: smaller; }
+  .lead { font-size: calc(1.3rem + 0.6vw); }
+}"""
+        self.assertEqual(
+            small_font_sizes(css),
+            [
+                (6, ".score-bar-ends"),
+                (8, ".tag"),
+                (9, ".source-note, .field-help"),
+                (10, "small"),
+            ],
+        )
+
+
 class TemplateCommentTests(SimpleTestCase):
     """Django's {# #} comment ends on its own line; one split over two lines shows on the page."""
 
