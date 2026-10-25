@@ -45,7 +45,7 @@ const confirmAndSave = () => {
   save();
 };
 const chart = () => screen.getByRole("img", { name: /聽力圖/ });
-const at = (frequency, db) => ({ clientX: x(frequency), clientY: y(db), pointerId: 1 });
+const at = (frequency, db) => ({ clientX: x(frequency), clientY: y(db), pointerId: 1, pointerType: "mouse" });
 const press = (frequency, db) => fireEvent.pointerDown(chart(), at(frequency, db));
 const move = (frequency, db) => fireEvent.pointerMove(chart(), at(frequency, db));
 const release = (frequency, db) => fireEvent.pointerUp(chart(), at(frequency, db));
@@ -219,13 +219,98 @@ describe("input", () => {
     expect(point("right-air-1000").dataset.db).toBe("120");
   });
 
-  it("dragging does not scroll the page (acceptance 11)", () => {
+  it("pressing does not select text or start the browser's own drag", () => {
     renderRight();
-    expect(chart().style.touchAction).toBe("none");
     const event = new Event("pointerdown", { bubbles: true, cancelable: true });
     Object.assign(event, at(1000, 40));
     chart().dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+// #353: a finger marks only after resting 0.3 s, so a swipe that starts on the chart scrolls the page.
+describe("touch", () => {
+  const finger = (frequency, db, dy = 0) => ({ ...at(frequency, db), clientY: y(db) + dy, pointerType: "touch" });
+  const touchDown = (...args) => fireEvent.pointerDown(chart(), finger(...args));
+  const touchMove = (...args) => fireEvent.pointerMove(chart(), finger(...args));
+  const touchUp = (...args) => fireEvent.pointerUp(chart(), finger(...args));
+  const wait = (ms) => act(() => vi.advanceTimersByTime(ms));
+  // fireEvent returns false when a listener called preventDefault, i.e. the page did not scroll.
+  const scrolls = () => fireEvent.touchMove(chart());
+
+  beforeEach(() => vi.useFakeTimers());
+
+  it("a swipe scrolls the page and marks nothing (#353 acceptance 1)", () => {
+    renderRight();
+    expect(chart().style.touchAction).toBe("manipulation");
+    touchDown(1000, 40);
+    touchMove(1000, 40, 11);
+    wait(300);
+    expect(scrolls()).toBe(true);
+    expect(magnifier()).toBeNull();
+    touchUp(1000, 40, 200);
+    expect(point("right-air-1000")).toBeNull();
+  });
+
+  it("marks nothing when the browser takes the touch for scrolling", () => {
+    renderRight();
+    touchDown(1000, 40);
+    fireEvent.pointerCancel(chart(), finger(1000, 40));
+    wait(300);
+    expect(magnifier()).toBeNull();
+  });
+
+  it("a second finger (zooming) marks nothing", () => {
+    renderRight();
+    touchDown(1000, 40);
+    fireEvent.pointerDown(chart(), { ...finger(2000, 50), pointerId: 2 });
+    wait(300);
+    expect(magnifier()).toBeNull();
+    touchUp(1000, 40);
+    expect(point("right-air-1000")).toBeNull();
+    expect(point("right-air-2000")).toBeNull();
+  });
+
+  it("resting 0.3 s starts marking, then dragging does not scroll (#353 acceptance 2)", () => {
+    renderRight();
+    touchDown(1000, 40);
+    // A resting finger wobbles a little.
+    touchMove(1000, 40, 5);
+    wait(299);
+    expect(magnifier()).toBeNull();
+    wait(1);
+    expect(magnifier().textContent).toBe("1000 Hz 40 dB");
+    expect(scrolls()).toBe(false);
+    touchMove(1000, 60);
+    touchUp(1000, 60);
+    expect(point("right-air-1000").dataset.db).toBe("60");
+    expect(magnifier()).toBeNull();
+    expect(scrolls()).toBe(true);
+  });
+
+  it("a quick tap neither marks nor deletes (#353 acceptance 3)", () => {
+    renderRight();
+    touchDown(1000, 40);
+    wait(100);
+    touchUp(1000, 40);
+    wait(300);
+    expect(point("right-air-1000")).toBeNull();
+    expect(magnifier()).toBeNull();
+
+    drag(1000, 40, 40);
+    touchDown(1000, 40);
+    wait(100);
+    touchUp(1000, 40);
+    expect(point("right-air-1000").dataset.db).toBe("40");
+  });
+
+  it("resting on a point and letting go deletes it (#353 acceptance 4)", () => {
+    renderRight();
+    drag(1000, 40, 40);
+    touchDown(1000, 40);
+    wait(300);
+    touchUp(1000, 40);
+    expect(point("right-air-1000")).toBeNull();
   });
 });
 
@@ -329,8 +414,8 @@ describe("steps", () => {
     expect(screen.getByText("報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）")).toBeTruthy();
     expect([...document.querySelectorAll(".audiogram-howto li")].map((li) => li.textContent)).toEqual([
       "選下面的符號",
-      "在圖上按住，上下拖到報告上的位置",
-      "放開就標好了；標錯再點一下可以刪除",
+      "在圖上按住不動一下，等數值出現，再上下拖到報告上的位置",
+      "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
     ]);
     expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
     const symbols = () => [...document.querySelectorAll(".audiogram-symbol")].map((b) => b.textContent.replace(/ .*/, ""));

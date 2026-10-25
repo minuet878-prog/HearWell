@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AIR_FREQUENCIES, CHART, DB_MIN, levelAt, nearestFrequency, pointKey, x, y } from "./audiogram.js";
 
@@ -10,6 +10,10 @@ const freqLabel = (f) => (f >= 1000 ? `${f / 1000}k` : String(f));
 // Above this level there is no room over the point, so the magnifier goes beside it.
 const MAGNIFIER_ABOVE_FROM = 10;
 const percent = (value, total) => `${(value / total) * 100}%`;
+// #353: a finger marks only after resting this long, so a swipe that starts on the chart scrolls
+// the page; moving further than HOLD_SLOP pixels first is a swipe. dnd-kit's touch default is 250 ms, 5 px.
+const HOLD_MS = 300;
+const HOLD_SLOP = 10;
 
 function Mark({ point, colors = COLORS }) {
   const color = colors[point.ear];
@@ -102,7 +106,25 @@ function Layer({ points, old = false }) {
 export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit }) {
   const svg = useRef(null);
   const dragging = useRef(null);
+  // A finger resting before the drag starts: where it is now, and the timer that starts the drag there.
+  const holding = useRef(null);
   const [preview, setPreview] = useState(null);
+  const marking = Boolean(symbol);
+
+  // Once a drag has started the page must not scroll under the finger. React listens to touchmove
+  // passively, where preventDefault does nothing, so this listener is added by hand.
+  useEffect(() => {
+    if (!marking) return undefined;
+    const chart = svg.current;
+    const stopScroll = (event) => {
+      if (dragging.current) event.preventDefault();
+    };
+    chart.addEventListener("touchmove", stopScroll, { passive: false });
+    return () => {
+      chart.removeEventListener("touchmove", stopScroll);
+      clearTimeout(holding.current?.timer);
+    };
+  }, [marking]);
 
   const toChart = (event) => {
     const box = svg.current.getBoundingClientRect();
@@ -118,6 +140,13 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     return next;
   };
 
+  // The frequency is fixed on press; dragging only changes the level.
+  const start = (event) => track(event, nearestFrequency(toChart(event).px, symbol.conduction));
+  const stopHolding = () => {
+    clearTimeout(holding.current?.timer);
+    holding.current = null;
+  };
+
   const finish = ({ frequency, level }) => {
     dragging.current = null;
     setPreview(null);
@@ -128,22 +157,50 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
     onPointerDown(event) {
       event.preventDefault();
       svg.current.setPointerCapture?.(event.pointerId);
-      // The frequency is fixed on press; dragging only changes the level.
-      track(event, nearestFrequency(toChart(event).px, symbol.conduction));
+      if (event.pointerType !== "touch") {
+        start(event);
+        return;
+      }
+      // A second finger means zooming, not marking.
+      if (holding.current) {
+        stopHolding();
+        return;
+      }
+      const at = { clientX: event.clientX, clientY: event.clientY };
+      holding.current = {
+        from: at,
+        at,
+        timer: setTimeout(() => {
+          const { at: rested } = holding.current;
+          holding.current = null;
+          start(rested);
+        }, HOLD_MS),
+      };
     },
     onPointerMove(event) {
-      if (dragging.current) track(event, dragging.current.frequency);
+      if (holding.current) {
+        const { from } = holding.current;
+        if (Math.hypot(event.clientX - from.clientX, event.clientY - from.clientY) > HOLD_SLOP) stopHolding();
+        else holding.current.at = { clientX: event.clientX, clientY: event.clientY };
+      } else if (dragging.current) {
+        track(event, dragging.current.frequency);
+      }
     },
+    // Letting go before the drag starts is a tap: it marks nothing.
     onPointerUp(event) {
+      stopHolding();
       if (dragging.current) finish(track(event, dragging.current.frequency));
     },
     // Chrome can drop the capture before the release (seen with a Mac trackpad); the release then
     // goes to another element and never reaches onPointerUp, so the drag ends here instead,
     // at the last level shown. In the normal order this runs after onPointerUp and does nothing.
     onLostPointerCapture() {
+      stopHolding();
       if (dragging.current) finish(dragging.current);
     },
+    // Also sent when the browser takes the touch for scrolling.
     onPointerCancel() {
+      stopHolding();
       dragging.current = null;
       setPreview(null);
     },
@@ -162,9 +219,9 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
         ref={svg}
         viewBox={`0 0 ${CHART.width} ${CHART.height}`}
         role="img"
-        aria-label={symbol ? "聽力圖（用手指按住拖曳標記；鍵盤請用下方的數值表）" : "聽力圖"}
+        aria-label={symbol ? "聽力圖（用手指按住不動一下再拖曳標記；鍵盤請用下方的數值表）" : "聽力圖"}
         className="audiogram-svg"
-        style={symbol ? { touchAction: "none" } : undefined}
+        style={symbol ? { touchAction: "manipulation" } : undefined}
         {...handlers}
       >
         <rect x={CHART.left} y={y(DB_MIN)} width={CHART.right - CHART.left} height={y(25) - y(DB_MIN)} fill="#e9f5ec" />
