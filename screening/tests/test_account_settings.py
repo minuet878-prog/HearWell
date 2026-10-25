@@ -137,7 +137,7 @@ class AccountSettingsTests(TestCase):
         links = re.findall(r"<a ([^>]*)>(.*?)</a>", nav)
         self.assertEqual(
             [re.sub(r"<[^>]+>", "", text) for _, text in links],
-            ["聽力對生活的影響（HHIE-S（65 歲以上））", "助聽器使用成效（IOI-HA）"],
+            ["聽力對生活的影響，HHIE-S（65 歲以上）", "助聽器使用成效（IOI-HA）"],
         )
         self.assertIn('aria-current="page"', links[0][0])
         self.assertNotIn("aria-current", links[1][0])
