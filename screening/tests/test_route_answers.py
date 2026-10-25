@@ -1033,6 +1033,7 @@ class RouteActionT367Tests(TestCase):
     make = RouteQuestionTests.make
     page = RouteQuestionTests.page
     stop = RouteQuestionTests.stop
+    answer = RouteQuestionTests.answer
 
     def action(self, markup, wording):
         found = re.search(rf'<a class="btn ([^"]+)" href="[^"]+">{wording}</a>', markup)
@@ -1051,3 +1052,13 @@ class RouteActionT367Tests(TestCase):
         self.assertNotIn("<form", before_you_go)
         kind, _ = self.action(before_you_go, "去之前要準備什麼")
         self.assertEqual(kind, "btn-primary btn-lg w-full mt-2")
+
+    def test_once_its_question_is_answered_the_stop_is_as_it_was(self):
+        # The same stop, answered: no form and no outlined button are left under its answer; as
+        # any done stop, it has no button of its own.
+        self.answer("yes")
+        assessment = self.stop("assessment")
+        self.assertIn('<p class="route-answer">有身障證明', assessment)
+        self.assertNotIn("<form", assessment)
+        self.assertNotIn("btn-outline-primary", assessment)
+        self.assertNotIn("找鑑定醫院", assessment)
