@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
-// questionnaire's own (the API's wearing_question, #212).
+// questionnaire's own (the API's wearing_question, #212). 沒戴 first, as the wizard and
+// comparisons put it (#362); the values sent are unchanged.
 const HEARING_AID_CHOICES = [
-  { value: true, label: "有戴" },
   { value: false, label: "沒戴" },
+  { value: true, label: "有戴" },
 ];
 const FAILED = "送出失敗，請再按一次送出";
 // #326 B4: how long ✓ 已儲存 stays beside the progress.
@@ -286,7 +287,8 @@ export default function AnswerApp({
     <div className="answer-app">
       {/* The page's own intro (the definition's intro_template), in full only on the first page. */}
       {introInFull ? (
-        <div dangerouslySetInnerHTML={{ __html: introHtml }} />
+        // #362: IOI-HA's item 1 follows its intro straight away, so 2rem apart; no line added.
+        <div className={skipWearing ? "mb-8" : undefined} dangerouslySetInnerHTML={{ __html: introHtml }} />
       ) : (
         <div className="answer-about mb-4">
           <button
@@ -415,6 +417,8 @@ export default function AnswerApp({
           </button>
         )}
       </div>
+      {/* #362: why the button does nothing yet; its look stays as it is (#136 C). */}
+      {!answered && <p className="mt-4">先選一個答案，才能按「{isLast ? "送出" : "下一題"}」。</p>}
       {chooseFirst && <p className="mt-4 text-xl/normal font-bold text-danger" role="alert">請先選一個答案</p>}
       {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
       <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>

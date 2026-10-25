@@ -1544,8 +1544,8 @@
     outline-offset: 2px;
   }
 
-  /* Comparison page radio cards (#190): one full-width card per record, stacked; the states
-     above still only change colour (ADR 0006). */
+  /* Comparison page radio cards (#190) and the questionnaire wizard's answers (#362): one
+     full-width card per choice, stacked; the states above still only change colour (ADR 0006). */
   div.choice-group.choice-stack {
     flex-direction: column;
   }

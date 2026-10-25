@@ -165,6 +165,14 @@ class HearingAidTests(TestCase):
         self.assertContains(response, "沒戴")
         self.assertNotContains(response, "checked")
 
+    def test_wearing_choices_put_unaided_first_with_the_same_values(self):
+        # #362: 沒戴 then 有戴, as the wizard and React page; what is saved stays False / True.
+        html = self.client.get(self.url).content.decode()
+        fieldset = r'<fieldset id="question-hearing-aid".*?</fieldset>'
+        content = re.search(fieldset, html, re.S).group()
+        choices = re.findall(r'value="(True|False)"[^>]*>\s*([^<]+?)\s*</label>', content)
+        self.assertEqual(choices, [("False", "沒戴"), ("True", "有戴")])
+
     def test_wearing_saved_and_shown_on_result(self):
         response = self._post(wearing_hearing_aid="True")
         submission = Submission.objects.get(user=self.user)
@@ -196,7 +204,7 @@ class HearingAidTests(TestCase):
         self.assertContains(
             response,
             '<input type="radio" name="wearing_hearing_aid" value="False" class="choice-group"'
-            ' required id="id_wearing_hearing_aid_1" checked>',
+            ' required id="id_wearing_hearing_aid_0" checked>',
             html=True,
         )
 
@@ -259,7 +267,7 @@ class PreselectUnaidedTests(TestCase):
         fieldset = self.hearing_aid_fieldset(self.client.get(self.url, {"preselect": "unaided"}))
         self.assertInHTML(
             '<input type="radio" name="wearing_hearing_aid" value="False" class="choice-group"'
-            ' required id="id_wearing_hearing_aid_1" checked>',
+            ' required id="id_wearing_hearing_aid_0" checked>',
             fieldset,
         )
         self.assertEqual(fieldset.count("checked"), 1)

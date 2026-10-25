@@ -139,7 +139,8 @@ class AnswerForm(NoLabelSuffix, forms.Form):
 
 class HearingAidForm(NoLabelSuffix, forms.Form):
     wearing_hearing_aid = forms.TypedChoiceField(
-        choices=((True, "有戴"), (False, "沒戴")),
+        # 沒戴 first, as the wizard and React page (#362); the values saved are unchanged.
+        choices=((False, "沒戴"), (True, "有戴")),
         coerce=lambda value: value == "True",
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
     )
@@ -209,7 +210,8 @@ class AgeGroupForm(NoLabelSuffix, forms.Form):
     age_group = forms.ChoiceField(
         label="您目前的實際年齡？",
         choices=((ADULT, "18–64 歲"), (OLDER, "65 歲以上")),
-        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        # One answer per row, the whole row a tap target, as on the answer page (#362).
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
         error_messages={"required": "請選擇您的年齡區間"},
     )
 
@@ -225,7 +227,8 @@ class ConcernForm(NoLabelSuffix, forms.Form):
             (HEARING_AID, "助聽器戴得好不好"),
             (UNSURE, "不確定"),
         ),
-        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        # One answer per row, the whole row a tap target, as on the answer page (#362).
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
         error_messages={"required": "請選擇您最想了解的事"},
     )
 
