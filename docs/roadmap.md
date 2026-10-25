@@ -60,7 +60,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   完成一站打勾、首頁與篩檢分頁「接著答」；本人在互動盤點示意頁挑 21 項，略過交叉審查直接驗收，驗證見
   `docs/verification/issue-326.md`）、
   頁尾中間凸起米色小拱門、裡面是藍色波浪 W（上緣維持直線、不換品牌色；本人在比較頁選選項 5，驗證見
-  `docs/verification/footer-arch.md`）。
+  `docs/verification/footer-arch.md`）、
+  手機上在聽力圖上往下滑會誤標（#353：手指按住不動 0.3 秒才開始標，直接滑就是捲動，滑鼠照舊；本人 iPhone 實機
+  驗收，驗證見 `docs/verification/audiogram-hold-to-mark.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
