@@ -7946,7 +7946,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(row=row.inner_text()):
                     self.assertEqual(self.style(row, "borderTopWidth"), "1px")
                     self.assertEqual(self.style(row, "borderTopColor"), self.LINE)
-            # #361: with blank rows, 要修改請寫信到 is said once under them, its address a plain link.
+            # #361: with blank rows, 要修改請寫信到 is said once under them, the address a plain
+            # link.
             account = self.main().get_by_role("region", name="我的帳號")
             address = account.get_by_role("link", name="hearwellweb@gmail.com")
             self.assertEqual(address.count(), 1)
