@@ -9379,3 +9379,166 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                 errors.get_by_role("link", name=name, exact=True).click()
                 expect(self.page).to_have_url(re.compile(f"{target}$"))
                 self.assert_never_lights(self.samples())
+
+
+class FooterPinButtonRowsT359Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#359 (spec #354, 全站共通): the footer at the window's foot on short pages, the gap between
+    the danger and cancel buttons, and the step-by-step button rows on phones."""
+
+    fixtures = ("questions_fixture.json",)
+    DESKTOP = (1440, 900)
+    PHONE = (390, 844)
+    SHORT_PAGES = ("/shared/no-such-link", "/add_to_home", "/audiograms/new")
+    # The footer's top edge and the box above it, both in pixels from the page's top.
+    FOOTER_GAP = """() => {
+        const footer = document.querySelector(".site-footer").getBoundingClientRect();
+        const main = document.getElementById("main-content").getBoundingClientRect();
+        return footer.top - main.bottom;
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="footer_pin_e2e", password="Fake-pass-2468")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path, size):
+        width, height = size
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def rem(self):
+        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+
+    # Acceptance 1: a short page's footer ends at the window's foot, the arch keeps at least its
+    # 5.5rem above it, and on a phone the tab bar covers none of the footer's words.
+    def test_short_pages_pin_the_footer_to_the_bottom(self):
+        with self.saving_artifacts():
+            for size in (self.DESKTOP, self.PHONE):
+                for path in self.SHORT_PAGES:
+                    with self.subTest(path=path, width=size[0]):
+                        self.open(path, size)
+                        self.page.evaluate("window.scrollTo({top: 1e6, behavior: 'instant'})")
+                        footer = self.page.locator(".site-footer").bounding_box()
+                        self.assertAlmostEqual(footer["y"] + footer["height"], size[1], delta=1)
+                        gap = self.page.evaluate(self.FOOTER_GAP)
+                        self.assertGreaterEqual(gap, 5.5 * self.rem() - 1)
+                        if size == self.PHONE:
+                            tab_bar = self.page.locator(".site-nav").bounding_box()
+                            last_line = self.page.locator(".site-footer p").last.bounding_box()
+                            self.assertLessEqual(last_line["y"] + last_line["height"], tab_bar["y"])
+
+    # Acceptance 1: on a long page the gap above the footer is the 5.5rem it was before.
+    def test_long_page_keeps_the_gap_above_the_footer(self):
+        with self.saving_artifacts():
+            for size in (self.DESKTOP, self.PHONE):
+                with self.subTest(width=size[0]):
+                    self.open("/privacy", size)
+                    self.assertGreater(
+                        self.page.evaluate("document.documentElement.scrollHeight"), size[1]
+                    )
+                    gap = self.page.evaluate(self.FOOTER_GAP)
+                    self.assertAlmostEqual(gap, 5.5 * self.rem(), delta=1)
+
+    # Acceptance 3: 確定刪除 (刪除帳號) and 取消 are at least 1rem apart, side by side or stacked.
+    def test_delete_and_cancel_stand_apart(self):
+        with self.saving_artifacts():
+            audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+            pages = (
+                (f"/audiograms/{audiogram.pk}/delete", "確定刪除"),
+                ("/account/delete", "刪除帳號"),
+            )
+            for size in (self.DESKTOP, self.PHONE):
+                for path, danger in pages:
+                    with self.subTest(path=path, width=size[0]):
+                        self.open(path, size)
+                        main = self.main()
+                        first = main.get_by_role("button", name=danger, exact=True).bounding_box()
+                        cancel = main.get_by_role("link", name="取消", exact=True).bounding_box()
+                        beside = cancel["x"] - (first["x"] + first["width"])
+                        below = cancel["y"] - (first["y"] + first["height"])
+                        self.assertGreaterEqual(max(beside, below), self.rem() - 0.5)
+
+    def buttons(self, names):
+        return [self.main().get_by_role(role, name=name, exact=True) for role, name in names]
+
+    def assert_row_filled(self, names):
+        """On a phone the row's buttons share its whole width: one fills it, two take half each."""
+        buttons = self.buttons(names)
+        for button in buttons:
+            expect(button).to_be_visible()
+        # Measured at one moment: after 下一題 the page may still be scrolling to the question.
+        row, *boxes = buttons[0].evaluate(
+            "el => [el.parentElement, ...el.parentElement.querySelectorAll(':scope > .btn')]"
+            ".map((part) => part.getBoundingClientRect().toJSON())"
+        )
+        self.assertEqual(len(boxes), len(names))
+        first, last = boxes[0], boxes[-1]
+        self.assertAlmostEqual(first["x"], row["x"], delta=1)
+        self.assertAlmostEqual(last["x"] + last["width"], row["x"] + row["width"], delta=1)
+        if len(buttons) == 2:
+            self.assertAlmostEqual(first["width"], last["width"], delta=1)
+            self.assertAlmostEqual(first["y"], last["y"], delta=1)
+
+    def assert_words_wide(self, names):
+        """Each button is as wide as its words, under half its row."""
+        for (_, name), button in zip(names, self.buttons(names), strict=True):
+            row = button.evaluate("el => el.parentElement.getBoundingClientRect().width")
+            self.assertLess(button.bounding_box()["width"], row / 2, name)
+
+    WIZARD = (("link", "上一步"), ("button", "下一步"))
+
+    # Acceptance 4: the wizard's 上一步／下一步 fill the row on a phone; a wide screen is as before.
+    def test_wizard_buttons_fill_the_row_on_a_phone(self):
+        with self.saving_artifacts():
+            self.open("/questionnaire_list", self.PHONE)
+            self.assert_row_filled(self.WIZARD)
+            self.open("/questionnaire_list", self.DESKTOP)
+            self.assert_words_wide(self.WIZARD)
+
+    # Acceptance 4: 下一題 alone fills the row; 上一題 with 下一題, then with 送出, take half each.
+    def test_answer_buttons_fill_the_row_on_a_phone(self):
+        with self.saving_artifacts():
+            hhie_s = Questionnaire.objects.get(code="hhie-s")
+            self.open(f"/questionnaire/{hhie_s.pk}", self.PHONE)
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_row_filled((("button", "下一題"),))
+            self.answer("沒戴")
+            self.next()
+            self.question(1)
+            self.assert_row_filled((("button", "上一題"), ("button", "下一題")))
+            for number in range(1, QUESTION_COUNT):
+                self.answer("有時", number)
+                self.next()
+            self.question(QUESTION_COUNT)
+            self.assert_row_filled((("button", "上一題"), ("button", "送出")))
+            self.open(f"/questionnaire/{hhie_s.pk}", self.DESKTOP)
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_words_wide((("button", "下一題"),))
+
+    # Acceptance 4: other pages keep buttons as wide as their words on a phone.
+    def test_other_button_rows_keep_their_width_on_a_phone(self):
+        with self.saving_artifacts():
+            audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+            self.open(f"/audiograms/{audiogram.pk}/delete", self.PHONE)
+            self.assert_words_wide((("button", "確定刪除"), ("link", "取消")))

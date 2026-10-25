@@ -24,7 +24,7 @@
         <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
         {% include "screening/field_messages.html" with field=form.password %}
     </div>
-    <div class="flex flex-wrap gap-2">
+    <div class="flex flex-wrap gap-4">
         <button type="submit" class="btn btn-danger btn-lg">刪除帳號</button>
         <a class="btn btn-outline-primary btn-lg" href="{% url 'account_settings' %}">取消</a>
     </div>
