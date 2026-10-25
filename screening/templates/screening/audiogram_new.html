@@ -8,9 +8,13 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-4">{% if audiogram %}修改聽力圖{% else %}新增聽力圖{% endif %}</h1>
+{# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
+<h1 class="h3 mt-4{% if audiogram %} wrap-anywhere{% endif %}">{% if audiogram %}修改 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖{% else %}新增聽力圖{% endif %}</h1>
+{% if not audiogram %}<p>準備好醫院給的聽力檢查報告，照著報告上的日期和 O、X 記號描進來。</p>{% endif %}
 {# #199: how to mark lives in each ear's step card (AudiogramApp.jsx). #}
 <div id="audiogram-app" data-today="{{ today|date:'Y-m-d' }}" data-csrf-token="{{ csrf_token }}"{% if audiogram %} data-audiogram-id="{{ audiogram.id }}"{% endif %}></div>
 {% if audiogram %}{{ initial|json_script:"audiogram-initial" }}{% endif %}
 <noscript><p class="text-xl/normal font-bold">需要開啟 JavaScript 才能輸入聽力圖。</p></noscript>
+{# #365: a quiet way out, so it does not compete with the step buttons above it. #}
+<p class="quiet-links mt-4">{% if audiogram %}<a href="{% url 'audiogram_detail' audiogram.id %}">不修改了，回到這張聽力圖</a>{% else %}<a href="{% url 'audiogram_list' %}">不新增了，回聽力圖清單</a>{% endif %}</p>
 {% endblock %}
