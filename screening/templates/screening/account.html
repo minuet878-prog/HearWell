@@ -25,7 +25,7 @@
         </div>
     </dl>
     {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #}
-    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
+    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
 </section>
 
 <section class="mt-6" aria-labelledby="family-title">
