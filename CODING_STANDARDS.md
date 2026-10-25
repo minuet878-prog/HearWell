@@ -40,7 +40,7 @@
    - 小字只能用 `test_standards.py` 的 `SOURCES`（出處類）和 `OWNER_KEPT`（負責人選過）列出的選擇器；其他選擇器設小於 1rem、或模板用 `text-sm`／`text-xs`，測試會擋下。`.source-note` 只給出處類用，不要借來縮小別的字。新增小字時，把選擇器加進對應的一組並寫明用途。
 17. 無障礙是必需品：表單要有 `label`／`fieldset`／`legend`，文字對比要達標，操作不能只靠顏色區分。
 18. 介面用語一律稱「您」。例外：量表題目照原文用詞（例如 HHIA-S 的「你」），改字等於改量表。
-    - 日期：完整日期一律寫成 `年/月/日`（2026/10/25，模板用 `|date:"Y/m/d"`），含時間時 `年/月/日 時:分`（`|date:"Y/m/d H:i"`）；不寫「10 月 25 日」「2026-10-25」。例外：圖表刻度可以只寫 月/日；給機器讀的屬性值（例如 `<time datetime>`）用 `Y-m-d`（`test_standards.py` 自動檢查模板與 `strftime`）。
+    - 日期：完整日期一律寫成 `年/月/日`（2026/10/25，模板用 `|date:"Y/m/d"`），含時間時 `年/月/日 時:分`（`|date:"Y/m/d H:i"`）；不寫「10 月 25 日」「2026-10-25」。例外：圖表刻度可以只寫 月/日；給機器讀的屬性值（例如 `<time datetime>`）用 `Y-m-d`（`test_standards.py` 自動檢查模板，以及 Python 的 `strftime`、f-string 與 `format`）。
     - 欄位名稱後面不加冒號：表單繼承 `screening/forms.py` 的 `NoLabelSuffix`（關掉 Django 自動加的「：」），手寫的 `label`、`legend` 和段落標題也不加（`test_standards.py` 檢查每個表單，`test_accounts.py` 檢查表單頁面）。
 
 ## 範圍
