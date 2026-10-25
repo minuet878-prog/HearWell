@@ -151,7 +151,7 @@ class HomeNextStepTests(TestCase):
         self.assertEqual(
             self.next_step(section), ("修改這張聽力圖", TOO_LITTLE_DATA, edit, "修改這張聽力圖")
         )
-        self.assertEqual(self.groups(section)[0], ("記錄", [RECORD]))
+        self.assertEqual(self.groups(section)[0], ("聽力圖", [RECORD]))
 
     def test_without_a_stop_and_never_shared_it_suggests_sharing(self):
         # Acceptance 4: both ears within 25 dB HL, so no 目前這一站. Another account's link
@@ -201,7 +201,7 @@ class HomeNextStepTests(TestCase):
             (
                 "修改這張聽力圖",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [PRINT, FAMILY]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),
@@ -209,12 +209,12 @@ class HomeNextStepTests(TestCase):
             ),
             (
                 "了解助聽器選配與補助",
-                [("記錄", [RECORD]), ("給別人看", [PRINT, FAMILY]), ("方便使用", [ADD_HOME])],
+                [("聽力圖", [RECORD]), ("給別人看", [PRINT, FAMILY]), ("方便使用", [ADD_HOME])],
             ),
             (
                 "分享報告給家人",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [PRINT]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),
@@ -223,7 +223,7 @@ class HomeNextStepTests(TestCase):
             (
                 "印聽力報告給醫師看",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [FAMILY]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),

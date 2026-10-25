@@ -216,6 +216,26 @@ class ConsentPageTests(TestCase):
         self.assertContains(response, "第 2 步／共 2 步：同意隱私權")
         self.assertEqual(step_bar(response), (2, 2))
 
+    # #360 (spec #354): the title and step in the register page's blue banner, the rest below it
+    # as flat blocks with no card (ADR 0022).
+    def test_title_and_step_sit_in_the_register_banner_and_the_rest_below(self):
+        main = self.client.get(reverse("consent")).content.decode()
+        main = main.split('id="main-content"', 1)[1].split("</main>", 1)[0]
+        start = main.index('<div class="auth-hero')
+        end, depth = start, 0
+        for tag in re.finditer(r"<(/?)div\b", main[start:]):
+            depth += -1 if tag.group(1) else 1
+            if depth == 0:
+                end = start + tag.end()
+                break
+        hero, below = main[start:end], main[end:]
+        self.assertIn('<h1 class="auth-hero-title">開始使用之前</h1>', hero)
+        self.assertIn("第 2 步／共 2 步：同意隱私權", hero)
+        self.assertIn('class="auth-hero-bars"', hero)
+        self.assertIn("HearWell 會保存您的篩檢作答", below)
+        self.assertIn(">我同意，開始篩檢</button>", below)
+        self.assertNotIn("card", below)
+
     def test_anonymous_is_sent_to_login(self):
         self.client.logout()
         self.assertRedirects(

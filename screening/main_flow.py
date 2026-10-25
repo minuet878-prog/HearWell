@@ -140,7 +140,7 @@ class NextStep:
 # #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use, each
 # (key, title, card keys).
 HOME_GROUPS = (
-    ("record", "記錄", ("record",)),
+    ("record", "聽力圖", ("record",)),
     ("show", "給別人看", ("print", "share")),
     ("learn", "了解", ("guide",)),
     ("convenience", "方便使用", ("add-home",)),
