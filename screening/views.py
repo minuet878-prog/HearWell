@@ -88,6 +88,7 @@ from screening.scoring import (
     NORM_COMPARISON_TEXT,
     NORM_VERSUS_TEXT,
     RECOMMENDATION_REASONS,
+    UNKNOWN,
     classify,
     compare_to_norm,
     get_advice,
@@ -1729,6 +1730,8 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            # #363: 「無法判讀」 has nothing else saying why, so its advice is not folded away.
+            "advice_open": classified_score["level"] == UNKNOWN["level"],
             "support_message": submission.questionnaire.definition.support(
                 {answer.question.question_number: answer.score for answer in answers}
             ),

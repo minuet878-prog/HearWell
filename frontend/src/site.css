@@ -3599,6 +3599,11 @@
     counter-reset: next-step;
   }
 
+  /* #363: HHIA-S's limits, still small type, stand apart from the steps above them. */
+  .next-steps + .source-note {
+    margin-top: 0.75rem;
+  }
+
   .next-steps li {
     display: grid;
     grid-template-columns: 2.25rem 1fr;

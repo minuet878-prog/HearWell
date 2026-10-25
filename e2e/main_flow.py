@@ -3626,7 +3626,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     reason = self.main().locator(".next-step-because")
-                    expect(reason).to_contain_text("先看看第一次去找聽力師要準備什麼。")
+                    expect(reason).to_contain_text(
+                        "第一次去找聽力師前先準備好，看診時比較不會漏問。"
+                    )
                     self.assert_fits_a_phone_at_double_text_size(f"{path} next step")
                     room = reason.evaluate(
                         "p => ({chars: p.clientWidth / parseFloat(getComputedStyle(p).fontSize),"
@@ -6891,15 +6893,16 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertEqual(self.style(block, f"border{side}Width"), "0px")
         self.assertEqual(self.style(block, "borderBottomLeftRadius"), self.TINT_RADIUS)
 
-    def assert_block_title(self, title, ratio=1.35):
+    def assert_block_title(self, title, ratio=1.35, weight="700"):
         """ADR 0024: a 並列區塊's title is 1.35 times the body text and a bold subhead in it 1.2
-        times, both bold in the heading colour (not link blue), without the brand-blue bar of a
-        page's section titles. Returns its size in px."""
+        times, both bold (`weight`; #363 made SSQ12-TW's lowest questions normal) in the heading
+        colour (not link blue), without the brand-blue bar of a page's section titles. Returns
+        its size in px."""
         body = float(self.style(self.page.locator("body"), "fontSize").removesuffix("px"))
         size = float(self.style(title, "fontSize").removesuffix("px"))
         self.assertAlmostEqual(size / body, ratio, places=2)
         self.assertEqual(self.style(title, "color"), self.HEADING)
-        self.assertEqual(self.style(title, "fontWeight"), "700")
+        self.assertEqual(self.style(title, "fontWeight"), weight)
         self.assertEqual(self.style(title, "borderLeftWidth"), "0px")
         return size
 
@@ -8117,23 +8120,26 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     NORM_GREY = "rgb(206, 212, 218)"
     NORM_EDGE = "rgb(108, 117, 125)"
 
-    def assert_tinted_items(self, items, title, count, ratio, before):
+    def assert_tinted_items(self, items, title, count, ratio, before, weight="700"):
         """#310: each item its own 並列區塊, its title (found by `title` inside it) `ratio` times
-        the text and larger than the `before` px it had on a phone before ADR 0024."""
+        the text, in `weight`, and larger than the `before` px it had on a phone before ADR 0024."""
         self.assertEqual(items.count(), count)
         for item in items.all():
             with self.subTest(item=item.inner_text()[:10]):
                 self.assert_tinted(item)
                 self.assert_readable_on_tint(item)
-                self.assertGreater(self.assert_block_title(title(item), ratio), before)
+                self.assertGreater(self.assert_block_title(title(item), ratio, weight), before)
 
     # #310: IOI-HA's items, SADL's four facets and SSQ12-TW's lowest answers are each a 並列區塊
-    # with a larger title; IOI-HA's summary and 接下來 stay flat.
+    # with a larger title; IOI-HA's summary section and 可以帶去跟聽力師討論 (#363: once 接下來,
+    # its conclusion now in the blue summary box) stay flat.
     def test_result_items_are_tinted_blocks_with_larger_titles(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.ioi_ha_result())
             self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
-            self.assert_flat(self.page.get_by_role("region", name="接下來", exact=True))
+            self.assert_flat(
+                self.page.get_by_role("region", name="可以帶去跟聽力師討論", exact=True)
+            )
             # Each item's name is its block's title (1.35 times); it was 1.25rem, 22.5px.
             self.assert_tinted_items(
                 self.main().locator("ol > li"),
@@ -8157,10 +8163,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
                 "listitem"
             )
-            # The question beside its score tag is a bold subhead (1.2 times); it was body text,
-            # 18px.
+            # The question beside its score tag is a subhead (1.2 times); it was body text, 18px.
+            # #363 (spec #354): in normal weight, so the score tag stands out most.
             self.assert_tinted_items(
-                lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3, 1.2, 18
+                lowest, lambda item: item.get_by_text(re.compile("[？?]$")), 3, 1.2, 18, "400"
             )
 
     # Spec #308 acceptance 4: a tappable card's title and the answering page's question keep the
@@ -10323,3 +10329,98 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, OnAPhone, StaticLiveServer
                     self.assertGreater(len(lines[-1][0]), 1)
                     if "聽損" in "".join(words for words, _ in lines):
                         self.assertTrue(any("聽損" in words for words, _ in lines))
+
+
+class ResultPagesT363Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#363 (spec #354): the result pages' spacing, the optional SSQ12-TW card and SSQ12-TW's
+    lowest items, measured in the browser."""
+
+    fixtures = ("questions_fixture.json",)
+    REM = 18  # the site's 112.5% root
+
+    # The white card rule's page-making helpers, borrowed as TypeSizesT357Test does.
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    style = WhiteCardRuleTest.style
+    answered = WhiteCardRuleTest.answered
+    result = WhiteCardRuleTest.result
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="result_pages_t363")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def font_size(self, locator):
+        return float(self.style(locator, "fontSize")[:-2])
+
+    # Acceptance 2: 0.75rem between HHIA-S's steps and its limits, still in small type.
+    def test_hhia_s_limits_sit_apart_from_the_steps_above(self):
+        self.visit(True, lambda test: test.result("hhia-s", 2), width=390)
+        with self.saving_artifacts():
+            steps = self.main().locator("ol.next-steps").bounding_box()
+            note = self.main().locator(".source-note")
+            expect(note).to_be_visible()
+            gap = note.bounding_box()["y"] - (steps["y"] + steps["height"])
+            self.assertAlmostEqual(gap, 0.75 * self.REM, delta=0.5)
+            self.assertEqual(self.font_size(note), 0.875 * self.REM)
+
+    # Acceptance 3: on a 390 phone the SSQ12-TW card has its icon, and 「（SSQ12-TW）」 is on
+    # one line, not broken at its hyphen; at 320 the title wraps, where it once broke there.
+    def test_optional_ssq12_card_has_an_icon_and_keeps_its_name_whole(self):
+        path = self.result("hhie-s", 2)
+        for width in (390, 320):
+            with self.subTest(width=width):
+                self.visit(True, path, width=width)
+                self.assert_ssq12_card_whole()
+
+    def assert_ssq12_card_whole(self):
+        with self.saving_artifacts():
+            card = self.main().locator("a.link-card").filter(has_text="日常聆聽能力")
+            expect(card).to_contain_text("選填，12 題")
+            expect(card.locator(".action-card-icon")).to_be_visible()
+            lines = card.locator(".link-card-title").evaluate(
+                """title => {
+                    const start = title.textContent.indexOf("（SSQ12-TW）");
+                    const walker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
+                    const tops = new Set();
+                    let offset = 0;
+                    for (let node; (node = walker.nextNode()); ) {
+                        for (let i = 0; i < node.length; i++, offset++) {
+                            if (offset < start || offset >= start + 10) continue;
+                            const range = document.createRange();
+                            range.setStart(node, i);
+                            range.setEnd(node, i + 1);
+                            tops.add(Math.round(range.getBoundingClientRect().top));
+                        }
+                    }
+                    return tops.size;
+                }"""
+            )
+            self.assertEqual(lines, 1)
+
+    # Acceptance 4: the lowest items' questions in normal weight, at the size they had.
+    def test_ssq12_lowest_questions_are_in_normal_weight(self):
+        self.visit(True, lambda test: test.result("ssq12-tw", 5), width=390)
+        with self.saving_artifacts():
+            questions = self.main().locator(".score-card-head > :first-child")
+            expect(questions).to_have_count(3)
+            for question in questions.all():
+                self.assertEqual(self.style(question, "fontWeight"), "400")
+                self.assertAlmostEqual(self.font_size(question), 1.2 * self.REM)
