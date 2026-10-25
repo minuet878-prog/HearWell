@@ -1886,6 +1886,7 @@ def audiogram_delete(request, audiogram_id):
     if request.method == "POST":
         audiogram.delete()
         return redirect("audiogram_list")
+    audiogram.thumbnail = thumbnail(audiogram.points.all())
     return render(request, "screening/audiogram_delete.html", {"audiogram": audiogram})
 
 

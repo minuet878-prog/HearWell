@@ -9745,6 +9745,114 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)
 
 
+class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#365 (spec #354): the delete page's title and preview on a phone, and the compare page's
+    line samples in the chosen ear's colours."""
+
+    PHONE = (390, 844)
+    # The chart's colours (AudiogramChart.jsx): each ear's own, lighter for the older one.
+    LINE_COLOURS = (
+        (("right", False), "rgb(192, 57, 43)"),
+        (("right", True), "rgb(232, 165, 157)"),
+        (("left", False), "rgb(31, 78, 140)"),
+        (("left", True), "rgb(157, 181, 214)"),
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="audiogram_pages_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path, size):
+        width, height = size
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def audiogram(self, tested_on, db):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=tested_on)
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        return audiogram
+
+    def assert_word_on_one_line(self):
+        word = self.main().get_by_role("heading", level=1).locator("span", has_text="聽力圖")
+        lines = word.evaluate(
+            "span => { const range = document.createRange(); range.selectNodeContents(span);"
+            " return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size; }"
+        )
+        self.assertEqual(lines, 1)
+
+    # Acceptance 5: on a 390 phone the title keeps 聽力圖 whole and the audiogram shows under it;
+    # at 200% text on 320 it still does, without widening the page.
+    def test_delete_page_keeps_the_word_whole_and_shows_the_audiogram(self):
+        audiogram = self.audiogram(date(2026, 9, 1), 40)
+        with self.saving_artifacts():
+            self.open(f"/audiograms/{audiogram.pk}/delete", self.PHONE)
+            title = self.main().get_by_role("heading", level=1)
+            expect(title).to_have_text("確定要刪除 2026/09/01 的聽力圖嗎？")
+            self.assert_word_on_one_line()
+            thumbnail = self.main().locator(".audiogram-thumbnail")
+            expect(thumbnail).to_be_visible()
+            badges = self.main().locator(".level-badge")
+            expect(badges).to_have_count(2)
+            self.assertLess(
+                title.bounding_box()["y"], thumbnail.bounding_box()["y"], "thumbnail under title"
+            )
+            self.open(f"/audiograms/{audiogram.pk}/delete", (320, 640))
+            self.assert_fits_a_phone_at_double_text_size("delete audiogram")
+            self.assert_word_on_one_line()
+
+    # Acceptance 4: 舊 and 新 each have their line sample in the chosen ear's colour, and the
+    # legend stays under the chart.
+    def test_compare_line_samples_follow_the_chosen_ear(self):
+        old = self.audiogram(date(2026, 1, 10), 30)
+        new = self.audiogram(date(2026, 9, 10), 40)
+        with self.saving_artifacts():
+            for ear in ("right", "left"):
+                with self.subTest(ear=ear):
+                    self.open(f"/audiograms/compare?a={new.pk}&b={old.pk}&ear={ear}", self.PHONE)
+                    for label, is_old in (("舊", True), ("新", False)):
+                        row = self.main().locator("summary", has_text=label)
+                        line = row.locator("svg.compare-line")
+                        expect(line).to_be_visible()
+                        stroke = line.evaluate("svg => getComputedStyle(svg).stroke")
+                        self.assertEqual(stroke, dict(self.LINE_COLOURS)[(ear, is_old)], label)
+                        # Right after the word.
+                        word = row.locator(".compare-pick-label").bounding_box()
+                        self.assertGreater(line.bounding_box()["x"], word["x"] + word["width"] - 1)
+                    plot = self.page.locator(".audiogram-plot svg")
+                    plot.wait_for()
+                    legend = self.main().locator(".compare-legend")
+                    self.assertGreaterEqual(
+                        legend.bounding_box()["y"],
+                        plot.bounding_box()["y"] + plot.bounding_box()["height"],
+                    )
+
+
 class FamilyAndAccountT361Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#361 (spec #354): the family page's 複製網址, the delete-account form lined up with its
     text, the expired link's button set apart, and the phone makers under each phone choice."""
