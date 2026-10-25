@@ -4242,6 +4242,30 @@
     border-radius: inherit;
   }
 
+  /* #365: the chart's two lines (AudiogramChart.jsx), at 2.5rem so the dashes show. */
+  .compare-line {
+    flex: none;
+    width: 2.5rem;
+    height: 0.75rem;
+    stroke-width: 3;
+  }
+
+  .compare-line.ear-right {
+    stroke: var(--color-ear-right);
+  }
+
+  .compare-line.ear-left {
+    stroke: var(--color-ear-left);
+  }
+
+  .compare-line.ear-right.is-old {
+    stroke: var(--color-ear-right-old);
+  }
+
+  .compare-line.ear-left.is-old {
+    stroke: var(--color-ear-left-old);
+  }
+
   .compare-pick-change {
     margin-left: auto;
     color: var(--color-primary);
