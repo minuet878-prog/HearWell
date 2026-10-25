@@ -100,13 +100,14 @@ class AssessmentChapterTests(TestCase):
         self.assertContains(response, "<title>身障鑑定與鑑定醫院\uff5cHearWell</title>")
         self.assertContains(response, '<h1 class="h3 mt-4">身障鑑定與鑑定醫院</h1>')
         text = test_guide.text_of(response)
-        positions = [text.index(s) for s in (*ASSESSMENT, CHOOSE_COUNTY, ROSTER_NOTE)]
+        positions = [text.index(s) for s in (*ASSESSMENT, ROSTER_NOTE)]
         self.assertEqual(positions, sorted(positions))
+        # #367 (spec #354): not on arrival, as if it were an error; only once 查詢 is pressed.
+        self.assertNotIn(CHOOSE_COUNTY, text)
         content = response.content.decode()
         # Searching lands on the results, not at the top of the page.
         self.assertIn(f'<form method="get" action="{self.url}#hospital-results">', content)
         self.assertLess(content.index("</form>"), content.index('<div id="hospital-results"'))
-        self.assertLess(content.index('<div id="hospital-results"'), content.index(CHOOSE_COUNTY))
         self.assertIn('<label for="county"', content)
         self.assertIn('<select id="county" name="county"', content)
         options = [
@@ -188,7 +189,10 @@ class AssessmentChapterTests(TestCase):
                 response = self.client.get(self.url, {"county": county})
                 self.assertEqual(response.status_code, 200)
                 content = response.content.decode()
-                self.assertIn(CHOOSE_COUNTY, test_guide.text_of(response))
+                text = test_guide.text_of(response)
+                self.assertIn(CHOOSE_COUNTY, text)
+                results = content.index('<div id="hospital-results"')
+                self.assertLess(results, content.index(CHOOSE_COUNTY))
                 self.assertIn('<option value="臺北市">臺北市</option>', content)
                 self.assertIn(BLANK_OPTION, content)
                 self.assertEqual(content.count(" selected>"), 1)

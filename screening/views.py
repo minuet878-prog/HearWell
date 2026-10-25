@@ -234,6 +234,8 @@ def _assessment_context(request):
         "roster_version": roster["version"],
         "counties": roster["counties"],
         "county": county,
+        # #367: 查詢 was pressed, so a missing county is worth saying.
+        "searched": "county" in request.GET,
         "hospitals": [h for h in roster["hospitals"] if h["county"] == county],
     }
 

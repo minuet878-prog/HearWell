@@ -52,8 +52,9 @@
         <button type="submit" class="btn btn-primary btn-lg w-full">查詢</button>
     </form>
     <div id="hospital-results" class="mt-4">
+    {# #367 (spec #354): said only once 查詢 is pressed without a county, not on arrival. #}
     {% if not county %}
-    <p>請先選擇縣市。</p>
+    {% if searched %}<p>請先選擇縣市。</p>{% endif %}
     {% elif not hospitals %}
     <p>這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
     {% else %}

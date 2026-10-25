@@ -22,6 +22,10 @@
     <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}#contents-title">回選配路線看下一站</a>
 </section>
 {% endif %}
+{# #367 (spec #354): not answered (or nothing to answer), the chapter's end leads back to the guide too. #}
+{% if not answered %}
+<p class="mt-6 mb-0"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'guide' %}">回到我的選配指引</a></p>
+{% endif %}
 {# Sources behind a dropdown box (text-heavy pages tidy-up); the links are unchanged (#218 Q7). #}
 <footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
     <details class="dropdown-box mb-2">
