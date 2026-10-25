@@ -62,7 +62,7 @@ class Consent(models.Model):
     agreed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} v{self.version} {self.agreed_at:%Y-%m-%d}"
+        return f"{self.user} v{self.version} {self.agreed_at:%Y/%m/%d}"
 
 
 SHARE_DAYS = 7
@@ -101,7 +101,7 @@ class ReportShare(models.Model):
         ordering = ("-created_at", "-id")
 
     def __str__(self):
-        return f"{self.user} share {self.created_at:%Y-%m-%d}"
+        return f"{self.user} share {self.created_at:%Y/%m/%d}"
 
 
 class QuestionnaireQuerySet(models.QuerySet):
