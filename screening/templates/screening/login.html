@@ -45,8 +45,8 @@
             </div>
             <button class="w-full btn btn-lg btn-primary" type="submit">登入</button>
         </form>
-        {# #360 (spec #354): until a self-service reset exists (its own spec), a way out by mail. #}
-        <p class="mt-4 mb-0 text-center">忘記密碼？請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+        {# #360 (spec #354): until a self-service reset exists (its own spec), a way out by mail; the address breaks anywhere at 200% text on a narrow phone. #}
+        <p class="mt-4 mb-0 text-center wrap-anywhere">忘記密碼？請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
         <div class="auth-alt">
             <p>還沒有帳號？</p>
             <a href="{% url 'register' %}{% if next %}?next={{ next|urlencode }}{% endif %}" class="w-full btn btn-lg btn-outline-primary">註冊新帳號</a>
