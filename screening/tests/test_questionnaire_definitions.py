@@ -1,6 +1,8 @@
+import dataclasses
 import re
 import uuid
 from io import StringIO
+from unittest import mock
 
 from django.core.management import call_command
 from django.test import TestCase
@@ -204,6 +206,19 @@ class RealDefinitionsTests(TestCase):
                 self.assertIn(f"共 1 題・大約 {minutes} 分鐘", content)
                 for sentence in sentences:
                     self.assertIn(sentence, content)
+
+    def test_hhia_s_who_it_is_for_comes_from_its_definition(self):
+        # CODING_STANDARDS #9: the answer page's 適合誰 is the definition's sentence, not a
+        # second copy written in the template.
+        changed = dataclasses.replace(
+            questionnaires.DEFINITIONS["hhia-s"], intro_audience="定義裡的適合對象。"
+        )
+        with mock.patch.dict(questionnaires.DEFINITIONS, {"hhia-s": changed}):
+            url = reverse("screening", args=[self.questionnaires["hhia-s"].pk])
+            content = self.client.get(url).content.decode()
+        who = re.search(r'data-icon="who">(.*?)</section>', content, re.S).group(1)
+        self.assertIn("<p>定義裡的適合對象。</p>", who)
+        self.assertNotIn("若您持續使用原問卷追蹤", content)
 
     def test_hhia_s_and_ssq12_sources_sit_under_the_answers(self):
         # #362: out of the intro React shows above the question, after the form as IOI-HA's,

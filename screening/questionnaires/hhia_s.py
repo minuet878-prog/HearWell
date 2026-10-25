@@ -102,6 +102,7 @@ DEFINITION = Definition(
     life_impact=True,
     concern=LIFE_IMPACT,
     records_tab_age="65 歲以下",
+    intro_audience="適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,
