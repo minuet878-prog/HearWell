@@ -698,7 +698,7 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
-# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫您挑」, the rest
+# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫我選問卷」, the rest
 # its answers. Without any, a returning user sees the catalogue.
 WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
 
@@ -744,7 +744,6 @@ def questionnaire_list(request):
             "screening/questionnaire.html",
             {
                 "questionnaires": questionnaires,
-                "returning": returning,
                 "continue_notice": _continue_notice(user, questionnaires),
                 # A new user has no record to recommend by.
                 "recommendation": catalogue_recommendation(user, questionnaires, state)
@@ -768,7 +767,7 @@ def questionnaire_list(request):
             3 if life_impact is None else 2,
             questionnaires,
             field=concern_form["concern"],
-            # A returning user came from the catalogue's 「幫您挑」.
+            # A returning user came from the catalogue's 「幫我選問卷」.
             back_url=wizard_url if returning else reverse("index"),
         )
     concern = concern_form.cleaned_data["concern"]

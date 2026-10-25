@@ -227,7 +227,7 @@ class Screenshots(StaticLiveServerTestCase):
             Shot("public", "consent", reverse("consent"), who="new"),
             Shot("public", "account", reverse("account_settings")),
             Shot("public", "account-delete", reverse("delete_account")),
-            # #346: a returning user's 篩檢 is the catalogue; the wizard is behind 「幫您挑」.
+            # #346: a returning user's 篩檢 is the catalogue; the wizard is behind 「幫我選問卷」.
             Shot("answering", "questionnaire-list", reverse("questionnaire_list")),
             Shot(
                 "answering",

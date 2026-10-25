@@ -99,7 +99,7 @@ describe("pages", () => {
     expect(fetch).toHaveBeenCalledWith("/api/questionnaires/1/", expect.anything());
     expect(onReady).toHaveBeenCalledTimes(1);
     expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
-    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["有戴", "沒戴"]);
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["沒戴", "有戴"]);
     expect(screen.queryByRole("button", { name: "上一題" })).toBeNull();
   });
 
@@ -107,7 +107,7 @@ describe("pages", () => {
     mockApi(undefined, { ...QUESTIONNAIRE, code: "thi", name: "THI", wearing_question: "您現在有沒有配戴助聽器？" });
     await renderApp();
     expect(legend()).toBe("您現在有沒有配戴助聽器？");
-    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["有戴", "沒戴"]);
+    expect(screen.getAllByRole("radio").map((r) => r.labels[0].textContent)).toEqual(["沒戴", "有戴"]);
   });
 
   it("then shows one question per page with its full text and choices", async () => {
@@ -412,8 +412,8 @@ describe("next and previous", () => {
     next();
     expect(legend()).toMatch(/有沒有戴助聽器/);
     expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
-    // Under the buttons.
-    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    // Under the buttons, after the line saying what they need (#362).
+    expect(screen.getByRole("alert").previousElementSibling.previousElementSibling).toBe(button.parentElement);
     expect(document.activeElement.tagName).toBe("LEGEND");
     choose("有戴");
     expect(screen.queryByRole("alert")).toBeNull();
@@ -505,6 +505,42 @@ describe("next and previous", () => {
     const before = history.length;
     await renderApp();
     expect(history.length).toBe(before);
+  });
+});
+
+describe("what the buttons need (#362)", () => {
+  const needs = (button) => `先選一個答案，才能按「${button}」。`;
+  const line = (button) => screen.queryByText(needs(button));
+
+  it("says under the buttons that 下一題 needs an answer, until one is chosen", async () => {
+    await renderApp();
+    const row = screen.getByRole("button", { name: "下一題" }).parentElement;
+    expect(line("下一題").previousElementSibling).toBe(row);
+    choose("沒戴");
+    expect(line("下一題")).toBeNull();
+    next();
+    expect(line("下一題").previousElementSibling).toBe(row);
+    choose("有時");
+    expect(line("下一題")).toBeNull();
+  });
+
+  it("names 送出 on the last question", async () => {
+    await renderApp();
+    choose("沒戴");
+    next();
+    QUESTIONS.slice(0, -1).forEach(() => {
+      choose("常常");
+      next();
+    });
+    expect(line("送出")).not.toBeNull();
+    expect(line("下一題")).toBeNull();
+    choose("常常");
+    expect(line("送出")).toBeNull();
+  });
+
+  it("is not said where an answer is already chosen on arrival", async () => {
+    await renderApp({ preselectUnaided: true, unaidedHint: "請想沒戴助聽器時的情況來回答" });
+    expect(line("下一題")).toBeNull();
   });
 });
 
@@ -721,7 +757,7 @@ describe("submitting", () => {
     expect(postCalls()).toHaveLength(0);
     expect(legend()).toMatch(/^第 10 題/);
     expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
-    expect(screen.getByRole("alert").previousElementSibling).toBe(button.parentElement);
+    expect(screen.getByRole("alert").previousElementSibling.previousElementSibling).toBe(button.parentElement);
     expect(document.activeElement.tagName).toBe("LEGEND");
     choose("從未");
     expect(screen.queryByRole("alert")).toBeNull();

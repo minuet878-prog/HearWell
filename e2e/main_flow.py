@@ -1387,7 +1387,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             tag = cards.first.locator(".card-tag").last
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
             self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
-            self.main().get_by_role("link", name="回答幾個問題，幫您挑").click()
+            self.main().get_by_role("link", name="幫我選問卷").click()
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
@@ -5350,7 +5350,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         large, medium = "27px", "13.5px"  # 1.5rem and 0.75rem at the 18px base
         cases = (
             ("/questionnaire_list?choose=self", "main a.link-card", large),
-            # A returning user: the wizard only by 「幫您挑」 (#346).
+            # A returning user: the wizard only by 「幫我選問卷」 (#346, #362).
             ("/questionnaire_list?wizard=1&from=consent", ".questionnaire-guide", large),
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary", large),
             ("/my_hearing?questionnaire=hhie-s", ".aided-difference", large),
@@ -10033,3 +10033,124 @@ class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 else:
                     self.assertAlmostEqual(yes["y"], no["y"], delta=1)
                     self.assertLess(yes["x"] + yes["width"], no["x"])
+
+
+class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#362 (spec #354, 選問卷與作答): the wizard's choices one per row, the sources under the
+    answers so a phone's first screen holds the question, and IOI-HA's room under its intro."""
+
+    fixtures = ("questions_fixture.json",)
+    PHONE = (390, 844)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="chooser_e2e", password="Fake-pass-2468")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path):
+        width, height = self.PHONE
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def answer_page(self, code):
+        self.open(f"/questionnaire/{Questionnaire.objects.get(code=code).pk}")
+
+    def rem(self):
+        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+
+    # Acceptance 1: each of the wizard's answers is a row of its own, as wide as the question, so
+    # a tap anywhere on the row chooses it.
+    def test_wizard_choices_are_one_full_row_each(self):
+        with self.saving_artifacts():
+            for params in ("wizard=1", "concern=life_impact"):
+                with self.subTest(params=params):
+                    self.open(f"/questionnaire_list?{params}")
+                    group = self.main().locator("form div.choice-group")
+                    labels = group.locator("label")
+                    self.assertGreater(labels.count(), 1)
+                    row = group.bounding_box()
+                    boxes = [label.bounding_box() for label in labels.all()]
+                    for above, below in pairwise(boxes):
+                        self.assertGreaterEqual(below["y"], above["y"] + above["height"])
+                    for box in boxes:
+                        self.assertAlmostEqual(box["x"], row["x"], delta=1)
+                        self.assertAlmostEqual(box["width"], row["width"], delta=1)
+                    # The row's far right, away from the words, still chooses the answer.
+                    last = labels.last
+                    last.click(position={"x": boxes[-1]["width"] - 4, "y": boxes[-1]["height"] / 2})
+                    expect(last.get_by_role("radio")).to_be_checked()
+
+    # Acceptance 6: on a 390 phone the wearing question and both its answers are in the first
+    # window; the source (and SSQ12's 怎麼計分 sentence) sits under the answers at its old size.
+    def test_hhia_s_and_ssq12_question_on_the_first_screen_sources_below(self):
+        moved = {
+            "hhia-s": ("題目中譯來源",),
+            "ssq12-tw": ("十二題都有分數才計算整體平均", "來源：婦聯聽覺健康基金會"),
+        }
+        with self.saving_artifacts():
+            for code, texts in moved.items():
+                with self.subTest(code=code):
+                    self.answer_page(code)
+                    app = self.main().locator(".answer-app")
+                    group = app.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
+                    expect(group).to_be_visible()
+                    # The question and 沒戴 clear the tab bar; on HHIA-S the tab bar still covers
+                    # the lower part of 有戴, which is inside the window (left to the owner).
+                    tab_bar = self.page.locator(".site-nav").bounding_box()
+                    for name, bottom in (("沒戴", tab_bar["y"]), ("有戴", self.PHONE[1])):
+                        choice = group.locator("label").filter(has_text=name).bounding_box()
+                        self.assertLessEqual(choice["y"] + choice["height"], bottom, name)
+                    buttons = app.locator(".answer-nav").bounding_box()
+                    for text in texts:
+                        line = self.main().get_by_text(text)
+                        expect(line).to_have_count(1)
+                        expect(app.get_by_text(text)).to_have_count(0)
+                        self.assertGreater(line.bounding_box()["y"], buttons["y"])
+                    source = self.main().locator(".q-intro-source")
+                    self.assertEqual(
+                        source.evaluate("e => getComputedStyle(e).fontSize"),
+                        f"{0.875 * self.rem()}px",
+                    )
+                    if code == "ssq12-tw":
+                        scoring = self.main().get_by_text(texts[0])
+                        self.assertEqual(
+                            scoring.evaluate("e => getComputedStyle(e).fontSize"), f"{self.rem()}px"
+                        )
+
+    # Acceptance 7: IOI-HA's first page has 2rem more between its intro and item 1, and no line.
+    def test_ioi_ha_first_page_has_room_between_intro_and_item_1(self):
+        with self.saving_artifacts():
+            self.answer_page("ioi-ha")
+            app = self.main().locator(".answer-app")
+            fieldset = app.locator("fieldset")
+            expect(fieldset).to_contain_text("第 1 題／共 7 題")
+            intro = app.locator("> div").first
+            expect(intro).to_contain_text("這份問卷在了解")
+            gap = fieldset.bounding_box()["y"] - (
+                intro.bounding_box()["y"] + intro.bounding_box()["height"]
+            )
+            self.assertAlmostEqual(gap, 2 * self.rem(), delta=1)
+            for locator, side in ((intro, "borderBottomWidth"), (fieldset, "borderTopWidth")):
+                self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")

@@ -2,7 +2,7 @@
 {% block title %}比較戴與不戴助聽器｜HearWell{% endblock %}
 {% block body %}
 <h1 class="h3 mt-2">比較戴與不戴助聽器</h1>
-<p class="mt-2">{{ questionnaire }}</p>
+<p class="mt-2">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</p>
 <p>選一次沒戴、一次有戴時填的同一份問卷。</p>
 {% if form.errors %}
 <div id="comparison-errors" class="text-danger mb-4" role="alert" tabindex="-1" autofocus>

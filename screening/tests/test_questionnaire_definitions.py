@@ -137,11 +137,15 @@ PUBLISHED = {
         "aid",
         ("目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄", "請依照最近兩週戴著現有助聽器的經驗"),
     ),
+    # #362: the card as short as HHIE-S's, with its ear; the rest of the sentence in 適合誰.
     "hhia-s": (
-        "適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
+        "適合 18–64 歲成人。",
         3,
-        "clipboard",
-        ("適合 18–64 歲成人", "題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁"),
+        "ear",
+        (
+            "適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",
+            "題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁",
+        ),
     ),
     "ssq12-tw": (
         "了解您目前生活中的聆聽能力。",
@@ -200,6 +204,28 @@ class RealDefinitionsTests(TestCase):
                 self.assertIn(f"共 1 題・大約 {minutes} 分鐘", content)
                 for sentence in sentences:
                     self.assertIn(sentence, content)
+
+    def test_hhia_s_and_ssq12_sources_sit_under_the_answers(self):
+        # #362: out of the intro React shows above the question, after the form as IOI-HA's,
+        # at their size; SSQ12's 怎麼計分 sentence goes with its source.
+        moved = {
+            "hhia-s": ("題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁",),
+            "ssq12-tw": ("十二題都有分數才計算整體平均", "來源：婦聯聽覺健康基金會 SSQ12-TW"),
+        }
+        for code, sentences in moved.items():
+            with self.subTest(code=code):
+                url = reverse("screening", args=[self.questionnaires[code].pk])
+                content = self.client.get(url).content.decode()
+                start = content.index('<div id="answer-intro">')
+                end = content.index("</form>", start)  # the answer form's, not the header's
+                intro, below = content[start:end], content[end : content.index("</main>")]
+                for sentence in sentences:
+                    self.assertNotIn(sentence, intro)
+                    self.assertIn(sentence, below)
+                source = re.search(r'<p class="([^"]*)">[^<]*來源', below).group(1).split()
+                self.assertIn("q-intro-source", source)
+        ssq12 = self.client.get(reverse("screening", args=[self.questionnaires["ssq12-tw"].pk]))
+        self.assertNotContains(ssq12, "怎麼計分")
 
 
 class ResultFromDefinitionTests(TestCase):
