@@ -5,9 +5,11 @@ from unittest import mock
 from django.contrib.auth import password_validation
 from django.db import IntegrityError, connection
 from django.db.migrations.executor import MigrationExecutor
+from django.forms import BaseForm, Form
 from django.test import TestCase, TransactionTestCase
 from django.urls import reverse
 
+from screening import forms as screening_forms
 from screening.forms import RegisterForm
 from screening.models import Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
@@ -23,6 +25,61 @@ def banner(content):
 def field_icons(content):
     """The icon at the start of each field; decoration only, so screen readers skip it."""
     return re.findall(r'<div class="auth-input">\s*(<svg[^>]*>)', content)
+
+
+def field_names(content):
+    """The text of each <label> and <legend> on the page."""
+    return [
+        re.sub(r"<[^>]+>", "", name).strip()
+        for name in re.findall(r"<(?:label|legend)\b[^>]*>(.*?)</(?:label|legend)>", content, re.S)
+    ]
+
+
+def forms_keeping_the_colon(module):
+    """Form classes defined in module that still add Django's colon after each field name."""
+    return [
+        name
+        for name, cls in vars(module).items()
+        if isinstance(cls, type)
+        and issubclass(cls, BaseForm)
+        and cls.__module__ == module.__name__
+        and not issubclass(cls, screening_forms.NoLabelSuffix)
+    ]
+
+
+class FieldNameColonT358Tests(TestCase):
+    """#354: a field name never ends in a colon, on every form."""
+
+    def test_form_pages_show_field_names_without_a_colon(self):
+        pages = {
+            "register": None,
+            "login": None,
+            "delete_account": consented_user(username="d"),
+            "consent": User.objects.create_user(username="c"),
+        }
+        for name, user in pages.items():
+            with self.subTest(page=name):
+                if user:
+                    self.client.force_login(user)
+                names = field_names(self.client.get(reverse(name)).content.decode())
+                self.assertEqual([n for n in names if n.endswith(("：", ":"))], [])
+                self.client.logout()
+        register = field_names(self.client.get(reverse("register")).content.decode())
+        self.assertIn("使用者名稱", register)
+        self.assertIn("出生年", register)
+
+    def test_every_form_drops_the_django_colon(self):
+        self.assertEqual(forms_keeping_the_colon(screening_forms), [])
+        self.assertEqual(RegisterForm().label_suffix, "")
+
+    def test_a_form_keeping_the_colon_is_caught(self):
+        module = type(screening_forms)("fake_forms")
+        module.Kept = type("Kept", (Form,), {"__module__": "fake_forms"})
+        module.Dropped = type(
+            "Dropped", (screening_forms.NoLabelSuffix, Form), {"__module__": "fake_forms"}
+        )
+        self.assertEqual(forms_keeping_the_colon(module), ["Kept"])
+        self.assertEqual(module.Dropped().label_suffix, "")
 
 
 class SubmissionResultAccessTests(TestCase):

@@ -86,7 +86,7 @@ class TypesAndPricesChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        test_guide.assert_footer(self, response, "2026-10-22", SOURCES)
+        test_guide.assert_footer(self, response, "2026/10/22", SOURCES)
 
     def test_the_only_amounts_are_the_four_subsidy_limits_and_no_brand_is_named(self):
         text = test_guide.text_of(self.client.get(self.url))
