@@ -3118,7 +3118,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             ).to_be_in_viewport()
             expect(hospitals.first).to_be_in_viewport()
 
-            self.main().get_by_role("link", name="回到我的選配指引").click()
+            # #367: the chapter's end leads back too; this is the one at its top.
+            self.main().get_by_role("link", name="回到我的選配指引").first.click()
             self.main().get_by_role("link", name="看九號表的流程").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
             expect(self.main().get_by_role("heading", level=1)).to_have_text(
@@ -7319,15 +7320,21 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                         outside = article.locator(":scope > :not(section)")
                         for each in outside.all():
                             with self.subTest(outside=each.inner_text()[:10]):
-                                self.assertIn(each.evaluate("el => el.tagName"), ("H1", "P"))
+                                # #367: form 9's 本頁段落 jump stays outside the boxes too.
+                                tag = each.evaluate("el => el.tagName")
+                                self.assertIn(tag, ("H1", "P", "NAV"))
                                 self.assertNotEqual(
                                     self.style(each, "backgroundColor"), self.SECTION
                                 )
                         self.assert_flat(self.main().locator("footer"))
                         if parts.get_by_role("link").count():
                             linked.add(slug)
-            # The chapters with links in their parts (the others link only in their sources).
-            self.assertEqual(linked, {"form-9", "types-and-prices", "after-fitting", "form-25"})
+            # The chapters with links in their parts (the others link only in their sources);
+            # #367 links the report from before-you-go's things to bring.
+            self.assertEqual(
+                linked,
+                {"before-you-go", "form-9", "types-and-prices", "after-fitting", "form-25"},
+            )
             self.visit(True, "/guide/assessment")
             question = self.main().get_by_role("region", name="看完了嗎？")
             self.assert_section_box(question)
@@ -9741,3 +9748,152 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             line = account.bounding_box()
             wave = self.page.locator(".site-wave").bounding_box()
             self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)
+
+
+class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#367 (spec #354): the guide's route and chapters, measured on a phone and a desktop."""
+
+    fixtures = ("questions_fixture.json",)
+    PHONE = 390
+    DESKTOP = 1024
+    # The last line of a sentence: its width in ems, the line's fragments taken together.
+    LAST_LINE_EMS = """el => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const rects = [...range.getClientRects()].filter(r => r.width > 0);
+        const bottom = Math.max(...rects.map(r => r.bottom));
+        const last = rects.filter(r => r.bottom > bottom - 2);
+        const width = Math.max(...last.map(r => r.right)) - Math.min(...last.map(r => r.left));
+        return width / parseFloat(getComputedStyle(el).fontSize);
+    }"""
+
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    answering = WhiteCardRuleTest.answering
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="fitting_guide_t367_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def route_at_the_assessment(self):
+        """My guide here at the assessment, its question open: 55 dB both ears, 去找聽力師之前
+        read. Made once, the test opening it at two widths."""
+        if Audiogram.objects.filter(user=self.user).exists():
+            return "/guide"
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        return "/guide"
+
+    def boxes(self, locator):
+        expect(locator.first).to_be_visible()
+        return [item.bounding_box() for item in locator.all()]
+
+    # Acceptance 2: on a phone each answer fills its own row; on a desktop they share one row,
+    # equally wide. The answer page keeps one answer a row.
+    def test_single_choice_answers_are_equal_rows_on_a_phone_and_one_row_on_a_desktop(self):
+        cases = (
+            (
+                "route",
+                lambda test: test.route_at_the_assessment(),
+                ".route-stop[aria-current=step] fieldset .stop-answers",
+                ".btn",
+            ),
+            ("chapter", "/guide/assessment", "#stop-question fieldset .stop-answers", ".btn"),
+            (
+                "chapter radios",
+                "/guide/after-fitting",
+                "#stop-question fieldset:has(input[name=ear]) div.choice-group",
+                "label",
+            ),
+        )
+        for name, path, group, option in cases:
+            for width in (self.PHONE, self.DESKTOP):
+                with self.subTest(page=name, width=width):
+                    self.visit(True, path, width=width)
+                    group_box = self.main().locator(group).bounding_box()
+                    boxes = self.boxes(self.main().locator(group).locator(option))
+                    self.assertGreater(len(boxes), 1)
+                    widths = [box["width"] for box in boxes]
+                    self.assertLessEqual(max(widths) - min(widths), 1, widths)
+                    tops = [round(box["y"]) for box in boxes]
+                    if width == self.PHONE:
+                        self.assertEqual(tops, sorted(set(tops)))
+                        self.assertAlmostEqual(widths[0], group_box["width"], delta=1)
+                    else:
+                        self.assertEqual(len(set(tops)), 1, tops)
+        for width in (self.PHONE, self.DESKTOP):
+            with self.subTest(page="answer page", width=width):
+                self.visit(True, self.answering("hhie-s"), width=width)
+                labels = self.main().locator("div.choice-group label:visible")
+                tops = [round(box["y"]) for box in self.boxes(labels)]
+                self.assertEqual(tops, sorted(set(tops)))
+
+    # Acceptance 4: each group's meanings start at one line, none ending on a line of one or
+    # two characters; at 200% they may drop under the numbers, the page still a phone's width.
+    def test_large_number_rows_line_up_on_a_phone(self):
+        for slug in ("assessment", "form-9", "types-and-prices"):
+            with self.subTest(chapter=slug):
+                self.visit(False, f"/guide/{slug}", width=self.PHONE)
+                groups = self.main().locator(".fact-rows")
+                expect(groups.first).to_be_visible()
+                for group in groups.all():
+                    values = self.boxes(group.locator(".fact-rows-value"))
+                    meanings = group.locator("li > :last-child")
+                    starts = {round(box["x"]) for box in self.boxes(meanings)}
+                    self.assertEqual(len(starts), 1, starts)
+                    for value, meaning in zip(values, self.boxes(meanings), strict=True):
+                        self.assertLess(meaning["y"], value["y"] + value["height"])
+                    for meaning in meanings.all():
+                        self.assertGreater(meaning.evaluate(self.LAST_LINE_EMS), 2.5)
+            with self.subTest(chapter=slug, double_text_size=True):
+                self.assert_fits_a_phone_at_double_text_size(slug, width=self.PHONE)
+                for row in self.main().locator(".fact-rows li").all():
+                    value = row.locator(".fact-rows-value").bounding_box()
+                    meaning = row.locator(":scope > :last-child").bounding_box()
+                    self.assertGreaterEqual(meaning["y"], value["y"] + value["height"] - 1)
+
+    # Acceptance 7: form 9's jump to its six parts, two columns on a phone.
+    def test_form_9_jumps_to_its_parts_in_two_columns_on_a_phone(self):
+        self.visit(False, "/guide/form-9", width=self.PHONE)
+        jump = self.main().get_by_role("navigation", name="本頁段落")
+        boxes = self.boxes(jump.get_by_role("link"))
+        self.assertEqual(len(boxes), 6)
+        self.assertEqual(len({round(box["x"]) for box in boxes}), 2)
+        self.assertEqual(len({round(box["y"]) for box in boxes}), 3)
+        jump.get_by_role("link", name="補助多少").click()
+        expect(self.page).to_have_url(re.compile(r"/guide/form-9#amount-title$"))
+        expect(self.main().get_by_role("heading", name="補助多少")).to_be_in_viewport()
+        self.page.goto(f"{self.live_server_url}/guide/form-9")
+        self.assert_fits_a_phone_at_double_text_size("form 9 at 200%", width=self.PHONE)
+
+    # Acceptance 8: 1.5rem between 配戴之後's title and its first box.
+    def test_after_fitting_keeps_its_title_off_the_first_box(self):
+        for width in (self.PHONE, self.DESKTOP):
+            with self.subTest(width=width):
+                self.visit(False, "/guide/after-fitting", width=width)
+                title = self.main().get_by_role("heading", level=1).bounding_box()
+                box = self.main().locator(".section-box").first.bounding_box()
+                self.assertAlmostEqual(box["y"] - (title["y"] + title["height"]), 27, delta=0.5)
