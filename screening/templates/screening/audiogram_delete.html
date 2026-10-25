@@ -4,8 +4,8 @@
 {% block title %}刪除聽力圖｜HearWell{% endblock %}
 
 {% block body %}
-{# #365: 聽力圖 stays on one line; wrap-anywhere lets the date break at 200% text on a phone (#204). #}
-<h1 class="h3 mt-4 wrap-anywhere">確定要刪除 {{ audiogram.tested_on|date:"Y/m/d" }} 的<span class="whitespace-nowrap">聽力圖</span>嗎？</h1>
+{# #365: 聽力圖 stays on one line. #}
+<h1 class="h3 mt-4">確定要刪除 {{ audiogram.tested_on|date:"Y/m/d" }} 的<span class="whitespace-nowrap">聽力圖</span>嗎？</h1>
 {# #365: which one is going, as its card on the audiogram list shows it. #}
 {% with result=audiogram.interpretation %}
 <div class="flex flex-wrap items-center gap-4 mb-4">

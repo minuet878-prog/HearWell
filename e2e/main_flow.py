@@ -9842,6 +9842,17 @@ class AudiogramPagesT365Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             self.open(f"/audiograms/{audiogram.pk}/delete", (320, 640))
             self.assert_fits_a_phone_at_double_text_size("delete audiogram")
             self.assert_word_on_one_line()
+            # Wider than a phone the title's date has room even at 200%: it needs no breaking
+            # (site.css breaks a page title anywhere on a phone only), here or when editing. The
+            # title alone: at this width and size the tab bar's 了解 already runs past the edge.
+            for path in (f"/audiograms/{audiogram.pk}/delete", f"/audiograms/{audiogram.pk}/edit"):
+                with self.subTest(path=path, width=768):
+                    self.open(path, (768, 900))
+                    self.double_text()
+                    title = self.main().get_by_role("heading", level=1)
+                    self.assertLessEqual(
+                        title.evaluate("h1 => h1.scrollWidth - h1.clientWidth"), 0, path
+                    )
 
     # Acceptance 4: 舊 and 新 each have their line sample in the chosen ear's colour, and the
     # legend stays under the chart.

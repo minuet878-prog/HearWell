@@ -8,8 +8,7 @@
 {% endblock %}
 
 {% block body %}
-{# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
-<h1 class="h3 mt-4{% if audiogram %} wrap-anywhere{% endif %}">{% if audiogram %}修改 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖{% else %}新增聽力圖{% endif %}</h1>
+<h1 class="h3 mt-4">{% if audiogram %}修改 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖{% else %}新增聽力圖{% endif %}</h1>
 {% if not audiogram %}<p>準備好醫院給的聽力檢查報告，照著報告上的日期和 O、X 記號描進來。</p>{% endif %}
 {# #199: how to mark lives in each ear's step card (AudiogramApp.jsx). #}
 <div id="audiogram-app" data-today="{{ today|date:'Y-m-d' }}" data-csrf-token="{{ csrf_token }}"{% if audiogram %} data-audiogram-id="{{ audiogram.id }}"{% endif %}></div>
