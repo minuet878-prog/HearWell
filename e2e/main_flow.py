@@ -10133,12 +10133,11 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
                     app = self.main().locator(".answer-app")
                     group = app.get_by_role("group", name="這次填答時，您有沒有戴助聽器？")
                     expect(group).to_be_visible()
-                    # The question and 沒戴 clear the tab bar; on HHIA-S the tab bar still covers
-                    # the lower part of 有戴, which is inside the window (left to the owner).
+                    # The question and both answers clear the tab bar.
                     tab_bar = self.page.locator(".site-nav").bounding_box()
-                    for name, bottom in (("沒戴", tab_bar["y"]), ("有戴", self.PHONE[1])):
+                    for name in ("沒戴", "有戴"):
                         choice = group.locator("label").filter(has_text=name).bounding_box()
-                        self.assertLessEqual(choice["y"] + choice["height"], bottom, name)
+                        self.assertLessEqual(choice["y"] + choice["height"], tab_bar["y"], name)
                     buttons = app.locator(".answer-nav").bounding_box()
                     for text in texts:
                         line = self.main().get_by_text(text)
