@@ -8103,7 +8103,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_paper(self.page.locator("#trend-plot").locator(".."), card)
             self.visit(True, lambda test: test.ioi_ha_records())
             card = self.main().locator("a.link-card").first
-            self.assert_paper(self.page.get_by_role("region", name="IOI-HA 各題與常模"), card)
+            # #364: the frame inside the section, its title and notes above it.
+            region = self.page.get_by_role("region", name="IOI-HA 各題與常模")
+            self.assert_paper(region.locator(".ioi-chart"), card)
             self.visit(True, lambda test: test.audiogram_detail())
             self.page.locator("#audiogram-chart svg").first.wait_for()
             card = self.main().locator("a.link-card").first
@@ -9741,3 +9743,89 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             line = account.bounding_box()
             wave = self.page.locator(".site-wave").bounding_box()
             self.assertGreater(line["y"] + line["height"], wave["y"] + wave["height"] * 0.7)
+
+
+class MyRecordsT364Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#364 (spec #354): 我的紀錄's questionnaire tabs, as laid out in the browser."""
+
+    fixtures = ("questions_fixture.json",)
+    BLUE_SELECTED = "rgb(232, 238, 247)"  # --color-brand-selected, the blue summary box
+
+    # The white card rule's page-making helpers, borrowed rather than inherited so its own tests
+    # do not run twice.
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    style = WhiteCardRuleTest.style
+    answered = WhiteCardRuleTest.answered
+    ioi_ha = WhiteCardRuleTest.ioi_ha
+    ioi_ha_records = WhiteCardRuleTest.ioi_ha_records
+    assert_fits_uncut = WhiteCardRuleTest.assert_fits_uncut
+    CUT_OFF = WhiteCardRuleTest.CUT_OFF
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.user = consented_user(username="my_records_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def hhia_s_records(self):
+        self.answered("hhia-s", 2)
+        self.answered("hhia-s", 4)
+        return "/my_hearing?questionnaire=hhia-s"
+
+    # Acceptance 4: HHIA-S's 和上一次比 in the blue summary box, its title above the box.
+    def test_hhia_s_since_last_is_a_blue_summary_box(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.hhia_s_records(), width=390)
+            since_last = self.page.get_by_role("region", name="和上一次比")
+            box = since_last.locator(".trend-summary")
+            self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SELECTED)
+            self.assertEqual(self.style(box, "borderLeftWidth"), "6px")
+            title = since_last.get_by_role("heading", name="和上一次比").bounding_box()
+            self.assertLessEqual(title["y"] + title["height"], box.bounding_box()["y"])
+            # On a common phone the two records still sit side by side inside the box.
+            cells = [cell.bounding_box() for cell in since_last.locator(".since-last-cell").all()]
+            self.assertEqual(len(cells), 2)
+            self.assertEqual(cells[0]["y"], cells[1]["y"])
+            # At 200% text on the smallest phone they stack, nothing cut.
+            self.visit(True, "/my_hearing?questionnaire=hhia-s", width=320)
+            self.assert_fits_uncut("HHIA-S 和上一次比")
+            cells = self.page.locator("#since-last .since-last-cell").all()
+            cells = [cell.bounding_box() for cell in cells]
+            self.assertLess(cells[0]["y"] + cells[0]["height"], cells[1]["y"])
+
+    # Acceptance 5 (ADR 0022): the white frame holds only the chart and legend, the text above
+    # it on the page; the chart keeps its width, so its crop stays the same.
+    def test_ioi_ha_frame_holds_only_the_chart(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.ioi_ha_records(), width=390)
+            section = self.page.get_by_role("region", name="IOI-HA 各題與常模")
+            frame = section.locator(".ioi-chart")
+            self.assertEqual(self.style(frame, "backgroundColor"), WhiteCardRuleTest.WHITE)
+            top = frame.bounding_box()["y"]
+            for text in ("IOI-HA 各題與常模", "最近一次（", "常模組別：", "7 題都是分數越高"):
+                with self.subTest(text):
+                    above = section.get_by_text(text).first.bounding_box()
+                    self.assertLessEqual(above["y"] + above["height"], top)
+            expect(frame.locator(".ioi-columns")).to_be_visible()
+            expect(frame.locator(".trend-legend")).to_be_visible()
+            columns = frame.locator(".ioi-columns").bounding_box()
+            content = section.bounding_box()
+            self.assertEqual(columns["x"], content["x"])
+            self.assertEqual(columns["width"], content["width"])

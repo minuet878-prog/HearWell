@@ -76,6 +76,10 @@ class Definition:
     concern: str = ""
     support_message: SupportMessage | None = None  # LEVEL only
     trend_chart: bool = False  # the history page draws a score trend chart
+    # How to read the scores, shown above 我的紀錄's record cards (#364); "": nothing.
+    records_note: str = ""
+    # Who it suits, after the code on 我的紀錄's tab: 「HHIE-S（65 歲以上）」 (#364); "": nothing.
+    records_tab_age: str = ""
     scale: Callable[[int], tuple] | None = None  # item n's (label for 0, label for 10)
     # Wearing-status comparison of an unaided and an aided record; None: not offered.
     comparison: TotalComparison | AverageComparison | None = None

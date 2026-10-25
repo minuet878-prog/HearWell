@@ -99,6 +99,7 @@ DEFINITION = Definition(
     result=LEVEL,
     life_impact=True,
     concern=LIFE_IMPACT,
+    records_tab_age="65 歲以下",
     choices=choices,
     thresholds=THRESHOLDS,
     advice=ADVICE,

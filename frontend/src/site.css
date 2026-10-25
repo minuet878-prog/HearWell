@@ -1563,6 +1563,12 @@
     container-type: inline-size;
   }
 
+  /* #364: in HHIA-S's summary box the pair has the box's inside width, so the box is what
+     decides when the two stack. */
+  .since-last .trend-summary {
+    container-type: inline-size;
+  }
+
   .since-last-pair {
     display: flex;
     gap: 0.5rem;
