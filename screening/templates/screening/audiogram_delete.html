@@ -1,5 +1,4 @@
 {% extends "screening/layout.html" %}
-{% load custom_filters %}
 
 {% block title %}刪除聽力圖｜HearWell{% endblock %}
 
@@ -10,10 +9,7 @@
 {% with result=audiogram.interpretation %}
 <div class="flex flex-wrap items-center gap-4 mb-4">
     {% include "screening/audiogram_thumbnail.html" %}
-    <p class="flex flex-col gap-1 mb-0">
-        <span>右耳：{% include "screening/level_badge.html" with text=result.right.degree|default:"資料不足" color=result.right.degree|degree_level %}</span>
-        <span>左耳：{% include "screening/level_badge.html" with text=result.left.degree|default:"資料不足" color=result.left.degree|degree_level %}</span>
-    </p>
+    <p class="flex flex-col gap-1 mb-0">{% include "screening/audiogram_ears.html" %}</p>
 </div>
 {% endwith %}
 <p>刪除後無法復原。</p>
