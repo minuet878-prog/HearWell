@@ -250,6 +250,14 @@ describe("touch", () => {
     expect(magnifier()).toBeNull();
     touchUp(1000, 40, 200);
     expect(point("right-air-1000")).toBeNull();
+
+    // Nor does a swipe that starts on a point delete it.
+    drag(1000, 40, 40);
+    touchDown(1000, 40);
+    touchMove(1000, 40, -11);
+    wait(300);
+    touchUp(1000, 40, -200);
+    expect(point("right-air-1000").dataset.db).toBe("40");
   });
 
   it("marks nothing when the browser takes the touch for scrolling", () => {
@@ -271,6 +279,7 @@ describe("touch", () => {
     expect(point("right-air-2000")).toBeNull();
   });
 
+  // Also acceptance 11 of the first audiogram spec: dragging does not scroll the page.
   it("resting 0.3 s starts marking, then dragging does not scroll (#353 acceptance 2)", () => {
     renderRight();
     touchDown(1000, 40);
