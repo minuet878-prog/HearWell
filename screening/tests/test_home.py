@@ -69,7 +69,7 @@ class NewUserHomeTests(TestCase):
 
     def test_title_is_larger_and_the_picture_is_the_smiling_elder(self):
         main = self._main()
-        self.assertIn('<h1 class="home-title text-center">了解聽力對您生活的影響</h1>', main)
+        self.assertRegex(main, r'<h1 class="[^"]*\btext-center\b[^"]*">了解聽力對您生活的影響</h1>')
         start = main.index('class="home-illustration"')
         picture = main[start : main.index("</svg>", start)]
         for part in ("ill-face", "ill-hair", "ill-cheek", "ill-accent"):

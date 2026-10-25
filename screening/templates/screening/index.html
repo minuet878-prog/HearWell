@@ -14,7 +14,8 @@
         <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h5"/></svg>國際標準量表</span>
     </div>
     {% include "screening/home_illustration.html" %}
-    <h1 class="home-title text-center">了解聽力對您生活的影響</h1>
+    {# #360 (spec #354): bold in the heading colour, 31.5px on a phone and 40.5px on a wider screen. #}
+    <h1 class="text-[1.75rem] font-bold text-heading text-center md:text-[2.25rem]">了解聽力對您生活的影響</h1>
     <p class="text-center">聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。</p>
     {% url 'questionnaire_list' as list_url %}
     {% if user.is_authenticated %}
