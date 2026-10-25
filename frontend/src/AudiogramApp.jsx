@@ -240,8 +240,8 @@ export default function AudiogramApp({
             <p className="font-bold">報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）</p>
             <ol className="audiogram-howto">
               <li>選下面的符號</li>
-              <li>在圖上按住，上下拖到報告上的位置</li>
-              <li>放開就標好了；標錯再點一下可以刪除</li>
+              <li>在圖上按住不動一下，等數值出現，再上下拖到報告上的位置</li>
+              <li>放開就標好了；標錯就在那個點上按住一下再放開，可以刪除</li>
             </ol>
             <p className="text-base mb-0">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
           </section>
