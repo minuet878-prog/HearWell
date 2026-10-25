@@ -481,3 +481,7 @@ class ShareInvalidT361Tests(TestCase):
         )
         self.assertIsNotNone(card)
         self.assertIn("給家人看：怎麼跟聽損的家人溝通", card.group(1))
+        # The family icon, as the same card on the 了解 page has it.
+        self.assertIn(
+            '<span class="action-card-icon" aria-hidden="true" data-icon="family">', card[1]
+        )
