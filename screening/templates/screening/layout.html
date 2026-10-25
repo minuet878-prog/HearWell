@@ -59,6 +59,8 @@
     <div id="pwa-pull" class="pwa-pull" hidden aria-hidden="true"></div>
     <div class="page-loading-bar" aria-hidden="true"></div>
     <p id="page-loading-status" class="page-loading-note" role="status"></p>
+    {# #359: everything above the footer, grown to fill the window on a short page (site.css). #}
+    <div class="site-page">
     <header class="site-header">
         {# The wave chosen in #136: 28 bars in the template, so it shows without JavaScript too. #}
         <div class="site-wave" aria-hidden="true" data-play-in-view>{% for _ in "1234567890123456789012345678" %}<span></span>{% endfor %}</div>
@@ -98,7 +100,7 @@
                 </a>
             </li>
             <li>
-                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" %} aria-current="page"{% endif %}>
+                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" or page == "hhi_comparison" or page == "health_report" or page == "share_report" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
                     <span>紀錄</span>
                 </a>
@@ -129,6 +131,7 @@
         {% endfor %}
         {% block body %}{% endblock %}
     </main>
+    </div>
     {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). "加到手機主畫面" lives on the home page's "您還可以" and the account page; icons are decorative, the words carry the meaning. #}
     <footer class="site-footer">
         <div class="container">

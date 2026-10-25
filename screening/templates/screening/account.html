@@ -34,7 +34,7 @@
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11l4-4M17 7h4v4"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">分享報告給家人</span>
-                <span>{% if share %}分享中，{{ share.expires_at|date:"n 月 j 日" }}到期{% else %}目前沒有分享{% endif %}</span>
+                <span>{% if share %}分享中，{{ share.expires_at|date:"Y/m/d" }} 到期{% else %}目前沒有分享{% endif %}</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>

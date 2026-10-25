@@ -377,7 +377,7 @@ export default function AnswerApp({
         </div>
       )}
 
-      <div className="answer-nav">
+      <div className="answer-nav step-buttons">
         {step > groundFloor && (
           <button
             type="button"

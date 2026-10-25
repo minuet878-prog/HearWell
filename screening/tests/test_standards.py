@@ -193,6 +193,101 @@ class TemplateCommentTests(SimpleTestCase):
         self.assertEqual(found, [], "use {% comment %} for comments longer than a line")
 
 
+# Full dates read 年/月/日 (2026/10/25), with the time 年/月/日 時:分 (#354, CODING_STANDARDS.md).
+DATE_FORMATS = {"Y/m/d", "Y/m/d H:i", "H:i"}
+# Y-m-d is for machines: allowed only as an attribute value, like <time datetime="…">.
+MACHINE_DATE_FORMAT = "Y-m-d"
+# (template, format) pairs that are still a 年/月/日 date on the page, each with its reason.
+DATE_FORMAT_EXCEPTIONS = {
+    ("screening/templates/screening/audiogram_compare.html", "Y/"): "Y/ <wbr> m/d lets a narrow"
+    " table header wrap after the year",
+    ("screening/templates/screening/audiogram_compare.html", "m/d"): "the second half of that date",
+}
+STRFTIME_FORMATS = {"%Y/%m/%d", "%Y/%m/%d %H:%M"}
+DATE_FILTER = re.compile(r"\|date(?::\s*([\"'])(.*?)\1)?")
+# A date written out in the template: 2026-10-22, 2026.10.22, 2026 年 10 月, 10 月 22 日.
+LITERAL_DATE = re.compile(
+    r"\b\d{4}([-.])\d{1,2}\1\d{1,2}\b|\d{4}\s*年\s*\d{1,2}\s*月|\d{1,2}\s*月\s*\d{1,2}\s*日"
+)
+
+
+def without_template_comments(text):
+    """The template with its comments blanked out, keeping the line numbers."""
+
+    def blank(match):
+        return re.sub(r"[^\n]", " ", match.group(0))
+
+    text = re.sub(r"\{% *comment *%\}.*?\{% *endcomment *%\}", blank, text, flags=re.S)
+    return re.sub(r"\{#.*?#\}", blank, text)
+
+
+def date_format_lines(text, exceptions=()):
+    """Line numbers where a template shows a full date in a format other than 年/月/日."""
+    found = []
+    for lineno, line in enumerate(without_template_comments(text).splitlines(), start=1):
+        for match in DATE_FILTER.finditer(line):
+            fmt = match.group(2)
+            if fmt in DATE_FORMATS or fmt in exceptions:
+                continue
+            if fmt == MACHINE_DATE_FORMAT and re.search(
+                r"=[\"']\{\{[^{}]*$", line[: match.start()]
+            ):
+                continue
+            found.append(lineno)
+        if LITERAL_DATE.search(line):
+            found.append(lineno)
+    return sorted(set(found))
+
+
+def strftime_formats(source):
+    """Every format string handed to strftime in a Python source."""
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Call) and getattr(node.func, "attr", None) == "strftime":
+            for arg in node.args:
+                for part in ast.walk(arg):
+                    if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                        yield part.lineno, part.value
+
+
+class DateFormatT358Tests(SimpleTestCase):
+    """#354: every full date on the site reads 年/月/日 (with the time, 年/月/日 時:分)."""
+
+    def test_templates_write_dates_as_year_month_day(self):
+        found = []
+        for path in sorted((BASE_DIR / "screening" / "templates").rglob("*.html")):
+            name = str(path.relative_to(BASE_DIR))
+            exceptions = {fmt for (where, fmt) in DATE_FORMAT_EXCEPTIONS if where == name}
+            found += [f"{name}:{n}" for n in date_format_lines(path.read_text(), exceptions)]
+        self.assertEqual(found, [], 'write a full date as |date:"Y/m/d" (or "Y/m/d H:i")')
+
+    def test_python_formats_dates_as_year_month_day(self):
+        found = [
+            f"{path.relative_to(BASE_DIR)}:{lineno} {fmt}"
+            for path in python_sources()
+            if "tests" not in path.parts
+            for lineno, fmt in strftime_formats(path.read_text())
+            if fmt not in STRFTIME_FORMATS
+        ]
+        self.assertEqual(found, [], 'strftime a full date as "%Y/%m/%d" (or "%Y/%m/%d %H:%M")')
+
+    def test_other_date_formats_are_caught(self):
+        source = (
+            '{{ a|date:"Y/m/d" }} {{ a|date:"Y/m/d H:i" }} {{ a|date:"H:i" }}\n'
+            '{{ a|date:"n月j日" }}\n'
+            "{{ a|date }}\n"
+            '<time datetime="{{ a|date:"Y-m-d" }}">{{ a|date:"Y-m-d" }}</time>\n'
+            "本頁資料查核於 2026-10-22。\n"
+            "連結有效到 10 月 29 日。\n"
+            "{# checked 2026-10-22 #}\n"
+            '{% comment %}\n{{ a|date:"n/j" }}\n{% endcomment %}\n'
+            '<th>{{ a|date:"Y/" }}<wbr>{{ a|date:"m/d" }}</th>\n'
+        )
+        self.assertEqual(date_format_lines(source), [2, 3, 4, 5, 6, 11])
+        self.assertEqual(date_format_lines(source, {"Y/", "m/d"}), [2, 3, 4, 5, 6])
+        formats = [fmt for _, fmt in strftime_formats('a.strftime("%Y/%m/%d" if x else "%m/%d")')]
+        self.assertEqual(sorted(formats), ["%Y/%m/%d", "%m/%d"])
+
+
 def questionnaire_code_lines(text, codes):
     """Line numbers where a code stands alone, not inside a longer id like report-ioi-ha."""
     pattern = re.compile(rf"(?<![\w-])(?:{'|'.join(map(re.escape, codes))})(?![\w-])")

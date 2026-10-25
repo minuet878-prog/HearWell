@@ -1049,6 +1049,32 @@
     text-align: center;
   }
 
+  /* #359: on screen a short page's footer sits at the window's foot, the page above it (layout.html)
+     grown to fill the window. Its last part is an empty block whose top margin joins the content's
+     bottom margins as the footer's own did, so the gap above the arch is unchanged. Paper as before. */
+  @media screen {
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .site-page {
+      flex: 1 0 auto;
+    }
+
+    .site-page::after {
+      content: "";
+      display: block;
+      margin-top: 5.5rem;
+    }
+
+    .site-footer {
+      margin-top: 0;
+    }
+  }
+
   /* Footer shape picker, option 5: the top edge stays straight with one small arch of the
      footer's colour rising in the middle, the logo's wave W inside it. Decoration only: drawn
      above the band, so it covers no link or text, and pseudo-elements are not read out. */
@@ -1087,7 +1113,7 @@
 
   /* With the back-to-top button (#340) the page's end also clears the button, so at the very
      bottom its last line is not under it. */
-  .back-to-top ~ .site-footer {
+  .site-page:has(> .back-to-top) + .site-footer {
     padding-bottom: calc(1.5rem + 1rem + var(--spacing-touch));
   }
 
@@ -1096,7 +1122,7 @@
       bottom: calc(var(--tab-bar-height) + 0.75rem);
     }
 
-    .back-to-top ~ .site-footer {
+    .site-page:has(> .back-to-top) + .site-footer {
       padding-bottom: calc(1.5rem + var(--tab-bar-height) + 0.75rem + var(--spacing-touch));
     }
   }
@@ -2273,6 +2299,16 @@
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+
+  /* #359: a step-by-step row (the wizard's 上一步／下一步, the answer page's 上一題／下一題／送出)
+     fills its row on phones: one button the whole width, two half each; buttons whose words do not
+     fit side by side go one above the other. Other rows keep buttons as wide as their words. */
+  @media (max-width: 35em) {
+    .step-buttons > .btn {
+      flex: 1 1 0;
+      min-width: fit-content;
+    }
   }
 
   /* #326 A6: 上一題's arrow before the words, 下一題's after, 送出's tick before; in the text's colour. */
