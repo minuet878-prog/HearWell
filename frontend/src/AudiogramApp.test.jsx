@@ -656,3 +656,19 @@ describe("edit", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 });
+
+describe("field names (#354)", () => {
+  it("no label or legend ends in a colon, on any step", () => {
+    renderApp();
+    const names = [];
+    const collect = () =>
+      document.querySelectorAll("label, legend").forEach((el) => names.push(el.textContent.trim()));
+    collect();
+    while (!screen.queryByRole("button", { name: "存檔" })) {
+      forward();
+      collect();
+    }
+    expect(names).toContain("檢查日期");
+    expect(names.filter((name) => /[：:]$/.test(name))).toEqual([]);
+  });
+});

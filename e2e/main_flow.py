@@ -215,7 +215,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
         with self.saving_artifacts():
             self.step1_start_goes_to_register()
-            password = self.page.get_by_label("密碼：", exact=True)
+            password = self.page.get_by_label("密碼", exact=True)
             password.fill("Fake-pass-2468")
             toggle = self.main().locator('button.password-toggle[aria-controls="id_password1"]')
             expect(toggle).to_have_accessible_name("顯示密碼")
@@ -636,9 +636,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     def fill_register_form(self):
         self.page.get_by_label("使用者名稱").fill("e2e_user")
         self.page.get_by_label("電子郵件").fill("e2e_user@example.com")
-        self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+        self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
         # Exact: the "顯示密碼確認" toggle button (#151) also has 密碼確認 in its label.
-        self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-2468")
+        self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-2468")
 
     def choose_self(self):
         # #152: the wizard's way out to every questionnaire's card.
@@ -1183,9 +1183,9 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                     self.page.locator("html").evaluate(
                         f"html => html.style.setProperty('font-size', '{size}', 'important')"
                     )
-                year = self.page.get_by_label("出生年：", exact=True)
-                password = self.page.get_by_label("密碼：", exact=True)
-                confirmation = self.page.get_by_label("密碼確認：", exact=True)
+                year = self.page.get_by_label("出生年", exact=True)
+                password = self.page.get_by_label("密碼", exact=True)
+                confirmation = self.page.get_by_label("密碼確認", exact=True)
                 for field in (year, password, confirmation):
                     self.assertIsNone(self.tick(field))
                 year.fill("200")
@@ -1224,21 +1224,21 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
             self.page.goto(f"{self.live_server_url}/register")
             self.page.get_by_label("使用者名稱").fill("tick_e2e")
             self.page.get_by_label("電子郵件").fill("tick_e2e@example.com")
-            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
-            self.page.get_by_label("密碼確認：", exact=True).fill("Fake-pass-246")
-            self.page.get_by_label("出生年：", exact=True).fill("200")
+            self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-246")
+            self.page.get_by_label("出生年", exact=True).fill("200")
             self.main().get_by_role("button", name="註冊", exact=True).click()
             self.page.wait_for_load_state("load")
             fields = (
-                (self.page.get_by_label("出生年：", exact=True), "44", "200"),
-                (self.page.get_by_label("密碼確認：", exact=True), "Fake-pass-2468", "x"),
+                (self.page.get_by_label("出生年", exact=True), "44", "200"),
+                (self.page.get_by_label("密碼確認", exact=True), "Fake-pass-2468", "x"),
             )
             for field, _, _ in fields:
                 expect(field).to_have_attribute("aria-invalid", "true")
                 expect(field).to_have_css("background-color", self.RED_BG)
                 field_id = field.get_attribute("id")
                 expect(self.page.locator(f"#{field_id}_error")).to_be_visible()
-            self.page.get_by_label("密碼：", exact=True).fill("Fake-pass-2468")
+            self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
             for field, right, wrong in fields:
                 field_id = field.get_attribute("id")
                 field.fill(right)
@@ -1254,8 +1254,8 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
         self.page.goto(f"{self.live_server_url}/register")
         self.page.get_by_label("使用者名稱").fill("weak_e2e")
         self.page.get_by_label("電子郵件").fill("weak_e2e@example.com")
-        self.page.get_by_label("密碼：", exact=True).fill(password)
-        self.page.get_by_label("密碼確認：", exact=True).fill(confirmation)
+        self.page.get_by_label("密碼", exact=True).fill(password)
+        self.page.get_by_label("密碼確認", exact=True).fill(confirmation)
         self.main().get_by_role("button", name="註冊", exact=True).click()
         self.page.wait_for_load_state("load")
 
@@ -1264,13 +1264,13 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
     def test_confirmation_tick_keeps_the_servers_word_on_a_weak_password(self):
         self.open()
         with self.saving_artifacts():
-            confirmation = self.page.get_by_label("密碼確認：", exact=True)
+            confirmation = self.page.get_by_label("密碼確認", exact=True)
             errors = self.page.locator("#id_password2_error .field-error")
             # A weak password typed twice differently: the server only says they differ.
             self.send_register("12345678", "1234567")
             expect(errors).to_have_count(1)
             expect(errors).to_have_attribute("data-code", "password_mismatch")
-            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            self.page.get_by_label("密碼", exact=True).fill("12345678")
             confirmation.fill("12345678")
             self.assertIsNotNone(self.tick(confirmation))
             expect(errors).to_have_count(0)
@@ -1280,7 +1280,7 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
             self.send_register("12345678", "12345678")
             said = errors.all_inner_texts()
             self.assertGreaterEqual(len(said), 1)
-            self.page.get_by_label("密碼：", exact=True).fill("12345678")
+            self.page.get_by_label("密碼", exact=True).fill("12345678")
             confirmation.fill("12345678")
             self.assertIsNotNone(self.tick(confirmation))
             expect(errors).to_have_text(said)
@@ -7530,12 +7530,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                     self.assertEqual(self.style(point, "fontSize"), "21.6px")
                                     # The heading colour, not link blue.
                                     self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
-                    for name in ("傳給家人", "出處："):
+                    for name in ("傳給家人", "出處"):
                         with self.subTest(part=name):
                             part = self.main().get_by_role("region", name=name)
                             self.assert_flat(part)
                             self.assert_titled(part.get_by_role("heading", name=name))
-                    sources = self.main().get_by_role("region", name="出處：").get_by_role("link")
+                    sources = self.main().get_by_role("region", name="出處").get_by_role("link")
                     self.assertGreater(sources.count(), 0)
                     urgent = self.main().get_by_role("region", name="什麼時候要馬上就醫")
                     self.assertEqual(self.style(urgent, "backgroundColor"), "rgb(238, 243, 250)")

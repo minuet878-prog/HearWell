@@ -136,6 +136,12 @@ class FamilyGuideTests(TestCase):
         self.assertNotIn("（英文）", content)
         self.assertIn("119", content)
 
+    # #354: a heading names the section, without a colon after it.
+    def test_sources_heading_has_no_colon(self):
+        self.assertContains(
+            self.client.get(self.url), '<h2 id="sources-title" class="h5 heading-bar">出處</h2>'
+        )
+
     # #240: the order of comparison row 15, option A.
     def test_blocks_in_the_redesigned_order(self):
         content = self.client.get(self.url).content.decode()
