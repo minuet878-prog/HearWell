@@ -271,17 +271,24 @@ class AccountSettingsT361Tests(TestCase):
             for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
         }
 
-    def test_each_blank_says_how_to_change_it(self):
-        for blank in ("email", "birth_year"):
-            with self.subTest(blank=blank):
-                self.user.email = "" if blank == "email" else "a@example.com"
-                self.user.birth_year = None if blank == "birth_year" else 1955
+    def _group(self):
+        main = self._main()
+        return test_layout._text(main[main.index("我的帳號") : main.index("家人與手機")])
+
+    def test_a_blank_says_how_to_change_it_once_under_the_details(self):
+        for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
+            with self.subTest(email=email, birth_year=birth_year):
+                self.user.email = email
+                self.user.birth_year = birth_year
                 self.user.save()
                 rows = self._rows()
-                name = "電子郵件" if blank == "email" else "出生年"
-                self.assertEqual(rows[name], f"未填 {self.NOTE}")
-                other = "出生年" if blank == "email" else "電子郵件"
-                self.assertNotIn(self.NOTE, rows[other])
+                self.assertNotIn(self.NOTE, "".join(rows.values()))
+                for name, blank in (("電子郵件", not email), ("出生年", birth_year is None)):
+                    if blank:
+                        self.assertEqual(rows[name], "未填")
+                group = self._group()
+                self.assertEqual(group.count(self.NOTE), 1)
+                self.assertTrue(group.endswith(self.NOTE))
 
     def test_the_address_can_be_tapped(self):
         self.user.email = ""

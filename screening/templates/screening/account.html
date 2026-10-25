@@ -18,15 +18,14 @@
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
             <dd class="settings-row-title">{{ user.email|default:"未填" }}</dd>
-            {# #361: a blank can only be filled in by writing to us (no edit form yet). #}
-            {% if not user.email %}<dd>要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></dd>{% endif %}
         </div>
         <div class="settings-row">
             <dt class="settings-row-note">出生年</dt>
             <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
-            {% if roc_birth_year is None %}<dd>要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></dd>{% endif %}
         </div>
     </dl>
+    {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #}
+    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
 </section>
 
 <section class="mt-6" aria-labelledby="family-title">

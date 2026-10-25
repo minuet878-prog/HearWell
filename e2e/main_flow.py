@@ -7946,8 +7946,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(row=row.inner_text()):
                     self.assertEqual(self.style(row, "borderTopWidth"), "1px")
                     self.assertEqual(self.style(row, "borderTopColor"), self.LINE)
-            # #361: a blank row's 要修改請寫信到 address is a plain link inside the flat row.
-            self.assertEqual(details.get_by_role("link", name="hearwellweb@gmail.com").count(), 2)
+            # #361: with blank rows, 要修改請寫信到 is said once under them, its address a plain link.
+            account = self.main().get_by_role("region", name="我的帳號")
+            address = account.get_by_role("link", name="hearwellweb@gmail.com")
+            self.assertEqual(address.count(), 1)
+            self.assert_flat(address)
             links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
