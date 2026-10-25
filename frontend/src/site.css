@@ -1024,13 +1024,43 @@
     .back-to-top { display: none; }
   }
 
-  /* Site-wide footer: grey band, apart from the content without competing with it. */
+  /* Site-wide footer: grey band, apart from the content without competing with it. The wider
+     top margin leaves room for the arch above it. */
   .site-footer {
-    margin-top: 3rem;
+    position: relative;
+    margin-top: 5.5rem;
     padding: 1.5rem 0;
     background-color: var(--color-footer-bg);
     color: var(--color-footer);
     text-align: center;
+  }
+
+  /* Footer shape picker, option 5: the top edge stays straight with one small arch of the
+     footer's colour rising in the middle, the logo's wave W inside it. Decoration only: drawn
+     above the band, so it covers no link or text, and pseudo-elements are not read out. */
+  .site-footer::before {
+    content: "";
+    position: absolute;
+    top: -3.25rem;
+    left: 50%;
+    width: 6.5rem;
+    height: 3.3rem;
+    transform: translateX(-50%);
+    border-radius: 3.25rem 3.25rem 0 0;
+    background-color: var(--color-footer-bg);
+  }
+
+  .site-footer::after {
+    content: "";
+    position: absolute;
+    top: -2.5rem;
+    left: 50%;
+    width: 2.6rem;
+    height: 2.6rem;
+    transform: translateX(-50%);
+    background-color: var(--color-primary);
+    -webkit-mask: var(--logo-glyph) center / contain no-repeat;
+    mask: var(--logo-glyph) center / contain no-repeat;
   }
 
   /* After the rule above: equal weight, so the later one wins and keeps this bottom padding. */
