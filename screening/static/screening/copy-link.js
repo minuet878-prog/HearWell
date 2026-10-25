@@ -2,6 +2,8 @@
 // without JavaScript, or where it cannot, the address stays on the page to copy by hand.
 // #332 (spec #326 B3): the button itself turns green with ✓ 已複製 for 2 seconds, and every
 // press writes 已複製 into the status area anew, so a screen reader says it each time.
+// #366 (spec #354): without the phone's share sheet (share-button.js keeps its button hidden),
+// copying is the way to send, so this button becomes the solid main one.
 (function () {
   const button = document.getElementById("copy-link");
   const address = document.getElementById("share-url");
@@ -13,6 +15,7 @@
   let timer;
   button.hidden = false;
   address.hidden = true;
+  if (!navigator.share) button.classList.replace("btn-outline-primary", "btn-primary");
   button.addEventListener("click", () => {
     navigator.clipboard.writeText(button.dataset.url).then(
       () => {

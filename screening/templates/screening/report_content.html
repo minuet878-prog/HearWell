@@ -17,6 +17,9 @@
         {% endif %}
     </ul>
 </section>
+{# Pages tidy-up: buttons, not a one-item bullet list; screen only, as before. #366: right under #}
+{# the summary they change, on the owner's report only. #}
+{% if manage_comparisons and comparisons %}<nav class="no-print flex flex-wrap gap-2 mt-3" aria-label="管理報告比較">{% for comparison in comparisons %}<a class="btn btn-outline-primary" href="{% url 'hhi_comparison' comparison.questionnaire_id %}">更換或移除 {{ comparison.questionnaire }} 比較</a>{% endfor %}</nav>{% endif %}
 
 {% if audiogram %}
 <section id="report-audiogram" aria-labelledby="audiogram-title">

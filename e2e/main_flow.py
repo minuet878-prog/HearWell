@@ -7012,6 +7012,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             "table",  # a table (spec #308: tables are the rule's exception)
             ".chart-canvas, .audiogram-chart, .ioi-chart",  # a chart's drawing area (#301)
             ".auth-card",  # the login and register form card (#300)
+            # The report's blue-framed summary, and the family's 「先看重點」 in the same box since
+            # #366: ADR 0022 leaves the report summary's blue frame as it is.
+            ".report-summary, #family-highlights",
             # The site's frame, not a block of content: the header and its menu bar are white
             # since the brand refresh (ADR 0012).
             ".site-header, .site-nav",
@@ -7585,12 +7588,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(card=card.inner_text()):
                     self.assert_white_card(card)
 
-    # #303: the family's 「您可以怎麼幫忙」 and 「先看重點」 are flat; the three cards in it stay
-    # white cards and go where they went before.
+    # #303: the family's 「您可以怎麼幫忙」 is flat; the three cards in it stay white cards and go
+    # where they went before. (#366: 「先看重點」 has the owner's summary box since.)
     def test_family_help_is_flat_and_its_three_cards_stay_white(self):
         with self.saving_artifacts():
             self.visit(False, lambda test: test.shared_report())
-            self.assert_flat(self.main().get_by_role("region", name="先看重點"))
             help_block = self.main().get_by_role("region", name="您可以怎麼幫忙")
             self.assert_flat(help_block)
             cards = help_block.get_by_role("link")
@@ -10154,3 +10156,170 @@ class ChooserAndAnsweringT362Test(SavesFailureArtifacts, OnAPhone, StaticLiveSer
             self.assertAlmostEqual(gap, 2 * self.rem(), delta=1)
             for locator, side in ((intro, "borderBottomWidth"), (fieldset, "borderTopWidth")):
                 self.assertEqual(locator.evaluate(f"e => getComputedStyle(e).{side}"), "0px")
+
+
+class ReportShareLearnT366Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#366 (spec #354, 報告、了解與選配指引): the share page's buttons, the family's cover
+    title and 「先看重點」 box, and the 了解 page's card titles."""
+
+    DESKTOP = (1440, 900)
+    PHONE = (390, 844)
+    PRIMARY = "rgb(31, 78, 140)"
+    # Each line an element's words take, as [its words without spaces, its width]: a range per
+    # character, a new line wherever one starts lower than the last.
+    LINES = """el => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        const lines = [];
+        let top = null;
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            for (let i = 0; i < node.length; i++) {
+                if (!node.data[i].trim()) continue;
+                const range = document.createRange();
+                range.setStart(node, i);
+                range.setEnd(node, i + 1);
+                const box = range.getBoundingClientRect();
+                if (top === null || box.top > top + box.height / 2) {
+                    lines.push({ text: "", left: box.left, right: box.right });
+                    top = box.top;
+                }
+                const line = lines[lines.length - 1];
+                line.text += node.data[i];
+                line.left = Math.min(line.left, box.left);
+                line.right = Math.max(line.right, box.right);
+            }
+        }
+        return lines.map((line) => [line.text, line.right - line.left]);
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="report_share_e2e", password="Fake-pass-2468")
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=40)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.share = ReportShare.objects.create(user=self.user)
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path, size, signed_in=True, share_sheet=False):
+        width, height = size
+        self.context = self.browser.new_context(viewport={"width": width, "height": height})
+        if signed_in:
+            self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.add_init_script(
+            "navigator.share = () => Promise.resolve();"
+            if share_sheet
+            else "delete Navigator.prototype.share;"
+        )
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def rem(self):
+        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+
+    def lines(self, locator):
+        return locator.evaluate(self.LINES)
+
+    # Acceptance 2: without the share sheet 複製連結 is the solid main button, and 取消分享 sits
+    # under a dividing line with 1.25rem on both sides of it.
+    def test_copy_is_the_main_button_and_cancel_stands_apart(self):
+        self.open("/share", self.DESKTOP)
+        with self.saving_artifacts():
+            expect(self.main().get_by_role("button", name="再傳一次給家人")).to_be_hidden()
+            copy = self.main().get_by_role("button", name="複製連結", exact=True)
+            expect(copy).to_be_visible()
+            self.assertEqual(self.style(copy, "backgroundColor"), self.PRIMARY)
+            self.assertEqual(self.style(copy, "color"), "rgb(255, 255, 255)")
+            cancel = self.main().get_by_role("button", name="取消分享", exact=True)
+            form = cancel.locator("xpath=ancestor::form")
+            self.assertEqual(self.style(form, "borderTopStyle"), "solid")
+            line_top = form.bounding_box()["y"]
+            line_bottom = line_top + float(self.style(form, "borderTopWidth")[:-2])
+            gap = 1.25 * self.rem() - 0.5
+            copy_box = copy.bounding_box()
+            self.assertGreaterEqual(line_top - (copy_box["y"] + copy_box["height"]), gap)
+            self.assertGreaterEqual(cancel.bounding_box()["y"] - line_bottom, gap)
+
+    # With the share sheet, 再傳一次給家人 stays the main button and 複製連結 the outline one.
+    def test_copy_stays_the_outline_button_beside_the_share_sheet(self):
+        self.open("/share", self.DESKTOP, share_sheet=True)
+        with self.saving_artifacts():
+            share = self.main().get_by_role("button", name="再傳一次給家人")
+            self.assertEqual(self.style(share, "backgroundColor"), self.PRIMARY)
+            copy = self.main().get_by_role("button", name="複製連結", exact=True)
+            self.assertEqual(self.style(copy, "color"), self.PRIMARY)
+
+    # Acceptance 3: on a 390 phone the cover's title takes two even lines, 聽力 whole.
+    def test_cover_title_takes_two_even_lines(self):
+        self.open(f"/shared/{self.share.token}", self.PHONE, signed_in=False)
+        with self.saving_artifacts():
+            title = self.main().get_by_role("heading", level=1)
+            expect(title).to_have_text("家人分享了一份 HearWell 聽力報告給您")
+            lines = self.lines(title)
+            self.assertEqual(len(lines), 2, lines)
+            self.assertTrue(any("聽力" in words for words, _ in lines), lines)
+            # Before #366 the first line was twice the second (337 and 173px).
+            widths = sorted(width for _, width in lines)
+            self.assertGreaterEqual(widths[0], widths[1] * 0.6, lines)
+
+    # Acceptance 4: the family's 「先看重點」 is framed like the owner's 「重點摘要」.
+    def test_family_highlights_have_the_owners_summary_box(self):
+        props = (
+            "borderTopColor",
+            "borderTopWidth",
+            "borderLeftColor",
+            "borderLeftWidth",
+            "borderTopLeftRadius",
+            "backgroundColor",
+            "paddingTop",
+            "paddingLeft",
+        )
+        with self.saving_artifacts():
+            self.open("/report", self.DESKTOP)
+            summary = self.main().get_by_role("region", name="重點摘要")
+            owner = {prop: self.style(summary, prop) for prop in props}
+            owner_title = self.style(summary.get_by_role("heading"), "borderLeftWidth")
+            self.assertEqual(owner["borderTopColor"], self.PRIMARY)
+            self.open(f"/shared/{self.share.token}/report", self.DESKTOP, signed_in=False)
+            highlights = self.main().get_by_role("region", name="先看重點")
+            self.assertEqual({prop: self.style(highlights, prop) for prop in props}, owner)
+            title = highlights.get_by_role("heading", name="先看重點")
+            self.assertEqual(self.style(title, "borderLeftWidth"), owner_title)
+
+    # Acceptance 5: on a 390 phone no card title on the 了解 page ends with one character
+    # alone, and 聽損 stays whole.
+    def test_learn_card_titles_end_with_more_than_one_character(self):
+        self.open("/learn", self.PHONE, signed_in=False)
+        with self.saving_artifacts():
+            titles = self.main().locator(".link-card-title")
+            expect(titles).to_have_count(2)
+            for title in titles.all():
+                lines = self.lines(title)
+                with self.subTest(title=lines):
+                    self.assertGreater(len(lines[-1][0]), 1)
+                    if "聽損" in "".join(words for words, _ in lines):
+                        self.assertTrue(any("聽損" in words for words, _ in lines))

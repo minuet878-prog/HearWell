@@ -12,7 +12,7 @@ const status = () => document.getElementById("copy-status");
 
 function page() {
   document.body.innerHTML = `
-    <button id="copy-link" type="button" data-url="https://example.com/shared/abc" hidden>複製連結</button>
+    <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg" data-url="https://example.com/shared/abc" hidden>複製連結</button>
     <p id="copy-status" aria-live="polite"></p>
     <p id="share-url">可以複製這個網址傳給家人</p>`;
   new Function(readFileSync(SCRIPT, "utf-8"))();
@@ -80,6 +80,19 @@ describe("copy link button", () => {
     expect(button().textContent).toBe("已複製");
     await vi.advanceTimersByTimeAsync(500);
     expect(button().textContent).toBe("複製連結");
+  });
+
+  // #366 (spec #354): without the phone's share sheet, copying is the way to send, so the
+  // button is the solid main one; beside 再傳一次給家人 it stays the outline second.
+  it("is the solid main button without a share sheet", () => {
+    expect(navigator.share).toBeUndefined();
+    expect(button().className).toBe("btn btn-primary btn-lg");
+  });
+
+  it("stays the outline button beside a share sheet", () => {
+    vi.stubGlobal("navigator", Object.assign(Object.create(navigator), { share: vi.fn() }));
+    page();
+    expect(button().className).toBe("btn btn-outline-primary btn-lg");
   });
 
   it("shows the address instead when the browser refuses to copy", async () => {

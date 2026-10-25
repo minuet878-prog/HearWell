@@ -5,9 +5,10 @@
 {% block body %}
 {# #269 (spec #268): the 了解 tab's entry, cards grouped like the home page's 「您還可以」. #}
 <h1 class="h3 mt-2">了解</h1>
+{# #366: card titles wrap into even lines, never one character alone on the last. #}
 <div class="more-group">
     <h2 class="more-group-title">助聽器</h2>
-    <ul class="list-unstyled">
+    <ul class="list-unstyled text-balance">
         <li><a class="link-card action-card" href="{% url 'guide' %}">
             {% include "screening/action_icon.html" with icon="guide" %}
             <span class="link-card-body">
@@ -19,7 +20,7 @@
 </div>
 <div class="more-group">
     <h2 class="more-group-title">溝通與照顧</h2>
-    <ul class="list-unstyled">
+    <ul class="list-unstyled text-balance">
         <li><a class="link-card action-card" href="{% url 'family_guide' %}">
             {% include "screening/action_icon.html" with icon="family" %}
             <span class="link-card-body">
