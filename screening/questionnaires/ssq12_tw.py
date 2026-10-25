@@ -45,5 +45,6 @@ DEFINITION = Definition(
     result=AVERAGE,
     choices=choices,
     scale=scale,
+    records_note="整體平均 0 到 10 分，分數越高，代表您回報的聆聽能力越好。",
     comparison=AverageComparison(anchor=f"report-comparison-{CODE}"),
 )

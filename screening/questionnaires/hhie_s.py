@@ -114,6 +114,7 @@ DEFINITION = Definition(
     advice=ADVICE,
     next_steps=NEXT_STEPS,
     trend_chart=True,
+    records_tab_age="65 歲以上",
     # The report anchor it had before other questionnaires could be compared.
     comparison=TotalComparison(anchor="report-difference"),
 )
