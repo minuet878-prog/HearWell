@@ -136,7 +136,7 @@ class SharePageTests(TestCase):
         self.assertIn(">複製連結</button>", content)
         self.assertIn(self._share_url(share), content)
         cancel = re.search(
-            rf'<form method="post" action="{reverse("report_share_cancel", args=[share.pk])}">'
+            rf'<form [^>]*method="post" action="{reverse("report_share_cancel", args=[share.pk])}">'
             r"(.*?)</form>",
             content,
             re.S,
