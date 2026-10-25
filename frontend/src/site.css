@@ -142,7 +142,7 @@
      inside a card, the report's summary box (and the family's 「先看重點」 since #366) or a 段落框
      has none; the box already frames it. */
   h1.h3,
-  h2.h4:not(:where(.card, .report-summary, #family-highlights, .section-box) *),
+  h2.h4:not(:where(.card, .report-summary, .family-highlights, .section-box) *),
   .heading-bar {
     padding-left: 0.75rem;
     border-left: 0.3rem solid var(--color-primary);
@@ -4494,7 +4494,7 @@
      it was (the print block below undoes the box). */
   @media screen {
     /* #366: the family's 「先看重點」 in the same box. */
-    .health-report .report-summary, #family-highlights {
+    .health-report .report-summary, .family-highlights {
       border: 0.125rem solid var(--color-primary);
       border-radius: var(--radius-large);
       background-color: #fff;
@@ -4502,7 +4502,7 @@
     }
 
     /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
-    .health-report:has(#family-highlights) .report-summary {
+    .health-report:has(.family-highlights) .report-summary {
       display: none;
     }
 

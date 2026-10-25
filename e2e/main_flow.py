@@ -7018,7 +7018,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             ".auth-card",  # the login and register form card (#300)
             # The report's blue-framed summary, and the family's 「先看重點」 in the same box since
             # #366: ADR 0022 leaves the report summary's blue frame as it is.
-            ".report-summary, #family-highlights",
+            ".report-summary, .family-highlights",
             # The site's frame, not a block of content: the header and its menu bar are white
             # since the brand refresh (ADR 0012).
             ".site-header, .site-nav",
