@@ -192,7 +192,7 @@ class GroupedAccountSettingsTests(TestCase):
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
-        self.assertIn("分享中，10 月 29 日到期", self._share_row(self._main()))
+        self.assertIn("分享中，2099/10/29 到期", self._share_row(self._main()))
 
     def test_no_share_or_only_ended_ones_say_not_sharing(self):
         self.assertIn("目前沒有分享", self._share_row(self._main()))

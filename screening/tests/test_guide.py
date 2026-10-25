@@ -159,7 +159,7 @@ class GuideChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        assert_footer(self, response, "2026-10-22", BEFORE_YOU_GO_SOURCES)
+        assert_footer(self, response, "2026/10/22", BEFORE_YOU_GO_SOURCES)
         self.assertContains(response, f'href="{reverse("guide")}">{BACK}</a>')
 
     def test_user_without_consent_can_read_it(self):

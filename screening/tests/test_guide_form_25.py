@@ -88,7 +88,7 @@ class Form25ChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        test_guide.assert_footer(self, response, "2026-10-22", FORM_25_SOURCES)
+        test_guide.assert_footer(self, response, "2026/10/22", FORM_25_SOURCES)
 
     # #319: the five facts are a part titled 誰要做、怎麼做, read out as a region by that name.
     def test_the_five_facts_are_a_titled_part(self):
@@ -171,7 +171,7 @@ class AfterFittingChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        test_guide.assert_footer(self, response, "2026-10-22", AFTER_FITTING_SOURCES)
+        test_guide.assert_footer(self, response, "2026/10/22", AFTER_FITTING_SOURCES)
 
     # #319: the four points are a part titled 剛開始戴助聽器, read out as a region by that name.
     def test_the_four_points_are_a_titled_part(self):

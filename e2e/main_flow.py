@@ -2178,7 +2178,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expires = timezone.localtime(share.expires_at)
             expect(
                 self.main().get_by_role("link", name=re.compile("^分享報告給家人"))
-            ).to_contain_text(f"分享中，{expires.month} 月 {expires.day} 日到期")
+            ).to_contain_text(f"分享中，{expires:%Y/%m/%d} 到期")
 
     # #204 (#183 batch 3 route): a new audiogram in four steps -> its result -> compared with the
     # one from setUp (2026/09/28, 40 dB at the four average frequencies in both ears).
