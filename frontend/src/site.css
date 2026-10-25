@@ -1650,15 +1650,18 @@
     }
   }
 
-  /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. Its
-     left corners are square, so the thick line stays straight instead of bending round them;
-     the right corners keep the large radius (#357). */
-  .trend-summary {
-    padding: 1.25rem 1.5rem;
+  /* The blue summary box: the trend chart's (my_hearing), the latest score at a glance above
+     the chart, and aided vs unaided HHIE-S. Its left corners are square, so the thick line stays
+     straight instead of bending round them; the right corners keep the large radius (#357). */
+  .trend-summary, .aided-difference {
     border-left: 0.375rem solid var(--color-primary);
     border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
+  }
+
+  .trend-summary {
+    padding: 1.25rem 1.5rem;
     /* A date that still does not fit breaks rather than widening the page (#163). */
     overflow-wrap: anywhere;
   }
@@ -3441,14 +3444,10 @@
     view-transition-name: switch-pill;
   }
 
-  /* Aided vs unaided HHIE-S, styled like the trend summary box. */
+  /* Aided vs unaided HHIE-S, in the blue summary box. */
   .aided-difference {
     margin-bottom: 1.5rem;
     padding: 1rem 1.25rem;
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-selected);
-    color: var(--color-heading);
   }
 
   /* Legend under both charts. */
