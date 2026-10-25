@@ -90,3 +90,51 @@ describe("copy link button", () => {
     expect(status().textContent).toBe("");
   });
 });
+
+// #361 (spec #354): the family page's 複製網址, for browsers with no share sheet. The address
+// stays on the page above it, and on a phone with a share sheet 傳給家人 is the only button.
+describe("family page copy button", () => {
+  function familyPage() {
+    document.body.innerHTML = `
+      <p>可以複製這個網址傳給家人：<span>https://example.com/family</span></p>
+      <button id="copy-link" type="button" data-url="https://example.com/family" data-without-share-sheet hidden>複製網址</button>
+      <p id="copy-status" aria-live="polite"></p>`;
+    new Function(readFileSync(SCRIPT, "utf-8"))();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("isSecureContext", true);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn(() => Promise.resolve()) },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    delete navigator.clipboard;
+    delete navigator.share;
+    document.body.innerHTML = "";
+  });
+
+  it("shows under the address, which stays, and copies it with ✓ 已複製", async () => {
+    familyPage();
+    expect(button().hidden).toBe(false);
+    expect(document.body.textContent).toContain("https://example.com/family");
+    await copy();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("https://example.com/family");
+    expect(button().textContent).toBe("已複製");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(status().textContent).toBe("已複製");
+    await vi.advanceTimersByTimeAsync(1900);
+    expect(button().textContent).toBe("複製網址");
+  });
+
+  it("stays hidden where the phone's share sheet is", () => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn() });
+    familyPage();
+    expect(button().hidden).toBe(true);
+  });
+});

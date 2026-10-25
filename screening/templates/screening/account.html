@@ -18,10 +18,13 @@
         <div class="settings-row">
             <dt class="settings-row-note">電子郵件</dt>
             <dd class="settings-row-title">{{ user.email|default:"未填" }}</dd>
+            {# #361: a blank can only be filled in by writing to us (no edit form yet). #}
+            {% if not user.email %}<dd>要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></dd>{% endif %}
         </div>
         <div class="settings-row">
             <dt class="settings-row-note">出生年</dt>
             <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
+            {% if roc_birth_year is None %}<dd>要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></dd>{% endif %}
         </div>
     </dl>
 </section>
@@ -88,17 +91,15 @@
     </ul>
 </section>
 
-<section class="mt-12" aria-labelledby="delete-title">
-    <h2 id="delete-title" class="h4">刪除帳號</h2>
-    <ul class="list-unstyled">
-        <li><a class="link-card action-card settings-card-danger" href="{% url 'delete_account' %}">
-            <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span>
-            <span class="link-card-body">
-                <span class="link-card-title">刪除帳號</span>
-                <span>刪除後，帳號和所有紀錄都會消失，無法復原。</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
-</section>
+{# #361: the red card says 刪除帳號 itself, so no heading repeats it above. #}
+<ul class="list-unstyled mt-12">
+    <li><a class="link-card action-card settings-card-danger" href="{% url 'delete_account' %}">
+        <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span>
+        <span class="link-card-body">
+            <span class="link-card-title">刪除帳號</span>
+            <span>刪除後，帳號和所有紀錄都會消失，無法復原。</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
 {% endblock %}

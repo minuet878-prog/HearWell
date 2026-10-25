@@ -188,7 +188,8 @@ class GroupedAccountSettingsTests(TestCase):
         main = self._main()
         self.assertIn("帳號設定</h1>", main)
         headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
-        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私", "刪除帳號"])
+        # #361: the red 刪除帳號 card has no heading of its own (AccountSettingsT361Tests).
+        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私"])
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
@@ -249,3 +250,50 @@ class GroupedAccountSettingsTests(TestCase):
                 # The account rows are not links, so nothing changes on them (ADR 0006); the
                 # link rows are link cards since #303.
                 self.assertNotRegex(css, rf"\.settings-(row|group)[\w-]*:{state}")
+
+
+class AccountSettingsT361Tests(TestCase):
+    """#361 (spec #354): how to fill in a blank, and 刪除帳號 said once at the end."""
+
+    _main = AccountSettingsTests._main
+    NOTE = "要修改請寫信到 hearwellweb@gmail.com"
+
+    def setUp(self):
+        self.url = reverse("account_settings")
+        self.user = consented_user(username="t361_a", email="a@example.com", birth_year=1955)
+        self.client.force_login(self.user)
+
+    def _rows(self):
+        main = self._main()
+        group = main[main.index("我的帳號") : main.index("家人與手機")]
+        return {
+            test_layout._text(name): test_layout._text(value)
+            for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
+        }
+
+    def test_each_blank_says_how_to_change_it(self):
+        for blank in ("email", "birth_year"):
+            with self.subTest(blank=blank):
+                self.user.email = "" if blank == "email" else "a@example.com"
+                self.user.birth_year = None if blank == "birth_year" else 1955
+                self.user.save()
+                rows = self._rows()
+                name = "電子郵件" if blank == "email" else "出生年"
+                self.assertEqual(rows[name], f"未填 {self.NOTE}")
+                other = "出生年" if blank == "email" else "電子郵件"
+                self.assertNotIn(self.NOTE, rows[other])
+
+    def test_the_address_can_be_tapped(self):
+        self.user.email = ""
+        self.user.save()
+        main = self._main()
+        self.assertIn('href="mailto:hearwellweb@gmail.com"', main)
+
+    def test_filled_rows_have_no_note(self):
+        self.assertNotIn(self.NOTE, test_layout._text(self._main()))
+
+    def test_delete_account_is_not_said_twice_in_a_row(self):
+        text = test_layout._text(self._main())
+        self.assertEqual(text.count("刪除帳號"), 1)
+        # Said once, on the red card that still comes last.
+        self.assertGreater(text.index("刪除帳號"), text.index("資料與隱私"))

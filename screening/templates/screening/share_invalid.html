@@ -5,6 +5,17 @@
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block body %}
-<h1 class="h3 mt-4">這個連結已經失效，請向分享的家人要新的連結</h1>
+{# #361: says why, without telling which reason this link hit (expired, cancelled or never there). #}
+<h1 class="h3 mt-4">這個連結已經失效</h1>
+<p class="mb-8">分享連結 7 天後會失效，分享的人也可以提前取消。請向分享報告給您的家人要一個新的連結。</p>
 <a class="btn btn-outline-primary btn-lg" href="{% url 'index' %}">回首頁</a>
+<ul class="list-unstyled mt-8">
+    <li><a class="link-card action-card" href="{% url 'family_guide' %}">
+        <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+        <span class="link-card-body">
+            <span class="link-card-title">給家人看：怎麼跟聽損的家人溝通</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
 {% endblock %}

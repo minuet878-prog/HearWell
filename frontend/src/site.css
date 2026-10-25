@@ -3206,6 +3206,14 @@
     stroke-linejoin: round;
   }
 
+  /* #361: under each phone choice, the makers it covers, in body text, so an older reader who
+     does not know "Android" still finds their phone. */
+  .phone-choice-brands {
+    display: block;
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
   /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue and gains a
      thick blue edge on its left, so a reader deep in its content still sees which one they are
      in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
