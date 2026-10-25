@@ -4,9 +4,13 @@
 
 {% block body %}
 <div class="narrow-form">
-    {# Issue #151: step 2 of the 2 that start on the register page. #}
-    {% include "screening/step_progress.html" with step=2 total=2 label="同意隱私權" %}
-    <h1 class="h3 mt-2">開始使用之前</h1>
+    {# #360 (spec #354): the register page's banner, carried on to its step 2. #}
+    <div class="auth-hero consent-hero">
+        <h1 class="auth-hero-title">開始使用之前</h1>
+        {# Issue #151: step 2 of the 2 that start on the register page. #}
+        {% include "screening/step_progress.html" with step=2 total=2 label="同意隱私權" %}
+        {% include "screening/auth_hero_bars.html" %}
+    </div>
     <p>HearWell 會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p>
     <section class="mb-4" aria-labelledby="highlights-title">
         <h2 id="highlights-title" class="h4">重點</h2>
@@ -16,9 +20,9 @@
     <form method="post" action="{% url 'consent' %}">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="flex gap-2">
-            <button class="w-1/2 btn btn-lg btn-primary" type="submit" name="agree">我同意，開始篩檢</button>
-            <button class="w-1/2 btn btn-lg btn-outline-primary" type="submit" name="decline">不同意</button>
+        <div class="consent-buttons">
+            <button class="btn btn-lg btn-primary" type="submit" name="agree">我同意，開始篩檢</button>
+            <button class="btn btn-lg btn-outline-primary" type="submit" name="decline">不同意</button>
         </div>
     </form>
     <p class="tip-box mt-4">按「不同意」會登出。您的帳號會保留，之後想用時再登入同意即可。</p>

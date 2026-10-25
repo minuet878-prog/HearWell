@@ -66,7 +66,7 @@ class FieldNameColonT358Tests(TestCase):
                 self.client.logout()
         register = field_names(self.client.get(reverse("register")).content.decode())
         self.assertIn("使用者名稱", register)
-        self.assertIn("出生年", register)
+        self.assertIn("出生年（選填）", register)
 
     def test_every_form_drops_the_django_colon(self):
         self.assertEqual(forms_keeping_the_colon(screening_forms), [])
@@ -279,6 +279,18 @@ class LoginViewTests(TestCase):
         register = re.search(r'<a [^>]*href="/register"[^>]*>([^<]*)</a>', main)
         self.assertEqual(register.group(1), "註冊新帳號")
         self.assertLess(main.index('type="submit">登入</button>'), register.start())
+
+    # #360 (spec #354): until people can reset it themselves, a forgotten password has a way out.
+    def test_forgotten_password_line_with_a_mail_link_under_the_login_button(self):
+        main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
+        line = re.search(r"<p[^>]*>忘記密碼？請寫信到 (<a [^>]*>[^<]*</a>)</p>", main)
+        self.assertIsNotNone(line)
+        self.assertRegex(
+            line.group(1),
+            r'<a [^>]*href="mailto:hearwellweb@gmail.com"[^>]*>hearwellweb@gmail.com</a>',
+        )
+        self.assertLess(main.index('type="submit">登入</button>'), line.start())
+        self.assertLess(line.start(), main.index("還沒有帳號？"))
 
     def test_banner_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
@@ -586,6 +598,20 @@ class RegisterPageGuidanceTests(TestCase):
         self.assertIn('<h1 class="auth-hero-title">註冊</h1>', hero)
         self.assertIn("<p>建立帳號，篩檢結果會幫您存起來。</p>", hero)
         self.assertIn("第 1 步／共 2 步：建立帳號", hero)
+
+    # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and
+    # stays required (RegisterFormTests.test_required_fields).
+    def test_birth_year_is_marked_optional_and_email_says_what_it_is_for(self):
+        content = self.client.get(self.url).content.decode()
+        self.assertIn("出生年（選填）", field_names(content))
+        self.assertInHTML(
+            '<div id="id_email_helptext" class="field-help mt-1">'
+            "忘記密碼時，用這個信箱確認是您本人。</div>",
+            content,
+        )
+        email = re.search(r'<input[^>]*name="email"[^>]*>', content).group()
+        self.assertIn("required", email)
+        self.assertIn('aria-describedby="id_email_helptext"', email)
 
     def test_field_icons_stay_silent_and_birth_year_has_none(self):
         # The birth year already starts with 民國, so it gets no icon.

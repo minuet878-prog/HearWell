@@ -1183,7 +1183,7 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                     self.page.locator("html").evaluate(
                         f"html => html.style.setProperty('font-size', '{size}', 'important')"
                     )
-                year = self.page.get_by_label("出生年", exact=True)
+                year = self.page.get_by_label("出生年（選填）", exact=True)
                 password = self.page.get_by_label("密碼", exact=True)
                 confirmation = self.page.get_by_label("密碼確認", exact=True)
                 for field in (year, password, confirmation):
@@ -1226,11 +1226,11 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
             self.page.get_by_label("電子郵件").fill("tick_e2e@example.com")
             self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
             self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-246")
-            self.page.get_by_label("出生年", exact=True).fill("200")
+            self.page.get_by_label("出生年（選填）", exact=True).fill("200")
             self.main().get_by_role("button", name="註冊", exact=True).click()
             self.page.wait_for_load_state("load")
             fields = (
-                (self.page.get_by_label("出生年", exact=True), "44", "200"),
+                (self.page.get_by_label("出生年（選填）", exact=True), "44", "200"),
                 (self.page.get_by_label("密碼確認", exact=True), "Fake-pass-2468", "x"),
             )
             for field, _, _ in fields:
@@ -7063,7 +7063,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_first_visit_home_blocks_are_flat(self):
         with self.saving_artifacts():
             self.visit(False, "/")
-            for text in ("建立帳號", "回答問題", "馬上看到結果", "隔一段時間再做一次"):
+            for text in ("建立帳號", "回答問題", "馬上看到結果", "半年後再做"):
                 with self.subTest(step=text):
                     self.assert_lined(self.main().get_by_role("listitem").filter(has_text=text))
             self.assert_flat(self.main().get_by_role("figure"))
@@ -9937,3 +9937,99 @@ class MyRecordsT364Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             content = section.bounding_box()
             self.assertEqual(columns["x"], content["x"])
             self.assertEqual(columns["width"], content["width"])
+
+
+class HomeConsentT360Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#360 (spec #354): the first-visit home's title and steps, and the consent page's banner and
+    buttons."""
+
+    fixtures = ("questions_fixture.json",)
+    HEADING = WhiteCardRuleTest.HEADING
+
+    # The white card rule's page-making helpers, borrowed rather than inherited so its own tests
+    # do not run twice.
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    style = WhiteCardRuleTest.style
+    undecided = WhiteCardRuleTest.undecided
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="home_consent_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def lines(self, locator):
+        """How many lines of text an element's words take."""
+        return locator.evaluate(
+            """el => {
+                const style = getComputedStyle(el);
+                const inner = el.clientHeight - parseFloat(style.paddingTop)
+                    - parseFloat(style.paddingBottom);
+                return Math.round(inner / parseFloat(style.lineHeight));
+            }"""
+        )
+
+    # Acceptance 1: the title is bold in the heading colour, about 31.5px on a phone and 40.5px
+    # on a wide screen; step 4 keeps to one line on a desktop.
+    def test_first_visit_title_size_and_step_four_on_one_line(self):
+        for width, size in ((390, "31.5px"), (1024, "40.5px")):
+            with self.subTest(width=width), self.saving_artifacts():
+                self.visit(False, "/", width=width)
+                title = self.main().get_by_role("heading", level=1, name="了解聽力對您生活的影響")
+                self.assertEqual(self.style(title, "fontSize"), size)
+                self.assertEqual(self.style(title, "fontWeight"), "700")
+                self.assertEqual(self.style(title, "color"), self.HEADING)
+                if width == 1024:
+                    step = self.main().locator(".step-cards li > span").filter(has_text="半年後")
+                    expect(step).to_have_text("半年後再做，看分數變化。")
+                    self.assertEqual(self.lines(step), 1)
+
+    # Acceptance 5 and 6: on a 390 phone 我同意，開始篩檢 is on top, on one line, and each button
+    # fills the row; on a desktop they stay side by side. The title and step sit in the blue
+    # banner; what follows is flat on the page.
+    def test_consent_banner_and_buttons(self):
+        for width in (390, 1024):
+            with self.subTest(width=width), self.saving_artifacts():
+                self.visit(True, lambda test: test.undecided(), width=width)
+                hero = self.main().locator(".auth-hero")
+                self.assertNotEqual(self.style(hero, "backgroundImage"), "none")
+                banner = hero.bounding_box()
+                for part in (
+                    hero.get_by_role("heading", level=1, name="開始使用之前"),
+                    hero.get_by_text("第 2 步／共 2 步：同意隱私權"),
+                ):
+                    box = part.bounding_box()
+                    self.assertGreaterEqual(box["y"], banner["y"])
+                    self.assertLessEqual(box["y"] + box["height"], banner["y"] + banner["height"])
+                intro = self.main().get_by_text("HearWell 會保存您的篩檢作答")
+                self.assertGreaterEqual(intro.bounding_box()["y"], banner["y"] + banner["height"])
+                self.assertEqual(self.style(intro, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                agree = self.main().get_by_role("button", name="我同意，開始篩檢", exact=True)
+                decline = self.main().get_by_role("button", name="不同意", exact=True)
+                yes, no = agree.bounding_box(), decline.bounding_box()
+                if width == 390:
+                    row = self.main().locator("form").bounding_box()
+                    self.assertLessEqual(yes["y"] + yes["height"], no["y"])
+                    for box in (yes, no):
+                        self.assertAlmostEqual(box["x"], row["x"], delta=1)
+                        self.assertAlmostEqual(box["width"], row["width"], delta=1)
+                    self.assertEqual(self.lines(agree), 1)
+                else:
+                    self.assertAlmostEqual(yes["y"], no["y"], delta=1)
+                    self.assertLess(yes["x"] + yes["width"], no["x"])

@@ -146,7 +146,7 @@ class AccountSettingsTests(TestCase):
     def test_home_order_and_text(self):
         expected = (
             "了解聽力對您生活的影響",
-            "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
+            "聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。",
             "開始篩檢",
             "回答問題，大約 3 分鐘。",
             "內容由台灣執業",  # one line in a badge card since the brand refresh

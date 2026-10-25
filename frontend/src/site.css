@@ -1402,6 +1402,26 @@
   .auth-hero-bars span:nth-child(7) { height: 0.7rem; }
   .auth-hero-bars span:nth-child(8) { height: 0.4rem; }
 
+  /* #360 (spec #354): the consent page, step 2 after register, wears the register banner. No
+     card lies over its lower edge, so it is round all round and its bars sit lower; what follows
+     is flat on the page (ADR 0022). */
+  .consent-hero {
+    margin-bottom: 1.5rem;
+    padding-bottom: 2.75rem;
+    border-radius: var(--radius-large);
+  }
+  .consent-hero .auth-hero-bars { bottom: 1rem; }
+  /* On a phone 我同意，開始篩檢 above 不同意, each the whole row; side by side when wider. */
+  .consent-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  @media (min-width: 48em) {
+    .consent-buttons { flex-direction: row; }
+    .consent-buttons > .btn { flex: 1 1 0; }
+  }
+
   .auth-card {
     position: relative;
     margin: -3rem 1rem 0;
@@ -1682,6 +1702,17 @@
      pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
   .home-hero {
     margin-bottom: 1.5rem;
+  }
+
+  /* #360 (spec #354): the first-visit title, bold in the heading colour, 31.5px on a phone and
+     40.5px on a wider screen. */
+  .home-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-heading);
+  }
+  @media (min-width: 48em) {
+    .home-title { font-size: 2.25rem; }
   }
 
   .home-chips {

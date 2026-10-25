@@ -23,7 +23,7 @@ class NewUserHomeTests(TestCase):
         "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
-        "隔一段時間再做一次，在「我的紀錄」看分數的變化。",
+        "半年後再做，看分數變化。",
     )
     OLD_HINT = "第一次使用請先註冊，已有帳號請直接登入。"
 
@@ -69,7 +69,7 @@ class NewUserHomeTests(TestCase):
 
     def test_title_is_larger_and_the_picture_is_the_smiling_elder(self):
         main = self._main()
-        self.assertIn('<h1 class="h2 text-center">了解聽力對您生活的影響</h1>', main)
+        self.assertIn('<h1 class="home-title text-center">了解聽力對您生活的影響</h1>', main)
         start = main.index('class="home-illustration"')
         picture = main[start : main.index("</svg>", start)]
         for part in ("ill-face", "ill-hair", "ill-cheek", "ill-accent"):
