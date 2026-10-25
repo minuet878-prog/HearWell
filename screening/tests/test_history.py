@@ -107,9 +107,9 @@ class HistoryTabsTests(TestCase):
     CHART_JS = "screening/frontend/trend-chart.js"
     NOTE = "分數越低，聽力對生活的影響越小"
     UNGROUPED_NOTE = "需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較"
-    # Ticket #161: tabs read 「主題（代碼）」.
-    HHIE_S_TAB = "聽力對生活的影響（HHIE-S）"
-    HHIA_S_TAB = "聽力對生活的影響（HHIA-S）"
+    # Ticket #161: tabs read 「主題（代碼）」; #364: HHIE-S and HHIA-S add their ages.
+    HHIE_S_TAB = "聽力對生活的影響（HHIE-S（65 歲以上））"
+    HHIA_S_TAB = "聽力對生活的影響（HHIA-S（65 歲以下））"
     IOI_HA_TAB = "助聽器使用成效（IOI-HA）"
 
     @classmethod
@@ -295,8 +295,8 @@ class HistoryTabsTests(TestCase):
         self._hhie_s(40, True, days_ago=1)
         text = self._difference(self._main_html(self.client.get(self.url)))
         self.assertIn("配戴狀態比較", text)
-        self.assertIn(f"未配戴 {self._date(unaided)}，28 分", text)
-        self.assertIn(f"配戴 {self._date(aided)}，12 分", text)
+        self.assertIn(f"未配戴（{self._date(unaided)}）：28 分", text)
+        self.assertIn(f"配戴（{self._date(aided)}）：12 分", text)
         self.assertIn("少了 16 分", text)
         self.assertIn("不一定是開始使用助聽器前後", text)
 
@@ -355,11 +355,12 @@ class HistoryTabsTests(TestCase):
 
     def test_chart_bands_follow_latest_group(self):
         self._ioi_ha((5, 4, 3, 2, 4, 3, 4), "moderately_severe", days_ago=1)
-        chart = self._chart(self._main_html(self.client.get(self._tab_url("ioi-ha"))))
+        main = self._main_html(self.client.get(self._tab_url("ioi-ha")))
+        chart = self._chart(main)
         self.assertEqual(chart.count('class="ioi-band"'), 7)
         self.assertEqual(chart.count("ioi-dot-latest"), 7)
         self.assertEqual(chart.count("ioi-dot-previous"), 0)
-        self.assertIn("常模組別：中重度以上", chart)
+        self.assertIn("常模組別：中重度以上", main)  # above the frame since #364
         names = ("使用時間", "幫助程度", "剩餘困難", "值得程度", "生活影響", "干擾他人", "生活樂趣")
         for name in names:
             self.assertIn(name, chart)
@@ -948,3 +949,166 @@ class HistoryRetestTests(TestCase):
             response = self.client.get(reverse("my_hearing"))
         self.assertIsNotNone(self._reminder(response.content.decode()))
         self.assertEqual(len(seven), len(two))
+
+
+class MyRecordsTidyT364Tests(TestCase):
+    """Spec #354, ticket #364: 我的紀錄's questionnaire tabs tidied up."""
+
+    NOON = timezone.make_aware(datetime(2026, 10, 22, 12))
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="tidy_records_user")
+        cls.questions = {}
+        for name, code, count in (
+            ("HHIE-S", "hhie-s", 10),
+            ("HHIA-S", "hhia-s", 10),
+            ("SSQ12-TW", "ssq12-tw", 12),
+            ("IOI-HA", "ioi-ha", 7),
+        ):
+            questionnaire = Questionnaire.objects.create(questionnaire_name=name, code=code)
+            cls.questions[code] = Question.objects.bulk_create(
+                Question(
+                    questionnaire=questionnaire,
+                    question_text=f"{name}題{i}",
+                    question_number=i,
+                    category=(
+                        (Category.EMOTIONAL if i <= 5 else Category.SOCIAL)
+                        if code.startswith("hhi")
+                        else Category.NONE
+                    ),
+                )
+                for i in range(1, count + 1)
+            )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _submit(self, code, scores, days_ago, **fields):
+        fields.setdefault("wearing_hearing_aid", False)
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=Questionnaire.objects.get(code=code), **fields
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=score)
+            for question, score in zip(self.questions[code], scores, strict=True)
+        )
+        Submission.objects.filter(pk=submission.pk).update(
+            created_at=self.NOON - timedelta(days=days_ago)
+        )
+        return submission
+
+    def _submit_one_of_each(self):
+        self._submit("hhie-s", [4, 4] + [0] * 8, days_ago=4)
+        self._submit("hhia-s", [4, 4] + [0] * 8, days_ago=3)
+        self._submit("ssq12-tw", [7] * 12, days_ago=2)
+        self._submit("ioi-ha", [3] * 7, days_ago=1, norm_group="mild_moderate")
+
+    def _main(self, code):
+        content = self.client.get(f"{reverse('my_hearing')}?questionnaire={code}")
+        content = content.content.decode()
+        return content[content.index("<main") : content.index("</main>")]
+
+    def test_every_tab_titles_its_record_cards(self):
+        # Acceptance 1: 「每次的紀錄」 right before the first record card, below the charts.
+        self._submit_one_of_each()
+        for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha"):
+            with self.subTest(code):
+                main = self._main(code)
+                title = main.index('<h2 id="records-title" class="h4">每次的紀錄</h2>')
+                self.assertEqual(main.count("每次的紀錄"), 1)
+                self.assertLess(title, main.index('class="link-card"'))
+                for chart in ('id="trend-chart"', 'aria-labelledby="ioi-chart-title"'):
+                    if chart in main:
+                        self.assertLess(main.index(chart), title)
+
+    def test_ssq12_tab_says_a_higher_score_is_better(self):
+        # Acceptance 1: SSQ12 reads the other way round from HHIE-S, so its tab says so under
+        # 「每次的紀錄」; the other tabs do not.
+        self._submit_one_of_each()
+        note = "整體平均 0 到 10 分，分數越高，代表您回報的聆聽能力越好。"
+        main = self._main("ssq12-tw")
+        self.assertRegex(main, rf'每次的紀錄</h2>\s*<p>{note}</p>\s*<a class="link-card"')
+        for code in ("hhie-s", "hhia-s", "ioi-ha"):
+            with self.subTest(code):
+                self.assertNotIn(note, self._main(code))
+
+    def test_hhie_s_and_hhia_s_tabs_name_their_ages(self):
+        # Acceptance 2: the age follows the code inside the code's own small line, so the tabs
+        # keep their layout and type size; the other tabs keep their bare code.
+        self._submit_one_of_each()
+        main = self._main("hhie-s")
+        tabs = re.search(r'<nav class="history-tabs"[^>]*>(.*?)</nav>', main, re.S).group(1)
+        codes = re.findall(r'<span class="history-tab-code">(.*?)</span></a>', tabs, re.S)
+        self.assertEqual(
+            [re.sub(r'<span class="visually-hidden">[^<]*</span>', "", code) for code in codes],
+            ["HHIE-S（65 歲以上）", "HHIA-S（65 歲以下）", "SSQ12-TW", "IOI-HA"],
+        )
+
+    def test_saved_comparison_lists_its_two_records_one_per_line(self):
+        # Acceptance 3: 「報告保留的兩筆：」, then 未配戴 and 配戴 each on a line of its own.
+        unaided = self._submit("hhie-s", [4] * 7 + [0] * 3, days_ago=40)  # 28, 2026/09/12
+        aided = self._submit("hhie-s", [4] * 3 + [0] * 7, days_ago=10, wearing_hearing_aid=True)
+        response = self.client.post(
+            f"/comparisons/{unaided.questionnaire_id}",
+            {"unaided": unaided.pk, "aided": aided.pk, "action": "save"},
+        )
+        self.assertEqual(response.status_code, 302)
+        main = self._main("hhie-s")
+        box = re.search(r'<section class="aided-difference[^>]*>(.*?)</section>', main, re.S)
+        lines = re.findall(r"<(?:p|li)[^>]*>(.*?)</(?:p|li)>", box.group(1), re.S)
+        self.assertEqual(
+            lines[:3],
+            ["報告保留的兩筆：", "未配戴（2026/09/12）：28 分", "配戴（2026/10/12）：12 分"],
+        )
+        self.assertRegex(box.group(1), r'<ul class="list-none p-0" role="list">\s*<li>未配戴')
+
+    def _since_last(self, main):
+        return re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
+
+    def test_hhia_s_since_last_sits_in_a_summary_box(self):
+        # Acceptance 4: HHIA-S has no trend chart, so 「和上一次比」 is its summary box: the two
+        # records and the change inside the blue box, the title above it, outside.
+        self._submit("hhia-s", [4] * 5 + [0] * 5, days_ago=40)  # 20
+        self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
+        since_last = self._since_last(self._main("hhia-s"))
+        box = re.fullmatch(
+            r'\s*<h2[^>]*>和上一次比</h2>\s*<div class="trend-summary">(.*)</div>\s*',
+            since_last,
+            re.S,
+        ).group(1)
+        self.assertIn('<div class="since-last-pair">', box)
+        self.assertEqual(box.count('class="since-last-cell'), 2)
+        self.assertIn("比上一次少 6 分（分數越低越好）", box)
+
+    def test_hhie_s_since_last_stays_out_of_a_box(self):
+        # HHIE-S already has the trend chart's summary box right below: one blue box, not two.
+        self._submit("hhie-s", [4] * 5 + [0] * 5, days_ago=40)
+        self._submit("hhie-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)
+        self.assertNotIn("trend-summary", self._since_last(self._main("hhie-s")))
+
+    def test_ioi_ha_frame_holds_only_the_chart_and_its_legend(self):
+        # Acceptance 5 (ADR 0022, like the trend chart): the title, the latest record, the norm
+        # group and the notes above the white frame; inside it only the columns and the legend.
+        self._submit("ioi-ha", [3] * 7, days_ago=1, norm_group="mild_moderate")
+        main = self._main("ioi-ha")
+        section = re.search(
+            r'<section class="mb-6" aria-labelledby="ioi-chart-title">(.*?)</section>', main, re.S
+        ).group(1)
+        above, frame = re.fullmatch(
+            r'(.*?)<div class="ioi-chart">(.*)</div><!-- /ioi-chart -->\s*', section, re.S
+        ).groups()
+        for text in (
+            "IOI-HA 各題與常模</h2>",
+            "最近一次（2026/10/21）",
+            "常模組別：輕度至中度",
+            "灰色是常模範圍",
+            "7 題都是分數越高",
+        ):
+            with self.subTest(text):
+                self.assertIn(text, above)
+                self.assertNotIn(text, frame)
+        self.assertEqual(
+            re.findall(r'^        <(\w+)(?: class="([^"]*)")?', frame, re.M),
+            [("ul", "ioi-columns"), ("ul", "trend-legend")],
+        )

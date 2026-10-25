@@ -1,2 +1,6 @@
-<p>報告保留組合：未配戴 {{ comparison.unaided.created_at|date:"Y/m/d" }}，{{ comparison.unaided.total_answer_score }} 分；配戴 {{ comparison.aided.created_at|date:"Y/m/d" }}，{{ comparison.aided.total_answer_score }} 分。</p>
+<p class="mb-1">報告保留的兩筆：</p>
+<ul class="list-none p-0" role="list">
+    <li>未配戴（{{ comparison.unaided.created_at|date:"Y/m/d" }}）：{{ comparison.unaided.total_answer_score }} 分</li>
+    <li>配戴（{{ comparison.aided.created_at|date:"Y/m/d" }}）：{{ comparison.aided.total_answer_score }} 分</li>
+</ul>
 <p>分數越低，聽力對生活的影響越小。{{ comparison.difference_text }}。這是您選定的兩筆，不一定是開始使用助聽器前後的前測與後測。</p>
