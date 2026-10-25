@@ -146,6 +146,12 @@
     color: var(--color-heading);
     font-weight: 700;
   }
+  /* #357: on a phone a page title is about 29px, at least 4px above a section title (h2.h4).
+     At 200% text on a narrow phone a long word such as HearWell breaks rather than widen the
+     page (as #204's wrap-anywhere). */
+  @media (max-width: 47.99em) {
+    h1.h3 { font-size: 1.6rem; overflow-wrap: anywhere; }
+  }
   @media (min-width: 1200px) {
     h1, .h1 { font-size: 2.5rem; }
     h2, .h2 { font-size: 2rem; }
@@ -161,7 +167,6 @@
   dt { font-weight: 700; }
   dd { margin: 0 0 0.5rem; }
   b, strong { font-weight: bolder; }
-  small { font-size: 0.875em; }
   a { color: var(--color-primary); text-decoration: underline; }
   a:hover { color: var(--color-primary-hover); }
   /* #328 (A4, ADR 0028): a text link in the page or the footer gets a thicker underline under a
@@ -195,7 +200,8 @@
   textarea { resize: vertical; }
   ::placeholder { color: revert; opacity: revert; }
   fieldset { min-width: 0; padding: 0; margin: 0; border: 0; }
-  legend { float: left; width: 100%; padding: 0; margin-bottom: 0.5rem; font-size: calc(1.275rem + 0.3vw); line-height: inherit; }
+  /* #357: a form's question is the darkest text on its page, in the heading colour. */
+  legend { float: left; width: 100%; padding: 0; margin-bottom: 0.5rem; font-size: calc(1.275rem + 0.3vw); line-height: inherit; color: var(--color-heading); }
   legend + * { clear: left; }
   @media (min-width: 1200px) { legend { font-size: 1.5rem; } }
   /* Date fields (only the audiogram's so far); Chromium pads each part of the date (#129). */
@@ -699,6 +705,14 @@
     flex-basis: 100%;
   }
 
+  /* #357: on a phone the name's own line sits over the wave's bars; the header's white hides
+     them behind it. */
+  @media (max-width: 47.99em) {
+    .site-header-bar .site-account {
+      background-color: #fff;
+    }
+  }
+
   /* Wide screens: one line. A zero basis makes the name take the space left and wrap inside it;
      sized by its full text, a long name would drop to a new line with logout. */
   @media (min-width: 48em) {
@@ -964,7 +978,7 @@
       flex-direction: column;
       gap: 0.125rem;
       padding: 0.375rem 0.25rem;
-      font-size: 0.875rem;
+      font-size: 1rem;
     }
 
     /* Every icon gets the same pill room, so the current one can fill it without the bar
@@ -1147,7 +1161,7 @@
 
   .site-footer p {
     margin: 0 0 0.25rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
   }
 
   /* Level badge: the level is always written out; colour and a frame in it only add to it (same
@@ -1591,11 +1605,13 @@
     }
   }
 
-  /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. */
+  /* Trend chart summary box (my_hearing): the latest score at a glance, above the chart. Its
+     left corners are square, so the thick line stays straight instead of bending round them;
+     the right corners keep the large radius (#357). */
   .trend-summary {
     padding: 1.25rem 1.5rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-large);
+    border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
     /* A date that still does not fit breaks rather than widening the page (#163). */
@@ -1905,7 +1921,7 @@
 
   .score-gauge text {
     fill: var(--color-body);
-    font-size: 0.875rem;
+    font-size: 1rem;
     text-anchor: middle;
   }
 
@@ -2362,7 +2378,7 @@
     text-decoration-line: underline;
   }
 
-  /* Register form: labels bold, each field's help in the body grey and a step smaller (pages tidy-up). */
+  /* Register form: labels bold, each field's help in the body grey, at the body size (#357). */
   .register-form label {
     font-weight: 700;
     color: var(--color-heading);
@@ -2370,7 +2386,7 @@
 
   .field-help {
     color: var(--color-body);
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 
   .tip-box {
@@ -2464,7 +2480,7 @@
     border-radius: var(--radius-pill);
     background-color: var(--color-brand-selected);
     color: var(--color-primary);
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 700;
   }
 
@@ -2539,14 +2555,14 @@
     margin: 0;
     padding-left: calc(var(--route-size) + 0.75rem);
     color: var(--color-body);
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 
-  /* #293: the answer in short under a stop, a step smaller, as the field help is. */
+  /* #293: the answer in short under a stop, in the body grey, as the field help is. */
   .route-answer {
     margin: 0.5rem 0 0;
     color: var(--color-body);
-    font-size: 0.9375rem;
+    font-size: 1rem;
   }
 
   /* #293: a stop's question, on the route and at a chapter's foot. Each answer is a large
@@ -2694,7 +2710,7 @@
     padding: 0.1rem 0 0 0.35rem;
     border-left: 0.2rem solid var(--color-heading);
     color: var(--color-heading);
-    font-size: 0.875rem;
+    font-size: 1rem;
     overflow-wrap: anywhere;
   }
 
@@ -2854,7 +2870,7 @@
     border-radius: var(--radius-pill);
     background-color: var(--color-brand-selected);
     color: var(--color-primary);
-    font-size: 0.875rem;
+    font-size: 1rem;
     font-weight: 700;
   }
 
@@ -3008,7 +3024,7 @@
     gap: 0.5rem;
     align-items: flex-start;
     margin-top: 1.25rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
   }
 
   .answer-autosave svg {
@@ -3234,7 +3250,7 @@
     padding: 0.35rem 0.6rem;
     border: 0.125rem solid var(--color-primary);
     border-radius: var(--radius-medium);
-    font-size: 0.9rem; /* the longest topic, eight characters, fits a phone's half width */
+    font-size: 1rem;
     line-height: 1.3;
     background-color: #fff;
     color: var(--color-primary);
@@ -3334,7 +3350,7 @@
     margin-bottom: 1.5rem;
     padding: 1rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-large);
+    border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-selected);
     color: var(--color-heading);
   }
@@ -3646,7 +3662,7 @@
     position: relative;
     height: 1.5rem;
     margin-top: 0.25rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
     line-height: 1.5rem;
   }
 
@@ -3662,7 +3678,7 @@
   .score-bar-ends {
     display: flex;
     justify-content: space-between;
-    font-size: 0.875rem;
+    font-size: 1rem;
     color: var(--color-body);
   }
 
@@ -3911,7 +3927,7 @@
     justify-content: space-between;
     max-width: 20rem;
     margin-top: 0.25rem;
-    font-size: 0.875rem;
+    font-size: 1rem;
     color: var(--color-body);
   }
 
@@ -4406,11 +4422,6 @@
       color: var(--color-primary);
       font-size: 1.5rem;
     }
-
-    .report-disclaimer,
-    .health-report #report-audiogram > p:last-child {
-      font-size: 0.875rem;
-    }
   }
 
   @media print {
@@ -4895,7 +4906,7 @@
       .health-report .table > tbody > tr > td::before {
         content: attr(data-label) / "";
         color: var(--color-heading);
-        font-size: 0.875rem;
+        font-size: 1rem;
         font-weight: 700;
       }
     }
