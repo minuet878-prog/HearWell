@@ -202,3 +202,28 @@ class FamilyGuideTests(TestCase):
         main = content[content.index("<main") :]
         self.assertNotIn("guide_private", main)
         self.assertNotIn("private@example.com", content)
+
+
+class CopyAddressT361Tests(TestCase):
+    """#361 (spec #354): 複製網址 under the address, for browsers without a share sheet. What the
+    button does in a browser is in copy-link.test.js and e2e.main_flow.FamilyAndAccountT361Test."""
+
+    def setUp(self):
+        content = self.client.get(reverse("family_guide")).content.decode()
+        self.share = content[content.index('aria-labelledby="share-title"') :]
+        self.share = self.share[: self.share.index("</section>")]
+        self.content = content
+
+    def test_copy_button_under_the_address_hidden_until_the_script_shows_it(self):
+        address = "https://testserver" + reverse("family_guide")
+        button = re.search(r'<button id="copy-link"([^>]*)>(.*?)</button>', self.share)
+        self.assertIsNotNone(button)
+        attrs, words = button.groups()
+        self.assertEqual(words, "複製網址")
+        self.assertIn(f'data-url="{address}"', attrs)
+        self.assertIn("data-without-share-sheet", attrs)
+        # Without JavaScript the button never shows and the address is there to copy by hand.
+        self.assertRegex(attrs, r"\shidden(\s|$)")
+        self.assertLess(self.share.index(f">{address}<"), self.share.index('id="copy-link"'))
+        self.assertIn('id="copy-status"', self.share)
+        self.assertIn("screening/copy-link.js", self.content)

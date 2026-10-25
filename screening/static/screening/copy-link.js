@@ -4,17 +4,20 @@
 // press writes 已複製 into the status area anew, so a screen reader says it each time.
 // #366 (spec #354): without the phone's share sheet (share-button.js keeps its button hidden),
 // copying is the way to send, so this button becomes the solid main one.
+// #361: the family page's 複製網址 (data-without-share-sheet) shows only where the phone's share
+// sheet is not; its address has no id="share-url" and stays on the page above the button.
 (function () {
   const button = document.getElementById("copy-link");
   const address = document.getElementById("share-url");
   const status = document.getElementById("copy-status");
   if (!button || !navigator.clipboard || !window.isSecureContext) return;
+  if ("withoutShareSheet" in button.dataset && navigator.share) return;
   const words = button.textContent;
   const tick =
     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   let timer;
   button.hidden = false;
-  address.hidden = true;
+  if (address) address.hidden = true;
   if (!navigator.share) button.classList.replace("btn-outline-primary", "btn-primary");
   button.addEventListener("click", () => {
     navigator.clipboard.writeText(button.dataset.url).then(
@@ -31,7 +34,7 @@
           button.textContent = words;
         }, 2000);
       },
-      () => { address.hidden = false; },
+      () => { if (address) address.hidden = false; },
     );
   });
 })();

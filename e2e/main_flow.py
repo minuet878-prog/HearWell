@@ -7946,7 +7946,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(row=row.inner_text()):
                     self.assertEqual(self.style(row, "borderTopWidth"), "1px")
                     self.assertEqual(self.style(row, "borderTopColor"), self.LINE)
-            links = self.main().get_by_role("link")
+            # #361: a blank row's 要修改請寫信到 address is a plain link inside the flat row.
+            self.assertEqual(details.get_by_role("link", name="hearwellweb@gmail.com").count(), 2)
+            links = self.main().get_by_role("link").filter(has_not_text="hearwellweb@gmail.com")
             self.assertEqual(
                 [link.get_attribute("href") for link in links.all()],
                 [
@@ -10580,3 +10582,134 @@ class FittingGuideT367Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 title = self.main().get_by_role("heading", level=1).bounding_box()
                 box = self.main().locator(".section-box").first.bounding_box()
                 self.assertAlmostEqual(box["y"] - (title["y"] + title["height"]), 27, delta=0.5)
+
+
+class FamilyAndAccountT361Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#361 (spec #354): the family page's 複製網址, the delete-account form lined up with its
+    text, the expired link's button set apart, and the phone makers under each phone choice."""
+
+    DESKTOP = (1440, 900)
+    PHONE = (390, 844)
+    HEADING = "rgb(33, 37, 41)"  # --color-heading
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="t361_e2e", password="Fake-pass-2468")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True):
+        width, height = size
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height}, java_script_enabled=java_script_enabled
+        )
+        self.context.grant_permissions(
+            ["clipboard-read", "clipboard-write"], origin=self.live_server_url
+        )
+        if signed_in:
+            self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        if script:
+            self.page.add_init_script(script)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def rem(self):
+        return self.page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
+
+    # Acceptance 3: on a computer (no share sheet) 複製網址 sits under the address and copies it.
+    def test_copy_address_without_a_share_sheet(self):
+        with self.saving_artifacts():
+            self.open("/family", self.DESKTOP, script="delete Navigator.prototype.share;")
+            section = self.main().get_by_role("region", name="傳給家人")
+            address = section.get_by_text(re.compile(r"^https://.*/family$"))
+            # Found by id: its name turns into 已複製 once pressed.
+            button = section.locator("#copy-link")
+            expect(address).to_be_visible()
+            expect(button).to_be_visible()
+            expect(button).to_have_accessible_name("複製網址")
+            expect(section.get_by_role("button", name="傳給家人")).to_be_hidden()
+            self.assertGreater(button.bounding_box()["y"], address.bounding_box()["y"])
+            button.click()
+            expect(button).to_have_text("已複製")
+            expect(self.page.locator("#copy-status")).to_have_text("已複製")
+            copied = self.page.evaluate("navigator.clipboard.readText()")
+            self.assertEqual(copied, address.inner_text())
+            expect(address).to_be_visible()
+
+    # Acceptance 3: with the phone's share sheet, 傳給家人 is the only button.
+    def test_no_copy_button_with_a_share_sheet(self):
+        with self.saving_artifacts():
+            self.open("/family", script="navigator.share = () => Promise.resolve();")
+            section = self.main().get_by_role("region", name="傳給家人")
+            expect(section.get_by_role("button", name="傳給家人")).to_be_visible()
+            expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
+
+    # Acceptance 3: without JavaScript the address is still there to copy by hand.
+    def test_address_without_javascript(self):
+        with self.saving_artifacts():
+            self.open("/family", self.DESKTOP, java_script_enabled=False)
+            section = self.main().get_by_role("region", name="傳給家人")
+            expect(section.get_by_text(re.compile(r"^https://.*/family$"))).to_be_visible()
+            expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
+
+    # Acceptance 6: on a desktop the password field and the buttons start where the text does,
+    # and 請輸入密碼確認 is a field name like login's and register's: bold, in the heading colour.
+    def test_delete_account_form_lines_up_with_the_text(self):
+        with self.saving_artifacts():
+            self.open("/account/delete", self.DESKTOP)
+            main = self.main()
+            text = main.get_by_text(re.compile("^想留一份紀錄的話")).bounding_box()
+            field = main.get_by_label("請輸入密碼確認")
+            for part in (field, main.get_by_role("button", name="刪除帳號", exact=True)):
+                self.assertAlmostEqual(part.bounding_box()["x"], text["x"], delta=1)
+            label = main.locator("label[for=id_password]")
+            self.assertEqual(label.evaluate("el => getComputedStyle(el).fontWeight"), "700")
+            self.assertEqual(label.evaluate("el => getComputedStyle(el).color"), self.HEADING)
+
+    # Acceptance 7: the words under the title keep the 回首頁 button well away from it.
+    def test_expired_link_sets_the_button_apart(self):
+        for size in (self.DESKTOP, self.PHONE):
+            with self.subTest(width=size[0]):
+                self.open("/shared/no-such-link", size, signed_in=False)
+                main = self.main()
+                words = main.get_by_text(re.compile("^分享連結 7 天後會失效")).bounding_box()
+                button = main.get_by_role("link", name="回首頁").bounding_box()
+                self.assertGreaterEqual(
+                    button["y"] - (words["y"] + words["height"]), 2 * self.rem() - 1
+                )
+                card = main.get_by_role("link", name=re.compile("^給家人看"))
+                expect(card).to_be_visible()
+                self.assertGreater(card.bounding_box()["y"], button["y"] + button["height"])
+
+    # Acceptance 4: each phone choice's makers are on a line of their own under its words.
+    def test_phone_makers_under_each_choice(self):
+        with self.saving_artifacts():
+            self.open("/add_to_home", signed_in=False)
+            for words, makers in (
+                ("我用 iPhone", "蘋果手機"),
+                ("我用 Android", "三星、小米、OPPO、華碩、Google 等"),
+            ):
+                with self.subTest(choice=words):
+                    summary = self.main().locator("summary", has_text=words)
+                    first = summary.get_by_text(words, exact=True).bounding_box()
+                    second = summary.get_by_text(makers, exact=True).bounding_box()
+                    self.assertGreaterEqual(second["y"], first["y"] + first["height"] - 1)
+                    self.assertAlmostEqual(second["x"], first["x"], delta=1)

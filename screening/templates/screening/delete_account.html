@@ -17,10 +17,11 @@
     <li>同意紀錄</li>
 </ul>
 <p>想留一份紀錄的話，請先<a class="inline-link" href="{% url 'download_my_data' %}" download>下載我的資料</a>。</p>
-<form id="delete-account-form" method="post" class="narrow-form">
+{# #361: as narrow as the login form, but starting where the text above starts. #}
+<form id="delete-account-form" method="post" class="max-w-form">
     {% csrf_token %}
     <div class="mb-4">
-        <label for="id_password" class="form-label">請輸入密碼確認</label>
+        <label for="id_password" class="form-label font-bold text-heading">請輸入密碼確認</label>
         <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
         {% include "screening/field_messages.html" with field=form.password %}
     </div>
