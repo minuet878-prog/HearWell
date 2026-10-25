@@ -55,7 +55,7 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
     roc_birth_year = forms.CharField(
         label="出生年（選填）",
         required=False,
-        help_text="選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。",
+        help_text="填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。",
         widget=forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 3}),
     )
 

@@ -364,7 +364,8 @@ class LoginViewTests(TestCase):
 class RegisterFormTests(TestCase):
     PASSWORD = "Xk9#mPq2vLw"
     # Issue #151: says what filling it in saves the user.
-    NOTE = "選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。"
+    # Owner, 2026-10-25: the field name already says 選填.
+    NOTE = "填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。"
 
     def setUp(self):
         self.url = reverse("register")
