@@ -24,11 +24,6 @@ def _taipei(moment):
     return timezone.localtime(moment).strftime("%Y/%m/%d %H:%M")
 
 
-def _share_page_time(moment):
-    # The share page (#193) writes "10 月 29 日 14:30".
-    return timezone.localtime(moment).strftime("%-m 月 %-d 日 %H:%M")
-
-
 class ReportShareTests(TestCase):
     """Spec docs/specs/phase-08/phase8_c1_family_share.md, acceptance 1-23 (24 is manual)."""
 
@@ -105,7 +100,7 @@ class ReportShareTests(TestCase):
         self.assertLessEqual(share.expires_at, timezone.now() + timedelta(days=7))
         content = self._share_page()
         self.assertIn(f"https://testserver{reverse('shared_cover', args=[share.token])}", content)
-        self.assertIn(f"有效到 {_share_page_time(share.expires_at)}", content)
+        self.assertIn(f"有效到 {_taipei(share.expires_at)}", content)
         self.assertIn("家人打開過 0 次", content)
         self.assertIn("還沒有人打開", content)
         self.assertIn("取消分享", content)
@@ -138,7 +133,7 @@ class ReportShareTests(TestCase):
                 )
         self.assertIn("不是醫療診斷", shared)
         self.assertIn(
-            f"這是家人分享給您的報告，連結有效到 {timezone.localtime(share.expires_at):%-m月%-d日}",
+            f"這是家人分享給您的報告，連結有效到 {timezone.localtime(share.expires_at):%Y/%m/%d}",
             shared,
         )
 
@@ -207,7 +202,7 @@ class ReportShareTests(TestCase):
         self.client.force_login(self.user)
         content = self._share_page()
         self.assertIn("家人打開過 3 次", content)
-        self.assertIn(f"最後一次打開：{_share_page_time(share.last_opened_at)}", content)
+        self.assertIn(f"最後一次打開：{_taipei(share.last_opened_at)}", content)
         self.assertNotIn("還沒有人打開", content)
 
     # 9
@@ -301,7 +296,7 @@ class ReportShareTests(TestCase):
         self.assertContains(response, f'href="{reverse("shared_report", args=[share.token])}"')
         self.assertContains(response, "打開報告")
         self.assertContains(
-            response, f"連結有效到 {timezone.localtime(share.expires_at):%-m月%-d日}"
+            response, f"連結有效到 {timezone.localtime(share.expires_at):%Y/%m/%d}"
         )
         # The random token in the link isn't health data, but could contain "dB" by chance.
         content = response.content.decode().replace(share.token, "")

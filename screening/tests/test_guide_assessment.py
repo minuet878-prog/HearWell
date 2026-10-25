@@ -119,7 +119,7 @@ class AssessmentChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        test_guide.assert_footer(self, response, "2026-10-22", SOURCES)
+        test_guide.assert_footer(self, response, "2026/10/22", SOURCES)
 
     def test_the_threshold_is_three_rows_of_ratios_the_first_outlined(self):
         content = self.client.get(self.url).content.decode()
