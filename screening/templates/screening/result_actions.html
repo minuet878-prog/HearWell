@@ -4,8 +4,13 @@
 <h2 class="more-group-title">其他您可以做的</h2>
 {% if optional_ssq12 %}
 <p class="mb-2">您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
-<a class="link-card" href="{% url 'screening' optional_ssq12.pk %}">
-    <span class="link-card-body"><span class="link-card-title">了解日常聆聽能力（SSQ12-TW）</span></span>
+{# #363: an action card like the closing row's; the name's inline-block moves to a line of its own whole rather than breaking at its hyphen, and breaks only when wider than the card (200% text). #}
+<a class="link-card action-card" href="{% url 'screening' optional_ssq12.pk %}">
+    {% include "screening/action_icon.html" with icon="clipboard" %}
+    <span class="link-card-body">
+        <span class="link-card-title">了解日常聆聽能力<span class="inline-block">（SSQ12-TW）</span></span>
+        <span>選填，12 題</span>
+    </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>
 {% endif %}

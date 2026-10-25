@@ -39,8 +39,8 @@
 {% if submission.questionnaire.definition.result_note %}
 <p class="source-note">{{ submission.questionnaire.definition.result_note }}</p>
 {% endif %}
-{# Text-heavy pages tidy-up: the full advice mostly repeats the steps above, so it waits behind a dropdown. #}
-<details class="dropdown-box mt-6 mb-4">
+{# Text-heavy pages tidy-up: the full advice mostly repeats the steps above, so it waits behind a dropdown; open for 「無法判讀」, which has no steps (#363). #}
+<details class="dropdown-box mt-6 mb-4"{% if advice_open %} open{% endif %}>
     <summary>看完整建議</summary>
     <p>{{ advice }}</p>
 </details>

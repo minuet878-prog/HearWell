@@ -5,6 +5,8 @@
 {% block body %}
 {% include "screening/result_header.html" %}
 <section class="mb-6">
+    {# #363: the opening conclusion in the blue summary box SSQ12-TW and SADL open with, no level colour (ADR 0007). #}
+    <div class="trend-summary mb-4">
     {% if grouped %}
     <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
     <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
@@ -14,6 +16,7 @@
     {% else %}
     <p class="mb-0">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
     {% endif %}
+    </div>
     <ul class="trend-legend" aria-hidden="true">
         {% if grouped %}<li><span class="ioi-legend-band"></span>一般使用者的範圍（常模）</li>{% endif %}
         <li><span class="ioi-legend-latest"></span>您的回答</li>
@@ -43,7 +46,7 @@
 {% endif %}
 {% if grouped %}
 <section class="my-6" aria-labelledby="ioi-next-title">
-    <h2 id="ioi-next-title" class="h4">接下來</h2>
+    <h2 id="ioi-next-title" class="h4">可以帶去跟聽力師討論</h2>
     <p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
 </section>
 {% endif %}
