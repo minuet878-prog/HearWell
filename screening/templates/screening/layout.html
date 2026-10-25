@@ -98,7 +98,7 @@
                 </a>
             </li>
             <li>
-                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" %} aria-current="page"{% endif %}>
+                <a href="{% url 'my_hearing' %}"{% if page == "my_hearing" or page == "result" or page|slice:":10" == "audiogram_" or page == "hhi_comparison" or page == "health_report" or page == "share_report" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
                     <span>紀錄</span>
                 </a>

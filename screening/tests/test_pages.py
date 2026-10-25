@@ -258,6 +258,10 @@ class RedesignLayoutTests(TestCase):
             reverse("learn"): "了解",
             reverse("guide"): "了解",
             reverse("family_guide"): "了解",
+            # #359: the 配戴比較, report and share pages sit under 紀錄 too.
+            reverse("hhi_comparison", args=[self.questionnaire.id]): "紀錄",
+            reverse("health_report"): "紀錄",
+            reverse("share_report"): "紀錄",
         }
 
     def test_logged_in_nav_and_header(self):
@@ -297,6 +301,13 @@ class RedesignLayoutTests(TestCase):
                 nav = self._nav(self.client.get(reverse(name)))
                 self.assertEqual(nav.count('aria-current="page"'), 1)
                 self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
+
+    # #359: account settings is not one of the four tabs, so none is marked.
+    def test_account_settings_marks_no_tab_t359(self):
+        self.client.force_login(self.user)
+        nav = self._nav(self.client.get(reverse("account_settings")))
+        self.assertEqual(self._nav_labels(nav), list(self.LOGGED_IN_ITEMS))
+        self.assertNotIn("aria-current", nav)
 
     def test_index_shows_start_screening_when_logged_in(self):
         self.client.force_login(self.user)
