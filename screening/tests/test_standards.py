@@ -7,10 +7,12 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management import call_command
+from django.forms import BaseForm, Form
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 from django.urls.converters import IntConverter
 
+from screening import forms as screening_forms
 from screening import questionnaires
 from screening import urls as screening_urls
 from screening.views import health_data_page
@@ -286,6 +288,35 @@ class DateFormatT358Tests(SimpleTestCase):
         self.assertEqual(date_format_lines(source, {"Y/", "m/d"}), [2, 3, 4, 5, 6])
         formats = [fmt for _, fmt in strftime_formats('a.strftime("%Y/%m/%d" if x else "%m/%d")')]
         self.assertEqual(sorted(formats), ["%Y/%m/%d", "%m/%d"])
+
+
+def forms_keeping_the_colon(module):
+    """Form classes defined in module that still add Django's colon after each field name."""
+    return [
+        name
+        for name, cls in vars(module).items()
+        if isinstance(cls, type)
+        and issubclass(cls, BaseForm)
+        and cls.__module__ == module.__name__
+        and not issubclass(cls, screening_forms.NoLabelSuffix)
+    ]
+
+
+class FormLabelSuffixT358Tests(SimpleTestCase):
+    """#354: a field name never ends in a colon: every form drops the one Django adds."""
+
+    def test_every_form_drops_the_django_colon(self):
+        self.assertEqual(forms_keeping_the_colon(screening_forms), [])
+        self.assertEqual(screening_forms.RegisterForm().label_suffix, "")
+
+    def test_a_form_keeping_the_colon_is_caught(self):
+        module = type(screening_forms)("fake_forms")
+        module.Kept = type("Kept", (Form,), {"__module__": "fake_forms"})
+        module.Dropped = type(
+            "Dropped", (screening_forms.NoLabelSuffix, Form), {"__module__": "fake_forms"}
+        )
+        self.assertEqual(forms_keeping_the_colon(module), ["Kept"])
+        self.assertEqual(module.Dropped().label_suffix, "")
 
 
 def questionnaire_code_lines(text, codes):

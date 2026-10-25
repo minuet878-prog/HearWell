@@ -41,7 +41,7 @@
 17. 無障礙是必需品：表單要有 `label`／`fieldset`／`legend`，文字對比要達標，操作不能只靠顏色區分。
 18. 介面用語一律稱「您」。例外：量表題目照原文用詞（例如 HHIA-S 的「你」），改字等於改量表。
     - 日期：完整日期一律寫成 `年/月/日`（2026/10/25，模板用 `|date:"Y/m/d"`），含時間時 `年/月/日 時:分`（`|date:"Y/m/d H:i"`）；不寫「10 月 25 日」「2026-10-25」。例外：圖表刻度可以只寫 月/日；給機器讀的屬性值（例如 `<time datetime>`）用 `Y-m-d`（`test_standards.py` 自動檢查模板與 `strftime`）。
-    - 欄位名稱後面不加冒號：表單繼承 `screening/forms.py` 的 `NoLabelSuffix`（關掉 Django 自動加的「：」），手寫的 `label`、`legend` 和段落標題也不加（`test_accounts.py` 自動檢查）。
+    - 欄位名稱後面不加冒號：表單繼承 `screening/forms.py` 的 `NoLabelSuffix`（關掉 Django 自動加的「：」），手寫的 `label`、`legend` 和段落標題也不加（`test_standards.py` 檢查每個表單，`test_accounts.py` 檢查表單頁面）。
 
 ## 範圍
 
