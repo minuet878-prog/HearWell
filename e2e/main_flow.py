@@ -9663,6 +9663,15 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertLessEqual(level["x"] + level["width"], bar["x"] + bar["width"])
                     self.assertGreaterEqual(level["y"], row["y"])
                     self.assertLessEqual(level["y"] + level["height"], row["y"] + row["height"])
+                    # Both ends, 0 and 40, whole on the screen and under the bar's own ends.
+                    ends = self.main().locator(".score-bar-ends > span")
+                    expect(ends).to_have_text(["0", "40"])
+                    first, last = (end.bounding_box() for end in ends.all())
+                    self.assertGreaterEqual(first["x"], bar["x"] - 0.5)
+                    self.assertLessEqual(last["x"] + last["width"], bar["x"] + bar["width"] + 0.5)
+                    self.assertLessEqual(bar["x"] + bar["width"], 320)
+                    for end in ends.all():
+                        self.assertEqual(end.evaluate("el => el.scrollWidth - el.clientWidth"), 0)
 
     # Acceptance 3: the footer, the report's and the family's copy's two reminders (the
     # audiogram's under it), form help and the route's gap and kept answer are at least 1rem;
