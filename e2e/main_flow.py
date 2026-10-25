@@ -9749,6 +9749,24 @@ class TypeSizesT357Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.assertEqual(self.style(box, "borderBottomLeftRadius"), "0px")
                 self.assertEqual(self.style(box, "borderTopRightRadius"), "27px")
 
+    # Owner, 2026-10-25 (#354 self-review): the questionnaire guide and the continue notice, framed
+    # the same way, keep their thick left line straight too. The notice is drawn from a draft in
+    # the browser, so one is put on the page to read its style.
+    def test_guide_and_continue_notice_have_a_straight_left_line(self):
+        self.visit(True, "/questionnaire_list?wizard=1&from=consent", width=390)
+        self.main().evaluate(
+            "main => { const p = document.createElement('p'); p.className = 'continue-notice';"
+            " p.textContent = '接著答'; main.prepend(p); }"
+        )
+        for selector in (".questionnaire-guide", ".continue-notice"):
+            with self.subTest(box=selector):
+                box = self.main().locator(selector)
+                expect(box).to_be_visible()
+                self.assertEqual(self.style(box, "borderLeftWidth"), "6px")
+                self.assertEqual(self.style(box, "borderTopLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderBottomLeftRadius"), "0px")
+                self.assertEqual(self.style(box, "borderTopRightRadius"), "27px")
+
     # Acceptance 7: on a phone the signed-in line has an opaque background over the header wave.
     def test_signed_in_line_hides_the_header_wave_on_a_phone(self):
         self.visit(True, "/", width=390)

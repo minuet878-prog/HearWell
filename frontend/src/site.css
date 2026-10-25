@@ -4732,11 +4732,12 @@
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
-     notice on the home and screening pages (#337) is framed the same way. */
+     notice on the home and screening pages (#337) is framed the same way. Like the blue summary
+     boxes, the left corners are square so the thick line stays straight (owner, 2026-10-25). */
   .questionnaire-guide, .continue-notice {
     padding: 0.75rem 1.25rem;
     border-left: 0.375rem solid var(--color-primary);
-    border-radius: var(--radius-large);
+    border-radius: 0 var(--radius-large) var(--radius-large) 0;
     background-color: var(--color-brand-soft);
     color: var(--color-heading);
   }
