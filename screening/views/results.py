@@ -5,9 +5,8 @@ from django.db.models import Prefetch, prefetch_related_objects
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
-from screening import models
 from screening.main_flow import home_more
-from screening.models import Answer, NormGroup, Questionnaire, Submission
+from screening.models import Answer, Category, NormGroup, Questionnaire, Submission
 from screening.questionnaires import hhia_s, hhie_s
 from screening.questionnaires.definition import AVERAGE, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
@@ -100,7 +99,7 @@ def score_gauge(bar):
 def has_subscores(answers):
     # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
     # the answers already loaded with their questions, no query of its own.
-    return any(answer.question.category != models.Category.NONE for answer in answers)
+    return any(answer.question.category != Category.NONE for answer in answers)
 
 
 @login_required
