@@ -700,6 +700,35 @@ class ResultPageDataTests(ResultTestCase):
                 header += f"・{wearing_text}</p>" if wearing_text else "</p>"
                 self.assertContains(response, header)
 
+    def test_the_result_type_says_whether_its_page_shows_wearing(self):
+        # IOI-HA is answered about the hearing aids worn, SADL always worn: their pages say neither.
+        self.assertEqual(
+            {
+                kind: kind.page_shows_wearing
+                for kind in (GradedResult, AverageResult, NormResult, SubscaleResult)
+            },
+            {GradedResult: True, AverageResult: True, NormResult: False, SubscaleResult: False},
+        )
+        sadl_scores = [4] * 15
+        for code, scores, fields in (
+            (hhie_s.CODE, [2] * 10, {}),
+            (ssq12_tw.CODE, [6] * 12, {}),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
+            (sadl.CODE, sadl_scores, {}),
+        ):
+            with self.subTest(code=code):
+                record = submission_with_answers(self.user, code, scores, **fields)
+                self.assertNotIn("wearing_text", record.result.page_context())
+
+        class NoWearing(GradedResult):
+            page_shows_wearing = False
+
+        record = submission_with_answers(self.user, thi.CODE, [0] * 25, wearing_hearing_aid=True)
+        with register(replace(thi.DEFINITION, result=NoWearing)):
+            response = self.page(record)
+        self.assertIsNone(response.context["wearing_text"])
+        self.assertNotContains(response, "有戴助聽器</p>")
+
     def test_the_result_type_picks_the_page_and_its_data(self):
         # A type of its own draws its own page with its own data: the page asks the result.
         class OwnPage(GradedResult):

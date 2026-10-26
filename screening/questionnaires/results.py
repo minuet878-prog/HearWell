@@ -33,6 +33,7 @@ class Result:
     # page; page_context() is the page's data of this type, the view adding what every page has.
     summary_template = None
     page_template = None
+    page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
     def __init__(self, submission):
         self.submission = submission
@@ -195,6 +196,7 @@ class NormResult(Result):
 
     summary_template = "screening/ioi_ha_summary.html"  # reads norm_summary as `ioi_ha`
     page_template = "screening/result_ioi_ha.html"
+    page_shows_wearing = False  # not asked: IOI-HA is answered about the hearing aids worn
 
     @property
     def norm_group(self):
@@ -215,7 +217,6 @@ class NormResult(Result):
         # Items below the norm come first and open; the rest are folded under 「其他 n 項」 (#187).
         below = [item for item in items if item["comparison_code"] == "below"]
         return {
-            "wearing_text": None,  # not asked: IOI-HA is answered about the hearing aids worn
             "items": items,
             "grouped": grouped,
             "below": below,
@@ -286,6 +287,7 @@ class SubscaleResult(Result):
 
     summary_template = "screening/sadl_overall.html"
     page_template = "screening/sadl_result.html"
+    page_shows_wearing = False  # not asked: always worn (always_aided)
     not_applicable_choice = "不適用"
 
     @cached_property
@@ -311,4 +313,4 @@ class SubscaleResult(Result):
             [self.submission],
             Prefetch("answers", queryset=Answer.objects.select_related("question")),
         )
-        return {"wearing_text": None}  # not asked: always worn (always_aided)
+        return {}

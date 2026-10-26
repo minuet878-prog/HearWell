@@ -59,7 +59,9 @@ def submission_result(request, submission_id):
     next_step, _ = home_more(request.user, timezone.localdate())
     shared = {
         "submission": submission,
-        "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
+        "wearing_text": (
+            TREND_STATUS_TEXT[submission.wearing_hearing_aid] if result.page_shows_wearing else None
+        ),
         "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
         "next_step": next_step,
     }
