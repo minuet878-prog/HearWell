@@ -4,10 +4,9 @@ from django.utils.cache import add_never_cache_headers
 
 from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhie_s
-from screening.questionnaires.definition import NORM
 from screening.scoring import classify, max_score
 from screening.views.answering import _continue_notice
-from screening.views.results import _ioi_ha_summary, _score_bar, _score_gauge
+from screening.views.results import _score_bar, _score_gauge
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18
@@ -22,21 +21,13 @@ def index(request):
         else NEW_USER_STATE
     )
     last = user_state.last_result
-    last_ioi_ha = (
-        _ioi_ha_summary(last.submission)
-        if last and last.submission.questionnaire.definition.result == NORM
-        else None
-    )
     # Welcome back option D (ADR 0026): a life-impact result's gauge and top score.
     last_gauge = last_max_score = None
     if last and last.is_life_impact:
         questionnaire = last.submission.questionnaire
+        result = last.submission.result
         last_gauge = _score_gauge(
-            _score_bar(
-                questionnaire.definition,
-                last.submission.total_answer_score,
-                last.submission.classified["level"],
-            )
+            _score_bar(questionnaire.definition, result.total, result.level["level"])
         )
         last_max_score = max_score(questionnaire.code)
     # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
@@ -53,7 +44,6 @@ def index(request):
                 hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
             ),
             "user_state": user_state,
-            "last_ioi_ha": last_ioi_ha,
             "last_gauge": last_gauge,
             "last_max_score": last_max_score,
             "next_step": next_step,

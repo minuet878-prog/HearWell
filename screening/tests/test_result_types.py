@@ -1,12 +1,15 @@
 """Each result type's result object (spec #385, ticket #387): what submission.result answers."""
 
+import re
+from datetime import datetime
 from decimal import Decimal
 from io import StringIO
+from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
 from django.db.models import Prefetch, QuerySet
 from django.template import Context, Template
-from django.template.loader import render_to_string
+from django.template.loader import get_template, render_to_string
 from django.test import TestCase
 from django.urls import reverse
 
@@ -286,9 +289,7 @@ class SubscaleResultTests(ResultTestCase):
         self.assertEqual(result.not_applicable_choice, "不適用")
 
     def test_result_page_and_summary(self):
-        record = submission_with_answers(
-            self.user, sadl.CODE, [4] * 15, wearing_hearing_aid=True
-        )
+        record = submission_with_answers(self.user, sadl.CODE, [4] * 15, wearing_hearing_aid=True)
         self.assert_page(record, "screening/sadl_result.html")
         self.assertEqual(record.result.summary_template, "screening/sadl_overall.html")
         summary = render_to_string(record.result.summary_template, {"submission": record})
@@ -359,3 +360,270 @@ class DefinitionResultTypeTests(TestCase):
         template = Template("{{ d.result.page_template }}")
         context = Context({"d": hhie_s.DEFINITION})
         self.assertEqual(template.render(context), "screening/result.html")
+
+
+class SummaryTemplateTests(ResultTestCase):
+    """#389: the home page's last result and each row of 我的紀錄 draw the record's summary
+    template. The expected HTML is each page as rendered before the change, spaces aside."""
+
+    ARROW = '<span aria-hidden="true">\u203a</span>'  # the links' arrow (U+203A)
+
+    SADL_NOT_APPLICABLE = [4] * 15
+    SADL_NOT_APPLICABLE[10] = None
+    # Two records of each type, older first: (code, scores, fields, Taipei date).
+    RECORDS = (
+        (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}, (2026, 3, 1)),
+        (hhie_s.CODE, [4] * 10, {"wearing_hearing_aid": False}, (2026, 4, 1)),
+        (thi.CODE, [2] * 25, {"wearing_hearing_aid": True}, (2026, 3, 2)),
+        (thi.CODE, [4] * 25, {"wearing_hearing_aid": None}, (2026, 4, 2)),
+        (ssq12_tw.CODE, [None] + [3] * 11, {"wearing_hearing_aid": False}, (2026, 3, 3)),
+        (ssq12_tw.CODE, [5] * 12, {"wearing_hearing_aid": True}, (2026, 4, 3)),
+        (ioi_ha.CODE, [4] * 7, {"norm_group": NormGroup.UNGROUPED}, (2026, 3, 4)),
+        (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.MILD_MODERATE}, (2026, 4, 4)),
+        (sadl.CODE, SADL_NOT_APPLICABLE, {"wearing_hearing_aid": True}, (2026, 3, 5)),
+        (sadl.CODE, [5] * 15, {"wearing_hearing_aid": True}, (2026, 4, 5)),
+    )
+
+    def record(self, user, code, scores, fields, day):
+        submission = submission_with_answers(user, code, scores, **fields)
+        created = datetime(*day, 10, tzinfo=ZoneInfo("Asia/Taipei"))
+        Submission.objects.filter(pk=submission.pk).update(created_at=created)
+        return submission
+
+    def home_banner(self, user):
+        self.client.force_login(user)
+        html = self.client.get(reverse("index")).content.decode()
+        return re.search(
+            r'<div class="result-banner result-banner-.*?看這次結果'
+            + re.escape(self.ARROW)
+            + r"</a>\s*</div>",
+            html,
+            re.S,
+        ).group(0)
+
+    def my_hearing(self, code):
+        self.client.force_login(self.user)
+        html = self.client.get(reverse("my_hearing"), {"questionnaire": code}).content.decode()
+        rows = re.findall(r'<a class="link-card" href="[^"]*">.*?</a>', html, re.S)
+        since_last = re.search(r'<section id="since-last".*?</section>', html, re.S)
+        return rows, since_last and since_last.group(0)
+
+    def test_home_shows_a_life_impact_last_result_with_its_gauge_and_level(self):
+        user = consented_user(username="home_hhie_s")
+        record = self.record(user, *self.RECORDS[0])
+        self.assertHTMLEqual(
+            self.home_banner(user),
+            '<div class="result-banner result-banner-mild_to_moderate"><div>上次結果</div>'
+            '<svg class="score-gauge" viewBox="0 0 220 130" aria-hidden="true" focusable="false"'
+            ' data-play-in-view style="--angle: 90.00deg">'
+            '<path class="score-gauge-arc score-gauge-arc-normal" pathLength="1"'
+            ' d="M30.00 105.00A80 80 0 0 1 44.55 59.00"/>'
+            '<path class="score-gauge-arc score-gauge-arc-mild_to_moderate" pathLength="1"'
+            ' d="M46.03 56.97A80 80 0 0 1 133.52 28.54"/>'
+            '<path class="score-gauge-arc score-gauge-arc-severe" pathLength="1"'
+            ' d="M135.91 29.31A80 80 0 0 1 190.00 105.00"/>'
+            '<line class="score-gauge-needle" x1="110" y1="105" x2="52" y2="105"/>'
+            '<circle class="score-gauge-hub" cx="110" cy="105" r="7"/>'
+            '<text x="30" y="126">0</text><text x="190" y="126">40</text></svg>'
+            '<h2 class="result-level mb-0">輕度到中度影響</h2>'
+            "<div>HHIE-S 總分 20 分（滿分 40）</div>"
+            f'<a class="welcome-result-link" href="{reverse("result", args=[record.pk])}">'
+            f"看這次結果{self.ARROW}</a></div>",
+        )
+
+    def test_home_shows_another_last_result_by_its_type(self):
+        # THI is graded but not life impact: its topic only, no summary.
+        for index, summary in (
+            (2, '<h2 class="result-level mb-0">耳鳴對生活的影響（THI）</h2>'),
+            (
+                4,
+                '<h2 class="result-level mb-0">日常聆聽能力（SSQ12-TW）</h2>'
+                "<div>未計算：包含不適用題目</div>",
+            ),
+            (
+                5,
+                '<h2 class="result-level mb-0">日常聆聽能力（SSQ12-TW）</h2>'
+                "<div>整體平均：5.0／10</div>",
+            ),
+            (
+                6,
+                '<h2 class="result-level mb-0">助聽器使用成效（IOI-HA）</h2>'
+                "<div>未分組，無法和常模比較</div>",
+            ),
+            (
+                7,
+                '<h2 class="result-level mb-0">助聽器使用成效（IOI-HA）</h2>'
+                "<div>7 項中 0 項低於常模、0 項高於常模</div>",
+            ),
+            (
+                8,
+                '<h2 class="result-level mb-0">助聽器滿意度（SADL）</h2><div>整體滿意度：4.0</div>',
+            ),
+        ):
+            with self.subTest(record=self.RECORDS[index][:2]):
+                user = consented_user(username=f"home_{index}")
+                record = self.record(user, *self.RECORDS[index])
+                self.assertHTMLEqual(
+                    self.home_banner(user),
+                    '<div class="result-banner result-banner-unknown"><div>上次結果</div>'
+                    f"{summary}"
+                    f'<a class="welcome-result-link" href="{reverse("result", args=[record.pk])}">'
+                    f"看這次結果{self.ARROW}</a></div>",
+                )
+
+    def test_my_hearing_rows_and_since_last_by_type(self):
+        records = [self.record(self.user, *fields) for fields in self.RECORDS]
+
+        def row(index, date, summary):
+            href = reverse("result", args=[records[index].pk])
+            return (
+                f'<a class="link-card" href="{href}"><span class="link-card-body">'
+                f"<strong>{date}</strong>{summary}</span>"
+                f'<span class="link-card-arrow" aria-hidden="true">\u203a</span></a>'
+            )
+
+        def since_last(previous, latest, text):
+            def cell(label, date, score, newest=""):
+                return (
+                    f'<p class="since-last-cell{newest}"><span class="since-last-label">{label}'
+                    '</span><span class="since-last-date"><span class="visually-hidden">（</span>'
+                    f'{date}<span class="visually-hidden">）：</span></span>'
+                    f'<span class="since-last-score">{score}<span class="since-last-unit"> 分'
+                    "</span></span></p>"
+                )
+
+            return (
+                '<section id="since-last" class="since-last mb-6 wrap-anywhere"'
+                ' aria-labelledby="since-last-title">'
+                '<h2 id="since-last-title" class="h4">和上一次比</h2>'
+                f'<div class="since-last-pair">{cell("上一次", *previous)}'
+                '<span class="since-last-arrow" aria-hidden="true">→</span>'
+                f"{cell('最近一次', *latest, newest=' since-last-latest')}</div>"
+                f'<p class="mb-0 text-subhead text-heading"><strong>{text}</strong></p>'
+                "</section>"
+            )
+
+        def badge(level, text):
+            return f'<span><span class="level-badge level-badge-{level}">{text}</span></span>'
+
+        for code, expected_rows, expected_since_last in (
+            (
+                hhie_s.CODE,
+                [
+                    row(
+                        1,
+                        "2026/04/01",
+                        "<span>總分：40　助聽器：沒戴</span>" + badge("severe", "顯著影響"),
+                    ),
+                    row(
+                        0,
+                        "2026/03/01",
+                        "<span>總分：20　助聽器：沒戴</span>"
+                        + badge("mild_to_moderate", "輕度到中度影響"),
+                    ),
+                ],
+                since_last(
+                    ("2026/03/01", 20), ("2026/04/01", 40), "比上一次多 20 分（分數越低越好）"
+                ),
+            ),
+            (
+                thi.CODE,
+                [
+                    row(
+                        3,
+                        "2026/04/02",
+                        "<span>總分：100　助聽器：未記錄</span>" + badge("severe", "極重度障礙"),
+                    ),
+                    row(
+                        2,
+                        "2026/03/02",
+                        "<span>總分：50　助聽器：有戴</span>"
+                        + badge("mild_to_moderate", "中度障礙"),
+                    ),
+                ],
+                since_last(
+                    ("2026/03/02", 50), ("2026/04/02", 100), "比上一次多 50 分（分數越低越好）"
+                ),
+            ),
+            (
+                ssq12_tw.CODE,
+                [
+                    row(5, "2026/04/03", "<span>整體平均：5.0／10</span><span>助聽器：有戴</span>"),
+                    row(
+                        4,
+                        "2026/03/03",
+                        "<span>未計算：包含不適用題目</span><span>助聽器：沒戴</span>",
+                    ),
+                ],
+                None,
+            ),
+            (
+                ioi_ha.CODE,
+                [
+                    row(7, "2026/04/04", "<span>IOI-HA　常模組別：輕度至中度</span>"),
+                    row(6, "2026/03/04", "<span>IOI-HA　常模組別：未分組</span>"),
+                ],
+                None,
+            ),
+            (
+                sadl.CODE,
+                [
+                    row(9, "2026/04/05", "<span>整體滿意度：4.5</span>"),
+                    row(8, "2026/03/05", "<span>整體滿意度：4.0</span>"),
+                ],
+                None,
+            ),
+        ):
+            with self.subTest(code=code):
+                rows, since = self.my_hearing(code)
+                self.assertEqual(len(rows), len(expected_rows))
+                for html, expected in zip(rows, expected_rows, strict=True):
+                    self.assertHTMLEqual(html, expected)
+                if expected_since_last is None:
+                    self.assertIsNone(since)
+                else:
+                    self.assertHTMLEqual(since, expected_since_last)
+
+    def test_the_pages_include_the_summary_template_instead_of_asking_the_type(self):
+        # The IOI-HA chart of 我的紀錄 (ioi_ha_chart) goes by its questionnaire, not its type.
+        type_check = re.compile(
+            r"{%\s*(?:el)?if\b[^%]*\b(?:averaged|satisfaction|norm_group|ioi_ha|classified)\b"
+        )
+        for name, place in (
+            ("screening/index.html", "home"),
+            ("screening/my_hearing.html", "records"),
+        ):
+            with self.subTest(template=name):
+                source = get_template(name).template.source
+                self.assertIn(
+                    f'{{% include submission.result.summary_template with place="{place}"', source
+                )
+                self.assertIsNone(type_check.search(source))
+
+    def test_my_hearing_takes_the_same_queries_for_two_or_four_records_of_each_type(self):
+        # Counts measured before the change; 我的紀錄's HHIE-S tab is test_thi's 8.
+        self.client.force_login(self.user)
+        for round_ in range(2):
+            for code, scores, fields, (year, month, day) in self.RECORDS:
+                self.record(self.user, code, scores, fields, (year, month + 2 * round_, day))
+            for code, queries in (
+                (hhie_s.CODE, 8),
+                (thi.CODE, 7),
+                (ssq12_tw.CODE, 9),
+                (ioi_ha.CODE, 8),
+                (sadl.CODE, 7),
+            ):
+                with self.subTest(records=2 * (round_ + 1), code=code):
+                    with self.assertNumQueries(queries):
+                        self.client.get(reverse("my_hearing"), {"questionnaire": code})
+
+    def test_home_takes_the_same_queries_for_each_last_result_type(self):
+        # Counts measured before the change. SADL's satisfaction reads each answer's question.
+        for index, queries in ((0, 9), (2, 9), (4, 9), (6, 10), (8, 25)):
+            code, scores, fields, (year, month, day) = self.RECORDS[index]
+            user = consented_user(username=f"home_queries_{index}")
+            for older in range(2):
+                self.record(user, code, scores, fields, (year, month, day + older))
+            self.client.force_login(user)
+            with self.subTest(code=code), self.assertNumQueries(queries):
+                self.client.get(reverse("index"))
