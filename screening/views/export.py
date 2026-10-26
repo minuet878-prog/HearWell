@@ -19,18 +19,12 @@ def _taipei(moment):
     return timezone.localtime(moment).isoformat()
 
 
-def _has_subscores(answers):
-    # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
-    # the answers already loaded with their questions, no query of its own.
-    return any(answer.question.category != models.Category.NONE for answer in answers)
-
-
 def _export_submission(submission):
     # Only graded questionnaires have a total, subscales and level (same as their result
     # pages); the others export null, not 0.
     result = submission.questionnaire.definition.result
     not_scored = result != LEVEL
-    has_subscores = not not_scored and _has_subscores(submission.answers.all())
+    has_subscores = not not_scored and submission.has_subscores
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),

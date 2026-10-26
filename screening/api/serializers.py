@@ -112,8 +112,15 @@ class QuestionnaireDetailSerializer(QuestionnaireSerializer):
 
 class ScoresSerializer(serializers.Serializer):
     total = serializers.IntegerField(source="total_answer_score")
-    emotional = serializers.IntegerField(source="emotional_score")
-    social = serializers.IntegerField(source="social_score")
+    # null when the record has no emotional or social items (THI), the same as the export.
+    emotional = serializers.IntegerField(source="emotional_score", allow_null=True)
+    social = serializers.IntegerField(source="social_score", allow_null=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not instance.has_subscores:
+            data["emotional"] = data["social"] = None
+        return data
 
 
 class LevelSerializer(serializers.Serializer):

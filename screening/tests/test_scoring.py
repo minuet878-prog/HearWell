@@ -162,6 +162,24 @@ class ScoringAggregateTest(TestCase):
         self.assertEqual(submission.emotional_score, 0)
         self.assertEqual(submission.social_score, 0)
 
+    def test_has_subscores_the_same_annotated_or_aggregated(self):
+        # #386: one rule, from the scoring aggregate, on both scoring paths.
+        all_zero = self._make_submission(emotional_score=0, social_score=0)
+        no_subscore_items = Submission.objects.create(
+            user=self.user, questionnaire=self.questionnaire
+        )
+        other = Question.objects.create(
+            questionnaire=self.questionnaire, question_text="其他題", question_number=11
+        )
+        Answer.objects.create(submission=no_subscore_items, question=other, score=4)
+        for submission, expected in ((all_zero, True), (no_subscore_items, False)):
+            for path, fetched in (
+                ("aggregate", Submission.objects.get(pk=submission.pk)),
+                ("annotate", Submission.objects.with_scores().get(pk=submission.pk)),
+            ):
+                with self.subTest(path, expected=expected):
+                    self.assertEqual(fetched.has_subscores, expected)
+
 
 class HistoryScorePathTests(TestCase):
     @classmethod

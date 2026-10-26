@@ -24,7 +24,6 @@ from screening.scoring import (
     max_score,
 )
 from screening.views.common import health_data_page
-from screening.views.export import _has_subscores
 from screening.views.my_hearing import TREND_STATUS_TEXT, _shows_wearing_comparison
 
 
@@ -148,7 +147,7 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
-            "has_subscores": _has_subscores(answers),
+            "has_subscores": submission.has_subscores,
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_color": classified_score["color"],

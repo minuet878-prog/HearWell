@@ -29,6 +29,12 @@ def _score_expressions():
             filter=models.Q(answers__question__category=Category.SOCIAL),
             default=0,
         ),
+        # Answers to emotional or social items: a record has subscores only when it has one
+        # (THI has none, spec #208 Q5). The one rule for the result page, export and API (#386).
+        "subscore_answer_count": models.Count(
+            "answers",
+            filter=models.Q(answers__question__category__in=(Category.EMOTIONAL, Category.SOCIAL)),
+        ),
     }
 
 
@@ -124,6 +130,10 @@ class Submission(models.Model):
     @property
     def total_answer_score(self):
         return self._calculate_scores()["score_total"]
+
+    @property
+    def has_subscores(self):
+        return self._calculate_scores()["subscore_answer_count"] > 0
 
     @property
     def emotional_score(self):

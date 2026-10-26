@@ -566,8 +566,10 @@ components:
           type: integer
         emotional:
           type: integer
+          nullable: true
         social:
           type: integer
+          nullable: true
       required:
       - emotional
       - social
