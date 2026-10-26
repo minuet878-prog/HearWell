@@ -11,6 +11,24 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
 <article class="privacy wrap-anywhere">
     <h1 class="h3 mt-2">隱私權說明</h1>
     <p class="source-note text-body">第 {{ version }} 版，{{ updated_on|date:"Y/m/d" }} 更新</p>
+    {# #361: a folded list of the sections on top, to jump to one; no boxes round them (ADR 0022). #}
+    <details class="dropdown-box mb-6">
+        <summary>這一頁的段落</summary>
+        <ul>
+            <li><a href="#highlights-title">先看重點</a></li>
+            <li><a href="#who-title">誰在蒐集</a></li>
+            <li><a href="#why-title">為什麼蒐集</a></li>
+            <li><a href="#collected-title">蒐集哪些資料</a></li>
+            <li><a href="#storage-title">存放在哪裡、保存多久</a></li>
+            <li><a href="#recipients-title">會交給誰</a></li>
+            <li><a href="#sharing-title">您主動分享時</a></li>
+            <li><a href="#rights-title">您可以要求什麼</a></li>
+            <li><a href="#refuse-title">不提供資料會怎樣</a></li>
+            <li><a href="#diagnosis-title">不是醫療診斷</a></li>
+            <li><a href="#changes-title">說明改版</a></li>
+            <li><a href="#contact-title">有問題或要刪除資料？</a></li>
+        </ul>
+    </details>
     {# #197: the consent page's four highlights first; the full text below stays open. #}
     <section class="mb-6" aria-labelledby="highlights-title">
         <h2 id="highlights-title" class="h4">先看重點</h2>
@@ -18,13 +36,13 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     </section>
     <p>HearWell 會保存您的聽力篩檢結果，這些屬於法律上特別保護的「健康資料」。這一頁用白話說明我們怎麼處理您的資料。</p>
 
-    <h2 class="h4 mt-6">誰在蒐集</h2>
+    <h2 id="who-title" class="h4 mt-6">誰在蒐集</h2>
     <ul>
         <li>營運者：HearWell 開發者</li>
         <li>聯絡信箱：<a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></li>
     </ul>
 
-    <h2 class="h4 mt-6">為什麼蒐集</h2>
+    <h2 id="why-title" class="h4 mt-6">為什麼蒐集</h2>
     <ul>
         <li>讓您做聽力篩檢問卷，算出分數和建議。</li>
         <li>保存您的紀錄，讓您看到聽力和助聽器效果隨時間的變化。</li>
@@ -32,14 +50,25 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     </ul>
     <p>我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。</p>
 
-    <h2 class="h4 mt-6">蒐集哪些資料</h2>
+    <h2 id="collected-title" class="h4 mt-6">蒐集哪些資料</h2>
     <ul>
         <li>帳號資料：使用者名稱、電子郵件、出生年（只有年，沒有月日）。密碼經過加密處理，連我們也看不到原本的密碼。</li>
-        <li>健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、您在選配路線上的回答（有沒有聽覺機能的身心障礙證明、九號表與核定公文的進度、核定單耳或雙耳與補助等級、助聽器開始配戴的日期與戴哪一耳、有沒有用身障補助買、二十五號表完成了沒），以及您看過哪幾個選配指引章節。</li>
+        <li>健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、您在選配路線上的回答
+            {# #361: the answers on the route, once in brackets, as a list of their own in the same words. #}
+            <ul>
+                <li>有沒有聽覺機能的身心障礙證明</li>
+                <li>九號表與核定公文的進度</li>
+                <li>核定單耳或雙耳與補助等級</li>
+                <li>助聽器開始配戴的日期與戴哪一耳</li>
+                <li>有沒有用身障補助買</li>
+                <li>二十五號表完成了沒</li>
+            </ul>
+            以及您看過哪幾個選配指引章節。
+        </li>
         <li>同意紀錄：您哪一天同意了哪一版說明。</li>
     </ul>
 
-    <h2 class="h4 mt-6">存放在哪裡、保存多久</h2>
+    <h2 id="storage-title" class="h4 mt-6">存放在哪裡、保存多久</h2>
     <ul>
         <li>網站主機：Render，位於美國俄亥俄州。</li>
         <li>資料庫：Neon，位於美國俄亥俄州（使用 Amazon 的雲端機房）。</li>
@@ -48,7 +77,7 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
         <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
     </ul>
 
-    <h2 class="h4 mt-6">會交給誰</h2>
+    <h2 id="recipients-title" class="h4 mt-6">會交給誰</h2>
     <p>我們不會把您的資料交給其他人或公司。只有下面幾個幫網站運作的服務，會經手部分資料：</p>
     <ul>
         <li>Render（網站主機）和 Neon（資料庫）：存放上面所有資料。Render 也會留下連線紀錄（包含 IP 位址），用來維持網站運作。</li>
@@ -56,10 +85,10 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
     </ul>
     <p class="tip-box">本站只用登入需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
 
-    <h2 class="h4 mt-6">您主動分享時</h2>
+    <h2 id="sharing-title" class="h4 mt-6">您主動分享時</h2>
     <p>您可以主動把聽力報告分享給別人：在「分享報告給家人」頁產生分享連結後，拿到連結的人不用登入就看得到這份報告（不含您的使用者名稱與出生年）。連結 7 天後失效，您也可以隨時取消。網站只記錄連結被打開的次數和最後一次的時間，不記錄是誰打開的。</p>
 
-    <h2 class="h4 mt-6">您可以要求什麼</h2>
+    <h2 id="rights-title" class="h4 mt-6">您可以要求什麼</h2>
     <p>依照個人資料保護法，您可以要求：</p>
     <ul>
         <li>查詢、閱覽您的資料，或拿到一份複本。</li>
@@ -67,20 +96,20 @@ raises CONSENT_VERSION in models.py; a minor fix only moves PRIVACY_UPDATED_ON.
         <li>停止處理您的資料，或刪除您的資料。</li>
     </ul>
     <p>請寄信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，說明您的使用者名稱和要求。查詢、閱覽、複本會在 15 天內處理；更正、停止處理、刪除會在 30 天內處理。需要延長時，我們會寫信告訴您原因。</p>
-    <p>您也可以隨時下載自己的資料：登入後到「帳號設定」頁按「下載我的資料」，或直接按<a class="inline-link" href="{% url 'download_my_data' %}"{% if user.is_authenticated %} download{% endif %}>這裡下載</a>。</p>
-    <p>您也可以自己刪除帳號和全部資料：登入後到「帳號設定」頁按「刪除帳號」，或直接按<a class="inline-link" href="{% url 'delete_account' %}">這裡刪除</a>。刪除後無法復原，建議先下載自己的資料。</p>
+    <p>您也可以隨時下載自己的資料：登入後到「帳號設定」頁按「下載我的資料」，或直接按<a class="inline-link" href="{% url 'download_my_data' %}"{% if user.is_authenticated %} download{% endif %}>下載我的資料</a>。</p>
+    <p>您也可以自己刪除帳號和全部資料：登入後到「帳號設定」頁按「刪除帳號」，或直接按<a class="inline-link" href="{% url 'delete_account' %}">刪除帳號</a>。刪除後無法復原，建議先下載自己的資料。</p>
 
-    <h2 class="h4 mt-6">不提供資料會怎樣</h2>
+    <h2 id="refuse-title" class="h4 mt-6">不提供資料會怎樣</h2>
     <p>您可以不同意。不同意就不能使用篩檢、紀錄和聽力圖功能，但您的帳號會保留，之後想用時再同意即可。</p>
 
-    <h2 class="h4 mt-6">不是醫療診斷</h2>
+    <h2 id="diagnosis-title" class="h4 mt-6">不是醫療診斷</h2>
     <p>HearWell 的篩檢結果只是參考，不能取代醫師或聽力師的檢查和診斷。覺得聽力有問題，請找耳鼻喉科或聽力師。</p>
 
-    <h2 class="h4 mt-6">說明改版</h2>
+    <h2 id="changes-title" class="h4 mt-6">說明改版</h2>
     <p>如果蒐集的資料、用途或經手的服務有改變，我們會更新這一頁，並在您下次使用時請您再看一次、再同意一次。只改錯字或排版時，只會更新上面的日期。</p>
 
     <section class="mt-6" aria-labelledby="contact-title">
-        <h2 id="contact-title" class="h5 heading-bar">有問題或要刪除資料？</h2>
+        <h2 id="contact-title" class="h4">有問題或要刪除資料？</h2>
         <p class="mb-0">寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
     </section>
 </article>

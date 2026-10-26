@@ -4,7 +4,7 @@ from itertools import pairwise
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import User
+from screening.models import AidAndSubsidy, User
 from screening.tests.helpers import consented_user
 from screening.views import GUIDE_CHAPTERS
 
@@ -159,7 +159,7 @@ class GuideChapterTests(TestCase):
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
-        assert_footer(self, response, "2026-10-22", BEFORE_YOU_GO_SOURCES)
+        assert_footer(self, response, "2026/10/22", BEFORE_YOU_GO_SOURCES)
         self.assertContains(response, f'href="{reverse("guide")}">{BACK}</a>')
 
     def test_user_without_consent_can_read_it(self):
@@ -182,3 +182,80 @@ class GuideChapterTests(TestCase):
     def test_unknown_chapter_is_not_found(self):
         url = reverse("guide_chapter", args=["no-such-chapter"])
         self.assertEqual(self.client.get(url).status_code, 404)
+
+
+class ChapterTidyT367Tests(TestCase):
+    """#367 (spec #354): the chapters' way back to the guide and their own small fixes."""
+
+    BACK_BUTTON = f'<a class="btn btn-outline-primary btn-lg w-full" href="/guide">{BACK}</a>'
+
+    def chapter(self, slug, **query):
+        return self.client.get(reverse("guide_chapter", args=[slug]), query).content.decode()
+
+    def test_a_chapter_without_an_answer_ends_with_the_way_back_before_its_sources(self):
+        signed_in = consented_user(username="chapter_back_user")
+        for user in (None, signed_in):
+            if user:
+                self.client.force_login(user)
+            for chapter in GUIDE_CHAPTERS:
+                with self.subTest(chapter=chapter.slug, signed_in=bool(user)):
+                    content = self.chapter(chapter.slug)
+                    self.assertEqual(content.count(self.BACK_BUTTON), 1)
+                    at = content.index(self.BACK_BUTTON)
+                    self.assertGreater(at, content.index("</article>"))
+                    self.assertLess(at, content.index("<footer"))
+                    if 'id="stop-question"' in content:
+                        self.assertGreater(at, content.index('id="stop-question"'))
+
+    def test_an_answered_chapter_leads_back_by_its_card_only(self):
+        user = consented_user(username="chapter_back_answered")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.client.force_login(user)
+        content = self.chapter("assessment")
+        self.assertIn("已記下：有身障證明", content)
+        self.assertNotIn(self.BACK_BUTTON, content)
+
+    def test_before_you_go_links_the_report_from_its_printing_sentence(self):
+        bring = part(
+            self.client.get(reverse("guide_chapter", args=["before-you-go"])), "要帶的東西"
+        )
+        self.assertIn(
+            "<p>也可以在 HearWell 印出聽力報告一起帶去。"
+            f'<a href="{reverse("health_report")}">看／印聽力報告</a></p>',
+            bring,
+        )
+
+    def test_form_9_opens_with_a_jump_to_each_of_its_six_parts(self):
+        content = self.chapter("form-9")
+        nav = re.search(r'<nav aria-labelledby="page-jump-title">(.*?)</nav>', content, re.S)
+        self.assertIsNotNone(nav)
+        self.assertIn('<p id="page-jump-title" class="tint-subhead mb-2">本頁段落</p>', nav[1])
+        links = re.findall(r'<a [^>]*href="#([^"]+)">([^<]+)</a>', nav[1])
+        self.assertEqual(
+            links,
+            [
+                ("who-title", "誰可以申請"),
+                ("steps-title", "申請流程"),
+                ("issuer-title", "九號表找誰開"),
+                ("amount-title", "補助多少"),
+                ("reapply", "再次申請（換新機）"),
+                ("without-certificate", "沒有身障證明時"),
+            ],
+        )
+        for target, _ in links:
+            with self.subTest(target=target):
+                self.assertIn(f'id="{target}"', content)
+        # Under the lead, before the first part.
+        lead = content.index("「九號表」是買助聽器前要做的輔具評估報告書")
+        self.assertLess(lead, nav.start())
+        self.assertLess(nav.end(), content.index('<section class="section-box'))
+
+    def test_form_25_tags_its_when_as_form_9_does(self):
+        who_how = part(
+            self.client.get(reverse("guide_chapter", args=["form-25"])), "誰要做、怎麼做"
+        )
+        self.assertIn(
+            '<dd>配戴滿 1 個月後、3 個月內。<span class="step-when" aria-hidden="true">'
+            "配戴 1–3 個月內</span></dd>",
+            who_how,
+        )

@@ -52,8 +52,9 @@
         <button type="submit" class="btn btn-primary btn-lg w-full">查詢</button>
     </form>
     <div id="hospital-results" class="mt-4">
+    {# #367 (spec #354): said only once 查詢 is pressed without a county, not on arrival. #}
     {% if not county %}
-    <p>請先選擇縣市。</p>
+    {% if searched %}<p>請先選擇縣市。</p>{% endif %}
     {% elif not hospitals %}
     <p>這個縣市目前名冊上沒有可以做聽覺機能鑑定的醫院，請洽縣市衛生局。</p>
     {% else %}
@@ -68,7 +69,7 @@
     <p class="guide-source">名冊：衛生福利部「各縣市身心障礙類別、向度之鑑定醫院名冊」（{{ roster_version }}）。實際的醫院和鑑定項目以各縣市衛生局公布為準，去之前建議先打電話確認。</p>
 </section>
 {% endblock %}
-{% block checked_on %}2026-10-22{% endblock %}
+{% block checked_on %}2026/10/22{% endblock %}
 {% block sources %}
 <li><a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0020020">身心障礙者鑑定作業辦法</a>（全國法規資料庫）</li>
 <li><a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a>（全國法規資料庫）</li>

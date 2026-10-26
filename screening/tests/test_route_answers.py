@@ -1023,3 +1023,42 @@ class Form25RouteTests(TestCase):
         edit = reverse("guide") + "?edit=form-25#stop-form-25"
         label = "修改二十五號表：使用效益驗證的回答"
         self.assertIn(f'<a href="{edit}" aria-label="{label}">修改</a>', card)
+
+
+class RouteActionT367Tests(TestCase):
+    """#367 (spec #354, #258): while the 目前這一站 still has a question open, its button is
+    outlined and comes after the question's form; without one it is the filled button above."""
+
+    setUp = RouteQuestionTests.setUp
+    make = RouteQuestionTests.make
+    page = RouteQuestionTests.page
+    stop = RouteQuestionTests.stop
+    answer = RouteQuestionTests.answer
+
+    def action(self, markup, wording):
+        found = re.search(rf'<a class="btn ([^"]+)" href="[^"]+">{wording}</a>', markup)
+        return found[1], found.start()
+
+    def test_with_its_question_open_the_button_is_outlined_under_the_form(self):
+        assessment = self.stop("assessment")
+        self.assertIn("<form", assessment)
+        kind, at = self.action(assessment, "找鑑定醫院")
+        self.assertEqual(kind, "btn-outline-primary btn-lg w-full mt-2")
+        self.assertGreater(at, assessment.index("</form>"))
+
+    def test_without_a_question_it_stays_the_filled_button(self):
+        GuideChapterView.objects.filter(user=self.user).delete()
+        before_you_go = self.stop("before-you-go")
+        self.assertNotIn("<form", before_you_go)
+        kind, _ = self.action(before_you_go, "去之前要準備什麼")
+        self.assertEqual(kind, "btn-primary btn-lg w-full mt-2")
+
+    def test_once_its_question_is_answered_the_stop_is_as_it_was(self):
+        # The same stop, answered: no form and no outlined button are left under its answer; as
+        # any done stop, it has no button of its own.
+        self.answer("yes")
+        assessment = self.stop("assessment")
+        self.assertIn('<p class="route-answer">有身障證明', assessment)
+        self.assertNotIn("<form", assessment)
+        self.assertNotIn("btn-outline-primary", assessment)
+        self.assertNotIn("找鑑定醫院", assessment)

@@ -1,5 +1,7 @@
 """Spec #148 batch 2, ticket #157: result page next steps by level."""
 
+import re
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -220,6 +222,21 @@ class ResultNextStepsTests(TestCase):
         self.assertNotIn("接下來建議您", main)
         self.assertNotIn("next-steps", main)
         self.assertIn(f"<p>{UNKNOWN_ADVICE}</p>", main)
+
+    def test_the_full_advice_opens_by_itself_only_when_unclassifiable(self):
+        # #363 (spec #354): 「無法判讀」's only explanation is the full advice, so it is open;
+        # every other level keeps it folded.
+        advice = re.compile(r"<details([^>]*)>\s*<summary>看完整建議</summary>")
+        submission = Submission.objects.create(user=self.user, questionnaire=self.unknown)
+        Answer.objects.create(submission=submission, question=self.unknown_question, score=4)
+        with self.assertLogs("screening.scoring", "ERROR"):
+            attributes = advice.search(self._main(submission)).group(1)
+        self.assertRegex(attributes, r"\bopen\b")
+        for code in self.questionnaires:
+            for level, total in TOTALS.items():
+                with self.subTest(questionnaire=code, level=level):
+                    main = self._main(self._submit(self.questionnaires[code], total))
+                    self.assertNotRegex(advice.search(main).group(1), r"\bopen\b")
 
     def test_only_own_submission_is_visible(self):
         other = consented_user(username="someone_else")

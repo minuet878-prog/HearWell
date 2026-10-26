@@ -604,10 +604,10 @@ class ReturningCatalogueTests(TestCase):
         self.login("hhie-s")
         catalogue = reverse("questionnaire_list")
         main = self.catalogue().content.decode()
-        link = f'<a href="{catalogue}?wizard=1">回答幾個問題，幫您挑</a>'
-        self.assertIn(f'<p class="mt-6">不確定做哪一份？{link}</p>', main)
-        # The last line of the page, under every card.
-        self.assertGreater(main.index(link), main.rindex("questionnaire-card"))
+        link = f'<a href="{catalogue}?wizard=1">幫我選問卷</a>'
+        # #362: right under the title, above every card, and said once.
+        self.assertIn(f"自行選擇問卷</h1>\n<p>不確定做哪一份？{link}</p>", main)
+        self.assertEqual(main.count("不確定做哪一份？"), 1)
         page = self.catalogue(wizard="1")
         self.assertContains(
             page, '<legend class="font-bold text-xl/normal">您最想了解什麼？</legend>'
@@ -633,19 +633,21 @@ class ReturningCatalogueTests(TestCase):
                 self.assertContains(page, f'href="{reverse("index")}">上一步</a>')
                 self.assertEqual(self.cards(page), [])
 
-    def test_a_new_users_choose_yourself_has_no_dates_and_no_help_me_choose(self):
+    def test_a_new_users_choose_yourself_has_no_dates_and_a_way_back_to_the_wizard(self):
+        # #362: the wizard's 自己選問卷 has a way back to 幫我選問卷 too.
         self.login()
         page = self.catalogue(choose="self")
         self.assertEqual(len(self.cards(page)), 6)
         self.assertNotContains(page, "上次")
-        self.assertNotContains(page, "幫您挑")
+        wizard = f"{reverse('questionnaire_list')}?wizard=1"
+        self.assertContains(page, f'<a href="{wizard}">幫我選問卷</a>')
 
     def test_a_returning_users_choose_yourself_is_the_same_catalogue(self):
-        # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫您挑」.
+        # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫我選問卷」.
         self.login("thi")
         page = self.catalogue(choose="self")
         self.assertContains(page, "上次 ")
-        self.assertContains(page, "幫您挑")
+        self.assertContains(page, "幫我選問卷")
         self.assertNotContains(page, 'name="concern"')
 
 

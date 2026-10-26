@@ -334,6 +334,25 @@ class ReportPartsTests(TestCase):
             for part in ("report-listening", "report-hearing-aid-outcome"):
                 self.assertNotContains(page, f'id="{part}"')
 
+    # #366 (spec #354): the owner's 更換或移除 buttons sit right under the summary box they
+    # change, on screen only; the family's copy has none.
+    def test_comparison_buttons_sit_right_under_the_summary_t366(self):
+        self.save_pair(self.hhie)
+        self.save_pair(self.hhia)
+        owner = self.client.get("/report").content.decode()
+        under = re.search(
+            r'<section id="report-summary".*?</section>\s*<nav ([^>]*)>(.*?)</nav>', owner, re.S
+        )
+        self.assertIsNotNone(under)
+        self.assertIn('aria-label="管理報告比較"', under.group(1))
+        self.assertIn("no-print", under.group(1))
+        self.assertEqual(
+            re.findall(r">(更換或移除[^<]*)</a>", under.group(2)),
+            ["更換或移除 HHIA-S 比較", "更換或移除 HHIE-S 比較"],
+        )
+        self.assertEqual(owner.count("更換或移除"), 2)
+        self.assertNotContains(self.family_report(), "更換或移除")
+
     def test_hhia_s_note_appears_once(self):
         self.record(self.hhia, wearing=False)
         self.assertContains(self.client.get("/report"), HHIA_S_EXPLANATION, count=1)

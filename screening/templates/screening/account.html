@@ -24,6 +24,8 @@
             <dd class="settings-row-title">{% if roc_birth_year is not None %}民國 {{ roc_birth_year }} 年（{{ user.birth_year }}）{% else %}未填{% endif %}</dd>
         </div>
     </dl>
+    {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #}
+    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
 </section>
 
 <section class="mt-6" aria-labelledby="family-title">
@@ -34,7 +36,7 @@
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11l4-4M17 7h4v4"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">分享報告給家人</span>
-                <span>{% if share %}分享中，{{ share.expires_at|date:"n 月 j 日" }}到期{% else %}目前沒有分享{% endif %}</span>
+                <span>{% if share %}分享中，{{ share.expires_at|date:"Y/m/d" }} 到期{% else %}目前沒有分享{% endif %}</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
@@ -88,17 +90,15 @@
     </ul>
 </section>
 
-<section class="mt-12" aria-labelledby="delete-title">
-    <h2 id="delete-title" class="h4">刪除帳號</h2>
-    <ul class="list-unstyled">
-        <li><a class="link-card action-card settings-card-danger" href="{% url 'delete_account' %}">
-            <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span>
-            <span class="link-card-body">
-                <span class="link-card-title">刪除帳號</span>
-                <span>刪除後，帳號和所有紀錄都會消失，無法復原。</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
-</section>
+{# #361: the red card says 刪除帳號 itself, so no heading repeats it above. #}
+<ul class="list-unstyled mt-12">
+    <li><a class="link-card action-card settings-card-danger" href="{% url 'delete_account' %}">
+        <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></span>
+        <span class="link-card-body">
+            <span class="link-card-title">刪除帳號</span>
+            <span>刪除後，帳號和所有紀錄都會消失，無法復原。</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
 {% endblock %}

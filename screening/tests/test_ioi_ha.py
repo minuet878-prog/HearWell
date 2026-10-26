@@ -501,6 +501,29 @@ class IoiHaResultRedesignTests(TestCase):
         cells = re.findall(r'<span class="ioi-cell( ioi-cell-band)?">(.*?)</span>', scale.group(1))
         return ["B" * bool(band) + "*" * ("ioi-dot" in inside) or "-" for band, inside in cells]
 
+    def _summary(self, main):
+        # The blue summary box SSQ12-TW and SADL open with (ADR 0007: no level colour).
+        match = re.search(r'<div class="trend-summary[^"]*">(.*?)</div>', main, re.S)
+        return match.group(1) if match else ""
+
+    def test_the_opening_conclusion_is_in_the_blue_summary_box(self):
+        # #363 (spec #354): the conclusion reads as the result; the legend stays outside.
+        grouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
+        summary = self._summary(grouped)
+        for text in (
+            "7 項中，有 2 項比一般使用者低",
+            "比較對象：一般助聽器使用者中，中間一半的人（常模）",
+            "分組依據：2026/10/01 沒戴助聽器時填的 HHIE-S，24 分。",
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text, summary)
+        self.assertNotIn("trend-legend", summary)
+        self.assertLess(grouped.index("trend-summary"), grouped.index("trend-legend"))
+        Answer.objects.all().delete()
+        Submission.objects.all().delete()
+        ungrouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
+        self.assertIn(IoiHaTests.UNGROUPED_NOTE, self._summary(ungrouped))
+
     def test_title_is_the_topic_with_code_and_date_below(self):
         main = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
         self.assertRegex(main, r"<h1[^>]*>助聽器使用成效</h1>")
@@ -650,7 +673,7 @@ class IoiHaResultRedesignTests(TestCase):
                 + [(3, names[n]) for n in (1, 6)]
                 + [(2, "其他 5 項")]
                 + [(3, names[n]) for n in (2, 3, 4, 5, 7)]
-                + [(2, "接下來")]
+                + [(2, "可以帶去跟聽力師討論")]
                 + closing,
             ),
             "grouped, none below": (
@@ -658,7 +681,7 @@ class IoiHaResultRedesignTests(TestCase):
                 True,
                 [(1, "助聽器使用成效"), (2, "其他 7 項")]
                 + [(3, names[n]) for n in range(1, 8)]
-                + [(2, "接下來")]
+                + [(2, "可以帶去跟聽力師討論")]
                 + closing,
             ),
             "ungrouped": (

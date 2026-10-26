@@ -29,14 +29,15 @@ NO_AUDIOGRAM = "因為：您還沒有記錄聽力圖，選配指引要用聽力�
 TOO_LITTLE_DATA = "因為：這張聽力圖缺少頻率，資料不足，無法判斷。"
 SHARE = "因為：讓家人也知道您的聽力狀況，家人不用登入就能看。"
 REPORT = "因為：看診時把報告帶給醫師，一張紙看完所有紀錄。"
-# Spec #291's drafts, one for each stop of the nine-stop route but form 25 (#296).
-BEFORE_YOU_GO = "因為：先看看第一次去找聽力師要準備什麼。"
+# Spec #291's drafts, one for each stop of the nine-stop route but form 25 (#296); #363
+# (spec #354) made four of them say why: the drafts the owner settles on review.
+BEFORE_YOU_GO = "因為：第一次去找聽力師前先準備好，看診時比較不會漏問。"
 ASSESSMENT = "因為：先確認有沒有身障證明，才知道能不能申請補助。"
 FORM_9 = "因為：您已經有身障證明，可以準備申請九號表的助聽器補助。"
-NOTICE = "因為：九號表送出後，等公所的核定公文。"
+NOTICE = "因為：九號表送出後要等公所的核定公文，先了解接下來會發生什麼。"
 TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之後再買。"
-AFTER_FITTING = "因為：開始戴助聽器後，記下哪一天開始戴。"
-PAYOUT = "因為：接下來等補助發放。"
+AFTER_FITTING = "因為：記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
+PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼發。"
 
 RECORD = ("/audiograms/new", "記錄醫院的聽力圖")
 PRINT = ("/report", "印聽力報告給醫師看")
@@ -151,7 +152,7 @@ class HomeNextStepTests(TestCase):
         self.assertEqual(
             self.next_step(section), ("修改這張聽力圖", TOO_LITTLE_DATA, edit, "修改這張聽力圖")
         )
-        self.assertEqual(self.groups(section)[0], ("記錄", [RECORD]))
+        self.assertEqual(self.groups(section)[0], ("聽力圖", [RECORD]))
 
     def test_without_a_stop_and_never_shared_it_suggests_sharing(self):
         # Acceptance 4: both ears within 25 dB HL, so no 目前這一站. Another account's link
@@ -201,7 +202,7 @@ class HomeNextStepTests(TestCase):
             (
                 "修改這張聽力圖",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [PRINT, FAMILY]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),
@@ -209,12 +210,12 @@ class HomeNextStepTests(TestCase):
             ),
             (
                 "了解助聽器選配與補助",
-                [("記錄", [RECORD]), ("給別人看", [PRINT, FAMILY]), ("方便使用", [ADD_HOME])],
+                [("聽力圖", [RECORD]), ("給別人看", [PRINT, FAMILY]), ("方便使用", [ADD_HOME])],
             ),
             (
                 "分享報告給家人",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [PRINT]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),
@@ -223,7 +224,7 @@ class HomeNextStepTests(TestCase):
             (
                 "印聽力報告給醫師看",
                 [
-                    ("記錄", [RECORD]),
+                    ("聽力圖", [RECORD]),
                     ("給別人看", [FAMILY]),
                     ("了解", [GUIDE]),
                     ("方便使用", [ADD_HOME]),
@@ -340,6 +341,23 @@ class EveryStopNextStepTests(TestCase):
             with self.subTest(stop=stop), self.at(stop):
                 self.assertEqual(
                     self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
+                )
+
+    def test_each_reworded_stop_says_why_on_a_result_page_too(self):
+        # #363 (spec #354): the four reasons that now say why, on the box a result page shares
+        # with the home page (ADR 0023).
+        submission = Submission.objects.get(user=self.user)
+        for stop, because in (
+            ("before-you-go", BEFORE_YOU_GO),
+            ("notice", NOTICE),
+            ("after-fitting", AFTER_FITTING),
+            ("payout", PAYOUT),
+        ):
+            with self.subTest(stop=stop), self.at(stop):
+                content = self.client.get(reverse("result", args=[submission.pk])).content
+                self.assertEqual(
+                    self.next_step(content.decode()),
+                    ("了解助聽器選配與補助", because, "/guide", "看我的選配指引"),
                 )
 
     def test_form_25_says_its_deadline(self):

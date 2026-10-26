@@ -19,7 +19,7 @@ from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
 CONSENT_VERSION = 2  # 2: the 助聽器與補助資料 (#286, spec #284 Q9)
-PRIVACY_UPDATED_ON = date(2026, 10, 23)
+PRIVACY_UPDATED_ON = date(2026, 10, 25)
 
 
 class User(AbstractUser):
@@ -62,7 +62,7 @@ class Consent(models.Model):
     agreed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} v{self.version} {self.agreed_at:%Y-%m-%d}"
+        return f"{self.user} v{self.version} {self.agreed_at:%Y/%m/%d}"
 
 
 SHARE_DAYS = 7
@@ -101,7 +101,7 @@ class ReportShare(models.Model):
         ordering = ("-created_at", "-id")
 
     def __str__(self):
-        return f"{self.user} share {self.created_at:%Y-%m-%d}"
+        return f"{self.user} share {self.created_at:%Y/%m/%d}"
 
 
 class QuestionnaireQuerySet(models.QuerySet):

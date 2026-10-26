@@ -19,7 +19,8 @@
     <input type="hidden" name="ear" value="{{ ear }}">
     {% for label, name, chosen in pick_rows %}
     <details class="compare-pick">
-        <summary><span class="compare-pick-label">{{ label }}</span> <strong>{{ chosen.tested_on|date:"Y/m/d" }}</strong> <span class="compare-pick-change">換一張</span></summary>
+        {# #365: a line sample after 舊 and 新, drawn as the chart draws that one, in the ear's colour. #}
+        <summary><span class="compare-pick-label">{{ label }}</span>{% if result %}<svg class="compare-line ear-{{ ear }}{% if label == "舊" %} is-old{% endif %}" viewBox="0 0 40 12" aria-hidden="true" focusable="false"><line x1="2" x2="38" y1="6" y2="6"{% if label == "舊" %} stroke-dasharray="6 4"{% endif %}/></svg>{% endif %} <strong>{{ chosen.tested_on|date:"Y/m/d" }}</strong> <span class="compare-pick-change">換一張</span></summary>
         <fieldset>
             <legend class="visually-hidden">換{{ label }}的那張</legend>
             <div class="choice-group choice-stack">
@@ -56,7 +57,7 @@
     {% if result.largest %}<p>差最多的頻率：{{ result.largest.text }}</p>{% endif %}
     <div id="audiogram-chart"></div>
     {# #202: the legend is text outside the drawing, so it grows with the text size. #}
-    <p class="compare-legend source-note mb-0">舊（{{ old.tested_on|date:"Y/m/d" }}）虛線、新（{{ new.tested_on|date:"Y/m/d" }}）實線</p>
+    <p class="compare-legend mb-0">舊（{{ old.tested_on|date:"Y/m/d" }}）虛線、新（{{ new.tested_on|date:"Y/m/d" }}）實線</p>
 </section>
 {# Pages tidy-up: the card keeps the numbers and the chart; how to read them sits in one tip box. #}
 <section class="tip-box" aria-labelledby="read-compare-title">

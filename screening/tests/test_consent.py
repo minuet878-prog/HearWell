@@ -114,6 +114,8 @@ class PrivacyHighlightsTests(TestCase):
 
     def test_highlights_on_top_match_the_consent_page(self):
         main = self._privacy_main()
+        # #361: the folded list of sections names them first; the sections come after it.
+        main = main[main.index("</details>") :]
         top = main[main.index("先看重點") : main.index("誰在蒐集")]
         self.assertEqual(self._list_items(top), list(HIGHLIGHTS))
         self.client.force_login(User.objects.create_user(username="highlights_reader"))
@@ -131,7 +133,9 @@ class PrivacyHighlightsTests(TestCase):
 
     def test_full_text_stays_open_with_the_share_page_wording(self):
         main = self._privacy_main()
-        self.assertNotIn("<details", main)
+        # #361: only the list of sections on top folds (PrivacyPageT361Tests); the text is open.
+        self.assertEqual(main.count("<details"), 1)
+        main = main[main.index("</details>") :]
         sharing = main[main.index("您主動分享時") : main.index("您可以要求什麼")]
         self.assertIn("在「分享報告給家人」頁產生分享連結後", test_layout._text(sharing))
         self.assertNotIn("「聽力報告」頁", sharing)
@@ -147,18 +151,24 @@ class PrivacyHighlightsTests(TestCase):
         # #292 (spec #291 acceptance 25): every answer on the route and the chapters read,
         # written in once for the whole feature (spec #291's draft).
         main = self._privacy_main()
+        main = main[main.index("</details>") :]
         collected = main[main.index("蒐集哪些資料") : main.index("存放在哪裡、保存多久")]
+        # #361: the answers on the route are a list of their own (PrivacyPageT361Tests).
         self.assertIn(
             "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
-            "您在選配路線上的回答（有沒有聽覺機能的身心障礙證明、九號表與核定公文的進度、"
-            "核定單耳或雙耳與補助等級、助聽器開始配戴的日期與戴哪一耳、有沒有用身障補助買、"
-            "二十五號表完成了沒），以及您看過哪幾個選配指引章節。",
-            self._list_items(collected),
+            "您在選配路線上的回答 有沒有聽覺機能的身心障礙證明 九號表與核定公文的進度 "
+            "核定單耳或雙耳與補助等級 助聽器開始配戴的日期與戴哪一耳 有沒有用身障補助買 "
+            "二十五號表完成了沒 以及您看過哪幾個選配指引章節。",
+            test_layout._text(collected),
         )
+
+    def test_spec_354_wording_is_a_minor_fix_that_moves_only_the_date(self):
+        # #354 (owner, 2026-10-25): a minor fix, so the date moves and nobody agrees again.
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
+        self.assertEqual(models.CONSENT_VERSION, 2)
 
     def test_aid_and_subsidy_raises_the_version_so_everyone_agrees_again(self):
         # #286 (spec #284 acceptance 23): what is collected changed, so version 2.
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 23))
         self.assertEqual(models.CONSENT_VERSION, 2)
         user = User.objects.create_user(username="agreed_to_version_1")
         Consent.objects.create(user=user, version=1)
@@ -215,6 +225,26 @@ class ConsentPageTests(TestCase):
         response = self.client.get(reverse("consent"))
         self.assertContains(response, "第 2 步／共 2 步：同意隱私權")
         self.assertEqual(step_bar(response), (2, 2))
+
+    # #360 (spec #354): the title and step in the register page's blue banner, the rest below it
+    # as flat blocks with no card (ADR 0022).
+    def test_title_and_step_sit_in_the_register_banner_and_the_rest_below(self):
+        main = self.client.get(reverse("consent")).content.decode()
+        main = main.split('id="main-content"', 1)[1].split("</main>", 1)[0]
+        start = main.index('<div class="auth-hero')
+        end, depth = start, 0
+        for tag in re.finditer(r"<(/?)div\b", main[start:]):
+            depth += -1 if tag.group(1) else 1
+            if depth == 0:
+                end = start + tag.end()
+                break
+        hero, below = main[start:end], main[end:]
+        self.assertIn('<h1 class="auth-hero-title">開始使用之前</h1>', hero)
+        self.assertIn("第 2 步／共 2 步：同意隱私權", hero)
+        self.assertIn('class="auth-hero-bars"', hero)
+        self.assertIn("HearWell 會保存您的篩檢作答", below)
+        self.assertIn(">我同意，開始篩檢</button>", below)
+        self.assertNotIn("card", below)
 
     def test_anonymous_is_sent_to_login(self):
         self.client.logout()
@@ -419,3 +449,70 @@ class RevisionTests(TestCase):
         with mock.patch.object(models, "PRIVACY_UPDATED_ON", later):
             self.assertEqual(self.client.get(self.url).status_code, 200)
             self.assertContains(self.client.get(reverse("privacy")), later.strftime("%Y/%m/%d"))
+
+
+class PrivacyPageT361Tests(TestCase):
+    """#361 (spec #354): a folded list of the sections on top, links that say where they go, the
+    health data's answers as a list of their own, and the last heading like the others."""
+
+    def setUp(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        self.main = content[content.index("<main") : content.index("</main>")]
+
+    def _headings(self):
+        return re.findall(r'<h2 id="([^"]+)" class="([^"]+)">(.*?)</h2>', self.main)
+
+    def test_folded_list_of_sections_on_top_jumps_to_each(self):
+        toc = re.search(
+            r"<details([^>]*)>\s*<summary>(.*?)</summary>(.*?)</details>", self.main, re.S
+        )
+        self.assertIsNotNone(toc)
+        attrs, summary, body = toc.groups()
+        self.assertEqual(summary, "這一頁的段落")
+        self.assertNotRegex(attrs, r"\bopen\b")
+        # On top: before the first section, right under the title and version line.
+        self.assertLess(self.main.index("<details"), self.main.index("<h2"))
+        links = re.findall(r'<a href="#([^"]+)">(.*?)</a>', body)
+        headings = self._headings()
+        self.assertEqual(len(headings), 12)
+        self.assertEqual(links, [(anchor, words) for anchor, _, words in headings])
+        self.assertEqual(links[0], ("highlights-title", "先看重點"))
+        self.assertEqual(links[-1], ("contact-title", "有問題或要刪除資料？"))
+
+    def test_links_say_where_they_go(self):
+        download = re.search(
+            rf'<a [^>]*href="{reverse("download_my_data")}"[^>]*>(.*?)</a>', self.main
+        )
+        delete = re.search(rf'<a [^>]*href="{reverse("delete_account")}"[^>]*>(.*?)</a>', self.main)
+        self.assertEqual(download.group(1), "下載我的資料")
+        self.assertEqual(delete.group(1), "刪除帳號")
+        for vague in ("這裡下載", "這裡刪除"):
+            self.assertNotIn(vague, self.main)
+
+    def test_route_answers_are_a_second_level_list_in_the_same_words(self):
+        item = re.search(r"<li>(健康資料：.*?)</li>\s*<li>同意紀錄", self.main, re.S).group(1)
+        inner = re.search(r"<ul>(.*?)</ul>", item, re.S).group(1)
+        self.assertEqual(
+            re.findall(r"<li>(.*?)</li>", inner),
+            [
+                "有沒有聽覺機能的身心障礙證明",
+                "九號表與核定公文的進度",
+                "核定單耳或雙耳與補助等級",
+                "助聽器開始配戴的日期與戴哪一耳",
+                "有沒有用身障補助買",
+                "二十五號表完成了沒",
+            ],
+        )
+        outer = re.sub(r"\s+", "", re.sub(r"<ul>.*?</ul>", "", item, flags=re.S))
+        self.assertEqual(
+            outer,
+            "健康資料：每一次篩檢問卷的作答和分數、作答時有沒有戴助聽器、您自己輸入的聽力圖、"
+            "您在選配路線上的回答以及您看過哪幾個選配指引章節。",
+        )
+
+    def test_every_section_heading_is_the_same_level(self):
+        sizes = {
+            tuple(c for c in classes.split() if c in ("h4", "h5", "heading-bar"))
+            for _, classes, _ in self._headings()
+        }
+        self.assertEqual(sizes, {("h4",)})

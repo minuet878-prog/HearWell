@@ -118,10 +118,12 @@
                 {% if stop.tested_on %}<p class="route-note">{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖</p>{% endif %}
                 {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
                 {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
-                {% if stop.action %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
+                {% if stop.action and not stop.questions %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
                 {# #293: the answer in short; 修改 opens the question again, without JavaScript. #}
                 {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
                 {% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endfor %}
+                {# #367 (#258): with a question still open, the form comes first and the button is outlined under it. #}
+                {% if stop.action and stop.questions %}<a class="btn btn-outline-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
             </div>
             {# #296: on the line on to the next stop, beside it. #}
             {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}

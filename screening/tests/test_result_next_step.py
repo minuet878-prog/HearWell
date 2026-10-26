@@ -1,5 +1,6 @@
 """#304 (spec #297, ADR 0023): every result page shows the home page's 建議您下一步."""
 
+import re
 from io import StringIO
 
 from django.core.management import call_command
@@ -98,6 +99,27 @@ class ResultNextStepTests(TestCase):
         self.assertIn(f'href="{ssq12}"', below)
         records = f'href="{reverse("my_hearing")}?'
         self.assertLess(below.index(f'href="{ssq12}"'), below.index(records))
+
+    def test_the_optional_ssq12_card_is_an_action_card_like_the_others(self):
+        # #363 (spec #354): an icon and a second line, and 「（SSQ12-TW）」 held together so a
+        # phone does not break the name at its hyphen (the e2e test measures it).
+        self.sign_in("result ssq12 card")
+        submissions = self.answer_all()
+        ssq12 = reverse("screening", args=[Questionnaire.objects.get(code="ssq12-tw").pk])
+        card = re.search(
+            rf'<a class="link-card action-card" href="{ssq12}">\s*'
+            r'<span class="action-card-icon" aria-hidden="true" data-icon="clipboard">'
+            r"<svg .*?</svg></span>\s*"
+            r'<span class="link-card-body">\s*<span class="link-card-title">(.*?)</span>\s*'
+            r"<span>([^<]*)</span>",
+            self.result(submissions["hhie-s"]),
+            re.S,
+        )
+        self.assertIsNotNone(card)
+        self.assertEqual(
+            card.group(1), '了解日常聆聽能力<span class="inline-block">（SSQ12-TW）</span>'
+        )
+        self.assertEqual(card.group(2), "選填，12 題")
 
     def test_suggesting_the_report_leaves_out_the_report_card(self):
         # Acceptance 9: only 印聽力報告 has a card of its own below; others keep it.

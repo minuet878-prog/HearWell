@@ -291,9 +291,10 @@ class Ssq12ResultRedesignTests(TestCase):
                 main = self.main(self.record((2026, 10, 15), total=78, wearing=wearing))
                 self.assertNotIn("上一次", self.text(main))
                 bar = self.bar(main)
-                self.assertIn("這次", bar)
+                # #363 (spec #354): with nothing to compare, no 「這次」 label either.
+                self.assertNotIn("這次", bar)
                 self.assertNotIn("上次", bar)
-                self.assertEqual(bar.count("--average:"), 3)  # this record's label, fill, marker
+                self.assertEqual(bar.count("--average:"), 2)  # this record's fill and marker
 
     def test_a_record_with_not_applicable_has_neither_since_last_nor_bar(self):
         self.record((2026, 4, 20), total=70)
@@ -342,6 +343,17 @@ class Ssq12ResultRedesignTests(TestCase):
             self.questionnaire.questions.get(question_number=12).question_text, folded.group(1)
         )
         self.assertTrue(text.endswith("這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。"))
+
+    def test_a_record_without_hearing_aids_ends_without_hearing_aid_benefit(self):
+        # #363 (spec #354): only a record worn says what it does not tell about hearing aids.
+        for wearing, ending in (
+            (False, " 這份紀錄不能代替專業評估。"),
+            (True, " 這份紀錄不能代替專業評估，也不代表助聽器效益合格與否。"),
+        ):
+            with self.subTest(wearing=wearing):
+                text = self.text(self.main(self.record((2026, 10, 15), total=78, wearing=wearing)))
+                self.assertTrue(text.endswith(ending), text[-40:])
+                self.assertEqual("助聽器效益" in text, wearing)
 
 
 class Ssq12LowestItemsTests(TestCase):

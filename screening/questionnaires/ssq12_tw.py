@@ -42,8 +42,11 @@ DEFINITION = Definition(
     list_rank=2,
     concern=LISTENING,
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
+    # Under the answers, as IOI-HA's, so the question is on a phone's first screen (#362).
+    source_template="screening/ssq12_tw_source.html",
     result=AVERAGE,
     choices=choices,
     scale=scale,
+    records_note="整體平均 0 到 10 分，分數越高，代表您回報的聆聽能力越好。",
     comparison=AverageComparison(anchor=f"report-comparison-{CODE}"),
 )

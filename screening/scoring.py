@@ -111,15 +111,15 @@ NEXT_STEP_REASONS = {
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
     # 了解助聽器選配與補助, by the 目前這一站 (a stop's slug), spec #291's drafts; none
     # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
-    # last day it can be done.
-    "before-you-go": "先看看第一次去找聽力師要準備什麼。",
+    # last day it can be done. #363 (spec #354): four reworded to say why, drafts too.
+    "before-you-go": "第一次去找聽力師前先準備好，看診時比較不會漏問。",
     "assessment": "先確認有沒有身障證明，才知道能不能申請補助。",
     "form-9": "您已經有身障證明，可以準備申請九號表的助聽器補助。",
-    "notice": "九號表送出後，等公所的核定公文。",
+    "notice": "九號表送出後要等公所的核定公文，先了解接下來會發生什麼。",
     "types-and-prices": "可以看看助聽器的種類與價格，比較之後再買。",
-    "after-fitting": "開始戴助聽器後，記下哪一天開始戴。",
+    "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
-    "payout": "接下來等補助發放。",
+    "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
     # without a 目前這一站
     "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
     "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",

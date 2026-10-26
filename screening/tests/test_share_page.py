@@ -129,14 +129,14 @@ class SharePageTests(TestCase):
     def test_active_link_shows_expiry_with_time_opens_and_actions(self):
         share = self._share(self.user)
         content = self._page().content.decode()
-        self.assertIn("有效到 10 月 29 日 14:30", content)
+        self.assertIn("有效到 2099/10/29 14:30", content)
         self.assertIn("家人打開過 0 次", content)
         self.assertIn("還沒有人打開", content)
         self.assertIn(">再傳一次給家人</button>", content)
         self.assertIn(">複製連結</button>", content)
         self.assertIn(self._share_url(share), content)
         cancel = re.search(
-            rf'<form method="post" action="{reverse("report_share_cancel", args=[share.pk])}">'
+            rf'<form [^>]*method="post" action="{reverse("report_share_cancel", args=[share.pk])}">'
             r"(.*?)</form>",
             content,
             re.S,
@@ -153,7 +153,7 @@ class SharePageTests(TestCase):
         )
         content = self._page().content.decode()
         self.assertIn("家人打開過 2 次", content)
-        self.assertIn("最後一次打開：10 月 23 日 09:05", content)
+        self.assertIn("最後一次打開：2099/10/23 09:05", content)
         self.assertNotIn("還沒有人打開", content)
 
     # Acceptance 14: the buttons start hidden and only the script shows them; the address shows

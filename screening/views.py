@@ -88,6 +88,7 @@ from screening.scoring import (
     NORM_COMPARISON_TEXT,
     NORM_VERSUS_TEXT,
     RECOMMENDATION_REASONS,
+    UNKNOWN,
     classify,
     compare_to_norm,
     get_advice,
@@ -233,6 +234,8 @@ def _assessment_context(request):
         "roster_version": roster["version"],
         "counties": roster["counties"],
         "county": county,
+        # #367: 查詢 was pressed, so a missing county is worth saying.
+        "searched": "county" in request.GET,
         "hospitals": [h for h in roster["hospitals"] if h["county"] == county],
     }
 
@@ -698,7 +701,7 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
-# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫您挑」, the rest
+# The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫我選問卷」, the rest
 # its answers. Without any, a returning user sees the catalogue.
 WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
 
@@ -744,7 +747,6 @@ def questionnaire_list(request):
             "screening/questionnaire.html",
             {
                 "questionnaires": questionnaires,
-                "returning": returning,
                 "continue_notice": _continue_notice(user, questionnaires),
                 # A new user has no record to recommend by.
                 "recommendation": catalogue_recommendation(user, questionnaires, state)
@@ -768,7 +770,7 @@ def questionnaire_list(request):
             3 if life_impact is None else 2,
             questionnaires,
             field=concern_form["concern"],
-            # A returning user came from the catalogue's 「幫您挑」.
+            # A returning user came from the catalogue's 「幫我選問卷」.
             back_url=wizard_url if returning else reverse("index"),
         )
     concern = concern_form.cleaned_data["concern"]
@@ -1730,6 +1732,8 @@ def submission_result(request, submission_id):
                 classified_score["level"], ()
             ),
             "advice": get_advice(classified_score["level"], submission.questionnaire.code),
+            # #363: 「無法判讀」 has nothing else saying why, so its advice is not folded away.
+            "advice_open": classified_score["level"] == UNKNOWN["level"],
             "support_message": submission.questionnaire.definition.support(
                 {answer.question.question_number: answer.score for answer in answers}
             ),
@@ -1886,6 +1890,7 @@ def audiogram_delete(request, audiogram_id):
     if request.method == "POST":
         audiogram.delete()
         return redirect("audiogram_list")
+    audiogram.thumbnail = thumbnail(audiogram.points.all())
     return render(request, "screening/audiogram_delete.html", {"audiogram": audiogram})
 
 

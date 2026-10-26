@@ -8,6 +8,7 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
+<p>不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">幫我選問卷</a></p>
 {# The catalogue (ADR 0030), the returning user's 推薦問卷 above the cards when one fits (#347). #}
 {% if recommendation %}
 <section aria-labelledby="catalogue-recommended" class="mt-6 mb-8">
@@ -22,7 +23,6 @@
 </section>
 {% endif %}
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
-{% if returning %}<p class="mt-6">不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">回答幾個問題，幫您挑</a></p>{% endif %}
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
 {% include "screening/step_progress.html" %}
@@ -50,7 +50,7 @@
         {% include "screening/field_messages.html" %}
         {{ field }}
     </fieldset>
-    <div class="flex flex-wrap gap-2 mt-4">
+    <div class="step-buttons flex flex-wrap gap-2 mt-4">
         <a class="btn btn-outline-primary btn-lg" href="{{ back_url }}">上一步</a>
         <button type="submit" class="btn btn-primary btn-lg">下一步</button>
     </div>

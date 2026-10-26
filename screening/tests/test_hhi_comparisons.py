@@ -190,6 +190,12 @@ class HhiComparisonRadioCardTests(TestCase):
         Submission.objects.filter(pk=record.pk).update(created_at=when)
         return record
 
+    def test_title_is_followed_by_the_topic_and_code(self):
+        # #362: 「主題（代號）」, as the questionnaire cards write it.
+        page = self.client.get(self.url)
+        title = '<h1 class="h3 mt-2">比較戴與不戴助聽器</h1>'
+        self.assertContains(page, f'{title}\n<p class="mt-2">聽力對生活的影響（HHIE-S）</p>')
+
     def test_cards_show_date_and_score_with_time_on_shared_days_and_a_lone_record_chosen(self):
         # Verification-flow batch F2 (replacing #190's 「沒有時留空」): with no saved pair, a
         # side with only one record has it chosen; two or more still wait for the user.

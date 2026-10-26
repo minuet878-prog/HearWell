@@ -137,7 +137,7 @@ class AccountSettingsTests(TestCase):
         links = re.findall(r"<a ([^>]*)>(.*?)</a>", nav)
         self.assertEqual(
             [re.sub(r"<[^>]+>", "", text) for _, text in links],
-            ["聽力對生活的影響（HHIE-S）", "助聽器使用成效（IOI-HA）"],
+            ["聽力對生活的影響，HHIE-S（65 歲以上）", "助聽器使用成效（IOI-HA）"],
         )
         self.assertIn('aria-current="page"', links[0][0])
         self.assertNotIn("aria-current", links[1][0])
@@ -146,7 +146,7 @@ class AccountSettingsTests(TestCase):
     def test_home_order_and_text(self):
         expected = (
             "了解聽力對您生活的影響",
-            "聽力變化很慢，自己常常沒發現。花 3 分鐘看看聽力對生活的影響。",
+            "聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。",
             "開始篩檢",
             "回答問題，大約 3 分鐘。",
             "內容由台灣執業",  # one line in a badge card since the brand refresh
@@ -188,11 +188,12 @@ class GroupedAccountSettingsTests(TestCase):
         main = self._main()
         self.assertIn("帳號設定</h1>", main)
         headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
-        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私", "刪除帳號"])
+        # #361: the red 刪除帳號 card has no heading of its own (AccountSettingsT361Tests).
+        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私"])
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
-        self.assertIn("分享中，10 月 29 日到期", self._share_row(self._main()))
+        self.assertIn("分享中，2099/10/29 到期", self._share_row(self._main()))
 
     def test_no_share_or_only_ended_ones_say_not_sharing(self):
         self.assertIn("目前沒有分享", self._share_row(self._main()))
@@ -249,3 +250,57 @@ class GroupedAccountSettingsTests(TestCase):
                 # The account rows are not links, so nothing changes on them (ADR 0006); the
                 # link rows are link cards since #303.
                 self.assertNotRegex(css, rf"\.settings-(row|group)[\w-]*:{state}")
+
+
+class AccountSettingsT361Tests(TestCase):
+    """#361 (spec #354): how to fill in a blank, and 刪除帳號 said once at the end."""
+
+    _main = AccountSettingsTests._main
+    NOTE = "要修改請寫信到 hearwellweb@gmail.com"
+
+    def setUp(self):
+        self.url = reverse("account_settings")
+        self.user = consented_user(username="t361_a", email="a@example.com", birth_year=1955)
+        self.client.force_login(self.user)
+
+    def _rows(self):
+        main = self._main()
+        group = main[main.index("我的帳號") : main.index("家人與手機")]
+        return {
+            test_layout._text(name): test_layout._text(value)
+            for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
+        }
+
+    def _group(self):
+        main = self._main()
+        return test_layout._text(main[main.index("我的帳號") : main.index("家人與手機")])
+
+    def test_a_blank_says_how_to_change_it_once_under_the_details(self):
+        for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
+            with self.subTest(email=email, birth_year=birth_year):
+                self.user.email = email
+                self.user.birth_year = birth_year
+                self.user.save()
+                rows = self._rows()
+                self.assertNotIn(self.NOTE, "".join(rows.values()))
+                for name, blank in (("電子郵件", not email), ("出生年", birth_year is None)):
+                    if blank:
+                        self.assertEqual(rows[name], "未填")
+                group = self._group()
+                self.assertEqual(group.count(self.NOTE), 1)
+                self.assertTrue(group.endswith(self.NOTE))
+
+    def test_the_address_can_be_tapped(self):
+        self.user.email = ""
+        self.user.save()
+        main = self._main()
+        self.assertIn('href="mailto:hearwellweb@gmail.com"', main)
+
+    def test_filled_rows_have_no_note(self):
+        self.assertNotIn(self.NOTE, test_layout._text(self._main()))
+
+    def test_delete_account_is_not_said_twice_in_a_row(self):
+        text = test_layout._text(self._main())
+        self.assertEqual(text.count("刪除帳號"), 1)
+        # Said once, on the red card that still comes last.
+        self.assertGreater(text.index("刪除帳號"), text.index("資料與隱私"))

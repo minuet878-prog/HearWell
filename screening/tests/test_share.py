@@ -14,7 +14,8 @@ from screening.scoring import IOI_HA_BELOW_NORM_NOTES, classify
 from screening.tests import test_report
 from screening.tests.helpers import consented_user
 
-INVALID_TEXT = "這個連結已經失效，請向分享的家人要新的連結"
+# #361: the title alone; what to do now is in the paragraph under it.
+INVALID_TEXT = "這個連結已經失效"
 SCORE = re.compile(r"\d+ 分")
 COVER_TEXT = "家人分享了一份 HearWell 聽力報告給您"
 TOKEN_WITH_DB = "XKCHYOI8__zeol2dBAdjP9Vp19URZ_MGg9va6Do_KVs"
@@ -22,11 +23,6 @@ TOKEN_WITH_DB = "XKCHYOI8__zeol2dBAdjP9Vp19URZ_MGg9va6Do_KVs"
 
 def _taipei(moment):
     return timezone.localtime(moment).strftime("%Y/%m/%d %H:%M")
-
-
-def _share_page_time(moment):
-    # The share page (#193) writes "10 月 29 日 14:30".
-    return timezone.localtime(moment).strftime("%-m 月 %-d 日 %H:%M")
 
 
 class ReportShareTests(TestCase):
@@ -105,7 +101,7 @@ class ReportShareTests(TestCase):
         self.assertLessEqual(share.expires_at, timezone.now() + timedelta(days=7))
         content = self._share_page()
         self.assertIn(f"https://testserver{reverse('shared_cover', args=[share.token])}", content)
-        self.assertIn(f"有效到 {_share_page_time(share.expires_at)}", content)
+        self.assertIn(f"有效到 {_taipei(share.expires_at)}", content)
         self.assertIn("家人打開過 0 次", content)
         self.assertIn("還沒有人打開", content)
         self.assertIn("取消分享", content)
@@ -138,7 +134,7 @@ class ReportShareTests(TestCase):
                 )
         self.assertIn("不是醫療診斷", shared)
         self.assertIn(
-            f"這是家人分享給您的報告，連結有效到 {timezone.localtime(share.expires_at):%-m月%-d日}",
+            f"這是家人分享給您的報告，連結有效到 {timezone.localtime(share.expires_at):%Y/%m/%d}",
             shared,
         )
 
@@ -207,7 +203,7 @@ class ReportShareTests(TestCase):
         self.client.force_login(self.user)
         content = self._share_page()
         self.assertIn("家人打開過 3 次", content)
-        self.assertIn(f"最後一次打開：{_share_page_time(share.last_opened_at)}", content)
+        self.assertIn(f"最後一次打開：{_taipei(share.last_opened_at)}", content)
         self.assertNotIn("還沒有人打開", content)
 
     # 9
@@ -300,9 +296,7 @@ class ReportShareTests(TestCase):
         self.assertContains(response, COVER_TEXT)
         self.assertContains(response, f'href="{reverse("shared_report", args=[share.token])}"')
         self.assertContains(response, "打開報告")
-        self.assertContains(
-            response, f"連結有效到 {timezone.localtime(share.expires_at):%-m月%-d日}"
-        )
+        self.assertContains(response, f"連結有效到 {timezone.localtime(share.expires_at):%Y/%m/%d}")
         # The random token in the link isn't health data, but could contain "dB" by chance.
         content = response.content.decode().replace(share.token, "")
         self.assertNotRegex(content, SCORE)
@@ -457,3 +451,37 @@ class ReportShareTests(TestCase):
         for path in ("/submission/", "/audiograms/"):
             with self.subTest(path=path):
                 self.assertNotIn(path, content)
+
+
+class ShareInvalidT361Tests(TestCase):
+    """#361 (spec #354): an expired link says why and what to do, and points to the family page."""
+
+    def setUp(self):
+        response = self.client.get(reverse("shared_cover", args=["no-such-link"]))
+        self.assertEqual(response.status_code, 404)
+        content = response.content.decode()
+        self.main = content[content.index("<main") : content.index("</main>")]
+
+    def test_title_then_why_and_what_to_do(self):
+        title = re.search(r"<h1[^>]*>(.*?)</h1>", self.main).group(1)
+        self.assertEqual(title, "這個連結已經失效")
+        after_title = self.main.split("</h1>", 1)[1]
+        first_paragraph = re.search(r"<p[^>]*>(.*?)</p>", after_title).group(1)
+        self.assertEqual(
+            first_paragraph,
+            "分享連結 7 天後會失效，分享的人也可以提前取消。請向分享報告給您的家人要一個新的連結。",
+        )
+        self.assertLess(after_title.index("</p>"), after_title.index("回首頁"))
+
+    def test_links_to_the_family_guide_as_a_card(self):
+        card = re.search(
+            rf'<a class="link-card[^"]*" href="{reverse("family_guide")}">(.*?)</a>',
+            self.main,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(card)
+        self.assertIn("給家人看：怎麼跟聽損的家人溝通", card.group(1))
+        # The family icon, as the same card on the 了解 page has it.
+        self.assertIn(
+            '<span class="action-card-icon" aria-hidden="true" data-icon="family">', card[1]
+        )

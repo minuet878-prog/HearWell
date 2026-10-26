@@ -116,7 +116,9 @@ class Form9ChapterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<h1 class="h3 mt-4">九號表：申請助聽器補助</h1>')
         text = test_guide.text_of(response)
-        positions = [text.index(sentence) for sentence in FORM_9]
+        # #367: the parts' titles are read in the 本頁段落 jump first; the order is the parts'.
+        parts = text.index(FORM_9[1], text.index("本頁段落") + len("本頁段落 ") + len(FORM_9[1]))
+        positions = [text.index(FORM_9[0]), *(text.index(s, parts) for s in FORM_9[1:])]
         self.assertEqual(positions, sorted(positions))
 
     def test_reapply_and_without_certificate_anchors_land_on_their_headings(self):
@@ -143,7 +145,7 @@ class Form9ChapterTests(TestCase):
     def test_footer_has_the_check_date_and_every_official_source(self):
         response = self.client.get(self.url)
         sources = (RULES, TABLE, LOW_INCOME_ELDERLY, NEW_TAIPEI, PORTAL)
-        test_guide.assert_footer(self, response, "2026-10-23", sources)
+        test_guide.assert_footer(self, response, "2026/10/23", sources)
         # The footer's date is the page's only check date (the centre list has none of its own).
         self.assertEqual(test_guide.text_of(response).count("查核於"), 1)
 

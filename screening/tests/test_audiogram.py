@@ -501,7 +501,8 @@ class AudiogramPageTests(TestCase):
         audiogram = self._make(_four(_air, "right", (40,) * 4))
         url = reverse("audiogram_delete", args=[audiogram.id])
         response = self.client.get(url)
-        self.assertContains(response, "確定要刪除 2026/10/01 的聽力圖嗎？")
+        title = re.search(r"<h1[^>]*>(.*?)</h1>", response.content.decode()).group(1)
+        self.assertEqual(re.sub(r"<[^>]+>", "", title), "確定要刪除 2026/10/01 的聽力圖嗎？")
         self.assertTrue(Audiogram.objects.filter(pk=audiogram.pk).exists())
         response = self.client.post(url)
         self.assertRedirects(response, reverse("audiogram_list"))
@@ -632,7 +633,6 @@ class AudiogramResultPageTests(TestCase):
         delete = reverse("audiogram_delete", args=[audiogram.id])
         self.assertIn(f'<a href="{edit}">修改這張</a>', quiet)
         self.assertIn(f'<a class="quiet-link-danger" href="{delete}">刪除這張</a>', quiet)
-        self.assertNotIn("回聽力圖清單", main)
         # The delete link opens the confirm page; nothing is deleted on GET.
         response = self.client.get(reverse("audiogram_delete", args=[audiogram.id]))
         self.assertEqual(response.status_code, 200)
@@ -1485,3 +1485,110 @@ class AudiogramCompareSummaryTests(TestCase):
             [*_four(_air, "right", (90, 100, 110, 0))[:3], _air("right", 4000, 120, True)],
         )
         self.assertIn("含無反應的頻率，實際差距可能不同", text)
+
+
+class AudiogramPagesT365Test(TestCase):
+    """#365 (spec #354): each audiogram page says which one it is, how to read it, and the way
+    back."""
+
+    _make = AudiogramPageTests._make
+    _main = AudiogramPageTests._main
+    _get = AudiogramComparePageTests._get
+    URL = AudiogramComparePageTests.URL
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = consented_user(username="audiogram_t365")
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _after_title(self, main):
+        """What follows the page title, tags removed."""
+        return test_layout._text(main[main.index("</h1>") :])
+
+    def _link(self, main, text):
+        return re.search(rf'<a [^>]*href="([^"]+)"[^>]*>{text}</a>', main)
+
+    def test_new_page_says_to_have_the_report_ready_and_how_to_go_back(self):
+        main = self._main(self.client.get(reverse("audiogram_new")))
+        self.assertTrue(
+            self._after_title(main).startswith(
+                "準備好醫院給的聽力檢查報告，照著報告上的日期和 O、X 記號描進來。"
+            )
+        )
+        back = self._link(main, "不新增了，回聽力圖清單")
+        self.assertEqual(back.group(1), reverse("audiogram_list"))
+        self.assertLess(main.index('id="audiogram-app"'), back.start())
+
+    def test_edit_page_names_the_saved_date_and_goes_back_to_that_audiogram(self):
+        audiogram = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 9, 1))
+        main = self._main(self.client.get(reverse("audiogram_edit", args=[audiogram.id])))
+        title = re.search(r"<h1[^>]*>(.*?)</h1>", main).group(1)
+        self.assertEqual(title, "修改 2026/09/01 的聽力圖")
+        back = self._link(main, "不修改了，回到這張聽力圖")
+        self.assertEqual(back.group(1), reverse("audiogram_detail", args=[audiogram.id]))
+        self.assertLess(main.index('id="audiogram-app"'), back.start())
+        self.assertNotIn("不新增了", main)
+        self.assertNotIn("準備好醫院給的聽力檢查報告", main)
+
+    def test_detail_names_the_test_date_explains_the_marks_and_goes_back_to_the_list(self):
+        audiogram = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 9, 1))
+        main = self._main(self.client.get(reverse("audiogram_detail", args=[audiogram.id])))
+        title = re.search(r"<h1[^>]*>(.*?)</h1>", main).group(1)
+        self.assertEqual(title, "2026/09/01 檢查的聽力圖")
+        tip = re.search(
+            r'<section class="tip-box[^"]*" aria-labelledby="read-chart-title">(.*?)</section>',
+            main,
+            re.S,
+        ).group(1)
+        self.assertIn(
+            "紅色 O 是右耳，藍色 X 是左耳；兩耳一樣時會疊在一起。"
+            "淺綠色是 25 dB 以內，屬於正常範圍。",
+            test_layout._text(tip),
+        )
+        back = self._link(main, "回聽力圖清單")
+        self.assertEqual(back.group(1), reverse("audiogram_list"))
+        self.assertLess(main.index("刪除這張"), back.start())
+
+    def _line_sample(self, main, label):
+        """The line drawn after 舊 or 新 in its picker row."""
+        summary = re.search(
+            rf'<summary><span class="compare-pick-label">{label}</span>(.*?)</summary>', main, re.S
+        ).group(1)
+        return re.search(r'<svg class="([^"]*)"[^>]*>(.*?)</svg>', summary, re.S)
+
+    def test_compare_old_and_new_each_show_their_line_in_the_chosen_ear(self):
+        old = self._make(_four(_air, "left", (30,) * 4), tested_on=date(2026, 1, 10))
+        new = self._make(_four(_air, "left", (40,) * 4), tested_on=date(2026, 9, 10))
+        for ear in ("right", "left"):
+            with self.subTest(ear=ear):
+                main = self._main(self._get(a=new.id, b=old.id, ear=ear))
+                old_line = self._line_sample(main, "舊")
+                new_line = self._line_sample(main, "新")
+                # Light and dashed for 舊, dark and solid for 新, as the chart draws them.
+                self.assertEqual(
+                    old_line.group(1).split(), ["compare-line", f"ear-{ear}", "is-old"]
+                )
+                self.assertIn('stroke-dasharray="6 4"', old_line.group(2))
+                self.assertEqual(new_line.group(1).split(), ["compare-line", f"ear-{ear}"])
+                self.assertNotIn("stroke-dasharray", new_line.group(2))
+                # The legend under the chart stays.
+                legend = AudiogramComparePageTests._legend(self, self._get(a=new.id, b=old.id))
+                self.assertEqual(legend, "舊（2026/01/10）虛線、新（2026/09/10）實線")
+
+    def test_delete_keeps_the_word_whole_and_shows_which_audiogram_it_is(self):
+        points = [*_four(_air, "right", (30, 35, 40, 40)), _air("left", 500, 50)]
+        audiogram = self._make(points, tested_on=date(2026, 9, 1))
+        main = self._main(self.client.get(reverse("audiogram_delete", args=[audiogram.id])))
+        title = re.search(r"<h1[^>]*>(.*?)</h1>", main).group(1)
+        self.assertEqual(re.sub(r"<[^>]+>", "", title), "確定要刪除 2026/09/01 的聽力圖嗎？")
+        # The word sits in a piece that does not wrap; e2e checks it on a phone.
+        self.assertIn('<span class="whitespace-nowrap">聽力圖</span>', title)
+        # Under the title: that audiogram's thumbnail, then each ear's level, before the warning.
+        after = main[main.index("</h1>") : main.index("刪除後無法復原。")]
+        self.assertIn('<svg class="audiogram-thumbnail"', after)
+        self.assertIn("<polyline", after)
+        badge = r'\s*<span class="level-badge level-badge-{}">{}</span>'
+        self.assertRegex(after, "右耳：" + badge.format("mild_to_moderate", "輕度"))
+        self.assertRegex(after, "左耳：" + badge.format("unknown", "資料不足"))

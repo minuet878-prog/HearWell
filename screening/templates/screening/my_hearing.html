@@ -27,13 +27,16 @@
 {# Each tab is its own URL, so reload and the back button keep the tab. #}
 <nav class="history-tabs" aria-label="問卷">
     {% for questionnaire in questionnaires %}
-    <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}<span class="history-tab-code"><span class="visually-hidden">（</span>{{ questionnaire.questionnaire_name }}<span class="visually-hidden">）</span></span></a>
+    <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}<span class="history-tab-code">{% if questionnaire.definition.records_tab_age %}<span class="visually-hidden">，</span>{{ questionnaire.questionnaire_name }}（{{ questionnaire.definition.records_tab_age }}）{% else %}<span class="visually-hidden">（</span>{{ questionnaire.questionnaire_name }}<span class="visually-hidden">）</span>{% endif %}</span></a>
     {% endfor %}
 </nav>
 {% endif %}
 {% if since_last %}
 <section id="since-last" class="since-last mb-6 wrap-anywhere" aria-labelledby="since-last-title">
     <h2 id="since-last-title" class="h4">和上一次比</h2>
+    {# #364: without a trend chart (HHIA-S) this is the tab's summary, in the same blue box as #}
+    {# the trend chart's; with one (HHIE-S, THI) that box follows right below, so one is enough. #}
+    {% if not trend_chart %}<div class="trend-summary">{% endif %}
     {# The two records side by side (2026-10-24 comparison page, option A). #}
     <div class="since-last-pair">
         {% include "screening/since_last_record.html" with label="上一次" record=since_last.previous %}
@@ -42,6 +45,7 @@
     </div>
     <p class="mb-0 text-subhead text-heading"><strong>{{ since_last.text }}</strong></p>
     {% if since_last.wearing_change %}<p class="mt-1 mb-0">{{ since_last.wearing_change }}</p>{% endif %}
+    {% if not trend_chart %}</div>{% endif %}
 </section>
 {% endif %}
 {% if ioi_ha_chart %}
@@ -49,6 +53,10 @@
 {% elif trend_chart %}
 {# Only HHIE-S and THI have a trend chart; other questionnaires list their records only. #}
 {% include "screening/trend_chart.html" with chart=trend_chart questionnaire=current %}
+{% endif %}
+{% if submissions %}
+<h2 id="records-title" class="h4">每次的紀錄</h2>
+{% if current.definition.records_note %}<p>{{ current.definition.records_note }}</p>{% endif %}
 {% endif %}
 {% for submission in submissions %}
 <a class="link-card" href="{% url 'result' submission.id %}">

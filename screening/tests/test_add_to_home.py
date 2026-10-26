@@ -38,9 +38,11 @@ class AddToHomeTests(TestCase):
         # Footer redesign: each summary starts with a decorative phone icon, then its words.
         self.icons = {}
         self.blocks = {}
+        # #361: the words are the summary's first line; the makers under them are in
+        # PhoneBrandsT361Tests.
         for details_attrs, _, summary, body in DETAILS.findall(self.main):
-            words = re.sub(r"<svg.*?</svg>", "", summary, flags=re.DOTALL).strip()
-            self.icons[words] = summary[: summary.index(words)]
+            words = re.search(r"<span>([^<]+)</span>", summary).group(1)
+            self.icons[words] = summary[: summary.index("<span")]
             self.blocks[words] = (details_attrs, body)
 
     def test_each_phone_has_a_decorative_icon(self):
@@ -98,3 +100,26 @@ class AddToHomeTests(TestCase):
         for rule in rules:
             self.assertNotIn("transform", rule)
             self.assertNotIn("translate", rule)
+
+
+class PhoneBrandsT361Tests(TestCase):
+    """#361 (spec #354): each phone choice names its makers, and the page says to use a phone."""
+
+    def setUp(self):
+        content = self.client.get(reverse("add_to_home")).content.decode()
+        self.main = content[content.index("<main") : content.index("</main>")]
+
+    def test_each_choice_names_its_makers_under_it(self):
+        summaries = re.findall(r"<summary[^>]*>(.*?)</summary>", self.main, re.DOTALL)
+        lines = [re.findall(r"<span[^>]*>([^<]+)</span>", summary) for summary in summaries]
+        self.assertEqual(
+            lines,
+            [["我用 iPhone", "蘋果手機"], ["我用 Android", "三星、小米、OPPO、華碩、Google 等"]],
+        )
+
+    def test_says_to_do_it_on_the_phone_after_the_intro(self):
+        reminder = "這些步驟要在手機上做。如果您現在用電腦，請用手機打開 HearWell。"
+        intro = "不用每次輸入網址。"
+        self.assertIn(reminder, self.main)
+        self.assertLess(self.main.index(intro), self.main.index(reminder))
+        self.assertLess(self.main.index(reminder), self.main.index("<details"))

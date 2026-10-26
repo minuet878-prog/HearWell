@@ -42,12 +42,20 @@ def latest_roc_birth_year():
     return date.today().year - 18 - ROC_OFFSET
 
 
-class RegisterForm(UserCreationForm):
-    email = forms.EmailField(label="電子郵件")
+class NoLabelSuffix:
+    """Field names without Django's colon after them, the same on every form (#354)."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("label_suffix", "")
+        super().__init__(*args, **kwargs)
+
+
+class RegisterForm(NoLabelSuffix, UserCreationForm):
+    email = forms.EmailField(label="電子郵件", help_text="忘記密碼時，用這個信箱確認是您本人。")
     roc_birth_year = forms.CharField(
-        label="出生年",
+        label="出生年（選填）",
         required=False,
-        help_text="選填。填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。",
+        help_text="填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。",
         widget=forms.TextInput(attrs={"inputmode": "numeric", "maxlength": 3}),
     )
 
@@ -98,7 +106,7 @@ def offers_not_applicable(question):
     return "na" in dict(answer_choices(question))
 
 
-class DeleteAccountForm(forms.Form):
+class DeleteAccountForm(NoLabelSuffix, forms.Form):
     # strip=False like Django's login and register forms: spaces are part of a password.
     password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
 
@@ -113,7 +121,7 @@ class DeleteAccountForm(forms.Form):
         return password
 
 
-class AnswerForm(forms.Form):
+class AnswerForm(NoLabelSuffix, forms.Form):
     score = forms.TypedChoiceField(
         coerce=int,
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
@@ -129,9 +137,10 @@ class AnswerForm(forms.Form):
         self.fields["score"].coerce = lambda value: None if value == "na" else int(value)
 
 
-class HearingAidForm(forms.Form):
+class HearingAidForm(NoLabelSuffix, forms.Form):
     wearing_hearing_aid = forms.TypedChoiceField(
-        choices=((True, "有戴"), (False, "沒戴")),
+        # 沒戴 first, as the wizard and React page (#362); the values saved are unchanged.
+        choices=((False, "沒戴"), (True, "有戴")),
         coerce=lambda value: value == "True",
         widget=forms.RadioSelect(attrs={"class": "choice-group"}),
     )
@@ -195,18 +204,19 @@ class BaseAnswerFormSet(BaseFormSet):
 AnswerFormSet = formset_factory(AnswerForm, formset=BaseAnswerFormSet, extra=0)
 
 
-class AgeGroupForm(forms.Form):
+class AgeGroupForm(NoLabelSuffix, forms.Form):
     # The answers' values, also used when the birth year already tells the age (#152).
     ADULT, OLDER = "adult", "older"
     age_group = forms.ChoiceField(
         label="您目前的實際年齡？",
         choices=((ADULT, "18–64 歲"), (OLDER, "65 歲以上")),
-        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        # One answer per row, the whole row a tap target, as on the answer page (#362).
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
         error_messages={"required": "請選擇您的年齡區間"},
     )
 
 
-class ConcernForm(forms.Form):
+class ConcernForm(NoLabelSuffix, forms.Form):
     # The recommendation wizard's first question (ADR 0030).
     concern = forms.ChoiceField(
         label="您最想了解什麼？",
@@ -217,7 +227,8 @@ class ConcernForm(forms.Form):
             (HEARING_AID, "助聽器戴得好不好"),
             (UNSURE, "不確定"),
         ),
-        widget=forms.RadioSelect(attrs={"class": "choice-group"}),
+        # One answer per row, the whole row a tap target, as on the answer page (#362).
+        widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
         error_messages={"required": "請選擇您最想了解的事"},
     )
 
@@ -233,7 +244,7 @@ class ComparisonRecordField(forms.ModelChoiceField):
         return f"{shown}・{result}"
 
 
-class HhiComparisonForm(forms.Form):
+class HhiComparisonForm(NoLabelSuffix, forms.Form):
     # Radio cards (#190). Nothing is saved until the user presses save (ADR 0003); with no saved
     # pair, a side with only one record has it chosen, two or more wait for the user (F2).
     unaided = ComparisonRecordField(
@@ -267,7 +278,7 @@ class HhiComparisonForm(forms.Form):
                     self.initial[name] = first_two[0]
 
 
-class CertificateForm(forms.ModelForm):
+class CertificateForm(NoLabelSuffix, forms.ModelForm):
     # 身障鑑定與鑑定醫院's question (spec #291 Q2): one press of an answer sends it.
     certificate = forms.ChoiceField(
         label="您有聽覺機能的身心障礙證明嗎？",
@@ -287,7 +298,7 @@ def _done_or_not_yet(label, done):
     )
 
 
-class Form9Form(forms.ModelForm):
+class Form9Form(NoLabelSuffix, forms.ModelForm):
     form_9_done = _done_or_not_yet("九號表完成了嗎？", "完成了")
 
     class Meta:
@@ -295,7 +306,7 @@ class Form9Form(forms.ModelForm):
         fields = ("form_9_done",)
 
 
-class NoticeForm(forms.ModelForm):
+class NoticeForm(NoLabelSuffix, forms.ModelForm):
     notice_received = _done_or_not_yet("收到核定公文了嗎？", "收到了")
 
     class Meta:
@@ -303,7 +314,7 @@ class NoticeForm(forms.ModelForm):
         fields = ("notice_received",)
 
 
-class ApprovedEarsForm(forms.ModelForm):
+class ApprovedEarsForm(NoLabelSuffix, forms.ModelForm):
     approved_ears = forms.ChoiceField(label="核定的是單耳還是雙耳？", choices=ApprovedEars.choices)
 
     class Meta:
@@ -311,7 +322,7 @@ class ApprovedEarsForm(forms.ModelForm):
         fields = ("approved_ears",)
 
 
-class ApprovedLevelForm(forms.ModelForm):
+class ApprovedLevelForm(NoLabelSuffix, forms.ModelForm):
     level = forms.ChoiceField(label="補助的等級是？", choices=AidLevel.choices)
 
     class Meta:
@@ -330,7 +341,7 @@ def _radios(label, choices, **kwargs):
     )
 
 
-class FittingForm(forms.ModelForm):
+class FittingForm(NoLabelSuffix, forms.ModelForm):
     # 配戴之後's questions (#295, spec #291 Q6): the date, then only what is not known yet. The
     # notice's 單耳 asks which ear, its 雙耳 none; without the notice, the ear, the subsidy and
     # its level. Saved with one button; the date picker is the one recording an audiogram uses.
@@ -392,7 +403,7 @@ class FittingForm(forms.ModelForm):
         return super().clean()
 
 
-class Form25Form(forms.ModelForm):
+class Form25Form(NoLabelSuffix, forms.ModelForm):
     form_25_done = _done_or_not_yet("二十五號表完成了嗎？", "完成了")  # #296
 
     class Meta:
