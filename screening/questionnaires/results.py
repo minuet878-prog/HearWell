@@ -190,12 +190,12 @@ class NormResult(Result):
         # No total, level or advice: read item by item against the fixed norm group.
         from screening.questionnaires.ioi_ha import SCALE_ENDS
         from screening.scoring import NORM_VERSUS_TEXT
-        from screening.views.results import _ioi_ha_items
 
         items, grouped = _ioi_ha_items(self.submission, self._answers(), NORM_VERSUS_TEXT)
         # Items below the norm come first and open; the rest are folded under 「其他 n 項」 (#187).
         below = [item for item in items if item["comparison_code"] == "below"]
         return {
+            "wearing_text": None,  # not asked: IOI-HA is answered about the hearing aids worn
             "items": items,
             "grouped": grouped,
             "below": below,
@@ -203,6 +203,47 @@ class NormResult(Result):
             "others": [item for item in items if item not in below],
             "scale_ends": SCALE_ENDS,
         }
+
+
+def _ioi_ha_items(submission, answers, texts):
+    # The only place IOI-HA answers meet the norms; the result page and the report both use it,
+    # each with its own words for the comparison (texts: NORM_VERSUS_TEXT or NORM_COMPARISON_TEXT).
+    from screening.models import NormGroup
+    from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
+    from screening.scoring import (
+        IOI_HA_BELOW_NORM_NOTES,
+        IOI_HA_ITEM_NAMES,
+        IOI_HA_NORMS,
+        compare_to_norm,
+    )
+
+    grouped = submission.norm_group != NormGroup.UNGROUPED
+    items = []
+    for answer in answers:
+        number = answer.question.question_number
+        comparison = (
+            compare_to_norm(submission.norm_group, number, answer.score) if grouped else None
+        )
+        norm = IOI_HA_NORMS[submission.norm_group][number] if grouped else None
+        items.append(
+            {
+                "name": IOI_HA_ITEM_NAMES[number],
+                "text": answer.question.question_text,
+                "label": IOI_HA_CHOICES[number][answer.score - 1],
+                "comparison_code": comparison,
+                "comparison": texts.get(comparison),
+                "note": IOI_HA_BELOW_NORM_NOTES[number] if comparison == "below" else None,
+                # The result page's 5-cell scale, scores 1-5: the norm cells and the answer.
+                "cells": [
+                    {
+                        "band": norm is not None and norm[0] <= score <= norm[1],
+                        "mine": score == answer.score,
+                    }
+                    for score in range(1, 6)
+                ],
+            }
+        )
+    return items, grouped
 
 
 class SubscaleResult(Result):
@@ -235,4 +276,4 @@ class SubscaleResult(Result):
             [self.submission],
             Prefetch("answers", queryset=Answer.objects.select_related("question")),
         )
-        return {}
+        return {"wearing_text": None}  # not asked: always worn (always_aided)
