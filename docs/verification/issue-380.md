@@ -2,7 +2,7 @@
 
 日期：2026-10-26。基準：`bf4381b`（開工時的 origin/main，PR #370 合併後），之後合進 `ddb8ec5`（#383、#384，沒有碰到拆分的檔案）。分支：`refactor/380-split-views-models`。規格：[#380](https://github.com/minuet878-prog/HearWell/issues/380)，子票 [#381](https://github.com/minuet878-prog/HearWell/issues/381)（models）、[#382](https://github.com/minuet878-prog/HearWell/issues/382)（views）。
 
-狀態：自動測試與比對全過；交叉審查（Codex）要修 0 項。**等本人實際操作驗收。** 沒有 migration，沒有操作真實資料。
+狀態：2026-10-26 本人回覆「人工驗收五項都通過」。自動測試與比對全過；交叉審查（Codex）要修 0 項。沒有 migration，沒有操作真實資料。
 
 ## 做了什麼
 
@@ -86,4 +86,4 @@ Commits：`a02cedc` 拆 models、`ff58c6d` 拆 views、`8d62fbc` 自審修正、
 4. 選配指引：打開一章，回答路線上的一個問題。
 5. 帳號設定 → 下載我的資料。
 
-回覆：（待填）
+回覆：2026-10-26 本人確認五項都通過。
