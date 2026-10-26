@@ -1,5 +1,10 @@
 """Each result type's result object (spec #385, ticket #387): what submission.result answers."""
 
+import inspect
+import json
+import re
+import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
 
@@ -11,7 +16,8 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening import questionnaires
-from screening.models import Answer, NormGroup, Submission
+from screening.api import serializers
+from screening.models import Answer, NormGroup, Questionnaire, ReportShare, Submission
 from screening.questionnaires import definition, hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.questionnaires.results import (
     AverageResult,
@@ -20,6 +26,7 @@ from screening.questionnaires.results import (
     SubscaleResult,
 )
 from screening.tests.helpers import consented_user, submission_with_answers
+from screening.views import reports
 
 
 class ResultTestCase(TestCase):
@@ -359,3 +366,240 @@ class DefinitionResultTypeTests(TestCase):
         template = Template("{{ d.result.page_template }}")
         context = Context({"d": hhie_s.DEFINITION})
         self.assertEqual(template.render(context), "screening/result.html")
+
+
+class ApiFieldsTests(ResultTestCase):
+    # #390: the API and the hearing report ask the result object; their output is pinned here as
+    # it was before (every type, more than one record of each).
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        sadl_scores = [5] * 15
+        sadl_scores[10] = sadl_scores[13] = None
+        start = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)  # 17:00 in Taipei
+        for day, (code, scores, fields) in enumerate(
+            (
+                (hhie_s.CODE, [4, 4, 2, 0, 0, 0, 4, 0, 0, 2], {"wearing_hearing_aid": False}),
+                (hhie_s.CODE, [0] * 10, {"wearing_hearing_aid": True}),
+                (thi.CODE, [4] * 25, {}),
+                (thi.CODE, [2] * 25, {}),
+                (
+                    ssq12_tw.CODE,
+                    [5, 6, 7, 8, 9, 10, 5, 6, 7, 4, 5, 6],
+                    {"wearing_hearing_aid": True},
+                ),
+                (ssq12_tw.CODE, [None] + [3] * 11, {"wearing_hearing_aid": False}),
+                (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}),
+                (sadl.CODE, [4] * 15, {"wearing_hearing_aid": True}),
+                (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
+                (ioi_ha.CODE, [1, 3, 3, 2, 3, 3, 5], {"norm_group": NormGroup.MILD_MODERATE}),
+            )
+        ):
+            record = submission_with_answers(cls.user, code, scores, **fields)
+            Submission.objects.filter(pk=record.pk).update(created_at=start + timedelta(days=day))
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    # Each record's fields after id and created_at, newest first; IOI-HA is not listed (#245).
+    LISTED = (
+        {
+            "questionnaire": {"code": "sadl", "name": "SADL"},
+            "wearing_hearing_aid": True,
+            "scores": None,
+            "level": None,
+            "satisfaction": {
+                "overall": "4.0",
+                "subscales": [
+                    {"name": "正面效果", "score": "4.0"},
+                    {"name": "服務與費用", "score": "4.0"},
+                    {"name": "負面特徵", "score": "4.0"},
+                    {"name": "個人形象", "score": "4.0"},
+                ],
+                "not_applicable": [],
+            },
+        },
+        {
+            "questionnaire": {"code": "sadl", "name": "SADL"},
+            "wearing_hearing_aid": True,
+            "scores": None,
+            "level": None,
+            "satisfaction": {
+                "overall": "4.4",
+                "subscales": [
+                    {"name": "正面效果", "score": "5.0"},
+                    {"name": "服務與費用", "score": "5.0"},
+                    {"name": "負面特徵", "score": "3.0"},
+                    {"name": "個人形象", "score": "3.7"},
+                ],
+                "not_applicable": [11, 14],
+            },
+        },
+        {
+            "questionnaire": {"code": "ssq12-tw", "name": "SSQ12-TW"},
+            "wearing_hearing_aid": False,
+            "scores": None,
+            "level": None,
+            "average_score": None,
+            "average_unavailable_reason": "未計算：包含不適用題目",
+        },
+        {
+            "questionnaire": {"code": "ssq12-tw", "name": "SSQ12-TW"},
+            "wearing_hearing_aid": True,
+            "scores": None,
+            "level": None,
+            "average_score": "6.5",
+            "average_unavailable_reason": None,
+        },
+        {
+            "questionnaire": {"code": "thi", "name": "THI"},
+            "wearing_hearing_aid": None,
+            "scores": {"total": 50, "emotional": None, "social": None},
+            "level": {"code": "moderate", "text": "中度障礙"},
+        },
+        {
+            "questionnaire": {"code": "thi", "name": "THI"},
+            "wearing_hearing_aid": None,
+            "scores": {"total": 100, "emotional": None, "social": None},
+            "level": {"code": "catastrophic", "text": "極重度障礙"},
+        },
+        {
+            "questionnaire": {"code": "hhie-s", "name": "HHIE-S"},
+            "wearing_hearing_aid": True,
+            "scores": {"total": 0, "emotional": 0, "social": 0},  # all 0 is 0, not null
+            "level": {"code": "normal", "text": "無／極輕微影響"},
+        },
+        {
+            "questionnaire": {"code": "hhie-s", "name": "HHIE-S"},
+            "wearing_hearing_aid": False,
+            "scores": {"total": 16, "emotional": 12, "social": 4},
+            "level": {"code": "mild_to_moderate", "text": "輕度到中度影響"},
+        },
+    )
+    ANSWER_COUNTS = (15, 15, 12, 12, 25, 25, 10, 10)
+
+    def test_the_list_answers_as_before(self):
+        records = self.client.get(reverse("api:submissions")).json()["results"]
+        self.assertEqual(
+            [{k: v for k, v in r.items() if k not in ("id", "created_at")} for r in records],
+            list(self.LISTED),
+        )
+        self.assertEqual([list(r)[:2] for r in records], [["id", "created_at"]] * len(self.LISTED))
+
+    def test_each_detail_answers_as_before(self):
+        advice = {
+            "hhie-s": hhie_s.DEFINITION.advice,
+            "thi": thi.DEFINITION.advice,
+        }
+        records = self.client.get(reverse("api:submissions")).json()["results"]
+        for listed, expected, count in zip(records, self.LISTED, self.ANSWER_COUNTS, strict=True):
+            with self.subTest(code=expected["questionnaire"]["code"], id=listed["id"]):
+                detail = self.client.get(reverse("api:submission", args=[listed["id"]])).json()
+                # The list's fields in the same order, then advice and the answers.
+                self.assertEqual(list(detail), [*listed, "advice", "answers"])
+                self.assertEqual({k: detail[k] for k in listed}, listed)
+                self.assertEqual(len(detail["answers"]), count)
+                level = expected["level"]
+                self.assertEqual(
+                    detail["advice"],
+                    advice[expected["questionnaire"]["code"]][level["code"]] if level else None,
+                )
+
+    def test_an_ioi_ha_submit_answers_without_scores(self):
+        page = self.client.get(reverse("screening", args=[self.ioi_ha().pk]))
+        body = {
+            "questionnaire": self.ioi_ha().pk,
+            "norm_token": page.context["norm_token"],
+            "answers": [{"question": q.pk, "score": 3} for q in self.ioi_ha().questions.all()],
+        }
+        response = self.client.post(
+            reverse("api:submissions"),
+            json.dumps(body),
+            content_type="application/json",
+            headers={"Idempotency-Key": str(uuid.uuid4())},
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(
+            list(data),
+            [
+                "id",
+                "created_at",
+                "questionnaire",
+                "wearing_hearing_aid",
+                "scores",
+                "level",
+                "advice",
+                "answers",
+            ],
+        )
+        self.assertEqual(
+            {k: data[k] for k in ("questionnaire", "wearing_hearing_aid", "scores", "level")},
+            {
+                "questionnaire": {"code": "ioi-ha", "name": "IOI-HA"},
+                "wearing_hearing_aid": None,
+                "scores": None,
+                "level": None,
+            },
+        )
+        self.assertIsNone(data["advice"])
+        self.assertEqual(len(data["answers"]), 7)
+
+    def ioi_ha(self):
+        return Questionnaire.objects.get(code=ioi_ha.CODE)
+
+    def report_pages(self):
+        share = ReportShare.objects.create(user=self.user)
+        for name, args in (("health_report", []), ("shared_report", [share.token])):
+            with self.subTest(page=name):
+                yield self.client.get(reverse(name, args=args)).content.decode()
+
+    def test_the_report_shows_each_type_as_before(self):
+        for html in self.report_pages():
+            for line in (
+                # 重點: each type's latest record.
+                '<li>HHIE-S（2026/01/02）：0 分，<span class="report-level '
+                'report-level-normal">無／極輕微影響</span>，助聽器：有戴</li>',
+                '<li>THI（2026/01/04）：50 分，<span class="report-level '
+                'report-level-mild_to_moderate">中度障礙</span>，助聽器：未記錄</li>',
+                "<li>日常聆聽能力（SSQ12-TW，2026/01/06）：未計算：包含不適用題目</li>",
+                "<li>助聽器滿意度（SADL，2026/01/08）：整體滿意度 4.0</li>",
+                "<li>IOI-HA（2026/01/10）：7 項中 1 項低於常模、1 項高於常模</li>",
+                # The graded parts: subscores only for life impact, every record in the table.
+                "<p>情緒 0、社交 0（分項僅供參考）　助聽器：有戴</p>",
+                '<td role="cell" data-label="總分">16</td>'
+                '<td role="cell" data-label="分級">輕度到中度影響</td>',
+                '<td role="cell" data-label="總分">100</td>'
+                '<td role="cell" data-label="分級">極重度障礙</td>',
+                # The average and subscale parts' recent records.
+                "<ul><li>2026/01/06 17:00，沒戴：未計算：包含不適用題目</li>"
+                "<li>2026/01/05 17:00，有戴：平均 6.5 分</li></ul>",
+                "<ul><li>2026/01/08 17:00，有戴：整體滿意度 4.0</li>"
+                "<li>2026/01/07 17:00，有戴：整體滿意度 4.4</li></ul>",
+                # The norm part: the latest IOI-HA against its fixed group.
+                '<p class="mb-1">常模組別：輕度至中度</p>',
+                '<td role="cell" data-label="項目">使用時間</td><td role="cell" data-label="回答">'
+                '沒使用</td><td role="cell" data-label="與常模比較">低於常模</td>',
+            ):
+                self.assertIn(line, html)
+            self.assertNotIn("情緒 0、社交 0（分項僅供參考）　助聽器：未記錄", html)  # THI
+
+    def test_lists_take_the_same_queries(self):
+        # Counts measured before #390 with these records.
+        share = ReportShare.objects.create(user=self.user)
+        for url, queries in (
+            (reverse("api:submissions"), 5),
+            (reverse("health_report"), 46),
+            (reverse("shared_report", args=[share.token]), 47),
+        ):
+            with self.subTest(url=url), self.assertNumQueries(queries):
+                self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_the_api_and_the_report_ask_the_result_object(self):
+        # The serializer names no result type; the report groups by result type class (ADR 0036).
+        report_types = {"GradedResult", "AverageResult", "SubscaleResult", "NormResult"}
+        for module, allowed in ((serializers, set()), (reports, report_types)):
+            with self.subTest(module=module.__name__):
+                source = inspect.getsource(module)
+                names = set(re.findall(r"\b(LEVEL|AVERAGE|NORM|SUBSCALES|\w+Result)\b", source))
+                self.assertEqual(names, allowed)
