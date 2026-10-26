@@ -8,6 +8,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
@@ -397,6 +398,14 @@ class DefinitionResultTypeTests(TestCase):
             with self.subTest(name=name):
                 self.assertFalse(hasattr(definition, name))
         self.assertFalse(hasattr(definition.Definition, "averaged"))
+
+    def test_templates_show_the_result_objects_total(self):
+        # The total a page shows is result.total; total_answer_score is the raw sum the scoring and
+        # the differences use (spec #385).
+        templates = Path(__file__).resolve().parents[1] / "templates"
+        for path in sorted(templates.rglob("*.html")):
+            with self.subTest(template=str(path.relative_to(templates))):
+                self.assertNotIn("total_answer_score", path.read_text())
 
     def test_templates_see_the_type_without_making_one(self):
         template = Template("{{ d.result.page_template }}")

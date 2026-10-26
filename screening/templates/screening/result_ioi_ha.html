@@ -11,7 +11,7 @@
     <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
     <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
     {% with basis=submission.norm_basis %}
-    <p class="mb-0">分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.total_answer_score }} 分。這是常模比較的分組，不代表聽損程度。</p>
+    <p class="mb-0">分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.result.total }} 分。這是常模比較的分組，不代表聽損程度。</p>
     {% endwith %}
     {% else %}
     <p class="mb-0">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
