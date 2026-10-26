@@ -5,11 +5,13 @@
 {% block body %}
 {# Headed like the other result pages, not 「篩檢結果」 (THI is not a screening). #}
 {% include "screening/result_header.html" %}
-<div class="result-banner result-banner-{{ classified_score_color }}">
+{% with result=submission.result %}
+<div class="result-banner result-banner-{{ result.level.color }}">
     <div>結果</div>
-    <h2 class="result-level mb-0" aria-describedby="result-score">{{ classified_score_text }}</h2>
-    <div id="result-score" class="text-xl/normal">總分 {{ total_score }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
+    <h2 class="result-level mb-0" aria-describedby="result-score">{{ result.level.text }}</h2>
+    <div id="result-score" class="text-xl/normal">總分 {{ result.total }} 分{% if max_score is not None %}（滿分 {{ max_score }}）{% endif %}</div>
 </div>
+{% endwith %}
 {% if support_message %}
 <p class="line-block mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
@@ -46,13 +48,15 @@
 </details>
 <details class="dropdown-box mb-4">
     <summary>分數細節與作答明細</summary>
-    {% if has_subscores %}
-    <p class="mb-1">情緒分數：{{ emotional }}　社交分數：{{ social }}</p>
+    {% with subscores=submission.result.subscores %}
+    {% if subscores %}
+    <p class="mb-1">情緒分數：{{ subscores.emotional }}　社交分數：{{ subscores.social }}</p>
     {% endif %}
     <p class="text-black mb-1">助聽器：{{ submission.get_wearing_hearing_aid_display }}</p>
-    {% if has_subscores %}
+    {% if subscores %}
     <p class="text-black">情緒與社交分項僅供參考，目前沒有正式的解讀標準，請以總分分級為主。</p>
     {% endif %}
+    {% endwith %}
     <ol>
         {% for answer in answers %}
         <li>{{ answer.question.question_text }}——{{ answer.get_answer_display }}</li>

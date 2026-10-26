@@ -95,16 +95,10 @@ class GradedResult(Result):
         code = submission.questionnaire.code
         answers = self._answers()
         level = self.level["level"]
-        scores = submission._calculate_scores()
+        # The page reads its total, subscores and level from submission.result itself.
         return {
             "answers": answers,
-            "total_score": self.total,
-            "emotional": scores["score_emotional"],
-            "social": scores["score_social"],
-            "has_subscores": self.subscores is not None,
             "max_score": max_score(code),
-            "classified_score_text": self.level["text"],
-            "classified_score_color": self.level["color"],
             "score_bar": score_bar(definition, self.total, level),
             "next_steps": definition.next_steps.get(level, ()),
             "advice": get_advice(level, code),

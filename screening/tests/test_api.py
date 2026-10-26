@@ -182,7 +182,7 @@ class ApiSubmissionTests(TestCase):
     def test_scores_match_result_page(self):
         # emotional 5 x 4 = 20, social 3 x 2 = 6 -> total 26 (severe)
         submission = self._make_submission(scores=[4, 4, 4, 4, 4, 2, 2, 2, 0, 0])
-        page = self.client.get(reverse("result", args=[submission.id])).context
+        page = self.client.get(reverse("result", args=[submission.id])).context["submission"].result
         for url in (self.LIST, self._detail_url(submission.id)):
             with self.subTest(url=url):
                 data = self.client.get(url).json()
@@ -190,15 +190,13 @@ class ApiSubmissionTests(TestCase):
                 self.assertEqual(
                     item["scores"],
                     {
-                        "total": page["total_score"],
-                        "emotional": page["emotional"],
-                        "social": page["social"],
+                        "total": page.total,
+                        "emotional": page.subscores["emotional"],
+                        "social": page.subscores["social"],
                     },
                 )
                 self.assertEqual(item["scores"], {"total": 26, "emotional": 20, "social": 6})
-                self.assertEqual(
-                    item["level"], {"code": "severe", "text": page["classified_score_text"]}
-                )
+                self.assertEqual(item["level"], {"code": "severe", "text": page.level["text"]})
 
     def test_wearing_hearing_aid_values(self):
         expected = {}

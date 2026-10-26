@@ -62,6 +62,18 @@ class ResultTestCase(TestCase):
 
 
 class GradedResultTests(ResultTestCase):
+    def assert_no_copies(self, context):
+        for key in (
+            "total_score",
+            "emotional",
+            "social",
+            "has_subscores",
+            "classified_score_text",
+            "classified_score_color",
+        ):
+            with self.subTest(key=key):
+                self.assertNotIn(key, context)
+
     def test_hhie_s_answers_total_subscores_and_level(self):
         # Emotional items 1, 2, 4, 7, 9; social items 3, 5, 6, 8, 10 (the fixture).
         record = submission_with_answers(
@@ -96,11 +108,19 @@ class GradedResultTests(ResultTestCase):
             self.user, hhie_s.CODE, [4, 4, 2, 0, 0, 0, 4, 0, 0, 2], wearing_hearing_aid=False
         )
         context = self.assert_page(record, "screening/result.html")
-        self.assertEqual(context["total_score"], 16)
-        self.assertEqual((context["emotional"], context["social"]), (12, 4))
         self.assertEqual(context["max_score"], 40)
-        self.assertEqual(context["classified_score_text"], "輕度到中度影響")
         self.assertEqual(context["score_bar"]["current_text"], "輕度到中度影響")
+        # The total, subscores and level the page shows are the result object's, not copies.
+        self.assert_no_copies(context)
+        page = self.client.get(reverse("result", args=[record.pk]))
+        self.assertContains(page, '<div class="result-banner result-banner-mild_to_moderate">')
+        self.assertContains(
+            page,
+            '<h2 class="result-level mb-0" aria-describedby="result-score">輕度到中度影響</h2>',
+        )
+        self.assertContains(page, "總分 16 分（滿分 40）")
+        self.assertContains(page, '<p class="mb-1">情緒分數：12　社交分數：4</p>')
+        self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
         self.assertEqual(context["optional_ssq12"].code, ssq12_tw.CODE)  # unaided HHIE-S
         summary = render_to_string(record.result.summary_template, {"submission": record})
@@ -133,7 +153,11 @@ class GradedResultTests(ResultTestCase):
         # Item 5 answered 經常 (4): the support message, whatever the total (spec #208 Q6).
         record = submission_with_answers(self.user, thi.CODE, [0] * 4 + [4] + [0] * 20)
         context = self.assert_page(record, "screening/result.html")
-        self.assertFalse(context["has_subscores"])
+        self.assert_no_copies(context)
+        page = self.client.get(reverse("result", args=[record.pk]))
+        self.assertContains(page, "總分 4 分（滿分 100）")
+        self.assertNotContains(page, "情緒分數")  # result.subscores is None: no subscores shown
+        self.assertNotContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["support_message"])
         self.assertIsNone(context["optional_ssq12"])
 
