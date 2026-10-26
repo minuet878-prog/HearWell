@@ -41,9 +41,7 @@ def index(request):
             "preview_color": preview["color"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
-            "preview_score_bar": score_bar(
-                hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
-            ),
+            "preview_score_bar": score_bar(hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]),
             "user_state": user_state,
             "last_gauge": last_gauge,
             "last_max_score": last_max_score,
