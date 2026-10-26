@@ -16,7 +16,7 @@ from django.urls.converters import IntConverter
 from screening import forms as screening_forms
 from screening import questionnaires
 from screening import urls as screening_urls
-from screening.views import health_data_page
+from screening.views.common import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
 
@@ -395,7 +395,7 @@ class QuestionnaireCodeTests(SimpleTestCase):
 
     def test_codes_appear_only_in_definitions(self):
         sources = list(self._sources())
-        for scanned in ("screening/views.py", "frontend/src/AnswerApp.jsx"):
+        for scanned in ("screening/views/answering.py", "frontend/src/AnswerApp.jsx"):
             self.assertIn(BASE_DIR / scanned, sources)
         found = [
             f"{path.relative_to(BASE_DIR)}:{n}"

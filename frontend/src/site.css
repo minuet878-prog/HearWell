@@ -1957,7 +1957,7 @@
     stroke: var(--color-heading);
     stroke-width: 5;
     stroke-linecap: round;
-    /* GAUGE_CENTRE in views.py, in the drawing's own units. */
+    /* GAUGE_CENTRE in views/results.py, in the drawing's own units. */
     transform-box: view-box;
     transform-origin: 110px 105px;
     transform: rotate(var(--angle));

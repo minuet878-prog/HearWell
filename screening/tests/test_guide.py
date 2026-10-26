@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from screening.models import AidAndSubsidy, User
 from screening.tests.helpers import consented_user
-from screening.views import GUIDE_CHAPTERS
+from screening.views.guide import GUIDE_CHAPTERS
 
 # Wording finalised in #220 (draft comment and its follow-up).
 TITLE = "我的選配指引"

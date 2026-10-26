@@ -576,8 +576,8 @@ class SadlAnswerApiTests(SadlTestCase):
         self.assertIs(submission.wearing_hearing_aid, True)
 
     def test_a_submission_sending_wearing_false_is_still_saved_as_worn(self):
-        # The web form never offers this choice either (views.screening, always_aided); the API
-        # must not trust a caller that sends it anyway.
+        # The web form never offers this choice either (views.answering.screening, always_aided);
+        # the API must not trust a caller that sends it anyway.
         response = self._post(self._body([4] * 15, wearing_hearing_aid=False))
         self.assertEqual(response.status_code, 201)
         submission = Submission.objects.get()
