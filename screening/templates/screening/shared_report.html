@@ -20,7 +20,7 @@
 <section id="family-highlights" class="family-highlights mb-4 no-print" aria-labelledby="highlights-title">
     <h2 id="highlights-title" class="h4">先看重點</h2>
     <ul class="list-unstyled">
-        {% if life_impact %}{% with classified=life_impact.classified %}
+        {% if life_impact %}{% with classified=life_impact.result.level %}
         <li class="mb-2">
             <span class="font-bold">{{ life_impact.questionnaire.definition.topic }}</span>
             {% include "screening/level_badge.html" with text=classified.text color=classified.level %}

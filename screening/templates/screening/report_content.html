@@ -7,10 +7,10 @@
         {% endif %}
         {% if aid_report_text %}<li>助聽器：{{ aid_report_text }}</li>{% endif %}{# #287: health_report only #}
         {% for section in sections|add:tinnitus_sections %}{% with latest=section.latest %}
-        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.total_answer_score }} 分，<span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
+        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.result.total }} 分，<span class="report-level report-level-{{ latest.result.level.color }}">{{ latest.result.level.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
         {% endwith %}{% endfor %}
-        {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</li>{% endif %}
-        {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.satisfaction.overall }}</li>{% endif %}
+        {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.result.average is not None %}平均 {{ ssq_latest.result.average }} 分{% else %}{{ ssq_latest.result.unavailable_reason }}{% endif %}</li>{% endif %}
+        {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.result.satisfaction.overall }}</li>{% endif %}
         {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{{ comparison.summary }}</li>{% endfor %}
         {% if ioi_ha %}
         <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% include "screening/ioi_ha_summary.html" %}</li>
@@ -54,7 +54,7 @@
 <section id="report-listening" class="report-part" aria-labelledby="listening-title">
 <h2 id="listening-title" class="h4">日常聆聽能力</h2>
 <details class="report-fold">
-<summary><h3 class="tint-block-title mb-0">SSQ12-TW</h3> <span class="report-fold-meta"><span>最近一次 {{ ssq_latest.created_at|date:"Y/m/d" }}</span> <span>{% if ssq_latest.ssq_average is not None %}平均 {{ ssq_latest.ssq_average }} 分{% else %}{{ ssq_latest.ssq_unavailable_reason }}{% endif %}</span></span></summary>
+<summary><h3 class="tint-block-title mb-0">SSQ12-TW</h3> <span class="report-fold-meta"><span>最近一次 {{ ssq_latest.created_at|date:"Y/m/d" }}</span> <span>{% if ssq_latest.result.average is not None %}平均 {{ ssq_latest.result.average }} 分{% else %}{{ ssq_latest.result.unavailable_reason }}{% endif %}</span></span></summary>
 <div class="report-fold-body tint-block">
 <section id="report-ssq12" aria-labelledby="ssq-title">
 <h3 id="ssq-title" class="h5">SSQ12-TW</h3>
@@ -63,7 +63,7 @@
 <p>分數越高，代表您回報的聆聽能力越好；不代表聽損程度或助聽器效益合格與否。</p>
 <details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ ssq_recent|length }} 次紀錄：</p>
-<ul>{% for record in ssq_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：{% if record.ssq_average is not None %}平均 {{ record.ssq_average }} 分{% else %}{{ record.ssq_unavailable_reason }}{% endif %}</li>{% endfor %}</ul>
+<ul>{% for record in ssq_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：{% if record.result.average is not None %}平均 {{ record.result.average }} 分{% else %}{{ record.result.unavailable_reason }}{% endif %}</li>{% endfor %}</ul>
 </section>
 {% if ssq_comparison %}{% include "screening/report_comparison.html" with comparison=ssq_comparison %}{% endif %}
 </div>
@@ -71,7 +71,7 @@
 </section>
 {% endif %}
 
-{% if sadl_latest %}{% with satisfaction=sadl_latest.satisfaction %}
+{% if sadl_latest %}{% with satisfaction=sadl_latest.result.satisfaction %}
 <section id="report-satisfaction" class="report-part" aria-labelledby="satisfaction-title">
 <h2 id="satisfaction-title" class="h4">助聽器滿意度</h2>
 <details class="report-fold">
@@ -87,7 +87,7 @@
 {% endif %}
 <details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in sadl_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ sadl_recent|length }} 次紀錄：</p>
-<ul>{% for record in sadl_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：整體滿意度 {{ record.satisfaction.overall }}</li>{% endfor %}</ul>
+<ul>{% for record in sadl_recent %}<li>{{ record.created_at|date:"Y/m/d H:i" }}，{{ record.get_wearing_hearing_aid_display }}：整體滿意度 {{ record.result.satisfaction.overall }}</li>{% endfor %}</ul>
 </section>
 </div>
 </details>
@@ -102,7 +102,7 @@
 <div class="report-fold-body tint-block">
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h3 id="ioi-ha-title" class="h5">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h3>
-    {% if submission.norm_basis %}<p>完成時固定依據：{{ submission.norm_basis.questionnaire }}，{{ submission.norm_basis.created_at|date:"Y/m/d H:i" }}，{{ submission.norm_basis.total_answer_score }} 分（未配戴）。</p>{% endif %}
+    {% if submission.norm_basis %}<p>完成時固定依據：{{ submission.norm_basis.questionnaire }}，{{ submission.norm_basis.created_at|date:"Y/m/d H:i" }}，{{ submission.norm_basis.result.total }} 分（未配戴）。</p>{% endif %}
     <p class="mb-1">常模組別：{{ submission.get_norm_group_display }}</p>
     {% if not ioi_ha.grouped %}<p>需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>{% endif %}
     <table class="table" role="table">

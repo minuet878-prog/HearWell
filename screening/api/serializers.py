@@ -22,7 +22,6 @@ from screening.models import (
     Questionnaire,
     Submission,
 )
-from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import get_advice
 
@@ -111,16 +110,11 @@ class QuestionnaireDetailSerializer(QuestionnaireSerializer):
 
 
 class ScoresSerializer(serializers.Serializer):
-    total = serializers.IntegerField(source="total_answer_score")
+    # Reads the record's result object (submission.result).
+    total = serializers.IntegerField()
     # null when the record has no emotional or social items (THI), the same as the export.
-    emotional = serializers.IntegerField(source="emotional_score", allow_null=True)
-    social = serializers.IntegerField(source="social_score", allow_null=True)
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if not instance.has_subscores:
-            data["emotional"] = data["social"] = None
-        return data
+    emotional = serializers.IntegerField(source="subscores.emotional", allow_null=True)
+    social = serializers.IntegerField(source="subscores.social", allow_null=True)
 
 
 class LevelSerializer(serializers.Serializer):
@@ -140,18 +134,20 @@ class SatisfactionSerializer(serializers.Serializer):
 
 
 class SubmissionSerializer(serializers.ModelSerializer):
-    satisfaction = SatisfactionSerializer(allow_null=True, required=False)
+    satisfaction = SatisfactionSerializer(
+        source="result.satisfaction", allow_null=True, required=False
+    )
     average_score = serializers.DecimalField(
-        source="ssq_average", max_digits=3, decimal_places=1, allow_null=True, required=False
+        source="result.average", max_digits=3, decimal_places=1, allow_null=True, required=False
     )
     average_unavailable_reason = serializers.CharField(
-        source="ssq_unavailable_reason", allow_null=True, required=False
+        source="result.unavailable_reason", allow_null=True, required=False
     )
     questionnaire = QuestionnaireSummarySerializer()
     wearing_hearing_aid = serializers.BooleanField(allow_null=True)
-    # Scores and level come from Submission's single scoring path, never recomputed here.
-    scores = ScoresSerializer(source="*", allow_null=True)
-    level = LevelSerializer(source="classified", allow_null=True)
+    # Scores and level come from the record's result object, never recomputed here.
+    scores = ScoresSerializer(source="result", allow_null=True)
+    level = LevelSerializer(source="result.level", allow_null=True)
 
     class Meta:
         model = Submission
@@ -168,14 +164,16 @@ class SubmissionSerializer(serializers.ModelSerializer):
         )
 
     def to_representation(self, instance):
+        # What the record's result type does not have is None (ADR 0036): no total, no scores;
+        # neither an average nor why it is missing, no average fields; no satisfaction, none.
         data = super().to_representation(instance)
-        result = instance.questionnaire.definition.result
-        if result in (AVERAGE, SUBSCALES, NORM):
+        result = instance.result
+        if result.total is None:
             data["scores"] = None
-        if result != AVERAGE:
+        if result.average is None and result.unavailable_reason is None:
             data.pop("average_score")
             data.pop("average_unavailable_reason")
-        if result != SUBSCALES:
+        if result.satisfaction is None:
             data.pop("satisfaction")
         return data
 
@@ -199,9 +197,10 @@ class SubmissionDetailSerializer(SubmissionSerializer):
         fields = (*SubmissionSerializer.Meta.fields, "advice", "answers")
 
     def get_advice(self, submission) -> str | None:
-        if submission.questionnaire.definition.result != LEVEL:
+        level = submission.result.level
+        if level is None:
             return None
-        return get_advice(submission.classified["level"], submission.questionnaire.code)
+        return get_advice(level["level"], submission.questionnaire.code)
 
 
 class StrictBooleanField(serializers.BooleanField):
