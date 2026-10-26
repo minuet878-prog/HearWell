@@ -395,8 +395,10 @@ class QuestionnaireCodeTests(SimpleTestCase):
 
     def test_codes_appear_only_in_definitions(self):
         sources = list(self._sources())
-        for scanned in ("screening/views/answering.py", "frontend/src/AnswerApp.jsx"):
-            self.assertIn(BASE_DIR / scanned, sources)
+        views = sorted((BASE_DIR / "screening" / "views").glob("*.py"))
+        self.assertGreater(len(views), 1)
+        for scanned in (*views, BASE_DIR / "frontend" / "src" / "AnswerApp.jsx"):
+            self.assertIn(scanned, sources)
         found = [
             f"{path.relative_to(BASE_DIR)}:{n}"
             for path in sources
