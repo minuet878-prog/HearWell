@@ -1157,8 +1157,8 @@ def _shows_wearing_comparison(user, questionnaire):
 @login_required
 @health_data_page
 def my_hearing(request):
-    # SADL's satisfaction score reads submission.answers directly (models.py), so it needs
-    # its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
+    # SADL's satisfaction score reads submission.answers directly (models/submissions.py), so it
+    # needs its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
     answers = Answer.objects.select_related("question")
     submissions = list(
         request.user.submissions.defined()

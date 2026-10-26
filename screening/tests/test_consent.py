@@ -435,7 +435,7 @@ class RevisionTests(TestCase):
         self.url = reverse("my_hearing")
 
     def test_major_revision_asks_again_and_keeps_the_old_record(self):
-        with mock.patch.object(models, "CONSENT_VERSION", models.CONSENT_VERSION + 1):
+        with mock.patch("screening.models.accounts.CONSENT_VERSION", models.CONSENT_VERSION + 1):
             self.assertRedirects(self.client.get(self.url), _consent_url(self.url))
             self.client.post(reverse("consent"), {"agree": "", "next": self.url})
             self.assertEqual(self.client.get(self.url).status_code, 200)
