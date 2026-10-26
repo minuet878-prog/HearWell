@@ -5,6 +5,7 @@ from django.db.models import Prefetch, prefetch_related_objects
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
+from screening import models
 from screening.main_flow import home_more
 from screening.models import Answer, NormGroup, Questionnaire, Submission
 from screening.questionnaires import hhia_s, hhie_s
@@ -24,11 +25,10 @@ from screening.scoring import (
     max_score,
 )
 from screening.views.common import health_data_page
-from screening.views.export import _has_subscores
-from screening.views.my_hearing import TREND_STATUS_TEXT, _shows_wearing_comparison
+from screening.views.my_hearing import TREND_STATUS_TEXT, shows_wearing_comparison
 
 
-def _score_bar(definition, score, level):
+def score_bar(definition, score, level):
     # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
     # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
     thresholds = definition.thresholds
@@ -73,7 +73,7 @@ def _gauge_point(percent):
     return f"{x + GAUGE_RADIUS * math.cos(angle):.2f} {y - GAUGE_RADIUS * math.sin(angle):.2f}"
 
 
-def _score_gauge(bar):
+def score_gauge(bar):
     # The score bar's segments as arcs, 0 on the left; the needle turns from 0 by the score's share
     # of 180 degrees. No bar ("無法判讀", or no levels), no gauge.
     if bar is None:
@@ -97,6 +97,12 @@ def _score_gauge(bar):
     return {"arcs": arcs, "angle": angle, "ceiling": bar["ceiling"]}
 
 
+def has_subscores(answers):
+    # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
+    # the answers already loaded with their questions, no query of its own.
+    return any(answer.question.category != models.Category.NONE for answer in answers)
+
+
 @login_required
 @health_data_page
 def submission_result(request, submission_id):
@@ -117,9 +123,7 @@ def submission_result(request, submission_id):
                 "submission": submission,
                 "answers": answers,
                 "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
-                "show_comparison": _shows_wearing_comparison(
-                    request.user, submission.questionnaire
-                ),
+                "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
                 "next_step": next_step,
             },
         )
@@ -148,11 +152,11 @@ def submission_result(request, submission_id):
             "total_score": total_score,
             "emotional": emotional,
             "social": social,
-            "has_subscores": _has_subscores(answers),
+            "has_subscores": has_subscores(answers),
             "max_score": max_score(submission.questionnaire.code),
             "classified_score_text": classified_score["text"],
             "classified_score_color": classified_score["color"],
-            "score_bar": _score_bar(
+            "score_bar": score_bar(
                 submission.questionnaire.definition,
                 submission.total_answer_score,
                 classified_score["level"],
@@ -166,7 +170,7 @@ def submission_result(request, submission_id):
             "support_message": submission.questionnaire.definition.support(
                 {answer.question.question_number: answer.score for answer in answers}
             ),
-            "show_comparison": _shows_wearing_comparison(request.user, submission.questionnaire),
+            "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=SSQ12).first()
                 if submission.questionnaire.code in (hhie_s.CODE, hhia_s.CODE)
@@ -210,7 +214,7 @@ def _ioi_ha_items(submission, answers, texts):
     return items, grouped
 
 
-def _ioi_ha_summary(submission):
+def ioi_ha_summary(submission):
     # One IOI-HA record against the norms, for the report and the home page's last result.
     answers = submission.answers.select_related("question").order_by("question__question_number")
     items, grouped = _ioi_ha_items(submission, answers, NORM_COMPARISON_TEXT)

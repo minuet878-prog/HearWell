@@ -13,16 +13,11 @@ from screening.models import Answer, AudiogramPoint, Questionnaire
 from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
 from screening.views.common import health_data_page
 from screening.views.guide import GUIDE_CHAPTERS
+from screening.views.results import has_subscores
 
 
 def _taipei(moment):
     return timezone.localtime(moment).isoformat()
-
-
-def _has_subscores(answers):
-    # Only items marked emotional or social make subscores; THI has none (spec #208 Q5). Reads
-    # the answers already loaded with their questions, no query of its own.
-    return any(answer.question.category != models.Category.NONE for answer in answers)
 
 
 def _export_submission(submission):
@@ -30,7 +25,7 @@ def _export_submission(submission):
     # pages); the others export null, not 0.
     result = submission.questionnaire.definition.result
     not_scored = result != LEVEL
-    has_subscores = not not_scored and _has_subscores(submission.answers.all())
+    subscored = not not_scored and has_subscores(submission.answers.all())
     data = {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
@@ -46,8 +41,8 @@ def _export_submission(submission):
             for answer in submission.answers.all()
         ],
         "total_score": None if not_scored else submission.total_answer_score,
-        "emotional_score": submission.emotional_score if has_subscores else None,
-        "social_score": submission.social_score if has_subscores else None,
+        "emotional_score": submission.emotional_score if subscored else None,
+        "social_score": submission.social_score if subscored else None,
         "level": None if not_scored else submission.classified["text"],
         "norm_group": submission.get_norm_group_display() or None,
     }

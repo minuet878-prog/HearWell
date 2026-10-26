@@ -6,8 +6,8 @@ from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhie_s
 from screening.questionnaires.definition import NORM
 from screening.scoring import classify, max_score
-from screening.views.answering import _continue_notice
-from screening.views.results import _ioi_ha_summary, _score_bar, _score_gauge
+from screening.views.answering import continue_notice
+from screening.views.results import ioi_ha_summary, score_bar, score_gauge
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18
@@ -23,7 +23,7 @@ def index(request):
     )
     last = user_state.last_result
     last_ioi_ha = (
-        _ioi_ha_summary(last.submission)
+        ioi_ha_summary(last.submission)
         if last and last.submission.questionnaire.definition.result == NORM
         else None
     )
@@ -31,8 +31,8 @@ def index(request):
     last_gauge = last_max_score = None
     if last and last.is_life_impact:
         questionnaire = last.submission.questionnaire
-        last_gauge = _score_gauge(
-            _score_bar(
+        last_gauge = score_gauge(
+            score_bar(
                 questionnaire.definition,
                 last.submission.total_answer_score,
                 last.submission.classified["level"],
@@ -49,16 +49,14 @@ def index(request):
             "preview_color": preview["color"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
-            "preview_score_bar": _score_bar(
-                hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
-            ),
+            "preview_score_bar": score_bar(hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]),
             "user_state": user_state,
             "last_ioi_ha": last_ioi_ha,
             "last_gauge": last_gauge,
             "last_max_score": last_max_score,
             "next_step": next_step,
             "more_groups": more_groups,
-            "continue_notice": _continue_notice(request.user)
+            "continue_notice": continue_notice(request.user)
             if request.user.is_authenticated
             else None,
         },

@@ -13,8 +13,14 @@ from django.test import Client, TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from screening.api import views as api_views
-from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Category,
+    Question,
+    Questionnaire,
+    Submission,
+    SubmissionQuerySet,
+)
 from screening.tests.helpers import consented_user, fake_definition, register
 
 
@@ -588,7 +594,9 @@ class ApiSubmitTests(TestCase):
         first = self._post(self._body(), key=key)
         # The second request checks before the first has saved, then hits the unique constraint.
         existing = Submission.objects.get()
-        with mock.patch.object(api_views, "_find_by_key", side_effect=[None, existing]):
+        with mock.patch.object(
+            SubmissionQuerySet, "find_by_key", autospec=True, side_effect=[None, existing]
+        ):
             second = self._post(self._body(), key=key)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(second.json(), first.json())

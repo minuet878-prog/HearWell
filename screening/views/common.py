@@ -2,7 +2,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 
 
-def _safe_next(request):
+def safe_next(request):
     # Only same-site URLs; anything else is treated as no next (open redirect guard).
     next_url = request.POST.get("next") or request.GET.get("next", "")
     if url_has_allowed_host_and_scheme(

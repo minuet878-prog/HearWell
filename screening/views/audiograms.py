@@ -47,7 +47,7 @@ def _own_audiogram(request, audiogram_id):
 @health_data_page
 def audiogram_detail(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
-    context = _audiogram_context(audiogram)
+    context = audiogram_context(audiogram)
     # #201: the report holds the latest audiogram; the compare button picks this one and the one
     # before it (the next newer when this is the oldest), in the model's newest-first order.
     rows = list(request.user.audiograms.values_list("id", "tested_on"))
@@ -62,7 +62,7 @@ def audiogram_detail(request, audiogram_id):
     return render(request, "screening/audiogram_detail.html", context)
 
 
-def _audiogram_context(audiogram):
+def audiogram_context(audiogram):
     # Shared by the audiogram page and the health report, so both read it the same way.
     result = audiogram.interpretation()
     # Right ear first, air before bone, as on a clinical record.

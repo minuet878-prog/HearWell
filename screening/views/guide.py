@@ -16,8 +16,8 @@ from screening.forms import STOP_QUESTIONS
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
-from screening.views.answering import _wearing_follow_ups, list_order
-from screening.views.common import _safe_next, health_data_page
+from screening.views.answering import list_order, wearing_follow_ups
+from screening.views.common import health_data_page, safe_next
 
 
 def _assessment_context(request):
@@ -42,7 +42,7 @@ def _after_fitting_context(request):
     # for answering one again worn (F4): the chapter is the same for everyone, so no age.
     questionnaires = list(Questionnaire.objects.defined())
     return {
-        "follow_ups": _wearing_follow_ups(questionnaires),
+        "follow_ups": wearing_follow_ups(questionnaires),
         "life_impact": _life_impact_pair(questionnaires),
     }
 
@@ -52,7 +52,7 @@ def _form_25_context(request):
     # SADL; SSQ12-TW stays the after-fitting chapter's.
     questionnaires = list(Questionnaire.objects.defined())
     return {
-        "follow_ups": [q for q in _wearing_follow_ups(questionnaires) if q.code != SSQ12],
+        "follow_ups": [q for q in wearing_follow_ups(questionnaires) if q.code != SSQ12],
         "life_impact": _life_impact_pair(questionnaires),
     }
 
@@ -397,7 +397,7 @@ def route_answer(request):
     form_class = form_class or questions[0]
     aid = models.AidAndSubsidy.for_user(request.user)
     form = form_class(request.POST, instance=aid or models.AidAndSubsidy(user=request.user))
-    next_url = _safe_next(request)
+    next_url = safe_next(request)
     if form.is_valid():
         today = timezone.localdate()
         here = fitting_state(request.user, today).stop
