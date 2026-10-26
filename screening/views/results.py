@@ -7,7 +7,7 @@ from django.utils import timezone
 from screening.main_flow import home_more
 from screening.models import Submission
 from screening.views.common import health_data_page
-from screening.views.my_hearing import TREND_STATUS_TEXT, _shows_wearing_comparison
+from screening.views.my_hearing import TREND_STATUS_TEXT, shows_wearing_comparison
 
 # The welcome-back gauge (option D, ADR 0026): a half circle centred at (110, 105) in its 220 x 130
 # drawing, with a small gap between the levels' arcs.
@@ -24,7 +24,7 @@ def _gauge_point(percent):
     return f"{x + GAUGE_RADIUS * math.cos(angle):.2f} {y - GAUGE_RADIUS * math.sin(angle):.2f}"
 
 
-def _score_gauge(bar):
+def score_gauge(bar):
     # The score bar's segments as arcs, 0 on the left; the needle turns from 0 by the score's share
     # of 180 degrees. No bar ("無法判讀", or no levels), no gauge.
     if bar is None:
@@ -60,7 +60,7 @@ def submission_result(request, submission_id):
     shared = {
         "submission": submission,
         "wearing_text": TREND_STATUS_TEXT[submission.wearing_hearing_aid],
-        "show_comparison": _shows_wearing_comparison(request.user, submission.questionnaire),
+        "show_comparison": shows_wearing_comparison(request.user, submission.questionnaire),
         "next_step": next_step,
     }
     return render(request, result.page_template, shared | result.page_context())

@@ -4,10 +4,10 @@ from django.utils.cache import add_never_cache_headers
 
 from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhie_s
-from screening.questionnaires.results import _score_bar
+from screening.questionnaires.results import score_bar
 from screening.scoring import classify, max_score
-from screening.views.answering import _continue_notice
-from screening.views.results import _score_gauge
+from screening.views.answering import continue_notice
+from screening.views.results import score_gauge
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18
@@ -27,8 +27,8 @@ def index(request):
     if last and last.is_life_impact:
         questionnaire = last.submission.questionnaire
         result = last.submission.result
-        last_gauge = _score_gauge(
-            _score_bar(questionnaire.definition, result.total, result.level["level"])
+        last_gauge = score_gauge(
+            score_bar(questionnaire.definition, result.total, result.level["level"])
         )
         last_max_score = max_score(questionnaire.code)
     # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
@@ -41,7 +41,7 @@ def index(request):
             "preview_color": preview["color"],
             "preview_text": preview["text"],
             "preview_max_score": max_score(hhie_s.CODE),
-            "preview_score_bar": _score_bar(
+            "preview_score_bar": score_bar(
                 hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
             ),
             "user_state": user_state,
@@ -49,7 +49,7 @@ def index(request):
             "last_max_score": last_max_score,
             "next_step": next_step,
             "more_groups": more_groups,
-            "continue_notice": _continue_notice(request.user)
+            "continue_notice": continue_notice(request.user)
             if request.user.is_authenticated
             else None,
         },

@@ -11,7 +11,7 @@ from screening.main_flow import get_user_state
 from screening.models import Answer, Questionnaire, User
 from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
 from screening.scoring import get_advice, max_score
-from screening.views.audiograms import _audiogram_context
+from screening.views.audiograms import audiogram_context
 from screening.views.common import health_data_page
 
 REPORT_RECENT = 5  # history rows per questionnaire on the health report
@@ -75,7 +75,7 @@ def _report_context(user):
         context["ioi_ha"] = ioi_ha.result.norm_summary
     audiogram = user.audiograms.prefetch_related("points").first()
     if audiogram:
-        context.update(_audiogram_context(audiogram))
+        context.update(audiogram_context(audiogram))
     context["has_records"] = bool(submissions or audiogram)
     return context
 

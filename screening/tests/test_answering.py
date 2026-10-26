@@ -8,9 +8,15 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from screening.forms import BaseAnswerFormSet
-from screening.models import Answer, Category, Question, Questionnaire, Submission
+from screening.models import (
+    Answer,
+    Category,
+    Question,
+    Questionnaire,
+    Submission,
+    SubmissionQuerySet,
+)
 from screening.tests.helpers import consented_user, fake_definition, register
-from screening.views import answering
 
 
 def answer_loading_script(content):
@@ -716,15 +722,15 @@ class WebDoubleSubmitTests(TestCase):
         key = self._open()
         self._post(self._data(key))
         first = Submission.objects.get()
-        real_find = answering._find_by_key
+        real_find = SubmissionQuerySet.find_by_key
         calls = []
 
-        def find(user, key):
+        def find(submissions, key):
             # The first lookup misses, as if the other click had not been saved yet.
             calls.append(key)
-            return None if len(calls) == 1 else real_find(user, key)
+            return None if len(calls) == 1 else real_find(submissions, key)
 
-        with mock.patch.object(answering, "_find_by_key", side_effect=find):
+        with mock.patch.object(SubmissionQuerySet, "find_by_key", autospec=True, side_effect=find):
             response = self._post(self._data(key))
         self.assertEqual(len(calls), 2)
         self.assertRedirects(response, self._result_url(first))

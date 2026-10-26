@@ -108,7 +108,7 @@ def _trend_chart(records, since_last):
     }
 
 
-def _shows_wearing_comparison(user, questionnaire):
+def shows_wearing_comparison(user, questionnaire):
     # The 「比較戴與不戴助聽器」 entry on 我的紀錄 and the result pages (ticket #186): only once
     # this questionnaire has comparable records both with and without a hearing aid.
     comparison = questionnaire.definition.comparison
@@ -182,7 +182,7 @@ def my_hearing(request):
             "current": current,
             "user_state": user_state,
             "since_last": since_last,
-            "show_comparison": _shows_wearing_comparison(request.user, current),
+            "show_comparison": shows_wearing_comparison(request.user, current),
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
             .select_related("unaided", "aided")
             .first(),

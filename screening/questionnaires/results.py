@@ -105,7 +105,7 @@ class GradedResult(Result):
             "max_score": max_score(code),
             "classified_score_text": self.level["text"],
             "classified_score_color": self.level["color"],
-            "score_bar": _score_bar(definition, self.total, level),
+            "score_bar": score_bar(definition, self.total, level),
             "next_steps": definition.next_steps.get(level, ()),
             "advice": get_advice(level, code),
             # #363: 「無法判讀」 has nothing else saying why, so its advice is not folded away.
@@ -121,7 +121,7 @@ class GradedResult(Result):
         }
 
 
-def _score_bar(definition, score, level):
+def score_bar(definition, score, level):
     # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
     # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
     thresholds = definition.thresholds
@@ -210,7 +210,7 @@ class NormResult(Result):
     @cached_property
     def norm_summary(self):
         # Only one record's at a time (the home page's last result, the report), so it may query.
-        return _ioi_ha_summary(self.submission)
+        return ioi_ha_summary(self.submission)
 
     def page_context(self):
         # No total, level or advice: read item by item against the fixed norm group.
@@ -272,7 +272,7 @@ def _ioi_ha_items(submission, answers, texts):
     return items, grouped
 
 
-def _ioi_ha_summary(submission):
+def ioi_ha_summary(submission):
     # One IOI-HA record against the norms, for the report and the home page's last result.
     from screening.scoring import NORM_COMPARISON_TEXT
 

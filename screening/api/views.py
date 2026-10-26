@@ -64,11 +64,6 @@ def _own_submission_details(request, with_ioi_ha=False):
     )
 
 
-def _find_by_key(user, key):
-    # Scoped to the user: another user's key must never return their record (IDOR).
-    return user.submissions.filter(idempotency_key=key).first()
-
-
 def _same_content(submission, data):
     answers = {answer.question_id: answer.score for answer in submission.answers.all()}
     return (
@@ -118,7 +113,7 @@ class SubmissionList(ListAPIView):
         serializer = SubmissionCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        existing = _find_by_key(request.user, key)
+        existing = request.user.submissions.find_by_key(key)
         if existing is None:
             try:
                 # save() is atomic, so a concurrent request with the same key that loses at the
@@ -132,7 +127,7 @@ class SubmissionList(ListAPIView):
                 )
                 created = True
             except IntegrityError:
-                existing = _find_by_key(request.user, key)
+                existing = request.user.submissions.find_by_key(key)
                 created = False
         else:
             created = False

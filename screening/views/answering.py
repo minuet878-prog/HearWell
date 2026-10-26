@@ -13,7 +13,6 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from screening import models
-from screening.api.views import _find_by_key
 from screening.forms import (
     AgeGroupForm,
     AnswerFormSet,
@@ -39,7 +38,7 @@ from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE, RECOMMENDAT
 from screening.views.common import health_data_page
 
 
-def _continue_notice(user, questionnaires=None):
+def continue_notice(user, questionnaires=None):
     # #326 E7 (#337): the questionnaires this user can open, which the continue notice's script
     # matches against the drafts in this browser (draft.js); the drafts never reach the server.
     # A page that has already read them in list order passes them in.
@@ -84,7 +83,7 @@ def _wizard_step(request, step, total, catalog, **context):
         | {
             "step": step,
             "total": total,
-            "continue_notice": _continue_notice(request.user, catalog),
+            "continue_notice": continue_notice(request.user, catalog),
             # Set by the consent page; only its first screen says the account is ready.
             "from_consent": step == 1 and request.GET.get("from") == "consent",
         },
@@ -116,7 +115,7 @@ def questionnaire_list(request):
             "screening/questionnaire.html",
             {
                 "questionnaires": questionnaires,
-                "continue_notice": _continue_notice(user, questionnaires),
+                "continue_notice": continue_notice(user, questionnaires),
                 # A new user has no record to recommend by.
                 "recommendation": catalogue_recommendation(user, questionnaires, state)
                 if returning
@@ -203,7 +202,7 @@ def questionnaire_list(request):
     )
 
 
-def _wearing_follow_ups(questionnaires):
+def wearing_follow_ups(questionnaires):
     # The follow-ups for someone who wears hearing aids: IOI-HA, then SSQ12-TW and a
     # satisfaction-type questionnaire (SADL) when it is visible (#174). One missing from the
     # database is left out. Asks the definition's result, not SADL's code, per
@@ -273,7 +272,7 @@ def screening(request, questionnaire_id):
             key = None
         # This page was already sent (double click, or back and resend with other answers):
         # show that first result instead of saving again.
-        existing = key and _find_by_key(request.user, key)
+        existing = key and request.user.submissions.find_by_key(key)
         if existing:
             return _already_sent(request, existing)
         try:
@@ -307,7 +306,7 @@ def screening(request, questionnaire_id):
             except IntegrityError:
                 # Two clicks arrived together and the other one saved first; save() is atomic,
                 # so nothing of this one is left behind. Any other clash is a real error.
-                existing = key and _find_by_key(request.user, key)
+                existing = key and request.user.submissions.find_by_key(key)
                 if not existing:
                     raise
                 return _already_sent(request, existing)
