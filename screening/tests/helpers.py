@@ -28,6 +28,22 @@ def fake_definition(code, **overrides):
     return Definition(**(fields | overrides))
 
 
+def submission_with_answers(user, code, scores, **fields):
+    """A record of the questionnaire with this code, one answer per item in item-number order;
+    a score of None is 「不適用」. fields: other Submission fields (wearing_hearing_aid, ...)."""
+    questionnaire = models.Questionnaire.objects.get(code=code)
+    submission = models.Submission.objects.create(
+        user=user, questionnaire=questionnaire, **fields
+    )
+    models.Answer.objects.bulk_create(
+        models.Answer(submission=submission, question=question, score=score)
+        for question, score in zip(
+            questionnaire.questions.order_by("question_number"), scores, strict=True
+        )
+    )
+    return submission
+
+
 def register(*definitions):
     """Registers fake questionnaire definitions for the length of one test."""
     return patch.dict(questionnaires.DEFINITIONS, {d.code: d for d in definitions})

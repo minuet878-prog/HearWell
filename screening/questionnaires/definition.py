@@ -2,12 +2,14 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from screening.questionnaires.comparison import AverageComparison, TotalComparison
+from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
 
-# How a questionnaire's result is worked out and shown.
-LEVEL = "level"  # total score graded by thresholds, with advice (HHIE-S, HHIA-S)
-AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
-NORM = "norm"  # each item against the norms, no total (IOI-HA)
-SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SADL)
+# How a questionnaire's result is worked out and shown: its result type (results.py). The old names
+# stay until every caller asks submission.result (spec #385, ticket #391).
+LEVEL = GradedResult  # total score graded by thresholds, with advice (HHIE-S, HHIA-S, THI)
+AVERAGE = AverageResult  # average of the items, no grade (SSQ12-TW)
+NORM = NormResult  # each item against the norms, no total (IOI-HA)
+SUBSCALES = SubscaleResult  # overall and subscale averages, no grade or norms (SADL)
 
 # What a questionnaire tells about among the recommendation wizard's first answers (ADR 0030),
 # the values of a definition's `concern` and of that answer alike; their words are ConcernForm's.
@@ -46,7 +48,7 @@ class Definition:
     # the order the questionnaires were added. A screen order, not a scoring rule.
     list_rank: int
     intro_template: str  # shown above the questions on the answer page
-    result: str  # LEVEL, AVERAGE or NORM
+    result: type  # its result type: GradedResult, AverageResult, NormResult or SubscaleResult
     # Item n's answer choices as (value, label). The value "na" is an explicit 「不適用」,
     # saved as an empty score; only questionnaires that list it accept it.
     choices: Callable[[int], list]
