@@ -355,12 +355,24 @@ class DefinitionResultTypeTests(TestCase):
             },
         )
 
-    def test_the_old_names_still_compare(self):
-        # Until #391 every `result == LEVEL` and the like keeps working.
-        self.assertEqual(thi.DEFINITION.result, definition.LEVEL)
-        self.assertNotEqual(thi.DEFINITION.result, definition.AVERAGE)
-        self.assertTrue(ssq12_tw.DEFINITION.averaged)
-        self.assertIn(sadl.DEFINITION.result, (definition.SUBSCALES, definition.NORM))
+    def test_one_way_to_ask(self):
+        # #391: the result object is the only way; the old names are gone, no stand-ins left.
+        for name in (
+            "classified",
+            "ssq_average",
+            "ssq_unavailable_reason",
+            "ssq_lowest_answers",
+            "satisfaction",
+            "emotional_score",
+            "social_score",
+            "has_subscores",
+        ):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(Submission, name))
+        for name in ("LEVEL", "AVERAGE", "NORM", "SUBSCALES"):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(definition, name))
+        self.assertFalse(hasattr(definition.Definition, "averaged"))
 
     def test_templates_see_the_type_without_making_one(self):
         template = Template("{{ d.result.page_template }}")

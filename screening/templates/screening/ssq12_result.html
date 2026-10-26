@@ -4,30 +4,30 @@
 {% with since_last=submission.ssq_since_last %}
 {% include "screening/result_header.html" %}
 <section class="trend-summary mb-6" aria-label="整體平均">
-    {% if submission.ssq_average is not None %}
-    <p class="ssq-average">整體平均 <strong>{{ submission.ssq_average }}</strong> 分（滿分 10）</p>
+    {% if submission.result.average is not None %}
+    <p class="ssq-average">整體平均 <strong>{{ submission.result.average }}</strong> 分（滿分 10）</p>
     {% else %}
-    <p class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold">{{ submission.ssq_unavailable_reason }}</p>
+    <p class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold">{{ submission.result.unavailable_reason }}</p>
     {% endif %}
     {% if since_last %}<p class="font-bold">{{ since_last.text }}</p>{% endif %}
     {# 「比上一次」's line already says 分數越高越好. #}
     {% if not since_last %}<p class="mb-0">分數越高，代表您回報的聆聽能力越好。</p>{% endif %}
-    {% if submission.ssq_average is not None %}
+    {% if submission.result.average is not None %}
     {# Ticket #188: 0 to 10, this record and, when comparable, the previous one (ADR 0007: blue). #363: 「這次」 only beside a 「上次」, as it compares nothing alone. #}
     <div class="ssq-bar" aria-hidden="true">
-        {% if since_last %}<div class="ssq-bar-labels"><span class="ssq-bar-label ssq-bar-label-latest" style="--average: {{ submission.ssq_average }}">這次</span></div>{% endif %}
+        {% if since_last %}<div class="ssq-bar-labels"><span class="ssq-bar-label ssq-bar-label-latest" style="--average: {{ submission.result.average }}">這次</span></div>{% endif %}
         <div class="ssq-bar-track">
-            <div class="ssq-bar-fill" style="--average: {{ submission.ssq_average }}"></div>
-            {% if since_last %}<span class="ssq-bar-previous" style="--average: {{ since_last.previous.ssq_average }}"></span>{% endif %}
-            <span class="ssq-bar-latest" style="--average: {{ submission.ssq_average }}"></span>
+            <div class="ssq-bar-fill" style="--average: {{ submission.result.average }}"></div>
+            {% if since_last %}<span class="ssq-bar-previous" style="--average: {{ since_last.previous.result.average }}"></span>{% endif %}
+            <span class="ssq-bar-latest" style="--average: {{ submission.result.average }}"></span>
         </div>
-        {% if since_last %}<div class="ssq-bar-labels"><span class="ssq-bar-label" style="--average: {{ since_last.previous.ssq_average }}">上次</span></div>{% endif %}
+        {% if since_last %}<div class="ssq-bar-labels"><span class="ssq-bar-label" style="--average: {{ since_last.previous.result.average }}">上次</span></div>{% endif %}
         <div class="ssq-bar-ends"><span>0</span><span>10</span></div>
     </div>
     {% endif %}
 </section>
 {% endwith %}
-{% with lowest=submission.ssq_lowest_answers %}
+{% with lowest=submission.result.lowest_answers %}
 {% if lowest %}
 {# #363: the questions in normal weight, so each item's score tag stands out most. #}
 <section class="mb-6" aria-labelledby="ssq-lowest-title">

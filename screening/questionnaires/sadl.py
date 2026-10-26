@@ -1,6 +1,7 @@
 from decimal import ROUND_HALF_UP, Decimal
 
-from screening.questionnaires.definition import HEARING_AID, SUBSCALES, Definition
+from screening.questionnaires.definition import HEARING_AID, Definition
+from screening.questionnaires.results import SubscaleResult
 
 CODE = "sadl"
 
@@ -111,7 +112,7 @@ DEFINITION = Definition(
     concern=HEARING_AID,
     intro_template="screening/questionnaires/sadl_intro.html",
     source_template="screening/sadl_source.html",
-    result=SUBSCALES,
+    result=SubscaleResult,
     choices=choices,
     result_note=RESULT_NOTE,
     score=score,

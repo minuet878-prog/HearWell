@@ -4,9 +4,10 @@ from django.utils.cache import add_never_cache_headers
 
 from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhie_s
+from screening.questionnaires.results import _score_bar
 from screening.scoring import classify, max_score
 from screening.views.answering import _continue_notice
-from screening.views.results import _score_bar, _score_gauge
+from screening.views.results import _score_gauge
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18

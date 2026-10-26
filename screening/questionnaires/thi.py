@@ -1,4 +1,5 @@
-from screening.questionnaires.definition import LEVEL, TINNITUS, Definition, SupportMessage
+from screening.questionnaires.definition import TINNITUS, Definition, SupportMessage
+from screening.questionnaires.results import GradedResult
 
 CODE = "thi"
 
@@ -171,7 +172,7 @@ DEFINITION = Definition(
     icon="ear",
     list_rank=3,
     intro_template="screening/questionnaires/thi_intro.html",
-    result=LEVEL,
+    result=GradedResult,
     choices=choices,
     thresholds=THRESHOLDS,
     level_colors=LEVEL_COLORS,

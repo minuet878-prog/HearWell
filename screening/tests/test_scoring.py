@@ -141,29 +141,30 @@ class ScoringAggregateTest(TestCase):
     def test_emotional_full_marks(self):
         submission = self._make_submission(emotional_score=4, social_score=0)
         self.assertEqual(submission.total_answer_score, 20)
-        self.assertEqual(submission.emotional_score, 20)
-        self.assertEqual(submission.social_score, 0)
+        self.assertEqual(submission._calculate_scores()["score_emotional"], 20)
+        self.assertEqual(submission._calculate_scores()["score_social"], 0)
 
     def test_social_full_marks(self):
         submission = self._make_submission(emotional_score=0, social_score=4)
         self.assertEqual(submission.total_answer_score, 20)
-        self.assertEqual(submission.emotional_score, 0)
-        self.assertEqual(submission.social_score, 20)
+        self.assertEqual(submission._calculate_scores()["score_emotional"], 0)
+        self.assertEqual(submission._calculate_scores()["score_social"], 20)
 
     def test_mix_marks(self):
         submission = self._make_submission(emotional_score=4, social_score=2)
         self.assertEqual(submission.total_answer_score, 30)
-        self.assertEqual(submission.emotional_score, 20)
-        self.assertEqual(submission.social_score, 10)
+        self.assertEqual(submission._calculate_scores()["score_emotional"], 20)
+        self.assertEqual(submission._calculate_scores()["score_social"], 10)
 
     def test_calculate_score_return_zero(self):
         submission = Submission.objects.create(user=self.user, questionnaire=self.questionnaire)
         self.assertEqual(submission.total_answer_score, 0)
-        self.assertEqual(submission.emotional_score, 0)
-        self.assertEqual(submission.social_score, 0)
+        self.assertEqual(submission._calculate_scores()["score_emotional"], 0)
+        self.assertEqual(submission._calculate_scores()["score_social"], 0)
 
     def test_has_subscores_the_same_annotated_or_aggregated(self):
         # #386: one rule, from the scoring aggregate, on both scoring paths.
+        self.enterContext(register(fake_definition(self.questionnaire.code)))
         all_zero = self._make_submission(emotional_score=0, social_score=0)
         no_subscore_items = Submission.objects.create(
             user=self.user, questionnaire=self.questionnaire
@@ -178,7 +179,7 @@ class ScoringAggregateTest(TestCase):
                 ("annotate", Submission.objects.with_scores().get(pk=submission.pk)),
             ):
                 with self.subTest(path, expected=expected):
-                    self.assertEqual(fetched.has_subscores, expected)
+                    self.assertEqual(fetched.result.subscores is not None, expected)
 
 
 class HistoryScorePathTests(TestCase):

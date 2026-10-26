@@ -231,7 +231,7 @@ class HearingAidTests(TestCase):
         wearing = self._make_submission(True)
         not_wearing = self._make_submission(False)
         self.assertEqual(wearing.total_answer_score, not_wearing.total_answer_score)
-        self.assertEqual(wearing.classified, not_wearing.classified)
+        self.assertEqual(wearing.result.level, not_wearing.result.level)
 
     def test_new_text_uses_readable_style(self):
         submission = self._make_submission(True)

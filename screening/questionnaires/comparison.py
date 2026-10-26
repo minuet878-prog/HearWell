@@ -58,12 +58,12 @@ class AverageComparison:
         return submissions.with_scores().filter(answer_count=12)
 
     def record_result(self, record):
-        if record.ssq_average is not None:
-            return f"平均 {record.ssq_average} 分"
-        return record.ssq_unavailable_reason
+        if record.result.average is not None:
+            return f"平均 {record.result.average} 分"
+        return record.result.unavailable_reason
 
     def difference(self, unaided, aided):
-        if unaided.ssq_average is None or aided.ssq_average is None:
+        if unaided.result.average is None or aided.result.average is None:
             return None
         return (Decimal(aided.total_answer_score - unaided.total_answer_score) / 12).quantize(
             Decimal("0.1"), rounding=ROUND_HALF_UP

@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from screening import models, questionnaires
 from screening.questionnaires import hhie_s
-from screening.questionnaires.definition import LEVEL, Definition
+from screening.questionnaires.definition import Definition
+from screening.questionnaires.results import GradedResult
 
 
 def consented_user(**kwargs):
@@ -22,7 +23,7 @@ def fake_definition(code, **overrides):
         "icon": "clipboard",
         "list_rank": 2,
         "intro_template": "screening/questionnaires/hhie_s_intro.html",
-        "result": LEVEL,  # without thresholds: graded 「無法判讀」
+        "result": GradedResult,  # without thresholds: graded 「無法判讀」
         "choices": hhie_s.choices,
     }
     return Definition(**(fields | overrides))

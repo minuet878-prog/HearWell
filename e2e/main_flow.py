@@ -5118,7 +5118,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     )
                     self.assertGreaterEqual(self.lowest_contrast(text, self.WHITE), 7)
                 # The chart's level names sit on white beside a swatch of their band.
-                band = bands.filter(has_text=record.classified["text"])
+                band = bands.filter(has_text=record.result.level["text"])
                 with self.subTest(page="my_hearing chart", level=level):
                     text = self.style(band.locator("span").last, "color")
                     swatch = self.style(band.locator(".trend-band-swatch"), "backgroundColor")

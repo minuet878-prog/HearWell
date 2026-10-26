@@ -1,11 +1,11 @@
 from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import (
     GUIDE_ACTION,
-    LEVEL,
     LIFE_IMPACT,
     RETEST_STEP,
     Definition,
 )
+from screening.questionnaires.results import GradedResult
 
 CODE = "hhie-s"
 
@@ -106,7 +106,7 @@ DEFINITION = Definition(
     icon="ear",
     list_rank=0,
     intro_template="screening/questionnaires/hhie_s_intro.html",
-    result=LEVEL,
+    result=GradedResult,
     life_impact=True,
     concern=LIFE_IMPACT,
     choices=choices,

@@ -6,41 +6,8 @@ from django.utils import timezone
 
 from screening.main_flow import home_more
 from screening.models import Submission
-from screening.questionnaires.results import _ioi_ha_items
-from screening.scoring import NORM_COMPARISON_TEXT
 from screening.views.common import health_data_page
 from screening.views.my_hearing import TREND_STATUS_TEXT, _shows_wearing_comparison
-
-
-def _score_bar(definition, score, level):
-    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
-    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
-    thresholds = definition.thresholds
-    if level == "unknown" or not thresholds:
-        return None
-    ceiling = thresholds[-1][0]
-    segments = []
-    start = 0
-    for upper, text, segment_level in thresholds:
-        segments.append(
-            {
-                "level": segment_level,
-                "color": definition.color(segment_level),
-                "shade": definition.shade(segment_level),
-                "text": text,
-                "width": (upper - start) / ceiling * 100,
-                "current": segment_level == level,
-            }
-        )
-        start = upper
-    position = max(0, min(100, score / ceiling * 100))
-    return {
-        "segments": segments,
-        "position": position,
-        "ceiling": ceiling,
-        "current_text": next(segment["text"] for segment in segments if segment["current"]),
-    }
-
 
 # The welcome-back gauge (option D, ADR 0026): a half circle centred at (110, 105) in its 220 x 130
 # drawing, with a small gap between the levels' arcs.
@@ -97,16 +64,3 @@ def submission_result(request, submission_id):
         "next_step": next_step,
     }
     return render(request, result.page_template, shared | result.page_context())
-
-
-def _ioi_ha_summary(submission):
-    # One IOI-HA record against the norms, for the report and the home page's last result.
-    answers = submission.answers.select_related("question").order_by("question__question_number")
-    items, grouped = _ioi_ha_items(submission, answers, NORM_COMPARISON_TEXT)
-    return {
-        "submission": submission,
-        "items": items,
-        "grouped": grouped,
-        "below": sum(item["comparison_code"] == "below" for item in items),
-        "above": sum(item["comparison_code"] == "above" for item in items),
-    }

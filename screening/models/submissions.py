@@ -134,22 +134,6 @@ class Submission(models.Model):
     def total_answer_score(self):
         return self._calculate_scores()["score_total"]
 
-    @property
-    def has_subscores(self):
-        return self._calculate_scores()["subscore_answer_count"] > 0
-
-    @property
-    def emotional_score(self):
-        return self._calculate_scores()["score_emotional"]
-
-    @property
-    def social_score(self):
-        return self._calculate_scores()["score_social"]
-
-    @property
-    def ssq_average(self):
-        return self.result.average
-
     def previous_same_wearing(self, earlier):
         # earlier: this questionnaire's records before this one, newest first. The record this one
         # is compared with: the latest worn the same way (records worn otherwise may sit in
@@ -162,7 +146,7 @@ class Submission(models.Model):
     def ssq_since_last(self):
         # SSQ12-TW's 「比上一次」 (ticket #188): the record previous_same_wearing picks, shown only
         # when both have an overall average (ADR 0001).
-        if self.ssq_average is None:
+        if self.result.average is None:
             return None
         earlier = (
             Submission.objects.filter(user_id=self.user_id, questionnaire_id=self.questionnaire_id)
@@ -173,29 +157,13 @@ class Submission(models.Model):
             .order_by("-created_at", "-id")
         )
         previous = self.previous_same_wearing(earlier)
-        if previous is None or previous.ssq_average is None:
+        if previous is None or previous.result.average is None:
             return None
         # The difference of the unrounded averages, the same rule as a wearing comparison's.
         difference = self.questionnaire.definition.comparison.difference(previous, self)
         day = timezone.localdate(previous.created_at)
-        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.ssq_average)
+        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.result.average)
         return {"previous": previous, "text": text}
-
-    @property
-    def ssq_unavailable_reason(self):
-        return self.result.unavailable_reason
-
-    @property
-    def ssq_lowest_answers(self):
-        return self.result.lowest_answers
-
-    @property
-    def satisfaction(self):
-        return self.result.satisfaction
-
-    @property
-    def classified(self):
-        return self.result.level
 
 
 class Answer(models.Model):

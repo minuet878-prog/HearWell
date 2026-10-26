@@ -5,7 +5,7 @@ Callers ask the record's result instead of checking which type it is (ADR 0036).
 
 Scores come from the record's one scoring path (`with_scores()` or `_calculate_scores`), item data
 from the answers the caller prefetched. The imports inside methods break an import cycle: the
-definitions import this module, and scoring, the models and the views import the definitions.
+definitions import this module, and scoring and the models import the definitions.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -74,12 +74,10 @@ class GradedResult(Result):
     @property
     def subscores(self):
         # Only records with emotional or social items (#386); THI has none.
-        if not self.submission.has_subscores:
+        scores = self.submission._calculate_scores()
+        if scores["subscore_answer_count"] == 0:
             return None
-        return {
-            "emotional": self.submission.emotional_score,
-            "social": self.submission.social_score,
-        }
+        return {"emotional": scores["score_emotional"], "social": scores["score_social"]}
 
     @cached_property
     def level(self):
@@ -91,19 +89,19 @@ class GradedResult(Result):
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
         from screening.scoring import UNKNOWN, get_advice, max_score
-        from screening.views.results import _score_bar
 
         submission = self.submission
         definition = submission.questionnaire.definition
         code = submission.questionnaire.code
         answers = self._answers()
         level = self.level["level"]
+        scores = submission._calculate_scores()
         return {
             "answers": answers,
             "total_score": self.total,
-            "emotional": submission.emotional_score,
-            "social": submission.social_score,
-            "has_subscores": submission.has_subscores,
+            "emotional": scores["score_emotional"],
+            "social": scores["score_social"],
+            "has_subscores": self.subscores is not None,
             "max_score": max_score(code),
             "classified_score_text": self.level["text"],
             "classified_score_color": self.level["color"],
@@ -121,6 +119,36 @@ class GradedResult(Result):
                 else None
             ),
         }
+
+
+def _score_bar(definition, score, level):
+    # Ticket #158: a bar segmented by the thresholds, with a marker at this score's position.
+    # "無法判讀" (no thresholds, or an out-of-range score) draws no bar.
+    thresholds = definition.thresholds
+    if level == "unknown" or not thresholds:
+        return None
+    ceiling = thresholds[-1][0]
+    segments = []
+    start = 0
+    for upper, text, segment_level in thresholds:
+        segments.append(
+            {
+                "level": segment_level,
+                "color": definition.color(segment_level),
+                "shade": definition.shade(segment_level),
+                "text": text,
+                "width": (upper - start) / ceiling * 100,
+                "current": segment_level == level,
+            }
+        )
+        start = upper
+    position = max(0, min(100, score / ceiling * 100))
+    return {
+        "segments": segments,
+        "position": position,
+        "ceiling": ceiling,
+        "current_text": next(segment["text"] for segment in segments if segment["current"]),
+    }
 
 
 class AverageResult(Result):
@@ -182,8 +210,6 @@ class NormResult(Result):
     @cached_property
     def norm_summary(self):
         # Only one record's at a time (the home page's last result, the report), so it may query.
-        from screening.views.results import _ioi_ha_summary
-
         return _ioi_ha_summary(self.submission)
 
     def page_context(self):
@@ -244,6 +270,21 @@ def _ioi_ha_items(submission, answers, texts):
             }
         )
     return items, grouped
+
+
+def _ioi_ha_summary(submission):
+    # One IOI-HA record against the norms, for the report and the home page's last result.
+    from screening.scoring import NORM_COMPARISON_TEXT
+
+    answers = submission.answers.select_related("question").order_by("question__question_number")
+    items, grouped = _ioi_ha_items(submission, answers, NORM_COMPARISON_TEXT)
+    return {
+        "submission": submission,
+        "items": items,
+        "grouped": grouped,
+        "below": sum(item["comparison_code"] == "below" for item in items),
+        "above": sum(item["comparison_code"] == "above" for item in items),
+    }
 
 
 class SubscaleResult(Result):
