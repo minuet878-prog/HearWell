@@ -6582,8 +6582,11 @@ WHITE_CARD_PAGES_LEARN = (
     ("family guide", False, "/family"),
     ("learn", False, "/learn"),
     ("privacy", False, "/privacy"),
-    ("consent", True, lambda test: test.undecided()),
 )
+
+# The consent page. undecided() deletes the user's consent, so every page checked after it in the
+# same test would be sent on to /consent instead (#369): always put it last.
+WHITE_CARD_PAGE_CONSENT = (("consent", True, lambda test: test.undecided()),)
 
 # #303: the sharing and account pages.
 WHITE_CARD_PAGES_SHARING = (
@@ -6844,7 +6847,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     def visit(self, signed_in, path, width=1024, javascript=True):
         self.open(signed_in, width, javascript)
-        self.page.goto(f"{self.live_server_url}{path(self) if callable(path) else path}")
+        path = path(self) if callable(path) else path
+        self.page.goto(f"{self.live_server_url}{path}")
+        return path
+
+    def assert_landed_on(self, path):
+        """#369: the browser shows the page asked for, not one it was sent on to (/consent)."""
+        self.assertEqual(self.page.url, f"{self.live_server_url}{path}")
 
     def style(self, locator, prop):
         return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
@@ -6996,9 +7005,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # Spec #297 acceptance 1: every white card under a warm shadow is a link.
     def test_every_white_card_is_a_link(self):
         with self.saving_artifacts():
-            for name, signed_in, path in self.PAGES:
+            for name, signed_in, path in self.PAGES + WHITE_CARD_PAGE_CONSENT:
                 with self.subTest(page=name):
-                    self.visit(signed_in, path)
+                    self.assert_landed_on(self.visit(signed_in, path))
                     self.assertEqual(self.page.evaluate(self.WHITE_CARDS_THAT_ARE_NOT_LINKS), [])
 
     # Spec #308 acceptance 12 (#316): white means tappable. "White" is what a person sees as a
@@ -7028,7 +7037,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         )
     )
     # A dropdown (details) is allowed as a box only: what opens inside it is checked like the rest,
-    # so every dropdown is opened first (a report's questionnaires fold into dropdowns, #314).
+    # so every dropdown is opened first (a report's questionnaires fold into dropdowns, #314). The
+    # answering page's 這份問卷在問什麼？ is the same dropdown drawn by React (#369), opened by its
+    # button.
     WHITE_BUT_NOT_TAPPABLE = """(allowed) => {
         document.querySelectorAll("details").forEach((box) => { box.open = true; });
         const faded = (el) => el
@@ -7036,7 +7047,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         return [...document.querySelectorAll("body *")]
             .filter((el) => getComputedStyle(el).backgroundColor === "rgb(255, 255, 255)")
             .filter((el) => el.checkVisibility() && !faded(el))
-            .filter((el) => !el.matches("details") && !el.closest(allowed))
+            .filter((el) => !el.matches("details, .answer-about") && !el.closest(allowed))
             .map((el) => `${el.tagName.toLowerCase()}.${el.getAttribute("class")} `
                 + el.textContent.trim().replace(/\\s+/g, " ").slice(0, 30));
     }"""
@@ -7057,13 +7068,18 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         for mount, drawn in self.DRAWN_LATER:
             if self.page.locator(mount).count():
                 self.page.locator(drawn).first.wait_for(state="attached")
+        for button in self.page.locator(".answer-about > button").all():
+            if button.get_attribute("aria-expanded") == "false":
+                button.click()
+            expect(button).to_have_attribute("aria-expanded", "true")
         return self.page.evaluate(self.WHITE_BUT_NOT_TAPPABLE, self.WHITE_ALLOWED)
 
     def test_every_white_element_can_be_tapped(self):
         with self.saving_artifacts():
-            for name, signed_in, path in self.PAGES + self.WHITE_ANSWERING_PAGES:
+            pages = self.PAGES + self.WHITE_ANSWERING_PAGES + WHITE_CARD_PAGE_CONSENT
+            for name, signed_in, path in pages:
                 with self.subTest(page=name):
-                    self.visit(signed_in, path)
+                    self.assert_landed_on(self.visit(signed_in, path))
                     self.assertEqual(self.white_but_not_tappable(), [])
 
     # #299: the signed-out home's four steps, result example and audiologist line are flat.
@@ -7638,7 +7654,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # and the other learn pages.
     def test_learn_pages_fit_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
-            for name, signed_in, path in WHITE_CARD_PAGES_LEARN:
+            for name, signed_in, path in WHITE_CARD_PAGES_LEARN + WHITE_CARD_PAGE_CONSENT:
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
