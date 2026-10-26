@@ -1,7 +1,7 @@
 """Result types (GLOSSARY 結果類型, spec #385): how one record's result is worked out and shown.
 
 A definition's `result` is one of these classes; `submission.result` is it bound to that record.
-Callers ask the record's result instead of checking which type it is (ADR 0035).
+Callers ask the record's result instead of checking which type it is (ADR 0036).
 
 Scores come from the record's one scoring path (`with_scores()` or `_calculate_scores`), item data
 from the answers the caller prefetched. The imports inside methods break an import cycle: the
@@ -27,6 +27,7 @@ class Result:
     satisfaction = None  # the definition's score(): overall, subscales, not_applicable
     norm_group = None  # the norm group's name
     norm_summary = None  # the record against its norm group, for the home page and the report
+    not_applicable_choice = None  # the download's choice for an answer without a score
 
     # The record's summary line (the home page's last result, each row of 我的紀錄) and its result
     # page; page_context() is the page's data of this type, the view adding what every page has.
@@ -42,6 +43,17 @@ class Result:
 
     def page_context(self):
         return {}
+
+    def export(self):
+        # 「下載我的資料」's fields of this record after its answers, in the file's order.
+        subscores = self.subscores or {"emotional": None, "social": None}
+        return {
+            "total_score": self.total,
+            "emotional_score": subscores["emotional"],
+            "social_score": subscores["social"],
+            "level": self.level["text"] if self.level else None,
+            "norm_group": self.norm_group,
+        }
 
     def _answers(self):  # the result page's answers, in item order
         return self.submission.answers.select_related("question__questionnaire").order_by(
@@ -116,6 +128,7 @@ class AverageResult(Result):
 
     summary_template = "screening/ssq_average.html"
     page_template = "screening/ssq12_result.html"
+    not_applicable_choice = "不適用"
 
     @cached_property
     def average(self):
@@ -147,6 +160,12 @@ class AverageResult(Result):
 
     def page_context(self):
         return {"answers": self._answers()}
+
+    def export(self):
+        return super().export() | {
+            "average_score": str(self.average) if self.average is not None else None,
+            "average_unavailable_reason": self.unavailable_reason,
+        }
 
 
 class NormResult(Result):
@@ -191,6 +210,7 @@ class SubscaleResult(Result):
 
     summary_template = "screening/sadl_overall.html"
     page_template = "screening/sadl_result.html"
+    not_applicable_choice = "不適用"
 
     @cached_property
     def satisfaction(self):
@@ -199,6 +219,13 @@ class SubscaleResult(Result):
         answers = self.submission.answers.all()
         definition = self.submission.questionnaire.definition
         return definition.score({a.question.question_number: a.score for a in answers})
+
+    def export(self):
+        satisfaction = self.satisfaction
+        return super().export() | {
+            "overall_score": str(satisfaction["overall"]),
+            "subscale_scores": {s["name"]: str(s["score"]) for s in satisfaction["subscales"]},
+        }
 
     def page_context(self):
         # The page reads satisfaction and each answer from the record: one query for both.

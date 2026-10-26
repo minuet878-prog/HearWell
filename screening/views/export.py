@@ -10,7 +10,6 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.forms import Form9Form, Form25Form, NoticeForm, answer_choices
 from screening.models import Answer, AudiogramPoint, Questionnaire
-from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
 from screening.views.common import health_data_page
 from screening.views.guide import GUIDE_CHAPTERS
 
@@ -20,12 +19,10 @@ def _taipei(moment):
 
 
 def _export_submission(submission):
-    # Only graded questionnaires have a total, subscales and level (same as their result
-    # pages); the others export null, not 0.
-    result = submission.questionnaire.definition.result
-    not_scored = result != LEVEL
-    has_subscores = not not_scored and submission.has_subscores
-    data = {
+    # The result object gives the fields after the answers: what a type does not have is null,
+    # not 0 (the same as its result page).
+    result = submission.result
+    return {
         "questionnaire": submission.questionnaire.questionnaire_name,
         "created_at": _taipei(submission.created_at),
         "wearing_hearing_aid": submission.get_wearing_hearing_aid_display(),
@@ -35,35 +32,13 @@ def _export_submission(submission):
                 "question": answer.question.question_text,
                 "score": answer.score,
                 # null rather than a 500: one odd old answer must not block the whole export.
-                "choice": dict(answer_choices(answer.question)).get(answer.score),
+                "choice": result.not_applicable_choice
+                if answer.score is None
+                else dict(answer_choices(answer.question)).get(answer.score),
             }
             for answer in submission.answers.all()
         ],
-        "total_score": None if not_scored else submission.total_answer_score,
-        "emotional_score": submission.emotional_score if has_subscores else None,
-        "social_score": submission.social_score if has_subscores else None,
-        "level": None if not_scored else submission.classified["text"],
-        "norm_group": submission.get_norm_group_display() or None,
-    }
-
-    if result == AVERAGE:
-        data["average_score"] = (
-            str(submission.ssq_average) if submission.ssq_average is not None else None
-        )
-        data["average_unavailable_reason"] = submission.ssq_unavailable_reason
-        _mark_not_applicable_answers(data)
-    if result == SUBSCALES:
-        satisfaction = submission.satisfaction
-        data["overall_score"] = str(satisfaction["overall"])
-        data["subscale_scores"] = {s["name"]: str(s["score"]) for s in satisfaction["subscales"]}
-        _mark_not_applicable_answers(data)
-    return data
-
-
-def _mark_not_applicable_answers(data):
-    for answer in data["answers"]:
-        if answer["score"] is None:
-            answer["choice"] = "不適用"
+    } | result.export()
 
 
 def _offered(form_class, name, value):

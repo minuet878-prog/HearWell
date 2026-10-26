@@ -4,13 +4,21 @@ from decimal import Decimal
 from io import StringIO
 
 from django.core.management import call_command
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
+from django.template import Context, Template
 from django.template.loader import render_to_string
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.models import NormGroup
-from screening.questionnaires import hhie_s, ioi_ha, sadl, ssq12_tw, thi
+from screening import questionnaires
+from screening.models import Answer, NormGroup, Submission
+from screening.questionnaires import definition, hhia_s, hhie_s, ioi_ha, sadl, ssq12_tw, thi
+from screening.questionnaires.results import (
+    AverageResult,
+    GradedResult,
+    NormResult,
+    SubscaleResult,
+)
 from screening.tests.helpers import consented_user, submission_with_answers
 
 
@@ -61,6 +69,18 @@ class GradedResultTests(ResultTestCase):
             result, "average", "unavailable_reason", "satisfaction", "norm_group", "norm_summary"
         )
         self.assertEqual(result.lowest_answers, [])
+        # The download's fields, in the file's order.
+        self.assertEqual(
+            list(result.export().items()),
+            [
+                ("total_score", 16),
+                ("emotional_score", 12),
+                ("social_score", 4),
+                ("level", "輕度到中度影響"),
+                ("norm_group", None),
+            ],
+        )
+        self.assertIsNone(result.not_applicable_choice)
 
     def test_hhie_s_result_page_and_summary(self):
         record = submission_with_answers(
@@ -89,6 +109,16 @@ class GradedResultTests(ResultTestCase):
         self.assertEqual(result.total, 100)
         self.assertEqual(result.level["level"], "catastrophic")
         self.assertIsNone(result.subscores)
+        self.assertEqual(
+            result.export(),
+            {
+                "total_score": 100,
+                "emotional_score": None,
+                "social_score": None,
+                "level": "極重度障礙",
+                "norm_group": None,
+            },
+        )
 
     def test_thi_result_page_has_its_support_message(self):
         # Item 5 answered 經常 (4): the support message, whatever the total (spec #208 Q6).
@@ -120,6 +150,19 @@ class AverageResultTests(ResultTestCase):
             "norm_group",
             "norm_summary",
         )
+        self.assertEqual(
+            list(result.export().items()),
+            [
+                ("total_score", None),
+                ("emotional_score", None),
+                ("social_score", None),
+                ("level", None),
+                ("norm_group", None),
+                ("average_score", "6.5"),
+                ("average_unavailable_reason", None),
+            ],
+        )
+        self.assertEqual(result.not_applicable_choice, "不適用")
 
     def test_result_page_and_summary(self):
         record = submission_with_answers(self.user, ssq12_tw.CODE, [6] * 12)
@@ -137,6 +180,8 @@ class AverageResultTests(ResultTestCase):
         self.assertEqual(result.unavailable_reason, "未計算：包含不適用題目")
         self.assertEqual([a.score for a in result.lowest_answers], [3, 3, 3])
         self.assertIsNone(result.total)
+        self.assertIsNone(result.export()["average_score"])
+        self.assertEqual(result.export()["average_unavailable_reason"], "未計算：包含不適用題目")
 
     def test_all_not_applicable_has_no_numeric_answer(self):
         record = submission_with_answers(self.user, ssq12_tw.CODE, [None] * 12)
@@ -163,6 +208,17 @@ class NormResultTests(ResultTestCase):
             result, "total", "subscores", "level", "average", "unavailable_reason", "satisfaction"
         )
         self.assertEqual(result.lowest_answers, [])
+        self.assertEqual(
+            result.export(),
+            {
+                "total_score": None,
+                "emotional_score": None,
+                "social_score": None,
+                "level": None,
+                "norm_group": "輕度至中度",
+            },
+        )
+        self.assertIsNone(result.not_applicable_choice)
 
     def test_result_page_and_summary(self):
         record = submission_with_answers(
@@ -217,6 +273,17 @@ class SubscaleResultTests(ResultTestCase):
             "norm_summary",
         )
         self.assertEqual(result.lowest_answers, [])
+        self.assertEqual(
+            list(result.export().items())[5:],
+            [
+                ("overall_score", "4.4"),
+                (
+                    "subscale_scores",
+                    {"正面效果": "5.0", "服務與費用": "5.0", "負面特徵": "3.0", "個人形象": "3.7"},
+                ),
+            ],
+        )
+        self.assertEqual(result.not_applicable_choice, "不適用")
 
     def test_result_page_and_summary(self):
         record = submission_with_answers(
@@ -226,3 +293,69 @@ class SubscaleResultTests(ResultTestCase):
         self.assertEqual(record.result.summary_template, "screening/sadl_overall.html")
         summary = render_to_string(record.result.summary_template, {"submission": record})
         self.assertEqual(summary, "整體滿意度：4.0")
+
+
+class ResultQueryTests(ResultTestCase):
+    def test_a_list_asks_its_result_objects_without_querying(self):
+        # Lists (我的紀錄, the report, the API) score with with_scores() and prefetch the answers;
+        # only one record's extras (lowest answers, the norm summary) may query when asked.
+        sadl_scores = [4] * 15
+        sadl_scores[10] = None
+        for code, scores, fields in (
+            (hhie_s.CODE, [2] * 10, {}),
+            (thi.CODE, [2] * 25, {}),
+            (ssq12_tw.CODE, [None] + [3] * 11, {}),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}),
+            (sadl.CODE, sadl_scores, {}),
+        ):
+            submission_with_answers(self.user, code, scores, **fields)
+        records = list(
+            Submission.objects.filter(user=self.user)
+            .select_related("questionnaire")
+            .prefetch_related(
+                Prefetch("answers", queryset=Answer.objects.select_related("question"))
+            )
+            .with_scores()
+        )
+        with self.assertNumQueries(0):
+            for record in records:
+                result = record.result
+                for name in (
+                    "total",
+                    "subscores",
+                    "level",
+                    "average",
+                    "unavailable_reason",
+                    "satisfaction",
+                    "norm_group",
+                    "summary_template",
+                ):
+                    getattr(result, name)
+                result.export()
+
+
+class DefinitionResultTypeTests(TestCase):
+    def test_each_definition_names_its_result_type(self):
+        self.assertEqual(
+            {code: d.result for code, d in questionnaires.DEFINITIONS.items()},
+            {
+                hhie_s.CODE: GradedResult,
+                hhia_s.CODE: GradedResult,
+                thi.CODE: GradedResult,
+                ssq12_tw.CODE: AverageResult,
+                ioi_ha.CODE: NormResult,
+                sadl.CODE: SubscaleResult,
+            },
+        )
+
+    def test_the_old_names_still_compare(self):
+        # Until #391 every `result == LEVEL` and the like keeps working.
+        self.assertEqual(thi.DEFINITION.result, definition.LEVEL)
+        self.assertNotEqual(thi.DEFINITION.result, definition.AVERAGE)
+        self.assertTrue(ssq12_tw.DEFINITION.averaged)
+        self.assertIn(sadl.DEFINITION.result, (definition.SUBSCALES, definition.NORM))
+
+    def test_templates_see_the_type_without_making_one(self):
+        template = Template("{{ d.result.page_template }}")
+        context = Context({"d": hhie_s.DEFINITION})
+        self.assertEqual(template.render(context), "screening/result.html")
