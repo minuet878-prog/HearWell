@@ -82,7 +82,7 @@ class ScoreBarTests(TestCase):
         current = '<div class="score-bar-current" style="--position: 30.00%">'
         self.assertIn(f"{current}<span>輕度到中度影響</span></div>", page)
         self.assertIn('<div class="score-bar-ends"><span>0</span><span>40</span></div>', page)
-        for other in ("無/極輕微影響", "顯著影響"):
+        for other in ("無／極輕微影響", "顯著影響"):
             with self.subTest(level=other):
                 self.assertNotIn(f"<span>{other}</span>", page[page.index('class="score-bar"') :])
 

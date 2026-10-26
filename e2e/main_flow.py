@@ -295,7 +295,9 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                     self.next()
             self.main().get_by_role("button", name="送出").click()
             expect(self.page.get_by_text("總分 20 分")).to_be_visible()
-            expect(self.page.locator(".result-banner").get_by_text("輕至中度影響")).to_be_visible()
+            expect(
+                self.page.locator(".result-banner").get_by_text("輕度到中度影響")
+            ).to_be_visible()
             # Text-heavy pages tidy-up: said under the steps, outside the folded full advice.
             expect(self.main().locator(".source-note")).to_contain_text("不能判定聽損程度")
             expect(self.main().locator(".source-note")).to_be_visible()
@@ -324,7 +326,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             ).check()
         self.main().get_by_role("button", name="送出").click()
         expect(self.page.get_by_text("總分 20 分")).to_be_visible()
-        expect(self.page.locator(".result-banner").get_by_text("輕至中度影響")).to_be_visible()
+        expect(self.page.locator(".result-banner").get_by_text("輕度到中度影響")).to_be_visible()
 
     def test_ssq12_scale_draft_and_average(self):
         """#79: range input, N/A, zero and draft restoration in a real browser."""
@@ -7756,7 +7758,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     title = summary.get_by_role("heading", level=3)
                     # The latest record (aided, all 0): its date, score and level.
                     expect(summary).to_have_text(
-                        re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無/極輕微影響$")
+                        re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無／極輕微影響$")
                     )
                     part = self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
                     comparison = self.main().get_by_role(

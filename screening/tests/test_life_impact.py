@@ -59,7 +59,7 @@ class GradedButNotLifeImpactTests(TestCase):
         self._submit(self.graded, [self.graded_question], 4, days_ago=10)
         response = self.client.get(reverse("index"))
         self.assertContains(response, '<div class="result-banner result-banner-normal">')
-        self.assertContains(response, "無/極輕微影響")
+        self.assertContains(response, "無／極輕微影響")
         self.assertNotContains(response, "假的重分級")
         self.assertContains(response, "建議再做一次追蹤")
         retake = reverse("screening", args=[self.hhie_s.pk])

@@ -235,7 +235,7 @@ class HealthReportTests(TestCase):
         self._hhie_s(self.user, [0] * 10, wearing=False, days_ago=1)
         hhie = _section(self._content(), "report-hhie-s")
         self.assertIn("0 分", hhie)
-        self.assertIn("無/極輕微影響", hhie)
+        self.assertIn("無／極輕微影響", hhie)
 
     # 7
     def test_has_date_and_disclaimer(self):
