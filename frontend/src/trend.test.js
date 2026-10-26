@@ -6,7 +6,7 @@ function submission(
   id,
   date,
   total,
-  { code = "hhie-s", name = "HHIE-S", text = "無/極輕微影響", wearing = null } = {},
+  { code = "hhie-s", name = "HHIE-S", text = "無／極輕微影響", wearing = null } = {},
 ) {
   return {
     id,

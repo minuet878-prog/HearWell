@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendChart from "./TrendChart.jsx";
 
 const LEVELS = [
-  { code: "normal", text: "無/極輕微影響", max: 8, color: "normal", shade: "pale" },
+  { code: "normal", text: "無／極輕微影響", max: 8, color: "normal", shade: "pale" },
   { code: "mild_to_moderate", text: "輕度到中度影響", max: 24, color: "mild_to_moderate", shade: "pale" },
   { code: "severe", text: "顯著影響", max: 40, color: "severe", shade: "pale" },
 ];
@@ -135,7 +135,7 @@ describe("TrendChart", () => {
   it("draws a point for every submission, including a score of 0", async () => {
     mockApi({
       results: [
-        submission(3, "2026-10-14", 0, "無/極輕微影響"),
+        submission(3, "2026-10-14", 0, "無／極輕微影響"),
         submission(2, "2026-09-01", 18),
         submission(1, "2026-08-01", 12),
       ],
@@ -181,7 +181,7 @@ describe("TrendChart", () => {
         submission(4, "2026-10-14T16:00", 12),
         submission(3, "2026-10-14T15:00", 28, "顯著影響", undefined, true),
         submission(2, "2026-10-14T14:30", 40, "顯著影響"),
-        submission(1, "2026-08-01", 0, "無/極輕微影響"),
+        submission(1, "2026-08-01", 0, "無／極輕微影響"),
       ],
     });
     const { container } = render(<TrendChart code="hhie-s" />);
@@ -260,7 +260,7 @@ describe("TrendChart", () => {
     const threePoints = () =>
       mockApi({
         results: [
-          submission(3, "2026-10-14", 0, "無/極輕微影響"),
+          submission(3, "2026-10-14", 0, "無／極輕微影響"),
           submission(2, "2026-09-01", 18),
           submission(1, "2026-08-01", 12),
         ],
