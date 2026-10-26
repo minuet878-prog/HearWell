@@ -127,7 +127,7 @@ class MonitoringTests(TestCase):
 
     # 1
     def test_unhandled_error_is_sent_with_type_path_and_place(self):
-        with mock.patch("screening.views.render", side_effect=RuntimeError("detail")):
+        with mock.patch("screening.views.home.render", side_effect=RuntimeError("detail")):
             status, _ = self._send("get", f"{reverse('index')}?next=/secret-query")
         self.assertEqual(status, 500)
         event, payload = self._only_event()
@@ -139,7 +139,7 @@ class MonitoringTests(TestCase):
         self.assertEqual(event["request"]["url"], "http://testserver/")
         self.assertEqual(event["request"]["method"], "GET")
         files = [frame["filename"] for frame in exception["stacktrace"]["frames"]]
-        self.assertIn("screening/views.py", files)
+        self.assertIn("screening/views/home.py", files)
 
     # 2
     def test_answer_error_sends_no_form_cookie_or_user(self):
@@ -153,7 +153,7 @@ class MonitoringTests(TestCase):
             data[f"form-{i}-question_id"] = str(question.id)
             data[f"form-{i}-score"] = "4"
         with mock.patch(
-            "screening.views.AnswerFormSet.save", side_effect=RuntimeError("save failed")
+            "screening.views.answering.AnswerFormSet.save", side_effect=RuntimeError("save failed")
         ):
             status, session_id = self._send("post", self._answer_url(), data, user=self.user)
         self.assertEqual(status, 500)
@@ -180,7 +180,7 @@ class MonitoringTests(TestCase):
             "password1": self.PASSWORD,
             "password2": self.PASSWORD,
         }
-        with mock.patch("screening.views.RegisterForm.save", side_effect=clash):
+        with mock.patch("screening.views.accounts.RegisterForm.save", side_effect=clash):
             status, _ = self._send("post", reverse("register"), data)
         self.assertEqual(status, 500)
         event, payload = self._only_event()
@@ -224,7 +224,7 @@ class MonitoringTests(TestCase):
             logging.getLogger("screening").warning("crumb %s", secret)
             raise RuntimeError("detail")
 
-        with mock.patch("screening.views.render", side_effect=log_then_fail):
+        with mock.patch("screening.views.home.render", side_effect=log_then_fail):
             self._send("get", reverse("index"))
         event, payload = self._only_event()
         self.assertNotIn(secret, payload)

@@ -6,7 +6,7 @@ from django.urls import reverse
 from screening.models import Category, Question, Questionnaire
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
-from screening.views import list_order
+from screening.views.answering import list_order
 
 GUIDE = "自行選擇問卷"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')

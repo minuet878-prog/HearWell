@@ -91,7 +91,9 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 
 ### 結構
 
-- `screening/models.py` `views.py` `forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`admin.py` `urls.py`
+- `screening/models/`（`__init__.py` 重新匯出所有名字，照舊寫 `from screening.models import X`）：`accounts`（User、Consent、同意書版本）、`questionnaires`（Questionnaire、Category、Question）、`submissions`（Submission、Answer、NormGroup、ReportComparison、`shared_days`）、`audiograms`（Audiogram、AudiogramPoint、Ear、Conduction）、`hearing_aids`（AidAndSubsidy 與助聽器、補助選項）、`sharing`（ReportShare 分享連結與它的 token、到期日）、`guide`（GuideChapterView）
+- `screening/views/`（`__init__.py` 是空的，`urls.py` 依檔引用，例如 `home.index`）：`common`（`health_data_page`、`_safe_next`）、`home`（首頁、給家人、了解頁）、`accounts`（註冊、登出、隱私、同意、帳號設定與刪除）、`answering`（問卷清單、作答、HHI 前後比較）、`results`（單次結果、儀表）、`my_hearing`（我的聽力趨勢）、`reports`（健康報告與分享）、`export`（下載我的資料）、`audiograms`（聽力圖）、`guide`（選配指引與路線）、`monitoring`（錯誤監控測試頁）
+- `screening/forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`admin.py` `urls.py`
 - `screening/tests/` 依功能分檔（`test_scoring.py`、`test_answering.py`、`test_api.py`、`test_audiogram.py`……），只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`；跨檔借用別的測試類別要匯入整個檔案（`from screening.tests import test_pages`），直接匯入類別的話，單獨跑那一組會混進別組的測試
 - `screening/templates/screening/` 全部繼承 `layout.html`；`screening/templatetags/custom_filters.py` 有 `degree_level`（聽力圖程度 → 標籤顏色，對應表在 `audiogram.DEGREE_LEVELS`）；分級標籤共用 `level_badge.html`
 - `screening/fixtures/` 問卷題目；`pyproject.toml` Ruff 設定
@@ -135,6 +137,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 - `Sum` 沒有 `default=0` 時，沒資料會回 `None` 而不是 0（踩過三次）。
 - worktree 裡沒有 `py313/` 和 `frontend/node_modules`：Ruff hook 會自動改用主資料夾的；自己跑測試或 Ruff 時，用主資料夾的 `py313/bin/python`；要建置前端就用捷徑連到主資料夾的 `node_modules`（`.gitignore` 已忽略）。測試資料庫會自動改名成 `test_<資料庫>_<worktree 名稱>`，可以跟主資料夾同時跑。
 - Shell 是 zsh：批次操作（一次建好幾張 issue、設依賴、改多個檔）寫成 Python（`subprocess`）。zsh 陣列從 1 開始編號、`status` 是唯讀保留變數；#120 拆票時因此 7 張的標題全部錯一位、第 1 張沒建成。批次建完後逐張核對標題、內文與「被擋住」關係。
+- `views`、`models` 拆成 package 後，mock 要指到實際用到它的小檔（例如 `screening.views.home.render`、`screening.models.accounts.CONSENT_VERSION`），不是 `screening.views` 或 `screening.models`：指錯會找不到名字，或換掉了沒人讀的那份、測試照舊跑原值。同一個值有兩處在讀時兩邊都要換：`CONSENT_VERSION` 由 User 讀 `models.accounts` 那份、由 view 讀 `screening.models` 那份。
 - 要看指令成功與否時，輸出先寫進檔案、再用 `rc=$?` 取結束碼：`指令 | tail` 拿到的是 `tail` 的結束碼，失敗會被蓋掉（#131 的截圖基準因此看似成功、其實中途停了）。
 - 合併 commit 的多行訊息寫進檔案，用 `git merge -F <檔案>`；`git merge` 不從標準輸入讀訊息。
 

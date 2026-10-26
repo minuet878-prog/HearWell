@@ -239,7 +239,7 @@ class SubmissionCreateSerializer(serializers.Serializer):
         questionnaire = attrs["questionnaire"]
         definition = questionnaire.definition
         if questionnaire.code == IOI_HA:
-            # Same rule as the web form (views.screening): wearing is not asked and stays
+            # Same rule as the web form (views.answering.screening): wearing is not asked and stays
             # unrecorded, and the norm basis is the one the page showed (ADR 0002).
             attrs["wearing_hearing_aid"] = None
             try:
@@ -256,8 +256,9 @@ class SubmissionCreateSerializer(serializers.Serializer):
                 sent or definition.always_aided
             ):
                 raise serializers.ValidationError({"wearing_hearing_aid": definition.wearing_error})
-            # Same rule as the web form (views.screening): always-aided questionnaires are always
-            # saved as worn, no matter what was sent, instead of trusting the caller's own value.
+            # Same rule as the web form (views.answering.screening): always-aided questionnaires are
+            # always saved as worn, no matter what was sent, instead of trusting the caller's own
+            # value.
             if definition.always_aided:
                 attrs["wearing_hearing_aid"] = True
         # The rules live in the answer formset, shared with the web form; this only feeds it.
