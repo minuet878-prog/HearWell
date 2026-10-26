@@ -39,6 +39,10 @@ class NormGroup(models.TextChoices):
 
 
 class SubmissionQuerySet(models.QuerySet):
+    def find_by_key(self, key):
+        # Call it on user.submissions: another user's key must never return their record (IDOR).
+        return self.filter(idempotency_key=key).first()
+
     def defined(self):
         # Records of a questionnaire without a definition are not shown (ADR 0005).
         return self.filter(questionnaire__code__in=questionnaires.offered())

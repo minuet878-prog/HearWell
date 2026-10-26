@@ -13,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.forms import ROC_OFFSET, DeleteAccountForm, RegisterForm
 from screening.models import User
-from screening.views.common import _safe_next, health_data_page
+from screening.views.common import health_data_page, safe_next
 
 
 @require_http_methods(["POST"])
@@ -28,7 +28,7 @@ NEW_ACCOUNT = "screening.new_account"
 
 @require_http_methods(["GET", "POST"])
 def register(request):
-    next_url = _safe_next(request)
+    next_url = safe_next(request)
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
@@ -63,7 +63,7 @@ def privacy(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def consent(request):
-    next_url = _safe_next(request)
+    next_url = safe_next(request)
     if request.method == "POST" and "decline" in request.POST:
         logout(request)
         messages.info(
