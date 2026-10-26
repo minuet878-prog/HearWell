@@ -596,8 +596,9 @@ class ApiSubmitTests(TestCase):
         existing = Submission.objects.get()
         with mock.patch.object(
             SubmissionQuerySet, "find_by_key", autospec=True, side_effect=[None, existing]
-        ):
+        ) as find:
             second = self._post(self._body(), key=key)
+        self.assertEqual(find.call_count, 2)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(second.json(), first.json())
         self.assertEqual(Submission.objects.count(), 1)
