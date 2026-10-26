@@ -267,6 +267,17 @@ class ThiScoringTests(ThiTestCase):
         self.assertNotContains(page, "情緒分數")
         self.assertNotContains(page, "社交分數")
 
+    def test_api_gives_null_subscores_not_zero(self):
+        # #386: THI has no emotional or social items, so the API says "none" like the export.
+        submission, _ = self._web_result([4] * 25)
+        listed = self.client.get(reverse("api:submissions")).json()["results"][0]
+        detail = self._api_result(submission)
+        for name, record in (("list", listed), ("detail", detail)):
+            with self.subTest(name):
+                self.assertEqual(
+                    record["scores"], {"total": 100, "emotional": None, "social": None}
+                )
+
 
 # Draft wording from #211, written out here so a changed definition fails instead of being
 # copied into the expectation. A step links the report only where its words mention the report
@@ -468,3 +479,28 @@ class ThiOtherPagesTests(ThiTestCase):
         ):
             with self.subTest(page=name, params=params):
                 self.assertEqual(self.client.get(reverse(name), params).status_code, 200)
+
+
+class SubscoreQueryCountTests(ThiTestCase):
+    # #386: the subscore rule comes from the scoring aggregate, so lists of THI and HHIE-S records
+    # take no more queries than before (counts measured before the change).
+    def setUp(self):
+        super().setUp()
+        for _ in range(2):
+            self.post_web([4] * 25)
+            submission = Submission.objects.create(
+                user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+            )
+            Answer.objects.bulk_create(
+                Answer(submission=submission, question=question, score=2)
+                for question in self.hhie_s.questions.all()
+            )
+
+    def test_list_pages_take_the_same_queries(self):
+        for url, queries in (
+            (reverse("my_hearing"), 8),
+            (reverse("health_report"), 18),
+            (reverse("api:submissions"), 5),
+        ):
+            with self.subTest(url=url), self.assertNumQueries(queries):
+                self.assertEqual(self.client.get(url).status_code, 200)
