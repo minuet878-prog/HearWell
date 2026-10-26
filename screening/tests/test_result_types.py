@@ -399,6 +399,15 @@ class DefinitionResultTypeTests(TestCase):
                 self.assertFalse(hasattr(definition, name))
         self.assertFalse(hasattr(definition.Definition, "averaged"))
 
+    def test_a_result_type_is_compared_by_identity(self):
+        # The places that still group by type compare the class itself (`is`), all the same way.
+        root = Path(__file__).resolve().parents[1]
+        for path in sorted(root.rglob("*.py")):
+            if "tests" in path.parts:
+                continue
+            with self.subTest(module=str(path.relative_to(root))):
+                self.assertIsNone(re.search(r"\bresult\s*[!=]=", path.read_text()))
+
     def test_templates_show_the_result_objects_total(self):
         # The total a page shows is result.total; total_answer_score is the raw sum the scoring and
         # the differences use (spec #385).

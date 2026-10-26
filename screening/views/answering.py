@@ -208,7 +208,7 @@ def wearing_follow_ups(questionnaires):
     # database is left out. Asks the definition's result, not SADL's code, per
     # CODING_STANDARDS.md rule 9.
     by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-    satisfaction = next((q for q in questionnaires if q.definition.result == SubscaleResult), None)
+    satisfaction = next((q for q in questionnaires if q.definition.result is SubscaleResult), None)
     return [q for q in (by_code.get(IOI_HA), by_code.get(SSQ12), satisfaction) if q]
 
 
