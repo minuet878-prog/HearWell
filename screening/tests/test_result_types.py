@@ -4,6 +4,7 @@ import inspect
 import json
 import re
 import uuid
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
@@ -25,7 +26,7 @@ from screening.questionnaires.results import (
     NormResult,
     SubscaleResult,
 )
-from screening.tests.helpers import consented_user, submission_with_answers
+from screening.tests.helpers import consented_user, register, submission_with_answers
 from screening.views import reports
 
 
@@ -366,6 +367,52 @@ class DefinitionResultTypeTests(TestCase):
         template = Template("{{ d.result.page_template }}")
         context = Context({"d": hhie_s.DEFINITION})
         self.assertEqual(template.render(context), "screening/result.html")
+
+
+class ResultPageDataTests(ResultTestCase):
+    """The result page (#388): the result object's template and data, plus what every page has."""
+
+    def page(self, record):
+        self.client.force_login(self.user)
+        return self.client.get(reverse("result", args=[record.pk]))
+
+    def test_every_result_page_has_the_shared_data(self):
+        # Wearing is said only where it was asked: not on IOI-HA (norm group instead) or SADL
+        # (always worn), whose header line ends at the date.
+        sadl_scores = [4] * 15
+        for code, scores, fields, wearing_text in (
+            (hhie_s.CODE, [2] * 10, {"wearing_hearing_aid": False}, "沒戴助聽器"),
+            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}, "有戴助聽器"),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.UNGROUPED}, None),
+            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}, None),
+        ):
+            with self.subTest(code=code):
+                record = submission_with_answers(self.user, code, scores, **fields)
+                response = self.page(record)
+                self.assertEqual(response.context["submission"], record)
+                self.assertEqual(response.context["wearing_text"], wearing_text)
+                self.assertIs(response.context["show_comparison"], False)
+                self.assertTrue(response.context["next_step"].card.title)
+                header = f"{record.questionnaire.questionnaire_name}・"
+                header += f"{record.created_at.astimezone():%Y/%m/%d} 作答"
+                header += f"・{wearing_text}</p>" if wearing_text else "</p>"
+                self.assertContains(response, header)
+
+    def test_the_result_type_picks_the_page_and_its_data(self):
+        # A type of its own draws its own page with its own data: the page asks the result.
+        class OwnPage(GradedResult):
+            page_template = "screening/ssq12_result.html"
+
+            def page_context(self):
+                return {"answers": ("own",)}
+
+        record = submission_with_answers(self.user, thi.CODE, [0] * 25)
+        with register(replace(thi.DEFINITION, result=OwnPage)):
+            response = self.page(record)
+        self.assertTemplateUsed(response, "screening/ssq12_result.html")
+        self.assertTemplateNotUsed(response, "screening/result.html")
+        self.assertEqual(response.context["answers"], ("own",))
+        self.assertEqual(response.context["wearing_text"], "助聽器未記錄")
 
 
 class ApiFieldsTests(ResultTestCase):
