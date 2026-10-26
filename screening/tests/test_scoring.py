@@ -33,6 +33,15 @@ class ClassifyTests(SimpleTestCase):
         self.assertEqual(result["level"], "unknown")
         self.assertEqual(result["text"], "無法判讀")
 
+    # #356: the two life-impact questionnaires sit side by side on 我的紀錄, so they name their
+    # levels the same way; only the words change, never the cut-offs.
+    def test_hhie_s_and_hhia_s_name_their_levels_the_same(self):
+        expected = {0: "無／極輕微影響", 10: "輕度到中度影響", 26: "顯著影響"}
+        for code in ("hhie-s", "hhia-s"):
+            for score, text in expected.items():
+                with self.subTest(code=code, score=score):
+                    self.assertEqual(classify(score, code)["text"], text)
+
 
 class ClassifyViewTests(TestCase):
     @classmethod
@@ -78,15 +87,15 @@ class ClassifyViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "無法判讀")
         response = self.client.get(reverse("my_hearing") + "?questionnaire=hhie-s")
-        self.assertContains(response, "無/極輕微影響")
+        self.assertContains(response, "無／極輕微影響")
 
     def test_result_and_history_show_same_classification(self):
         submission = self._make_submission(self.hhie_s, score=4)
         self.client.force_login(self.user)
         result = self.client.get(reverse("result", args=[submission.id]))
         history = self.client.get(reverse("my_hearing"))
-        self.assertContains(result, "無/極輕微影響")
-        self.assertContains(history, "無/極輕微影響")
+        self.assertContains(result, "無／極輕微影響")
+        self.assertContains(history, "無／極輕微影響")
 
 
 class ScoringAggregateTest(TestCase):
@@ -212,7 +221,7 @@ class HistoryScorePathTests(TestCase):
         self.client.force_login(self.user)
         response = self.client.get(reverse("my_hearing"))
         self.assertContains(response, "總分：0")
-        self.assertContains(response, "無/極輕微影響")
+        self.assertContains(response, "無／極輕微影響")
 
     def test_history_only_shows_own_submissions(self):
         own = self._make_submission(self.user, [0] * 10)

@@ -41,7 +41,7 @@ class TrendChartPageTests(TestCase):
             [
                 {
                     "code": "normal",
-                    "text": "無/極輕微影響",
+                    "text": "無／極輕微影響",
                     "max": 8,
                     "color": "normal",
                     "shade": "pale",
@@ -533,7 +533,7 @@ class HistoryTabsTests(TestCase):
         self.assertEqual(len(self._summary(self._trend())), 2)
         self._hhie_s(0, False, days_ago=1)
         summary = self._summary(self._trend())
-        self.assertEqual(summary[1:], ["0 分 無/極輕微影響"])
+        self.assertEqual(summary[1:], ["0 分 無／極輕微影響"])
 
     def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
         # Acceptance 17: the chart draws five days, the comparison looks further back.
@@ -553,7 +553,7 @@ class HistoryTabsTests(TestCase):
             self._summary(self._trend()),
             [
                 f"最近一次（{self._date(latest)}，沒戴助聽器）",
-                "0 分 無/極輕微影響",
+                "0 分 無／極輕微影響",
                 "再做一次篩檢，就能看到分數的變化。",
             ],
         )
@@ -605,7 +605,7 @@ class HistoryTabsTests(TestCase):
             [
                 ("severe", "顯著影響"),
                 ("mild_to_moderate", "輕度到中度影響"),
-                ("normal", "無/極輕微影響"),
+                ("normal", "無／極輕微影響"),
             ],
         )
 
