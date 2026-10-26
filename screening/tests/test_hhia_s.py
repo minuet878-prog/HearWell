@@ -43,7 +43,7 @@ class HhiaSTests(TestCase):
                 },
                 {
                     "code": "mild_to_moderate",
-                    "text": "輕至中度影響",
+                    "text": "輕度到中度影響",
                     "max": 24,
                     "color": "mild_to_moderate",
                     "shade": "pale",
@@ -97,12 +97,12 @@ class HhiaSTests(TestCase):
             ),
             (
                 10,
-                "輕至中度影響",
+                "輕度到中度影響",
                 "您回報聽力困擾已影響部分日常生活。建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
             ),
             (
                 24,
-                "輕至中度影響",
+                "輕度到中度影響",
                 "您回報聽力困擾已影響部分日常生活。建議安排聽力評估，並帶這份結果與聽力師或耳鼻喉科醫師討論。",
             ),
             (
@@ -192,7 +192,7 @@ class HhiaSTests(TestCase):
         self.assertContains(history, first.url)
         self.assertContains(history, "總分：20")
         self.assertContains(history, "有戴")
-        self.assertContains(history, "輕至中度影響")
+        self.assertContains(history, "輕度到中度影響")
         submission = self.user.submissions.get()
         self.assertContains(history, submission.created_at.astimezone().strftime("%Y/%m/%d"))
         api = self.client.get(f"/api/submissions/{submission.pk}/").json()
@@ -292,7 +292,7 @@ class HhiaSTests(TestCase):
         self.assertEqual(exported[0]["total_score"], 20)
         self.assertEqual(len(exported[0]["answers"]), 10)
         self.assertEqual(exported[0]["answers"][0]["choice"], "有時")
-        self.assertEqual(exported[0]["level"], "輕至中度影響")
+        self.assertEqual(exported[0]["level"], "輕度到中度影響")
         response = self.client.post(reverse("delete_account"), {"password": "TestingPass123!"})
         self.assertEqual(response.status_code, 302)
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())

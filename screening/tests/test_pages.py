@@ -742,7 +742,7 @@ class PageFlowTests(TestCase):
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))
         self.assertIn("總分 0 分（滿分 40）", main)
-        self.assertIn("無/極輕微影響", main)
+        self.assertIn("無／極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
         unknown = Questionnaire.objects.create(questionnaire_name="Unknown", code="unconfigured")

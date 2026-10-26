@@ -17,7 +17,7 @@ def choices(number):
 
 
 THRESHOLDS = (
-    (8, "無/極輕微影響", "normal"),
+    (8, "無／極輕微影響", "normal"),
     (24, "輕度到中度影響", "mild_to_moderate"),
     (40, "顯著影響", "severe"),
 )
