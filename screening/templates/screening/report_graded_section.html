@@ -1,4 +1,4 @@
-{# A graded questionnaire's part of the report (report_content.html); only a life-impact one (ADR 0016) shows subscores and answers. The table's roles keep it a table to screen readers where a narrow screen stacks its records (#315). #}
+{# A graded questionnaire's part of the report (report_content.html); subscores show where the record has them (result.subscores), and only a life-impact one (ADR 0016) shows its answers. The table's roles keep it a table to screen readers where a narrow screen stacks its records (#315). #}
 <section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
     <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
     <p class="mb-1"><span class="report-score">{{ latest.result.total }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level report-level-{{ latest.result.level.color }}">{{ latest.result.level.text }}</span></p>
