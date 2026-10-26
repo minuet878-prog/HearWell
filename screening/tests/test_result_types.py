@@ -677,6 +677,25 @@ class SummaryTemplateTests(ResultTestCase):
                     with self.assertNumQueries(queries):
                         self.client.get(reverse("my_hearing"), {"questionnaire": code})
 
+    def test_a_saved_comparison_takes_my_hearing_no_more_queries_than_before(self):
+        # The report's pair reads its records' questionnaires with them: reading result.total
+        # without them took two more queries than main (12 -> 14 on HHIE-S, spec #385 check).
+        for code, count in ((hhie_s.CODE, 10), (hhia_s.CODE, 10)):
+            with self.subTest(code=code):
+                user = consented_user(username=f"saved_comparison_{code}")
+                self.client.force_login(user)
+                unaided = self.record(
+                    user, code, [2] * count, {"wearing_hearing_aid": False}, (2026, 3, 1)
+                )
+                aided = self.record(
+                    user, code, [4] * count, {"wearing_hearing_aid": True}, (2026, 4, 1)
+                )
+                user.report_comparisons.create(
+                    questionnaire=unaided.questionnaire, unaided=unaided, aided=aided
+                )
+                with self.assertNumQueries(12):  # the same count as main
+                    self.client.get(reverse("my_hearing"), {"questionnaire": code})
+
     def test_home_takes_the_same_queries_for_each_last_result_type(self):
         # Counts measured before the change. SADL's satisfaction reads each answer's question.
         for index, queries in ((0, 9), (2, 9), (4, 9), (6, 10), (8, 25)):

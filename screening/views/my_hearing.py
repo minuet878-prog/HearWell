@@ -184,7 +184,7 @@ def my_hearing(request):
             "since_last": since_last,
             "show_comparison": shows_wearing_comparison(request.user, current),
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
-            .select_related("unaided", "aided")
+            .select_related("unaided__questionnaire", "aided__questionnaire")
             .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
             "trend_chart": (
