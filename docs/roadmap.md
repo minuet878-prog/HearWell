@@ -67,7 +67,10 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   年/月/日、欄位名稱不加冒號、短頁面頁尾貼底、每頁有回去的路、作答與精靈按鈕手機撐滿等約 100 點；不換品牌色、
   不改版面；ADR 0031；本人略過交叉審查直接驗收，驗證見 `docs/verification/issue-354.md`）、
   HHIE-S 與 HHIA-S 分級名稱寫法統一（#356：都寫「無／極輕微影響」「輕度到中度影響」「顯著影響」，只改字、不動門檻；
-  驗證見 `docs/verification/issue-356.md`）。
+  驗證見 `docs/verification/issue-356.md`）、
+  `views.py`、`models.py` 依功能拆成 package（母規格 #380，#381、#382：只搬不改，views 分 11 檔、models 分 7 檔，
+  `urls.py` 直接寫「小檔.函式」；語法樹、網址、OpenAPI 拆前拆後比對一致；Codex 交叉審查要修 0 項；PR #392，
+  驗證見 `docs/verification/issue-380.md`；跨檔借用的底線名字留給 #393）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
