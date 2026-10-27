@@ -1,4 +1,6 @@
+import dataclasses
 import re
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,6 +10,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import User
+from screening.qa_assistant import content
 from screening.tests import test_guide
 from screening.tests.helpers import consented_user
 
@@ -119,6 +122,20 @@ class QaAnswerTests(TestCase):
         response = self.client.get(reverse("qa_answer", args=["no-such-question"]))
         self.assertEqual(response.status_code, 404)
 
+    def test_a_changed_answer_keeps_its_address(self):
+        # ADR 0033: the owner rewrites an answer; the address family were sent still opens it.
+        address = reverse("qa_answer", args=["brands-and-shops"])
+        rewritten = dataclasses.replace(
+            content.BY_CODE["brands-and-shops"],
+            answer="<p>改寫過的答案。</p>",
+            checked_on=date(2027, 3, 1),
+        )
+        with patch.dict("screening.qa_assistant.content.BY_CODE", {rewritten.code: rewritten}):
+            response = self.client.get(address)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<p>改寫過的答案。</p>", answer_part(response))
+        self.assertContains(response, '<p class="guide-checked">本頁資料查核於 2027/03/01。</p>')
+
     def test_headings_do_not_skip_a_level(self):
         for code in REFERRALS:
             with self.subTest(code=code):
@@ -143,10 +160,23 @@ class QaSameForEveryoneTests(TestCase):
 
     def test_no_questionnaire_or_audiogram_is_read(self):
         self.client.force_login(consented_user(username="qa_reader"))
-        for name, args in self.PAGES:
-            with self.subTest(page=name, args=args):
+        requests = [
+            *((f"GET {name} {args}", reverse(name, args=args), None) for name, args in self.PAGES),
+            *(
+                (f"GET qa_topic {slug}", reverse("qa_topic", args=[slug]), None)
+                for slug, _ in content.TOPICS
+            ),
+            ("POST qa_search", reverse("qa_search"), {"question": "助聽器補助怎麼申請"}),
+            ("GET qa_results", reverse("qa_results"), None),
+        ]
+        for label, url, data in requests:
+            with self.subTest(request=label):
                 with CaptureQueriesContext(connection) as queries:
-                    self.client.get(reverse(name, args=args))
+                    if data is None:
+                        response = self.client.get(url)
+                    else:
+                        response = self.client.post(url, data)
+                self.assertIn(response.status_code, (200, 302))
                 tables = " ".join(query["sql"] for query in queries.captured_queries)
                 self.assertNotIn("screening_submission", tables)
                 self.assertNotIn("screening_answer", tables)
@@ -176,6 +206,8 @@ class QaReferralTests(TestCase):
         answer = self.answer("diagnosis-and-medication")
         self.assertIn("不回答個人的診斷和用藥", answer)
         self.assertIn("耳鼻喉科醫師", answer)
+        # The site has no ENT page to send to: the answer itself links nowhere.
+        self.assertNotIn("<a", answer)
 
     def test_brands_and_shops_lead_to_types_and_prices_and_the_hospital_search(self):
         answer = self.answer("brands-and-shops")
