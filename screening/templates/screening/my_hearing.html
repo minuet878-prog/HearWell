@@ -62,7 +62,7 @@
 <a class="link-card" href="{% url 'result' submission.id %}">
     <span class="link-card-body">
         <strong>{{ submission.created_at|date:"Y/m/d" }}{% if submission.id in same_day %} {{ submission.created_at|date:"H:i" }}{% endif %}</strong>
-        {% include submission.result.summary_template with place="records" %}
+        {% include submission.result.row_template %}
     </span>
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>
