@@ -1,10 +1,13 @@
+import json
 import re
+from datetime import date, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import NoMatchReason, QuestionLog, User
+from screening import models
+from screening.models import Consent, NoMatchReason, QuestionLog, User
 from screening.qa_assistant import content
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user
@@ -204,4 +207,99 @@ class QuestionLogAdminTests(TestCase):
         self.assertEqual(
             set(QuestionLog.objects.values_list("question", flat=True)),
             {"耳機補助怎麼申請", "哪裡可以修助聽器"},
+        )
+
+
+class QuestionLogPrivacyTests(TestCase):
+    """#400 acceptance 3 (ADR 0034): the privacy notice says what is kept, why, how long and how
+    it goes; the date moves but the version stays, so nobody is stopped to agree again."""
+
+    def setUp(self):
+        page = self.client.get(reverse("privacy")).content.decode()
+        self.main = page[page.index("<main") : page.index("</main>")]
+
+    def section(self):
+        start = self.main.index('<h2 id="question-log-title"')
+        return test_layout._text(self.main[start : self.main.index("<h2", start + 1)])
+
+    def test_a_section_on_the_question_log_listed_on_top(self):
+        self.assertIn(
+            '<h2 id="question-log-title" class="h4 mt-6">問答小助手的提問紀錄</h2>', self.main
+        )
+        self.assertIn('<li><a href="#question-log-title">問答小助手的提問紀錄</a></li>', self.main)
+        # Right after what is collected, so 會交給誰's 上面所有資料 covers it too.
+        self.assertLess(
+            self.main.index('<h2 id="collected-title"'),
+            self.main.index('<h2 id="question-log-title"'),
+        )
+        self.assertLess(
+            self.main.index('<h2 id="question-log-title"'),
+            self.main.index('<h2 id="storage-title"'),
+        )
+
+    def test_it_says_what_is_kept_why_anonymously_and_for_90_days(self):
+        section = self.section()
+        for words in (
+            "您打的問題原文",
+            "找到的第一題（或沒有找到）",
+            "提問的時間",
+            "從清單點選題目不會記錄",
+            "補充問答小助手的題目",
+            "提問紀錄是匿名的",
+            "不記錄您的帳號、IP 位址",
+            "保存 90 天後自動刪除",
+            "我們會提早刪除那一筆",
+            "「下載我的資料」不包含提問紀錄",
+            "請不要在問題裡輸入姓名、電話、身分證字號、病歷號碼",
+        ):
+            with self.subTest(words=words):
+                self.assertIn(words, section)
+
+    def test_the_purpose_and_how_long_are_in_their_sections_too(self):
+        # Every statement stays true (privacy.html): 不做上面以外的用途, 保存到您刪除帳號.
+        why = self.main[self.main.index('id="why-title"') : self.main.index('id="collected-title"')]
+        self.assertIn("<li>看大家在問答小助手怎麼問，補充題目。</li>", why)
+        storage = self.main[
+            self.main.index('id="storage-title"') : self.main.index('id="recipients-title"')
+        ]
+        self.assertIn("<li>問答小助手的提問紀錄保存 90 天後自動刪除。</li>", storage)
+
+    def test_the_date_moves_and_the_version_stays(self):
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 27))
+        self.assertEqual(models.CONSENT_VERSION, 2)
+        self.assertIn("第 2 版，2026/10/27 更新", self.main)
+
+    def test_who_agreed_before_is_not_asked_again(self):
+        user = User.objects.create_user(username="qa_log_agreed_before")
+        Consent.objects.create(user=user, version=2)
+        Consent.objects.filter(user=user).update(agreed_at=timezone.now() - timedelta(days=30))
+        self.client.force_login(user)
+        for name in ("my_hearing", "questionnaire_list"):
+            with self.subTest(page=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 200)
+
+
+class QuestionLogAccountTests(TestCase):
+    """#400 acceptance 6 (ADR 0034): not linked to an account, so 下載我的資料 and 刪除帳號
+    leave it out, as the privacy notice says."""
+
+    PASSWORD = "Xk9#mPq2vLw"
+
+    def setUp(self):
+        self.user = consented_user(username="qa_log_account", password=self.PASSWORD)
+        self.client.force_login(self.user)
+        self.client.post(reverse("qa_search"), {"question": "耳機補助怎麼申請"})
+
+    def test_the_download_has_no_question_log(self):
+        response = self.client.get(reverse("download_my_data"))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertNotIn("耳機補助", json.dumps(data, ensure_ascii=False))
+        self.assertFalse({"question_log", "question_logs", "questions"} & set(data))
+
+    def test_deleting_the_account_leaves_the_anonymous_log(self):
+        self.client.post(reverse("delete_account"), {"password": self.PASSWORD})
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertEqual(
+            list(QuestionLog.objects.values_list("question", flat=True)), ["耳機補助怎麼申請"]
         )

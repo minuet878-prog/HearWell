@@ -11,7 +11,8 @@ from screening.models.submissions import Answer
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
 CONSENT_VERSION = 2  # 2: the 助聽器與補助資料 (#286, spec #284 Q9)
-PRIVACY_UPDATED_ON = date(2026, 10, 25)
+# The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034).
+PRIVACY_UPDATED_ON = date(2026, 10, 27)
 
 
 class User(AbstractUser):
