@@ -4,8 +4,9 @@ A definition's `result` is one of these classes; `submission.result` is it bound
 Callers ask the record's result instead of checking which type it is (ADR 0036).
 
 Scores come from the record's one scoring path (`with_scores()` or `_calculate_scores`), item data
-from the answers the caller prefetched. The imports inside methods break an import cycle: the
-definitions import this module, and scoring and the models import the definitions.
+from the answers the caller prefetched (a subscale record alone loads its own). The imports inside
+methods break an import cycle: the definitions import this module, and scoring and the models
+import the definitions.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -292,11 +293,23 @@ class SubscaleResult(Result):
 
     @cached_property
     def satisfaction(self):
-        # The only scoring path for subscale questionnaires. Callers prefetch the answers with
-        # their questions, so a list scores every record from one query.
+        # The only scoring path for subscale questionnaires. A list prefetches the answers with
+        # their questions and scores every record from one query; one record alone (the home
+        # page's last result) loads them here in one query, not one per answer's question (#407).
+        self._load_answers()
         answers = self.submission.answers.all()
         definition = self.submission.questionnaire.definition
         return definition.score({a.question.question_number: a.score for a in answers})
+
+    def _load_answers(self):
+        # The answers with their questions, unless the caller already prefetched the answers:
+        # then they are used as they are, so a caller prefetches them with their questions.
+        from screening.models import Answer
+
+        prefetch_related_objects(
+            [self.submission],
+            Prefetch("answers", queryset=Answer.objects.select_related("question")),
+        )
 
     def export(self):
         satisfaction = self.satisfaction
@@ -307,10 +320,5 @@ class SubscaleResult(Result):
 
     def page_context(self):
         # The page reads satisfaction and each answer from the record: one query for both.
-        from screening.models import Answer
-
-        prefetch_related_objects(
-            [self.submission],
-            Prefetch("answers", queryset=Answer.objects.select_related("question")),
-        )
+        self._load_answers()
         return {}

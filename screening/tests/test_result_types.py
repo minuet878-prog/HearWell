@@ -697,8 +697,9 @@ class SummaryTemplateTests(ResultTestCase):
                     self.client.get(reverse("my_hearing"), {"questionnaire": code})
 
     def test_home_takes_the_same_queries_for_each_last_result_type(self):
-        # Counts measured before the change. SADL's satisfaction reads each answer's question.
-        for index, queries in ((0, 9), (2, 9), (4, 9), (6, 10), (8, 25)):
+        # Counts measured before the change; SADL's was 25, a query per answer's question, until
+        # its satisfaction loaded the answers with their questions in one (#407).
+        for index, queries in ((0, 9), (2, 9), (4, 9), (6, 10), (8, 10)):
             code, scores, fields, (year, month, day) = self.RECORDS[index]
             user = consented_user(username=f"home_queries_{index}")
             for older in range(2):
