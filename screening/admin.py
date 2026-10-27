@@ -1,7 +1,16 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Answer, Question, QuestionLog, Questionnaire, Submission, User
+from .models import (
+    Answer,
+    Question,
+    QuestionLog,
+    QuestionLogMonth,
+    Questionnaire,
+    Submission,
+    User,
+    purge_question_log,
+)
 
 
 @admin.register(User)
@@ -73,6 +82,29 @@ class QuestionLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def changelist_view(self, request, extra_context=None):
+        # #401: there is no scheduler, so opening the list clears those past 90 days first.
+        purge_question_log()
+        return super().changelist_view(request, extra_context)
+
     @admin.display(description="結果")
     def result(self, log):
         return log.faq_code or "沒對到"
+
+
+@admin.register(QuestionLogMonth)
+class QuestionLogMonthAdmin(ViewOnlyAdmin):
+    # #401 (ADR 0035): counted by the purge alone, so the owner reads the months in a row.
+    list_display = (
+        "month_label",
+        "typed",
+        "matched",
+        "different_wording",
+        "not_in_faq",
+        "should_not_answer",
+    )
+    ordering = ("-month",)
+
+    @admin.display(description="月份", ordering="month")
+    def month_label(self, stats):
+        return str(stats)

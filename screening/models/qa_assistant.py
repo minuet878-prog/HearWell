@@ -1,4 +1,12 @@
-from django.db import models
+from collections import Counter
+from datetime import timedelta
+
+from django.db import models, transaction
+from django.db.models import F
+from django.utils import timezone
+
+# ADR 0034: a question is kept 90 days, then only its month's counts are.
+KEPT_FOR = timedelta(days=90)
 
 
 class NoMatchReason(models.TextChoices):
@@ -25,3 +33,54 @@ class QuestionLog(models.Model):
 
     def __str__(self):
         return self.question
+
+
+class QuestionLogMonth(models.Model):
+    # 月統計 (spec #396, #401): a month's counts of the 提問紀錄, kept after the questions are
+    # purged so the owner can read three months in a row (ADR 0035). Never what was typed.
+    # Field names other than month and the two counts are NoMatchReason's values.
+    month = models.DateField("月份", unique=True)  # the month's first day, Taipei time
+    typed = models.PositiveIntegerField("打字提問數", default=0)
+    matched = models.PositiveIntegerField("對到數", default=0)
+    different_wording = models.PositiveIntegerField(
+        NoMatchReason.DIFFERENT_WORDING.label, default=0
+    )
+    not_in_faq = models.PositiveIntegerField(NoMatchReason.NOT_IN_FAQ.label, default=0)
+    should_not_answer = models.PositiveIntegerField(
+        NoMatchReason.SHOULD_NOT_ANSWER.label, default=0
+    )
+
+    class Meta:
+        verbose_name = verbose_name_plural = "月統計"
+
+    def __str__(self):
+        return f"{self.month.year}/{self.month.month:02d}"
+
+
+def purge_question_log():
+    """Count each question over 90 days into its month, then delete it; returns how many.
+
+    Called when a question is saved, when the owner opens the log in the admin and on each
+    deploy, since there is no scheduler (spec #396). Counting and deleting share one
+    transaction and the rows stay locked until both are done, so a question is counted once:
+    a purge running at the same time waits, then no longer finds it.
+    """
+    with transaction.atomic():
+        expired = list(
+            QuestionLog.objects.select_for_update().filter(created_at__lt=timezone.now() - KEPT_FOR)
+        )
+        months = {}
+        for log in expired:
+            counts = months.setdefault(timezone.localdate(log.created_at).replace(day=1), Counter())
+            counts["typed"] += 1
+            counts["matched"] += bool(log.faq_code)
+            if log.reason:
+                counts[log.reason] += 1
+        for month, counts in months.items():
+            QuestionLogMonth.objects.get_or_create(month=month)
+            # F(): added in the database, so a purge of other rows into this month adds too.
+            QuestionLogMonth.objects.filter(month=month).update(
+                **{field: F(field) + count for field, count in counts.items()}
+            )
+        QuestionLog.objects.filter(pk__in=[log.pk for log in expired]).delete()
+    return len(expired)

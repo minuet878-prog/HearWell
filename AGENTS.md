@@ -91,7 +91,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 
 ### 結構
 
-- `screening/models/`（`__init__.py` 重新匯出所有名字，照舊寫 `from screening.models import X`）：`accounts`（User、Consent、同意書版本）、`questionnaires`（Questionnaire、Category、Question）、`submissions`（Submission、Answer、NormGroup、ReportComparison、`shared_days`）、`audiograms`（Audiogram、AudiogramPoint、Ear、Conduction）、`hearing_aids`（AidAndSubsidy 與助聽器、補助選項）、`sharing`（ReportShare 分享連結與它的 token、到期日）、`guide`（GuideChapterView）、`qa_assistant`（QuestionLog 提問紀錄與沒對到的原因）
+- `screening/models/`（`__init__.py` 重新匯出所有名字，照舊寫 `from screening.models import X`）：`accounts`（User、Consent、同意書版本）、`questionnaires`（Questionnaire、Category、Question）、`submissions`（Submission、Answer、NormGroup、ReportComparison、`shared_days`）、`audiograms`（Audiogram、AudiogramPoint、Ear、Conduction）、`hearing_aids`（AidAndSubsidy 與助聽器、補助選項）、`sharing`（ReportShare 分享連結與它的 token、到期日）、`guide`（GuideChapterView）、`qa_assistant`（QuestionLog 提問紀錄與沒對到的原因、QuestionLogMonth 月統計、`purge_question_log` 90 天清除）
 - `screening/views/`（`__init__.py` 是空的，`urls.py` 依檔引用，例如 `home.index`）：`common`（`health_data_page`、`safe_next`）、`home`（首頁、給家人、了解頁）、`accounts`（註冊、登出、隱私、同意、帳號設定與刪除）、`answering`（問卷清單、作答、HHI 前後比較）、`results`（單次結果、儀表）、`my_hearing`（我的聽力趨勢）、`reports`（健康報告與分享）、`export`（下載我的資料）、`audiograms`（聽力圖）、`guide`（選配指引與路線）、`monitoring`（錯誤監控測試頁）
 - `screening/forms.py`（formset 收作答與驗證）`scoring.py`（分級、顏色、建議文字）`admin.py` `urls.py`
 - `screening/tests/` 依功能分檔（`test_scoring.py`、`test_answering.py`、`test_api.py`、`test_audiogram.py`……），只跑一組：`python manage.py test --settings=config.test_settings screening.tests.test_audiogram`；跨檔借用別的測試類別要匯入整個檔案（`from screening.tests import test_pages`），直接匯入類別的話，單獨跑那一組會混進別組的測試

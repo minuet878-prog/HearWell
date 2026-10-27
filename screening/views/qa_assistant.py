@@ -5,7 +5,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import QaQuestionForm
-from screening.models import QuestionLog
+from screening.models import QuestionLog, purge_question_log
 from screening.qa_assistant import content
 from screening.qa_assistant.matching import match
 
@@ -79,6 +79,8 @@ def qa_search(request):
     codes = match(question)
     # #400 (ADR 0034): every typed question, anonymously, with the first question it matched.
     QuestionLog.objects.create(question=question, faq_code=codes[0] if codes else "")
+    # #401: there is no scheduler, so each new question also clears those past 90 days.
+    purge_question_log()
     request.session[RESULTS] = codes[:MOST_RESULTS]
     return HttpResponseRedirect(reverse("qa_results"))
 
