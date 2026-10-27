@@ -71,6 +71,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   `views.py`、`models.py` 依功能拆成 package（母規格 #380，#381、#382：只搬不改，views 分 11 檔、models 分 7 檔，
   `urls.py` 直接寫「小檔.函式」；語法樹、網址、OpenAPI 拆前拆後比對一致；Codex 交叉審查要修 0 項；PR #392，
   驗證見 `docs/verification/issue-380.md`；跨檔借用的底線名字留給 #393）、
+  跨檔共用的 view 函式去掉底線（#393：`has_subscores` 搬到結果頁、`_find_by_key` 改成
+  `SubmissionQuerySet.find_by_key`；PR #403，驗證見 `docs/verification/issue-393.md`）、
   每筆紀錄帶一個結果物件（架構審查候選 1，母規格 #385，#386–#391，ADR 0036：四種結果類型各一個 class，首頁、
   我的紀錄、結果頁、報告、匯出、API 都問 `submission.result`，不再依類型分支；唯一行為改變是 THI 在 API 的分項
   改 null；與 main 比對 60 個輸出畫面相同、查詢數相同；Codex 交叉審查要修 0 項；驗證見
