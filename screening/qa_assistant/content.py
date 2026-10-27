@@ -48,6 +48,7 @@ FAQS = (
         ),
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        related=("diagnosis-and-medication", "brands-and-shops"),
         referral=True,
     ),
     Faq(
@@ -61,6 +62,7 @@ FAQS = (
         ),
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        related=("sudden-hearing-loss", "my-results"),
         referral=True,
     ),
     Faq(
@@ -80,6 +82,7 @@ FAQS = (
             ("我的選配指引：身障鑑定與鑑定醫院", "/guide/assessment"),
         ),
         checked_on=date(2026, 10, 27),
+        related=("my-results", "diagnosis-and-medication"),
         referral=True,
     ),
     Faq(
@@ -107,6 +110,7 @@ FAQS = (
             ),
         ),
         checked_on=date(2026, 10, 27),
+        related=("diagnosis-and-medication", "my-results"),
         referral=True,
     ),
 )
@@ -118,3 +122,7 @@ URGENT_CODE = "sudden-hearing-loss"
 
 # 大家常問 in display order, the owner's pick (#402 settles the real 3 to 5).
 POPULAR = ("my-results", "brands-and-shops", "diagnosis-and-medication")
+
+# Codes of questions taken out (ADR 0033): their old addresses go to the home page, and no new
+# question may use them again. Add a code here when its question leaves FAQS.
+RETIRED_CODES = frozenset()

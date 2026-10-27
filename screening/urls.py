@@ -31,6 +31,7 @@ urlpatterns = [
     path("family", home.family_guide, name="family_guide"),
     path("learn", home.learn, name="learn"),
     path("qa", qa_assistant.qa_home, name="qa_home"),
+    path("qa/topic/<slug:topic>", qa_assistant.qa_topic, name="qa_topic"),
     path("qa/<slug:code>", qa_assistant.qa_answer, name="qa_answer"),
     path("guide", guide.guide, name="guide"),
     path("guide/<slug:chapter>", guide.guide_chapter, name="guide_chapter"),

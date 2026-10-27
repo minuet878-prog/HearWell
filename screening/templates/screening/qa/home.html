@@ -17,10 +17,10 @@
     {% endfor %}
 </ul>
 <h2 class="h4 mt-6">依主題找</h2>
-{# #398 makes each topic a page of its questions. #}
+{# #398: each topic is a page of its questions. #}
 <ul class="qa-questions">
     {% for slug, name in topics %}
-    <li>{{ name }}</li>
+    <li><a href="{% url 'qa_topic' slug %}">{{ name }}</a></li>
     {% endfor %}
 </ul>
 {% endblock %}

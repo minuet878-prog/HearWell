@@ -77,6 +77,7 @@ class LearnPageTests(TestCase):
             # #397: the Q&A assistant opens from the 了解 page.
             reverse("qa_home"),
             reverse("qa_answer", args=["my-results"]),
+            reverse("qa_topic", args=["hearing-aids"]),
         )
         for url in pages:
             with self.subTest(url=url):

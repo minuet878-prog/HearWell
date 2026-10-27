@@ -65,12 +65,6 @@ class QaHomeTests(TestCase):
                 links = re.findall(r'href="/qa/([^"]+)"', section)
                 self.assertEqual(tuple(links), popular)
 
-    def test_the_topics_are_not_links_yet(self):
-        # #398 makes each topic a page; until then nothing leads anywhere unfinished.
-        content = self.client.get(reverse("qa_home")).content.decode()
-        topics = content[content.index(">依主題找</h2>") : content.index("</main>")]
-        self.assertNotIn("<a ", topics)
-
     def test_headings_do_not_skip_a_level(self):
         response = self.client.get(reverse("qa_home"))
         test_guide.assert_levels_without_skipping(self, test_guide.heading_levels(response))

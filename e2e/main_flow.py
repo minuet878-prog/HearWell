@@ -6589,6 +6589,9 @@ WHITE_CARD_PAGES_LEARN = (
     ("Q&A home, signed in", True, "/qa"),
     ("Q&A answer", False, "/qa/brands-and-shops"),
     ("Q&A answer, signed in", True, "/qa/sudden-hearing-loss"),
+    # #398: a topic page, signed in and out.
+    ("Q&A topic", False, "/qa/topic/hearing-aids"),
+    ("Q&A topic, signed in", True, "/qa/topic/hearing-health"),
     ("privacy", False, "/privacy"),
 )
 
