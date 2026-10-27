@@ -6,21 +6,22 @@ from django.urls import reverse
 from screening.tests import test_guide
 
 # Wording finalised in #220 (D2–D18a), shortened in the guide chapters tidy-up (2026-10-23, the
-# owner's request): the limits as rows of numbers, each level's features folded away.
+# owner's request): the limits as rows of numbers, each level's features folded away. RIC and
+# 擴音器 renamed on 2026-10-27 (the owner's request).
 SENTENCES = (
     "適合哪一種外型，要看聽損程度、耳朵形狀和手的靈活度，請和聽力師討論。",
     "外型",
     "耳掛型",
     "掛在耳朵後面，機體比較大、好操作，可以接耳塞或客製耳模。適合輕度到極重度。",
-    "受話器外置型（耳道接收型）",
+    "RIC（迷你耳掛型）",
     "機體小、掛在耳後，喇叭放進耳道，戴起來比較不悶。適合到重度。",
     "耳內型",
     "依耳朵形狀訂製，戴在外耳殼。適合到重度。"
     "更小的有耳道型（適合到中重度）和深耳道型（最不明顯，適合輕度到中度）。",
     "上面的聽損程度，不是身心障礙證明的等級。",
-    "集音器不是助聽器",
+    "擴音器／輔聽器不是助聽器",
     "助聽器是醫療器材，要有衛生福利部的醫療器材許可證，由有醫療器材販賣許可的業者販售。",
-    "集音器、輔聽器一般不是醫療器材，依法不能宣稱改善聽損。",
+    "擴音器、輔聽器一般不是醫療器材，依法不能宣稱改善聽損。",
     "買之前，先確認是不是有許可證的助聽器。",
     "補助等級與上限",
     "2,000 元 簡易型，每只最多補助",
@@ -93,8 +94,9 @@ class TypesAndPricesChapterTests(TestCase):
         self.assertEqual(
             re.findall(r"[\d,]+ *元", text), ["2,000 元", "10,000 元", "20,000 元", "30,000 元"]
         )
-        # Brands and models are written in Latin letters; the only ones here are the FDA domain.
-        self.assertEqual(set(re.findall(r"[A-Za-z]+", text)), {"lmspiq", "fda", "gov", "tw"})
+        # Brands and models are written in Latin letters; the only ones here are RIC (a type, not a
+        # brand) and the FDA domain.
+        self.assertEqual(set(re.findall(r"[A-Za-z]+", text)), {"RIC", "lmspiq", "fda", "gov", "tw"})
         for brand in ("峰力", "奧迪康", "西嘉", "瑞聲達", "唯聽", "斯達克", "優利康", "伯納峰"):
             with self.subTest(brand=brand):
                 self.assertNotIn(brand, text)
