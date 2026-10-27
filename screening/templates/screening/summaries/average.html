@@ -1,0 +1,1 @@
+{# An SSQ12-TW record's overall average, or why it has none (#409). #}{% with result=submission.result %}{% if result.average is not None %}整體平均：{{ result.average }}／10{% else %}{{ result.unavailable_reason }}{% endif %}{% endwith %}

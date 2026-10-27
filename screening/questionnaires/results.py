@@ -30,9 +30,12 @@ class Result:
     norm_summary = None  # the record against its norm group, for the home page and the report
     not_applicable_choice = None  # the download's choice for an answer without a score
 
-    # The record's summary line (the home page's last result, each row of 我的紀錄) and its result
-    # page; page_context() is the page's data of this type, the view adding what every page has.
+    # The record's summary (plain text for the home page's last result, in a block, and the
+    # report; None for a type with no summary of its own: graded), its row of 我的紀錄 (#409) and
+    # its result page; page_context() is the page's data of this type, the view adding what every
+    # page has.
     summary_template = None
+    row_template = None
     page_template = None
     page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
@@ -66,7 +69,7 @@ class Result:
 class GradedResult(Result):
     """分級: the total graded by thresholds, with advice (HHIE-S, HHIA-S, THI)."""
 
-    summary_template = "screening/graded_summary.html"
+    row_template = "screening/record_rows/graded.html"
     page_template = "screening/result.html"
 
     @property
@@ -150,7 +153,8 @@ def score_bar(definition, score, level):
 class AverageResult(Result):
     """平均: the average of the items, no grade (SSQ12-TW)."""
 
-    summary_template = "screening/ssq_average.html"
+    summary_template = "screening/summaries/average.html"
+    row_template = "screening/record_rows/average.html"
     page_template = "screening/ssq12_result.html"
     not_applicable_choice = "不適用"
 
@@ -195,7 +199,8 @@ class AverageResult(Result):
 class NormResult(Result):
     """常模比對: each item against the norms, no total (IOI-HA)."""
 
-    summary_template = "screening/ioi_ha_summary.html"  # reads norm_summary as `ioi_ha`
+    summary_template = "screening/summaries/norm.html"
+    row_template = "screening/record_rows/norm.html"
     page_template = "screening/result_ioi_ha.html"
     page_shows_wearing = False  # not asked: IOI-HA is answered about the hearing aids worn
 
@@ -286,7 +291,8 @@ def ioi_ha_summary(submission):
 class SubscaleResult(Result):
     """分量表: the overall and subscale averages (SADL)."""
 
-    summary_template = "screening/sadl_overall.html"
+    summary_template = "screening/summaries/subscale.html"
+    row_template = "screening/record_rows/subscale.html"
     page_template = "screening/sadl_result.html"
     page_shows_wearing = False  # not asked: always worn (always_aided)
     not_applicable_choice = "不適用"

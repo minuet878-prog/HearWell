@@ -80,7 +80,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   助聽器類型章節改用字（「RIC（迷你耳掛型）」「擴音器／輔聽器不是助聽器」，詞彙表「集音器」改名「擴音器」；
   驗證見 `docs/verification/types-and-prices-wording.md`）、
   #385 的兩個後續：首頁上次結果是 SADL 時查詢從 25 降到 10（#407）、配戴比較顯示的總分改從結果物件拿（#408，
-  差值仍用原始總分）；畫面不變；Codex 交叉審查要修 0 項；驗證見 `docs/verification/issue-407-408.md`）。
+  差值仍用原始總分）；畫面不變；Codex 交叉審查要修 0 項；驗證見 `docs/verification/issue-407-408.md`）、
+  結果類型的摘要片段依用途拆開（#409：`summaries/` 給首頁上次結果與報告、`record_rows/` 給我的紀錄每一列，
+  拿掉 `place` 與 `ioi_ha` 參數；畫面不變；驗證見 `docs/verification/issue-409.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與

@@ -95,8 +95,8 @@
     <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ result.total }} 分{% if last_max_score %}（滿分 {{ last_max_score }}）{% endif %}</div>
     {% else %}
     <h2 class="result-level mb-0">{{ submission.questionnaire.definition.topic }}（{{ submission.questionnaire.questionnaire_name }}）</h2>
-    {# #389: the result type's summary, if any; IOI-HA's reads its norm summary as ioi_ha (None for the others). #}
-    {% include submission.result.summary_template with place="home" ioi_ha=submission.result.norm_summary %}
+    {# #409: the result type's summary in a block, if it has one (a graded record has none). #}
+    {% if result.summary_template %}<div>{% include result.summary_template %}</div>{% endif %}
     {% endif %}
     <a class="welcome-result-link" href="{% url 'result' submission.id %}">看這次結果<span aria-hidden="true">›</span></a>
 </div>
