@@ -93,9 +93,9 @@ class QaSearchTests(TestCase):
     def test_nothing_found_says_so_and_lists_the_topics_and_popular(self):
         main = main_of(self.ask("今天天氣如何", follow=True))
         self.assertIn(NOT_FOUND, main)
-        for _, name in content.TOPICS:
+        for slug, name in content.TOPICS:
             with self.subTest(topic=name):
-                self.assertIn(name, main)
+                self.assertIn(f'<a href="{reverse("qa_topic", args=[slug])}">{name}</a>', main)
         popular = main[main.index(">大家常問</h2>") :]
         self.assertEqual(question_links(popular), list(content.POPULAR))
         self.assertNotIn("mailto:", main)

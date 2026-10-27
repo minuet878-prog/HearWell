@@ -30,6 +30,7 @@ OPEN_PAGES = {
     "shared_cover",
     "shared_report",
     "qa_home",
+    "qa_topic",
     "qa_answer",
     "qa_search",
     "qa_results",

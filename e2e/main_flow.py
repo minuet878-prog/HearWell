@@ -6589,6 +6589,9 @@ WHITE_CARD_PAGES_LEARN = (
     ("Q&A home, signed in", True, "/qa"),
     ("Q&A answer", False, "/qa/brands-and-shops"),
     ("Q&A answer, signed in", True, "/qa/sudden-hearing-loss"),
+    # #398: a topic page, signed in and out.
+    ("Q&A topic", False, "/qa/topic/hearing-aids"),
+    ("Q&A topic, signed in", True, "/qa/topic/hearing-health"),
     # #399: a typed question's results, found and not.
     ("Q&A results", False, lambda test: test.qa_results("耳機補助")),
     ("Q&A results, nothing found", True, lambda test: test.qa_results("今天天氣如何")),

@@ -49,6 +49,7 @@ FAQS = (
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("分數代表什麼", "結果是什麼意思", "我幾分算嚴重"),
+        related=("diagnosis-and-medication", "brands-and-shops"),
         referral=True,
     ),
     Faq(
@@ -63,6 +64,7 @@ FAQS = (
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("要吃什麼藥", "耳朵的病要怎麼治療"),
+        related=("sudden-hearing-loss", "my-results"),
         referral=True,
     ),
     Faq(
@@ -83,6 +85,7 @@ FAQS = (
         ),
         checked_on=date(2026, 10, 27),
         other_phrasings=("推薦哪個牌子", "去哪裡買助聽器", "哪家店比較好"),
+        related=("my-results", "diagnosis-and-medication"),
         referral=True,
     ),
     Faq(
@@ -111,6 +114,7 @@ FAQS = (
         ),
         checked_on=date(2026, 10, 27),
         other_phrasings=("突然聽不到", "耳朵流血", "一邊耳朵突然聽不見"),
+        related=("diagnosis-and-medication", "my-results"),
         referral=True,
     ),
     Faq(
@@ -127,6 +131,7 @@ FAQS = (
         sources=(("我的選配指引：九號表：申請助聽器補助", "/guide/form-9"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("助聽器有補助嗎", "怎麼申請補助", "補助可以拿多少"),
+        related=("sound-amplifier-vs-hearing-aid", "brands-and-shops"),
     ),
     Faq(
         code="sound-amplifier-vs-hearing-aid",
@@ -148,6 +153,7 @@ FAQS = (
         ),
         checked_on=date(2026, 10, 27),
         other_phrasings=("集音器是不是助聽器", "集音器可以代替助聽器嗎", "集音器跟助聽器差在哪"),
+        related=("hearing-aid-subsidy", "brands-and-shops"),
     ),
 )
 
@@ -158,6 +164,10 @@ URGENT_CODE = "sudden-hearing-loss"
 
 # 大家常問 in display order, the owner's pick (#402 settles the real 3 to 5).
 POPULAR = ("my-results", "brands-and-shops", "diagnosis-and-medication")
+
+# Codes of questions taken out (ADR 0033): their old addresses go to the home page, and no new
+# question may use them again. Add a code here when its question leaves FAQS.
+RETIRED_CODES = frozenset()
 
 # Typed questions (#399): a colloquial word or a common typo, and the standard word the questions
 # and their other phrasings use. 集音器 is never a 助聽器: it is not a medical device (the
