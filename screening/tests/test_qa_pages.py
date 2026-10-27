@@ -41,7 +41,7 @@ QUESTION_CARD = re.compile(
 TOPIC_TILE = re.compile(
     r'<a class="link-card qa-topic" href="/qa/topic/([^"]+)">\s*'
     r'<span class="action-card-icon" aria-hidden="true" data-icon="([^"]+)">(.*?)</span>\s*'
-    r"<span class=\"link-card-title\">([^<]+)</span>\s*</a>",
+    r"<span class=\"link-card-title\">(.*?)</span>\s*</a>",
     re.S,
 )
 TOPIC_TILES = [
@@ -63,7 +63,7 @@ def topic_tiles(html):
     for slug, _, drawing, _ in tiles:
         if "<path" not in drawing:
             raise AssertionError(f"{slug}'s icon draws nothing")
-    return [(slug, icon, name) for slug, icon, _, name in tiles]
+    return [(slug, icon, re.sub(r"<[^>]+>", "", name)) for slug, icon, _, name in tiles]
 
 
 def answer_part(response):
@@ -85,10 +85,7 @@ class QaHomeTests(TestCase):
         order = [
             f'href="{reverse("qa_answer", args=["sudden-hearing-loss"])}"',
             ">依主題找</h2>",
-            "網站怎麼用",
-            "問卷是什麼",
-            "助聽器選配與補助",
-            "聽力保健常識",
+            *(f'href="{reverse("qa_topic", args=[slug])}"' for slug, _, _ in TOPIC_TILES),
             ">大家常問</h2>",
         ]
         places = [main.find(text) for text in order]

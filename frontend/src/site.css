@@ -4694,6 +4694,11 @@
     margin-bottom: 0;
   }
 
+  /* A topic name's phrase stays on one line when it fits; the name breaks between phrases. */
+  .qa-topic-phrase {
+    display: inline-block;
+  }
+
   /* The assistant's 找不到？打字問 and an answer's 沒回答到您的問題？: a flat block on the pale
      blue of 建議您下一步 (ADR 0022: not white, so only its field and button look tappable). */
   .qa-ask {

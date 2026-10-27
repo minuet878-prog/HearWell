@@ -28,9 +28,18 @@ TOPIC_ICONS = {
 }
 
 
+# Where a long topic name may break on a tile: between these phrases, never inside one.
+TOPIC_PHRASES = {
+    "hearing-aids": ("助聽器選配", "與補助"),
+    "hearing-health": ("聽力保健", "常識"),
+}
+
+
 def _topics():
     # 依主題找, on the home page and when a typed question matched nothing.
-    return [(slug, name, TOPIC_ICONS[slug]) for slug, name in content.TOPICS]
+    return [
+        (slug, TOPIC_PHRASES.get(slug, (name,)), TOPIC_ICONS[slug]) for slug, name in content.TOPICS
+    ]
 
 
 def _popular():

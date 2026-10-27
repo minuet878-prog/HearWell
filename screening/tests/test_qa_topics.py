@@ -207,3 +207,30 @@ class FaqRelatedAndRetiredChecksCatchMistakesTests(SimpleTestCase):
     def test_a_live_code_also_retired(self):
         retired = frozenset({"my-results", "old-question"})
         self.assertEqual(reused_retired_codes(content.FAQS, retired), ["my-results"])
+
+
+TILE_TITLE = re.compile(
+    r'<a class="link-card qa-topic" href="/qa/topic/([^"]+)">.*?'
+    r'<span class="link-card-title">(.*?)</span>\s*</a>',
+    re.S,
+)
+PHRASE = re.compile(r'<span class="qa-topic-phrase">([^<]+)</span>')
+
+
+class QaTopicTileWrapTests(TestCase):
+    """A tile's name breaks only between its phrases (聽力保健／常識, never 聽力保／健常識)."""
+
+    def tile_phrases(self):
+        tiles = TILE_TITLE.findall(main_of(self.client.get(reverse("qa_home"))))
+        return {slug: PHRASE.findall(title) for slug, title in tiles}
+
+    def test_the_long_names_break_between_their_phrases(self):
+        phrases = self.tile_phrases()
+        self.assertEqual(phrases["hearing-aids"], ["助聽器選配", "與補助"])
+        self.assertEqual(phrases["hearing-health"], ["聽力保健", "常識"])
+
+    def test_every_tile_spells_its_topic_name(self):
+        self.assertEqual(
+            {slug: "".join(parts) for slug, parts in self.tile_phrases().items()},
+            dict(content.TOPICS),
+        )
