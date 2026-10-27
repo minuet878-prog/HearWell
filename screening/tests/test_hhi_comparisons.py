@@ -12,7 +12,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from screening.models import Answer, Question, Questionnaire, Submission
+from screening.models import Answer, Question, Questionnaire, ReportShare, Submission
 from screening.questionnaires.results import GradedResult
 from screening.tests.helpers import consented_user
 
@@ -164,6 +164,35 @@ class HhiComparisonTests(TestCase):
         with CaptureQueriesContext(connection) as many:
             self.client.get(self.url)
         self.assertEqual(len(many), len(few))
+
+    def test_the_shown_totals_come_from_the_result_object(self):
+        # #408: the shown totals are the result object's (ADR 0036); the difference stays a
+        # scoring step on the raw totals.
+        unaided, aided = self.record(False, 4), self.record(True, 2)
+        comparison = self.questionnaire.definition.comparison
+        with patch.object(GradedResult, "total", new_callable=PropertyMock, return_value=99):
+            unaided = Submission.objects.get(pk=unaided.pk)
+            aided = Submission.objects.get(pk=aided.pk)
+            self.assertEqual(comparison.record_result(unaided), "99 分")
+            self.assertTrue(comparison.summary(unaided, aided).startswith("沒戴 99 分、有戴 99 分"))
+            self.assertEqual(comparison.difference(unaided, aided), -20)
+
+    def test_pages_showing_a_pair_take_no_more_queries(self):
+        # #408: counts measured on main 59a4c8b, before the shown totals read result.total.
+        unaided, aided = self.record(False, 4), self.record(True, 2)
+        self.user.report_comparisons.create(
+            questionnaire=self.questionnaire, unaided=unaided, aided=aided
+        )
+        share = ReportShare.objects.create(user=self.user)
+        for url, queries in (
+            (self.url, 11),
+            (f"{self.url}?unaided={unaided.pk}&aided={aided.pk}&action=preview", 13),
+            (reverse("health_report"), 24),
+            (reverse("shared_report", args=[share.token]), 25),
+            (reverse("my_hearing") + f"?questionnaire={self.questionnaire.code}", 12),
+        ):
+            with self.subTest(url=url), self.assertNumQueries(queries):
+                self.assertEqual(self.client.get(url).status_code, 200)
 
 
 class HhiComparisonRadioCardTests(TestCase):
@@ -449,39 +478,3 @@ class ComparisonResultCardTests(TestCase):
                 )
                 self.assertNotIn("有戴比沒戴", content)
                 self.assertNotIn("不一定是開始戴之前和之後的比較", content)
-
-
-class ComparisonTotalsFromResultTests(TestCase):
-    """#408: a wearing comparison shows each record's total from its result object, and the
-    pages showing a saved pair take no more queries for it."""
-
-    def setUp(self):
-        call_command("seed_questionnaires", stdout=StringIO())
-        self.questionnaire = Questionnaire.objects.get(code="hhia-s")
-        self.user = consented_user(username="totals_user")
-        self.client.force_login(self.user)
-        self.unaided = HhiComparisonTests.record(self, False, 4)
-        self.aided = HhiComparisonTests.record(self, True, 2)
-
-    def test_the_shown_totals_come_from_the_result_object(self):
-        comparison = self.questionnaire.definition.comparison
-        with patch.object(GradedResult, "total", new_callable=PropertyMock, return_value=99):
-            unaided = Submission.objects.get(pk=self.unaided.pk)
-            aided = Submission.objects.get(pk=self.aided.pk)
-            self.assertEqual(comparison.record_result(unaided), "99 分")
-            self.assertTrue(comparison.summary(unaided, aided).startswith("沒戴 99 分、有戴 99 分"))
-            # The difference is a scoring step: it stays on the raw totals.
-            self.assertEqual(comparison.difference(unaided, aided), -20)
-
-    def test_pages_with_a_saved_pair_take_no_more_queries(self):
-        # Counts measured before the change.
-        self.user.report_comparisons.create(
-            questionnaire=self.questionnaire, unaided=self.unaided, aided=self.aided
-        )
-        for url, queries in (
-            (f"/comparisons/{self.questionnaire.pk}", 11),
-            (reverse("health_report"), 24),
-            (reverse("my_hearing") + f"?questionnaire={self.questionnaire.code}", 12),
-        ):
-            with self.subTest(url=url), self.assertNumQueries(queries):
-                self.client.get(url)
