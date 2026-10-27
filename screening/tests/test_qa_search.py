@@ -117,7 +117,10 @@ class QaSearchTests(TestCase):
                 self.assertTemplateUsed(response, "screening/qa/home.html")
                 main = main_of(response)
                 self.assertIn("請輸入您想問的事，再按「找答案」", main)
-                self.assertIn('aria-invalid="true" aria-describedby="id_question_error"', main)
+                self.assertIn(
+                    'aria-invalid="true" aria-describedby="id_question_error id_question_helptext"',
+                    main,
+                )
                 self.assertNotIn("qa_results", self.client.session)
 
     def test_too_long_stays_on_the_home_page_with_a_hint(self):

@@ -5,6 +5,7 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
 from screening.forms import QaQuestionForm
+from screening.models import QuestionLog
 from screening.qa_assistant import content
 from screening.qa_assistant.matching import match
 
@@ -74,7 +75,11 @@ def qa_search(request):
     form = QaQuestionForm(request.POST)
     if not form.is_valid():
         return _home_page(request, form)
-    request.session[RESULTS] = match(form.cleaned_data["question"])[:MOST_RESULTS]
+    question = form.cleaned_data["question"]
+    codes = match(question)
+    # #400 (ADR 0034): every typed question, anonymously, with the first question it matched.
+    QuestionLog.objects.create(question=question, faq_code=codes[0] if codes else "")
+    request.session[RESULTS] = codes[:MOST_RESULTS]
     return HttpResponseRedirect(reverse("qa_results"))
 
 

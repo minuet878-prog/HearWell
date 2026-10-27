@@ -428,6 +428,11 @@ class QaQuestionForm(NoLabelSuffix, forms.Form):
     question = forms.CharField(
         label="請輸入您想問的事",
         max_length=200,
+        # #400 (ADR 0034): said where the question is typed, to everyone, signed in or not.
+        help_text=(
+            "您打的問題會匿名保存 90 天，用來補充題目；"
+            "請不要輸入姓名、電話、身分證字號、病歷號碼。"
+        ),
         error_messages={
             "required": "請輸入您想問的事，再按「找答案」",
             "max_length": "請縮短到 %(limit_value)d 字以內，現在是 %(show_value)d 字",

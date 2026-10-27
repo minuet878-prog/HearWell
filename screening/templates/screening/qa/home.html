@@ -29,8 +29,8 @@
     {% csrf_token %}
     <div class="mb-4">
         <label for="id_question" class="form-label font-bold text-heading">{{ form.question.label }}</label>
-        <input {% if form.question.errors %}autofocus aria-invalid="true" aria-describedby="id_question_error" {% endif %}class="form-control" id="id_question" type="text" name="question" maxlength="{{ form.question.field.max_length }}" value="{{ form.question.value|default:'' }}" required>
-        {% include "screening/field_messages.html" with field=form.question %}
+        <input {% if form.question.errors %}autofocus aria-invalid="true" aria-describedby="id_question_error id_question_helptext" {% else %}aria-describedby="id_question_helptext" {% endif %}class="form-control" id="id_question" type="text" name="question" maxlength="{{ form.question.field.max_length }}" value="{{ form.question.value|default:'' }}" required>
+        {% include "screening/field_messages.html" with field=form.question help_class="field-help" %}
     </div>
     <button type="submit" class="btn btn-primary btn-lg">找答案</button>
 </form>
