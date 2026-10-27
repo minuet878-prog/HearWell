@@ -1,11 +1,11 @@
 from screening.questionnaires.comparison import TotalComparison
 from screening.questionnaires.definition import (
     GUIDE_ACTION,
-    LEVEL,
     LIFE_IMPACT,
     RETEST_STEP,
     Definition,
 )
+from screening.questionnaires.results import GradedResult
 
 CODE = "hhia-s"
 
@@ -98,7 +98,7 @@ DEFINITION = Definition(
     intro_template="screening/questionnaires/hhia_s_intro.html",
     # Under the answers, as IOI-HA's, so the question is on a phone's first screen (#362).
     source_template="screening/hhia_s_source.html",
-    result=LEVEL,
+    result=GradedResult,
     life_impact=True,
     concern=LIFE_IMPACT,
     records_tab_age="65 歲以下",

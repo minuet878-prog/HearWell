@@ -1,5 +1,6 @@
 from screening.questionnaires.comparison import AverageComparison
-from screening.questionnaires.definition import AVERAGE, LISTENING, Definition
+from screening.questionnaires.definition import LISTENING, Definition
+from screening.questionnaires.results import AverageResult
 
 CODE = "ssq12-tw"
 
@@ -44,7 +45,7 @@ DEFINITION = Definition(
     intro_template="screening/questionnaires/ssq12_tw_intro.html",
     # Under the answers, as IOI-HA's, so the question is on a phone's first screen (#362).
     source_template="screening/ssq12_tw_source.html",
-    result=AVERAGE,
+    result=AverageResult,
     choices=choices,
     scale=scale,
     records_note="整體平均 0 到 10 分，分數越高，代表您回報的聆聽能力越好。",

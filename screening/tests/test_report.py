@@ -150,9 +150,9 @@ class HealthReportTests(TestCase):
         hhie = _section(content, "report-hhie-s")
         aided = Submission.objects.get(pk=aided.pk)
         self.assertIn(f"{aided.total_answer_score} 分", hhie)
-        self.assertIn(aided.classified["text"], hhie)
-        self.assertIn(f"情緒 {aided.emotional_score}", hhie)
-        self.assertIn(f"社交 {aided.social_score}", hhie)
+        self.assertIn(aided.result.level["text"], hhie)
+        self.assertIn(f"情緒 {aided.result.subscores['emotional']}", hhie)
+        self.assertIn(f"社交 {aided.result.subscores['social']}", hhie)
         self.assertIn("有戴", hhie)
         # ③ difference, same as my records
         self.assertIn("少了 6 分", _section(content, "report-difference"))

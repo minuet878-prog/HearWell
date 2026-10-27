@@ -28,11 +28,11 @@ from screening.questionnaires.definition import (
     HEARING_AID,
     LIFE_IMPACT,
     LISTENING,
-    SUBSCALES,
     TINNITUS,
     UNSURE,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.results import SubscaleResult
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.scoring import AIDED_RETAKE_NOTE, AIDED_RETAKE_TITLE, RECOMMENDATION_REASONS
 from screening.views.common import health_data_page
@@ -208,7 +208,7 @@ def wearing_follow_ups(questionnaires):
     # database is left out. Asks the definition's result, not SADL's code, per
     # CODING_STANDARDS.md rule 9.
     by_code = {questionnaire.code: questionnaire for questionnaire in questionnaires}
-    satisfaction = next((q for q in questionnaires if q.definition.result == SUBSCALES), None)
+    satisfaction = next((q for q in questionnaires if q.definition.result is SubscaleResult), None)
     return [q for q in (by_code.get(IOI_HA), by_code.get(SSQ12), satisfaction) if q]
 
 

@@ -17,7 +17,7 @@
 {% if life_impact %}
 <section class="section-box mt-6" aria-labelledby="questionnaire-title">
     <h2 id="questionnaire-title" class="h4 section-box-title">問卷結果</h2>
-    <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.classified.text }}。</p>
+    <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.result.level.text }}。</p>
 </section>
 {% endif %}
 {% if latest and not audiogram %}

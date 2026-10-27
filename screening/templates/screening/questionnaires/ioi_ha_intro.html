@@ -9,7 +9,7 @@
 <section class="q-intro-row" data-icon="note">
     <h2 class="q-intro-title">常模比較</h2>
     {% if ioi_norm.norm_basis %}
-    <p class="font-bold">本次常模依據：{{ ioi_norm.norm_basis.questionnaire }}，{{ ioi_norm.norm_basis.created_at|date:"Y/m/d" }} 未配戴紀錄，{{ ioi_norm.norm_basis.total_answer_score }} 分。</p>
+    <p class="font-bold">本次常模依據：{{ ioi_norm.norm_basis.questionnaire }}，{{ ioi_norm.norm_basis.created_at|date:"Y/m/d" }} 未配戴紀錄，{{ ioi_norm.norm_basis.result.total }} 分。</p>
     {% else %}<p>目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄；仍可填答，但本次不與常模比較。</p>{% endif %}
     <p>這是常模比較的分組，不代表聽損程度。</p>
 </section>

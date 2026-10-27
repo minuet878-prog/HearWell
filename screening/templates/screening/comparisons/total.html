@@ -1,3 +1,3 @@
-<p>未配戴：{{ comparison.unaided.created_at|date:"Y/m/d H:i" }}，{{ comparison.unaided.total_answer_score }} 分，{{ comparison.unaided.classified.text }}。</p>
-<p>配戴：{{ comparison.aided.created_at|date:"Y/m/d H:i" }}，{{ comparison.aided.total_answer_score }} 分，{{ comparison.aided.classified.text }}。</p>
+<p>未配戴：{{ comparison.unaided.created_at|date:"Y/m/d H:i" }}，{{ comparison.unaided.result.total }} 分，{{ comparison.unaided.result.level.text }}。</p>
+<p>配戴：{{ comparison.aided.created_at|date:"Y/m/d H:i" }}，{{ comparison.aided.result.total }} 分，{{ comparison.aided.result.level.text }}。</p>
 <p>差值（配戴 − 未配戴）：{{ comparison.difference|stringformat:"+d" }} 分，{{ comparison.difference_text }}。分數越低，生活影響越少；差值不能單獨判定助聽器效益。</p>

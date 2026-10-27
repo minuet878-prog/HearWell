@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 from screening import models, questionnaires
 from screening.questionnaires import hhie_s
-from screening.questionnaires.definition import LEVEL, Definition
+from screening.questionnaires.definition import Definition
+from screening.questionnaires.results import GradedResult
 
 
 def consented_user(**kwargs):
@@ -22,10 +23,24 @@ def fake_definition(code, **overrides):
         "icon": "clipboard",
         "list_rank": 2,
         "intro_template": "screening/questionnaires/hhie_s_intro.html",
-        "result": LEVEL,  # without thresholds: graded 「無法判讀」
+        "result": GradedResult,  # without thresholds: graded 「無法判讀」
         "choices": hhie_s.choices,
     }
     return Definition(**(fields | overrides))
+
+
+def submission_with_answers(user, code, scores, **fields):
+    """A record of the questionnaire with this code, one answer per item in item-number order;
+    a score of None is 「不適用」. fields: other Submission fields (wearing_hearing_aid, ...)."""
+    questionnaire = models.Questionnaire.objects.get(code=code)
+    submission = models.Submission.objects.create(user=user, questionnaire=questionnaire, **fields)
+    models.Answer.objects.bulk_create(
+        models.Answer(submission=submission, question=question, score=score)
+        for question, score in zip(
+            questionnaire.questions.order_by("question_number"), scores, strict=True
+        )
+    )
+    return submission
 
 
 def register(*definitions):

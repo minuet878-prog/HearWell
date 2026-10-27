@@ -1,5 +1,4 @@
 from collections import Counter
-from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
 
 from django.conf import settings
@@ -9,8 +8,7 @@ from django.utils import timezone
 from screening import questionnaires
 from screening.models.questionnaires import Category, Question, Questionnaire
 from screening.questionnaires import hhia_s, hhie_s
-from screening.questionnaires.definition import AVERAGE, LEVEL, SUBSCALES
-from screening.scoring import HIGHER_IS_BETTER, classify, since_last_text
+from screening.scoring import HIGHER_IS_BETTER, since_last_text
 
 
 def _score_expressions():
@@ -28,6 +26,12 @@ def _score_expressions():
             "answers__score",
             filter=models.Q(answers__question__category=Category.SOCIAL),
             default=0,
+        ),
+        # Answers to emotional or social items: a record has subscores only when it has one
+        # (THI has none, spec #208 Q5). The one rule for the result page, export and API (#386).
+        "subscore_answer_count": models.Count(
+            "answers",
+            filter=models.Q(answers__question__category__in=(Category.EMOTIONAL, Category.SOCIAL)),
         ),
     }
 
@@ -125,28 +129,14 @@ class Submission(models.Model):
                 self._scores_cache = Submission.objects.filter(pk=self.pk).aggregate(**expressions)
         return self._scores_cache
 
+    @cached_property
+    def result(self):
+        # This record's result object: its questionnaire's result type bound to it (spec #385).
+        return self.questionnaire.definition.result(self)
+
     @property
     def total_answer_score(self):
         return self._calculate_scores()["score_total"]
-
-    @property
-    def emotional_score(self):
-        return self._calculate_scores()["score_emotional"]
-
-    @property
-    def social_score(self):
-        return self._calculate_scores()["score_social"]
-
-    @property
-    def ssq_average(self):
-        if self.questionnaire.definition.result != AVERAGE:
-            return None
-        scores = self._calculate_scores()
-        if scores["numeric_count"] != 12 or scores["answer_count"] != 12:
-            return None
-        return (Decimal(scores["score_total"]) / 12).quantize(
-            Decimal("0.1"), rounding=ROUND_HALF_UP
-        )
 
     def previous_same_wearing(self, earlier):
         # earlier: this questionnaire's records before this one, newest first. The record this one
@@ -160,7 +150,7 @@ class Submission(models.Model):
     def ssq_since_last(self):
         # SSQ12-TW's 「比上一次」 (ticket #188): the record previous_same_wearing picks, shown only
         # when both have an overall average (ADR 0001).
-        if self.ssq_average is None:
+        if self.result.average is None:
             return None
         earlier = (
             Submission.objects.filter(user_id=self.user_id, questionnaire_id=self.questionnaire_id)
@@ -171,48 +161,13 @@ class Submission(models.Model):
             .order_by("-created_at", "-id")
         )
         previous = self.previous_same_wearing(earlier)
-        if previous is None or previous.ssq_average is None:
+        if previous is None or previous.result.average is None:
             return None
         # The difference of the unrounded averages, the same rule as a wearing comparison's.
         difference = self.questionnaire.definition.comparison.difference(previous, self)
         day = timezone.localdate(previous.created_at)
-        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.ssq_average)
+        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.result.average)
         return {"previous": previous, "text": text}
-
-    @property
-    def ssq_unavailable_reason(self):
-        if self.questionnaire.definition.result != AVERAGE or self.ssq_average is not None:
-            return None
-        if self._calculate_scores()["numeric_count"] == 0:
-            return "未計算：沒有可用數值回答"
-        return "未計算：包含不適用題目"
-
-    @cached_property
-    def ssq_lowest_answers(self):
-        # SSQ12-TW's 「分數最低的 n 題」 (ticket #189): up to 3 answers with a score, lowest first,
-        # ties by item number; 不適用 is left out, and there is no threshold.
-        if self.questionnaire.definition.result != AVERAGE:
-            return []
-        return list(
-            self.answers.filter(score__isnull=False)
-            .select_related("question")
-            .order_by("score", "question__question_number")[:3]
-        )
-
-    @cached_property
-    def satisfaction(self):
-        # The only scoring path for subscale questionnaires (SADL). Callers prefetch the answers
-        # with their questions, so a list scores every record from one query.
-        definition = self.questionnaire.definition
-        if definition.result != SUBSCALES:
-            return None
-        return definition.score({a.question.question_number: a.score for a in self.answers.all()})
-
-    @property
-    def classified(self):
-        if self.questionnaire.definition.result != LEVEL:
-            return None
-        return classify(self.total_answer_score, self.questionnaire.code)
 
 
 class Answer(models.Model):

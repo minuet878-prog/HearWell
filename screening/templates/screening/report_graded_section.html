@@ -1,8 +1,8 @@
-{# A graded questionnaire's part of the report (report_content.html); only a life-impact one (ADR 0016) shows subscores and answers. The table's roles keep it a table to screen readers where a narrow screen stacks its records (#315). #}
+{# A graded questionnaire's part of the report (report_content.html); subscores show where the record has them (result.subscores), and only a life-impact one (ADR 0016) shows its answers. The table's roles keep it a table to screen readers where a narrow screen stacks its records (#315). #}
 <section id="report-{{ code }}" aria-labelledby="title-{{ code }}">
     <h3 id="title-{{ code }}" class="h5">{{ section.questionnaire.questionnaire_name }}（最近一次 {{ latest.created_at|date:"Y/m/d" }}）</h3>
-    <p class="mb-1"><span class="report-score">{{ latest.total_answer_score }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level report-level-{{ latest.classified.color }}">{{ latest.classified.text }}</span></p>
-    <p>{% if section.questionnaire.definition.life_impact %}情緒 {{ latest.emotional_score }}、社交 {{ latest.social_score }}（分項僅供參考）　{% endif %}助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
+    <p class="mb-1"><span class="report-score">{{ latest.result.total }} 分</span>{% if section.max_score is not None %}（滿分 {{ section.max_score }}）{% endif %} <span class="report-level report-level-{{ latest.result.level.color }}">{{ latest.result.level.text }}</span></p>
+    <p>{% with subscores=latest.result.subscores %}{% if subscores %}情緒 {{ subscores.emotional }}、社交 {{ subscores.social }}（分項僅供參考）　{% endif %}{% endwith %}助聽器：{{ latest.get_wearing_hearing_aid_display }}</p>
     <p>{{ section.advice }}</p>{% if section.questionnaire.definition.life_impact %}
     <details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>{% endif %}
     <p class="mb-1">{% if section.count > recent_limit %}共 {{ section.count }} 次，列出最近 {{ recent_limit }} 次{% else %}共 {{ section.count }} 次{% endif %}</p>
@@ -10,7 +10,7 @@
         <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">日期</th><th scope="col" role="columnheader">總分</th><th scope="col" role="columnheader">分級</th><th scope="col" role="columnheader">助聽器</th></tr></thead>
         <tbody role="rowgroup">
             {% for record in section.recent %}
-            <tr role="row"><td role="cell" data-label="日期"><time datetime="{{ record.created_at|date:"Y-m-d" }}">{{ record.created_at|date:"Y/m/d" }}</time></td><td role="cell" data-label="總分">{{ record.total_answer_score }}</td><td role="cell" data-label="分級">{{ record.classified.text }}</td><td role="cell" data-label="助聽器">{{ record.get_wearing_hearing_aid_display }}</td></tr>
+            <tr role="row"><td role="cell" data-label="日期"><time datetime="{{ record.created_at|date:"Y-m-d" }}">{{ record.created_at|date:"Y/m/d" }}</time></td><td role="cell" data-label="總分">{{ record.result.total }}</td><td role="cell" data-label="分級">{{ record.result.level.text }}</td><td role="cell" data-label="助聽器">{{ record.get_wearing_hearing_aid_display }}</td></tr>
             {% endfor %}
         </tbody>
     </table>

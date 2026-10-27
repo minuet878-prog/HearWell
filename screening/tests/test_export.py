@@ -1,8 +1,10 @@
 import json
 import uuid
 from datetime import date, datetime
+from io import StringIO
 from urllib.parse import quote
 
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -22,9 +24,10 @@ from screening.models import (
     Submission,
     User,
 )
+from screening.questionnaires import hhie_s, ioi_ha, sadl, ssq12_tw, thi
 from screening.questionnaires.ioi_ha import ITEM_CHOICES as IOI_HA_CHOICES
 from screening.scoring import classify
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, submission_with_answers
 
 FORBIDDEN_KEYS = {"id", "password", "is_staff", "is_superuser", "last_login", "idempotency_key"}
 
@@ -458,5 +461,174 @@ class ViewedChaptersExportTests(TestCase):
                     "chapter": "助聽器的種類與價格",
                     "first_viewed_at": "2026-10-20T09:30:00+08:00",
                 },
+            ],
+        )
+
+
+class ResultTypesExportTests(TestCase):
+    """#387: the export of every result type, the same before and after it asks submission.result.
+
+    Expected from the download before the change; key order matters, since the file is
+    json.dumps of these dicts. Question texts are left out: they come from the questions alone.
+    """
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", stdout=StringIO())
+        self.user = consented_user(username="export_result_types")
+        self.client.force_login(self.user)
+        sadl_scores = [4] * 15
+        sadl_scores[10] = sadl_scores[13] = None  # items 11 and 14 are 不適用
+        records = (
+            (hhie_s.CODE, [4, 4, 2, 0, 0, 0, 4, 0, 0, 2], {"wearing_hearing_aid": False}),
+            (thi.CODE, [2] * 25, {"wearing_hearing_aid": False}),
+            (ssq12_tw.CODE, [6] * 12, {"wearing_hearing_aid": True}),
+            (ssq12_tw.CODE, [None] + [3] * 11, {"wearing_hearing_aid": False}),
+            (ioi_ha.CODE, [3] * 7, {"norm_group": NormGroup.MILD_MODERATE}),
+            (sadl.CODE, sadl_scores, {"wearing_hearing_aid": True}),
+        )
+        taipei = timezone.get_default_timezone()
+        for day, (code, scores, fields) in enumerate(records, start=1):
+            record = submission_with_answers(self.user, code, scores, **fields)
+            moment = datetime(2026, 10, day, 9, 0, tzinfo=taipei)
+            Submission.objects.filter(pk=record.pk).update(created_at=moment)
+
+    def exported(self):
+        data = json.loads(self.client.get(reverse("download_my_data")).content)
+        return data["submissions"]
+
+    def test_each_result_type_exports_as_before(self):
+        exported = self.exported()
+        for entry in exported:
+            for answer in entry["answers"]:
+                del answer["question"]
+        no_wearing = "未記錄"
+        self.assertEqual(
+            [list(entry.items()) for entry in exported],
+            [
+                [
+                    ("questionnaire", "SADL"),
+                    ("created_at", "2026-10-06T09:00:00+08:00"),
+                    ("wearing_hearing_aid", "有戴"),
+                    (
+                        "answers",
+                        [
+                            {
+                                "number": n,
+                                "score": None if n in (11, 14) else 4,
+                                "choice": "不適用" if n in (11, 14) else "中等程度",
+                            }
+                            for n in range(1, 16)
+                        ],
+                    ),
+                    ("total_score", None),
+                    ("emotional_score", None),
+                    ("social_score", None),
+                    ("level", None),
+                    ("norm_group", None),
+                    ("overall_score", "4.0"),
+                    (
+                        "subscale_scores",
+                        {
+                            "正面效果": "4.0",
+                            "服務與費用": "4.0",
+                            "負面特徵": "4.0",
+                            "個人形象": "4.0",
+                        },
+                    ),
+                ],
+                [
+                    ("questionnaire", "IOI-HA"),
+                    ("created_at", "2026-10-05T09:00:00+08:00"),
+                    ("wearing_hearing_aid", no_wearing),
+                    (
+                        "answers",
+                        [
+                            {"number": n, "score": 3, "choice": IOI_HA_CHOICES[n][2]}
+                            for n in range(1, 8)
+                        ],
+                    ),
+                    ("total_score", None),
+                    ("emotional_score", None),
+                    ("social_score", None),
+                    ("level", None),
+                    ("norm_group", "輕度至中度"),
+                ],
+                [
+                    ("questionnaire", "SSQ12-TW"),
+                    ("created_at", "2026-10-04T09:00:00+08:00"),
+                    ("wearing_hearing_aid", "沒戴"),
+                    (
+                        "answers",
+                        [{"number": 1, "score": None, "choice": "不適用"}]
+                        + [{"number": n, "score": 3, "choice": "3"} for n in range(2, 13)],
+                    ),
+                    ("total_score", None),
+                    ("emotional_score", None),
+                    ("social_score", None),
+                    ("level", None),
+                    ("norm_group", None),
+                    ("average_score", None),
+                    ("average_unavailable_reason", "未計算：包含不適用題目"),
+                ],
+                [
+                    ("questionnaire", "SSQ12-TW"),
+                    ("created_at", "2026-10-03T09:00:00+08:00"),
+                    ("wearing_hearing_aid", "有戴"),
+                    (
+                        "answers",
+                        [{"number": n, "score": 6, "choice": "6"} for n in range(1, 13)],
+                    ),
+                    ("total_score", None),
+                    ("emotional_score", None),
+                    ("social_score", None),
+                    ("level", None),
+                    ("norm_group", None),
+                    ("average_score", "6.0"),
+                    ("average_unavailable_reason", None),
+                ],
+                [
+                    ("questionnaire", "THI"),
+                    ("created_at", "2026-10-02T09:00:00+08:00"),
+                    ("wearing_hearing_aid", "沒戴"),
+                    (
+                        "answers",
+                        [{"number": n, "score": 2, "choice": "偶爾"} for n in range(1, 26)],
+                    ),
+                    ("total_score", 50),
+                    ("emotional_score", None),
+                    ("social_score", None),
+                    ("level", "中度障礙"),
+                    ("norm_group", None),
+                ],
+                [
+                    ("questionnaire", "HHIE-S"),
+                    ("created_at", "2026-10-01T09:00:00+08:00"),
+                    ("wearing_hearing_aid", "沒戴"),
+                    (
+                        "answers",
+                        [
+                            {"number": n, "score": score, "choice": label}
+                            for n, score, label in (
+                                (1, 4, "常常"),
+                                (2, 4, "常常"),
+                                (3, 2, "有時"),
+                                (4, 0, "從未"),
+                                (5, 0, "從未"),
+                                (6, 0, "從未"),
+                                (7, 4, "常常"),
+                                (8, 0, "從未"),
+                                (9, 0, "從未"),
+                                (10, 2, "有時"),
+                            )
+                        ],
+                    ),
+                    ("total_score", 16),
+                    ("emotional_score", 12),
+                    ("social_score", 4),
+                    ("level", "輕度到中度影響"),
+                    ("norm_group", None),
+                ],
             ],
         )

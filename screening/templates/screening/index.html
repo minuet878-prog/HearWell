@@ -86,22 +86,17 @@
     {% include "screening/home_illustration.html" %}
     <p class="welcome-date">上次是 {{ submission.created_at|date:"Y/m/d" }} 做的</p>
 </div>
-{% with classified=submission.classified %}
-<div class="result-banner result-banner-{% if user_state.last_result.is_life_impact %}{{ classified.color }}{% else %}unknown{% endif %}">
+{% with result=submission.result %}
+<div class="result-banner result-banner-{% if user_state.last_result.is_life_impact %}{{ result.level.color }}{% else %}unknown{% endif %}">
     <div>上次結果</div>
     {% if user_state.last_result.is_life_impact %}
     {% if last_gauge %}{% include "screening/score_gauge.html" with gauge=last_gauge %}{% endif %}
-    <h2 class="result-level mb-0">{{ classified.text }}</h2>
-    <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ submission.total_answer_score }} 分{% if last_max_score %}（滿分 {{ last_max_score }}）{% endif %}</div>
+    <h2 class="result-level mb-0">{{ result.level.text }}</h2>
+    <div>{{ submission.questionnaire.questionnaire_name }} 總分 {{ result.total }} 分{% if last_max_score %}（滿分 {{ last_max_score }}）{% endif %}</div>
     {% else %}
     <h2 class="result-level mb-0">{{ submission.questionnaire.definition.topic }}（{{ submission.questionnaire.questionnaire_name }}）</h2>
-    {% if last_ioi_ha %}
-    <div>{% include "screening/ioi_ha_summary.html" with ioi_ha=last_ioi_ha %}</div>
-    {% elif submission.questionnaire.definition.averaged %}
-    <div>{% include "screening/ssq_average.html" %}</div>
-    {% elif submission.satisfaction %}
-    <div>{% include "screening/sadl_overall.html" %}</div>
-    {% endif %}
+    {# #389: the result type's summary, if any; IOI-HA's reads its norm summary as ioi_ha (None for the others). #}
+    {% include submission.result.summary_template with place="home" ioi_ha=submission.result.norm_summary %}
     {% endif %}
     <a class="welcome-result-link" href="{% url 'result' submission.id %}">看這次結果<span aria-hidden="true">›</span></a>
 </div>

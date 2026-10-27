@@ -9,11 +9,10 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.main_flow import get_user_state
 from screening.models import Answer, Questionnaire, User
-from screening.questionnaires.definition import AVERAGE, LEVEL, NORM, SUBSCALES
+from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
 from screening.scoring import get_advice, max_score
 from screening.views.audiograms import audiogram_context
 from screening.views.common import health_data_page
-from screening.views.results import ioi_ha_summary
 
 REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
@@ -31,7 +30,7 @@ def _report_context(user):
     )
     by_questionnaire = {}
     for submission in submissions:  # newest first
-        if submission.questionnaire.definition.result == LEVEL:
+        if submission.questionnaire.definition.result is GradedResult:
             by_questionnaire.setdefault(submission.questionnaire, []).append(submission)
     comparisons = list(
         user.report_comparisons.filter(questionnaire__in=Questionnaire.objects.defined())
@@ -48,17 +47,17 @@ def _report_context(user):
             "count": len(records),
             "recent": records[:REPORT_RECENT],
             "max_score": max_score(questionnaire.code),
-            "advice": get_advice(records[0].classified["level"], questionnaire.code),
+            "advice": get_advice(records[0].result.level["level"], questionnaire.code),
             "comparison": comparison_for.get(questionnaire.id),
         }
         for questionnaire, records in sorted(by_questionnaire.items(), key=lambda kv: kv[0].id)
     ]
-    ssq_records = [s for s in submissions if s.questionnaire.definition.result == AVERAGE]
-    sadl_records = [s for s in submissions if s.questionnaire.definition.result == SUBSCALES]
+    ssq_records = [s for s in submissions if s.questionnaire.definition.result is AverageResult]
+    sadl_records = [s for s in submissions if s.questionnaire.definition.result is SubscaleResult]
     context = {
         "comparisons": comparisons,
         "ssq_comparison": next(
-            (c for c in comparisons if c.questionnaire.definition.result == AVERAGE), None
+            (c for c in comparisons if c.questionnaire.definition.result is AverageResult), None
         ),
         "ssq_latest": ssq_records[0] if ssq_records else None,
         "ssq_recent": ssq_records[:REPORT_RECENT],
@@ -71,9 +70,9 @@ def _report_context(user):
         "recent_limit": REPORT_RECENT,
         "today": timezone.localdate(),
     }
-    ioi_ha = next((s for s in submissions if s.questionnaire.definition.result == NORM), None)
+    ioi_ha = next((s for s in submissions if s.questionnaire.definition.result is NormResult), None)
     if ioi_ha:
-        context["ioi_ha"] = ioi_ha_summary(ioi_ha)
+        context["ioi_ha"] = ioi_ha.result.norm_summary
     audiogram = user.audiograms.prefetch_related("points").first()
     if audiogram:
         context.update(audiogram_context(audiogram))

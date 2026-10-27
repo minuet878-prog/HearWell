@@ -17,7 +17,7 @@ from screening.models import (
     ReportComparison,
     Submission,
 )
-from screening.questionnaires.definition import AVERAGE, LEVEL
+from screening.questionnaires.results import AverageResult, GradedResult
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
 
@@ -27,7 +27,7 @@ class NextStepsCoverageTests(TestCase):
 
     def test_every_level_questionnaire_has_steps_for_every_threshold_level(self):
         for definition in questionnaires.DEFINITIONS.values():
-            if definition.result != LEVEL:
+            if definition.result != GradedResult:
                 continue
             for _, _, level in definition.thresholds:
                 with self.subTest(questionnaire=definition.code, level=level):
@@ -272,7 +272,7 @@ class ResultFromDefinitionTests(TestCase):
             register(
                 fake_definition(
                     "fake-level",
-                    result=LEVEL,
+                    result=GradedResult,
                     thresholds=((5, "假的低分級", "normal"), (12, "假的高分級", "severe")),
                     advice={"severe": "假的高分建議"},
                 )
@@ -368,7 +368,7 @@ class AnsweringFromDefinitionTests(TestCase):
             register(
                 fake_definition(
                     "fake-answer",
-                    result=AVERAGE,
+                    result=AverageResult,
                     choices=_fake_choices,
                     scale=lambda number: (f"假的{number}最少", f"假的{number}最多"),
                 )

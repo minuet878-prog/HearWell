@@ -3,12 +3,6 @@ from dataclasses import dataclass, field
 
 from screening.questionnaires.comparison import AverageComparison, TotalComparison
 
-# How a questionnaire's result is worked out and shown.
-LEVEL = "level"  # total score graded by thresholds, with advice (HHIE-S, HHIA-S)
-AVERAGE = "average"  # average of the items, no grade (SSQ12-TW)
-NORM = "norm"  # each item against the norms, no total (IOI-HA)
-SUBSCALES = "subscales"  # overall and subscale averages, no grade or norms (SADL)
-
 # What a questionnaire tells about among the recommendation wizard's first answers (ADR 0030),
 # the values of a definition's `concern` and of that answer alike; their words are ConcernForm's.
 LIFE_IMPACT = "life_impact"
@@ -46,7 +40,7 @@ class Definition:
     # the order the questionnaires were added. A screen order, not a scoring rule.
     list_rank: int
     intro_template: str  # shown above the questions on the answer page
-    result: str  # LEVEL, AVERAGE or NORM
+    result: type  # its result type: GradedResult, AverageResult, NormResult or SubscaleResult
     # Item n's answer choices as (value, label). The value "na" is an explicit 「不適用」,
     # saved as an empty score; only questionnaires that list it accept it.
     choices: Callable[[int], list]
@@ -54,15 +48,15 @@ class Definition:
     # empty for questionnaires loaded from the fixture (HHIE-S, IOI-HA).
     name: str = ""  # questionnaire_name
     questions: tuple = ()  # (category, text) in question-number order
-    # LEVEL only. Each tuple is (upper bound inclusive, text, level); the last upper bound is
+    # Graded only. Each tuple is (upper bound inclusive, text, level); the last upper bound is
     # the max score. Published numbers never change: a new rule needs a rule version first.
     thresholds: tuple = ()
-    # LEVEL only: level -> its colour, one of ADR 0007's three (normal green, mild_to_moderate
+    # Graded only: level -> its colour, one of ADR 0007's three (normal green, mild_to_moderate
     # orange, severe red), which badges, banners, the score bar and the trend chart draw. A level
     # not listed is coloured by its own code: HHIE-S and HHIA-S levels are named like the colours.
     level_colors: dict = field(default_factory=dict)
-    advice: dict = field(default_factory=dict)  # LEVEL only: level -> advice text
-    # LEVEL only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
+    advice: dict = field(default_factory=dict)  # Graded only: level -> advice text
+    # Graded only: level -> numbered "接下來建議您" steps (ADR 0010). Each step is a dict with
     # "text" and, where it links to a next action, "action_label" and "action_url" (a URL name
     # that takes no arguments), and where a second link follows it, "second_label" and
     # "second_url" likewise. Every clause but the retest reminder traces back to `advice`.
@@ -74,7 +68,7 @@ class Definition:
     # Which of the recommendation wizard's first answers it tells about: LIFE_IMPACT, TINNITUS,
     # LISTENING or HEARING_AID (ADR 0030). "": none.
     concern: str = ""
-    support_message: SupportMessage | None = None  # LEVEL only
+    support_message: SupportMessage | None = None  # Graded only
     trend_chart: bool = False  # the history page draws a score trend chart
     # How to read the scores, shown above 我的紀錄's record cards (#364); "": nothing.
     records_note: str = ""
@@ -99,7 +93,7 @@ class Definition:
     # How to read the result, shown on the result page: SADL's in place of norms or grades,
     # HHIA-S's limits under its next steps.
     result_note: str = ""
-    # SUBSCALES only: item number -> value or None (不適用) in, overall and subscales out.
+    # Subscales only: item number -> value or None (不適用) in, overall and subscales out.
     score: Callable[[dict], dict] | None = None
 
     def color(self, level):
@@ -121,7 +115,3 @@ class Definition:
         if rule and any(scores.get(number) == rule.score for number in rule.items):
             return rule.text
         return ""
-
-    @property
-    def averaged(self):  # for templates, which cannot see the constants above
-        return self.result == AVERAGE

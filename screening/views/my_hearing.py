@@ -5,8 +5,8 @@ from django.utils import timezone
 
 from screening.main_flow import get_user_state
 from screening.models import Answer, NormGroup, shared_days
-from screening.questionnaires.definition import LEVEL
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.questionnaires.results import GradedResult
 from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
@@ -124,8 +124,8 @@ def shows_wearing_comparison(user, questionnaire):
 @login_required
 @health_data_page
 def my_hearing(request):
-    # SADL's satisfaction score reads submission.answers directly (models/submissions.py), so it
-    # needs its own prefetch: with_scores() only annotates the LEVEL/AVERAGE aggregates.
+    # SADL's satisfaction score reads submission.answers directly (questionnaires/results.py), so
+    # it needs its own prefetch: with_scores() only annotates the score sums.
     answers = Answer.objects.select_related("question")
     submissions = list(
         request.user.submissions.defined()
@@ -157,7 +157,7 @@ def my_hearing(request):
     # the same way, as the trend chart does (decision 2026-10-22). Ticket #214: another graded
     # tab (THI) compares it with the record just before, whatever was worn (ADR 0016).
     since_last = None
-    if current.definition.result == LEVEL:
+    if current.definition.result is GradedResult:
         latest = records[0]
         if current.definition.life_impact:
             previous = latest.previous_same_wearing(records[1:])
@@ -184,7 +184,7 @@ def my_hearing(request):
             "since_last": since_last,
             "show_comparison": shows_wearing_comparison(request.user, current),
             "saved_comparison": request.user.report_comparisons.filter(questionnaire=current)
-            .select_related("unaided", "aided")
+            .select_related("unaided__questionnaire", "aided__questionnaire")
             .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
             "trend_chart": (

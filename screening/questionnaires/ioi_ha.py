@@ -1,4 +1,5 @@
-from screening.questionnaires.definition import HEARING_AID, NORM, Definition
+from screening.questionnaires.definition import HEARING_AID, Definition
+from screening.questionnaires.results import NormResult
 
 CODE = "ioi-ha"
 
@@ -30,6 +31,6 @@ DEFINITION = Definition(
     list_rank=1,
     concern=HEARING_AID,
     intro_template="screening/questionnaires/ioi_ha_intro.html",
-    result=NORM,
+    result=NormResult,
     choices=choices,
 )
