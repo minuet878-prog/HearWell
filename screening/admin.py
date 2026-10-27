@@ -9,6 +9,7 @@ from .models import (
     Questionnaire,
     Submission,
     User,
+    count_and_delete_questions,
     purge_question_log,
 )
 
@@ -87,6 +88,14 @@ class QuestionLogAdmin(admin.ModelAdmin):
         purge_question_log()
         return super().changelist_view(request, extra_context)
 
+    # The owner's call (2026-10-27): one deleted early, alone or selected with others, is still
+    # counted in its month's stats first, the same way the 90-day purge counts.
+    def delete_model(self, request, obj):
+        count_and_delete_questions(QuestionLog.objects.filter(pk=obj.pk))
+
+    def delete_queryset(self, request, queryset):
+        count_and_delete_questions(queryset)
+
     @admin.display(description="結果")
     def result(self, log):
         return log.faq_code or "沒對到"
@@ -94,7 +103,7 @@ class QuestionLogAdmin(admin.ModelAdmin):
 
 @admin.register(QuestionLogMonth)
 class QuestionLogMonthAdmin(ViewOnlyAdmin):
-    # #401 (ADR 0035): counted by the purge alone, so the owner reads the months in a row.
+    # #401 (ADR 0035): counted only as questions go, so the owner reads the months in a row.
     list_display = (
         "month_label",
         "typed",

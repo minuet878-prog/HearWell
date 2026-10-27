@@ -136,6 +136,41 @@ class PurgeOnAdminListTests(TestCase):
         self.assertEqual(stats(), [(date(2026, 8, 1), 1, 0, 0, 0, 0)])
 
 
+class EarlyDeleteTests(TestCase):
+    """The owner's call (2026-10-27): one deleted early in the admin, alone or with others,
+    is counted into its month first, the same way the 90-day purge counts."""
+
+    def setUp(self):
+        # 2026/11/05 and 2026/10/16, both well within the 90 days.
+        self.matched = log(10, faq_code="hearing-aid-subsidy")
+        self.with_reason = log(30, reason="should_not_answer")
+        self.kept = log(10)
+        self.owner = User.objects.create_superuser(username="owner", password="pw")
+
+    def test_deleting_one_counts_it_first(self):
+        delete = reverse("admin:screening_questionlog_delete", args=[self.matched.pk])
+        with at_now():
+            self.client.force_login(self.owner)
+            self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 302)
+        self.assertEqual(stats(), [(date(2026, 11, 1), 1, 1, 0, 0, 0)])
+        self.assertEqual(set(QuestionLog.objects.all()), {self.with_reason, self.kept})
+
+    def test_deleting_the_selected_counts_each_first(self):
+        data = {
+            "action": "delete_selected",
+            "_selected_action": [self.matched.pk, self.with_reason.pk],
+            "post": "yes",
+        }
+        with at_now():
+            self.client.force_login(self.owner)
+            response = self.client.post(reverse("admin:screening_questionlog_changelist"), data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            stats(), [(date(2026, 10, 1), 1, 0, 0, 0, 1), (date(2026, 11, 1), 1, 1, 0, 0, 0)]
+        )
+        self.assertEqual(list(QuestionLog.objects.all()), [self.kept])
+
+
 class PurgeOnDeployTests(TestCase):
     """#401 acceptance 3: the deploy runs a command that purges the same way."""
 

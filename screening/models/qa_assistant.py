@@ -37,7 +37,8 @@ class QuestionLog(models.Model):
 
 class QuestionLogMonth(models.Model):
     # 月統計 (spec #396, #401): a month's counts of the 提問紀錄, kept after the questions are
-    # purged so the owner can read three months in a row (ADR 0035). Never what was typed.
+    # purged or deleted, so the owner can read three months in a row (ADR 0035). Never what was
+    # typed.
     # Field names other than month and the two counts are NoMatchReason's values.
     month = models.DateField("月份", unique=True)  # the month's first day, Taipei time
     typed = models.PositiveIntegerField("打字提問數", default=0)
@@ -61,16 +62,25 @@ def purge_question_log():
     """Count each question over 90 days into its month, then delete it; returns how many.
 
     Called when a question is saved, when the owner opens the log in the admin and on each
-    deploy, since there is no scheduler (spec #396). Counting and deleting share one
-    transaction and the rows stay locked until both are done, so a question is counted once:
-    a purge running at the same time waits, then no longer finds it.
+    deploy, since there is no scheduler (spec #396).
+    """
+    return count_and_delete_questions(
+        QuestionLog.objects.filter(created_at__lt=timezone.now() - KEPT_FOR)
+    )
+
+
+def count_and_delete_questions(logs):
+    """Count these questions into their months, then delete them; returns how many.
+
+    The 90-day purge and the owner deleting one early in the admin (the owner's call,
+    2026-10-27) both come here, so the month stats count every question typed. Counting and
+    deleting share one transaction and the rows stay locked until both are done, so a question
+    is counted once: a purge or delete running at the same time waits, then no longer finds it.
     """
     with transaction.atomic():
-        expired = list(
-            QuestionLog.objects.select_for_update().filter(created_at__lt=timezone.now() - KEPT_FOR)
-        )
+        counted = list(logs.select_for_update())
         months = {}
-        for log in expired:
+        for log in counted:
             counts = months.setdefault(timezone.localdate(log.created_at).replace(day=1), Counter())
             counts["typed"] += 1
             counts["matched"] += bool(log.faq_code)
@@ -82,5 +92,5 @@ def purge_question_log():
             QuestionLogMonth.objects.filter(month=month).update(
                 **{field: F(field) + count for field, count in counts.items()}
             )
-        QuestionLog.objects.filter(pk__in=[log.pk for log in expired]).delete()
-    return len(expired)
+        QuestionLog.objects.filter(pk__in=[log.pk for log in counted]).delete()
+    return len(counted)

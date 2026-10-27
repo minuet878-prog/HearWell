@@ -16,6 +16,7 @@ from screening.models.qa_assistant import (
     NoMatchReason,
     QuestionLog,
     QuestionLogMonth,
+    count_and_delete_questions,
     purge_question_log,
 )
 from screening.models.questionnaires import Category, Question, Questionnaire, QuestionnaireQuerySet
