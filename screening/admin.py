@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Answer, Question, Questionnaire, Submission, User
+from .models import Answer, Question, QuestionLog, Questionnaire, Submission, User
 
 
 @admin.register(User)
@@ -41,3 +41,38 @@ class QuestionAdmin(ViewOnlyAdmin):
 
 admin.site.register(Answer, ViewOnlyAdmin)
 admin.site.register(Submission, ViewOnlyAdmin)
+
+
+class MatchedFilter(admin.SimpleListFilter):
+    # ADR 0035: the questions that matched nothing are the ones the owner ticks a reason for.
+    title = "結果"
+    parameter_name = "matched"
+
+    def lookups(self, request, model_admin):
+        return (("no", "沒對到"), ("yes", "有對到"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "no":
+            return queryset.filter(faq_code="")
+        if self.value() == "yes":
+            return queryset.exclude(faq_code="")
+        return queryset
+
+
+@admin.register(QuestionLog)
+class QuestionLogAdmin(admin.ModelAdmin):
+    # ADR 0034, 0035 (#400): the first records the admin may change or delete. The owner reads
+    # them each month and ticks why one matched nothing; what was typed and what it matched
+    # stay as they were. One with a name or a record number in it can go before its 90 days.
+    list_display = ("question", "result", "reason", "created_at")
+    list_filter = (MatchedFilter, "reason")
+    ordering = ("-created_at", "-id")
+    fields = ("question", "result", "reason", "created_at")
+    readonly_fields = ("question", "result", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.display(description="結果")
+    def result(self, log):
+        return log.faq_code or "沒對到"

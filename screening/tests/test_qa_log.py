@@ -4,8 +4,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import NoMatchReason, QuestionLog
+from screening.models import NoMatchReason, QuestionLog, User
 from screening.qa_assistant import content
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 
 
@@ -106,4 +107,101 @@ class QuestionLogReminderTests(TestCase):
         self.assertIn(self.REMINDER, form)
         self.assertIn(
             'aria-invalid="true" aria-describedby="id_question_error id_question_helptext"', form
+        )
+
+
+class QuestionLogAdminTests(TestCase):
+    """#400 acceptance 4 and 5 (ADR 0034, 0035): the owner reads the log each month, ticks why a
+    question matched nothing and deletes one early; the question and what it matched stay."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser(username="qa_log_admin", password="pw")
+        cls.matched = QuestionLog.objects.create(
+            question="耳機補助怎麼申請", faq_code="hearing-aid-subsidy"
+        )
+        cls.unmatched = QuestionLog.objects.create(question="今天天氣如何")
+        cls.not_in_faq = QuestionLog.objects.create(
+            question="哪裡可以修助聽器", reason=NoMatchReason.NOT_IN_FAQ
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+        self.changelist = reverse("admin:screening_questionlog_changelist")
+
+    def change_url(self, log):
+        return reverse("admin:screening_questionlog_change", args=[log.pk])
+
+    def rows(self, query=""):
+        """{question: the row's text}, in the order listed."""
+        page = self.client.get(self.changelist + query).content.decode()
+        body = page[page.index("<tbody>") : page.index("</tbody>")]
+        return {
+            row.group(1): test_layout._text(row.group(0))
+            for row in re.finditer(r"<tr>.*?<a href=\"[^\"]+\">([^<]+)</a>.*?</tr>", body, re.S)
+        }
+
+    def test_the_list_shows_the_question_result_reason_and_date(self):
+        response = self.client.get(self.changelist)
+        self.assertEqual(response.status_code, 200)
+        headers = re.findall(r'<th scope="col" class="[^"]*column-(\w+)', response.content.decode())
+        self.assertEqual(headers, ["question", "result", "reason", "created_at"])
+        rows = self.rows()
+        self.assertIn("hearing-aid-subsidy", rows["耳機補助怎麼申請"])
+        self.assertIn("沒對到", rows["今天天氣如何"])
+        self.assertIn("題庫沒有", rows["哪裡可以修助聽器"])
+        self.assertIn(str(timezone.localdate(self.matched.created_at).year), rows["今天天氣如何"])
+
+    def test_the_newest_come_first(self):
+        self.assertEqual(
+            list(self.rows()), ["哪裡可以修助聽器", "今天天氣如何", "耳機補助怎麼申請"]
+        )
+
+    def test_filter_what_matched_nothing_and_by_reason(self):
+        self.assertEqual(list(self.rows("?matched=no")), ["哪裡可以修助聽器", "今天天氣如何"])
+        self.assertEqual(list(self.rows("?matched=yes")), ["耳機補助怎麼申請"])
+        self.assertEqual(list(self.rows("?reason__exact=not_in_faq")), ["哪裡可以修助聽器"])
+        page = self.client.get(self.changelist).content.decode()
+        for label in ("沒對到", "有對到", "問法不同", "題庫沒有", "不該回答"):
+            with self.subTest(label=label):
+                self.assertRegex(page, rf'<a href="\?[^"]+">{label}</a>')
+
+    def test_only_the_reason_can_change(self):
+        response = self.client.get(self.change_url(self.unmatched))
+        self.assertEqual(response.status_code, 200)
+        form = response.content.decode()
+        self.assertIn('<select name="reason"', form)
+        for field in ("question", "faq_code", "created_at"):
+            with self.subTest(field=field):
+                self.assertNotIn(f'name="{field}"', form)
+        self.assertIn("今天天氣如何", form)
+        response = self.client.post(
+            self.change_url(self.unmatched),
+            {"reason": "different_wording", "question": "改過的問句", "faq_code": "my-results"},
+        )
+        self.assertRedirects(response, self.changelist)
+        log = QuestionLog.objects.get(pk=self.unmatched.pk)
+        self.assertEqual(log.reason, NoMatchReason.DIFFERENT_WORDING)
+        self.assertEqual(log.question, "今天天氣如何")
+        self.assertEqual(log.faq_code, "")
+
+    def test_the_reason_is_one_of_the_three_or_blank(self):
+        response = self.client.post(self.change_url(self.unmatched), {"reason": "other"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(QuestionLog.objects.get(pk=self.unmatched.pk).reason, "")
+        self.client.post(self.change_url(self.not_in_faq), {"reason": ""})
+        self.assertEqual(QuestionLog.objects.get(pk=self.not_in_faq.pk).reason, "")
+
+    def test_nothing_can_be_added(self):
+        add = reverse("admin:screening_questionlog_add")
+        self.assertEqual(self.client.get(add).status_code, 403)
+        self.assertEqual(self.client.post(add, {"question": "假的"}).status_code, 403)
+        self.assertEqual(QuestionLog.objects.count(), 3)
+
+    def test_one_can_be_deleted_early(self):
+        delete = reverse("admin:screening_questionlog_delete", args=[self.unmatched.pk])
+        self.assertRedirects(self.client.post(delete, {"post": "yes"}), self.changelist)
+        self.assertEqual(
+            set(QuestionLog.objects.values_list("question", flat=True)),
+            {"耳機補助怎麼申請", "哪裡可以修助聽器"},
         )
