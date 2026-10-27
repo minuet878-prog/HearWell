@@ -2,6 +2,7 @@ import json
 import re
 from datetime import date, timedelta
 
+from django.contrib.admin.models import LogEntry
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -212,6 +213,52 @@ class QuestionLogAdminTests(TestCase):
             set(QuestionLog.objects.values_list("question", flat=True)),
             {"耳機補助怎麼申請", "哪裡可以修助聽器"},
         )
+
+
+class QuestionLogAdminHistoryTests(TestCase):
+    """ADR 0034 (cross review of #396): the admin's history keeps no copy of what was typed, so
+    a question deleted early or after 90 days is gone."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser(username="qa_log_history"))
+        self.changelist = reverse("admin:screening_questionlog_changelist")
+        self.logs = [
+            QuestionLog.objects.create(question=question)
+            for question in ("王小明的病歷號碼", "陳大華的耳朵", "林美玲的助聽器")
+        ]
+
+    def assert_no_question_in_the_history(self):
+        entries = LogEntry.objects.all()
+        self.assertTrue(entries)
+        for entry in entries:
+            # change_message is JSON with its Chinese escaped, so its text is read as well.
+            text = " ".join((entry.object_id, entry.object_repr, entry.change_message, str(entry)))
+            for log in self.logs:
+                with self.subTest(text=text, question=log.question):
+                    self.assertNotIn(log.question, text)
+
+    def test_ticking_the_reason(self):
+        change = reverse("admin:screening_questionlog_change", args=[self.logs[0].pk])
+        self.client.post(change, {"reason": NoMatchReason.NOT_IN_FAQ})
+        self.assert_no_question_in_the_history()
+
+    def test_deleting_one(self):
+        delete = reverse("admin:screening_questionlog_delete", args=[self.logs[0].pk])
+        self.assertRedirects(self.client.post(delete, {"post": "yes"}), self.changelist)
+        self.assert_no_question_in_the_history()
+
+    def test_deleting_those_selected(self):
+        response = self.client.post(
+            self.changelist,
+            {
+                "action": "delete_selected",
+                "_selected_action": [log.pk for log in self.logs[1:]],
+                "post": "yes",
+            },
+        )
+        self.assertRedirects(response, self.changelist)
+        self.assertEqual(list(QuestionLog.objects.all()), self.logs[:1])
+        self.assert_no_question_in_the_history()
 
 
 class QuestionLogAdminQueryTests(TestCase):

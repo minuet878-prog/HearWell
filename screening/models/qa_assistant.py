@@ -32,7 +32,9 @@ class QuestionLog(models.Model):
         verbose_name = verbose_name_plural = "提問紀錄"
 
     def __str__(self):
-        return self.question
+        # Not the question: the admin keeps this in its history (LogEntry) after the question is
+        # deleted (ADR 0034).
+        return f"提問紀錄 #{self.pk}"
 
 
 class QuestionLogMonth(models.Model):
