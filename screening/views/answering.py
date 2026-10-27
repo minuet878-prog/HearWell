@@ -367,7 +367,7 @@ def hhi_comparison(request, questionnaire_id):
         raise Http404
     saved = (
         request.user.report_comparisons.filter(questionnaire=questionnaire)
-        .select_related("unaided", "aided")
+        .select_related("unaided__questionnaire", "aided__questionnaire")
         .first()
     )
     if request.method == "POST" and request.POST.get("action") == "remove":

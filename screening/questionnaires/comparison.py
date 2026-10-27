@@ -17,7 +17,9 @@ class TotalComparison:
         return submissions.complete_hhi()
 
     def record_result(self, record):
-        return f"{record.total_answer_score} 分"
+        # The shown total comes from the result object (ADR 0036, #408); difference() below is
+        # a scoring step and stays on the raw totals.
+        return f"{record.result.total} 分"
 
     def difference(self, unaided, aided):
         return aided.total_answer_score - unaided.total_answer_score
@@ -40,7 +42,7 @@ class TotalComparison:
 
     def summary(self, unaided, aided):
         return (
-            f"沒戴 {unaided.total_answer_score} 分、有戴 {aided.total_answer_score} 分，"
+            f"沒戴 {unaided.result.total} 分、有戴 {aided.result.total} 分，"
             f"{self.difference_text(unaided, aided)}"
         )
 
