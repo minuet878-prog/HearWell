@@ -48,6 +48,7 @@ FAQS = (
         ),
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        other_phrasings=("分數代表什麼", "結果是什麼意思", "我幾分算嚴重"),
         referral=True,
     ),
     Faq(
@@ -61,6 +62,7 @@ FAQS = (
         ),
         sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
+        other_phrasings=("要吃什麼藥", "耳朵的病要怎麼治療"),
         referral=True,
     ),
     Faq(
@@ -80,6 +82,7 @@ FAQS = (
             ("我的選配指引：身障鑑定與鑑定醫院", "/guide/assessment"),
         ),
         checked_on=date(2026, 10, 27),
+        other_phrasings=("推薦哪個牌子", "去哪裡買助聽器", "哪家店比較好"),
         referral=True,
     ),
     Faq(
@@ -107,7 +110,44 @@ FAQS = (
             ),
         ),
         checked_on=date(2026, 10, 27),
+        other_phrasings=("突然聽不到", "耳朵流血", "一邊耳朵突然聽不見"),
         referral=True,
+    ),
+    Faq(
+        code="hearing-aid-subsidy",
+        topic="hearing-aids",
+        question="助聽器補助要怎麼申請？",
+        answer=(
+            "<p>依法規，有聽覺機能身心障礙證明的人，先找聽力師或縣市輔具中心做評估、"
+            "拿到「九號表」，再到戶籍所在地的公所申請助聽器補助。一般來說，"
+            "要先拿到核定通知再買，沒核定就先買的不補助。</p>"
+            "<p>誰可以申請、申請流程和補助多少，請看選配指引的"
+            '<a href="/guide/form-9">「九號表：申請助聽器補助」</a>。</p>'
+        ),
+        sources=(("我的選配指引：九號表：申請助聽器補助", "/guide/form-9"),),
+        checked_on=date(2026, 10, 27),
+        other_phrasings=("助聽器有補助嗎", "怎麼申請補助", "補助可以拿多少"),
+    ),
+    Faq(
+        code="sound-amplifier-vs-hearing-aid",
+        topic="hearing-aids",
+        question="集音器和助聽器有什麼不同？",
+        answer=(
+            "<p>一般來說，助聽器是醫療器材，要有衛生福利部的醫療器材許可證，"
+            "由有醫療器材販賣許可的業者販售。集音器、輔聽器一般不是醫療器材，"
+            "依法不能宣稱改善聽損。</p>"
+            "<p>買之前，先確認是不是有許可證的助聽器，說明在選配指引的"
+            '<a href="/guide/types-and-prices#sound-amplifier-title">「集音器不是助聽器」</a>。</p>'
+        ),
+        sources=(
+            ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
+            (
+                "醫療器材管理法（全國法規資料庫）",
+                "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0030106",
+            ),
+        ),
+        checked_on=date(2026, 10, 27),
+        other_phrasings=("集音器是不是助聽器", "集音器可以代替助聽器嗎", "集音器跟助聽器差在哪"),
     ),
 )
 
@@ -118,3 +158,15 @@ URGENT_CODE = "sudden-hearing-loss"
 
 # 大家常問 in display order, the owner's pick (#402 settles the real 3 to 5).
 POPULAR = ("my-results", "brands-and-shops", "diagnosis-and-medication")
+
+# Typed questions (#399): a colloquial word or a common typo, and the standard word the questions
+# and their other phrasings use. 集音器 is never a 助聽器: it is not a medical device (the
+# guide's 集音器不是助聽器), and it has a question of its own.
+SYNONYMS = {
+    "耳機": "助聽器",
+    "助聽氣": "助聽器",
+    "補貼": "補助",
+    "品牌": "牌子",
+    "廠牌": "牌子",
+    "聽不見": "聽不到",
+}
