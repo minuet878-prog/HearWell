@@ -2856,7 +2856,7 @@
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
      takes it off after 3 seconds. Only the look changes: the focus stays where it was.
      :root puts it above a box's own look, which may come later with as many classes (the
-     family page's urgent card takes its shadow off: .family-guide .family-urgent). */
+     family page's urgent card takes its shadow off: .card.family-urgent). */
   :root .jump-highlight:not(.route-stop),
   :root .route-stop.jump-highlight .route-box {
     outline: 0.1875rem solid var(--color-primary);
@@ -4628,9 +4628,9 @@
     display: block;
   }
 
-  /* #397: the Q&A assistant's pinned urgent answer is the same box (the owner's call). */
-  .family-guide .family-urgent,
-  .card.qa-urgent {
+  /* The 馬上就醫 box. Not under .family-guide: the Q&A assistant's home page pins its urgent
+     answer in it too (#397, the owner's call). */
+  .card.family-urgent {
     border: 0.125rem solid var(--color-primary);
     background-color: var(--color-brand-soft);
     box-shadow: none;

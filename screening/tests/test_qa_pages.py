@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 from unittest.mock import patch
 
 from django.db import connection
@@ -11,6 +12,20 @@ from screening.tests import test_guide
 from screening.tests.helpers import consented_user
 
 REFERRALS = ("my-results", "diagnosis-and-medication", "brands-and-shops", "sudden-hearing-loss")
+SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
+# The family page's 馬上就醫 box, which the assistant's home page pins its urgent answer in.
+URGENT_BOX_PAGES = ("qa_home", "family_guide")
+
+
+def urgent_box(response):
+    """(its classes, what is inside) of the section saying to see a doctor soon."""
+    content = response.content.decode()
+    for classes, inside in re.findall(
+        r'<section class="([^"]*)"[^>]*>(.*?)</section>', content, re.S
+    ):
+        if "請盡快" in inside:
+            return classes, inside
+    raise AssertionError("no section says to see a doctor soon")
 
 
 def answer_part(response):
@@ -43,13 +58,25 @@ class QaHomeTests(TestCase):
 
     def test_the_urgent_answer_sits_in_the_family_page_urgent_box(self):
         # The owner's call (2026-10-27): the family page's 馬上就醫 look, blue, not red (ADR 0007).
-        content = self.client.get(reverse("qa_home")).content.decode()
-        box = re.search(
-            r'<section class="[^"]*\bqa-urgent\b[^"]*"[^>]*>(.*?)</section>', content, re.S
-        )
-        self.assertIsNotNone(box)
-        self.assertIn("請盡快就醫", box[1])
-        self.assertIn(f'href="{reverse("qa_answer", args=["sudden-hearing-loss"])}"', box[1])
+        boxes = {name: urgent_box(self.client.get(reverse(name))) for name in URGENT_BOX_PAGES}
+        for name, (classes, _) in boxes.items():
+            with self.subTest(page=name):
+                self.assertLessEqual({"card", "family-urgent"}, set(classes.split()))
+        _, inside = boxes["qa_home"]
+        self.assertIn("請盡快就醫", inside)
+        self.assertIn(f'href="{reverse("qa_answer", args=["sudden-hearing-loss"])}"', inside)
+
+    def test_the_urgent_box_look_is_not_the_family_page_own(self):
+        # The family page's rules nest under .family-guide; the box's own look must not, or the
+        # assistant's box above would be a plain card.
+        css = re.sub(r"/\*.*?\*/", "", SITE_CSS.read_text(encoding="utf-8"), flags=re.S)
+        selectors = [
+            selector.strip()
+            for selector, rule in re.findall(r"([^{}]*)\{([^{}]*)\}", css)
+            if ".family-urgent" in selector and "border:" in rule
+        ]
+        self.assertEqual(selectors, [".card.family-urgent"])
+        self.assertNotIn("qa-urgent", css)
 
     def test_popular_follows_the_definition_order(self):
         for popular in (
