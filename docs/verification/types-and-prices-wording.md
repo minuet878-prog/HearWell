@@ -2,7 +2,7 @@
 
 日期：2026-10-27。基準：`59a4c8b`（origin/main）；分支：`refactor/types-and-prices-wording`。沒有規格 issue（本人自己改字）。
 
-狀態：**等本人驗收**。自動測試全過。只改「類型與價格」章節的文字，沒有 migration，沒有操作真實資料。只改字、不碰計分、門檻、資料或權限，依 AGENTS.md 不需要交叉審查。
+狀態：2026-10-27 本人回覆「驗收通過」。自動測試全過。只改「類型與價格」章節的文字，沒有 migration，沒有操作真實資料。只改字、不碰計分、門檻、資料或權限，依 AGENTS.md 不需要交叉審查。
 
 ## 改了什麼
 
@@ -21,7 +21,7 @@
 |---|---|---|
 | 章節顯示三處新用字 | ✅ 自動（既有斷言改成新字） | `screening/tests/test_guide_types.py` 的 `SENTENCES` |
 | 頁面不出現品牌名 | ✅ 自動（既有，允許清單加 RIC） | `test_guide_types.py` 的 `test_the_only_amounts_are_the_four_subsidy_limits_and_no_brand_is_named`：拉丁字母只允許 RIC 和食藥署網址；RIC 是外型縮寫，不是品牌 |
-| 實際畫面 | ⏳ 本人驗收 | 打開 `/guide/types-and-prices`，看三處新用字與全形標點 |
+| 實際畫面 | ✅ 本人驗收（2026-10-27） | 在預覽打開 `/guide/types-and-prices`：三處新用字與全形標點都對，其他段落沒變 |
 
 ## 測試
 
