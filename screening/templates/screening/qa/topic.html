@@ -8,7 +8,7 @@
 <h1 class="h3 mt-2">{{ name }}</h1>
 <ul class="qa-questions">
     {% for faq in faqs %}
-    <li><a href="{% url 'qa_answer' faq.code %}">{{ faq.question }}</a></li>
+    {% include "screening/qa/question_link.html" %}
     {% endfor %}
 </ul>
 {% endblock %}

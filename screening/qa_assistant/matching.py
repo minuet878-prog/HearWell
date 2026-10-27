@@ -47,8 +47,11 @@ def _normalise(text):
     return "".join(char for char in unicodedata.normalize("NFKC", text).lower() if char.isalnum())
 
 
+# Built once, when the module loads: the colloquial words normalised like the typed question.
+_SYNONYMS = {_normalise(word): standard for word, standard in content.SYNONYMS.items()}
+# The longest word first, so a longer colloquial word wins over one inside it.
+_COLLOQUIAL = re.compile("|".join(map(re.escape, sorted(_SYNONYMS, key=len, reverse=True))))
+
+
 def _standard_words(text):
-    synonyms = {_normalise(word): standard for word, standard in content.SYNONYMS.items()}
-    # The longest word first, so a longer colloquial word wins over one inside it.
-    words = sorted(synonyms, key=len, reverse=True)
-    return re.sub("|".join(map(re.escape, words)), lambda found: synonyms[found[0]], text)
+    return _COLLOQUIAL.sub(lambda found: _SYNONYMS[found[0]], text)

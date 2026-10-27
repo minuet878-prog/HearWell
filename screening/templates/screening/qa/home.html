@@ -13,7 +13,7 @@
 <h2 class="h4 mt-6">大家常問</h2>
 <ul class="qa-questions">
     {% for faq in popular %}
-    <li><a href="{% url 'qa_answer' faq.code %}">{{ faq.question }}</a></li>
+    {% include "screening/qa/question_link.html" %}
     {% endfor %}
 </ul>
 <h2 class="h4 mt-6">依主題找</h2>

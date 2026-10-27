@@ -9,7 +9,7 @@
 <p>找到 {{ faqs|length }} 題可能相關，點題目看答案。</p>
 <ul class="qa-questions">
     {% for faq in faqs %}
-    <li><a href="{% url 'qa_answer' faq.code %}">{{ faq.question }}</a></li>
+    {% include "screening/qa/question_link.html" %}
     {% endfor %}
 </ul>
 {% else %}
@@ -23,7 +23,7 @@
 <h2 class="h4 mt-6">大家常問</h2>
 <ul class="qa-questions">
     {% for faq in popular %}
-    <li><a href="{% url 'qa_answer' faq.code %}">{{ faq.question }}</a></li>
+    {% include "screening/qa/question_link.html" %}
     {% endfor %}
 </ul>
 {% endif %}

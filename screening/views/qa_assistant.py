@@ -11,12 +11,25 @@ from screening.qa_assistant.matching import match
 
 # #399 (spec #396): the codes of the questions a typed question matched, never the question
 # itself: the session is tied to the cookie, so to whoever is signed in.
-RESULTS = "qa_results"
+RESULTS_SESSION_KEY = "qa_results"
 # A blank or too long question's hints for the home page, shown once; never the question.
 HINT_SESSION_KEY = "qa_hint"
 
 # 幾題可能相關: the best few, not every question sharing a word.
 MOST_RESULTS = 5
+
+TOPIC_NAMES = dict(content.TOPICS)
+
+
+def _popular():
+    # 大家常問, on the home page and when a typed question matched nothing.
+    return [content.BY_CODE[code] for code in content.POPULAR]
+
+
+def _listed_topic(faq):
+    # The topic page listing a question. The urgent answer is on none: it is pinned on the home
+    # page instead (prototype #373), and its answer leads back there (#398).
+    return None if faq.code == content.URGENT_CODE else faq.topic
 
 
 def qa_home(request):
@@ -29,7 +42,7 @@ def qa_home(request):
         "screening/qa/home.html",
         {
             "urgent": content.BY_CODE[content.URGENT_CODE],
-            "popular": [content.BY_CODE[code] for code in content.POPULAR],
+            "popular": _popular(),
             "topics": content.TOPICS,
             "form": form,
         },
@@ -37,12 +50,11 @@ def qa_home(request):
 
 
 def qa_topic(request, topic):
-    # Spec #396: a topic's questions, open to everyone like the home page. The urgent answer is
-    # pinned on the home page instead of sitting in a list (prototype #373).
-    name = dict(content.TOPICS).get(topic)
+    # Spec #396: a topic's questions, open to everyone like the home page.
+    name = TOPIC_NAMES.get(topic)
     if name is None:
         raise Http404
-    faqs = [faq for faq in content.FAQS if faq.topic == topic and faq.code != content.URGENT_CODE]
+    faqs = [faq for faq in content.FAQS if _listed_topic(faq) == topic]
     return render(request, "screening/qa/topic.html", {"name": name, "faqs": faqs})
 
 
@@ -54,15 +66,14 @@ def qa_answer(request, code):
     faq = content.BY_CODE.get(code)
     if faq is None:
         raise Http404
-    # The urgent answer is on no topic page, so it leads back to the home page instead (#398).
-    topic = None if faq.code == content.URGENT_CODE else faq.topic
+    topic = _listed_topic(faq)
     return render(
         request,
         "screening/qa/answer.html",
         {
             "faq": faq,
             "topic": topic,
-            "topic_name": dict(content.TOPICS).get(topic),
+            "topic_name": TOPIC_NAMES.get(topic),
             "related": [content.BY_CODE[code] for code in faq.related],
         },
     )
@@ -82,13 +93,13 @@ def qa_search(request):
     QuestionLog.objects.create(question=question, faq_code=codes[0] if codes else "")
     # #401: there is no scheduler, so each new question also clears those past 90 days.
     purge_question_log()
-    request.session[RESULTS] = codes[:MOST_RESULTS]
+    request.session[RESULTS_SESSION_KEY] = codes[:MOST_RESULTS]
     return HttpResponseRedirect(reverse("qa_results"))
 
 
 def qa_results(request):
     # #399: kept until the next question, so reloading or going back shows them again.
-    codes = request.session.get(RESULTS)
+    codes = request.session.get(RESULTS_SESSION_KEY)
     if codes is None:
         return HttpResponseRedirect(reverse("qa_home"))
     response = render(
@@ -97,7 +108,7 @@ def qa_results(request):
         {
             # A question taken out since (ADR 0033) is left out.
             "faqs": [content.BY_CODE[code] for code in codes if code in content.BY_CODE],
-            "popular": [content.BY_CODE[code] for code in content.POPULAR],
+            "popular": _popular(),
             "topics": content.TOPICS,
         },
     )

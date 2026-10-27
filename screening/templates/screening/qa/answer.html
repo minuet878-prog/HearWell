@@ -33,7 +33,7 @@
 <h2 class="h4 mt-6">相關問題</h2>
 <ul class="qa-questions">
     {% for other in related %}
-    <li><a href="{% url 'qa_answer' other.code %}">{{ other.question }}</a></li>
+    {% include "screening/qa/question_link.html" with faq=other %}
     {% endfor %}
 </ul>
 {% endif %}
