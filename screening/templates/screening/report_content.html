@@ -13,7 +13,7 @@
         {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.result.satisfaction.overall }}</li>{% endif %}
         {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{{ comparison.summary }}</li>{% endfor %}
         {% if ioi_ha %}
-        <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% include "screening/ioi_ha_summary.html" %}</li>
+        <li>IOI-HA（{{ ioi_ha.submission.created_at|date:"Y/m/d" }}）：{% include "screening/summaries/norm.html" with submission=ioi_ha.submission %}</li>
         {% endif %}
     </ul>
 </section>
@@ -59,7 +59,7 @@
 <section id="report-ssq12" aria-labelledby="ssq-title">
 <h3 id="ssq-title" class="h5">SSQ12-TW</h3>
 <p>最近一次 {{ ssq_latest.created_at|date:"Y/m/d H:i" }}，助聽器：{{ ssq_latest.get_wearing_hearing_aid_display }}。</p>
-<p>{% include "screening/ssq_average.html" with submission=ssq_latest %}</p>
+<p>{% include "screening/summaries/average.html" with submission=ssq_latest %}</p>
 <p>分數越高，代表您回報的聆聽能力越好；不代表聽損程度或助聽器效益合格與否。</p>
 <details class="report-answers dropdown-box"><summary>最近一次逐題回答</summary><ol>{% for answer in ssq_latest.answers.all %}<li>{{ answer.question.question_text }}：{{ answer.get_answer_display }}</li>{% endfor %}</ol></details>
 <p>最近 {{ ssq_recent|length }} 次紀錄：</p>
@@ -98,7 +98,7 @@
 <section id="report-hearing-aid-outcome" class="report-part" aria-labelledby="outcome-title">
 <h2 id="outcome-title" class="h4">助聽器使用成效</h2>
 <details class="report-fold">
-<summary><h3 class="tint-block-title mb-0">IOI-HA 助聽器效益</h3> <span class="report-fold-meta"><span>最近一次 {{ submission.created_at|date:"Y/m/d" }}</span> <span>{% include "screening/ioi_ha_summary.html" %}</span></span></summary>
+<summary><h3 class="tint-block-title mb-0">IOI-HA 助聽器效益</h3> <span class="report-fold-meta"><span>最近一次 {{ submission.created_at|date:"Y/m/d" }}</span> <span>{% include "screening/summaries/norm.html" %}</span></span></summary>
 <div class="report-fold-body tint-block">
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h3 id="ioi-ha-title" class="h5">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h3>

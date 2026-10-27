@@ -1,4 +1,0 @@
-{# A graded record's total, hearing aid status and level badge, as each row of 我的紀錄 shows it. #}
-{# The home page (place="home") shows a life-impact record's level itself (index.html) and nothing here for another graded record (THI). #}
-{% if place != "home" %}{% with result=submission.result %}<span>總分：{{ result.total }}　助聽器：{{ submission.get_wearing_hearing_aid_display }}</span>
-<span>{% include "screening/level_badge.html" with text=result.level.text color=result.level.color %}</span>{% endwith %}{% endif %}

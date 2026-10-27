@@ -124,9 +124,13 @@ class GradedResultTests(ResultTestCase):
         self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
         self.assertEqual(context["optional_ssq12"].code, ssq12_tw.CODE)  # unaided HHIE-S
-        summary = render_to_string(record.result.summary_template, {"submission": record})
-        self.assertIn("總分：16　助聽器：沒戴", summary)
-        self.assertIn("輕度到中度影響", summary)
+        # #409: no summary of its own (the home page draws a life-impact level itself); its
+        # row of 我的紀錄 shows the total, the hearing aid status and the level badge.
+        self.assertIsNone(record.result.summary_template)
+        self.assertEqual(record.result.row_template, "screening/record_rows/graded.html")
+        row = render_to_string(record.result.row_template, {"submission": record})
+        self.assertIn("總分：16　助聽器：沒戴", row)
+        self.assertIn("輕度到中度影響", row)
 
     def test_all_zero_subscores_are_zero_not_none(self):
         record = submission_with_answers(self.user, hhie_s.CODE, [0] * 10)
@@ -202,9 +206,13 @@ class AverageResultTests(ResultTestCase):
         record = submission_with_answers(self.user, ssq12_tw.CODE, [6] * 12)
         context = self.assert_page(record, "screening/ssq12_result.html")
         self.assertEqual(len(context["answers"]), 12)
-        self.assertEqual(record.result.summary_template, "screening/ssq_average.html")
+        self.assertEqual(record.result.summary_template, "screening/summaries/average.html")
         summary = render_to_string(record.result.summary_template, {"submission": record})
-        self.assertEqual(summary, "整體平均：6.0／10")
+        self.assertEqual(summary.strip(), "整體平均：6.0／10")
+        self.assertEqual(record.result.row_template, "screening/record_rows/average.html")
+        row = render_to_string(record.result.row_template, {"submission": record})
+        self.assertIn("整體平均：6.0／10", row)
+        self.assertIn("助聽器：", row)
 
     def test_not_applicable_leaves_no_average_and_says_why(self):
         record = submission_with_answers(self.user, ssq12_tw.CODE, [None] + [3] * 11)
@@ -261,11 +269,13 @@ class NormResultTests(ResultTestCase):
         context = self.assert_page(record, "screening/result_ioi_ha.html")
         self.assertEqual([item["name"] for item in context["below"]], ["使用時間"])
         self.assertEqual(len(context["others"]), 6)
-        self.assertEqual(record.result.summary_template, "screening/ioi_ha_summary.html")
-        summary = render_to_string(
-            record.result.summary_template, {"ioi_ha": record.result.norm_summary}
-        )
-        self.assertEqual(summary, "7 項中 1 項低於常模、1 項高於常模")
+        # #409: the summary reads the record's own norm summary; callers pass the record alone.
+        self.assertEqual(record.result.summary_template, "screening/summaries/norm.html")
+        summary = render_to_string(record.result.summary_template, {"submission": record})
+        self.assertEqual(summary.strip(), "7 項中 1 項低於常模、1 項高於常模")
+        self.assertEqual(record.result.row_template, "screening/record_rows/norm.html")
+        row = render_to_string(record.result.row_template, {"submission": record})
+        self.assertIn("常模組別：輕度至中度", row)
 
     def test_without_a_norm_basis_nothing_is_compared(self):
         record = submission_with_answers(
@@ -322,9 +332,13 @@ class SubscaleResultTests(ResultTestCase):
     def test_result_page_and_summary(self):
         record = submission_with_answers(self.user, sadl.CODE, [4] * 15, wearing_hearing_aid=True)
         self.assert_page(record, "screening/sadl_result.html")
-        self.assertEqual(record.result.summary_template, "screening/sadl_overall.html")
+        self.assertEqual(record.result.summary_template, "screening/summaries/subscale.html")
         summary = render_to_string(record.result.summary_template, {"submission": record})
-        self.assertEqual(summary, "整體滿意度：4.0")
+        self.assertEqual(summary.strip(), "整體滿意度：4.0")
+        self.assertEqual(record.result.row_template, "screening/record_rows/subscale.html")
+        row = render_to_string(record.result.row_template, {"submission": record})
+        self.assertIn("整體滿意度：4.0", row)
+        self.assertNotIn("助聽器：", row)
 
 
 class ResultQueryTests(ResultTestCase):
@@ -361,6 +375,7 @@ class ResultQueryTests(ResultTestCase):
                     "satisfaction",
                     "norm_group",
                     "summary_template",
+                    "row_template",
                 ):
                     getattr(result, name)
                 result.export()
@@ -649,16 +664,27 @@ class SummaryTemplateTests(ResultTestCase):
         type_check = re.compile(
             r"{%\s*(?:el)?if\b[^%]*\b(?:averaged|satisfaction|norm_group|ioi_ha|classified)\b"
         )
-        for name, place in (
-            ("screening/index.html", "home"),
-            ("screening/my_hearing.html", "records"),
+        # #409: the home page includes the summary, 我的紀錄 the row, neither with a place.
+        for name, include in (
+            ("screening/index.html", "{% include result.summary_template %}"),
+            ("screening/my_hearing.html", "{% include submission.result.row_template %}"),
         ):
             with self.subTest(template=name):
                 source = get_template(name).template.source
-                self.assertIn(
-                    f'{{% include submission.result.summary_template with place="{place}"', source
-                )
+                self.assertIn(include, source)
                 self.assertIsNone(type_check.search(source))
+
+    def test_the_snippets_take_no_place_or_ioi_ha_and_the_old_ones_are_gone(self):
+        # #409: each snippet shows one thing for one place; the callers pass the record alone.
+        templates = Path(__file__).resolve().parent.parent / "templates" / "screening"
+        for template in templates.rglob("*.html"):
+            source = template.read_text(encoding="utf-8")
+            with self.subTest(template=template.name):
+                self.assertNotRegex(source, r"\bplace\s*(=|==|!=)")
+                self.assertNotRegex(source, r"{%\s*include[^%]*\bioi_ha=")
+        for old in ("graded_summary", "ssq_average", "sadl_overall", "ioi_ha_summary"):
+            with self.subTest(old=old):
+                self.assertFalse((templates / f"{old}.html").exists())
 
     def test_my_hearing_takes_the_same_queries_for_two_or_four_records_of_each_type(self):
         # Counts measured before the change; 我的紀錄's HHIE-S tab is test_thi's 8.

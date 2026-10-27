@@ -1,0 +1,1 @@
+{# An IOI-HA record against its norm group, from its result's norm_summary (#409). #}{% with ioi_ha=submission.result.norm_summary %}{% if ioi_ha.grouped %}{{ ioi_ha.items|length }} 項中 {{ ioi_ha.below }} 項低於常模、{{ ioi_ha.above }} 項高於常模{% else %}未分組，無法和常模比較{% endif %}{% endwith %}
