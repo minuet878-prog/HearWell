@@ -5,7 +5,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ---
 
-## 目前進度（2026-10-26）
+## 目前進度（2026-10-27）
 
 - 已完成：Phase 0–10、無障礙修正（#70–#74）、成人問卷第一批（#76–#84、#90）、設計系統更新第 1 階段（#108：共用
   token——Noto Sans TC 字體、`.link-card` 等共用 class 的圓角／陰影／間距微調；不換主色、不動版面）、第二批前置重構
@@ -71,10 +71,14 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   `views.py`、`models.py` 依功能拆成 package（母規格 #380，#381、#382：只搬不改，views 分 11 檔、models 分 7 檔，
   `urls.py` 直接寫「小檔.函式」；語法樹、網址、OpenAPI 拆前拆後比對一致；Codex 交叉審查要修 0 項；PR #392，
   驗證見 `docs/verification/issue-380.md`；跨檔借用的底線名字留給 #393）、
+  跨檔共用的名字整理（#393：跨檔用到的 view 函式去掉底線、`has_subscores` 搬到結果頁、`_find_by_key` 改成
+  `SubmissionQuerySet.find_by_key`；PR #403，驗證見 `docs/verification/issue-393.md`）、
   每筆紀錄帶一個結果物件（架構審查候選 1，母規格 #385，#386–#391，ADR 0036：四種結果類型各一個 class，首頁、
   我的紀錄、結果頁、報告、匯出、API 都問 `submission.result`，不再依類型分支；唯一行為改變是 THI 在 API 的分項
   改 null；與 main 比對 60 個輸出畫面相同、查詢數相同；Codex 交叉審查要修 0 項；驗證見
-  `docs/verification/issue-385.md`）。
+  `docs/verification/issue-385.md`）、
+  助聽器類型章節改用字（「RIC（迷你耳掛型）」「擴音器／輔聽器不是助聽器」，詞彙表「集音器」改名「擴音器」；
+  驗證見 `docs/verification/types-and-prices-wording.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
