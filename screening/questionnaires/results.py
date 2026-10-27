@@ -30,9 +30,10 @@ class Result:
     norm_summary = None  # the record against its norm group, for the home page and the report
     not_applicable_choice = None  # the download's choice for an answer without a score
 
-    # The record's summary (plain text: the home page's last result, in a block, and the report;
-    # None: none), its row of 我的紀錄 (#409) and its result page; page_context() is the page's data
-    # of this type, the view adding what every page has.
+    # The record's summary (plain text for the home page's last result, in a block, and the
+    # report; None for a type with no summary of its own: graded), its row of 我的紀錄 (#409) and
+    # its result page; page_context() is the page's data of this type, the view adding what every
+    # page has.
     summary_template = None
     row_template = None
     page_template = None
