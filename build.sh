@@ -14,6 +14,9 @@ python manage.py collectstatic --no-input
 
 python manage.py migrate
 
+# Questions typed into the Q&A assistant are kept 90 days; there is no scheduler (#401).
+python manage.py purge_question_log
+
 python manage.py loaddata questions_fixture.json
 
 # Add questionnaires defined in code without assigning ids that could overwrite old questions.

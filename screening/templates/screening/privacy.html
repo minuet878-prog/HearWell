@@ -7,6 +7,8 @@
 Spec phase7_consent_privacy.md 4.1. Every statement here must stay true: check it against the
 code and docs/specs/phase-06/phase6_error_monitoring.md whenever either changes. A major change also
 raises CONSENT_VERSION in models/accounts.py; a minor fix only moves PRIVACY_UPDATED_ON.
+ADR 0034 is the first exception: the question log is new data but not linked to anyone, so it
+moved only the date (#400).
 {% endcomment %}
 <article class="privacy wrap-anywhere">
     <h1 class="h3 mt-2">隱私權說明</h1>
@@ -19,6 +21,7 @@ raises CONSENT_VERSION in models/accounts.py; a minor fix only moves PRIVACY_UPD
             <li><a href="#who-title">誰在蒐集</a></li>
             <li><a href="#why-title">為什麼蒐集</a></li>
             <li><a href="#collected-title">蒐集哪些資料</a></li>
+            <li><a href="#question-log-title">問答小助手的提問紀錄</a></li>
             <li><a href="#storage-title">存放在哪裡、保存多久</a></li>
             <li><a href="#recipients-title">會交給誰</a></li>
             <li><a href="#sharing-title">您主動分享時</a></li>
@@ -47,6 +50,7 @@ raises CONSENT_VERSION in models/accounts.py; a minor fix only moves PRIVACY_UPD
         <li>讓您做聽力篩檢問卷，算出分數和建議。</li>
         <li>保存您的紀錄，讓您看到聽力和助聽器效果隨時間的變化。</li>
         <li>網站出錯時找出原因、修好它。</li>
+        <li>看大家在問答小助手怎麼問，補充題目。</li>
     </ul>
     <p>我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。</p>
 
@@ -68,6 +72,18 @@ raises CONSENT_VERSION in models/accounts.py; a minor fix only moves PRIVACY_UPD
         <li>同意紀錄：您哪一天同意了哪一版說明。</li>
     </ul>
 
+    {# #400 (ADR 0034): anonymous, so not in 下載我的資料 and not deleted with the account. #}
+    <h2 id="question-log-title" class="h4 mt-6">問答小助手的提問紀錄</h2>
+    <p>在問答小助手打字提問時，我們會保存：</p>
+    <ul>
+        <li>您打的問題原文</li>
+        <li>找到的第一題（或沒有找到）</li>
+        <li>提問的時間</li>
+    </ul>
+    <p>從清單點選題目不會記錄。這些紀錄只用來看大家怎麼問、缺哪些題目，再補充問答小助手的題目。</p>
+    <p>提問紀錄是匿名的：不記錄您的帳號、IP 位址，也不連到您的其他資料，登入或沒登入都一樣。所以「下載我的資料」不包含提問紀錄，刪除帳號時也認不出哪幾筆是您打的。</p>
+    <p>提問紀錄保存 90 天後自動刪除。如果問題裡有姓名、電話這類個人資料，我們會提早刪除那一筆。請不要在問題裡輸入姓名、電話、身分證字號、病歷號碼。</p>
+
     <h2 id="storage-title" class="h4 mt-6">存放在哪裡、保存多久</h2>
     <ul>
         <li>網站主機：Render，位於美國俄亥俄州。</li>
@@ -75,6 +91,7 @@ raises CONSENT_VERSION in models/accounts.py; a minor fix only moves PRIVACY_UPD
         <li>所以您的資料會傳到美國存放。</li>
         <li>您的資料會保存到您刪除帳號或要求刪除為止。刪除後，備份中的資料會在 6 小時內自動清除。</li>
         <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
+        <li>問答小助手的提問紀錄保存 90 天後自動刪除。</li>
     </ul>
 
     <h2 id="recipients-title" class="h4 mt-6">會交給誰</h2>

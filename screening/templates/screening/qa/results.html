@@ -1,0 +1,31 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}打字問的結果｜HearWell{% endblock %}
+
+{% block body %}
+{# #399 (spec #396, prototype #373 B): the questions a typed question matched, from the session; the question itself is not kept. #}
+<h1 class="h3 mt-2">打字問的結果</h1>
+{% if faqs %}
+<p>找到 {{ faqs|length }} 題可能相關，點題目看答案。</p>
+<ul class="qa-questions">
+    {% for faq in faqs %}
+    {% include "screening/qa/question_link.html" %}
+    {% endfor %}
+</ul>
+{% else %}
+<p>沒有找到相符的題目，我們會參考您的問題補充。可以換個說法再試，或從下面的主題找。</p>
+<h2 class="h4 mt-6">依主題找</h2>
+<ul class="qa-questions">
+    {% for slug, name in topics %}
+    <li><a href="{% url 'qa_topic' slug %}">{{ name }}</a></li>
+    {% endfor %}
+</ul>
+<h2 class="h4 mt-6">大家常問</h2>
+<ul class="qa-questions">
+    {% for faq in popular %}
+    {% include "screening/qa/question_link.html" %}
+    {% endfor %}
+</ul>
+{% endif %}
+<p class="mt-6"><a href="{% url 'qa_home' %}#qa-ask-title">換個說法再問一次</a></p>
+{% endblock %}

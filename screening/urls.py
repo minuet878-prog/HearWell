@@ -11,6 +11,7 @@ from .views import (
     home,
     monitoring,
     my_hearing,
+    qa_assistant,
     reports,
     results,
 )
@@ -29,6 +30,12 @@ urlpatterns = [
     path("privacy", accounts.privacy, name="privacy"),
     path("family", home.family_guide, name="family_guide"),
     path("learn", home.learn, name="learn"),
+    path("qa", qa_assistant.qa_home, name="qa_home"),
+    path("qa/topic/<slug:topic>", qa_assistant.qa_topic, name="qa_topic"),
+    # Before qa/<slug:code>, which would take them for question codes.
+    path("qa/search", qa_assistant.qa_search, name="qa_search"),
+    path("qa/results", qa_assistant.qa_results, name="qa_results"),
+    path("qa/<slug:code>", qa_assistant.qa_answer, name="qa_answer"),
     path("guide", guide.guide, name="guide"),
     path("guide/<slug:chapter>", guide.guide_chapter, name="guide_chapter"),
     path("route_answer", guide.route_answer, name="route_answer"),
