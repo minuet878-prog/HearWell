@@ -6589,6 +6589,9 @@ WHITE_CARD_PAGES_LEARN = (
     ("Q&A home, signed in", True, "/qa"),
     ("Q&A answer", False, "/qa/brands-and-shops"),
     ("Q&A answer, signed in", True, "/qa/sudden-hearing-loss"),
+    # #399: a typed question's results, found and not.
+    ("Q&A results", False, lambda test: test.qa_results("耳機補助")),
+    ("Q&A results, nothing found", True, lambda test: test.qa_results("今天天氣如何")),
     ("privacy", False, "/privacy"),
 )
 
@@ -6759,6 +6762,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             user=self.user, defaults={"certificate": "", "subsidy": "other"}
         )
         return "/guide"
+
+    def qa_results(self, question):
+        """#399: a question typed on the Q&A home, so the session has its results."""
+        self.page.goto(f"{self.live_server_url}/qa")
+        self.page.get_by_label("請輸入您想問的事").fill(question)
+        self.page.get_by_role("button", name="找答案").click()
+        self.page.wait_for_url("**/qa/results")
+        return "/qa/results"
 
     def answered_chapter(self):
         """The assessment chapter after its question: 已記下 and the button back to the route."""

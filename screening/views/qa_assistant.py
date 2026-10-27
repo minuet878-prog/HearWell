@@ -1,12 +1,28 @@
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils.cache import add_never_cache_headers
+from django.views.decorators.http import require_http_methods
 
+from screening.forms import QaQuestionForm
 from screening.qa_assistant import content
+from screening.qa_assistant.matching import match
+
+# #399 (spec #396): the codes of the questions a typed question matched, never the question
+# itself: the session is tied to the cookie, so to whoever is signed in.
+RESULTS = "qa_results"
+
+# 幾題可能相關: the best few, not every question sharing a word.
+MOST_RESULTS = 5
 
 
 def qa_home(request):
     # Spec #396: open without logging in, the same for everyone; it reads no records (ADR 0032),
     # so it is not a 健康資料頁面.
+    return _home_page(request, QaQuestionForm())
+
+
+def _home_page(request, form):
     return render(
         request,
         "screening/qa/home.html",
@@ -14,6 +30,7 @@ def qa_home(request):
             "urgent": content.BY_CODE[content.URGENT_CODE],
             "popular": [content.BY_CODE[code] for code in content.POPULAR],
             "topics": content.TOPICS,
+            "form": form,
         },
     )
 
@@ -24,3 +41,34 @@ def qa_answer(request, code):
     if faq is None:
         raise Http404
     return render(request, "screening/qa/answer.html", {"faq": faq})
+
+
+@require_http_methods(["POST"])
+def qa_search(request):
+    # #399: posted, so the question stays out of the address and the history; then
+    # Post/Redirect/Get, so going back never asks to send the form again.
+    form = QaQuestionForm(request.POST)
+    if not form.is_valid():
+        return _home_page(request, form)
+    request.session[RESULTS] = match(form.cleaned_data["question"])[:MOST_RESULTS]
+    return HttpResponseRedirect(reverse("qa_results"))
+
+
+def qa_results(request):
+    # #399: kept until the next question, so reloading or going back shows them again.
+    codes = request.session.get(RESULTS)
+    if codes is None:
+        return HttpResponseRedirect(reverse("qa_home"))
+    response = render(
+        request,
+        "screening/qa/results.html",
+        {
+            # A question taken out since (ADR 0033) is left out.
+            "faqs": [content.BY_CODE[code] for code in codes if code in content.BY_CODE],
+            "popular": [content.BY_CODE[code] for code in content.POPULAR],
+            "topics": content.TOPICS,
+        },
+    )
+    # They come from this browser's session and the next question changes them.
+    add_never_cache_headers(response)
+    return response

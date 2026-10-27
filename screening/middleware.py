@@ -12,7 +12,8 @@ from django.urls import reverse
 # rights (spec phase9_ui_refresh_3_structure.md). A shared report is opened by family,
 # who may have an account of their own (spec phase8_c1_family_share.md). The Q&A assistant
 # reads nobody's records and its answers are the same for everyone (ADR 0032), and family send
-# each other its answer links (the owner's call for spec #396, 2026-10-27).
+# each other its answer links (the owner's call for spec #396, 2026-10-27); typing a question
+# there is part of it (#399).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -30,6 +31,8 @@ OPEN_PAGES = {
     "shared_report",
     "qa_home",
     "qa_answer",
+    "qa_search",
+    "qa_results",
 }
 
 

@@ -420,3 +420,16 @@ STOP_QUESTIONS = {
     "after-fitting": (FittingForm,),
     "form-25": (Form25Form,),
 }
+
+
+class QaQuestionForm(NoLabelSuffix, forms.Form):
+    # #399 (spec #396): a typed question for the Q&A assistant, up to 200 characters, the only
+    # guard against floods (spec #396 Out of Scope).
+    question = forms.CharField(
+        label="請輸入您想問的事",
+        max_length=200,
+        error_messages={
+            "required": "請輸入您想問的事，再按「找答案」",
+            "max_length": "請縮短到 %(limit_value)d 字以內，現在是 %(show_value)d 字",
+        },
+    )
