@@ -4628,7 +4628,9 @@
     display: block;
   }
 
-  .family-guide .family-urgent {
+  /* #397: the Q&A assistant's pinned urgent answer is the same box (the owner's call). */
+  .family-guide .family-urgent,
+  .card.qa-urgent {
     border: 0.125rem solid var(--color-primary);
     background-color: var(--color-brand-soft);
     box-shadow: none;
@@ -4670,6 +4672,27 @@
   .family-sources h3 {
     margin-bottom: 0.25rem;
     font-size: 1rem;
+  }
+
+  /* The Q&A assistant's lists (#397, prototype #373): one question or topic a row, a thin line
+     between them; a question's link fills its row, a full touch target. */
+  .qa-questions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .qa-questions > li {
+    display: flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding-block: 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .qa-questions a {
+    flex: 1;
+    font-weight: 700;
   }
 
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with

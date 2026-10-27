@@ -47,6 +47,8 @@ class LearnPageTests(TestCase):
                     "溝通與照顧",
                     [(reverse("family_guide"), "family", "給家人看：怎麼跟聽損的家人溝通")],
                 ),
+                # #397 (spec #396): the Q&A assistant's entry.
+                ("有問題想問", [(reverse("qa_home"), "question", "問答小助手：常見問題一次查")]),
             ],
         )
 
@@ -72,6 +74,9 @@ class LearnPageTests(TestCase):
             reverse("guide"),
             *(reverse("guide_chapter", args=[slug]) for slug in GUIDE_CHAPTERS),
             reverse("family_guide"),
+            # #397: the Q&A assistant opens from the 了解 page.
+            reverse("qa_home"),
+            reverse("qa_answer", args=["my-results"]),
         )
         for url in pages:
             with self.subTest(url=url):

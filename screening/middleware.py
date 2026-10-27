@@ -10,7 +10,9 @@ from django.urls import reverse
 # none (spec #218), and keep a 看過 only for a user who has agreed (spec #291), so before that
 # they record nothing. Account settings is the way to those two
 # rights (spec phase9_ui_refresh_3_structure.md). A shared report is opened by family,
-# who may have an account of their own (spec phase8_c1_family_share.md).
+# who may have an account of their own (spec phase8_c1_family_share.md). The Q&A assistant
+# reads nobody's records and its answers are the same for everyone (ADR 0032), and family send
+# each other its answer links (the owner's call for spec #396, 2026-10-27).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -26,6 +28,8 @@ OPEN_PAGES = {
     "guide_chapter",
     "shared_cover",
     "shared_report",
+    "qa_home",
+    "qa_answer",
 }
 
 

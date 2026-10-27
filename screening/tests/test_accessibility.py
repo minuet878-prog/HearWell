@@ -59,6 +59,9 @@ class AccessibilityPageTests(TestCase):
             reverse("questionnaire_list"),
             reverse("screening", args=[questionnaire.pk]),
             reverse("result", args=[record.pk]),
+            # #397: the Q&A assistant's home and an answer.
+            reverse("qa_home"),
+            reverse("qa_answer", args=["my-results"]),
         ]
         self.client.logout()
         for url in (reverse("login"), reverse("register")):

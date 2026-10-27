@@ -1,0 +1,25 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}{{ faq.question }}｜HearWell{% endblock %}
+
+{% block body %}
+{# #397 (spec #396, prototype #373 Y): one question a page, its address shared with family. #}
+<article class="wrap-anywhere">
+<h1 class="h3 mt-4">{{ faq.question }}</h1>
+{# The owner reviews every answer in content.py (ADR 0033): written as HTML there. #}
+{{ faq.answer|safe }}
+<p class="mt-4">以上是一般說明，您的情況請以醫師、聽力師為準。</p>
+</article>
+{# The guide chapters' sources and check date (chapter.html), without their 法規、金額 line. #}
+<footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
+    <details class="dropdown-box mb-2">
+        <summary>資料來源</summary>
+        <ul>
+            {% for title, url in faq.sources %}
+            <li><a href="{{ url }}">{{ title }}</a></li>
+            {% endfor %}
+        </ul>
+    </details>
+    <p class="guide-checked">本頁資料查核於 {{ faq.checked_on|date:"Y/m/d" }}。</p>
+</footer>
+{% endblock %}

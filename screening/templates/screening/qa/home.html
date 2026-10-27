@@ -1,0 +1,26 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}問答小助手｜HearWell{% endblock %}
+
+{% block body %}
+{# #397 (spec #396, prototype #373 C): the urgent answer first, then 大家常問, then the topics. #}
+<h1 class="h3 mt-2">問答小助手</h1>
+{# The family page's 馬上就醫 box (the owner's call, 2026-10-27): blue, not red (ADR 0007). #}
+<section class="card card-body mt-4 mb-4 qa-urgent" aria-labelledby="qa-urgent-title">
+    <h2 id="qa-urgent-title" class="h4">突然聽不到、耳朵流血？請盡快就醫</h2>
+    <p class="mb-0"><a href="{% url 'qa_answer' urgent.code %}">{{ urgent.question }}</a></p>
+</section>
+<h2 class="h4 mt-6">大家常問</h2>
+<ul class="qa-questions">
+    {% for faq in popular %}
+    <li><a href="{% url 'qa_answer' faq.code %}">{{ faq.question }}</a></li>
+    {% endfor %}
+</ul>
+<h2 class="h4 mt-6">依主題找</h2>
+{# #398 makes each topic a page of its questions. #}
+<ul class="qa-questions">
+    {% for slug, name in topics %}
+    <li>{{ name }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}
