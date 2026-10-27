@@ -5,7 +5,9 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import QuestionLog, QuestionLogMonth, User, purge_question_log
@@ -197,3 +199,17 @@ class MonthStatsAdminTests(TestCase):
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.assertEqual(QuestionLogMonth.objects.get(pk=self.august.pk).typed, 61)
         self.assertEqual(QuestionLogMonth.objects.count(), 3)
+
+    def test_three_or_many_months_take_the_same_queries(self):
+        # CODING_STANDARDS 15: a month more each month.
+        changelist = reverse("admin:screening_questionlogmonth_changelist")
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as three:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        QuestionLogMonth.objects.bulk_create(
+            QuestionLogMonth(month=date(year, month, 1), typed=month)
+            for year in (2024, 2025)
+            for month in range(1, 13)
+        )
+        with self.assertNumQueries(len(three)):
+            self.assertEqual(self.client.get(changelist).status_code, 200)

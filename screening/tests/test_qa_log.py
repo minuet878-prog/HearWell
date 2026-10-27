@@ -2,7 +2,9 @@ import json
 import re
 from datetime import date, timedelta
 
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -208,6 +210,24 @@ class QuestionLogAdminTests(TestCase):
             set(QuestionLog.objects.values_list("question", flat=True)),
             {"耳機補助怎麼申請", "哪裡可以修助聽器"},
         )
+
+
+class QuestionLogAdminQueryTests(TestCase):
+    """CODING_STANDARDS 15: the log grows each month, its list takes the same queries."""
+
+    def test_two_or_many_questions_take_the_same_queries(self):
+        self.client.force_login(User.objects.create_superuser(username="qa_log_owner"))
+        changelist = reverse("admin:screening_questionlog_changelist")
+        QuestionLog.objects.bulk_create(QuestionLog(question=f"問句 {n}") for n in range(2))
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as two:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        QuestionLog.objects.bulk_create(
+            QuestionLog(question=f"多的問句 {n}", faq_code="hearing-aid-subsidy", reason="")
+            for n in range(20)
+        )
+        with self.assertNumQueries(len(two)):
+            self.assertEqual(self.client.get(changelist).status_code, 200)
 
 
 class QuestionLogPrivacyTests(TestCase):
