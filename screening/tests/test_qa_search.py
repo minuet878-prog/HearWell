@@ -109,28 +109,36 @@ class QaSearchTests(TestCase):
         response = self.client.get(reverse("qa_results"))
         self.assertRedirects(response, reverse("qa_home"), fetch_redirect_response=False)
 
-    def test_blank_stays_on_the_home_page_with_a_hint(self):
+    def assert_back_home_with(self, response, hint):
+        # Post/Redirect/Get: going back never lands on a page the post made.
+        self.assertRedirects(response, reverse("qa_home"), fetch_redirect_response=False)
+        main = main_of(self.client.get(reverse("qa_home")))
+        self.assertIn(hint, main)
+        self.assertIn(
+            'aria-invalid="true" aria-describedby="id_question_error id_question_helptext"', main
+        )
+        self.assertRegex(main, r'<input [^>]*id="id_question"[^>]*value=""')
+        self.assertNotIn("qa_results", self.client.session)
+        return main
+
+    def test_blank_goes_back_to_the_home_page_with_a_hint(self):
         for question in ("", "   "):
             with self.subTest(question=question):
-                response = self.ask(question)
-                self.assertEqual(response.status_code, 200)
-                self.assertTemplateUsed(response, "screening/qa/home.html")
-                main = main_of(response)
-                self.assertIn("請輸入您想問的事，再按「找答案」", main)
-                self.assertIn(
-                    'aria-invalid="true" aria-describedby="id_question_error id_question_helptext"',
-                    main,
-                )
-                self.assertNotIn("qa_results", self.client.session)
+                self.assert_back_home_with(self.ask(question), "請輸入您想問的事，再按「找答案」")
 
-    def test_too_long_stays_on_the_home_page_with_a_hint(self):
+    def test_too_long_goes_back_to_the_home_page_with_a_hint_but_not_the_question(self):
         response = self.ask("耳" * 201)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "screening/qa/home.html")
-        main = main_of(response)
-        self.assertIn("請縮短到 200 字以內，現在是 201 字", main)
-        self.assertIn("耳" * 201, main)
-        self.assertNotIn("qa_results", self.client.session)
+        values = " ".join(str(value) for value in self.client.session.values())
+        self.assertNotIn("耳", values)
+        main = self.assert_back_home_with(response, "請縮短到 200 字以內，現在是 201 字")
+        self.assertNotIn("耳" * 201, main)
+
+    def test_the_hint_shows_once(self):
+        self.ask("")
+        self.client.get(reverse("qa_home"))
+        main = main_of(self.client.get(reverse("qa_home")))
+        self.assertNotIn("請輸入您想問的事，再按「找答案」", main)
+        self.assertNotIn('aria-invalid="true"', main)
 
     def test_two_hundred_characters_are_fine(self):
         response = self.ask("耳" * 200)

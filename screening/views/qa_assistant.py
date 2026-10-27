@@ -12,6 +12,8 @@ from screening.qa_assistant.matching import match
 # #399 (spec #396): the codes of the questions a typed question matched, never the question
 # itself: the session is tied to the cookie, so to whoever is signed in.
 RESULTS = "qa_results"
+# A blank or too long question's hints for the home page, shown once; never the question.
+HINT_SESSION_KEY = "qa_hint"
 
 # 幾題可能相關: the best few, not every question sharing a word.
 MOST_RESULTS = 5
@@ -20,10 +22,8 @@ MOST_RESULTS = 5
 def qa_home(request):
     # Spec #396: open without logging in, the same for everyone; it reads no records (ADR 0032),
     # so it is not a 健康資料頁面.
-    return _home_page(request, QaQuestionForm())
-
-
-def _home_page(request, form):
+    hints = request.session.pop(HINT_SESSION_KEY, None)
+    form = QaQuestionForm() if hints is None else QaQuestionForm.showing(hints)
     return render(
         request,
         "screening/qa/home.html",
@@ -71,10 +71,11 @@ def qa_answer(request, code):
 @require_http_methods(["POST"])
 def qa_search(request):
     # #399: posted, so the question stays out of the address and the history; then
-    # Post/Redirect/Get, so going back never asks to send the form again.
+    # Post/Redirect/Get, a blank or too long one too, so going back never meets a posted page.
     form = QaQuestionForm(request.POST)
     if not form.is_valid():
-        return _home_page(request, form)
+        request.session[HINT_SESSION_KEY] = form.errors.get_json_data()["question"]
+        return HttpResponseRedirect(reverse("qa_home"))
     question = form.cleaned_data["question"]
     codes = match(question)
     # #400 (ADR 0034): every typed question, anonymously, with the first question it matched.

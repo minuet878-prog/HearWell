@@ -437,3 +437,16 @@ class QaQuestionForm(NoLabelSuffix, forms.Form):
             "max_length": "請縮短到 %(limit_value)d 字以內，現在是 %(show_value)d 字",
         },
     )
+
+    @classmethod
+    def showing(cls, hints):
+        """An empty box with the hints a posted question got (its errors' get_json_data()).
+
+        #399: a blank or too long question also goes back with Post/Redirect/Get, and only
+        its hints are kept on the way, never the question itself.
+        """
+        form = cls(data={})
+        form.errors["question"] = form.error_class(
+            [forms.ValidationError(hint["message"], code=hint["code"]) for hint in hints]
+        )
+        return form

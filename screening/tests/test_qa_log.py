@@ -66,7 +66,9 @@ class QuestionLogTests(TestCase):
     def test_blank_or_too_long_keeps_nothing(self):
         for question in ("", "   ", "耳" * 201):
             with self.subTest(question=question):
-                self.assertEqual(self.ask(question).status_code, 200)
+                self.assertRedirects(
+                    self.ask(question), reverse("qa_home"), fetch_redirect_response=False
+                )
                 self.assertFalse(QuestionLog.objects.exists())
 
     def test_clicking_the_lists_keeps_nothing(self):
@@ -107,7 +109,7 @@ class QuestionLogReminderTests(TestCase):
         self.assertRegex(form, r'<input [^>]*aria-describedby="id_question_helptext"[^>]*id="id_')
 
     def test_the_reminder_stays_with_a_hint_after_a_blank_question(self):
-        response = self.client.post(reverse("qa_search"), {"question": ""})
+        response = self.client.post(reverse("qa_search"), {"question": ""}, follow=True)
         form = main_of(response)
         self.assertIn(self.REMINDER, form)
         self.assertIn(
