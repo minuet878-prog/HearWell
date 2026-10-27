@@ -30,4 +30,17 @@
         </a></li>
     </ul>
 </div>
+{# #397 (spec #396): the Q&A assistant, #373's entry 1. #}
+<div class="more-group">
+    <h2 class="more-group-title">有問題想問</h2>
+    <ul class="list-unstyled text-balance">
+        <li><a class="link-card action-card" href="{% url 'qa_home' %}">
+            {% include "screening/action_icon.html" with icon="question" %}
+            <span class="link-card-body">
+                <span class="link-card-title">問答小助手：常見問題一次查</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</div>
 {% endblock %}

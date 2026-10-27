@@ -1,0 +1,5 @@
+{# A link to one question's answer page, in every list of questions (#397, #398, #399): a white card with its arrow and no icon (the owner's pick 2026-10-27, ADR 0022). #}
+<li><a class="link-card" href="{% url 'qa_answer' faq.code %}">
+    <span class="link-card-body"><span class="link-card-title">{{ faq.question }}</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a></li>

@@ -12,6 +12,13 @@ from screening.models.hearing_aids import (
     Certificate,
     Subsidy,
 )
+from screening.models.qa_assistant import (
+    NoMatchReason,
+    QuestionLog,
+    QuestionLogMonth,
+    count_and_delete_questions,
+    purge_question_log,
+)
 from screening.models.questionnaires import Category, Question, Questionnaire, QuestionnaireQuerySet
 from screening.models.sharing import (
     SHARE_DAYS,

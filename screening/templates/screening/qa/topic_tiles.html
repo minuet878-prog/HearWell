@@ -1,0 +1,10 @@
+{# 依主題找 on the home page and when a typed question matched nothing: a white tile a topic, its icon above its name (the owner's pick 2026-10-27, ADR 0022). #}
+{# A name breaks only between its phrases (聽力保健／常識), never inside one. #}
+<ul class="qa-topics">
+    {% for slug, phrases, icon in topics %}
+    <li><a class="link-card qa-topic" href="{% url 'qa_topic' slug %}">
+        {% include "screening/action_icon.html" %}
+        <span class="link-card-title">{% for phrase in phrases %}<span class="qa-topic-phrase">{{ phrase }}</span>{% endfor %}</span>
+    </a></li>
+    {% endfor %}
+</ul>

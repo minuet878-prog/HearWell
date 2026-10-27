@@ -2856,7 +2856,7 @@
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
      takes it off after 3 seconds. Only the look changes: the focus stays where it was.
      :root puts it above a box's own look, which may come later with as many classes (the
-     family page's urgent card takes its shadow off: .family-guide .family-urgent). */
+     family page's urgent card takes its shadow off: .card.family-urgent). */
   :root .jump-highlight:not(.route-stop),
   :root .route-stop.jump-highlight .route-box {
     outline: 0.1875rem solid var(--color-primary);
@@ -4628,7 +4628,9 @@
     display: block;
   }
 
-  .family-guide .family-urgent {
+  /* The 馬上就醫 box. Not under .family-guide: the Q&A assistant's home page pins its urgent
+     answer in it too (#397, the owner's call). */
+  .card.family-urgent {
     border: 0.125rem solid var(--color-primary);
     background-color: var(--color-brand-soft);
     box-shadow: none;
@@ -4670,6 +4672,39 @@
   .family-sources h3 {
     margin-bottom: 0.25rem;
     font-size: 1rem;
+  }
+
+  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a white tile a topic, the
+     .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
+     row holds fewer, down to one, and a tile never gets wider than its row. */
+  .qa-topics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .qa-topic {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: 100%;
+    margin-bottom: 0;
+  }
+
+  /* A topic name's phrase stays on one line when it fits; the name breaks between phrases. */
+  .qa-topic-phrase {
+    display: inline-block;
+  }
+
+  /* The assistant's 找不到？打字問 and an answer's 沒回答到您的問題？: a flat block on the pale
+     blue of 建議您下一步 (ADR 0022: not white, so only its field and button look tappable). */
+  .qa-ask {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
   }
 
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with

@@ -1,0 +1,46 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}{{ faq.question }}｜HearWell{% endblock %}
+
+{% block body %}
+{# #397 (spec #396, prototype #373 Y): one question a page, its address shared with family. #}
+{# #398: back to its topic; the urgent answer, on no topic page, back to the home page. #}
+{% if topic %}
+<p class="mt-2"><a href="{% url 'qa_topic' topic %}"><span aria-hidden="true">‹</span> 回「{{ topic_name }}」</a></p>
+{% else %}
+<p class="mt-2"><a href="{% url 'qa_home' %}"><span aria-hidden="true">‹</span> 回問答小助手</a></p>
+{% endif %}
+<article class="wrap-anywhere">
+<h1 class="h3 mt-4">{{ faq.question }}</h1>
+{# The owner reviews every answer in content.py (ADR 0033): written as HTML there. #}
+{{ faq.answer|safe }}
+{# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the pale blue tip box. #}
+<p class="tip-box mt-4">以上是一般說明，您的情況請以醫師、聽力師為準。</p>
+</article>
+{# The guide chapters' sources and check date (chapter.html), without their 法規、金額 line. #}
+<footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
+    <details class="dropdown-box mb-2">
+        <summary>資料來源</summary>
+        <ul>
+            {% for title, url in faq.sources %}
+            <li><a href="{{ url }}">{{ title }}</a></li>
+            {% endfor %}
+        </ul>
+    </details>
+    <p class="guide-checked">本頁資料查核於 {{ faq.checked_on|date:"Y/m/d" }}。</p>
+</footer>
+{# #398 (prototype #373 Y): on to the related questions content.py names, or back to look again. #}
+{% if related %}
+<h2 class="h4 mt-6">相關問題</h2>
+<ul class="list-unstyled mb-0">
+    {% for other in related %}
+    {% include "screening/qa/question_link.html" with faq=other %}
+    {% endfor %}
+</ul>
+{% endif %}
+{# A pale blue block like the home page's 找不到？打字問, not a white card: only its button is tapped (ADR 0022). #}
+<section class="qa-ask mt-6" aria-labelledby="qa-more-title">
+    <h2 id="qa-more-title" class="h4">沒回答到您的問題？</h2>
+    <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'qa_home' %}">回問答小助手首頁</a>
+</section>
+{% endblock %}

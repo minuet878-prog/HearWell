@@ -144,6 +144,12 @@ print(json.dumps({
         self.assertNotIn("seed_hhia_s", script)
         self.assertNotIn("seed_ssq12", script)
 
+    def test_build_purges_the_question_log_after_migrating(self):
+        # Issue #401: one of the three times the question log is purged; its tables come first.
+        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
+        purge = lines.index("python manage.py purge_question_log")
+        self.assertLess(lines.index("python manage.py migrate"), purge)
+
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())

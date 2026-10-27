@@ -164,7 +164,8 @@ class PrivacyHighlightsTests(TestCase):
 
     def test_spec_354_wording_is_a_minor_fix_that_moves_only_the_date(self):
         # #354 (owner, 2026-10-25): a minor fix, so the date moves and nobody agrees again.
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
+        # #400 moved it again the same way (test_qa_log).
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
         self.assertEqual(models.CONSENT_VERSION, 2)
 
     def test_aid_and_subsidy_raises_the_version_so_everyone_agrees_again(self):
@@ -479,7 +480,7 @@ class PrivacyPageT361Tests(TestCase):
         self.assertLess(self.main.index("<details"), self.main.index("<h2"))
         links = re.findall(r'<a href="#([^"]+)">(.*?)</a>', body)
         headings = self._headings()
-        self.assertEqual(len(headings), 12)
+        self.assertEqual(len(headings), 13)  # #400 added the question log
         self.assertEqual(links, [(anchor, words) for anchor, _, words in headings])
         self.assertEqual(links[0], ("highlights-title", "先看重點"))
         self.assertEqual(links[-1], ("contact-title", "有問題或要刪除資料？"))

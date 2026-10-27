@@ -3851,6 +3851,7 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
         cards = (
             ("了解助聽器選配與補助", "/guide", "我的選配指引"),
             ("給家人看：怎麼跟聽損的家人溝通", "/family", "給家人的溝通與陪伴"),
+            ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
         )
         self.open(390, javascript=False)
         with self.saving_artifacts():
@@ -6583,6 +6584,17 @@ WHITE_CARD_PAGES_LEARN = (
     ("guide, below the threshold", True, lambda test: test.guide_below_and_not_applicable()),
     ("family guide", False, "/family"),
     ("learn", False, "/learn"),
+    # #397: the Q&A assistant's home and an answer, signed in and out.
+    ("Q&A home", False, "/qa"),
+    ("Q&A home, signed in", True, "/qa"),
+    ("Q&A answer", False, "/qa/brands-and-shops"),
+    ("Q&A answer, signed in", True, "/qa/sudden-hearing-loss"),
+    # #398: a topic page, signed in and out.
+    ("Q&A topic", False, "/qa/topic/hearing-aids"),
+    ("Q&A topic, signed in", True, "/qa/topic/hearing-health"),
+    # #399: a typed question's results, found and not.
+    ("Q&A results", False, lambda test: test.qa_results("耳機補助")),
+    ("Q&A results, nothing found", True, lambda test: test.qa_results("今天天氣如何")),
     ("privacy", False, "/privacy"),
 )
 
@@ -6753,6 +6765,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             user=self.user, defaults={"certificate": "", "subsidy": "other"}
         )
         return "/guide"
+
+    def qa_results(self, question):
+        """#399: a question typed on the Q&A home, so the session has its results."""
+        self.page.goto(f"{self.live_server_url}/qa")
+        self.page.get_by_label("請輸入您想問的事").fill(question)
+        self.page.get_by_role("button", name="找答案").click()
+        self.page.wait_for_url("**/qa/results")
+        return "/qa/results"
 
     def answered_chapter(self):
         """The assessment chapter after its question: 已記下 and the button back to the route."""
@@ -7611,7 +7631,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         with self.saving_artifacts():
             self.visit(False, "/learn")
             cards = self.main().get_by_role("link")
-            self.assertEqual(cards.count(), 2)
+            self.assertEqual(cards.count(), 3)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
                     self.assert_white_card(card)
@@ -7660,6 +7680,45 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(page=name):
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
+
+    # The owner's pick for the Q&A assistant (2026-10-27, B): its topic tiles and question cards
+    # are white cards, two tiles a row on a phone and one at 200% text; 找不到？打字問 and
+    # 沒回答到您的問題？ are flat on pale blue, each with a full-width button; an answer is flat.
+    def test_qa_assistant_tiles_cards_and_pale_blue_blocks(self):
+        with self.saving_artifacts():
+            self.visit(False, "/qa", width=375)
+            tiles = self.main().locator(".qa-topic")
+            expect(tiles).to_have_count(4)
+            for tile in tiles.all():
+                self.assert_white_card(tile)
+            first, second = (tile.bounding_box() for tile in tiles.all()[:2])
+            self.assertEqual(first["y"], second["y"])
+            self.assertLess(first["x"], second["x"])
+            self.assert_white_card(self.main().get_by_role("link", name="我的分數代表什麼？"))
+            ask = self.main().get_by_role("region", name="找不到？打字問")
+            self.assert_pale_blue_with_a_full_width(ask, ask.get_by_role("button", name="找答案"))
+            self.double_text()
+            self.assertEqual(len({tile.bounding_box()["x"] for tile in tiles.all()}), 1)
+
+            self.page.goto(f"{self.live_server_url}/qa/brands-and-shops")
+            self.assert_flat(self.main().locator("article"))
+            reminder = self.main().get_by_text("以上是一般說明，您的情況請以醫師、聽力師為準。")
+            self.assertEqual(self.style(reminder, "backgroundColor"), self.BLUE_SOFT)
+            self.assert_white_card(self.main().get_by_role("link", name="我的分數代表什麼？"))
+            more = self.main().get_by_role("region", name="沒回答到您的問題？")
+            self.assert_pale_blue_with_a_full_width(
+                more, more.get_by_role("link", name="回問答小助手首頁")
+            )
+
+    def assert_pale_blue_with_a_full_width(self, block, control):
+        """A flat block on 建議您下一步's pale blue, its control as wide as the block's inside."""
+        self.assertEqual(self.style(block, "backgroundColor"), self.BLUE_SOFT)
+        self.assertEqual(self.style(block, "boxShadow"), "none")
+        inside = block.evaluate(
+            "el => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft)"
+            " - parseFloat(getComputedStyle(el).paddingRight)"
+        )
+        self.assertAlmostEqual(control.bounding_box()["width"], inside, delta=0.5)
 
     # #311: the share page's steps 1-3 are 並列區塊 titled by a larger subhead; their buttons
     # are still buttons.
@@ -10244,7 +10303,7 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.open("/learn", self.PHONE, signed_in=False)
         with self.saving_artifacts():
             titles = self.main().locator(".link-card-title")
-            expect(titles).to_have_count(2)
+            expect(titles).to_have_count(3)
             for title in titles.all():
                 lines = self.lines(title)
                 with self.subTest(title=lines):
