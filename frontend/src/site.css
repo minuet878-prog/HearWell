@@ -4674,25 +4674,32 @@
     font-size: 1rem;
   }
 
-  /* The Q&A assistant's lists (#397, prototype #373): one question or topic a row, a thin line
-     between them; a question's link fills its row, a full touch target. */
-  .qa-questions {
+  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a white tile a topic, the
+     .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
+     row holds fewer, down to one, and a tile never gets wider than its row. */
+  .qa-topics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr));
+    gap: 0.75rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .qa-questions > li {
-    display: flex;
-    align-items: center;
-    min-height: var(--spacing-touch);
-    padding-block: 0.5rem;
-    border-bottom: 1px solid var(--color-border);
+  .qa-topic {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    height: 100%;
+    margin-bottom: 0;
   }
 
-  .qa-questions a {
-    flex: 1;
-    font-weight: 700;
+  /* The assistant's 找不到？打字問 and an answer's 沒回答到您的問題？: a flat block on the pale
+     blue of 建議您下一步 (ADR 0022: not white, so only its field and button look tappable). */
+  .qa-ask {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
   }
 
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with

@@ -31,6 +31,41 @@ def urgent_box(response):
     raise AssertionError("no section says to see a doctor soon")
 
 
+# The owner's pick (2026-10-27, B): every question in a list is a white card with an arrow and no
+# icon (ADR 0022); each topic is a white tile, its icon above its name.
+QUESTION_CARD = re.compile(
+    r'<a class="link-card" href="/qa/([^"/#]+)">\s*<span class="link-card-body">'
+    r'<span class="link-card-title">([^<]+)</span></span>\s*'
+    r'<span class="link-card-arrow" aria-hidden="true">›</span>\s*</a>'  # noqa: RUF001
+)
+TOPIC_TILE = re.compile(
+    r'<a class="link-card qa-topic" href="/qa/topic/([^"]+)">\s*'
+    r'<span class="action-card-icon" aria-hidden="true" data-icon="([^"]+)">(.*?)</span>\s*'
+    r"<span class=\"link-card-title\">([^<]+)</span>\s*</a>",
+    re.S,
+)
+TOPIC_TILES = [
+    ("using-the-site", "home", "網站怎麼用"),
+    ("questionnaires", "clipboard", "問卷是什麼"),
+    ("hearing-aids", "guide", "助聽器選配與補助"),
+    ("hearing-health", "ear", "聽力保健常識"),
+]
+
+
+def question_cards(html):
+    """(code, question) of every question card in html."""
+    return QUESTION_CARD.findall(html)
+
+
+def topic_tiles(html):
+    """(slug, icon, name) of every topic tile in html; each icon must draw something."""
+    tiles = TOPIC_TILE.findall(html)
+    for slug, _, drawing, _ in tiles:
+        if "<path" not in drawing:
+            raise AssertionError(f"{slug}'s icon draws nothing")
+    return [(slug, icon, name) for slug, icon, _, name in tiles]
+
+
 def answer_part(response):
     """The answer itself: from the page's h1 to the footer of sources."""
     content = response.content.decode()
@@ -40,7 +75,8 @@ def answer_part(response):
 class QaHomeTests(TestCase):
     """#397 (spec #396): the Q&A assistant's home page."""
 
-    def test_urgent_answer_then_popular_then_the_four_topics(self):
+    def test_urgent_answer_then_the_four_topics_then_popular(self):
+        # The owner's call (2026-10-27): 依主題找 comes before 大家常問.
         response = self.client.get(reverse("qa_home"))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
@@ -48,12 +84,12 @@ class QaHomeTests(TestCase):
         self.assertRegex(main, r"<h1[^>]*>問答小助手</h1>")
         order = [
             f'href="{reverse("qa_answer", args=["sudden-hearing-loss"])}"',
-            ">大家常問</h2>",
             ">依主題找</h2>",
             "網站怎麼用",
             "問卷是什麼",
             "助聽器選配與補助",
             "聽力保健常識",
+            ">大家常問</h2>",
         ]
         places = [main.find(text) for text in order]
         self.assertNotIn(-1, places, dict(zip(order, places, strict=True)))
@@ -91,13 +127,90 @@ class QaHomeTests(TestCase):
                 patch("screening.qa_assistant.content.POPULAR", popular),
             ):
                 content = self.client.get(reverse("qa_home")).content.decode()
-                section = content[content.index(">大家常問</h2>") : content.index(">依主題找</h2>")]
+                section = content[content.index(">大家常問</h2>") : content.index("qa-ask-title")]
                 links = re.findall(r'href="/qa/([^"]+)"', section)
                 self.assertEqual(tuple(links), popular)
 
     def test_headings_do_not_skip_a_level(self):
         response = self.client.get(reverse("qa_home"))
         test_guide.assert_levels_without_skipping(self, test_guide.heading_levels(response))
+
+
+class QaLookTests(TestCase):
+    """The owner's pick (2026-10-27, B, ADR 0022): what can be tapped is a white card, the rest
+    flat; the typing and 沒回答到 parts on a pale blue block."""
+
+    TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening" / "qa"
+
+    def main(self, url, data=None):
+        if data is None:
+            response = self.client.get(url)
+        else:
+            response = self.client.post(url, data, follow=True)
+        page = response.content.decode()
+        return page[page.index("<main") : page.index("</main>")]
+
+    def test_home_topics_are_tiles_with_their_icons(self):
+        main = self.main(reverse("qa_home"))
+        topics = main[main.index(">依主題找</h2>") : main.index(">大家常問</h2>")]
+        self.assertEqual(topic_tiles(topics), TOPIC_TILES)
+
+    def test_nothing_found_lists_the_same_tiles(self):
+        main = self.main(reverse("qa_search"), {"question": "今天天氣如何"})
+        self.assertIn(">依主題找</h2>", main)
+        self.assertEqual(topic_tiles(main), TOPIC_TILES)
+
+    def test_popular_questions_are_white_cards_without_icons(self):
+        main = self.main(reverse("qa_home"))
+        popular = main[main.index(">大家常問</h2>") : main.index("qa-ask-title")]
+        self.assertEqual(
+            question_cards(popular),
+            [(code, content.BY_CODE[code].question) for code in content.POPULAR],
+        )
+
+    def test_matched_questions_are_white_cards_without_icons(self):
+        main = self.main(reverse("qa_search"), {"question": "助聽器補助怎麼申請"})
+        cards = question_cards(main)
+        self.assertTrue(cards)
+        self.assertEqual([code for code, _ in cards], re.findall(r'href="/qa/([^"/#]+)"', main))
+
+    def test_the_ask_form_sits_on_a_pale_blue_block_its_button_full_width(self):
+        main = self.main(reverse("qa_home"))
+        block = re.search(
+            r'<section class="qa-ask mt-6" aria-labelledby="qa-ask-title">\s*'
+            r'<h2 id="qa-ask-title" class="h4">找不到？打字問</h2>(.*?)</section>',
+            main,
+            re.S,
+        )
+        self.assertIsNotNone(block)
+        self.assertIn(f'<form method="post" action="{reverse("qa_search")}"', block[1])
+        self.assertIn(
+            '<button type="submit" class="btn btn-primary btn-lg w-full">找答案</button>', block[1]
+        )
+
+    def test_the_answer_is_on_the_page_its_reminder_in_a_tip_box(self):
+        main = self.main(reverse("qa_answer", args=["brands-and-shops"]))
+        self.assertIn('<article class="wrap-anywhere">', main)
+        self.assertIn(
+            '<p class="tip-box mt-4">以上是一般說明，您的情況請以醫師、聽力師為準。</p>',
+            main[main.index("<article") : main.index("</article>")],
+        )
+
+    def test_not_answered_is_a_pale_blue_block_with_a_full_width_outline_button(self):
+        main = self.main(reverse("qa_answer", args=["brands-and-shops"]))
+        self.assertRegex(
+            main,
+            r'<section class="qa-ask mt-6" aria-labelledby="qa-more-title">\s*'
+            r'<h2 id="qa-more-title" class="h4">沒回答到您的問題？</h2>\s*'
+            rf'<a class="btn btn-outline-primary btn-lg w-full" href="{reverse("qa_home")}">'
+            r"回問答小助手首頁</a>\s*</section>",
+        )
+
+    def test_the_thin_line_list_look_is_gone(self):
+        self.assertNotIn("qa-questions", SITE_CSS.read_text(encoding="utf-8"))
+        for template in self.TEMPLATES.glob("*.html"):
+            with self.subTest(template=template.name):
+                self.assertNotIn("qa-questions", template.read_text(encoding="utf-8"))
 
 
 class QaAnswerTests(TestCase):

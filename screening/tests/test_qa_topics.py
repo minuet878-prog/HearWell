@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from screening.models import User
 from screening.qa_assistant import content
-from screening.tests import test_guide
+from screening.tests import test_guide, test_qa_pages
 from screening.tests.helpers import consented_user
 
 TOPIC_SLUGS = ("using-the-site", "questionnaires", "hearing-aids", "hearing-health")
@@ -46,13 +46,15 @@ class QaTopicPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         main = main_of(response)
         self.assertRegex(main, r"<h1[^>]*>助聽器選配與補助</h1>")
-        answer = reverse("qa_answer", args=["brands-and-shops"])
-        self.assertIn(f'<a href="{answer}">哪個牌子的助聽器比較好？去哪家店買？</a>', main)
+        cards = test_qa_pages.question_cards(main)
+        self.assertEqual(cards[0], ("brands-and-shops", "哪個牌子的助聽器比較好？去哪家店買？"))
         self.assertEqual(
-            re.findall(r'href="/qa/([^"/]+)"', main),
+            [code for code, _ in cards],
             # #399 adds the subsidy and the 集音器 questions to this topic.
             ["brands-and-shops", "hearing-aid-subsidy", "sound-amplifier-vs-hearing-aid"],
         )
+        # Nothing else on the page leads to an answer.
+        self.assertEqual(re.findall(r'href="/qa/([^"/]+)"', main), [code for code, _ in cards])
 
     def test_the_urgent_answer_is_on_no_topic_page(self):
         # Prototype #373: it is pinned on the home page, not in a list; its data says
@@ -73,7 +75,7 @@ class QaTopicPageTests(TestCase):
         page = self.client.get(reverse("qa_home")).content.decode()
         topics = page[page.index(">依主題找</h2>") : page.index("</main>")]
         self.assertEqual(
-            re.findall(r'<a href="/qa/topic/([^"]+)">([^<]+)</a>', topics),
+            [(slug, name) for slug, _, name in test_qa_pages.topic_tiles(topics)],
             [
                 ("using-the-site", "網站怎麼用"),
                 ("questionnaires", "問卷是什麼"),
@@ -137,7 +139,7 @@ class QaAnswerWayOnTests(TestCase):
             main = main_of(self.client.get(reverse("qa_answer", args=["brands-and-shops"])))
         section = main[main.index(">相關問題</h2>") : main.index(">沒回答到您的問題？</h2>")]
         self.assertEqual(
-            re.findall(r'<a href="/qa/([^"/]+)">([^<]+)</a>', section),
+            test_qa_pages.question_cards(section),
             [
                 ("my-results", "我的分數代表什麼？"),
                 ("sudden-hearing-loss", "突然聽不到、耳朵流血，該怎麼辦？"),
@@ -160,7 +162,9 @@ class QaAnswerWayOnTests(TestCase):
     def test_not_answered_leads_to_the_assistant_home(self):
         main = main_of(self.client.get(reverse("qa_answer", args=["my-results"])))
         heading = main.index(">沒回答到您的問題？</h2>")
-        self.assertIn(f'<a href="{reverse("qa_home")}">回問答小助手首頁</a>', main[heading:])
+        self.assertRegex(
+            main[heading:], rf'<a class="[^"]*" href="{reverse("qa_home")}">回問答小助手首頁</a>'
+        )
         self.assertLess(main.index("以上是一般說明"), heading)
 
     def test_a_retired_code_goes_to_the_assistant_home(self):

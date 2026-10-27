@@ -1,0 +1,10 @@
+{# 依主題找 on the home page and when a typed question matched nothing: a white tile a topic, its icon above its name (the owner's pick 2026-10-27, ADR 0022). #}
+{# #366: a name wraps into even lines, never one character alone on the last. #}
+<ul class="qa-topics text-balance">
+    {% for slug, name, icon in topics %}
+    <li><a class="link-card qa-topic" href="{% url 'qa_topic' slug %}">
+        {% include "screening/action_icon.html" %}
+        <span class="link-card-title">{{ name }}</span>
+    </a></li>
+    {% endfor %}
+</ul>

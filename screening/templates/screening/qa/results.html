@@ -7,7 +7,7 @@
 <h1 class="h3 mt-2">打字問的結果</h1>
 {% if faqs %}
 <p>找到 {{ faqs|length }} 題可能相關，點題目看答案。</p>
-<ul class="qa-questions">
+<ul class="list-unstyled mb-0">
     {% for faq in faqs %}
     {% include "screening/qa/question_link.html" %}
     {% endfor %}
@@ -15,13 +15,9 @@
 {% else %}
 <p>沒有找到相符的題目，我們會參考您的問題補充。可以換個說法再試，或從下面的主題找。</p>
 <h2 class="h4 mt-6">依主題找</h2>
-<ul class="qa-questions">
-    {% for slug, name in topics %}
-    <li><a href="{% url 'qa_topic' slug %}">{{ name }}</a></li>
-    {% endfor %}
-</ul>
+{% include "screening/qa/topic_tiles.html" %}
 <h2 class="h4 mt-6">大家常問</h2>
-<ul class="qa-questions">
+<ul class="list-unstyled mb-0">
     {% for faq in popular %}
     {% include "screening/qa/question_link.html" %}
     {% endfor %}

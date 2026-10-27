@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from screening.models import User
 from screening.qa_assistant import content
-from screening.tests import test_guide, test_pages
+from screening.tests import test_guide, test_pages, test_qa_pages
 from screening.tests.helpers import consented_user
 
 NOT_FOUND = "沒有找到相符的題目，我們會參考您的問題補充。可以換個說法再試，或從下面的主題找。"
@@ -29,7 +29,9 @@ class QaSearchFormTests(TestCase):
         main = main_of(self.client.get(reverse("qa_home")))
         title = re.search(r'<h2 id="qa-ask-title"[^>]*>找不到？打字問</h2>', main)
         self.assertIsNotNone(title)
+        # 2026-10-27: 大家常問 now follows 依主題找, so it is the one just above.
         self.assertGreater(title.start(), main.index(">依主題找</h2>"))
+        self.assertGreater(title.start(), main.index(">大家常問</h2>"))
         form = main[title.end() :]
         self.assertIn(f'<form method="post" action="{reverse("qa_search")}"', form)
         self.assertIn("csrfmiddlewaretoken", form)
@@ -93,9 +95,10 @@ class QaSearchTests(TestCase):
     def test_nothing_found_says_so_and_lists_the_topics_and_popular(self):
         main = main_of(self.ask("今天天氣如何", follow=True))
         self.assertIn(NOT_FOUND, main)
-        for slug, name in content.TOPICS:
-            with self.subTest(topic=name):
-                self.assertIn(f'<a href="{reverse("qa_topic", args=[slug])}">{name}</a>', main)
+        self.assertEqual(
+            [(slug, name) for slug, _, name in test_qa_pages.topic_tiles(main)],
+            list(content.TOPICS),
+        )
         popular = main[main.index(">大家常問</h2>") :]
         self.assertEqual(question_links(popular), list(content.POPULAR))
         self.assertNotIn("mailto:", main)

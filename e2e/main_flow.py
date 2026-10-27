@@ -7681,6 +7681,45 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
 
+    # The owner's pick for the Q&A assistant (2026-10-27, B): its topic tiles and question cards
+    # are white cards, two tiles a row on a phone and one at 200% text; 找不到？打字問 and
+    # 沒回答到您的問題？ are flat on pale blue, each with a full-width button; an answer is flat.
+    def test_qa_assistant_tiles_cards_and_pale_blue_blocks(self):
+        with self.saving_artifacts():
+            self.visit(False, "/qa", width=375)
+            tiles = self.main().locator(".qa-topic")
+            expect(tiles).to_have_count(4)
+            for tile in tiles.all():
+                self.assert_white_card(tile)
+            first, second = (tile.bounding_box() for tile in tiles.all()[:2])
+            self.assertEqual(first["y"], second["y"])
+            self.assertLess(first["x"], second["x"])
+            self.assert_white_card(self.main().get_by_role("link", name="我的分數代表什麼？"))
+            ask = self.main().get_by_role("region", name="找不到？打字問")
+            self.assert_pale_blue_with_a_full_width(ask, ask.get_by_role("button", name="找答案"))
+            self.double_text()
+            self.assertEqual(len({tile.bounding_box()["x"] for tile in tiles.all()}), 1)
+
+            self.page.goto(f"{self.live_server_url}/qa/brands-and-shops")
+            self.assert_flat(self.main().locator("article"))
+            reminder = self.main().get_by_text("以上是一般說明，您的情況請以醫師、聽力師為準。")
+            self.assertEqual(self.style(reminder, "backgroundColor"), self.BLUE_SOFT)
+            self.assert_white_card(self.main().get_by_role("link", name="我的分數代表什麼？"))
+            more = self.main().get_by_role("region", name="沒回答到您的問題？")
+            self.assert_pale_blue_with_a_full_width(
+                more, more.get_by_role("link", name="回問答小助手首頁")
+            )
+
+    def assert_pale_blue_with_a_full_width(self, block, control):
+        """A flat block on 建議您下一步's pale blue, its control as wide as the block's inside."""
+        self.assertEqual(self.style(block, "backgroundColor"), self.BLUE_SOFT)
+        self.assertEqual(self.style(block, "boxShadow"), "none")
+        inside = block.evaluate(
+            "el => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft)"
+            " - parseFloat(getComputedStyle(el).paddingRight)"
+        )
+        self.assertAlmostEqual(control.bounding_box()["width"], inside, delta=0.5)
+
     # #311: the share page's steps 1-3 are 並列區塊 titled by a larger subhead; their buttons
     # are still buttons.
     def test_share_steps_are_tinted_and_keep_their_buttons(self):

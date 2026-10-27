@@ -19,6 +19,18 @@ HINT_SESSION_KEY = "qa_hint"
 MOST_RESULTS = 5
 
 TOPIC_NAMES = dict(content.TOPICS)
+# Each topic tile's icon (action_icon.html), the owner's pick (2026-10-27).
+TOPIC_ICONS = {
+    "using-the-site": "home",
+    "questionnaires": "clipboard",
+    "hearing-aids": "guide",
+    "hearing-health": "ear",
+}
+
+
+def _topics():
+    # 依主題找, on the home page and when a typed question matched nothing.
+    return [(slug, name, TOPIC_ICONS[slug]) for slug, name in content.TOPICS]
 
 
 def _popular():
@@ -43,7 +55,7 @@ def qa_home(request):
         {
             "urgent": content.BY_CODE[content.URGENT_CODE],
             "popular": _popular(),
-            "topics": content.TOPICS,
+            "topics": _topics(),
             "form": form,
         },
     )
@@ -109,7 +121,7 @@ def qa_results(request):
             # A question taken out since (ADR 0033) is left out.
             "faqs": [content.BY_CODE[code] for code in codes if code in content.BY_CODE],
             "popular": _popular(),
-            "topics": content.TOPICS,
+            "topics": _topics(),
         },
     )
     # They come from this browser's session and the next question changes them.
