@@ -46,7 +46,7 @@ FAQS = (
             "<p>想進一步了解，可以把結果頁帶給聽力師看。</p>"
             '<p><a href="/my_hearing">到「我的紀錄」看結果</a></p>'
         ),
-        sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
+        sources=(("聽伴隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("分數代表什麼", "結果是什麼意思", "我幾分算嚴重"),
         related=("diagnosis-and-medication", "brands-and-shops"),
@@ -61,7 +61,7 @@ FAQS = (
             "<p>一般來說，聽力變差、耳朵不舒服，或想知道某種藥會不會影響聽力，"
             "請到耳鼻喉科就診，問耳鼻喉科醫師。</p>"
         ),
-        sources=(("HearWell 隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
+        sources=(("聽伴隱私權說明：不是醫療診斷", "/privacy#diagnosis-title"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("要吃什麼藥", "耳朵的病要怎麼治療"),
         related=("sudden-hearing-loss", "my-results"),

@@ -45,7 +45,7 @@ FORM_25_SOURCES = (
 
 # Verification-flow batch F3, reviewed in the chat on 2026-10-23.
 PREPARE = (
-    "用 HearWell 準備驗證回診",
+    "用聽伴準備驗證回診",
     "驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：",
     "戴著再做一次聽力對生活的影響（HHIE-S 或 HHIA-S），和沒戴時的結果比較",
     "助聽器使用成效（IOI-HA）",
@@ -132,7 +132,7 @@ AFTER_FITTING = (
     "不會跟以前完全一樣",
     "在吵雜的餐廳、多人聊天時，還是可能聽不清楚。",
     "記錄配戴的效果",
-    "戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告給聽力師看。",
+    "戴一段時間後，可以用聽伴的問卷記錄感受，印出聽力報告給聽力師看。",
     # F4 (verification-flow batch): the two life-impact questionnaires named and linked.
     "也可以戴著助聽器再做一次生活影響問卷（HHIE-S 或 HHIA-S），和沒戴時比較。",
 )

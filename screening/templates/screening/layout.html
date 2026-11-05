@@ -4,7 +4,7 @@
 <html lang="zh-Hant">
 
 <head>
-    <title>{% block title %}HearWell{% endblock %}</title>
+    <title>{% block title %}聽伴{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="{% static 'screening/frontend/site.css' %}" rel="stylesheet">
     {# Add to home screen (PWA): app info and icons only, no service worker. #}
@@ -14,7 +14,7 @@
     <link rel="icon" href="{% static 'screening/pwa/favicon-32.png' %}" sizes="32x32">
     <link rel="icon" href="{% static 'screening/pwa/favicon.svg' %}" type="image/svg+xml">
     <link rel="apple-touch-icon" href="{% static 'screening/pwa/apple-touch-icon.png' %}">
-    <meta name="apple-mobile-web-app-title" content="HearWell">
+    <meta name="apple-mobile-web-app-title" content="聽伴">
     <meta name="apple-mobile-web-app-capable" content="yes">
     {# Back button and pull to refresh in the home-screen app (spec phase10_pwa_back_refresh.md). #}
     <script type="module" src="{% static 'screening/frontend/pwa-nav.js' %}"></script>
@@ -69,7 +69,7 @@
                 {% if request.resolver_match.url_name != "index" %}
                 <button id="pwa-back" class="btn btn-outline-primary site-back" type="button" hidden><span aria-hidden="true">‹</span> 上一頁</button>
                 {% endif %}
-                <p class="site-brand"><a href="{% url 'index' %}"><span class="site-logo" aria-hidden="true"></span><span>Hear<span class="site-wordmark-tint">Well</span></span></a></p>
+                <p class="site-brand"><a href="{% url 'index' %}"><span class="site-logo" aria-hidden="true"></span><span>聽<span class="site-wordmark-tint">伴</span></span></a></p>
             </div>
             {% if user.is_authenticated %}
             {# Spec phase9_ui_refresh_3_structure.md 4.2: the name leads to account settings. #}

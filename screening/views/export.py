@@ -145,7 +145,7 @@ def download_my_data(request):
             ],
         },
     }
-    filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
+    filename = f"聽伴-我的資料-{timezone.localdate().isoformat()}.json"
     return HttpResponse(
         json.dumps(data, ensure_ascii=False, indent=2),
         content_type="application/json",

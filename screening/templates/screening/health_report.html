@@ -1,7 +1,7 @@
 {% extends "screening/layout.html" %}
 {% load static %}
 
-{% block title %}HearWell 聽力報告{% endblock %}
+{% block title %}聽伴聽力報告{% endblock %}
 
 {% block extra_head %}
 {% if has_records %}<script defer src="{% static 'screening/print-button.js' %}"></script>{% endif %}
@@ -10,7 +10,7 @@
 
 {% block body %}
 <article class="health-report">
-<h1 class="h3 mt-4">HearWell 聽力報告</h1>
+<h1 class="h3 mt-4">聽伴聽力報告</h1>
 {% if not has_records %}
 <p>還沒有可以放進報告的紀錄。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>

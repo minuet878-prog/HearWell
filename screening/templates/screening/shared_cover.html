@@ -1,13 +1,13 @@
 {% extends "screening/layout.html" %}
 
-{% block title %}HearWell 聽力報告{% endblock %}
+{% block title %}聽伴聽力報告{% endblock %}
 
 {% block extra_head %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block body %}
 {# Spec phase8_c1_family_share.md 4.2: what link previews see, so no health data here. #}
-{# #366: two even lines that break at the spaces, never inside 聽力. #}
-<h1 class="h3 mt-4 text-balance break-keep">家人分享了一份 HearWell 聽力報告給您</h1>
+{# #366: two even lines that break at the <wbr>, never inside 聽力. #}
+<h1 class="h3 mt-4 text-balance break-keep">家人分享了一份<wbr>聽伴聽力報告給您</h1>
 <p>連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'shared_report' share.token %}">打開報告</a>
 {% endblock %}

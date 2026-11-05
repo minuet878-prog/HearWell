@@ -352,8 +352,8 @@ class HealthReportTests(TestCase):
     def test_title_and_section_order(self):
         self._full_records()
         content = self._content()
-        self.assertIn("<title>HearWell 聽力報告</title>", content)
-        self.assertIn("HearWell 聽力報告</h1>", content)
+        self.assertIn("<title>聽伴聽力報告</title>", content)
+        self.assertIn("聽伴聽力報告</h1>", content)
         positions = [content.index(f'id="{section_id}"') for section_id in SECTION_ORDER]
         self.assertEqual(positions, sorted(positions))
         self.assertLess(content.index('id="report-summary"'), positions[0])

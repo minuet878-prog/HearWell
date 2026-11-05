@@ -17,14 +17,14 @@ DETAILS = re.compile(
 )
 
 IPHONE_STEPS = (
-    "用 Safari 打開 HearWell 網站。",
+    "用 Safari 打開聽伴網站。",
     "點畫面下方的「分享」按鈕（一個方框，上面有向上的箭頭）。如果沒看到，先點「⋯」再點「分享」。",
     "往下滑，點「加入主畫面」。",
     "點右上角的「加入」。",
 )
 SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 ANDROID_STEPS = (
-    "用 Chrome 打開 HearWell 網站。",
+    "用 Chrome 打開聽伴網站。",
     "點右上角的「⋮」（三個點）。",
     "點「加到主畫面」或「安裝應用程式」。",
     "再點一次「安裝」或「新增」。",
@@ -118,7 +118,7 @@ class PhoneBrandsT361Tests(TestCase):
         )
 
     def test_says_to_do_it_on_the_phone_after_the_intro(self):
-        reminder = "這些步驟要在手機上做。如果您現在用電腦，請用手機打開 HearWell。"
+        reminder = "這些步驟要在手機上做。如果您現在用電腦，請用手機打開聽伴。"
         intro = "不用每次輸入網址。"
         self.assertIn(reminder, self.main)
         self.assertLess(self.main.index(intro), self.main.index(reminder))

@@ -1,7 +1,7 @@
 {% extends "screening/layout.html" %}
 {% load static %}
 
-{% block title %}分享報告給家人｜HearWell{% endblock %}
+{% block title %}分享報告給家人｜聽伴{% endblock %}
 
 {% block extra_head %}
 {% if share %}
@@ -57,7 +57,7 @@
     {% with share_url="https://"|add:request.get_host|add:share_path %}
     {# Without JavaScript both buttons stay hidden and the address below is the way to copy. #}
     <p class="flex flex-wrap gap-2">
-        <button id="share-button" type="button" class="btn btn-primary btn-lg" data-url="{{ share_url }}" data-title="HearWell 聽力報告" hidden>再傳一次給家人</button>
+        <button id="share-button" type="button" class="btn btn-primary btn-lg" data-url="{{ share_url }}" data-title="聽伴聽力報告" hidden>再傳一次給家人</button>
         <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg" data-url="{{ share_url }}" hidden>複製連結</button>
     </p>
     {# #332 (spec #326 B3): the button itself shows ✓ 已複製; this area only says it to screen readers. #}

@@ -34,7 +34,7 @@ BEFORE_YOU_GO = (
     "身分證",
     "身心障礙證明（有的話）",
     "現在用的助聽器（有的話）",
-    "也可以在 HearWell 印出聽力報告一起帶去。",
+    "也可以在聽伴印出聽力報告一起帶去。",
     "要申請身障補助，一定要有身心障礙證明。",
     "可以問聽力師的問題",
     "適不適合我",
@@ -151,7 +151,7 @@ class GuideChapterTests(TestCase):
         with self.assertNumQueries(0):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>去找聽力師之前\uff5cHearWell</title>")
+        self.assertContains(response, "<title>去找聽力師之前\uff5c聽伴</title>")
         self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
         text = text_of(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]
@@ -220,7 +220,7 @@ class ChapterTidyT367Tests(TestCase):
             self.client.get(reverse("guide_chapter", args=["before-you-go"])), "要帶的東西"
         )
         self.assertIn(
-            "<p>也可以在 HearWell 印出聽力報告一起帶去。"
+            "<p>也可以在聽伴印出聽力報告一起帶去。"
             f'<a href="{reverse("health_report")}">看／印聽力報告</a></p>',
             bring,
         )

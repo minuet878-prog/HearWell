@@ -95,6 +95,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
   「更多互動式頁面」（2026-10-24 本人提出，跟讀取動畫分開）：還沒定義，先跑 `/mattpocock-skills:grill-with-docs`。
+- 進行中：產品改名「聽伴」（英文 tingpal，ADR 0039，分支 `feat/rename-to-tingpal`，驗證見 `docs/verification/rename-to-tingpal.md`）。
+  文字和 logo 已改好，本人驗收通過，等合併；商標確認先跳過，開始收費或上架 app 之前要補做；網域等 VPS 切換時再接。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
@@ -158,7 +160,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ## 小尾巴（還沒排，做到附近時一起處理）
 
-- **200% 字級會左右捲動**：頁尾 email 在 320px 撐到約 394px（每一頁都有）；標題列「HearWell」在 Linux 字型下超出畫面；底部分頁在 320px 時兩個字也放不下一行（每格約 62px，規格 #268 以 390px 為準）；聽力圖結果 `.ear-results` 已在 #204 修好。聽力報告頁在 200% 字級寬到約 459px（`main` 裡一個空的 span 撐開；家人分享報告已在 #198 修好，本人的報告頁還沒）；225% 字級時紀錄卡片（`.link-card-body`）的日期比卡片內文寬（198px 對 127px），沒撐寬頁面但超出卡片。要在 CI 或 Linux 字型下驗，e2e 可沿用 4a 的 `add_style_tag` 放大字級。
+- **200% 字級會左右捲動**：頁尾 email 在 320px 撐到約 394px（每一頁都有）；標題列的舊名「HearWell」在 Linux 字型下超出畫面（改名「聽伴」後字變短，要再量一次）；底部分頁在 320px 時兩個字也放不下一行（每格約 62px，規格 #268 以 390px 為準）；聽力圖結果 `.ear-results` 已在 #204 修好。聽力報告頁在 200% 字級寬到約 459px（`main` 裡一個空的 span 撐開；家人分享報告已在 #198 修好，本人的報告頁還沒）；225% 字級時紀錄卡片（`.link-card-body`）的日期比卡片內文寬（198px 對 127px），沒撐寬頁面但超出卡片。要在 CI 或 Linux 字型下驗，e2e 可沿用 4a 的 `add_style_tag` 放大字級。
 - **無障礙量測剩 7 項**：見 [`accessibility/accessibility_baseline.md`](accessibility/accessibility_baseline.md) 5.4。
 - **HHIE-S 出處頁**：目前只有 IOI-HA 有出處；需本人提供原文與中文版出處。
 - **Django 內建訊息用「你」**（密碼規則、欄位說明），站內用「您」；要覆寫驗證器或翻譯檔。

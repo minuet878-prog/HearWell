@@ -9,7 +9,7 @@ from screening.models import Category, Question, Questionnaire, ReportShare, Sub
 from screening.tests import test_report
 from screening.tests.helpers import consented_user
 
-INTRO = "這是您的家人在 HearWell 自己作答與輸入的自我篩檢結果。"
+INTRO = "這是您的家人在聽伴自己作答與輸入的自我篩檢結果。"
 DISCLAIMER = "結果僅供參考，不能取代聽力檢查與醫師診斷。"
 TAG = re.compile(r"<[^>]+>")
 
@@ -225,7 +225,7 @@ class SharedReportHighlightsTests(TestCase):
         order = [
             content.index('<article class="health-report">'),
             content.index(INTRO),
-            content.index("HearWell 聽力報告</h1>"),
+            content.index("聽伴聽力報告</h1>"),
             content.index("連結有效到"),
             content.index('id="family-highlights"'),
             content.index('id="family-help"'),
@@ -247,7 +247,7 @@ class SharedReportHighlightsTests(TestCase):
         for card_id in ("family-highlights", "family-help"):
             with self.subTest(card=card_id):
                 self.assertRegex(content, rf'<section id="{card_id}" class="[^"]*\bno-print\b')
-        self.assertIn('<h1 class="h3 mt-4">HearWell 聽力報告</h1>', content)
+        self.assertIn('<h1 class="h3 mt-4">聽伴聽力報告</h1>', content)
         self.assertRegex(content, r'<p class="font-bold">這是家人分享給您的報告，連結有效到 ')
 
     def test_expired_or_cancelled_links_still_show_nothing(self):

@@ -230,7 +230,7 @@ class GuideSummaryTests(TestCase):
 
 
 # Wording finalised in #220 (M2, M5-M8, M12-M16, M27).
-SIGNED_IN_INTRO = "依您在 HearWell 最新的紀錄，整理出現在的狀況，和接下來可以看的章節。"
+SIGNED_IN_INTRO = "依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。"
 NO_RECORDS = "這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。"
 START = "開始篩檢"
 RECORD_AUDIOGRAM = "記錄醫院的聽力圖"

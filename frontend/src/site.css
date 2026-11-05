@@ -94,8 +94,8 @@
   /* Brand refresh: a blue teal, still blue under ADR 0007; white text keeps 5.5:1 on it. */
   --color-gradient-end: #1d6f99;
   --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
-  /* The logo: a wave drawn as a W, used as a mask so it takes the colour around it. */
-  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22' fill='none' stroke='black' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
+  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='bird'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url(%23bird)'/%3E%3C/svg%3E");
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
@@ -150,7 +150,7 @@
     font-weight: 700;
   }
   /* #357: on a phone a page title is about 29px, at least 4px above a section title (h2.h4).
-     At 200% text on a narrow phone a long word such as HearWell breaks rather than widen the
+     At 200% text on a narrow phone a long Latin word breaks rather than widen the
      page (as #204's wrap-anywhere). */
   @media (max-width: 47.99em) {
     h1.h3 { font-size: 1.6rem; overflow-wrap: anywhere; }
@@ -751,12 +751,12 @@
     }
   }
 
-  /* Wordmark in two colours: "Hear" in the primary blue, "Well" in the gradient's teal end. */
+  /* Wordmark in two colours: "聽" in the primary blue, "伴" in the gradient's teal end. */
   .site-wordmark-tint {
     color: var(--color-gradient-end);
   }
 
-  /* The logo chosen in the design picker: the wave-W in white on a gradient pebble. */
+  /* The logo the owner chose (ADR 0039): a white bird with an ear for a wing on a gradient pebble. */
   .site-logo {
     position: relative;
     flex: none;
@@ -769,7 +769,7 @@
   .site-logo::after {
     content: "";
     position: absolute;
-    inset: 18%;
+    inset: 0;
     background-color: #fff;
     /* Prefixed too: iPhones before iOS 15.4 only read -webkit-mask. */
     -webkit-mask: var(--logo-glyph) center / contain no-repeat;
@@ -1079,7 +1079,7 @@
   }
 
   /* Footer shape picker, option 5: the top edge stays straight with one small arch of the
-     footer's colour rising in the middle, the logo's wave W inside it. Decoration only: drawn
+     footer's colour rising in the middle, the logo's bird inside it. Decoration only: drawn
      above the band, so it covers no link or text, and pseudo-elements are not read out. */
   .site-footer::before {
     content: "";

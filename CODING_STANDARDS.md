@@ -1,4 +1,4 @@
-# HearWell 程式碼規範
+# 聽伴程式碼規範
 
 給 `/code-review` 的 Standards 審查用（實作時也要遵守）。違反這裡的規則，審查一律列為「要修」。
 能用 Ruff、測試或 CI 自動抓的規則，優先做成自動檢查，不要只寫在這裡。`screening/tests/test_standards.py` 另外檢查 model 改了有沒有附 migration。
