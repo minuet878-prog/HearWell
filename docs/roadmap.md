@@ -154,7 +154,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 | 聽力圖清單 200% 字級 | 字放大到卡片放不下時，縮圖和箭頭一列、日期與兩耳程度移到下一列，縮圖仍跟字放大；一般字級不變，320px 與 390px 不再撐到 517px（本人在比較頁選 A，[驗證紀錄](verification/audiogram-list-double-text.md)） |
 | 選配指引六章精簡 | 門檻、補助上限、比例、年限改成大數字列，要帶的東西改圖示標籤，段落改小標＋一句；查詢醫院後停在名單，輔具中心收進下拉框；自審找出 6 處字句意思變了並修正（本人在比較頁選 B 案，PR #282，[驗證紀錄](verification/guide-chapters-tidy.md)） |
 | 選配路線九站 | #284 先做「我的助聽器與補助」一頁表單（#285–#289），本人驗收時改成九站：記錄聽力圖、去找聽力師之前、身障鑑定、九號表、等待核定公文、種類與價格、配戴之後、二十五號表、等待補助發放；登入時看過章節或回答問題就已完成，「您在這裡」是第一個沒完成的站，不申請補助或簡易型標不適用，二十五號表寫出期限；同意書升第 2 版（母規格 #291，#292–#296，ADR 0020、0021，[九站拷問](planning/hearing-aid-guide/route-steps-grill-decisions.md)，PR #290，[驗證紀錄](verification/issue-291.md)） |
-| 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)） |
+| 工程面 | 文件分類與索引（規格、審查、文件入口）、跨代理交叉審查、`AGENTS.md` 共用指引、規範自動檢查（`test_standards.py`）、e2e 失敗證據（子測試失敗也存截圖與 trace、每個失敗各一份，[驗證紀錄](verification/e2e-subtest-artifacts.md)）、截圖比對不再受頁首波浪動畫影響（[驗證紀錄](verification/e2e-screenshot-motion.md)）、e2e 滑塊與亮框測試不再受機器速度影響（[驗證紀錄](verification/e2e-timing-flakes.md)） |
 
 ---
 

@@ -9280,23 +9280,28 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
     RIGHT_DB = LEFT_DB = 50
     # Every frame for a while, what the reader sees of one box: its outline and glow, where it
     # is on the screen (and where the tab bar starts), and how far the page has scrolled. Also,
-    # on the same clock, the moments the box's highlight went on and came off.
+    # from the very start and on the same clock, the moments the box's highlight went on and came
+    # off, and how long its animation is set to last.
     SAMPLE = """([selector, ms]) => {
+        const t0 = performance.now();
+        const litTimes = window.litTimes = [];
+        const litAnimations = window.litAnimations = [];
+        new MutationObserver((records) => {
+            for (const { target, oldValue } of records) {
+                const lit = target.classList.contains("jump-highlight");
+                const wasLit = (oldValue || "").includes("jump-highlight");
+                if (lit === wasLit || !target.contains(document.querySelector(selector))) continue;
+                litTimes.push(performance.now() - t0);
+                if (lit) litAnimations.push(...document.getAnimations()
+                    .filter((a) => a.animationName === "jump-highlight")
+                    .map((a) => a.effect.getComputedTiming().duration));
+            }
+        }).observe(document, {
+            subtree: true, attributeFilter: ["class"], attributeOldValue: true,
+        });
         const start = () => {
             const samples = window.samples = [];
-            const litTimes = window.litTimes = [];
-            const t0 = performance.now();
-            new MutationObserver((records) => {
-                for (const { target, oldValue } of records) {
-                    const lit = target.classList.contains("jump-highlight");
-                    const wasLit = (oldValue || "").includes("jump-highlight");
-                    if (lit !== wasLit && target.contains(document.querySelector(selector))) {
-                        litTimes.push(performance.now() - t0);
-                    }
-                }
-            }).observe(document.documentElement, {
-                subtree: true, attributeFilter: ["class"], attributeOldValue: true,
-            });
+            const end = performance.now() + ms;
             const tick = () => {
                 const box = document.querySelector(selector);
                 const style = getComputedStyle(box);
@@ -9307,7 +9312,8 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                     glow: style.boxShadow, top: rect.top, bottom: rect.bottom,
                     visible: document.querySelector(".site-nav").getBoundingClientRect().top,
                 });
-                if (samples.at(-1).t < ms) requestAnimationFrame(tick); else window.sampled = true;
+                if (performance.now() < end) requestAnimationFrame(tick);
+                else window.sampled = true;
             };
             tick();
         };
@@ -9396,8 +9402,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             self.assertTrue([s for s in fading if on + 1700 <= s["t"] <= on + 2700], lit)
         self.assertGreater(off - on, 2800)
         self.assertLess(off - on, 3300)
-        # Still showing near the end: the very last of a fade rounds to nothing about 0.1 s early.
-        self.assertGreater(lit[-1]["t"] - on, 2600)
+        # Nothing shows once it has come off, and the fade lasts as long as the box stays lit.
+        self.assertLessEqual(lit[-1]["t"], off)
+        self.assertEqual(self.page.evaluate("window.litAnimations"), [] if reduced else [3000])
         # And back as it was.
         self.assertTrue(after)
         self.assertEqual({self.light(s) for s in after}, {(0, 0)})
