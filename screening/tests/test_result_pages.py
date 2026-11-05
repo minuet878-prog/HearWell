@@ -74,7 +74,7 @@ class ResultPagesTests(TestCase):
     def test_no_result_page_is_titled_screening_result(self):
         # THI is not a screening (GLOSSARY): the page says which questionnaire it is.
         response = self.client.get(reverse("result", args=[self.submissions["thi"].pk]))
-        self.assertContains(response, "<title>THI 結果\uff5cHearWell</title>", html=True)
+        self.assertContains(response, "<title>THI 結果\uff5c聽伴</title>", html=True)
         self.assertNotContains(response, "篩檢結果")
 
     def test_every_result_page_ends_with_records_report_and_home(self):

@@ -102,7 +102,7 @@ class TypesAndPricesChapterTests(TestCase):
                 self.assertNotIn(brand, text)
 
     def test_the_only_outside_links_are_the_fda_search_and_the_official_sources(self):
-        # No shop or brand site: every link leaving HearWell is one of these.
+        # No shop or brand site: every link leaving 聽伴 is one of these.
         content = self.client.get(self.url).content.decode()
         outside = set(re.findall(r'href="(https?://[^"]+)"', content))
         self.assertEqual(outside, {FDA_SEARCH} | {url for _, url in SOURCES})

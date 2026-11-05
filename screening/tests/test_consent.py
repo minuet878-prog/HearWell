@@ -63,13 +63,13 @@ class PrivacyPageTests(TestCase):
         for service in ("Render", "Neon", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
-        self.assertEqual(models.CONSENT_VERSION, 2)
+        self.assertEqual(models.CONSENT_VERSION, 3)
 
     def test_no_placeholder_left(self):
         # Acceptance 16: operator, contact and regions are filled in before release.
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "待補")
-        self.assertContains(response, "HearWell 開發者")
+        self.assertContains(response, "聽伴開發者")
         # In the notice itself (who, requests, the contact card at the bottom since #197); the
         # site footer adds one more on every page.
         notice = response.content.decode().split('<footer class="site-footer"')[0]
@@ -166,11 +166,20 @@ class PrivacyHighlightsTests(TestCase):
         # #354 (owner, 2026-10-25): a minor fix, so the date moves and nobody agrees again.
         # #400 moved it again the same way (test_qa_log).
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
-        self.assertEqual(models.CONSENT_VERSION, 2)
+        self.assertEqual(models.CONSENT_VERSION, 3)
+
+    def test_the_new_name_raises_the_version_so_everyone_agrees_again(self):
+        # ADR 0039: who is collecting now reads 聽伴, so version 3.
+        self.assertEqual(models.CONSENT_VERSION, 3)
+        user = User.objects.create_user(username="agreed_to_version_2")
+        Consent.objects.create(user=user, version=2)
+        self.client.force_login(user)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), _consent_url(url))
 
     def test_aid_and_subsidy_raises_the_version_so_everyone_agrees_again(self):
         # #286 (spec #284 acceptance 23): what is collected changed, so version 2.
-        self.assertEqual(models.CONSENT_VERSION, 2)
+        self.assertGreaterEqual(models.CONSENT_VERSION, 2)
         user = User.objects.create_user(username="agreed_to_version_1")
         Consent.objects.create(user=user, version=1)
         self.client.force_login(user)
@@ -243,7 +252,7 @@ class ConsentPageTests(TestCase):
         self.assertIn('<h1 class="auth-hero-title">開始使用之前</h1>', hero)
         self.assertIn("第 2 步／共 2 步：同意隱私權", hero)
         self.assertIn('class="auth-hero-bars"', hero)
-        self.assertIn("HearWell 會保存您的篩檢作答", below)
+        self.assertIn("聽伴會保存您的篩檢作答", below)
         self.assertIn(">我同意，開始篩檢</button>", below)
         self.assertNotIn("card", below)
 

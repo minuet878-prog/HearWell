@@ -197,15 +197,15 @@ class HeaderBrandTests(TestCase):
     def _brand(self, content):
         return re.search(r'<p class="site-brand">(.*?)</p>', content, re.DOTALL).group(1)
 
-    def test_brand_reads_hearwell_and_the_logo_is_decoration(self):
+    def test_brand_reads_the_product_name_and_the_logo_is_decoration(self):
         for logged_in in (False, True):
             if logged_in:
                 self.client.force_login(consented_user(username="brandtester"))
             with self.subTest(logged_in=logged_in):
                 brand = self._brand(self.client.get(reverse("index")).content.decode())
                 self.assertRegex(brand, r'<span class="site-logo" aria-hidden="true"></span>')
-                self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "HearWell")
-                self.assertIn('<span class="site-wordmark-tint">Well</span>', brand)
+                self.assertEqual(re.sub(r"<[^>]+>|\s", "", brand), "聽伴")
+                self.assertIn('<span class="site-wordmark-tint">伴</span>', brand)
 
     def test_header_buttons_are_blue_outlines_on_the_white_header(self):
         self.client.force_login(consented_user(username="logouttester"))
@@ -315,7 +315,7 @@ class RedesignLayoutTests(TestCase):
         self.assertIn(f'href="{reverse("questionnaire_list")}"', nav)
 
     def test_page_titles(self):
-        suffix = "\uff5cHearWell"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
+        suffix = "\uff5c聽伴"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
         expected = {
             reverse("questionnaire_list"): "選擇問卷" + suffix,
             reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
@@ -327,7 +327,7 @@ class RedesignLayoutTests(TestCase):
         self.client.logout()
         expected.update(
             {
-                reverse("index"): "HearWell 聽力自我照護",
+                reverse("index"): "聽伴 聽力自我照護",
                 reverse("login"): "登入" + suffix,
                 reverse("register"): "註冊" + suffix,
             }
@@ -773,17 +773,17 @@ class PwaTests(TestCase):
     PWA_DIR = Path(__file__).resolve().parent.parent / "static" / "screening" / "pwa"
     STATIC = "/static/screening/pwa/"
     GUIDE_ORDER = (
-        "把 HearWell 加到手機主畫面",
-        "加到主畫面後，HearWell 會像其他 app 一樣出現在手機桌面上，"
+        "把聽伴加到手機主畫面",
+        "加到主畫面後，聽伴會像其他 app 一樣出現在手機桌面上，"
         "點一下就能打開，不用每次輸入網址。",
         "我用 iPhone",
-        "用 Safari 打開 HearWell 網站。",
+        "用 Safari 打開聽伴網站。",
         "點畫面下方的「分享」按鈕（一個方框，上面有向上的箭頭）。如果沒看到，先點「⋯」再點「分享」。",
         "往下滑，點「加入主畫面」。",
         "點右上角的「加入」。",
         "第一次從主畫面打開時，需要再登入一次。",
         "我用 Android",
-        "用 Chrome 打開 HearWell 網站。",
+        "用 Chrome 打開聽伴網站。",
         "點右上角的「⋮」（三個點）。",
         "點「加到主畫面」或「安裝應用程式」。",
         "再點一次「安裝」或「新增」。",
@@ -846,14 +846,14 @@ class PwaTests(TestCase):
                 self.assertRegex(
                     head, rf'<link rel="apple-touch-icon" href="{self.STATIC}apple-touch-icon\.png'
                 )
-                self.assertIn('<meta name="apple-mobile-web-app-title" content="HearWell">', head)
+                self.assertIn('<meta name="apple-mobile-web-app-title" content="聽伴">', head)
 
     # 19
     def test_manifest_fields(self):
         manifest = self._manifest()
         expected = {
-            "name": "HearWell 聽力自我照護",
-            "short_name": "HearWell",
+            "name": "聽伴 聽力自我照護",
+            "short_name": "聽伴",
             "id": "/",
             "start_url": "/",
             "scope": "/",
@@ -947,7 +947,7 @@ class PwaTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 content = response.content.decode()
                 # U+FF5C FULLWIDTH VERTICAL LINE, as in the other page titles
-                self.assertIn("<title>加到主畫面\uff5cHearWell</title>", content)
+                self.assertIn("<title>加到主畫面\uff5c聽伴</title>", content)
                 self.assertNotIn('aria-current="page"', content)
                 main = content[content.index("<main") : content.index("</main>")]
                 positions = [main.index(part) for part in self.GUIDE_ORDER]

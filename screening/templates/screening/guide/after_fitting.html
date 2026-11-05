@@ -24,7 +24,7 @@
 </section>
 <section class="section-box mb-6" aria-labelledby="record-title">
     <h2 id="record-title" class="h4 section-box-title">記錄配戴的效果</h2>
-    <p>戴一段時間後，可以用 HearWell 的問卷記錄感受，印出聽力報告給聽力師看。</p>
+    <p>戴一段時間後，可以用聽伴的問卷記錄感受，印出聽力報告給聽力師看。</p>
     <ul>
         {% for questionnaire in follow_ups %}
         <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）：{{ questionnaire.definition.audience }}</a></li>

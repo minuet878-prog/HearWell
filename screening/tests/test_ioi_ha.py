@@ -243,7 +243,7 @@ class IoiHaTests(TestCase):
         self._hhie_s(24, wearing=False, created_at=when)
         with self.assertNoLogs("screening.scoring", level="ERROR"):
             response = self.client.get(self._post().url)
-        self.assertContains(response, "<title>IOI-HA 結果\uff5cHearWell</title>", html=False)
+        self.assertContains(response, "<title>IOI-HA 結果\uff5c聽伴</title>", html=False)
         main = self._main(response)
         for text in (
             "2026/10/01",
@@ -352,7 +352,7 @@ class IoiHaTests(TestCase):
     # Entry (21-22)
     def test_questionnaire_list_card(self):
         response = self.client.get(reverse("questionnaire_list") + "?choose=self")
-        self.assertContains(response, "<title>選擇問卷\uff5cHearWell</title>")
+        self.assertContains(response, "<title>選擇問卷\uff5c聽伴</title>")
         main = self._main(response)
         self.assertRegex(
             main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*助聽器使用成效（IOI-HA）'

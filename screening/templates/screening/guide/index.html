@@ -1,5 +1,5 @@
 {% extends "screening/layout.html" %}
-{% block title %}我的選配指引｜HearWell{% endblock %}
+{% block title %}我的選配指引｜聽伴{% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
 <h1 class="h3 mt-4">我的選配指引</h1>
@@ -7,7 +7,7 @@
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
 {% else %}
-<p>依您在 HearWell 最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+<p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
 {% if not has_records %}
 <p>這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a></p>

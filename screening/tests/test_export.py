@@ -229,7 +229,7 @@ class DownloadMyDataTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertIn("no-store", response["Cache-Control"])
         self.assertIn("private", response["Cache-Control"])
-        filename = f"hearwell-我的資料-{timezone.localdate().isoformat()}.json"
+        filename = f"聽伴-我的資料-{timezone.localdate().isoformat()}.json"
         self.assertTrue(response["Content-Disposition"].startswith("attachment"))
         self.assertIn(quote(filename), response["Content-Disposition"])
         # Chinese is written as is, not as \uXXXX escapes.

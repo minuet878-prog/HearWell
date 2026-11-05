@@ -742,7 +742,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     def step7_report_prints_without_site_chrome(self):
         # Spec phase8_c3_report.md acceptance 8: only a real browser applies the print styles.
         self.main().get_by_role("link", name="聽力報告").click()
-        expect(self.page.get_by_role("heading", name="HearWell 聽力報告")).to_be_visible()
+        expect(self.page.get_by_role("heading", name="聽伴聽力報告")).to_be_visible()
         nav = self.page.get_by_role("navigation", name="主要導覽")
         print_button = self.page.get_by_role("button", name="列印或存成 PDF")
         header = self.page.locator(".site-header")
@@ -2168,7 +2168,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             family_page = family.new_page()
             family_page.goto(copied.replace(f"https://{host}", self.live_server_url))
             expect(
-                family_page.get_by_role("heading", name="家人分享了一份 HearWell 聽力報告給您")
+                family_page.get_by_role("heading", name="家人分享了一份聽伴聽力報告給您")
             ).to_be_visible()
             family_page.get_by_role("link", name="打開報告", exact=True).click()
             expect(family_page).to_have_url(f"{self.live_server_url}/shared/{share.token}/report")
@@ -7481,14 +7481,14 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.main().get_by_role("link", name="登入", exact=True)
             )
             self.visit(True, "/guide")
-            self.assert_outside_section_boxes(self.main().get_by_text("依您在 HearWell 最新的紀錄"))
+            self.assert_outside_section_boxes(self.main().get_by_text("依您在聽伴最新的紀錄"))
             for button in ("開始篩檢", "記錄醫院的聽力圖"):
                 with self.subTest(button=button):
                     self.assert_outside_section_boxes(
                         self.main().get_by_role("link", name=button, exact=True).first
                     )
             self.visit(True, lambda test: test.guide_without_audiogram())
-            self.assert_outside_section_boxes(self.main().get_by_text("依您在 HearWell 最新的紀錄"))
+            self.assert_outside_section_boxes(self.main().get_by_text("依您在聽伴最新的紀錄"))
             self.assert_section_box(self.main().get_by_role("region", name="問卷結果"))
             audiogram = self.main().get_by_role("region", name="聽力圖")
             expect(self.assert_section_box(audiogram)).to_have_text("聽力圖")
@@ -10105,7 +10105,7 @@ class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     box = part.bounding_box()
                     self.assertGreaterEqual(box["y"], banner["y"])
                     self.assertLessEqual(box["y"] + box["height"], banner["y"] + banner["height"])
-                intro = self.main().get_by_text("HearWell 會保存您的篩檢作答")
+                intro = self.main().get_by_text("聽伴會保存您的篩檢作答")
                 self.assertGreaterEqual(intro.bounding_box()["y"], banner["y"] + banner["height"])
                 self.assertEqual(self.style(intro, "backgroundColor"), "rgba(0, 0, 0, 0)")
                 agree = self.main().get_by_role("button", name="我同意，開始篩檢", exact=True)
@@ -10265,7 +10265,7 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         self.open(f"/shared/{self.share.token}", self.PHONE, signed_in=False)
         with self.saving_artifacts():
             title = self.main().get_by_role("heading", level=1)
-            expect(title).to_have_text("家人分享了一份 HearWell 聽力報告給您")
+            expect(title).to_have_text("家人分享了一份聽伴聽力報告給您")
             lines = self.lines(title)
             self.assertEqual(len(lines), 2, lines)
             self.assertTrue(any("聽力" in words for words, _ in lines), lines)

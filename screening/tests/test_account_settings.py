@@ -47,7 +47,7 @@ class AccountSettingsTests(TestCase):
         self.assertIn(f"您在 {agreed:%Y/%m/%d} 同意了目前的版本", text)
         self.assertIn(f'href="{reverse("download_my_data")}"', main)
         # A file for keeping, not the report for a doctor (review 1).
-        self.assertIn("把您在 HearWell 的所有資料下載成一個檔案保存。", text)
+        self.assertIn("把您在聽伴的所有資料下載成一個檔案保存。", text)
         self.assertNotIn("醫師", text)
         self.assertIn(f'href="{reverse("privacy")}"', main)
         links = re.findall(r'<a[^>]*href="([^"]+)"', main)
@@ -122,8 +122,8 @@ class AccountSettingsTests(TestCase):
         self.assertIn("登入後到「帳號設定」頁按「下載我的資料」", text)
         self.assertIn("登入後到「帳號設定」頁按「刪除帳號」", text)
         self.assertNotIn("到「我的紀錄」頁按", text)
-        # A minor fix that kept version 1; #286's 助聽器與補助資料 then raised it to 2.
-        self.assertEqual(models.CONSENT_VERSION, 2)
+        # A minor fix that kept version 1; #286's 助聽器與補助資料 raised it to 2, the rename to 3.
+        self.assertEqual(models.CONSENT_VERSION, 3)
 
     # 10
     def test_questionnaire_switch(self):

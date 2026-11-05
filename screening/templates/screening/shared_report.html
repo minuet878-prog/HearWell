@@ -1,7 +1,7 @@
 {% extends "screening/layout.html" %}
 {% load static custom_filters %}
 
-{% block title %}HearWell 聽力報告{% endblock %}
+{% block title %}聽伴聽力報告{% endblock %}
 
 {% block extra_head %}
 <meta name="robots" content="noindex, nofollow">
@@ -13,8 +13,8 @@
 {# Spec phase8_c1_family_share.md 4.2: the owner's report without name or birth year. #}
 <article class="health-report">
 {# Ticket #194: the line and both blocks are for the screen only; the printed report is unchanged. #}
-<p class="no-print mt-4 mb-0">這是您的家人在 HearWell 自己作答與輸入的自我篩檢結果。</p>
-<h1 class="h3 mt-4">HearWell 聽力報告</h1>
+<p class="no-print mt-4 mb-0">這是您的家人在聽伴自己作答與輸入的自我篩檢結果。</p>
+<h1 class="h3 mt-4">聽伴聽力報告</h1>
 <p class="font-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
 {% if life_impact or audiogram %}
 <section id="family-highlights" class="family-highlights mb-4 no-print" aria-labelledby="highlights-title">

@@ -10,9 +10,10 @@ from screening.models.submissions import Answer
 # Privacy notice (spec phase7_consent_privacy.md). A major revision (what is collected, why,
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
-CONSENT_VERSION = 2  # 2: the 助聽器與補助資料 (#286, spec #284 Q9)
+# 2: the 助聽器與補助資料 (#286, spec #284 Q9). 3: the operator's name became 聽伴 (ADR 0039).
+CONSENT_VERSION = 3
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034).
-PRIVACY_UPDATED_ON = date(2026, 10, 27)
+PRIVACY_UPDATED_ON = date(2026, 11, 5)
 
 
 class User(AbstractUser):

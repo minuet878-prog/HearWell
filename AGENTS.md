@@ -1,4 +1,4 @@
-# HearWell — 代理工作指引（代工模式）
+# 聽伴 — 代理工作指引（代工模式）
 
 Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）。改規則只改這裡。
 
@@ -84,6 +84,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
 
 ## 專案概要
 
+- 名稱：產品叫「聽伴」，英文 tingpal，舊名 HearWell。repo、資料庫、服務、`hearwell-frontend`、作答草稿的鍵名 `hearwell:answer-draft:` 和聯絡信箱都沿用舊名，不要順手改（ADR 0039）。
 - 用途：聽力健康自我照護工具。註冊 → 登入 → 選問卷 → 作答 → 計分 → 結果（分級＋行動建議）→ 歷史紀錄。
 - 使用者：台灣聽損患者與家屬，多為 65 歲以上，繁體中文介面。**無障礙是必需品，不是加分項。**
 - 技術：Django 5.2、Python 3.13、PostgreSQL（正式環境在 Neon，本機用 Docker）、Tailwind CSS v4（官方 Vite 外掛），樣式來源 `frontend/src/site.css`，建置輸出 `screening/static/screening/frontend/site.css`（主色 #1f4e8c、基礎字級 18px）；部署於 Render（whitenoise、dj-database-url、`build.sh`，每次部署會 `loaddata` 問卷 fixture）。專案名 `config`，app 名 `screening`。

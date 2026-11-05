@@ -150,7 +150,7 @@
     font-weight: 700;
   }
   /* #357: on a phone a page title is about 29px, at least 4px above a section title (h2.h4).
-     At 200% text on a narrow phone a long word such as HearWell breaks rather than widen the
+     At 200% text on a narrow phone a long Latin word breaks rather than widen the
      page (as #204's wrap-anywhere). */
   @media (max-width: 47.99em) {
     h1.h3 { font-size: 1.6rem; overflow-wrap: anywhere; }
@@ -751,7 +751,7 @@
     }
   }
 
-  /* Wordmark in two colours: "Hear" in the primary blue, "Well" in the gradient's teal end. */
+  /* Wordmark in two colours: "聽" in the primary blue, "伴" in the gradient's teal end. */
   .site-wordmark-tint {
     color: var(--color-gradient-end);
   }
