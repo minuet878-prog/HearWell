@@ -333,13 +333,13 @@ class QuestionLogPrivacyTests(TestCase):
         ]
         self.assertIn("<li>問答小助手的提問紀錄保存 90 天後自動刪除。</li>", storage)
 
-    def test_the_date_moves_and_the_version_stays(self):
-        # #400 moved the date to 2026/10/27 at version 2; later changes only move it on.
+    def test_the_notice_shows_the_current_version_and_date(self):
+        # #400 moved the date to 2026/10/27 without raising the version; later changes move it on.
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 27))
         updated_on = models.PRIVACY_UPDATED_ON.strftime("%Y/%m/%d")
         self.assertIn(f"第 {models.CONSENT_VERSION} 版，{updated_on} 更新", self.main)
 
-    def test_who_agreed_before_is_not_asked_again(self):
+    def test_who_agreed_before_the_date_moved_is_not_asked_again(self):
         user = User.objects.create_user(username="qa_log_agreed_before")
         Consent.objects.create(user=user, version=models.CONSENT_VERSION)
         Consent.objects.filter(user=user).update(agreed_at=timezone.now() - timedelta(days=30))

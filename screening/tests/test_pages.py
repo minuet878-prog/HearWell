@@ -890,14 +890,19 @@ class PwaTests(TestCase):
 
     def test_favicon_app_icon_and_header_draw_the_same_bird(self):
         # ADR 0012: the logo lives in three files; changing one alone fails here.
-        bird = "M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"
-        ear = "M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"
+        drawn = (
+            # The bird and its eye, then the ear cut out of it and where the ear sits.
+            "M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"
+            "M40 25a2.8 2.8 0 1 0 .01 0z",
+            "M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2",
+            "translate(28 33.5) scale(.9) translate(-28.5 -35)",
+        )
         css = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
         for path in (self.PWA_DIR / "favicon.svg", self.PWA_DIR / "icon.svg", css):
             with self.subTest(path=path.name):
                 text = path.read_text(encoding="utf-8")
-                self.assertIn(bird, text)
-                self.assertIn(ear, text)
+                for part in drawn:
+                    self.assertIn(part, text)
                 if path.suffix == ".svg":
                     self.assertIn('<stop offset="0" stop-color="#1f4e8c"/>', text)
                     self.assertIn('<stop offset="1" stop-color="#1d6f99"/>', text)

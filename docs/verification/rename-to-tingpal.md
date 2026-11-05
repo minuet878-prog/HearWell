@@ -27,13 +27,13 @@
 
 | 需求 | 驗證 | 證據 |
 |---|---|---|
-| 首頁標題是「聽伴 聽力自我照護」，各頁標題結尾是「｜聽伴」 | ✅ 自動 | `screening/tests/test_pages.py:330` |
+| 首頁標題是「聽伴 聽力自我照護」，一般頁面標題結尾是「｜聽伴」（報告頁是「聽伴聽力報告」；測試抽查七頁） | ✅ 自動 | `screening/tests/test_pages.py:330` |
 | PWA 完整名稱與短名 | ✅ 自動 | `screening/tests/test_pages.py:856` |
 | iPhone 主畫面名稱 | ✅ 自動 | `screening/tests/test_pages.py:849` |
 | 標題列品牌字兩色 | ✅ 自動 | `screening/tests/test_pages.py:208`、`e2e/main_flow.py:5441` |
-| 分頁籤、主畫面圖示、CSS 畫同一隻小鳥 | ✅ 自動 | `screening/tests/test_pages.py:891` |
-| 同意過第 2 版的人要再同意一次 | ✅ 自動 | `screening/tests/test_consent.py:171` |
-| 隱私權說明的營運者是聽伴開發者 | ✅ 自動 | `screening/tests/test_consent.py:72` |
+| 兩個 SVG 和 CSS 畫同一隻小鳥（含眼睛、耳朵位置）；PNG 由 SVG 匯出 | ✅ 自動；PNG 目視 | `screening/tests/test_pages.py:891` |
+| 同意過第 2 版的人要再同意一次 | ✅ 自動 | `screening/tests/test_consent.py:169` |
+| 隱私權說明的營運者是聽伴開發者 | ✅ 自動 | `screening/tests/test_consent.py:71` |
 | 匯出檔名以「聽伴-我的資料」開頭 | ✅ 自動 | `screening/tests/test_export.py:232` |
 | 分享封面標題排成整齊兩行 | ✅ 自動 | `e2e/main_flow.py:10264` |
 | 聯絡信箱沒被改掉 | ✅ 自動 | `screening/tests/test_layout.py:118` |
@@ -49,6 +49,20 @@
 - `npm test --prefix frontend`、`npm run build --prefix frontend`：通過。
 - `ruff check .`：通過。
 - 截圖檢查：`e2e/screenshots.py` 的 public 組，看過手機版首頁和桌面版加到主畫面頁。
+
+## 舊測試的調整
+
+同意書升版後，這些測試原本寫死的第 2 版或 2026/10/27 不再成立：
+
+- 拿掉版本檢查：`test_consent.py` 的 Render 服務測試和 #354 測試、`test_account_settings.py` 的設定頁測試。它們驗的是文字，升版由專門的測試驗。
+- 放寬：`test_qa_log.py` 的日期改成「不早於 2026/10/27」，版本和日期改讀目前的值；`test_consent.py` 的 #286 測試改成版本「至少 2」。
+- 兩個測試改名：#354 和 #400 當時「沒有升版」已經驗不到了，名稱改成它們現在真正驗的事。
+
+## 自審
+
+`/mattpocock-skills:code-review` 基準點 `main`。Standards 軸 1 項硬性（3 個測試名稱和內容不符）；Spec 軸沒有阻擋合併的問題。都查證過，修了測試名稱、寫死的版本號、過時註解、`mask` 名稱、測試比對範圍、roadmap 待辦和這份紀錄。
+
+查證後不動：`accounts.py` 的 #400 註解是正確的歷史；小鳥在 favicon 和 CSS 沒有完全置中，那就是本人選定那張圖的位置。
 
 ## 交叉審查
 

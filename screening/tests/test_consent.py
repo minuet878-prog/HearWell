@@ -63,7 +63,6 @@ class PrivacyPageTests(TestCase):
         for service in ("Render", "Neon", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
-        self.assertEqual(models.CONSENT_VERSION, 3)
 
     def test_no_placeholder_left(self):
         # Acceptance 16: operator, contact and regions are filled in before release.
@@ -162,11 +161,10 @@ class PrivacyHighlightsTests(TestCase):
             test_layout._text(collected),
         )
 
-    def test_spec_354_wording_is_a_minor_fix_that_moves_only_the_date(self):
-        # #354 (owner, 2026-10-25): a minor fix, so the date moves and nobody agrees again.
+    def test_the_date_includes_the_spec_354_wording(self):
+        # #354 (owner, 2026-10-25) was a minor fix: the date moved and nobody agreed again.
         # #400 moved it again the same way (test_qa_log).
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
-        self.assertEqual(models.CONSENT_VERSION, 3)
 
     def test_the_new_name_raises_the_version_so_everyone_agrees_again(self):
         # ADR 0039: who is collecting now reads 聽伴, so version 3.

@@ -94,8 +94,8 @@
   /* Brand refresh: a blue teal, still blue under ADR 0007; white text keeps 5.5:1 on it. */
   --color-gradient-end: #1d6f99;
   --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
-  /* The logo: a wave drawn as a W, used as a mask so it takes the colour around it. */
-  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='ear'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url(%23ear)'/%3E%3C/svg%3E");
+  /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
+  --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='bird'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url(%23bird)'/%3E%3C/svg%3E");
 }
 
 /* Restore the element defaults the site used before Preflight. Named components follow as
