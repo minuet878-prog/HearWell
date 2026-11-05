@@ -95,6 +95,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
   「更多互動式頁面」（2026-10-24 本人提出，跟讀取動畫分開）：還沒定義，先跑 `/mattpocock-skills:grill-with-docs`。
+- 進行中：產品改名「聽伴」（英文 tingpal，ADR 0039，分支 `feat/rename-to-tingpal`，驗證見 `docs/verification/rename-to-tingpal.md`）。
+  文字和 logo 已改好，等本人驗收和商標確認才合併；網域等 VPS 切換時再接。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦

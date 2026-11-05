@@ -5432,7 +5432,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.assertEqual(len(heights), 28)
         self.assertEqual(len(set(heights)), 1)
 
-    # Brand refresh: a white header with the wave-W logo on a gradient; the wave stays, pale blue.
+    # Brand refresh: a white header with the logo on a gradient; the wave stays, pale blue.
     LOGO_GRADIENT = "linear-gradient(135deg, rgb(31, 78, 140), rgb(29, 111, 153))"
 
     def mask(self, locator, pseudo):

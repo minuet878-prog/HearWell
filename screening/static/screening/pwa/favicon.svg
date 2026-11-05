@@ -1,11 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- HearWell logo (brand refresh): the wave-W on a gradient pebble. favicon-32.png is exported from this file. -->
+  <!-- 聽伴 logo (ADR 0039): a bird with an ear for a wing on a gradient pebble. favicon-32.png is exported from this file. -->
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#1f4e8c"/>
       <stop offset="1" stop-color="#1d6f99"/>
     </linearGradient>
+    <mask id="ear">
+    <path fill="#fff" fill-rule="evenodd" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z"/>
+    <path fill="none" stroke="#000" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 33.5) scale(.9) translate(-28.5 -35)" d="M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"/>
+  </mask>
   </defs>
   <path fill="url(#brand)" d="M26.88 0A37.12 26.88 0 0 1 64 26.88A35.2 37.12 0 0 1 28.8 64A28.8 33.28 0 0 1 0 30.72A26.88 30.72 0 0 1 26.88 0Z"/>
-  <path d="M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22" transform="translate(32 32) scale(0.78) translate(-32 -31)" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="64" height="64" fill="#fff" mask="url(#ear)"/>
 </svg>

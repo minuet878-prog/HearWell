@@ -192,7 +192,7 @@ class AccessibilityTests(TestCase):
 
 
 class HeaderBrandTests(TestCase):
-    """The white header with the wave-W logo and the two-colour wordmark."""
+    """The white header with the bird logo and the two-colour wordmark."""
 
     def _brand(self, content):
         return re.search(r'<p class="site-brand">(.*?)</p>', content, re.DOTALL).group(1)
@@ -888,14 +888,16 @@ class PwaTests(TestCase):
     def test_favicon_png_is_32(self):
         self.assertEqual(self._png_size(self.PWA_DIR / "favicon-32.png"), (32, 32))
 
-    def test_favicon_app_icon_and_header_draw_the_same_wave_w(self):
+    def test_favicon_app_icon_and_header_draw_the_same_bird(self):
         # ADR 0012: the logo lives in three files; changing one alone fails here.
-        wave = "M8 20c2 14 5 22 10 22 6 0 8-12 14-12s8 12 14 12c5 0 8-8 10-22"
+        bird = "M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17z"
+        ear = "M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"
         css = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
         for path in (self.PWA_DIR / "favicon.svg", self.PWA_DIR / "icon.svg", css):
             with self.subTest(path=path.name):
                 text = path.read_text(encoding="utf-8")
-                self.assertIn(wave, text)
+                self.assertIn(bird, text)
+                self.assertIn(ear, text)
                 if path.suffix == ".svg":
                     self.assertIn('<stop offset="0" stop-color="#1f4e8c"/>', text)
                     self.assertIn('<stop offset="1" stop-color="#1d6f99"/>', text)
