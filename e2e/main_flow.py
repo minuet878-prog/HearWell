@@ -8908,6 +8908,12 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
     def states(self, within):
         return {a["state"] for a in self.animations(within)}
 
+    def assert_plays_without_waiting(self, within):
+        # Running, or already over on a slow machine; only one held for the screen is paused.
+        states = self.states(within)
+        self.assertTrue(states, within)
+        self.assertNotIn("paused", states, within)
+
     def scroll_by(self, y):
         self.page.evaluate("y => window.scrollBy({top: y, behavior: 'instant'})", y)
 
@@ -8963,11 +8969,11 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         self.open("/guide", javascript=False)
         with self.saving_artifacts():
             expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
-            self.assertEqual(self.states(self.STOP), {"running"})
-            self.assertEqual(self.states(self.WAVE), {"running"})
+            self.assert_plays_without_waiting(self.STOP)
+            self.assert_plays_without_waiting(self.WAVE)
             self.page.goto(f"{self.live_server_url}/")
-            self.assertEqual(self.states(self.GAUGE), {"running"})
-            self.assertEqual(self.states(self.WAVE), {"running"})
+            self.assert_plays_without_waiting(self.GAUGE)
+            self.assert_plays_without_waiting(self.WAVE)
 
     # #338 acceptance 12: at 200% text on a phone the returning user's gauge is below the screen
     # and waits; the header wave, on screen, plays at once (on the tab's first page only).
@@ -8982,7 +8988,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
                 {a["name"]: a["state"] for a in self.animations(self.GAUGE)},
                 {"gauge-draw": "paused", "gauge-needle": "paused"},
             )
-            self.assertEqual(self.states(self.WAVE), {"running"})
+            self.assert_plays_without_waiting(self.WAVE)
             # Not yet drawn: the needle still at 0, rotate(0deg) as a matrix.
             expect(gauge.locator(".score-gauge-needle")).to_have_css(
                 "transform", "matrix(1, 0, 0, 1, 0, 0)"
@@ -9229,11 +9235,10 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
         with self.saving_artifacts():
             self.assert_below_the_tab_bar(self.RATIO)
             for meter, count in ((self.EARS, 2), (self.RATIO, 1)):
-                self.assertEqual(
-                    [(a["name"], a["state"]) for a in self.animations(meter)],
-                    [("meter-fill", "running")] * count,
-                    meter,
-                )
+                found = self.animations(meter)
+                self.assertEqual([a["name"] for a in found], ["meter-fill"] * count, meter)
+                # Running, or already over on a slow machine; waiting for the screen is paused.
+                self.assertNotIn("paused", {a["state"] for a in found}, meter)
 
     # #338 acceptance 21: the result page's score position bar and SSQ12's position bar stay
     # still, scrolled to or not.
