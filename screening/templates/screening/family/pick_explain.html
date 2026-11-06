@@ -1,0 +1,17 @@
+{# 點選看說明 (#428, spec #426), given a PickExplain as pick. The server sends every option with its explanation; pick-explain.js folds the list away and shows the chosen one in the live region. Without JavaScript the list stays. Options are the answer page's (ADR 0028); this block is a 並列區塊, not a white card (ADR 0022). #}
+<div class="pick-explain mb-4">
+<fieldset class="tint-block" data-pick-explain>
+    <legend class="font-bold">{{ pick.prompt }}</legend>
+    <div class="choice-group choice-stack">
+        {% for option in pick.options %}
+        <label><input type="radio" name="{{ pick.code }}"><span>{{ option.label }}</span></label>
+        {% endfor %}
+    </div>
+    <ul class="list-unstyled tint-rows mt-4 mb-0" data-pick-explanations>
+        {% for option in pick.options %}
+        <li><strong class="tint-subhead block">{{ option.label }}</strong><p class="mb-0">{{ option.explanation }}</p></li>
+        {% endfor %}
+    </ul>
+    <div class="not-empty:mt-4" aria-live="polite" data-pick-live></div>
+</fieldset>
+</div>
