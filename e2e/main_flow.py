@@ -10619,3 +10619,157 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     second = summary.get_by_text(makers, exact=True).bounding_box()
                     self.assertGreaterEqual(second["y"], first["y"] + first["height"] - 1)
                     self.assertAlmostEqual(second["x"], first["x"], delta=1)
+
+
+class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#440 (spec #436): the speech banana page, its six boxes and picking a group from the list."""
+
+    DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
+    WHITE_BOX = "rgb(255, 255, 255)"
+    # Group 5 at 5500 Hz: the right ear's line is over it, the left ear has no marks that far up.
+    RIGHT = ((500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65))
+    LEFT = ((500, 30), (1000, 35), (2000, 40), (4000, 50))
+    GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_e2e"))
+        self.audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=self.audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, marks in (("right", self.RIGHT), ("left", self.LEFT))
+            for f, db in marks
+        )
+        self.path = f"/audiograms/{self.audiogram.pk}/speech-banana"
+
+    def open_page(self, size=LayoutOnAPhone.PHONE):
+        self.open(self.path, size)
+        self.page.locator(".audiogram-plot svg").wait_for()
+
+    def result(self):
+        return self.main().get_by_role("status")
+
+    def pick(self, name):
+        return self.main().get_by_role("button", name=name)
+
+    def open_list(self):
+        self.main().locator("summary", has_text="用清單選").click()
+
+    # Acceptance 2, 4: the card leads here; the title has the date; nothing picked, the hint shows.
+    def test_card_opens_the_page_with_nothing_picked(self):
+        with self.saving_artifacts():
+            self.open(f"/audiograms/{self.audiogram.pk}")
+            self.main().get_by_role("link", name=re.compile("^看語言香蕉區")).click()
+            self.page.wait_for_url(f"**{self.path}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text(
+                "2026/09/01 聽力圖的語言香蕉區"
+            )
+            expect(self.result()).to_have_text("點圖上的注音，看那一群。")
+            expect(self.page.locator('[data-selected="true"]')).to_have_count(0)
+
+    # Acceptance 5: the banana and six boxes, each box apart from the others and inside the frame,
+    # its words inside it, on a common phone and the smallest.
+    def test_boxes_do_not_overlap_and_stay_in_the_frame(self):
+        for size in (self.PHONE, (320, 640)):
+            with self.subTest(width=size[0]), self.saving_artifacts():
+                self.open_page(size)
+                self.assertGreater(
+                    self.page.locator(".speech-banana-area").bounding_box()["width"], 0
+                )
+                frame = self.page.locator(".audiogram-frame").bounding_box()
+                boxes = self.page.locator("[data-group] rect")
+                expect(boxes).to_have_count(6)
+                boxes = [box.bounding_box() for box in boxes.all()]
+                for i, box in enumerate(boxes, start=1):
+                    self.assertGreaterEqual(box["x"], frame["x"], f"group {i} left")
+                    self.assertGreaterEqual(box["y"], frame["y"], f"group {i} top")
+                    self.assertLessEqual(
+                        box["x"] + box["width"], frame["x"] + frame["width"], f"group {i} right"
+                    )
+                    self.assertLessEqual(
+                        box["y"] + box["height"], frame["y"] + frame["height"], f"group {i} bottom"
+                    )
+                    for word in self.page.locator(f'[data-group="{i}"] text').all():
+                        words = word.bounding_box()
+                        self.assertGreaterEqual(words["x"], box["x"], f"group {i} words")
+                        self.assertLessEqual(
+                            words["x"] + words["width"], box["x"] + box["width"], f"group {i} words"
+                        )
+                for i, a in enumerate(boxes):
+                    for j, b in enumerate(boxes[i + 1 :], start=i + 1):
+                        apart = (
+                            a["x"] + a["width"] <= b["x"]
+                            or b["x"] + b["width"] <= a["x"]
+                            or a["y"] + a["height"] <= b["y"]
+                            or b["y"] + b["height"] <= a["y"]
+                        )
+                        self.assertTrue(apart, f"groups {i + 1} and {j + 1} overlap")
+
+    # Acceptance 6: picked from the list, the box goes dark and the result says the group's
+    # description, examples and a sentence for each ear.
+    def test_picking_from_the_list_darkens_the_box_and_writes_the_result(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+            box = self.page.locator('[data-group="5"] rect')
+            self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
+            self.assertEqual(
+                self.style(self.page.locator('[data-group="4"] rect'), "fill"), self.WHITE_BOX
+            )
+            expect(self.result()).to_contain_text(self.GROUP_5)
+            expect(self.result()).to_contain_text("高音的子音")
+            expect(self.result()).to_contain_text("ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」")
+            expect(self.result()).to_contain_text("右耳：可能不容易聽到")
+            expect(self.result()).to_contain_text("左耳：這個頻率沒有標記，無法估計")
+            expect(self.result()).not_to_contain_text("點圖上的注音")
+
+    # Acceptance 7: with the keyboard alone the list opens and a group is picked, each focus ring
+    # shows, focus stays on the button pressed, and the chart has its text alternative.
+    def test_the_keyboard_alone_picks_a_group_and_focus_stays_on_the_button(self):
+        with self.saving_artifacts():
+            self.open_page()
+            summary = self.main().locator("summary", has_text="用清單選")
+            for _ in range(40):
+                self.page.keyboard.press("Tab")
+                if summary.evaluate("el => el === document.activeElement"):
+                    break
+            else:
+                self.fail("Tab never reached 用清單選")
+            self.assertNotEqual(self.style(summary, "outlineStyle"), "none")
+            self.page.keyboard.press("Enter")
+            first = self.pick("ㄩㄧㄨㄝㄜㄛㄦ")
+            expect(first).to_be_visible()
+            self.page.keyboard.press("Tab")
+            expect(first).to_be_focused()
+            self.page.wait_for_function(
+                "getComputedStyle(document.activeElement).boxShadow.includes('0px 0px 0px')"
+            )
+            self.page.keyboard.press("Enter")
+            expect(first).to_be_focused()
+            expect(first).to_have_attribute("aria-pressed", "true")
+            expect(self.result()).to_contain_text("母音的低音部分")
+            label = self.main().get_by_role("img").get_attribute("aria-label")
+            self.assertIn("語言香蕉區", label)
+
+    # Acceptance 8: 320 wide at 200% text the page does not scroll sideways, the result and list
+    # words double, and every button in the list is at least 44 pixels tall.
+    def test_narrow_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open_page((320, 640))
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            words = self.result().locator("p").last
+            pick = self.pick(self.GROUP_5)
+            before = (self.font_size(words), self.font_size(pick))
+            self.assert_fits_a_phone_at_double_text_size("speech banana")
+            self.assertEqual(self.font_size(words), before[0] * 2)
+            self.assertEqual(self.font_size(pick), before[1] * 2)
+            for button in self.main().get_by_role("button").all():
+                self.assertGreaterEqual(button.bounding_box()["height"], 44)
+            self.assertGreaterEqual(
+                self.main().locator("summary", has_text="用清單選").bounding_box()["height"], 44
+            )
+            self.double_text(False)
+            for button in self.main().get_by_role("button").all():
+                self.assertGreaterEqual(button.bounding_box()["height"], 44)

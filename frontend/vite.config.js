@@ -29,6 +29,7 @@ export default defineConfig({
         "scroll-helpers": "src/scroll-helpers-main.js",
         "audiogram-input": "src/audiogram-main.jsx",
         "audiogram-view": "src/audiogram-view-main.jsx",
+        "speech-banana": "src/speech-banana-main.jsx",
         "fitting-level": "src/fitting-level.js",
         "continue-notice": "src/continue-notice-main.js",
       },

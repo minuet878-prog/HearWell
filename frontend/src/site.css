@@ -4089,6 +4089,43 @@
     user-select: none;
   }
 
+  /* The speech banana page (#436). The words in its chart scale with the chart (ADR 0040); these
+     follow the user's text size. */
+  .speech-banana-result {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-section);
+    color: var(--color-heading);
+  }
+
+  .speech-banana-result p {
+    margin: 0 0 0.25rem;
+  }
+
+  .speech-banana-result p:last-child {
+    margin-bottom: 0;
+  }
+
+  .speech-banana-result-title {
+    font-weight: 700;
+  }
+
+  .speech-banana-picks {
+    display: grid;
+    gap: 0.5rem;
+    padding-inline: 1rem;
+  }
+
+  .speech-banana-pick {
+    text-align: left;
+  }
+
+  .speech-banana-pick[aria-pressed="true"] {
+    --btn-bg: var(--color-primary);
+    --btn-color: #fff;
+  }
+
   .audiogram-symbols {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -1,0 +1,15 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}{{ audiogram.tested_on|date:"Y/m/d" }} 聽力圖的語言香蕉區｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/speech-banana.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
+<h1 class="h3 mt-4 wrap-anywhere">{{ audiogram.tested_on|date:"Y/m/d" }} 聽力圖的語言香蕉區</h1>
+<div id="speech-banana"></div>
+{{ data|json_script:"speech-banana-data" }}
+{% endblock %}

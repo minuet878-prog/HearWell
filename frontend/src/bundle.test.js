@@ -45,7 +45,7 @@ async function entryDownload(name) {
 }
 
 // The audiogram pages draw their own SVG; neither should pull in Recharts.
-for (const name of ["answer", "audiogram-input", "audiogram-view"]) {
+for (const name of ["answer", "audiogram-input", "audiogram-view", "speech-banana"]) {
   it(`the ${name} page loads no chart library and stays under 80 KB (brotli)`, async () => {
     const { modules, size } = await entryDownload(name);
     expect(modules.some((id) => id.includes("recharts"))).toBe(false);

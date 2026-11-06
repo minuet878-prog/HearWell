@@ -65,6 +65,11 @@ urlpatterns = [
     path("audiograms/<int:audiogram_id>", audiograms.audiogram_detail, name="audiogram_detail"),
     path("audiograms/<int:audiogram_id>/edit", audiograms.audiogram_edit, name="audiogram_edit"),
     path(
+        "audiograms/<int:audiogram_id>/speech-banana",
+        audiograms.audiogram_speech_banana,
+        name="audiogram_speech_banana",
+    ),
+    path(
         "audiograms/<int:audiogram_id>/delete", audiograms.audiogram_delete, name="audiogram_delete"
     ),
     path(

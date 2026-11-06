@@ -4,6 +4,8 @@ Ported from the standalone audiogram tool; no Django code here.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
+from itertools import pairwise
+from math import log2
 
 AIR_FREQUENCIES = (250, 500, 1000, 2000, 3000, 4000, 6000, 8000)
 BONE_FREQUENCIES = (500, 1000, 2000, 4000)
@@ -256,4 +258,138 @@ def compare(new_points, old_points):
             ),
         }
         result[ear]["pta"]["change"] = average_change(result[ear]["pta"])
+    return result
+
+
+# The speech banana (ADR 0040): read off the Children's Hearing Foundation poster and reviewed by
+# the owner (docs/planning/speech-banana/research.md). Checked yearly. (Hz, dB HL) along each edge;
+# it runs past 8000 Hz, and the chart crops what falls outside.
+SPEECH_BANANA = {
+    "top": (
+        (281, 36),
+        (308, 33),
+        (397, 36),
+        (535, 38.5),
+        (723, 40),
+        (1000, 40),
+        (2000, 40),
+        (3000, 38),
+        (4000, 36),
+        (6000, 28),
+        (8000, 23),
+        (9580, 21.5),
+    ),
+    "bottom": (
+        (10660, 26),
+        (10500, 31),
+        (9000, 38),
+        (8000, 40),
+        (6000, 45),
+        (4000, 52),
+        (3000, 56),
+        (2000, 58),
+        (1000, 56),
+        (500, 53),
+        (362, 49),
+        (308, 43.5),
+    ),
+}
+
+# One representative point judges each whole group (#436), so every result says 「可能」.
+SPEECH_GROUPS = (
+    {
+        "rows": ("ㄩㄧㄨ", "ㄝㄜㄛㄦ"),
+        "frequency": 460,
+        "db": 44,
+        "description": "母音的低音部分",
+        "examples": "ㄧ「一」、ㄨ「五」、ㄩ「魚」",
+    },
+    {
+        "rows": ("ㄚㄨㄛ", "ㄚㄜㄦ"),
+        "frequency": 1200,
+        "db": 46,
+        "description": "母音",
+        "examples": "ㄚ「阿」、ㄛ「喔」、ㄜ「鵝」",
+    },
+    {
+        "rows": ("ㄝㄩㄇㄖ", "ㄧㄋㄌ"),
+        "frequency": 2400,
+        "db": 48,
+        "description": "鼻音、ㄌ 和母音的高音部分",
+        "examples": "ㄇ「媽」、ㄋ「你」、ㄌ「老」",
+    },
+    {
+        "rows": ("ㄏㄅㄉㄍ", "ㄆㄎㄊ"),
+        "frequency": 3300,
+        "db": 44,
+        "description": "短促的子音",
+        "examples": "ㄅ「爸」、ㄉ「大」、ㄍ「哥」、ㄎ「看」",
+    },
+    {
+        "rows": ("ㄈㄐㄑㄓ", "ㄔㄒㄕ"),
+        "frequency": 5500,
+        "db": 39,
+        "description": "高音的子音",
+        "examples": "ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」",
+    },
+    {
+        "rows": ("ㄗㄙㄘ",),
+        "frequency": 6600,
+        "db": 35,
+        "description": "最高音的子音",
+        "examples": "ㄙ「四」、ㄘ「菜」、ㄗ「字」",
+    },
+)
+
+SPEECH_RESULTS = {
+    "heard": "可能聽得到",
+    "hard": "可能不容易聽到",
+    "broken": "無法確定（聽力線在這裡因無反應斷開）",
+    "no_mark": "這個頻率沒有標記，無法估計",
+}
+
+
+def _speech_status(marks, group):
+    frequency = group["frequency"]
+    for lower, upper in pairwise(marks):
+        if lower.frequency <= frequency <= upper.frequency:
+            # A no-response point breaks the line; its 120 dB is never compared.
+            if lower.no_response or upper.no_response:
+                return "broken"
+            # Straight on the log frequency axis, like the line drawn on the chart.
+            along = log2(frequency / lower.frequency) / log2(upper.frequency / lower.frequency)
+            line = lower.db + along * (upper.db - lower.db)
+            # A threshold is what is heard only half the time, so equal is not heard (ADR 0040).
+            return "heard" if group["db"] > line else "hard"
+    return "no_mark"
+
+
+def _speech_stretches(marks):
+    pieces = [[]]
+    for mark in marks:
+        if mark.no_response:
+            pieces.append([])
+        else:
+            pieces[-1].append((mark.frequency, mark.db))
+    return [piece for piece in pieces if len(piece) > 1]
+
+
+def speech_banana(points):
+    """{"right": {"results": [...], "stretches": [...]}, "left": {...}} (ADR 0040, spec #436).
+
+    Air conduction only, masked or not. results: one {"status", "text"} per SPEECH_GROUPS entry.
+    stretches: the unbroken pieces of the line, each [(frequency, db), ...] of two marks or more.
+    """
+    points = list(points)
+    result = {}
+    for ear in ("right", "left"):
+        marks = sorted(
+            (p for p in points if p.ear == ear and p.conduction == "air"),
+            key=lambda p: p.frequency,
+        )
+        statuses = [_speech_status(marks, group) for group in SPEECH_GROUPS]
+        result[ear] = {
+            "results": [{"status": s, "text": SPEECH_RESULTS[s]} for s in statuses],
+            "stretches": _speech_stretches(marks),
+        }
     return result
