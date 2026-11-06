@@ -95,6 +95,25 @@ describe("pick to explain", () => {
     expect(showing(0)).toEqual([]);
   });
 
+  // #429: an option can carry more than a paragraph. All of it moves, links still working; the
+  // option's own name, already beside its radio, does not come along.
+  it("shows all of a longer explanation, with its lists and links", () => {
+    group(0).querySelector("li").insertAdjacentHTML(
+      "beforeend",
+      '<h3>可以試的說法</h3><ul><li>「我陪您去」</li></ul><a href="/guide">看選配指引</a>',
+    );
+    runScript();
+    radio(0, 0).click();
+    expect(live(0).querySelector("h3").textContent).toBe("可以試的說法");
+    expect(live(0).querySelector("ul li").textContent).toBe("「我陪您去」");
+    expect(live(0).querySelector("a").getAttribute("href")).toBe("/guide");
+    expect(live(0).querySelector("strong")).toBeNull();
+    expect(showing(0)).toEqual(["可以試試先關小聲"]);
+
+    radio(0, 1).click();
+    expect(live(0).textContent).toBe("這樣有幫助");
+  });
+
   it("keeps nothing and sends nothing", () => {
     runScript();
     radio(0, 1).click();
