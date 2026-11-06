@@ -10,11 +10,12 @@ const HATCH = "speech-banana-hatch";
 const HATCH_CLIP = "speech-banana-hatch-clip";
 // Each group's box, in chart units, by the groups' order: under the banana where there is room,
 // over it for the two the row below cannot fit. The dot, not the box, is the real position.
+// A tap picks the nearest centre, so every box's edges must be nearer its own centre than another's.
 const BOX_CENTRES = [
   [80, 214],
   [146, 214],
   [208, 214],
-  [222, 112],
+  [219, 112],
   [272, 214],
   [279, 112],
 ];
@@ -25,6 +26,11 @@ const BOX_FOOT_ROOM = 6;
 
 const groupName = (group) => group.rows.join("");
 const chartPoint = ([frequency, db]) => `${x(frequency)},${y(db)}`;
+
+function nearestGroup({ px, py }) {
+  const distances = BOX_CENTRES.map(([cx, cy]) => Math.hypot(cx - px, cy - py));
+  return distances.indexOf(Math.min(...distances));
+}
 
 function Banana({ outline, stretches }) {
   const edge = [...outline.top, ...outline.bottom].map(chartPoint).join(" ");
@@ -144,6 +150,7 @@ export default function SpeechBananaApp({ data }) {
               <MarkEdges ear={shown} />
             </>
           }
+          onTap={(at) => setSelected(nearestGroup(at))}
         />
       </div>
       <p className="mb-4">黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>

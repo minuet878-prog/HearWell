@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 
 import SpeechBananaApp from "./SpeechBananaApp.jsx";
-import { x, y } from "./audiogram.js";
+import { CHART, x, y } from "./audiogram.js";
 
+// jsdom has no layout: make one screen pixel equal one chart unit.
+beforeEach(() => {
+  SVGElement.prototype.getBoundingClientRect = () => ({ left: 0, top: 0, width: CHART.width, height: CHART.height });
+});
 afterEach(cleanup);
 
 const HEARD = { status: "heard", text: "可能聽得到" };
@@ -217,4 +221,66 @@ it("the list has one button per group under its title", () => {
     "ㄈㄐㄑㄓㄔㄒㄕ",
     "ㄗㄙㄘ",
   ]);
+});
+
+const tap = (at, on = screen.getByRole("img")) => fireEvent.click(on, { clientX: at[0], clientY: at[1] });
+
+it("tapping empty space picks the group whose box centre is nearest", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  // Box 5's centre is 46 away, box 6's 58.
+  tap([285, 170]);
+  expect(box(container, 5).getAttribute("data-selected")).toBe("true");
+  expect(box(container, 5).querySelector("rect").getAttribute("fill")).toBe("#1f4e8c");
+  expect(screen.getByRole("status").textContent).toContain("高音的子音");
+  expect(screen.getByRole("status").textContent).toContain("右耳：可能不容易聽到");
+  expect(screen.getByRole("status").textContent).toContain("左耳：可能聽得到");
+  expect(screen.getByRole("button", { name: "ㄈㄐㄑㄓㄔㄒㄕ" }).getAttribute("aria-pressed")).toBe("true");
+});
+
+it("distance runs to the box, not to the dot it is tied to", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  // 10 from group 5's dot and 13 from group 6's, but 65 from box 5's centre and 39 from box 6's.
+  tap([285, 150]);
+  expect(box(container, 6).getAttribute("data-selected")).toBe("true");
+  expect(box(container, 5).getAttribute("data-selected")).toBe("false");
+});
+
+it("a tap outside the frame still picks the nearest group, and a later tap moves the pick", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  tap([2, 378]);
+  expect(box(container, 1).getAttribute("data-selected")).toBe("true");
+  tap([318, 2]);
+  expect(box(container, 1).getAttribute("data-selected")).toBe("false");
+  expect(box(container, 6).getAttribute("data-selected")).toBe("true");
+});
+
+it("a tap anywhere on a box picks that box, right to its corners", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  DATA.groups.forEach((_, i) => {
+    const rect = box(container, i + 1).querySelector("rect");
+    const [left, top] = [Number(rect.getAttribute("x")), Number(rect.getAttribute("y"))];
+    const [right, bottom] = [left + Number(rect.getAttribute("width")), top + Number(rect.getAttribute("height"))];
+    [[left, top], [right, top], [left, bottom], [right, bottom]].forEach((corner) => {
+      tap(corner, rect);
+      expect(container.querySelector('[data-selected="true"]').getAttribute("data-group"), `group ${i + 1} at ${corner}`).toBe(String(i + 1));
+    });
+  });
+});
+
+it("picking by tap and from the list draw exactly the same", () => {
+  const byList = render(<SpeechBananaApp data={DATA} />);
+  pick("ㄈㄐㄑㄓㄔㄒㄕ");
+  const listed = byList.container.innerHTML;
+  cleanup();
+  const byTap = render(<SpeechBananaApp data={DATA} />);
+  tap([285, 170]);
+  expect(byTap.container.innerHTML).toBe(listed);
+});
+
+it("the chart stays a picture: keyboards and screen readers keep using the list", () => {
+  render(<SpeechBananaApp data={DATA} />);
+  const chart = screen.getByRole("img");
+  expect(chart.tagName.toLowerCase()).toBe("svg");
+  expect(chart.hasAttribute("tabindex")).toBe(false);
+  expect(chart.querySelectorAll("[tabindex], [role='button'], a, button")).toHaveLength(0);
 });
