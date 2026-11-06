@@ -96,7 +96,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
     「也可以做」都看得到（驗證見 `docs/verification/sadl-listing.md`）。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
-  互動內容（2026-10-24 本人提出「更多互動式頁面」，2026-11-06 拷問定義；每個各開一份規格，依序上線）：聽力圖看日常聲音 → 溝通情境練習 → 知識小測驗 → 助聽器問題排解 → 補助試算 → 配戴與保養教學 → 前 30 天適應任務 → 聽損模擬。第一個的決定見[拷問決定](planning/everyday-sounds/grill-decisions.md)、ADR 0040；下一步是本人審定聲音表，再寫規格。
+  互動內容（2026-10-24 本人提出「更多互動式頁面」，2026-11-06 拷問定義；每個各開一份規格，依序上線）：聽力圖看日常聲音 → 溝通情境練習 → 知識小測驗 → 助聽器問題排解 → 補助試算 → 配戴與保養教學 → 前 30 天適應任務 → 聽損模擬。第一個的決定見[拷問決定](planning/everyday-sounds/grill-decisions.md)、ADR 0040；下一步是本人取得 Hung & Lin 2023 全文，定注音與基準、審定聲音表，再寫規格（文獻草稿見 planning/everyday-sounds/research.md）。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
