@@ -78,14 +78,7 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>{% endif %}
-    {% if fitting_guide %}<a class="link-card action-card" href="{% url 'guide' %}">
-        {% include "screening/action_icon.html" with icon="guide" %}
-        <span class="link-card-body">
-            <span class="link-card-title">看我的選配指引</span>
-            <span>依您的聽力圖整理下一步</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a>{% endif %}
+    {% if fitting_guide %}{% include "screening/audiogram_guide_card.html" %}{% endif %}
 </section>
 <p class="quiet-links"><a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a><a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a></p>
 {# #365: the way back, as on the compare page. #}

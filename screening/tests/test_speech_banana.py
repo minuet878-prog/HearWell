@@ -320,3 +320,71 @@ class SpeechBananaPageTests(TestCase):
         self.assertEqual(left["marks"], [])
         self.assertEqual([r["text"] for r in left["results"]], [NO_MARK] * 6)
         self.assertEqual(left["stretches"], [])
+
+    def _below_the_chart(self, audiogram):
+        """What the server writes after React's mount point, so it shows without JavaScript."""
+        main = self._main(self.client.get(self._url(audiogram)))
+        return main[main.index('<div id="speech-banana"></div>') :]
+
+    def test_the_reminders_and_source_are_in_the_page_below_the_chart(self):
+        below = self._below_the_chart(self._make(("right", "air", 1000, 40, False)))
+        for words in (
+            "看懂這張圖</h2>",
+            "這是依您輸入的聽力圖估算的結果，是沒戴助聽器時的情況，"
+            "實際情形會因環境和說話的人而不同。聽得到不等於聽得清楚。這不能取代聽力師的判讀。",
+            "這張圖沒有列火警和煙霧警報。清醒時聽得到，不代表睡著時會被叫醒。"
+            "建議實際試試家裡的警報器能不能叫醒您。",
+            "語言香蕉區與注音位置參考：財團法人雅文兒童聽語文教基金會〈聽力圖和語言香蕉區〉。"
+            "本頁資料查核於 2026/11/06。",
+        ):
+            with self.subTest(words=words):
+                self.assertIn(words, below)
+
+    def test_the_date_checked_comes_from_where_the_data_is_defined(self):
+        audiogram = self._make(("right", "air", 1000, 40, False))
+        with mock.patch("screening.views.audiograms.SPEECH_BANANA_CHECKED_ON", date(2027, 3, 1)):
+            self.assertIn("本頁資料查核於 2027/03/01。", self._below_the_chart(audiogram))
+
+    def _footer(self, *points):
+        """(the action cards, where 回這張聽力圖 leads) below the chart."""
+        audiogram = self._make(*points)
+        below = self._below_the_chart(audiogram)
+        back = re.findall(r'<a [^>]*href="([^"]+)"[^>]*>回這張聽力圖</a>', below)
+        self.assertEqual(back, [reverse("audiogram_detail", args=[audiogram.id])])
+        return action_cards(below), audiogram
+
+    def test_over_the_existing_limit_the_foot_has_the_guide_card_and_the_way_back(self):
+        cards, _ = self._footer(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))
+        self.assertEqual(cards, [(reverse("guide"), "看我的選配指引", "依您的聽力圖整理下一步")])
+
+    def test_under_the_existing_limit_the_foot_has_only_the_way_back(self):
+        cards, _ = self._footer(*self._ears((500, 20), (1000, 20), (2000, 20), (4000, 20)))
+        self.assertEqual(cards, [])
+
+    def test_an_ear_that_could_still_decide_it_means_only_the_way_back(self):
+        # One ear under the limit and the other unknown, as on the audiogram page (#230).
+        cards, _ = self._footer(*(("right", "air", f, 20, False) for f in (500, 1000, 2000, 4000)))
+        self.assertEqual(cards, [])
+
+    def test_how_much_is_hard_to_hear_does_not_change_the_foot(self):
+        # #436 story 38. Flat 30 dB: PTA 30, over the limit, and every group with a mark is heard.
+        cards, audiogram = self._footer(*self._ears((500, 30), (1000, 30), (2000, 30), (4000, 30)))
+        self.assertEqual([title for _, title, _ in cards], ["看我的選配指引"])
+        self.assertNotIn("hard", self._statuses(audiogram))
+        # A steep drop past 2000 Hz: PTA 22.5, under the limit, with groups 4 to 6 hard to hear.
+        cards, audiogram = self._footer(
+            *self._ears((500, 10), (1000, 10), (2000, 10), (3000, 60), (4000, 60), (8000, 80))
+        )
+        self.assertEqual(cards, [])
+        self.assertEqual(self._statuses(audiogram).count("hard"), 3)
+
+    @staticmethod
+    def _ears(*marks):
+        return [
+            (ear, "air", frequency, db, False)
+            for ear in ("right", "left")
+            for frequency, db in marks
+        ]
+
+    def _statuses(self, audiogram):
+        return [result["status"] for result in self._data(audiogram)["ears"][0]["results"]]
