@@ -21,7 +21,13 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        {# #434 and #435 add their jump links here. #}
+        <li><a class="link-card" href="#adjusting-title">
+            <span class="link-card-body">
+                <span class="link-card-title">陪長輩適應</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        {# #435 adds its jump link here. #}
     </ul>
 </nav>
 
@@ -30,7 +36,13 @@
     {% include "screening/family/pick_explain.html" with pick=problems heading=3 %}
 </section>
 
-{# #434 (陪長輩適應) and #435 (日常保養) add their sections here. #}
+<section class="mb-6" data-parallel-block aria-labelledby="adjusting-title">
+    <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
+    {% include "screening/family/pick_explain.html" with pick=stages heading=3 %}
+    {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="inline-block py-[0.6rem]" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
+</section>
+
+{# #435 (日常保養) adds its section here. #}
 
 <p class="mb-6"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
