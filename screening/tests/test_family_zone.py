@@ -105,7 +105,11 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         main = self._home()
         self.assertEqual(
             CARD.findall(main),
-            [(reverse("guide"), "了解助聽器選配與補助"), (self.url, FAMILY_CARD)],
+            [
+                (reverse("add_to_home"), "把聽伴加到手機主畫面"),
+                (reverse("guide"), "了解助聽器選配與補助"),
+                (self.url, FAMILY_CARD),
+            ],
         )
         # The main buttons keep their place above the cards.
         self.assertLess(main.index("開始篩檢"), main.index("了解助聽器選配與補助"))
