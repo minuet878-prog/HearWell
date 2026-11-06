@@ -11,128 +11,38 @@
   h1 { font-size: 1.5rem; margin: 0 0 4px; color: var(--brand); }
   h2 { font-size: 1.2rem; margin: 28px 0 12px; }
   .lead { margin: 0 0 8px; color: var(--muted); }
-  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); max-width: 1120px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); max-width: 1120px; }
   figure { margin: 0; padding: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
   figcaption { margin-top: 8px; font-size: .95rem; }
   figcaption b { display: block; }
   svg { display: block; width: 100%; height: auto; background: #fbfcfd; border-radius: 8px; }
-  svg * { fill: none; stroke: var(--brand); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  svg * { fill: none; stroke: var(--brand); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
   svg .soft { fill: var(--tint); }
-  svg .thin { stroke-width: 2; }
+  svg .thin { stroke-width: 1.6; }
+  svg .thick { stroke-width: 4; }
   svg .dot { fill: var(--brand); stroke: none; }
+  svg .tube { stroke-width: 8; }
+  svg .tube-in { stroke: var(--tint); stroke-width: 3.6; }
+  svg .lens { fill: #fff; fill-opacity: 0.25; }
 </style>
 </head>
 <body>
-<h1>日常保養的線條圖</h1>
-<p class="lead">不分廠牌的簡單線條圖，共 9 張。圖只是輔助，每一步的文字都能單獨看懂。請逐張確認：外型對不對、動作會不會誤導。</p>
-
+<h1>日常保養的線條圖（第二版）</h1>
+<p class="lead">不分廠牌的線條圖，共 9 張。圖只是輔助，每一步的文字都能單獨看懂。請逐張確認：外型對不對、動作會不會誤導。</p>
 <h2>掛在耳後</h2>
 <div class="grid">
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M150 34c24 2 38 28 34 62-2 14-15 16-20 4-7-22-18-38-32-48-9-7-3-19 18-18z"/>
-  <path d="M146 34c-16-20-48-20-58 2"/>
-  <path class="soft" d="M70 42c2-10 26-12 32 0 6 14-4 36-18 34-13-2-17-20-14-34z"/>
-  <path class="soft thin" d="M116 112l44-18c6-2 10 0 12 5l7 18c2 5 0 9-5 11l-44 18c-5 2-9 0-11-5l-7-18c-2-5-1-9 4-11z"/>
-  <path class="thin" d="M196 84c6-2 11-1 15 3M200 98c6-1 10 0 14 4"/>
-</svg>
-<figcaption><b>1. 擦乾淨</b>軟布擦機身和耳模。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M46 58c6-24 66-30 82-4 16 28-8 80-44 74-32-5-44-40-38-70z"/>
-  <circle cx="108" cy="62" r="7"/>
-  <path d="M34 22c6 10 24 18 40 16"/>
-  <path d="M212 28l-82 28"/>
-  <path class="thin" d="M130 46l-14 8M132 52l-15 6M134 58l-15 4M136 64l-14 2"/>
-</svg>
-<figcaption><b>2. 清耳垢</b>工具清耳模出口的耳垢。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M14 62h72l24 18 24-18h92v22h-92l-24-2-24 2H14z"/>
-  <circle class="thin" cx="110" cy="74" r="46"/>
-  <path d="M143 107l36 36"/>
-</svg>
-<figcaption><b>3. 看導管</b>放大鏡看導管有沒有折到。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path d="M34 78h172c0 40-30 66-86 66s-86-26-86-66z"/>
-  <path class="thin" d="M46 94c12-6 22 6 34 0s22 6 34 0 22 6 34 0 22 6 34 0"/>
-  <path class="soft" d="M96 74c2-14 34-16 42-2 8 16-4 38-22 36-16-2-22-20-20-34z"/>
-  <path d="M122 62c0-22 18-40 44-42"/>
-  <circle class="thin" cx="164" cy="116" r="5"/>
-  <circle class="thin" cx="82" cy="122" r="4"/>
-</svg>
-<figcaption><b>4. 洗耳模</b>只有耳模和導管泡水，機身不泡。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path d="M42 84h156v38c0 12-8 20-20 20H62c-12 0-20-8-20-20z"/>
-  <path d="M42 84L58 34c2-6 6-8 12-8h100c6 0 10 2 12 8l16 50"/>
-  <path class="soft" d="M122 96c16 1 24 12 22 28-1 7-9 8-12 2-4-9-10-15-18-19-6-3-3-12 8-11z"/>
-  <path class="soft" d="M78 104c1-6 15-7 18 0 3 7-2 18-9 17-7-1-10-10-9-17z"/>
-  <path class="thin" d="M120 96c-8-7-24-7-30 6"/>
-</svg>
-<figcaption><b>5. 關機收好</b>放進盒子。</figcaption>
-</figure>
-
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><g transform="translate(14 16) rotate(0) scale(1.15)"><path class="tube" d="M72 22C60 5 38 5 30 24L31 38"/><path class="tube-in" d="M72 22C60 5 38 5 30 24L31 38"/><path class="soft" d="M78 18C92 12 108 22 113 44C118 68 114 92 102 104C95 111 85 108 84 98C83 80 78 62 68 46C60 34 64 24 78 18Z"/><path class="thin" d="M85 86C93 91 105 89 114 80"/><path class="thin" d="M97 92l2 5"/><circle class="dot" cx="79" cy="27" r="1.7"/><circle class="dot" cx="88" cy="24" r="1.7"/><path class="thick" d="M108 48l3 14"/><path class="soft" d="M18 44C20 33 43 31 47 44C51 57 47 72 35 76C30 78 28 85 20 89C14 91 9 85 11 78C13 72 13 63 14 56C14 51 16 48 18 44Z"/><ellipse class="thin" cx="15" cy="84" rx="3.2" ry="2.4"/><circle class="thin" cx="39" cy="52" r="2.2"/></g><g transform="translate(136 96) rotate(-6) scale(0.95)"><path class="soft" d="M0 8C14 2 30 12 46 6C58 2 66 6 74 4L80 44C68 48 58 44 46 48C30 54 14 44 4 50Z"/><path class="thin" d="M12 12L16 46M60 8L66 44"/></g><g transform="translate(214 80) rotate(0) scale(1)"><path class="thin" d="M0 0c7-3 13-2 18 3M4 16c7-2 12-1 16 4"/></g></svg><figcaption><b>1. 擦乾淨</b>軟布擦機身和耳模。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><g transform="translate(62 -14) rotate(0) scale(1.7)"><path class="soft" d="M18 44C20 33 43 31 47 44C51 57 47 72 35 76C30 78 28 85 20 89C14 91 9 85 11 78C13 72 13 63 14 56C14 51 16 48 18 44Z"/><ellipse class="thin" cx="15" cy="84" rx="3.2" ry="2.4"/><circle class="thin" cx="39" cy="52" r="2.2"/></g><g transform="translate(98 138) rotate(-22) scale(1.1)"><rect class="soft" x="24" y="-4.5" width="88" height="9" rx="4.5"/><path d="M24 0H9"/><path class="thin" d="M9 -6L-5 -9M9 -3L-7 -4.5M9 0H-8M9 3L-7 4.5M9 6L-5 9"/></g></svg><figcaption><b>2. 清耳垢</b>工具清耳模出口的耳垢。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><path class="soft" d="M6 62C30 40 60 34 92 34L112 50L132 34C164 32 196 40 226 64L218 76C192 54 164 48 132 50L112 54L92 50C62 50 34 56 16 74Z"/><circle class="lens" cx="112" cy="46" r="38"/><circle class="thin" cx="112" cy="46" r="32"/><rect class="soft" x="0" y="-6" width="56" height="12" rx="6" transform="translate(142 74) rotate(45)"/></svg><figcaption><b>3. 看導管</b>放大鏡看導管有沒有折到或裂開。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><path d="M24 72C24 118 62 146 120 146C178 146 216 118 216 72"/><path d="M16 72H224"/><path class="thin" d="M30 92c14-7 26 7 40 0s26 7 40 0 26 7 40 0 26 7 40 0 16 3 22 0"/><g transform="translate(70 44) rotate(0) scale(0.95)"><path class="soft" d="M18 44C20 33 43 31 47 44C51 57 47 72 35 76C30 78 28 85 20 89C14 91 9 85 11 78C13 72 13 63 14 56C14 51 16 48 18 44Z"/><ellipse class="thin" cx="15" cy="84" rx="3.2" ry="2.4"/><circle class="thin" cx="39" cy="52" r="2.2"/></g><path class="tube" d="M100 78C104 58 104 38 122 24"/><path class="tube-in" d="M100 78C104 58 104 38 122 24"/><circle class="thin" cx="160" cy="118" r="4.5"/><circle class="thin" cx="176" cy="106" r="3"/><g transform="translate(152 8) rotate(0) scale(0.52)"><path class="tube" d="M72 22C60 5 38 5 30 24L31 38"/><path class="tube-in" d="M72 22C60 5 38 5 30 24L31 38"/><path class="soft" d="M78 18C92 12 108 22 113 44C118 68 114 92 102 104C95 111 85 108 84 98C83 80 78 62 68 46C60 34 64 24 78 18Z"/><path class="thin" d="M85 86C93 91 105 89 114 80"/><path class="thin" d="M97 92l2 5"/><circle class="dot" cx="79" cy="27" r="1.7"/><circle class="dot" cx="88" cy="24" r="1.7"/><path class="thick" d="M108 48l3 14"/></g></svg><figcaption><b>4. 洗耳模</b>耳模連導管泡溫肥皂水，機身拿開不碰水。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><path class="soft" d="M44 76C44 34 62 18 120 18C178 18 196 34 196 76Z"/><path class="thin" d="M58 70C60 42 74 30 120 30C166 30 180 42 182 70"/><rect x="26" y="76" width="188" height="68" rx="16"/><rect class="thin" x="38" y="86" width="164" height="48" rx="10"/><path class="thick" d="M104 76v-6M136 76v-6"/><g transform="translate(58 88) rotate(0) scale(0.4)"><path class="tube" d="M72 22C60 5 38 5 30 24L31 38"/><path class="tube-in" d="M72 22C60 5 38 5 30 24L31 38"/><path class="soft" d="M78 18C92 12 108 22 113 44C118 68 114 92 102 104C95 111 85 108 84 98C83 80 78 62 68 46C60 34 64 24 78 18Z"/><path class="thin" d="M85 86C93 91 105 89 114 80"/><path class="thin" d="M97 92l2 5"/><circle class="dot" cx="79" cy="27" r="1.7"/><circle class="dot" cx="88" cy="24" r="1.7"/><path class="thick" d="M108 48l3 14"/><path class="soft" d="M18 44C20 33 43 31 47 44C51 57 47 72 35 76C30 78 28 85 20 89C14 91 9 85 11 78C13 72 13 63 14 56C14 51 16 48 18 44Z"/><ellipse class="thin" cx="15" cy="84" rx="3.2" ry="2.4"/><circle class="thin" cx="39" cy="52" r="2.2"/></g><g transform="translate(132 88) rotate(0) scale(0.4)"><path class="tube" d="M72 22C60 5 38 5 30 24L31 38"/><path class="tube-in" d="M72 22C60 5 38 5 30 24L31 38"/><path class="soft" d="M78 18C92 12 108 22 113 44C118 68 114 92 102 104C95 111 85 108 84 98C83 80 78 62 68 46C60 34 64 24 78 18Z"/><path class="thin" d="M85 86C93 91 105 89 114 80"/><path class="thin" d="M97 92l2 5"/><circle class="dot" cx="79" cy="27" r="1.7"/><circle class="dot" cx="88" cy="24" r="1.7"/><path class="thick" d="M108 48l3 14"/><path class="soft" d="M18 44C20 33 43 31 47 44C51 57 47 72 35 76C30 78 28 85 20 89C14 91 9 85 11 78C13 72 13 63 14 56C14 51 16 48 18 44Z"/><ellipse class="thin" cx="15" cy="84" rx="3.2" ry="2.4"/><circle class="thin" cx="39" cy="52" r="2.2"/></g></svg><figcaption><b>5. 關機收好</b>放進盒子。</figcaption></figure>
 </div>
-
 <h2>戴在耳內</h2>
 <div class="grid">
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M52 58c10-24 58-30 76-8 18 24 4 72-34 76-34 3-54-36-42-68z"/>
-  <circle cx="86" cy="80" r="16"/>
-  <circle class="dot" cx="118" cy="62" r="4"/>
-  <circle class="dot" cx="112" cy="104" r="4"/>
-  <path d="M214 30l-78 28"/>
-  <path class="thin" d="M136 48l-14 8M138 54l-15 6M140 60l-15 4M142 66l-14 2"/>
-</svg>
-<figcaption><b>1. 刷開口</b>軟刷刷開口上的耳垢。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M52 58c10-24 58-30 76-8 18 24 4 72-34 76-34 3-54-36-42-68z"/>
-  <circle cx="86" cy="80" r="16"/>
-  <circle class="dot" cx="112" cy="104" r="4"/>
-  <path d="M214 28l-82 28"/>
-  <circle class="thin" cx="124" cy="60" r="7"/>
-</svg>
-<figcaption><b>2. 挑耳垢</b>刷不掉的，用工具輕輕挑。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path class="soft" d="M46 46c10-22 54-26 70-6 16 22 4 64-30 68-30 3-50-32-40-62z"/>
-  <circle cx="78" cy="64" r="14"/>
-  <path class="soft thin" d="M104 104l50-20c6-2 10 0 12 5l8 20c2 5 0 9-5 11l-50 20c-5 2-9 0-11-5l-8-20c-2-5-1-9 4-11z"/>
-  <path class="thin" d="M192 76c6-2 11-1 15 3M196 90c6-1 10 0 14 4"/>
-</svg>
-<figcaption><b>3. 擦乾淨</b>乾布全部擦過。</figcaption>
-</figure>
-
-<figure>
-<svg viewBox="0 0 240 160" aria-hidden="true">
-  <path d="M42 84h156v38c0 12-8 20-20 20H62c-12 0-20-8-20-20z"/>
-  <path d="M42 84L58 34c2-6 6-8 12-8h100c6 0 10 2 12 8l16 50"/>
-  <path class="soft" d="M74 104c3-8 20-10 26-3 6 8 1 24-11 25-12 1-19-12-15-22z"/>
-  <circle class="thin" cx="86" cy="112" r="5"/>
-  <path class="soft" d="M140 104c3-8 20-10 26-3 6 8 1 24-11 25-12 1-19-12-15-22z"/>
-  <circle class="thin" cx="152" cy="112" r="5"/>
-</svg>
-<figcaption><b>4. 關機收好</b>放進盒子。</figcaption>
-</figure>
-
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><g transform="translate(26 6) rotate(0) scale(1.2)"><path class="soft" d="M20 30C30 8 72 6 86 28C98 46 94 72 74 84C68 88 64 96 52 104C44 110 34 106 34 96C34 88 30 84 24 76C14 62 14 44 20 30Z"/><path class="thin" d="M30 34C38 18 68 16 78 32C86 46 82 64 68 72C54 80 34 72 28 58C25 50 26 42 30 34Z"/><rect class="thin" x="40" y="42" width="26" height="20" rx="4"/><path class="thin" d="M49 62v-3h8v3"/><circle class="dot" cx="55" cy="30" r="1.8"/><circle class="dot" cx="72" cy="50" r="1.8"/><ellipse class="thin" cx="43" cy="102" rx="4" ry="2.6"/></g><g transform="translate(86 134) rotate(-16) scale(1.1)"><rect class="soft" x="24" y="-4.5" width="88" height="9" rx="4.5"/><path d="M24 0H9"/><path class="thin" d="M9 -6L-5 -9M9 -3L-7 -4.5M9 0H-8M9 3L-7 4.5M9 6L-5 9"/></g></svg><figcaption><b>1. 刷開口</b>軟刷刷開口上的耳垢。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><g transform="translate(26 6) rotate(0) scale(1.2)"><path class="soft" d="M20 30C30 8 72 6 86 28C98 46 94 72 74 84C68 88 64 96 52 104C44 110 34 106 34 96C34 88 30 84 24 76C14 62 14 44 20 30Z"/><path class="thin" d="M30 34C38 18 68 16 78 32C86 46 82 64 68 72C54 80 34 72 28 58C25 50 26 42 30 34Z"/><rect class="thin" x="40" y="42" width="26" height="20" rx="4"/><path class="thin" d="M49 62v-3h8v3"/><circle class="dot" cx="55" cy="30" r="1.8"/><circle class="dot" cx="72" cy="50" r="1.8"/><ellipse class="thin" cx="43" cy="102" rx="4" ry="2.6"/></g><g transform="translate(86 134) rotate(-16) scale(1.1)"><rect class="soft" x="24" y="-4.5" width="88" height="9" rx="4.5"/><path class="thin" d="M24 0H7"/><circle class="thin" cx="3" cy="0" r="4"/></g></svg><figcaption><b>2. 挑耳垢</b>刷不掉的，用工具輕輕挑。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><g transform="translate(14 8) rotate(0) scale(1.15)"><path class="soft" d="M20 30C30 8 72 6 86 28C98 46 94 72 74 84C68 88 64 96 52 104C44 110 34 106 34 96C34 88 30 84 24 76C14 62 14 44 20 30Z"/><path class="thin" d="M30 34C38 18 68 16 78 32C86 46 82 64 68 72C54 80 34 72 28 58C25 50 26 42 30 34Z"/><rect class="thin" x="40" y="42" width="26" height="20" rx="4"/><path class="thin" d="M49 62v-3h8v3"/><circle class="dot" cx="55" cy="30" r="1.8"/><circle class="dot" cx="72" cy="50" r="1.8"/><ellipse class="thin" cx="43" cy="102" rx="4" ry="2.6"/></g><g transform="translate(132 84) rotate(-8) scale(1.05)"><path class="soft" d="M0 8C14 2 30 12 46 6C58 2 66 6 74 4L80 44C68 48 58 44 46 48C30 54 14 44 4 50Z"/><path class="thin" d="M12 12L16 46M60 8L66 44"/></g><g transform="translate(212 68) rotate(0) scale(1)"><path class="thin" d="M0 0c7-3 13-2 18 3M4 16c7-2 12-1 16 4"/></g></svg><figcaption><b>3. 擦乾淨</b>乾布全部擦過。</figcaption></figure>
+<figure><svg viewBox="0 0 240 160" aria-hidden="true"><path class="soft" d="M44 76C44 34 62 18 120 18C178 18 196 34 196 76Z"/><path class="thin" d="M58 70C60 42 74 30 120 30C166 30 180 42 182 70"/><rect x="26" y="76" width="188" height="68" rx="16"/><rect class="thin" x="38" y="86" width="164" height="48" rx="10"/><path class="thick" d="M104 76v-6M136 76v-6"/><g transform="translate(58 90) rotate(0) scale(0.44)"><path class="soft" d="M20 30C30 8 72 6 86 28C98 46 94 72 74 84C68 88 64 96 52 104C44 110 34 106 34 96C34 88 30 84 24 76C14 62 14 44 20 30Z"/><path class="thin" d="M30 34C38 18 68 16 78 32C86 46 82 64 68 72C54 80 34 72 28 58C25 50 26 42 30 34Z"/><rect class="thin" x="40" y="42" width="26" height="20" rx="4"/><path class="thin" d="M49 62v-3h8v3"/><circle class="dot" cx="55" cy="30" r="1.8"/><circle class="dot" cx="72" cy="50" r="1.8"/><ellipse class="thin" cx="43" cy="102" rx="4" ry="2.6"/></g><g transform="translate(134 90) rotate(0) scale(0.44)"><path class="soft" d="M20 30C30 8 72 6 86 28C98 46 94 72 74 84C68 88 64 96 52 104C44 110 34 106 34 96C34 88 30 84 24 76C14 62 14 44 20 30Z"/><path class="thin" d="M30 34C38 18 68 16 78 32C86 46 82 64 68 72C54 80 34 72 28 58C25 50 26 42 30 34Z"/><rect class="thin" x="40" y="42" width="26" height="20" rx="4"/><path class="thin" d="M49 62v-3h8v3"/><circle class="dot" cx="55" cy="30" r="1.8"/><circle class="dot" cx="72" cy="50" r="1.8"/><ellipse class="thin" cx="43" cy="102" rx="4" ry="2.6"/></g></svg><figcaption><b>4. 關機收好</b>放進盒子。</figcaption></figure>
 </div>
 </body>
 </html>
