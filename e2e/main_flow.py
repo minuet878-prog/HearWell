@@ -2533,8 +2533,16 @@ class MaskingSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     ORANGE = "rgb(179, 89, 0)"
     KNOB_X = "el => el.getBoundingClientRect().x"
-    KNOB_ANIMATIONS = """el => el.getAnimations().map(a => ({
-        property: a.transitionProperty, duration: a.effect.getComputedTiming().duration }))"""
+    # Set before the click, as a finished transition is gone from getAnimations() and a slow
+    # machine can take longer than the slide to read it: this notes each slide as it starts.
+    WATCH_KNOB = """el => {
+        window.knobSlides = [];
+        el.addEventListener("transitionrun", (event) => window.knobSlides.push({
+            property: event.propertyName, duration: getComputedStyle(el).transitionDuration }));
+    }"""
+    # A transition's first event comes in the frame after the one that starts it.
+    KNOB_SLIDES = """() => new Promise((resolve) => requestAnimationFrame(() =>
+        requestAnimationFrame(() => resolve(window.knobSlides))))"""
 
     @classmethod
     def setUpClass(cls):
@@ -2627,20 +2635,17 @@ class MaskingSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # #326 acceptance 17 and 23 (ADR 0028): the knob slides over 0.2 s; with reduced motion it
     # is already in place.
     def test_knob_slides_only_without_reduced_motion(self):
-        for motion in ("no-preference", "reduce"):
+        slide = {"property": "transform", "duration": "0.2s"}
+        for motion, slides in (("no-preference", [slide]), ("reduce", [])):
             with self.subTest(motion=motion):
                 self.open(reduced_motion=motion)
                 knob = self.switch().locator(".audiogram-mask-knob")
                 off = knob.evaluate(self.KNOB_X)
+                knob.evaluate(self.WATCH_KNOB)
                 self.switch().click()
-                animations = knob.evaluate(self.KNOB_ANIMATIONS)
-                if motion == "reduce":
-                    self.assertEqual(animations, [])
-                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
-                else:
-                    self.assertEqual(animations, [{"property": "transform", "duration": 200}])
-                    knob.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
-                    self.assertGreater(knob.evaluate(self.KNOB_X), off)
+                self.assertEqual(self.page.evaluate(self.KNOB_SLIDES), slides)
+                knob.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
+                self.assertGreater(knob.evaluate(self.KNOB_X), off)
 
     # #326 (C1's 200% rule, kept for D4): the switch fits a phone at double text size.
     def test_switch_fits_a_phone_at_double_text_size(self):
@@ -9274,11 +9279,29 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
     # 「看沒有身障證明時」.
     RIGHT_DB = LEFT_DB = 50
     # Every frame for a while, what the reader sees of one box: its outline and glow, where it
-    # is on the screen (and where the tab bar starts), and how far the page has scrolled.
+    # is on the screen (and where the tab bar starts), and how far the page has scrolled. Also,
+    # from the very start and on the same clock, the moments the box's highlight went on and came
+    # off, and how long its animation is set to last.
     SAMPLE = """([selector, ms]) => {
+        const t0 = performance.now();
+        const litTimes = window.litTimes = [];
+        const litAnimations = window.litAnimations = [];
+        new MutationObserver((records) => {
+            for (const { target, oldValue } of records) {
+                const lit = target.classList.contains("jump-highlight");
+                const wasLit = (oldValue || "").includes("jump-highlight");
+                if (lit === wasLit || !target.contains(document.querySelector(selector))) continue;
+                litTimes.push(performance.now() - t0);
+                if (lit) litAnimations.push(...document.getAnimations()
+                    .filter((a) => a.animationName === "jump-highlight")
+                    .map((a) => a.effect.getComputedTiming().duration));
+            }
+        }).observe(document, {
+            subtree: true, attributeFilter: ["class"], attributeOldValue: true,
+        });
         const start = () => {
             const samples = window.samples = [];
-            const t0 = performance.now();
+            const end = performance.now() + ms;
             const tick = () => {
                 const box = document.querySelector(selector);
                 const style = getComputedStyle(box);
@@ -9289,7 +9312,8 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                     glow: style.boxShadow, top: rect.top, bottom: rect.bottom,
                     visible: document.querySelector(".site-nav").getBoundingClientRect().top,
                 });
-                if (samples.at(-1).t < ms) requestAnimationFrame(tick); else window.sampled = true;
+                if (performance.now() < end) requestAnimationFrame(tick);
+                else window.sampled = true;
             };
             tick();
         };
@@ -9348,10 +9372,11 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
     def assert_lights(self, samples, reduced=False, scrolled=False):
         lit = [s for s in samples if self.light(s)[0] > 0]
         self.assertTrue(lit, "the box never lit")
-        on, off = lit[0]["t"], lit[-1]["t"]
+        # The frames show how it looks, not for how long: a busy machine draws the first one late.
+        on, off = self.page.evaluate("window.litTimes")
         # Lit once, in one go.
-        self.assertEqual(lit, [s for s in samples if on <= s["t"] <= off])
-        after = [s for s in samples if s["t"] > off]
+        self.assertEqual(lit, [s for s in samples if lit[0]["t"] <= s["t"] <= lit[-1]["t"]])
+        after = [s for s in samples if s["t"] > lit[-1]["t"]]
         # Only once the page had stopped moving (after scrolling there, when it did), with the
         # box in view above the tab bar, wholly or filling half of what shows.
         first = lit[0]
@@ -9377,6 +9402,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             self.assertTrue([s for s in fading if on + 1700 <= s["t"] <= on + 2700], lit)
         self.assertGreater(off - on, 2800)
         self.assertLess(off - on, 3300)
+        # Nothing shows once it has come off, and the fade lasts as long as the box stays lit.
+        self.assertLessEqual(lit[-1]["t"], off)
+        self.assertEqual(self.page.evaluate("window.litAnimations"), [] if reduced else [3000])
         # And back as it was.
         self.assertTrue(after)
         self.assertEqual({self.light(s) for s in after}, {(0, 0)})
