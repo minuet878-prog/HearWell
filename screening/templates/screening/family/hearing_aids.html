@@ -21,7 +21,12 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        {# #434 adds its jump link here. #}
+        <li><a class="link-card" href="#adjusting-title">
+            <span class="link-card-body">
+                <span class="link-card-title">陪長輩適應</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
         <li><a class="link-card" href="#care-title">
             <span class="link-card-body">
                 <span class="link-card-title">日常保養</span>
@@ -36,7 +41,11 @@
     {% include "screening/family/pick_explain.html" with pick=problems heading=3 %}
 </section>
 
-{# #434 (陪長輩適應) adds its section here. #}
+<section class="mb-6" data-parallel-block aria-labelledby="adjusting-title">
+    <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
+    {% include "screening/family/pick_explain.html" with pick=stages heading=3 %}
+    {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="inline-block py-[0.6rem]" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
+</section>
 
 {# #435: native checkboxes in no form, as on 陪診清單: a tick stays on this page in this browser until it reloads or another shape is picked; autocomplete="off" stops the browser putting ticks back. #}
 <section class="mb-6" data-parallel-block aria-labelledby="care-title">

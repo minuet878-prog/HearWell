@@ -5,7 +5,7 @@ import inspect
 import re
 from itertools import pairwise
 
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from screening.models import User
@@ -252,7 +252,9 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertEqual(test_family_zone._main(content), self.main)
+        # A visitor's page, fetched now: signing in loaded the questionnaires its survey link needs.
+        visitor = Client().get(self.url).content.decode()
+        self.assertEqual(test_family_zone._main(content), test_family_zone._main(visitor))
         self.assert_shows_no_record(content, "aids_private")
 
     def test_user_without_consent_can_read_it(self):

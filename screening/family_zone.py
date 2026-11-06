@@ -427,6 +427,57 @@ HEARING_AID_PROBLEMS = PickExplain(
     ),
 )
 
+# Drafts for the owner's review (#434, batch-3-wording.md section 2). What /family/reluctant covers
+# is linked, not written again; /family's 陪伴配戴助聽器 stays as reviewed.
+_YOU_CAN_DO = "您可以做的事"
+HEARING_AID_STAGES = PickExplain(
+    code="hearing-aid-stage",
+    prompt="他現在是哪個階段？",
+    options=(
+        Option(
+            label="剛開始戴",
+            sections=(
+                (
+                    _YOU_CAN_DO,
+                    (
+                        "告訴他前幾週覺得自己的聲音怪、環境很吵是常見的，大腦需要時間適應。",
+                        "照聽力師的建議，陪他從安靜的地方、短時間開始，再慢慢拉長。",
+                        "回診時一起學怎麼戴上、拿下、清潔和換電池，回家才幫得上忙。",
+                    ),
+                ),
+            ),
+        ),
+        Option(
+            label="戴了不習慣",
+            sections=(
+                (
+                    _YOU_CAN_DO,
+                    (
+                        "一起記下哪些場合聽不清楚、哪裡不舒服，回診時告訴聽力師。",
+                        "陪他回去調整。適應可能要好幾個月，設定也可能要調整不只一次。",
+                        "在吵雜的餐廳、多人聊天時還是可能聽不清楚，說話的方法依然有用。",
+                    ),
+                ),
+            ),
+            links=(("怎麼跟聽損的家人說話", "/family#talk-title"),),
+        ),
+        Option(
+            label="不想再戴",
+            sections=(
+                (
+                    _YOU_CAN_DO,
+                    (
+                        "先問他是哪裡不舒服：聲音、耳朵、操作，還是覺得沒有幫助。",
+                        "告訴他這些都可以回去請聽力師調整，不用勉強忍耐。",
+                        "他不想談的時候，可以看「長輩不肯去怎麼說」。",
+                    ),
+                ),
+            ),
+            links=(("長輩不肯去怎麼說", "/family/reluctant"),),
+        ),
+    ),
+)
+
 # Drafts for the owner's review (#435, batch-3-wording.md section 3). General to every maker, like
 # the problems above; the drawings are the ones the owner went through (batch-3-drawings.html).
 HEARING_AID_CARE = PickExplain(

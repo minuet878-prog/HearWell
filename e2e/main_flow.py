@@ -28,6 +28,7 @@ from screening.family_zone import (
     HEARING_AID_CARE,
     HEARING_AID_CARE_REMINDERS,
     HEARING_AID_PROBLEMS,
+    HEARING_AID_STAGES,
     RELUCTANT_SITUATIONS,
     VISIT_BRING,
     VISIT_QUESTIONS,
@@ -11825,6 +11826,137 @@ class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
             assert_sizes()
             self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a result")
             assert_sizes()
+
+
+class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#434 (spec #426): 陪長輩適應 in a real browser: pick a stage, change it, and the survey's
+    link under them stays whichever is picked."""
+
+    fixtures = ("questions_fixture.json",)
+    PATH = "/family/hearing-aids"
+    STARTING, UNUSED, WONT_WEAR = HEARING_AID_STAGES.options
+    SURVEY = "配戴效果問卷"
+
+    def group(self):
+        return self.main().get_by_role("group", name=HEARING_AID_STAGES.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def survey(self):
+        return self.main().get_by_role("link", name=self.SURVEY)
+
+    def stage_lines(self, option):
+        return [line for _, lines in option.sections for line in lines]
+
+    def assert_shows(self, chosen):
+        """The chosen stage's lines, read out from the live region; none of the others'."""
+        for option in HEARING_AID_STAGES.options:
+            for words in self.stage_lines(option):
+                with self.subTest(words=words):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        expect(self.live().get_by_role("heading", name="您可以做的事", level=3)).to_be_visible()
+        for words in self.stage_lines(chosen):
+            expect(self.live().get_by_text(words, exact=True)).to_be_visible()
+
+    def test_picks_a_stage_changes_it_and_goes_on_to_the_survey(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            expect(self.survey()).to_be_visible()
+
+            self.group().get_by_label(self.STARTING.label).check()
+            self.assert_shows(self.STARTING)
+            expect(self.survey()).to_be_visible()
+
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.assert_shows(self.UNUSED)
+            expect(self.survey()).to_be_visible()
+
+            self.survey().click()
+            survey = Questionnaire.objects.get(code="ioi-ha")
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/login?next=/questionnaire/{survey.pk}"
+            )
+
+    def test_stages_link_to_the_talking_tips_and_the_reluctant_page(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.live().get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family#talk-title")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            self.group().get_by_label(self.WONT_WEAR.label).check()
+            self.live().get_by_role("link", name="長輩不肯去怎麼說").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family/reluctant")
+
+    def test_jump_link_lands_on_the_section(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            links = self.main().get_by_role("navigation", name="這一頁的內容").get_by_role("link")
+            expect(links.nth(0)).to_have_text(re.compile("助聽器怪怪的"))
+            expect(links.nth(1)).to_have_text(re.compile("陪長輩適應"))
+            links.nth(1).click()
+            expect(self.page).to_have_url(re.compile("#adjusting-title$"))
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            for option in HEARING_AID_STAGES.options:
+                for words in self.stage_lines(option):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+                for words, _ in option.links:
+                    expect(self.group().get_by_role("link", name=words)).to_be_visible()
+            expect(self.survey()).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.assert_shows(self.UNUSED)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    self.live().get_by_role("link"),
+                    self.main()
+                    .get_by_role("navigation", name="這一頁的內容")
+                    .get_by_role("link", name="陪長輩適應"),
+                    self.survey(),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link"),
+                    self.survey(),
+                    self.main().get_by_text("想記錄戴起來的效果"),
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a stage picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+                self.main().get_by_text("想記錄戴起來的效果"),
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
 
 
 class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

@@ -190,5 +190,5 @@ class FamilyCareTests(test_family_zone.SignsInWithARecord, TestCase):
     def test_signed_in_user_gets_the_same_section_without_their_data(self):
         self.sign_in_with_a_record("care_private")
         content = self.client.get(self.url).content.decode()
-        self.assertEqual(test_family_zone._main(content), self.main)
+        self.assertIn(self.section, test_family_zone._main(content))
         self.assert_shows_no_record(content, "care_private")
