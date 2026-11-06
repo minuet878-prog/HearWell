@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <!-- 聽伴 app icon (ADR 0039): the bird on the brand gradient, inside the maskable safe zone.
-       icon-192.png, icon-512.png and apple-touch-icon.png are exported from this file. -->
+  <!-- 聽伴 app icon (ADR 0039): the bird on the brand gradient, as large as Android's maskable
+       safe zone allows: scale(7.4) puts the tail on its edge. icon-192.png and icon-512.png are
+       exported from this file. apple-touch-icon.png too, at scale(8.5): iPhone does not crop to a
+       circle, so its bird can be larger. -->
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#1f4e8c"/>
@@ -12,7 +14,7 @@
   </mask>
   </defs>
   <rect width="512" height="512" fill="url(#brand)"/>
-  <g transform="translate(256 256) scale(6) translate(-34 -33.500)">
+  <g transform="translate(256 256) scale(7.4) translate(-34 -33.500)">
     <rect width="64" height="64" fill="#fff" mask="url(#bird)"/>
   </g>
 </svg>
