@@ -3,8 +3,12 @@ what to say when an elder refuses (#429)."""
 
 import inspect
 import re
+from dataclasses import replace
 from datetime import date
+from itertools import pairwise
+from unittest.mock import patch
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -16,9 +20,10 @@ from screening.family_zone import (
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
 )
-from screening.models import Questionnaire, ReportShare, Submission
+from screening.models import Questionnaire, ReportShare, Submission, User
+from screening.questionnaires import hhie_s
 from screening.tests import test_pages
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views import family
 
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
@@ -56,13 +61,38 @@ ENTRY = re.compile(
     r"(?:<span>([^<]*)</span>\s*)?</span>",
     re.S,
 )
+# What SignsInWithARecord's answers come to on HHIE-S, worked out by hand: 16 of 40.
+RECORD_LEVEL = "輕度到中度影響"
+RECORD_TOTAL = r"(?<!\d)16(?!\d)"
 
 
 def _main(content):
     return content[content.index("<main") : content.index("</main>")]
 
 
-class FamilyZoneHomeTests(TestCase):
+class SignsInWithARecord:
+    """For pages that read nobody's records: an account with a graded record to prove it on."""
+
+    def sign_in_with_a_record(self, username):
+        call_command("loaddata", "questions_fixture.json", verbosity=0)
+        user = consented_user(username=username, email=f"{username}@example.com")
+        record = submission_with_answers(
+            user, hhie_s.CODE, [4, 4, 2, 0, 0, 0, 4, 0, 0, 2], wearing_hearing_aid=False
+        )
+        self.client.force_login(user)
+        # The account's own result page does show these, so their absence elsewhere means something.
+        own_result = self.client.get(reverse("result", args=[record.pk])).content.decode()
+        self.assertIn(RECORD_LEVEL, own_result)
+        self.assertRegex(own_result, RECORD_TOTAL)
+
+    def assert_shows_no_record(self, content, username):
+        self.assertNotIn(RECORD_LEVEL, content)
+        main = _main(content)
+        self.assertNotRegex(re.sub(r"<[^>]+>", " ", main), RECORD_TOTAL)
+        self.assertNotIn(username, main)
+
+
+class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
     def setUp(self):
         self.url = reverse("family_guide")
 
@@ -114,7 +144,7 @@ class FamilyZoneHomeTests(TestCase):
         return response.content.decode()
 
     def _entries(self, content):
-        start = content.index('aria-label="本頁內容"')
+        start = content.index('aria-label="專區內容"')
         return content[start : content.index("</nav>", start)]
 
     def assert_zone_home(self):
@@ -140,12 +170,12 @@ class FamilyZoneHomeTests(TestCase):
         self.assert_zone_home()
 
     def test_signed_in_user_sees_the_same_zone_home_without_their_data(self):
-        self.client.force_login(
-            consented_user(username="zone_private", email="zone_private@example.com")
-        )
+        visitor_main = _main(self._zone())
+        self.sign_in_with_a_record("zone_private")
         self.assert_zone_home()
-        main = _main(self._zone())
-        self.assertNotIn("zone_private", main)
+        content = self._zone()
+        self.assertEqual(_main(content), visitor_main)
+        self.assert_shows_no_record(content, "zone_private")
 
     def test_entries_only_for_what_is_live(self):
         entries = self._entries(self._zone())
@@ -371,6 +401,17 @@ class FamilyScenarioTests(TestCase):
     def test_script_loads_deferred(self):
         self.assertRegex(self.content, r'<script defer src="[^"]*screening/pick-explain\.js')
 
+    # Today's scenarios have no subheads; one that did would sit at h3, under this section's h2.
+    def test_a_scenario_subhead_would_be_an_h3(self):
+        scenario = COMMUNICATION_SCENARIOS[0]
+        option = replace(scenario.options[0], try_saying=("一句話",))
+        with patch(
+            "screening.views.home.COMMUNICATION_SCENARIOS",
+            (replace(scenario, options=(option,)),),
+        ):
+            content = self.client.get(self.url).content.decode()
+        self.assertIn(">可以試的說法</h3>", content)
+
     # Nothing is scored and nothing is sent: no form to submit, no verdict on the page.
     def test_no_form_score_or_verdict(self):
         self.assertNotIn("<form", self.section)
@@ -401,7 +442,7 @@ class FamilyScenarioTests(TestCase):
         self.assertIn(self.section, content)
 
 
-class FamilyReluctantTests(TestCase):
+class FamilyReluctantTests(SignsInWithARecord, TestCase):
     """#429 (spec #426): 長輩不肯去怎麼說, as the server sends it. What the script does with it is
     in pick-explain.test.js and e2e.main_flow.FamilyReluctantTest."""
 
@@ -455,11 +496,18 @@ class FamilyReluctantTests(TestCase):
             with self.subTest(option=option.label):
                 self.assertIn(f">{option.label}</strong>", item)
                 self.assertIn(option.explanation, item)
-                self.assertIn(">可以試的說法</h3>", item)
-                self.assertIn(">容易有反效果的說法</h3>", item)
-                self.assertIn(">下一步</h3>", item)
+                self.assertIn(">可以試的說法</h2>", item)
+                self.assertIn(">容易有反效果的說法</h2>", item)
+                self.assertIn(">下一步</h2>", item)
                 for words in option.try_saying + option.avoid_saying:
                     self.assertIn(f"<li>{words}</li>", item)
+
+    # Screen readers walk a page by its headings, so none may skip a level under the h1.
+    def test_headings_never_skip_a_level(self):
+        levels = [int(level) for level in re.findall(r"<h([1-6])[\s>]", self.main)]
+        self.assertEqual(levels[0], 1)
+        for previous, level in pairwise(levels):
+            self.assertLessEqual(level, previous + 1)
 
     # Each next step goes to a page that exists: open, or asking a visitor to log in first.
     def test_next_steps_link_to_pages_that_exist(self):
@@ -484,12 +532,16 @@ class FamilyReluctantTests(TestCase):
         self.assertRegex(foot, r'<a [^>]*href="/family"[^>]*>回到家人專區</a>')
 
     def test_signed_in_user_gets_the_same_page_without_their_data(self):
-        user = consented_user(username="reluctant_private", email="reluctant_private@example.com")
-        self.client.force_login(user)
+        self.sign_in_with_a_record("reluctant_private")
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(_main(response.content.decode()), self.main)
-        self.assertNotIn("reluctant_private", response.content.decode().split("<main")[1])
+        content = response.content.decode()
+        self.assertEqual(_main(content), self.main)
+        self.assert_shows_no_record(content, "reluctant_private")
+
+    def test_user_without_consent_can_read_it(self):
+        self.client.force_login(User.objects.create_user(username="reluctant_old"))
+        self.assertEqual(self.client.get(self.url).status_code, 200)
 
     # Reads no one's data, so it can stay public: nothing in the view touches request.user.
     def test_view_never_reads_the_user(self):

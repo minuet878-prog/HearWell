@@ -1,4 +1,4 @@
-{# 點選看說明 (#428, spec #426), given a PickExplain as pick. The server sends every option with its explanation; pick-explain.js folds the list away and shows the chosen one in the live region. Without JavaScript the list stays. Options are the answer page's (ADR 0028); this block is a 並列區塊, not a white card (ADR 0022). #}
+{# 點選看說明 (#428, spec #426), given a PickExplain as pick. The server sends every option with its explanation; pick-explain.js folds the list away and shows the chosen one in the live region. Without JavaScript the list stays. Options are the answer page's (ADR 0028); this block is a 並列區塊, not a white card (ADR 0022). heading: the subheads' level, 3 under /family's section, 2 directly under the h1 of /family/reluctant. #}
 <div class="pick-explain mb-4">
 <fieldset class="tint-block" data-pick-explain>
     <legend class="font-bold">{{ pick.prompt }}</legend>
@@ -10,11 +10,11 @@
     <ul class="list-unstyled tint-rows mt-4 mb-0" data-pick-explanations>
         {% for option in pick.options %}
         <li><strong class="tint-subhead block">{{ option.label }}</strong><p class="mb-0">{{ option.explanation }}</p>{% if option.try_saying %}
-            <h3 class="tint-subhead mt-4">可以試的說法</h3>
+            <h{{ heading }} class="tint-subhead mt-4">可以試的說法</h{{ heading }}>
             <ul class="pick-explain-list">{% for words in option.try_saying %}<li>{{ words }}</li>{% endfor %}</ul>{% endif %}{% if option.avoid_saying %}
-            <h3 class="tint-subhead mt-4">容易有反效果的說法</h3>
+            <h{{ heading }} class="tint-subhead mt-4">容易有反效果的說法</h{{ heading }}>
             <ul class="pick-explain-list">{% for words in option.avoid_saying %}<li>{{ words }}</li>{% endfor %}</ul>{% endif %}{% if option.next_steps %}
-            <h3 class="tint-subhead mt-4">下一步</h3>
+            <h{{ heading }} class="tint-subhead mt-4">下一步</h{{ heading }}>
             <ul class="list-unstyled mb-0">{% for words, url_name in option.next_steps %}<li><a class="link-card" href="{% url url_name %}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}</li>
         {% endfor %}
     </ul>

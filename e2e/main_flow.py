@@ -573,7 +573,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         """#240: the jump links reach their topic; the urgent topic and 119 stand out."""
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
-            jumps = self.page.get_by_role("navigation", name="本頁內容").get_by_role("link")
+            jumps = self.page.get_by_role("navigation", name="專區內容").get_by_role("link")
             expect(jumps).to_have_count(4)
             topics = (
                 ("talk-title", "怎麼跟他說話"),
@@ -3900,7 +3900,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            entries = self.main().get_by_role("navigation", name="本頁內容").get_by_role("link")
+            entries = self.main().get_by_role("navigation", name="專區內容").get_by_role("link")
             expect(entries).to_have_count(4)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
@@ -3911,6 +3911,31 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 "parseFloat(getComputedStyle(document.documentElement).fontSize)"
             )
             size = note.evaluate("el => parseFloat(getComputedStyle(el).fontSize)")
+            self.assertGreaterEqual(size, root)
+
+    def test_new_user_home_card_is_big_enough_to_touch_and_read(self):
+        client = Client()
+        client.force_login(consented_user(username="zone_card_e2e"))
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        words = "我是家人：怎麼陪伴聽損的家人"
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().get_by_role("link", name=words)
+            self.assertGreaterEqual(card.bounding_box()["height"], 44)
+            root = self.page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).fontSize)"
+            )
+            size = card.get_by_text(words).evaluate(
+                "el => parseFloat(getComputedStyle(el).fontSize)"
+            )
             self.assertGreaterEqual(size, root)
 
     def test_home_and_zone_fit_a_phone_at_double_text_size(self):
@@ -10716,7 +10741,7 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             self.open("/", signed_in=False)
             self.main().get_by_role("link", name=re.compile("我是家人")).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
-            self.main().get_by_role("navigation", name="本頁內容").get_by_role(
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
                 "link", name=re.compile("怎麼跟他說話")
             ).click()
             expect(self.page).to_have_url(re.compile("#talk-title$"))
@@ -10855,7 +10880,7 @@ class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         first, second, third = self.SITUATIONS
         with self.saving_artifacts():
             self.open("/family", signed_in=False)
-            self.main().get_by_role("navigation", name="本頁內容").get_by_role(
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
                 "link", name=re.compile("長輩不肯去怎麼說")
             ).click()
             expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
