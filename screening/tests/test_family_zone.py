@@ -1,15 +1,18 @@
 """Spec #426 (家人專區): the zone's home page and ways to reach it (#427), its scenarios (#428),
 what to say when an elder refuses (#429)."""
 
+import hashlib
 import inspect
 import re
 from dataclasses import replace
 from datetime import date
 from itertools import pairwise
+from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from screening.family_zone import (
@@ -546,3 +549,38 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
         self.assertNotIn("request.user", source)
         self.assertNotIn("login_required", source)
         self.assertEqual(self.client.get(self.url).status_code, 200)
+
+
+class ReviewedPagesTests(SimpleTestCase):
+    """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
+    sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
+    is of that page on main before the batch, without those lines. Failing here means reviewed
+    words changed: have the owner review them before updating the digest."""
+
+    # (page, the lines the batch may add or change, the digest without them)
+    PAGES = (
+        (
+            "guide/form_9.html",
+            ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
+            "fe8567ae4df1c53a7c60abef2304fdd91c465c684e3b7d3d4ed0b7c4be064528",
+        ),
+        (
+            "guide/form_25.html",
+            ("<p>想算出可以做的日期？",),
+            "de444faf25a4fcb23e718c9d5e6ce1f9b617cd1112003bf9cefc0d407a6bc473",
+        ),
+        (
+            "privacy.html",
+            ('<p class="tip-box">本站只用登入',),
+            "1c81e5c234d4bcfd8e39a18434321068b7ea01c701ae6b4fe059575a32822453",
+        ),
+    )
+
+    def test_only_the_allowed_lines_changed(self):
+        templates = Path(settings.BASE_DIR) / "screening/templates/screening"
+        for page, allowed, digest in self.PAGES:
+            with self.subTest(page=page):
+                lines = (templates / page).read_text(encoding="utf-8").splitlines(keepends=True)
+                kept = [line for line in lines if not line.strip().startswith(allowed)]
+                self.assertEqual(len(lines) - len(kept), len(allowed))
+                self.assertEqual(hashlib.sha256("".join(kept).encode()).hexdigest(), digest)
