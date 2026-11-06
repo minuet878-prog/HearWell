@@ -4329,6 +4329,53 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS))
 
 
+class NewUserHomePromptTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+    """The first-time home page's way to the add-to-home steps: on a phone's browser only."""
+
+    TITLE = "把聽伴放到手機桌面"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open_home(self, width, standalone=False):
+        self.context = self.browser.new_context(viewport={"width": width, "height": 800})
+        if standalone:
+            self.context.add_init_script(PwaNavTest.STANDALONE)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/")
+        return self.page.get_by_role("link", name=re.compile(self.TITLE))
+
+    def test_phone_browser_shows_it_under_the_start_button_and_it_opens_the_steps(self):
+        card = self.open_home(390)
+        with self.saving_artifacts():
+            expect(card).to_be_visible()
+            start = self.page.get_by_role("main").get_by_role("link", name="開始篩檢")
+            steps = self.page.locator(".step-cards")
+            self.assertGreater(card.bounding_box()["y"], start.bounding_box()["y"])
+            self.assertLess(card.bounding_box()["y"], steps.bounding_box()["y"])
+            card.click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/add_to_home")
+
+    def test_home_screen_app_and_a_wide_screen_hide_it(self):
+        for width, standalone in ((390, True), (1280, False)):
+            with self.subTest(width=width, standalone=standalone):
+                card = self.open_home(width, standalone=standalone)
+                with self.saving_artifacts():
+                    expect(self.page.get_by_role("link", name="開始篩檢").first).to_be_visible()
+                    expect(card).to_have_count(0)
+
+
 class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     """#123: style rules measured as the browser computes them, whatever produced the CSS."""
 

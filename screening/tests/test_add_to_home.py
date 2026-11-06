@@ -10,6 +10,7 @@ from pathlib import Path
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.models import Questionnaire, Submission
 from screening.tests.helpers import consented_user
 
 DETAILS = re.compile(
@@ -123,3 +124,44 @@ class PhoneBrandsT361Tests(TestCase):
         self.assertIn(reminder, self.main)
         self.assertLess(self.main.index(intro), self.main.index(reminder))
         self.assertLess(self.main.index(reminder), self.main.index("<details"))
+
+
+class NewUserHomePromptTests(TestCase):
+    """A first-time visitor had no way to find the add-to-home steps: the home page's card is for
+    returning users and the account page needs an account."""
+
+    TITLE = "把聽伴放到手機桌面"
+    REASON = "下次點一下就能打開，不用輸入網址"
+
+    def _home(self):
+        return self.client.get(reverse("index")).content.decode()
+
+    def assert_prompt_between_start_button_and_steps(self):
+        content = self._home()
+        start = content.index("</section>", content.index('<section class="home-hero'))
+        between = content[start : content.index('<ol class="step-cards')]
+        link = re.search(
+            r'<a class="link-card action-card" href="([^"]*)">(.*?)</a>', between, re.S
+        )
+        self.assertIsNotNone(link, between)
+        self.assertEqual(link.group(1), reverse("add_to_home"))
+        self.assertIn(f'<span class="link-card-title">{self.TITLE}</span>', link.group(2))
+        self.assertIn(f"<span>{self.REASON}</span>", link.group(2))
+        # pwa-nav.js hides it inside the home-screen app, where it would be pointless.
+        self.assertIn("data-hide-in-app", between)
+
+    def test_visitor_sees_the_prompt(self):
+        self.assert_prompt_between_start_button_and_steps()
+
+    def test_signed_in_user_without_records_sees_the_prompt(self):
+        self.client.force_login(consented_user(username="prompt_no_records"))
+        self.assert_prompt_between_start_button_and_steps()
+
+    def test_returning_user_keeps_only_the_card_in_their_list(self):
+        user = consented_user(username="prompt_returning")
+        questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        Submission.objects.create(user=user, questionnaire=questionnaire)
+        self.client.force_login(user)
+        content = self._home()
+        self.assertNotIn(self.TITLE, content)
+        self.assertIn("加到手機主畫面", content)
