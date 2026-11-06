@@ -45,7 +45,7 @@ class LearnPageTests(TestCase):
                 ("助聽器", [(reverse("guide"), "guide", "了解助聽器選配與補助")]),
                 (
                     "溝通與照顧",
-                    [(reverse("family_guide"), "family", "給家人看：怎麼跟聽損的家人溝通")],
+                    [(reverse("family_guide"), "family", "家人專區：溝通與陪伴")],
                 ),
                 # #397 (spec #396): the Q&A assistant's entry.
                 ("有問題想問", [(reverse("qa_home"), "question", "問答小助手：常見問題一次查")]),

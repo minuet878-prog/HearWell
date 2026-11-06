@@ -1,30 +1,44 @@
 {% extends "screening/layout.html" %}
 {% load static %}
 
-{% block title %}給家人的溝通與陪伴｜聽伴{% endblock %}
+{% block title %}家人專區｜聽伴{% endblock %}
 
 {% block extra_head %}
 <script defer src="{% static 'screening/share-button.js' %}"></script>
 <script defer src="{% static 'screening/copy-link.js' %}"></script>
+<script defer src="{% static 'screening/pick-explain.js' %}"></script>
 {% endblock %}
 
 {% block body %}
 {# Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">給家人的溝通與陪伴</h1>
+<h1 class="h3 mt-4">家人專區</h1>
 <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
 
-<nav aria-label="本頁內容">
+{# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #}
+<nav aria-label="專區內容">
     <ul class="list-unstyled">
-        <li><a class="link-card" href="#talk-title">
+        <li><a class="link-card action-card" href="#talk-title">
+            {% include "screening/action_icon.html" with icon="family" %}
             <span class="link-card-body">
-                <span class="link-card-title">怎麼跟聽損的家人說話</span>
+                <span class="link-card-title">怎麼跟他說話</span>
+                <span>情境題與溝通重點</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        <li><a class="link-card" href="#aid-title">
+        <li><a class="link-card action-card" href="{% url 'family_reluctant' %}">
+            {% include "screening/action_icon.html" with icon="question" %}
+            <span class="link-card-body">
+                <span class="link-card-title">長輩不肯去怎麼說</span>
+                <span>不想檢查、不想戴時可以試的說法</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card action-card" href="#aid-title">
+            {% include "screening/action_icon.html" with icon="ear" %}
             <span class="link-card-body">
                 <span class="link-card-title">陪伴配戴助聽器</span>
+                <span>剛開始不習慣、回診和保養時可以怎麼陪</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
@@ -51,6 +65,15 @@
         <li><strong class="tip-point tint-subhead">多人聊天時，一次一個人說話</strong>換話題時先提醒「我們在講……」。</li>
         <li><strong class="tip-point tint-subhead">耐心，也讓他參與</strong>不要替他回答，也不要說「算了，沒事」，被排除在對話外會讓人更不想說話。</li>
     </ul>
+</section>
+
+{# #428 (spec #426): the words are in family_zone.py, drafts until the owner has reviewed them. #}
+<section class="mb-6" aria-labelledby="scenarios-title">
+    <h2 id="scenarios-title" class="h4"><svg class="topic-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.7M12 17v.5"/></svg>遇到這些情況，您會怎麼做？</h2>
+    <p>選您平常的做法，看看說明。這裡沒有對錯，也不會留下紀錄，可以改選。</p>
+    {% for scenario in scenarios %}
+    {% include "screening/family/pick_explain.html" with pick=scenario heading=3 %}
+    {% endfor %}
 </section>
 
 <section class="mb-6" data-parallel-block aria-labelledby="aid-title">
@@ -99,6 +122,13 @@
         <li>美國聽語學會（ASHA）<a href="https://www.asha.org/about/press-room/articles/tips-for-communicating-with-someone-who-has-hearing-loss/">〈Tips for Communicating With Someone Who Has Hearing Loss〉</a></li>
         <li>美國聽損協會（HLAA）<a href="https://www.hearingloss.org/managing-hearing-loss/hearing-loss-101/communication-tips/">〈Communication Tips〉</a></li>
     </ul>
+    <h3>遇到這些情況，您會怎麼做？</h3>
+    <ul>
+        {% for title, url in scenario_sources %}
+        <li><a href="{{ url }}">{{ title }}</a></li>
+        {% endfor %}
+    </ul>
+    <p class="guide-checked">情境題內容查核於 {{ scenario_checked_on|date:"Y/m/d" }}。</p>
     <h3>陪伴配戴助聽器</h3>
     <ul>
         <li>美國聽語學會（ASHA）<a href="https://www.asha.org/practice-portal/professional-issues/hearing-aids-for-adults/">〈Hearing Aids for Adults〉</a></li>
