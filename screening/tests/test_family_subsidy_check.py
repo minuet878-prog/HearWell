@@ -487,15 +487,12 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
                         self.assertNotIn(words, text)
 
     def test_links_in_the_results_lead_somewhere_real(self):
-        """All but the deadlines page, which #432 adds; its words and address are in the rules."""
         seen = {rules.FORM_9_LINK}
         for answers in _every_answer_set():
             result = check(answers)
             seen.update(link for _, items in result.groups for item in items for link in item.links)
         self.assertEqual(len(seen), 6)
         for link in seen:
-            if link.url == DEADLINES[1]:
-                continue
             with self.subTest(url=link.url):
                 path, _, anchor = link.url.partition("#")
                 response = self.client.get(path)

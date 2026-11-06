@@ -99,7 +99,7 @@ QUESTIONS = (
     ),
 )
 
-INTRO = (
+SUBSIDY_INTRO = (
     "回答幾題，看申請助聽器補助還缺什麼。這裡不判斷能不能拿到補助，"
     "是否補助以主管機關核定為準。回答不會留下來。"
 )
@@ -124,7 +124,7 @@ SUBSIDY_SOURCES = (
 SUBSIDY_CHECKED_ON = date(2026, 10, 23)
 
 # Written out rather than reversed, so this module needs nothing of Django. The page's tests open
-# each one and look for its anchor, but for the deadlines page, which #432 adds.
+# each one and look for its anchor.
 _APPLY_FOR_ASSESSMENT = Link("怎麼申請鑑定", "/guide/assessment#apply-title")
 _WITHOUT_CERTIFICATE = Link("沒有身障證明時", "/guide/form-9#without-certificate")
 _WHO_ISSUES_FORM_9 = Link("九號表找誰開", "/guide/form-9#issuer-title")

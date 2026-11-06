@@ -130,7 +130,6 @@ class FamilyVisitsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertRegex(self.main, r'<a [^>]*href="/guide/form-9"[^>]*>看九號表的流程</a>')
         self.assertRegex(self.main, r'<a [^>]*href="/family"[^>]*>回到家人專區</a>')
         self.assertNotIn(reverse("health_report"), self.main)
-        self.assertNotIn("/family/visits/deadlines", self.main)
         for href in re.findall(r'<a [^>]*href="(/[^"#]*)', self.main):
             with self.subTest(href=href):
                 self.assertEqual(self.client.get(href).status_code, 200)

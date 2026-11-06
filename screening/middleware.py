@@ -31,6 +31,7 @@ OPEN_PAGES = {
     "family_reluctant",
     "family_visits",
     "family_subsidy_check",
+    "family_deadlines",
     "guide_chapter",
     "shared_cover",
     "shared_report",

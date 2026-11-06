@@ -7,6 +7,7 @@ from django.forms import BaseFormSet, formset_factory
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
+from screening import family_deadlines
 from screening.models import (
     AidAndSubsidy,
     AidEar,
@@ -410,6 +411,41 @@ class Form25Form(NoLabelSuffix, forms.ModelForm):
     class Meta:
         model = AidAndSubsidy
         fields = ("form_25_done",)
+
+
+def _deadline_date(label):
+    # autocomplete="off": on a shared phone the browser should not offer the last person's days.
+    return forms.DateField(
+        label=label,
+        required=False,
+        error_messages={"invalid": family_deadlines.INVALID_ERROR},
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={
+                "type": "date",
+                "autocomplete": "off",
+                "class": "form-control form-control-lg",
+            },
+        ),
+    )
+
+
+class DeadlineForm(NoLabelSuffix, forms.Form):
+    # 期限試算 (#432, spec #426). No max on the inputs: the browser would stop a future day with a
+    # bubble of its own instead of the page's error.
+    form_9_on = _deadline_date(family_deadlines.FORM_9_LABEL)
+    notice_on = _deadline_date(family_deadlines.NOTICE_LABEL)
+    fitted_on = _deadline_date(family_deadlines.FITTED_LABEL)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        today = timezone.localdate()
+        for name, day in list(cleaned_data.items()):  # add_error takes the field out of it
+            if day and day > today:
+                self.add_error(name, family_deadlines.FUTURE_ERROR)
+        if not self.errors and not any(cleaned_data.values()):
+            raise forms.ValidationError(family_deadlines.BLANK_ERROR)
+        return cleaned_data
 
 
 # The stops asked on the 選配路線 and at the foot of their chapters (#293), by slug: each

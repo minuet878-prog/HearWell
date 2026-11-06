@@ -11166,6 +11166,197 @@ class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
                 self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
 
 
+class FamilyDeadlinesTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#432 (spec #426): 期限試算 in a real browser: the real form (with its CSRF token) sends the
+    days by POST, the results come back on the same page, and the page prints with them."""
+
+    PATH = "/family/visits/deadlines"
+    # Worked out by hand. 2020 is long past, so it also says the deadline has passed.
+    NOTICE_ON = "2020-08-31"
+    NOTICE_RESULT = "購買並請款的期限：2021/02/28（收到核定通知後 6 個月內）。"
+    PASSED = "這個日期已過，請向公所或聽力師確認。"
+
+    def field(self, label):
+        return self.main().get_by_label(label, exact=True)
+
+    def send(self):
+        self.main().get_by_role("button", name="試算", exact=True).click()
+        self.page.wait_for_load_state("load")
+
+    def assert_prints_only_the_results(self):
+        for bar in (
+            self.page.locator(".site-header"),
+            self.page.get_by_role("navigation", name="主要導覽"),
+            self.page.locator("footer"),
+            self.main().locator("form"),
+            self.main().get_by_role("link", name="回到家人專區"),
+            self.main().get_by_role("button", name="列印或存成 PDF"),
+            self.main().get_by_text("輸入手上有的日期"),
+        ):
+            expect(bar).to_be_hidden()
+        expect(self.main().get_by_role("heading", level=1)).to_have_text("期限試算")
+        expect(self.main().get_by_text(self.NOTICE_RESULT)).to_be_visible()
+        expect(self.main().get_by_text(self.PASSED)).to_be_visible()
+        expect(self.main().get_by_text("實際期限以主管機關的通知為準")).to_be_visible()
+        expect(self.main().get_by_text("內容查核於 2026/10/22。")).to_be_visible()
+
+    # From the checklist's entry through the real form to the results and the printed page.
+    def test_walks_from_the_visits_page_to_results_and_printing(self):
+        with self.saving_artifacts():
+            self.open("/family/visits", signed_in=False)
+            self.main().get_by_role("link", name=re.compile("期限試算")).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("期限試算")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.main().get_by_role("button", name="列印或存成 PDF")).to_have_count(0)
+
+            self.field("收到核定通知日期").fill(self.NOTICE_ON)
+            self.send()
+
+            # The days stay out of the address, and only the one given is answered.
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_text(self.NOTICE_RESULT)).to_be_visible()
+            expect(self.main().get_by_text(self.PASSED)).to_have_count(1)
+            expect(self.main().get_by_text("九號表有效到")).to_have_count(0)
+            expect(self.main().get_by_text("二十五號表可以做的日期")).to_have_count(0)
+            expect(self.field("收到核定通知日期")).to_have_value(self.NOTICE_ON)
+            expect(self.main().locator("#error-summary")).to_have_count(0)
+
+            self.page.emulate_media(media="print")
+            self.assert_prints_only_the_results()
+            self.page.emulate_media(media="screen")
+
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    def test_all_three_dates_still_ahead_say_nothing_has_passed(self):
+        today = timezone.localdate()
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            for label in ("九號表開立日期", "收到核定通知日期", "開始配戴日期"):
+                self.field(label).fill(today.isoformat())
+            self.send()
+            first, last = add_months(today, 1), add_months(today, 3)
+            for words in (
+                f"九號表有效到 {last:%Y/%m/%d}",
+                f"購買並請款的期限：{add_months(today, 6):%Y/%m/%d}",
+                f"二十五號表可以做的日期：{first:%Y/%m/%d} 到 {last:%Y/%m/%d}",
+            ):
+                with self.subTest(words=words):
+                    expect(self.main().get_by_text(words)).to_be_visible()
+            expect(self.main().get_by_text(self.PASSED)).to_have_count(0)
+
+    def test_print_button_opens_printing(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.field("開始配戴日期").fill(self.NOTICE_ON)
+            self.send()
+            self.page.evaluate("window.print = () => { window.printAsked = true; }")
+            self.main().get_by_role("button", name="列印或存成 PDF").click()
+            self.assertTrue(self.page.evaluate("window.printAsked"))
+
+    def test_errors_take_the_focus_and_the_dates_stay(self):
+        tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()
+        summary = "#error-summary"
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.send()
+            expect(self.page.locator(summary)).to_be_focused()
+            expect(self.page.locator(summary)).to_have_text("請至少填一個日期。")
+
+            self.field("九號表開立日期").fill(self.NOTICE_ON)
+            self.field("開始配戴日期").fill(tomorrow)
+            self.send()
+            expect(self.page.locator(summary)).to_be_focused()
+            expect(self.page.locator(summary)).to_contain_text("這個日期不能是未來。")
+            expect(self.field("九號表開立日期")).to_have_value(self.NOTICE_ON)
+            expect(self.field("開始配戴日期")).to_have_value(tomorrow)
+            expect(self.main().get_by_text("試算結果")).to_have_count(0)
+
+            # The summary's link leads to the date to change.
+            self.page.locator(summary).get_by_role("link", name="開始配戴日期").click()
+            expect(self.field("開始配戴日期")).to_be_focused()
+
+    def test_without_javascript_it_answers_and_prints(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            self.field("收到核定通知日期").fill(self.NOTICE_ON)
+            self.send()
+            expect(self.main().get_by_text(self.NOTICE_RESULT)).to_be_visible()
+            self.page.emulate_media(media="print")
+            self.assert_prints_only_the_results()
+
+    def test_nothing_is_left_after_going_back_or_in_the_browser(self):
+        stored = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            before = self.page.evaluate(stored)
+            self.field("收到核定通知日期").fill(self.NOTICE_ON)
+            self.send()
+            expect(self.main().get_by_text(self.NOTICE_RESULT)).to_be_visible()
+            self.assertEqual(self.page.evaluate(stored), before)
+            self.assertEqual(
+                [cookie["name"] for cookie in self.context.cookies()],
+                [settings.CSRF_COOKIE_NAME],
+            )
+
+            self.page.go_back()
+            self.page.wait_for_load_state("load")
+            expect(self.field("收到核定通知日期")).to_have_value("")
+            expect(self.main().get_by_text(self.NOTICE_RESULT)).to_have_count(0)
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        def assert_sizes():
+            rem = self.rem()
+            for target in (
+                *self.main().locator("input[type=date]").all(),
+                self.main().get_by_role("button", name="試算", exact=True),
+                self.main().get_by_role("button", name="列印或存成 PDF"),
+                self.main().get_by_role("link", name="回到家人專區"),
+            ):
+                self.assertGreaterEqual(target.bounding_box()["height"], 44)
+            for words in (
+                *self.main().locator("label").all(),
+                *self.main().locator("input[type=date]").all(),
+                self.main().get_by_text(self.NOTICE_RESULT),
+                self.main().get_by_text(self.PASSED),
+                self.main().get_by_text("實際期限以主管機關的通知為準"),
+                self.main().get_by_text("輸入手上有的日期"),
+            ):
+                self.assertGreaterEqual(self.font_size(words), rem)
+
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.assert_fits_a_phone_at_double_text_size(self.PATH)
+            self.double_text(False)
+            self.field("收到核定通知日期").fill(self.NOTICE_ON)
+            self.send()
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with results")
+            assert_sizes()
+            self.field("收到核定通知日期").fill("")
+            self.send()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with an error")
+
+    def test_the_visits_entry_stays_off_the_printed_checklist(self):
+        with self.saving_artifacts():
+            self.open("/family/visits", signed_in=False)
+            entry = self.main().get_by_role("link", name=re.compile("期限試算"))
+            expect(entry).to_be_visible()
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            self.page.emulate_media(media="print")
+            expect(entry).to_be_hidden()
+
+    def test_the_form_25_chapter_leads_here(self):
+        with self.saving_artifacts():
+            self.open("/guide/form-25", signed_in=False)
+            self.main().get_by_role("link", name="期限試算", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+
+
 class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#431 (spec #426): 補助檢核 in a real browser: the real form, the summary's focus, paper."""
 

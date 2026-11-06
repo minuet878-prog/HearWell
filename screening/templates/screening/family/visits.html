@@ -12,8 +12,8 @@
 <article class="family-guide family-visits wrap-anywhere">
 <h1 class="h3 mt-4">陪診與代辦</h1>
 
-{# #431 and #432 add their entries here, above the checklist. #}
-<nav class="no-print" aria-label="代辦工具">
+{# #431, #432 (spec #426): the zone's tools for doing the paperwork, above the checklist. #}
+<nav class="no-print" aria-label="專區內容">
     <ul class="list-unstyled">
         <li><a class="link-card action-card" href="{% url 'family_subsidy_check' %}">
             {% include "screening/action_icon.html" with icon="clipboard" %}
@@ -23,8 +23,17 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
+        <li><a class="link-card action-card" href="{% url 'family_deadlines' %}">
+            {% include "screening/action_icon.html" with icon="clipboard" %}
+            <span class="link-card-body">
+                <span class="link-card-title">期限試算</span>
+                <span>輸入日期，算出期限</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
     </ul>
 </nav>
+
 <section class="mb-6" aria-labelledby="checklist-title">
     <h2 id="checklist-title" class="h4">陪診清單</h2>
     <p class="no-print">勾選不會留下，可以列印帶去。</p>
