@@ -87,7 +87,7 @@ describe("pick to explain", () => {
     expect(showing(1)).toEqual(["他看得到您的臉"]);
   });
 
-  // A reload or 上一頁 can bring a choice back: it must not sit there with no explanation.
+  // A browser may bring a choice back before this runs: it must not sit there unexplained.
   it("shows the explanation of a choice the browser brought back", () => {
     radio(1, 0).checked = true;
     runScript();
@@ -112,6 +112,43 @@ describe("pick to explain", () => {
 
     radio(0, 1).click();
     expect(live(0).textContent).toBe("這樣有幫助");
+  });
+
+  // #435: an option's steps carry boxes to tick and hidden drawings. They move as they are, the
+  // copies tick, and a tick does not outlive the choice: the copy goes, what is folded stays empty.
+  describe("with boxes to tick", () => {
+    const shown = () => live(0).querySelector("input[type=checkbox]");
+    const folded = () => group(0).querySelector("[data-pick-explanations] input[type=checkbox]");
+
+    beforeEach(() => {
+      group(0).querySelector("li").insertAdjacentHTML(
+        "beforeend",
+        '<ol><li><svg aria-hidden="true" focusable="false"></svg>' +
+          '<label><input type="checkbox" autocomplete="off"><span>擦乾淨</span></label></li></ol>',
+      );
+      runScript();
+    });
+
+    it("copies them with their drawings, and ticking one leaves what is folded alone", () => {
+      radio(0, 0).click();
+      expect(live(0).querySelector("svg").getAttribute("aria-hidden")).toBe("true");
+      live(0).querySelector("label").click();
+      expect(shown().checked).toBe(true);
+      expect(folded().checked).toBe(false);
+    });
+
+    it("starts them empty again after another choice", () => {
+      radio(0, 0).click();
+      shown().click();
+      radio(0, 1).click();
+      expect(shown()).toBeNull();
+      radio(0, 0).click();
+      expect(shown().checked).toBe(false);
+    });
+
+    it("keeps what is folded out of reach, inside a hidden list", () => {
+      expect(folded().closest("[hidden]")).not.toBeNull();
+    });
   });
 
   it("keeps nothing and sends nothing", () => {

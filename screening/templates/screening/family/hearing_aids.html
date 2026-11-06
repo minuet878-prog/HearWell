@@ -1,0 +1,65 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}助聽器｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/pick-explain.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{# #433 (spec #426): the problems' words are in family_zone.py, drafts until the owner has reviewed them. #}
+<article class="family-guide wrap-anywhere">
+<h1 class="h3 mt-4">助聽器</h1>
+<p>各廠牌的按鍵、電池和清潔工具不一樣，操作請看說明書或問聽力師。想了解外型和價格，看選配指引的<a class="tap-link" href="{% url 'guide_chapter' 'types-and-prices' %}">「助聽器的種類與價格」</a>。</p>
+
+<nav aria-label="這一頁的內容">
+    <ul class="list-unstyled">
+        <li><a class="link-card" href="#problems-title">
+            <span class="link-card-body">
+                <span class="link-card-title">助聽器怪怪的</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="#adjusting-title">
+            <span class="link-card-body">
+                <span class="link-card-title">陪長輩適應</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+        <li><a class="link-card" href="#care-title">
+            <span class="link-card-body">
+                <span class="link-card-title">日常保養</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</nav>
+
+<section class="mb-6" data-parallel-block aria-labelledby="problems-title">
+    <h2 id="problems-title" class="h4">助聽器怪怪的</h2>
+    {% include "screening/family/pick_explain.html" with pick=problems heading=3 %}
+</section>
+
+<section class="mb-6" data-parallel-block aria-labelledby="adjusting-title">
+    <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
+    {% include "screening/family/pick_explain.html" with pick=stages heading=3 %}
+    {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="tap-link" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
+</section>
+
+{# #435: native checkboxes in no form, as on 陪診清單: a tick stays on this page in this browser until it reloads or another shape is picked; autocomplete="off" stops the browser putting ticks back. #}
+<section class="mb-6" data-parallel-block aria-labelledby="care-title">
+    <h2 id="care-title" class="h4">日常保養</h2>
+    <p>勾選不會留下，換外型也會清掉。</p>
+    {% include "screening/family/pick_explain.html" with pick=care heading=3 %}
+    <h3 class="tint-subhead mt-4">兩種都適用的提醒</h3>
+    <ul class="pick-explain-list">{% for words in care_reminders %}<li>{{ words }}</li>{% endfor %}</ul>
+</section>
+
+<p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
+
+<p class="mb-6"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+
+{% include "screening/family/sources.html" %}
+</article>
+{% endblock %}

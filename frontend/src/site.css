@@ -4818,6 +4818,51 @@
     }
   }
 
+  /* 日常保養 (#435): each step a line drawing above its words and box. The list keeps its numbers
+     in the words, which take the whole row beside the box. */
+  .care-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .care-steps .visit-check {
+    align-items: flex-start;
+  }
+
+  /* The reviewed drawings' strokes (batch-3-drawings.html), in the site's blue. They fill the row
+     up to a size that still reads, on a phone at any text size. */
+  /* A link inside a sentence, tall enough to tap (44px): #431, #432, #433. */
+  .tap-link {
+    display: inline-block;
+    padding-block: 0.6rem;
+  }
+
+  .care-drawing {
+    display: block;
+    width: 100%;
+    max-width: 15rem;
+    height: auto;
+    margin-bottom: 0.5rem;
+  }
+
+  .care-drawing * {
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .care-drawing .soft { fill: var(--color-pull); }
+  .care-drawing .thin { stroke-width: 1.6; }
+  .care-drawing .thick { stroke-width: 4; }
+  .care-drawing .dot { fill: var(--color-primary); stroke: none; }
+  .care-drawing .tube { stroke-width: 8; }
+  .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
+  .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
+
   /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a white tile a topic, the
      .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
      row holds fewer, down to one, and a tile never gets wider than its row. */

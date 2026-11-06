@@ -12,6 +12,12 @@ from screening.family_deadlines import (
     deadlines,
 )
 from screening.family_zone import (
+    HEARING_AID_CARE,
+    HEARING_AID_CARE_REMINDERS,
+    HEARING_AID_CHECKED_ON,
+    HEARING_AID_PROBLEMS,
+    HEARING_AID_SOURCES,
+    HEARING_AID_STAGES,
     RELUCTANT_CHECKED_ON,
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
@@ -21,6 +27,8 @@ from screening.family_zone import (
     VISIT_SOURCES,
 )
 from screening.forms import DeadlineForm, SubsidyCheckForm
+from screening.models import Questionnaire
+from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.subsidy_check import (
     FORM_9_LINK,
     SUBSIDY_CHECKED_ON,
@@ -40,6 +48,28 @@ def family_reluctant(request):
             "situations": RELUCTANT_SITUATIONS,
             "sources": RELUCTANT_SOURCES,
             "checked_on": RELUCTANT_CHECKED_ON,
+        },
+    )
+
+
+@never_cache
+def family_hearing_aids(request):
+    # #433 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
+    # and is for family members who have no account. The same words for everyone. The survey's
+    # address needs its id, so this looks up the questionnaire and no one's answers (#434). #435:
+    # the care steps' ticks stay on the page in the browser: nothing is sent or kept, and
+    # never_cache keeps 上一頁 on a shared phone from showing them.
+    return render(
+        request,
+        "screening/family/hearing_aids.html",
+        {
+            "care": HEARING_AID_CARE,
+            "care_reminders": HEARING_AID_CARE_REMINDERS,
+            "problems": HEARING_AID_PROBLEMS,
+            "stages": HEARING_AID_STAGES,
+            "survey": Questionnaire.objects.filter(code=IOI_HA).first(),
+            "sources": HEARING_AID_SOURCES,
+            "checked_on": HEARING_AID_CHECKED_ON,
         },
     )
 

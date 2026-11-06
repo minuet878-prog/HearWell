@@ -31,6 +31,7 @@ urlpatterns = [
     path("privacy", accounts.privacy, name="privacy"),
     path("family", home.family_guide, name="family_guide"),
     path("family/reluctant", family.family_reluctant, name="family_reluctant"),
+    path("family/hearing-aids", family.family_hearing_aids, name="family_hearing_aids"),
     path("family/visits", family.family_visits, name="family_visits"),
     path("family/visits/subsidy", family.family_subsidy_check, name="family_subsidy_check"),
     path("family/visits/deadlines", family.family_deadlines, name="family_deadlines"),
