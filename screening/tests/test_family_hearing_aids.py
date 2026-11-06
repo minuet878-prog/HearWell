@@ -25,7 +25,7 @@ PROBLEMS = {
         ],
         SEE_AUDIOLOGIST: [
             "檢查完還是沒聲音，或聲音變形。",
-            "覺得他的聽力變了，助聽器需要調整。",
+            "聽力慢慢變差，助聽器需要調整。",
         ],
     },
     "一直嘯叫": {
@@ -56,6 +56,7 @@ PROBLEMS = {
         ],
         SEE_AUDIOLOGIST: [
             "開關機之後還有雜音，或聲音變形。",
+            "拿下助聽器還是聽得到，可能不是助聽器的問題，請問耳鼻喉科或聽力師。",
         ],
     },
     "戴起來會磨、會緊": {
@@ -64,7 +65,6 @@ PROBLEMS = {
         ],
         SEE_AUDIOLOGIST: [
             "戴對了還是不舒服。耳模或耳塞通常可以調整，不用硬撐。",
-            "如果是耳朵痛或流膿，請選第一項。",
         ],
     },
 }
@@ -148,14 +148,20 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertNotIn(CHECK_FIRST, chunk)
         self.assertNotIn(SEE_AUDIOLOGIST, chunk)
 
-    # Even with the aid working, sudden loss is a doctor's: the same place, from this option too.
-    def test_no_sound_also_points_to_when_to_see_a_doctor(self):
+    # The owner, 2026-11-06: what cannot wait comes before anything to check, same words as /family.
+    def test_no_sound_says_first_when_to_see_a_doctor(self):
         chunk = self._options()["沒聲音或變小聲"]
-        self.assertRegex(
-            chunk,
-            rf'<a [^>]*href="{URGENT_LINK}"[^>]*>.*?'
-            r"另外：助聽器都正常，他還是突然聽不到，請看「什麼時候要馬上就醫」。.*?</a>",
-        )
+        urgent = "如果是幾小時到幾天內突然聽不到或聽力變差，不用先檢查，請盡快到耳鼻喉科就醫。"
+        self.assertIn(f"<strong>{urgent}</strong>", chunk)
+        self.assertLess(chunk.index(urgent), chunk.index(CHECK_FIRST))
+        self.assertRegex(chunk, rf'<a [^>]*href="{URGENT_LINK}"[^>]*>.*?什麼時候要馬上就醫.*?</a>')
+        self.assertNotIn("助聽器都正常", chunk)
+
+    def test_rubbing_says_first_to_pick_the_ear_trouble_option(self):
+        chunk = self._options()["戴起來會磨、會緊"]
+        words = "如果是耳朵痛或流膿，請選第一項。"
+        self.assertIn(f"<strong>{words}</strong>", chunk)
+        self.assertLess(chunk.index(words), chunk.index(CHECK_FIRST))
 
     def test_the_urgent_link_lands_on_its_section(self):
         path, _, anchor = URGENT_LINK.partition("#")

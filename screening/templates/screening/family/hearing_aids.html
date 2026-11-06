@@ -11,7 +11,7 @@
 {# #433 (spec #426): the problems' words are in family_zone.py, drafts until the owner has reviewed them. #}
 <article class="family-guide wrap-anywhere">
 <h1 class="h3 mt-4">助聽器</h1>
-<p>各廠牌的按鍵、電池和清潔工具不一樣，操作請看說明書或問聽力師。想了解外型和價格，看選配指引的<a class="inline-block py-[0.6rem]" href="{% url 'guide_chapter' 'types-and-prices' %}">「助聽器的種類與價格」</a>。</p>
+<p>各廠牌的按鍵、電池和清潔工具不一樣，操作請看說明書或問聽力師。想了解外型和價格，看選配指引的<a class="tap-link" href="{% url 'guide_chapter' 'types-and-prices' %}">「助聽器的種類與價格」</a>。</p>
 
 <nav aria-label="這一頁的內容">
     <ul class="list-unstyled">
@@ -44,7 +44,7 @@
 <section class="mb-6" data-parallel-block aria-labelledby="adjusting-title">
     <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
     {% include "screening/family/pick_explain.html" with pick=stages heading=3 %}
-    {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="inline-block py-[0.6rem]" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
+    {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="tap-link" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
 </section>
 
 {# #435: native checkboxes in no form, as on 陪診清單: a tick stays on this page in this browser until it reloads or another shape is picked; autocomplete="off" stops the browser putting ticks back. #}

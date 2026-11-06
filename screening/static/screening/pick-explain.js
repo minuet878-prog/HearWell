@@ -15,8 +15,8 @@
     };
     list.hidden = true;
     radios.forEach((radio) => radio.addEventListener("change", () => show(radio)));
-    // autocomplete="off" keeps the browsers tested from bringing a choice back, which they do too
-    // late for this to see; a browser that still does it first gets its explanation.
+    // autocomplete="off" keeps Chromium, where the tests run, from bringing a choice back too late
+    // for this to see; a browser that still brings one back first gets its explanation.
     const chosen = radios.find((radio) => radio.checked);
     if (chosen) show(chosen);
   });

@@ -87,7 +87,7 @@ describe("pick to explain", () => {
     expect(showing(1)).toEqual(["他看得到您的臉"]);
   });
 
-  // A reload or 上一頁 can bring a choice back: it must not sit there with no explanation.
+  // A browser may bring a choice back before this runs: it must not sit there unexplained.
   it("shows the explanation of a choice the browser brought back", () => {
     radio(1, 0).checked = true;
     runScript();

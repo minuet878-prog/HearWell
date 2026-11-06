@@ -335,6 +335,7 @@ HEARING_AID_PROBLEMS = PickExplain(
         ),
         Option(
             label="沒聲音或變小聲",
+            urgent="如果是幾小時到幾天內突然聽不到或聽力變差，不用先檢查，請盡快到耳鼻喉科就醫。",
             sections=(
                 (
                     _CHECK_FIRST,
@@ -349,16 +350,11 @@ HEARING_AID_PROBLEMS = PickExplain(
                     _SEE_AUDIOLOGIST,
                     (
                         "檢查完還是沒聲音，或聲音變形。",
-                        "覺得他的聽力變了，助聽器需要調整。",
+                        "聽力慢慢變差，助聽器需要調整。",
                     ),
                 ),
             ),
-            links=(
-                (
-                    "另外：助聽器都正常，他還是突然聽不到，請看「什麼時候要馬上就醫」。",
-                    _URGENT_SECTION,
-                ),
-            ),
+            links=(("什麼時候要馬上就醫", _URGENT_SECTION),),
         ),
         Option(
             label="一直嘯叫",
@@ -408,19 +404,23 @@ HEARING_AID_PROBLEMS = PickExplain(
                     _CHECK_FIRST,
                     ("關機再開機，回到平常的設定。可能是不小心切到感應線圈（T）的設定。",),
                 ),
-                (_SEE_AUDIOLOGIST, ("開關機之後還有雜音，或聲音變形。",)),
+                (
+                    _SEE_AUDIOLOGIST,
+                    (
+                        "開關機之後還有雜音，或聲音變形。",
+                        "拿下助聽器還是聽得到，可能不是助聽器的問題，請問耳鼻喉科或聽力師。",
+                    ),
+                ),
             ),
         ),
         Option(
             label="戴起來會磨、會緊",
+            urgent="如果是耳朵痛或流膿，請選第一項。",
             sections=(
                 (_CHECK_FIRST, ("有沒有戴對位置、左右耳有沒有戴反。",)),
                 (
                     _SEE_AUDIOLOGIST,
-                    (
-                        "戴對了還是不舒服。耳模或耳塞通常可以調整，不用硬撐。",
-                        "如果是耳朵痛或流膿，請選第一項。",
-                    ),
+                    ("戴對了還是不舒服。耳模或耳塞通常可以調整，不用硬撐。",),
                 ),
             ),
         ),
@@ -463,6 +463,7 @@ HEARING_AID_STAGES = PickExplain(
         ),
         Option(
             label="不想再戴",
+            urgent="如果是耳朵痛或流膿，請盡快就醫。",
             sections=(
                 (
                     _YOU_CAN_DO,
@@ -473,7 +474,10 @@ HEARING_AID_STAGES = PickExplain(
                     ),
                 ),
             ),
-            links=(("長輩不肯去怎麼說", "/family/reluctant"),),
+            links=(
+                ("什麼時候要馬上就醫", _URGENT_SECTION),
+                ("長輩不肯去怎麼說", "/family/reluctant"),
+            ),
         ),
     ),
 )

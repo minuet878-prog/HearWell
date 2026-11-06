@@ -33,7 +33,10 @@ STAGES = {
 STAGE_LINKS = {
     "剛開始戴": [],
     "戴了不習慣": [("/family#talk-title", "怎麼跟聽損的家人說話")],
-    "不想再戴": [("/family/reluctant", "長輩不肯去怎麼說")],
+    "不想再戴": [
+        ("/family#urgent-title", "什麼時候要馬上就醫"),
+        ("/family/reluctant", "長輩不肯去怎麼說"),
+    ],
 }
 
 
@@ -161,3 +164,12 @@ class FamilyAdjustingTests(TestCase):
         )
         self.assertEqual(section.count("<li>"), len(test_family_guide.TIPS["aid-title"]))
         self.assertNotIn(YOU_CAN_DO, content)
+
+    # The owner, 2026-11-06: an ear that hurts is not one for adjusting first.
+    def test_not_wanting_to_wear_them_says_when_to_see_a_doctor(self):
+        content = self.client.get(reverse("family_hearing_aids")).content.decode()
+        start = content.index("<strong>如果是耳朵痛或流膿，請盡快就醫。</strong>")
+        self.assertGreater(start, content.index('id="adjusting-title"'))
+        self.assertRegex(
+            content[start:], r'<a [^>]*href="/family#urgent-title"[^>]*>.*?什麼時候要馬上就醫'
+        )

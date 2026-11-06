@@ -4789,6 +4789,12 @@
 
   /* The reviewed drawings' strokes (batch-3-drawings.html), in the site's blue. They fill the row
      up to a size that still reads, on a phone at any text size. */
+  /* A link inside a sentence, tall enough to tap (44px): #431, #432, #433. */
+  .tap-link {
+    display: inline-block;
+    padding-block: 0.6rem;
+  }
+
   .care-drawing {
     display: block;
     width: 100%;
