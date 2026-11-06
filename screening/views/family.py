@@ -12,6 +12,8 @@ from screening.family_deadlines import (
     deadlines,
 )
 from screening.family_zone import (
+    HEARING_AID_CARE,
+    HEARING_AID_CARE_REMINDERS,
     HEARING_AID_CHECKED_ON,
     HEARING_AID_PROBLEMS,
     HEARING_AID_SOURCES,
@@ -47,13 +49,18 @@ def family_reluctant(request):
     )
 
 
+@never_cache
 def family_hearing_aids(request):
     # #433 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
-    # and is for family members who have no account. The same words for everyone.
+    # and is for family members who have no account. The same words for everyone. #435: the care
+    # steps' ticks stay on the page in the browser: nothing is sent or kept, and never_cache keeps
+    # 上一頁 on a shared phone from showing them.
     return render(
         request,
         "screening/family/hearing_aids.html",
         {
+            "care": HEARING_AID_CARE,
+            "care_reminders": HEARING_AID_CARE_REMINDERS,
             "problems": HEARING_AID_PROBLEMS,
             "sources": HEARING_AID_SOURCES,
             "checked_on": HEARING_AID_CHECKED_ON,

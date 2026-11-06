@@ -6,6 +6,17 @@ from datetime import date
 
 
 @dataclass(frozen=True)
+class CareStep:
+    title: str
+    # How often, or when: shown in brackets after the title.
+    frequency: str
+    words: str
+    # The file's name in templates/screening/family/care_drawings/. Never all a step says: the
+    # words above say everything, and the drawing is hidden from screen readers.
+    drawing: str
+
+
+@dataclass(frozen=True)
 class Option:
     label: str
     # What this choice does, in plain words. None is a verdict: no right, wrong or score (#428).
@@ -22,6 +33,9 @@ class Option:
     urgent: str = ""
     # Links to a place on a page, with no heading above them: (words, path#anchor) pairs (#433).
     links: tuple = ()
+    # Steps to follow, each with a drawing and a box to tick (#435), and a sentence after them.
+    steps: tuple = ()
+    steps_note: str = ""
 
 
 @dataclass(frozen=True)
@@ -411,6 +425,98 @@ HEARING_AID_PROBLEMS = PickExplain(
             ),
         ),
     ),
+)
+
+# Drafts for the owner's review (#435, batch-3-wording.md section 3). General to every maker, like
+# the problems above; the drawings are the ones the owner went through (batch-3-drawings.html).
+HEARING_AID_CARE = PickExplain(
+    code="hearing-aid-care",
+    prompt="他的助聽器是哪一種？",
+    options=(
+        Option(
+            label="掛在耳後",
+            steps=(
+                CareStep(
+                    title="擦乾淨",
+                    frequency="每天",
+                    words=(
+                        "拿下來後，用乾的軟布或面紙擦機身和耳模或耳塞。"
+                        "不要弄濕，也不要用含酒精或化學成分的濕紙巾。"
+                    ),
+                    drawing="behind_ear_wipe",
+                ),
+                CareStep(
+                    title="清耳垢",
+                    frequency="每天",
+                    words=(
+                        "用聽力師給的工具，清掉耳模或耳塞出口的耳垢，不要硬戳。"
+                        "耳塞裡有濾網的，濾網有耳垢就換新。"
+                    ),
+                    drawing="behind_ear_clear_wax",
+                ),
+                CareStep(
+                    title="看導管",
+                    frequency="每天",
+                    words="導管有沒有折到、堵住或裂開，裡面有沒有水氣。處理不來就問聽力師。",
+                    drawing="behind_ear_check_tube",
+                ),
+                CareStep(
+                    title="洗耳模",
+                    frequency="有耳模的，約一週一次",
+                    words=(
+                        "把導管從助聽器的掛鉤拔下來，導管不要從耳模拔出。耳模泡溫肥皂水洗乾淨，"
+                        "沖乾淨後把導管裡的水吹出來，放到隔天全乾再裝回去。機身不能碰水。"
+                    ),
+                    drawing="behind_ear_wash_mould",
+                ),
+                CareStep(
+                    title="關機收好",
+                    frequency="每天",
+                    words=(
+                        "不戴的時候關機，放進盒子，遠離高溫和潮濕，也放在小孩和寵物拿不到的地方。"
+                        "充電式的照說明書充電。"
+                    ),
+                    drawing="behind_ear_store",
+                ),
+            ),
+        ),
+        Option(
+            label="戴在耳內",
+            steps=(
+                CareStep(
+                    title="刷開口",
+                    frequency="每天",
+                    words="一天結束時，用聽力師給的軟刷，刷掉開口上的耳垢和碎屑。",
+                    drawing="in_ear_brush",
+                ),
+                CareStep(
+                    title="挑耳垢",
+                    frequency="刷不掉時",
+                    words="刷不掉的，用挑耳垢的工具輕輕挑，不要硬戳。",
+                    drawing="in_ear_pick",
+                ),
+                CareStep(
+                    title="擦乾淨",
+                    frequency="每天",
+                    words="用乾淨的乾布或面紙全部擦過。不要弄濕。",
+                    drawing="in_ear_wipe",
+                ),
+                # The draft's words, for the owner to settle at review: with this shape picked, the
+                # other shape's step 同上 points at is not on screen.
+                CareStep(
+                    title="關機收好",
+                    frequency="每天",
+                    words="同上。",
+                    drawing="in_ear_store",
+                ),
+            ),
+            steps_note="深耳道型這種放在耳道很深處的，由聽力師在回診時清潔。",
+        ),
+    ),
+)
+HEARING_AID_CARE_REMINDERS = (
+    "戴著助聽器時不要噴髮膠或用其他美髮產品。",
+    "沒電的電池馬上換；電池放在小孩和寵物拿不到的地方。",
 )
 
 # The sources of batch-3-wording.md section 4, for the whole page. Medical care is rewritten for

@@ -18,7 +18,9 @@
             <ul class="pick-explain-list">{% for words in lines %}<li>{{ words }}</li>{% endfor %}</ul>{% endfor %}{% if option.next_steps %}
             <h{{ heading }} class="tint-subhead mt-4">下一步</h{{ heading }}>
             <ul class="list-unstyled mb-0">{% for words, url_name in option.next_steps %}<li><a class="link-card" href="{% url url_name %}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.links %}
-            <ul class="list-unstyled mt-4 mb-0">{% for words, href in option.links %}<li><a class="link-card" href="{{ href }}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}</li>
+            <ul class="list-unstyled mt-4 mb-0">{% for words, href in option.links %}<li><a class="link-card" href="{{ href }}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.steps %}
+            <ol class="care-steps tint-rows">{% for step in option.steps %}<li>{% with "screening/family/care_drawings/"|add:step.drawing|add:".html" as drawing %}{% include drawing %}{% endwith %}<label class="visit-check"><input type="checkbox" autocomplete="off"><span><strong class="block">{{ forloop.counter }}. {{ step.title }}（{{ step.frequency }}）</strong>{{ step.words }}</span></label></li>{% endfor %}</ol>{% endif %}{% if option.steps_note %}
+            <p class="mt-4 mb-0">{{ option.steps_note }}</p>{% endif %}</li>
         {% endfor %}
     </ul>
     <div class="not-empty:mt-4" aria-live="polite" data-pick-live></div>
