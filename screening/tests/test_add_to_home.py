@@ -130,7 +130,7 @@ class NewUserHomePromptTests(TestCase):
     """A first-time visitor had no way to find the add-to-home steps: the home page's card is for
     returning users and the account page needs an account."""
 
-    TITLE = "把聽伴放到手機桌面"
+    TITLE = "把聽伴加到手機主畫面"
     REASON = "下次點一下就能打開，不用輸入網址"
 
     def _home(self):

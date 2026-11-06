@@ -4333,7 +4333,7 @@ class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase
     """The first-time home page's way to the add-to-home steps, on a phone's browser only, and
     the icon the phone then shows."""
 
-    TITLE = "把聽伴放到手機桌面"
+    TITLE = "把聽伴加到手機主畫面"
     # Share of the icon's width and height the white bird takes, and how far from the middle it
     # reaches. icon.svg says how each file is exported; re-exporting apple-touch-icon.png at the
     # scale in the drawing itself would shrink the bird without changing the image's size.
