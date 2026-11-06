@@ -4329,10 +4329,37 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS))
 
 
-class NewUserHomePromptTest(SavesFailureArtifacts, StaticLiveServerTestCase):
-    """The first-time home page's way to the add-to-home steps: on a phone's browser only."""
+class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+    """The first-time home page's way to the add-to-home steps, on a phone's browser only, and
+    the icon the phone then shows."""
 
     TITLE = "把聽伴放到手機桌面"
+    # Share of the icon's width and height the white bird takes, and how far from the middle it
+    # reaches. icon.svg says how each file is exported; re-exporting apple-touch-icon.png at the
+    # scale in the drawing itself would shrink the bird without changing the image's size.
+    MEASURE_BIRD = """async (src) => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      const size = image.width;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0);
+      const { data } = context.getImageData(0, 0, size, size);
+      let left = size, right = 0, reach = 0;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = (y * size + x) * 4;
+          if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            reach = Math.max(reach, Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2));
+          }
+        }
+      }
+      return { width: (right - left + 1) / size, reach: reach / size };
+    }"""
 
     @classmethod
     def setUpClass(cls):
@@ -4374,6 +4401,23 @@ class NewUserHomePromptTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     expect(self.page.get_by_role("link", name="開始篩檢").first).to_be_visible()
                     expect(card).to_have_count(0)
+
+    def measure_bird(self, name):
+        return self.page.evaluate(
+            self.MEASURE_BIRD, f"{self.live_server_url}/static/screening/pwa/{name}"
+        )
+
+    def test_iphone_icon_fills_more_than_android_and_android_stays_in_its_safe_zone(self):
+        self.open_home(390)
+        with self.saving_artifacts():
+            iphone = self.measure_bird("apple-touch-icon.png")
+            self.assertGreater(iphone["width"], 0.7)
+            for name in ("icon-192.png", "icon-512.png"):
+                with self.subTest(name=name):
+                    android = self.measure_bird(name)
+                    self.assertGreater(android["width"], 0.6)
+                    # Android's maskable safe zone: a circle 80% of the icon wide.
+                    self.assertLessEqual(android["reach"], 0.4)
 
 
 class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):

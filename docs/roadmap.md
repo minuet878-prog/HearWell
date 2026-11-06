@@ -88,7 +88,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   外觀本人在比較頁選 B 案；Codex 交叉審查要修 5 項已修；PR #405，驗證見 `docs/verification/issue-396.md`；
   正式答案內容留給 #402）、產品改名「聽伴」（英文 tingpal，新 logo 是翅膀為耳朵的小鳥，同意書第 3 版，內部名稱不改；
   本人在比較頁選 Q 案；ADR 0039，PR #422，驗證見 `docs/verification/rename-to-tingpal.md`）、
-  正式站 logo 消失（`collectstatic` 改壞 CSS 裡的 logo，遮罩失效；改寫法並加自動檢查，驗證見 `docs/verification/logo-collectstatic.md`）。
+  正式站 logo 消失（`collectstatic` 改壞 CSS 裡的 logo，遮罩失效；改寫法並加自動檢查，驗證見 `docs/verification/logo-collectstatic.md`）、
+  主畫面圖示放大、未登入首頁加「把聽伴放到手機桌面」提示卡（本人在比較頁選 B、Y，驗證見 `docs/verification/pwa-icon-and-home-prompt.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與

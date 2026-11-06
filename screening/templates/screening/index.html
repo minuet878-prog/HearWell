@@ -27,7 +27,7 @@
     {% endif %}
 </section>
 {# Phones only: the steps are done on a phone. pwa-nav.js hides [data-hide-in-app] in the home-screen app. #}
-<div class="mt-4 md:hidden" data-hide-in-app>
+<div class="mt-4 mb-4 md:hidden" data-hide-in-app>
     <a class="link-card action-card" href="{% url 'add_to_home' %}">
         {% include "screening/action_icon.html" with icon="add-home" %}
         <span class="link-card-body">
