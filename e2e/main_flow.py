@@ -9575,11 +9575,17 @@ class LayoutOnAPhone(OnAPhone):
             "url": self.live_server_url,
         }
 
-    def open(self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True):
-        """Opens path in a fresh browser window of size; script runs before the page's own."""
+    def open(
+        self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True, touch=False
+    ):
+        """Opens path in a fresh browser window of size; script runs before the page's own.
+        Touch is a phone without a mouse."""
         width, height = size
         self.context = self.browser.new_context(
-            viewport={"width": width, "height": height}, java_script_enabled=java_script_enabled
+            viewport={"width": width, "height": height},
+            java_script_enabled=java_script_enabled,
+            has_touch=touch,
+            is_mobile=touch,
         )
         # The family page's 複製網址 reads back what it copied.
         self.context.grant_permissions(
@@ -10773,3 +10779,167 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
             self.double_text(False)
             for button in self.main().get_by_role("button").all():
                 self.assertGreaterEqual(button.bounding_box()["height"], 44)
+
+
+class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#442 (spec #436): tapping the chart picks the nearest group; a swipe stays a scroll."""
+
+    DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
+    GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
+    HINT = "點圖上的注音，看那一群。"
+    # In chart units. Empty space: 46 from box 5's centre, 58 from box 6's. The other is on box 5.
+    NEAR_GROUP_5 = (285, 170)
+    ON_BOX_5 = (272, 214)
+    # Where a chart unit is on the screen, read from the browser, not worked out as the page does.
+    ON_SCREEN = """(svg, [x, y]) => {
+        const m = svg.getScreenCTM();
+        return [m.a * x + m.e, m.d * y + m.f];
+    }"""
+    # What is under a point on the screen: in the chart at all, and on a group's drawing.
+    UNDER = """([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return [Boolean(el?.closest(".audiogram-plot svg")), Boolean(el?.closest("[data-group]"))];
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_tap_e2e"))
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, marks in (
+                ("right", ((500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65))),
+                ("left", ((500, 30), (1000, 35), (2000, 40), (4000, 50))),
+            )
+            for f, db in marks
+        )
+        self.path = f"/audiograms/{audiogram.pk}/speech-banana"
+
+    def open_page(self, size=LayoutOnAPhone.PHONE, touch=False):
+        self.open(self.path, size, touch=touch)
+        self.page.locator(".audiogram-plot svg").wait_for()
+
+    def on_screen(self, chart_point):
+        return self.page.locator(".audiogram-plot svg").evaluate(self.ON_SCREEN, list(chart_point))
+
+    def empty_chart_spot(self):
+        """NEAR_GROUP_5 on the screen, checked to be on the chart and off every group."""
+        spot = self.on_screen(self.NEAR_GROUP_5)
+        self.assertEqual(self.page.evaluate(self.UNDER, spot), [True, False])
+        return spot
+
+    def result(self):
+        return self.main().get_by_role("status")
+
+    def pick(self, name):
+        return self.main().get_by_role("button", name=name)
+
+    def open_list(self):
+        self.main().locator("summary", has_text="用清單選").click()
+
+    def assert_group_5_picked(self):
+        expect(self.result()).to_contain_text(self.GROUP_5)
+        expect(self.result()).to_contain_text("高音的子音")
+        expect(self.result()).to_contain_text("ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」")
+        expect(self.result()).to_contain_text("右耳：可能不容易聽到")
+        expect(self.result()).to_contain_text("左耳：這個頻率沒有標記，無法估計")
+        expect(self.page.locator('[data-selected="true"]')).to_have_count(1)
+        box = self.page.locator('[data-group="5"] rect')
+        self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
+        self.open_list()
+        expect(self.pick(self.GROUP_5)).to_have_attribute("aria-pressed", "true")
+        expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+
+    def assert_nothing_picked(self):
+        expect(self.result()).to_have_text(self.HINT)
+        expect(self.page.locator('[data-selected="true"]')).to_have_count(0)
+
+    def swipe(self, start, distance):
+        """A finger pressed at start and dragged by distance down the screen (up when negative),
+        through the browser's own touch input, as a phone sends it."""
+        x, y = start
+        devtools = self.context.new_cdp_session(self.page)
+
+        def touch(kind, points):
+            devtools.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": points})
+
+        touch("touchStart", [{"x": x, "y": y}])
+        for step in range(1, 11):
+            touch("touchMove", [{"x": x, "y": y + distance * step / 10}])
+        touch("touchEnd", [])
+
+    def settled_scroll(self):
+        """Where the page stops: the browser carries a swipe on for a moment after the lift."""
+        self.page.wait_for_function(
+            "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+            "return still; }",
+            polling=200,
+        )
+        return self.page.evaluate("window.scrollY")
+
+    # Acceptance 1: a finger on empty space picks the nearest group; its box goes dark, the
+    # result appears, and the list marks the same group.
+    def test_a_finger_on_empty_space_picks_the_nearest_group(self):
+        with self.saving_artifacts():
+            self.open_page(touch=True)
+            self.assert_nothing_picked()
+            self.page.touchscreen.tap(*self.empty_chart_spot())
+            self.assert_group_5_picked()
+
+    # Acceptance 2: one click of a mouse does the same, on a phone-sized window and a wide one,
+    # where the chart is drawn at another scale.
+    def test_a_mouse_click_picks_the_nearest_group(self):
+        for size in (self.PHONE, self.DESKTOP):
+            with self.subTest(width=size[0]), self.saving_artifacts():
+                self.open_page(size)
+                self.page.mouse.click(*self.empty_chart_spot())
+                self.assert_group_5_picked()
+
+    # Acceptance 3: a finger pressed on a box and swiped either way moves the page and picks
+    # nothing. The tap at the end shows the same finger does pick.
+    def test_a_swipe_on_the_chart_scrolls_the_page_and_picks_nothing(self):
+        with self.saving_artifacts():
+            self.open_page(touch=True)
+            start = self.on_screen(self.ON_BOX_5)
+            self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
+            self.assertEqual(self.page.evaluate("window.scrollY"), 0)
+            self.swipe(start, -200)
+            self.page.wait_for_function("window.scrollY > 100")
+            self.assert_nothing_picked()
+
+            scrolled = self.settled_scroll()
+            start = self.on_screen(self.ON_BOX_5)
+            self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
+            self.swipe(start, 100)
+            self.page.wait_for_function("y => window.scrollY < y", arg=scrolled - 50)
+            self.settled_scroll()
+            self.assert_nothing_picked()
+
+            self.page.touchscreen.tap(*self.on_screen(self.ON_BOX_5))
+            self.assert_group_5_picked()
+
+    # Acceptance 4: the same group picked from the list and on the chart leaves the same screen.
+    def test_picking_on_the_chart_and_from_the_list_look_the_same(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            from_the_list = self.main().inner_html()
+
+            self.open_page()
+            self.open_list()
+            self.page.mouse.click(*self.empty_chart_spot())
+            expect(self.result()).to_contain_text(self.GROUP_5)
+            self.assertEqual(self.main().inner_html(), from_the_list)
+
+    # The chart adds to the list and takes nothing from the keyboard: Tab never lands on it,
+    # and the list still reaches every group.
+    def test_the_keyboard_passes_over_the_chart(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            for _ in range(40):
+                self.page.keyboard.press("Tab")
+                self.assertFalse(
+                    self.page.evaluate("Boolean(document.activeElement.closest('.audiogram-plot'))")
+                )
+            expect(self.main().locator(".speech-banana-pick")).to_have_count(6)

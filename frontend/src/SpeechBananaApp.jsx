@@ -8,11 +8,12 @@ const BANANA = "#fbeea8";
 const CLIP = "speech-banana-clip";
 // Each group's box, in chart units, by the groups' order: under the banana where there is room,
 // over it for the two the row below cannot fit. The dot, not the box, is the real position.
+// A tap picks the nearest centre, so every box's edges must be nearer its own centre than another's.
 const BOX_CENTRES = [
   [80, 214],
   [146, 214],
   [208, 214],
-  [222, 112],
+  [219, 112],
   [272, 214],
   [279, 112],
 ];
@@ -22,6 +23,11 @@ const BOX_SIDE_ROOM = 8;
 const BOX_FOOT_ROOM = 6;
 
 const groupName = (group) => group.rows.join("");
+
+function nearestGroup({ px, py }) {
+  const distances = BOX_CENTRES.map(([cx, cy]) => Math.hypot(cx - px, cy - py));
+  return distances.indexOf(Math.min(...distances));
+}
 
 function Banana({ outline }) {
   const edge = [...outline.top, ...outline.bottom];
@@ -91,6 +97,7 @@ export default function SpeechBananaApp({ data }) {
           points={shown.marks}
           label={`聽力圖，畫出語言香蕉區、六群注音和${shown.label}的標記。要看每一群的結果，請用圖下的「用清單選」。`}
           behind={<Banana outline={data.banana} />}
+          onTap={(at) => setSelected(nearestGroup(at))}
         >
           {data.groups.map((g, i) => (
             <GroupBox key={groupName(g)} group={g} number={i + 1} centre={BOX_CENTRES[i]} selected={i === selected} />
