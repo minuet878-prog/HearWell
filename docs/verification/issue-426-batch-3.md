@@ -2,7 +2,7 @@
 
 日期：2026-11-06。分支：`feat/426-family-zone-batch-3`。規格：[#426](https://github.com/minuet878-prog/HearWell/issues/426)；拷問決定：[family-zone](../planning/family-zone/grill-decisions.md)；審字清單：[第三批文字](../planning/family-zone/batch-3-wording.md)；線條圖：[第二版](../planning/family-zone/batch-3-drawings.html)。
 
-狀態：自動測試與自審都完成，本人決定略過交叉審查。**本人審字與操作驗收還沒做**，所以驗收條件「文字由本人審過」和「線條圖本人已逐張確認」還不算通過。
+狀態：2026-11-06 本人審字與線條圖並回覆「驗收通過」，沒有要求改字。自動測試與自審都已完成，本人決定略過交叉審查。這是最後一批，合併後母規格 #426 結案。
 
 ## 本人決定
 
@@ -33,11 +33,11 @@
 | 31 | 耳朵痛、流膿或突然聽不到，請人就醫，連到 `/family#urgent-title`，不列檢查 | 通過 | `test_family_hearing_aids.py` |
 | 32 | 選階段看到可以做的事與問卷連結，`/family` 原文不變 | 通過 | `test_family_adjusting.py`、e2e `FamilyAdjustingTest` |
 | 33 | 選外型只看到該外型步驟；沒有 JavaScript 兩種都顯示 | 通過 | e2e `FamilyCareTest` |
-| 34 | 每步有文字、線條圖、勾選框；圖不分廠牌、不是唯一資訊 | 程式通過，本人確認見第 38 條 | `test_family_care.py`、e2e `FamilyCareTest` |
+| 34 | 每步有文字、線條圖、勾選框；圖不分廠牌、不是唯一資訊，本人逐張確認 | 通過 | `test_family_care.py`、e2e `FamilyCareTest`；本人看過第二版與放進頁面的截圖後回覆驗收通過 |
 | 35 | 類型與價格連回選配指引 | 通過 | `test_family_hearing_aids.py` |
 | 36 | 手機 200% 不左右捲，44px，1rem | 通過 | 三個 e2e 類別；出處與查核日期照現有規範較小（第 16 條） |
 | 37 | 唯一主標題、回專區、分頁標在了解、不用登入 | 通過 | 三個測試檔 |
-| 38 | 文字、出處與線條圖由本人審過 | **未完成** | 等本人審字 |
+| 38 | 文字、出處與線條圖由本人審過 | 通過 | 2026-11-06 本人審過[審字清單](../planning/family-zone/batch-3-wording.md)後回覆驗收通過；內容查核日期 2026/11/06 |
 
 ## 自動測試
 
@@ -59,5 +59,5 @@ Standards 與 Spec 兩軸各跑一次。修掉：行內連結的觸控高度改�
 - 來源多是英國和美國的資料，就醫一律改寫成耳鼻喉科或聽力師；部分句子來源沒有直接寫，列在審字清單。
 - 上一頁的修法只在 Chromium 驗過；實際朗讀沒有自動測試。
 - 沒有測試走「先註冊」後是否回到問卷。
-- 代理只用 e2e 臨時網站的截圖看過手機畫面。
+- 代理只用 e2e 臨時網站的截圖看過手機畫面；審字與操作驗收由本人回覆通過，紀錄沒有逐項列出本人操作了哪些步驟。
 - 沒有操作真實資料，也沒有新增 migration。
