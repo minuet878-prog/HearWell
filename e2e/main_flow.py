@@ -22,6 +22,7 @@ from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
+from screening.family_zone import COMMUNICATION_SCENARIOS
 from screening.fitting_route import add_months
 from screening.models import (
     AidAndSubsidy,
@@ -3905,7 +3906,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             # The line under a title is words to read: at least the 18px body text's 1rem.
-            note = entries.first.get_by_text("讓溝通輕鬆一點的小方法")
+            note = entries.first.get_by_text("情境題與溝通重點")
             root = self.page.evaluate(
                 "parseFloat(getComputedStyle(document.documentElement).fontSize)"
             )
@@ -10679,3 +10680,145 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     second = summary.get_by_text(makers, exact=True).bounding_box()
                     self.assertGreaterEqual(second["y"], first["y"] + first["height"] - 1)
                     self.assertAlmostEqual(second["x"], first["x"], delta=1)
+
+
+class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#428 (spec #426): the scenarios on /family, picked in a real browser. Every explanation is
+    in the page from the server; the script folds them away and shows the chosen one."""
+
+    SECTION = "遇到這些情況，您會怎麼做？"
+    SCENARIO = COMMUNICATION_SCENARIOS[0]
+    CHOSEN_BLUE = "rgb(31, 78, 140)"  # --color-primary, #1f4e8c
+
+    def section(self):
+        return self.main().get_by_role("region", name=self.SECTION)
+
+    def group(self, scenario=SCENARIO):
+        return self.section().get_by_role("group", name=scenario.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def assert_only_shows(self, chosen):
+        """Only the chosen option's explanation is on screen, in the live region."""
+        for option in self.SCENARIO.options:
+            with self.subTest(option=option.label):
+                words = (
+                    self.group().get_by_text(option.explanation, exact=True).locator("visible=true")
+                )
+                expect(words).to_have_count(1 if option is chosen else 0)
+        expect(self.live()).to_have_text(chosen.explanation if chosen else "")
+
+    # From the first home page's card to the zone, on to a scenario, a pick and a change of mind.
+    def test_walks_from_the_zone_home_to_a_pick_and_changes_it(self):
+        first, second, _ = self.SCENARIO.options
+        with self.saving_artifacts():
+            self.open("/", signed_in=False)
+            self.main().get_by_role("link", name=re.compile("我是家人")).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            self.main().get_by_role("navigation", name="本頁內容").get_by_role(
+                "link", name=re.compile("怎麼跟他說話")
+            ).click()
+            expect(self.page).to_have_url(re.compile("#talk-title$"))
+            expect(self.section().get_by_role("group")).to_have_count(len(COMMUNICATION_SCENARIOS))
+            self.assert_only_shows(None)
+
+            sent = []
+            self.page.on("request", lambda request: sent.append(request.url))
+            stored = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
+            stored_before = self.page.evaluate(stored)
+            self.group().get_by_label(first.label).check()
+            self.assert_only_shows(first)
+            self.assertEqual(
+                self.style(self.group().locator("label", has_text=first.label), "backgroundColor"),
+                self.CHOSEN_BLUE,
+            )
+
+            self.group().get_by_label(second.label).check()
+            self.assert_only_shows(second)
+            expect(self.group().get_by_label(first.label)).not_to_be_checked()
+            self.assertEqual(
+                self.style(self.group().locator("label", has_text=first.label), "backgroundColor"),
+                "rgb(255, 255, 255)",
+            )
+
+            # Nothing is kept or sent, and the next question is still untouched.
+            self.assertEqual(sent, [])
+            self.assertEqual(self.page.evaluate(stored), stored_before)
+            other = self.group(COMMUNICATION_SCENARIOS[1])
+            expect(other.locator('[aria-live="polite"]')).to_have_text("")
+
+    # Native radios: Space picks the one with focus, an arrow key moves on and picks that one.
+    def test_keyboard_picks_and_changes(self):
+        first, second, _ = self.SCENARIO.options
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.group().get_by_label(first.label).focus()
+            self.page.keyboard.press("Space")
+            self.assert_only_shows(first)
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(second.label)).to_be_focused()
+            self.assert_only_shows(second)
+
+    def test_without_javascript_every_explanation_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False, java_script_enabled=False)
+            for scenario in COMMUNICATION_SCENARIOS:
+                for option in scenario.options:
+                    with self.subTest(option=option.label):
+                        expect(
+                            self.group(scenario).get_by_text(option.explanation, exact=True)
+                        ).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/family without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        first = self.SCENARIO.options[0]
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            self.group().get_by_label(first.label).check()
+            self.assert_only_shows(first)
+
+            def assert_sizes():
+                rem = self.rem()
+                for label in self.section().locator("label").all():
+                    self.assertGreaterEqual(label.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().locator("p"),
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size("/family with a choice made")
+            assert_sizes()
+            # It fits by more than squeezing: an option's words keep a few characters a line.
+            words = self.group().locator("label > span").first
+            self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    # Nothing moves as the explanation appears, whether or not less motion is asked for.
+    def test_explanation_appears_without_animation(self):
+        first = self.SCENARIO.options[0]
+        with self.saving_artifacts():
+            for reduced_motion in ("reduce", "no-preference"):
+                with self.subTest(reduced_motion=reduced_motion):
+                    self.open("/family", signed_in=False)
+                    self.page.emulate_media(reduced_motion=reduced_motion)
+                    self.group().get_by_label(first.label).check()
+                    expect(self.live()).to_have_text(first.explanation)
+                    self.assertEqual(
+                        self.live().evaluate("el => el.getAnimations({subtree: true}).length"), 0
+                    )
+
+    # Old links: the script folds the scenarios above these after the page opens, and the jump
+    # still lands on its section.
+    def test_old_links_land_on_their_sections(self):
+        with self.saving_artifacts():
+            for anchor in ("aid-title", "urgent-title"):
+                with self.subTest(anchor=anchor):
+                    self.open(f"/family#{anchor}", signed_in=False)
+                    self.page.wait_for_function(
+                        "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
+                        " < 10 && window.scrollY > 0",
+                        arg=anchor,
+                    )

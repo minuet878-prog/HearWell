@@ -1,10 +1,16 @@
-"""Spec #426 (家人專區), ticket #427: the zone's home page and the ways to reach it."""
+"""Spec #426 (家人專區): the zone's home page and ways to reach it (#427), its scenarios (#428)."""
 
 import re
+from datetime import date
 
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.family_zone import (
+    COMMUNICATION_CHECKED_ON,
+    COMMUNICATION_SCENARIOS,
+    COMMUNICATION_SOURCES,
+)
 from screening.models import Questionnaire, ReportShare, Submission
 from screening.tests import test_pages
 from screening.tests.helpers import consented_user
@@ -28,7 +34,7 @@ URGENT = (
     "如果同時出現臉歪嘴斜、單側手腳無力、說話不清楚，可能是中風，請立刻撥打 119。",
 )
 # Drafts for the owner's review, like the card above.
-TALK_NOTE = "讓溝通輕鬆一點的小方法"
+TALK_NOTE = "情境題與溝通重點"
 AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 # (href, title) of each card in a part of a page, in page order.
 CARD = re.compile(
@@ -180,3 +186,148 @@ class FamilyZoneHomeTests(TestCase):
                     self.assertEqual(self.client.get(path).status_code, 200)
                     if anchor:
                         self.assertIn(f'id="{anchor}"', zone)
+
+
+class FamilyContentDefinitionTests(TestCase):
+    """#428 (spec #426): the scenarios' words live in one definition, for review in one place."""
+
+    def _words(self):
+        for scenario in COMMUNICATION_SCENARIOS:
+            yield scenario.prompt
+            for option in scenario.options:
+                yield option.label
+                yield option.explanation
+
+    def test_five_scenarios_of_three_options_each_with_an_explanation(self):
+        self.assertEqual(len(COMMUNICATION_SCENARIOS), 5)
+        for scenario in COMMUNICATION_SCENARIOS:
+            with self.subTest(code=scenario.code):
+                self.assertTrue(scenario.prompt.strip())
+                self.assertEqual(len(scenario.options), 3)
+                for option in scenario.options:
+                    self.assertTrue(option.label.strip())
+                    self.assertTrue(option.explanation.strip())
+
+    # The code names the radio group, so two alike would become one question on the page.
+    def test_codes_differ(self):
+        codes = [scenario.code for scenario in COMMUNICATION_SCENARIOS]
+        self.assertEqual(len(set(codes)), len(codes))
+
+    # The talk section's two sources, spelled out here so a typo in either place shows.
+    def test_sources_and_checked_date(self):
+        self.assertEqual(
+            [url for _, url in COMMUNICATION_SOURCES],
+            [
+                "https://www.asha.org/about/press-room/articles/"
+                "tips-for-communicating-with-someone-who-has-hearing-loss/",
+                "https://www.hearingloss.org/managing-hearing-loss/hearing-loss-101/"
+                "communication-tips/",
+            ],
+        )
+        for title, _ in COMMUNICATION_SOURCES:
+            self.assertTrue(title.strip())
+        self.assertEqual(COMMUNICATION_CHECKED_ON, date(2026, 11, 6))
+
+    # No verdict and nothing beyond the reviewed tips: no numbers, and 「您」 not 「你」.
+    def test_words_never_judge_or_add_numbers(self):
+        for words in self._words():
+            with self.subTest(words=words):
+                self.assertNotRegex(words, r"對錯|答對|答錯|正確|錯誤|分數|總分|得分|幾分")
+                self.assertNotRegex(words, r"\d")
+                self.assertNotIn("你", words)
+
+
+class FamilyScenarioTests(TestCase):
+    """#428 (spec #426): the scenarios on /family, as the server sends them. What the script does
+    with them is in pick-explain.test.js and e2e.main_flow.FamilyScenarioTest."""
+
+    def setUp(self):
+        self.url = reverse("family_guide")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.content = response.content.decode()
+        start = self.content.index('<section class="mb-6" aria-labelledby="scenarios-title"')
+        self.section = self.content[start : self.content.index("</section>", start)]
+
+    def _sources(self):
+        start = self.content.index('id="sources-title"')
+        return self.content[start : self.content.index("</section>", start)]
+
+    def _fieldsets(self):
+        return re.findall(r"<fieldset.*?</fieldset>", self.section, re.S)
+
+    def test_section_sits_between_the_talk_and_aid_sections(self):
+        self.assertRegex(
+            self.section,
+            r'<h2 id="scenarios-title"[^>]*>(<svg.*?</svg>)?遇到這些情況，您會怎麼做？</h2>',
+        )
+        positions = [
+            self.content.index(f'id="{anchor}"')
+            for anchor in ("talk-title", "scenarios-title", "aid-title")
+        ]
+        self.assertEqual(positions, sorted(positions))
+
+    # Fieldset, legend and native radios: the keyboard and screen readers get a radio group.
+    def test_each_scenario_is_a_group_of_radios_named_by_its_code(self):
+        fieldsets = self._fieldsets()
+        self.assertEqual(len(fieldsets), len(COMMUNICATION_SCENARIOS))
+        for fieldset, scenario in zip(fieldsets, COMMUNICATION_SCENARIOS, strict=True):
+            with self.subTest(code=scenario.code):
+                self.assertIn(f">{scenario.prompt}</legend>", fieldset)
+                labels = re.findall(
+                    rf'<label><input type="radio" name="{scenario.code}">'
+                    r"<span>([^<]+)</span></label>",
+                    fieldset,
+                )
+                self.assertEqual(labels, [option.label for option in scenario.options])
+
+    # JavaScript off: all of it is already there and nothing hides it. Each explanation sits under
+    # its own option's words.
+    def test_server_sends_every_explanation_with_its_option_and_hides_none(self):
+        for fieldset, scenario in zip(self._fieldsets(), COMMUNICATION_SCENARIOS, strict=True):
+            with self.subTest(code=scenario.code):
+                found = re.findall(
+                    r"<li><strong[^>]*>([^<]+)</strong><p[^>]*>([^<]+)</p></li>", fieldset
+                )
+                self.assertEqual(
+                    found, [(option.label, option.explanation) for option in scenario.options]
+                )
+                self.assertNotRegex(fieldset, r"\shidden[\s>]")
+
+    # One live region a question, empty at first, to read the new explanation out.
+    def test_each_scenario_has_one_polite_live_region(self):
+        for fieldset in self._fieldsets():
+            self.assertRegex(fieldset, r'<div [^>]*aria-live="polite"[^>]*></div>')
+            self.assertEqual(fieldset.count("aria-live"), 1)
+
+    def test_script_loads_deferred(self):
+        self.assertRegex(self.content, r'<script defer src="[^"]*screening/pick-explain\.js')
+
+    # Nothing is scored and nothing is sent: no form to submit, no verdict on the page.
+    def test_no_form_score_or_verdict(self):
+        self.assertNotIn("<form", self.section)
+        self.assertNotIn("<button", self.section)
+        text = re.sub(r"<[^>]+>", "", self.section)
+        self.assertNotRegex(text, r"答對|答錯|正確|錯誤|分數|總分|得分")
+
+    def test_sources_and_checked_date_under_the_page_sources(self):
+        sources = self._sources()
+        start = sources.index("<h3>遇到這些情況，您會怎麼做？</h3>")
+        group = sources[start : sources.index("<h3>", start + 1)]
+        self.assertIn(
+            '<a href="https://www.asha.org/about/press-room/articles/'
+            'tips-for-communicating-with-someone-who-has-hearing-loss/">'
+            "美國聽語學會（ASHA）〈Tips for Communicating With Someone Who Has Hearing Loss〉</a>",
+            group,
+        )
+        self.assertIn(
+            '<a href="https://www.hearingloss.org/managing-hearing-loss/hearing-loss-101/'
+            'communication-tips/">美國聽損協會（HLAA）〈Communication Tips〉</a>',
+            group,
+        )
+        self.assertIn("情境題內容查核於 2026/11/06。", group)
+
+    def test_visitor_and_signed_in_user_get_the_same_section(self):
+        self.client.force_login(consented_user(username="scenario_user"))
+        content = self.client.get(self.url).content.decode()
+        self.assertIn(self.section, content)

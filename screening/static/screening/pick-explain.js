@@ -1,0 +1,20 @@
+// 點選看說明 (#428, spec #426): the server sends every option with its explanation, so without
+// JavaScript they all stay on the page. This folds them away; choosing an option writes its
+// explanation into the question's live region, so a screen reader says it, and choosing another
+// replaces it. Nothing is scored, kept or sent. No animation (ADR 0006, ADR 0028).
+(function () {
+  document.querySelectorAll("[data-pick-explain]").forEach((question) => {
+    const list = question.querySelector("[data-pick-explanations]");
+    const live = question.querySelector("[data-pick-live]");
+    const explanations = list.querySelectorAll("p");
+    const radios = [...question.querySelectorAll("input[type=radio]")];
+    const show = (radio) => {
+      live.replaceChildren(explanations[radios.indexOf(radio)].cloneNode(true));
+    };
+    list.hidden = true;
+    radios.forEach((radio) => radio.addEventListener("change", () => show(radio)));
+    // A reload or 上一頁 can bring a choice back.
+    const chosen = radios.find((radio) => radio.checked);
+    if (chosen) show(chosen);
+  });
+})();
