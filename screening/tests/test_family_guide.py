@@ -114,7 +114,7 @@ class FamilyGuideTests(TestCase):
     def test_anyone_can_read_it_without_logging_in(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "給家人的溝通與陪伴")
+        self.assertContains(response, "家人專區")
 
     # 2; #240 moved the sources to the page's end, one group per topic under its title.
     def test_topics_in_order_with_sources_grouped_at_the_end(self):

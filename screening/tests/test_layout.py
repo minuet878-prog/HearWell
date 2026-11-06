@@ -128,7 +128,8 @@ class LayoutTests(TestCase):
     # 5 (changed by the owner after review: the footer made these two links repeat)
     def test_home_links_moved_to_footer_disclaimer_stays(self):
         content = self._get(reverse("index"))
-        self.assertNotIn(f'href="{reverse("family_guide")}"', _main(content))
+        # #427 (spec #426): the new user's 家人專區 card is the page body's only link there.
+        self.assertEqual(_main(content).count(f'href="{reverse("family_guide")}"'), 1)
         self.assertIn(f'href="{reverse("family_guide")}"', _footer(content))
         # The trust line (brand refresh).
         self.assertIn("內容由台灣執業聽力師設計與審定。", re.sub(r"<[^>]+>", "", _main(content)))
