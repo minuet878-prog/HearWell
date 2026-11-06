@@ -10,6 +10,11 @@ class Option:
     # What this choice does, in plain words. Every choice has one and none is a verdict: no right,
     # wrong or score (#428).
     explanation: str
+    # Only where a page has more to show than that paragraph (#429). Things to say and things that
+    # tend to backfire, each one line; next steps as (words, URL name) pairs.
+    try_saying: tuple = ()
+    avoid_saying: tuple = ()
+    next_steps: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -165,3 +170,93 @@ COMMUNICATION_SOURCES = (
     ),
 )
 COMMUNICATION_CHECKED_ON = date(2026, 11, 6)
+
+# Drafts for the owner's review (#429), in our own words from the sources below; no diagnosis,
+# promise, fright or number (ADR 0013). The reader is 「您」, the one with hearing loss 「他」.
+# The sources say people may blame others for mumbling, but not that arguing backfires: 「爭對錯」
+# below is for the owner's clinical review.
+RELUCTANT_SITUATIONS = PickExplain(
+    code="reluctant-situation",
+    prompt="他現在的狀況，最接近哪一種？",
+    options=(
+        Option(
+            label="他不承認聽不到",
+            explanation="有些人自己沒有察覺聽力變了，會覺得是別人講話太小聲或不清楚。",
+            try_saying=(
+                "「這幾次講電話，我發現有些話要講兩次。您自己有這種感覺嗎？」",
+                "「我想一直跟您好好聊天，所以才提這件事。」",
+                "「不急著決定。您想談的時候，再跟我說。」",
+            ),
+            avoid_saying=(
+                "「您就是聽不到，還不承認。」他可能覺得被指責，反而不想談。",
+                "「是您聽不到，不是我講話太小聲。」他可能真的沒有察覺，爭對錯不容易談下去。",
+            ),
+            next_steps=(("他願意的話，一起做一份問卷", "questionnaire_list"),),
+        ),
+        Option(
+            label="他不想去檢查",
+            explanation="有些人會覺得難為情，也需要時間接受別人注意到他的聽力。",
+            try_saying=(
+                "「我陪您去。要不要我們一起做一次檢查？」",
+                "「檢查聽力跟檢查眼睛一樣，都是照顧身體。」",
+                "「先檢查一次留個紀錄，以後可以比較。不是檢查了就要戴助聽器。」",
+            ),
+            avoid_saying=(
+                "「我都幫您約好了，今天一定要去。」逼得太緊容易有反效果，可以等他準備好再幫忙。",
+                "「這有什麼好丟臉的，去就對了。」這樣像是在說他的感受不重要。",
+            ),
+            next_steps=(
+                ("還不想去檢查，可以先一起做問卷", "questionnaire_list"),
+                ("檢查完了，把聽力圖記下來", "audiogram_new"),
+            ),
+        ),
+        Option(
+            label="他不想戴助聽器",
+            explanation=("有些人擔心戴了顯老、跟別人不一樣，也有人是不喜歡戴起來的感覺或聲音。"),
+            try_saying=(
+                "「您最想聽清楚什麼？孫子講話，還是講電話？」",
+                "「戴起來不舒服或太吵，我們可以一起回去請聽力師調整。」",
+                "「要不要先跟有戴助聽器的朋友聊聊？」",
+            ),
+            avoid_saying=(
+                "「戴上去就跟以前一樣了。」助聽器不會讓聽力回到從前，他戴了可能會失望。",
+                "「大家早就知道您聽不到了，戴了有什麼關係。」他可能正為這件事覺得難為情。",
+            ),
+            next_steps=(("看助聽器選配指引", "guide"),),
+        ),
+    ),
+)
+
+RELUCTANT_SOURCES = (
+    (
+        "美國國家老化委員會（NCOA）"
+        "〈How to Talk about Hearing Loss: Signs, Tips, and How to Encourage Treatment〉",
+        "https://www.ncoa.org/article/how-to-talk-about-hearing-loss/",
+    ),
+    (
+        "美國聽語學會（ASHA）〈Support for Caregivers and Families of People With Hearing Loss〉",
+        "https://www.asha.org/siteassets/ais/ais-support-for-caregivers.pdf",
+    ),
+    (
+        "美國聽語學會（ASHA）〈Helping Others Cope With Hearing Loss〉",
+        "https://www.asha.org/siteassets/ais/ais-hearing-loss-helping-others-cope.pdf",
+    ),
+    (
+        "美國克里夫蘭診所（Cleveland Clinic）"
+        "〈What to Do When a Loved One Needs Help for Their Hearing〉",
+        "https://health.clevelandclinic.org/"
+        "what-to-do-when-a-loved-one-needs-help-for-their-hearing",
+    ),
+    (
+        "美國國家耳聾及其他溝通障礙研究院（NIDCD）〈Hearing Aids〉",
+        "https://www.nidcd.nih.gov/health/hearing-aids",
+    ),
+    (
+        "英國考文垂與華威大學醫院 NHS 信託（UHCW）"
+        "〈Living with someone who has a gradual hearing loss〉",
+        "https://www.uhcw.nhs.uk/download/clientfiles/files/Patient%20Information%20Leaflets/"
+        "Clinical%20Diagnostic%20Services/Audiology/"
+        "Living%20with%20someone%20who%20has%20a%20gradual%20hearing%20loss.pdf",
+    ),
+)
+RELUCTANT_CHECKED_ON = date(2026, 11, 6)

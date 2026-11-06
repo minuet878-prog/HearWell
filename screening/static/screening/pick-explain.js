@@ -6,10 +6,12 @@
   document.querySelectorAll("[data-pick-explain]").forEach((question) => {
     const list = question.querySelector("[data-pick-explanations]");
     const live = question.querySelector("[data-pick-live]");
-    const explanations = list.querySelectorAll("p");
+    const explanations = list.children;
     const radios = [...question.querySelectorAll("input[type=radio]")];
     const show = (radio) => {
-      live.replaceChildren(explanations[radios.indexOf(radio)].cloneNode(true));
+      // All of the option's item but its first child, the name already beside its radio (#429).
+      const [, ...words] = explanations[radios.indexOf(radio)].children;
+      live.replaceChildren(...words.map((part) => part.cloneNode(true)));
     };
     list.hidden = true;
     radios.forEach((radio) => radio.addEventListener("change", () => show(radio)));

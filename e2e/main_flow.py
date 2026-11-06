@@ -22,7 +22,7 @@ from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
-from screening.family_zone import COMMUNICATION_SCENARIOS
+from screening.family_zone import COMMUNICATION_SCENARIOS, RELUCTANT_SITUATIONS
 from screening.fitting_route import add_months
 from screening.models import (
     AidAndSubsidy,
@@ -574,7 +574,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             jumps = self.page.get_by_role("navigation", name="本頁內容").get_by_role("link")
-            expect(jumps).to_have_count(3)
+            expect(jumps).to_have_count(4)
             topics = (
                 ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
@@ -3901,7 +3901,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
             )
             expect(current).to_have_text("了解")
             entries = self.main().get_by_role("navigation", name="本頁內容").get_by_role("link")
-            expect(entries).to_have_count(3)
+            expect(entries).to_have_count(4)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
@@ -10822,3 +10822,131 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                         " < 10 && window.scrollY > 0",
                         arg=anchor,
                     )
+
+
+class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#429 (spec #426): 長輩不肯去怎麼說 in a real browser. Every situation is in the page from the
+    server; the script folds them away and shows the chosen one."""
+
+    PATH = "/family/reluctant"
+    SITUATIONS = RELUCTANT_SITUATIONS.options
+
+    def group(self):
+        return self.main().get_by_role("group", name=RELUCTANT_SITUATIONS.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def assert_shows(self, chosen):
+        """The chosen situation's words, its things to try and avoid and next steps, read out from
+        the live region; nothing of the others is on screen."""
+        for option in self.SITUATIONS:
+            with self.subTest(option=option.label):
+                for words in (option.explanation, *option.try_saying, *option.avoid_saying):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        for heading in ("可以試的說法", "容易有反效果的說法", "下一步"):
+            expect(self.live().get_by_role("heading", name=heading)).to_be_visible()
+        for words, _ in chosen.next_steps:
+            expect(self.live().get_by_role("link", name=words)).to_be_visible()
+
+    # From the zone's entry, to a pick and a change of mind, on to a next step and the way back.
+    def test_walks_from_the_zone_home_to_a_situation_and_back(self):
+        first, second, third = self.SITUATIONS
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.main().get_by_role("navigation", name="本頁內容").get_by_role(
+                "link", name=re.compile("長輩不肯去怎麼說")
+            ).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("長輩不肯去怎麼說")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            expect(
+                self.group().get_by_text(first.explanation, exact=True).locator("visible=true")
+            ).to_have_count(0)
+
+            self.group().get_by_label(second.label).check()
+            self.assert_shows(second)
+            self.group().get_by_label(first.label).check()
+            self.assert_shows(first)
+
+            self.group().get_by_label(third.label).check()
+            self.assert_shows(third)
+            self.live().get_by_role("link", name=third.next_steps[0][0]).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    def test_keyboard_picks_and_changes(self):
+        first, second, _ = self.SITUATIONS
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(first.label).focus()
+            self.page.keyboard.press("Space")
+            self.assert_shows(first)
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(second.label)).to_be_focused()
+            self.assert_shows(second)
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            for option in self.SITUATIONS:
+                for words in (option.explanation, *option.try_saying, *option.avoid_saying):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+                for words, _ in option.next_steps:
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_role("link", name=words).first).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        chosen = self.SITUATIONS[1]
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(chosen.label).check()
+            self.assert_shows(chosen)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    *self.live().get_by_role("link").all(),
+                    self.main().get_by_role("link", name="回到家人專區"),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().locator("p"),
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link").first,
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a situation picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    def test_zone_home_fits_with_the_new_entry(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            entry = self.main().get_by_role("link", name=re.compile("長輩不肯去怎麼說"))
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")

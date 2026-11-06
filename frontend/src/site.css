@@ -4675,6 +4675,17 @@
     font-size: 1rem;
   }
 
+  /* 點選看說明's lists of things to say (#429). */
+  .pick-explain-list {
+    margin: 0;
+    padding-left: 1.25em;
+    list-style: disc;
+  }
+
+  .pick-explain-list > li + li {
+    margin-top: 0.5rem;
+  }
+
   /* 點選看說明 (#428). At 200% text on a phone the radio, the tick's room and the block's padding
      would leave an option's words one character a line: the block gives up its side padding and
      the words take a row of their own under the radio and the tick. */
@@ -4685,6 +4696,11 @@
   @container (max-width: 15rem) {
     .pick-explain .tint-block {
       padding-inline: 0.5rem;
+    }
+
+    .pick-explain .link-card {
+      gap: 0.25rem;
+      padding: 0.5rem;
     }
 
     .pick-explain div.choice-group label {

@@ -1,5 +1,7 @@
-"""Spec #426 (家人專區): the zone's home page and ways to reach it (#427), its scenarios (#428)."""
+"""Spec #426 (家人專區): the zone's home page and ways to reach it (#427), its scenarios (#428),
+what to say when an elder refuses (#429)."""
 
+import inspect
 import re
 from datetime import date
 
@@ -10,10 +12,14 @@ from screening.family_zone import (
     COMMUNICATION_CHECKED_ON,
     COMMUNICATION_SCENARIOS,
     COMMUNICATION_SOURCES,
+    RELUCTANT_CHECKED_ON,
+    RELUCTANT_SITUATIONS,
+    RELUCTANT_SOURCES,
 )
 from screening.models import Questionnaire, ReportShare, Submission
 from screening.tests import test_pages
 from screening.tests.helpers import consented_user
+from screening.views import family
 
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
 LEARN_CARD = "家人專區：溝通與陪伴"
@@ -36,6 +42,7 @@ URGENT = (
 # Drafts for the owner's review, like the card above.
 TALK_NOTE = "情境題與溝通重點"
 AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
+RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
 # (href, title) of each card in a part of a page, in page order.
 CARD = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
@@ -118,6 +125,7 @@ class FamilyZoneHomeTests(TestCase):
             ENTRY.findall(self._entries(content)),
             [
                 ("#talk-title", "family", "怎麼跟他說話", TALK_NOTE),
+                ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),
                 ("#aid-title", "ear", "陪伴配戴助聽器", AID_NOTE),
                 ("#urgent-title", "", "什麼時候要馬上就醫", ""),
             ],
@@ -141,7 +149,7 @@ class FamilyZoneHomeTests(TestCase):
 
     def test_entries_only_for_what_is_live(self):
         entries = self._entries(self._zone())
-        for later in ("長輩不肯去", "陪診", "代辦", "/family/"):
+        for later in ("陪診", "代辦", "/family/visits", "/family/hearing-aids"):
             with self.subTest(later=later):
                 self.assertNotIn(later, entries)
 
@@ -235,6 +243,66 @@ class FamilyContentDefinitionTests(TestCase):
                 self.assertNotRegex(words, r"對錯|答對|答錯|正確|錯誤|分數|總分|得分|幾分")
                 self.assertNotRegex(words, r"\d")
                 self.assertNotIn("你", words)
+
+    # The options the scenarios use stay plain: only 長輩不肯去 has more than a paragraph.
+    def test_scenarios_carry_only_their_explanation(self):
+        for scenario in COMMUNICATION_SCENARIOS:
+            for option in scenario.options:
+                with self.subTest(option=option.label):
+                    self.assertEqual(option.try_saying, ())
+                    self.assertEqual(option.avoid_saying, ())
+                    self.assertEqual(option.next_steps, ())
+
+    # #429: the three situations, each with 2-3 things to try, 1-2 that backfire, and a next step.
+    def test_reluctant_situations_are_complete(self):
+        options = RELUCTANT_SITUATIONS.options
+        self.assertEqual(len(options), 3)
+        self.assertTrue(RELUCTANT_SITUATIONS.prompt.strip())
+        for option in options:
+            with self.subTest(option=option.label):
+                self.assertTrue(option.explanation.strip())
+                self.assertIn(len(option.try_saying), (2, 3))
+                self.assertIn(len(option.avoid_saying), (1, 2))
+                self.assertGreaterEqual(len(option.next_steps), 1)
+                for words, url_name in option.next_steps:
+                    self.assertTrue(words.strip())
+                    self.assertTrue(reverse(url_name))
+
+    # Reviewed sources only, each spelled out so a typo in either place shows.
+    def test_reluctant_sources_and_checked_date(self):
+        self.assertEqual(
+            [url for _, url in RELUCTANT_SOURCES],
+            [
+                "https://www.ncoa.org/article/how-to-talk-about-hearing-loss/",
+                "https://www.asha.org/siteassets/ais/ais-support-for-caregivers.pdf",
+                "https://www.asha.org/siteassets/ais/ais-hearing-loss-helping-others-cope.pdf",
+                "https://health.clevelandclinic.org/"
+                "what-to-do-when-a-loved-one-needs-help-for-their-hearing",
+                "https://www.nidcd.nih.gov/health/hearing-aids",
+                "https://www.uhcw.nhs.uk/download/clientfiles/files/Patient%20Information%20Leaflets/"
+                "Clinical%20Diagnostic%20Services/Audiology/"
+                "Living%20with%20someone%20who%20has%20a%20gradual%20hearing%20loss.pdf",
+            ],
+        )
+        for title, _ in RELUCTANT_SOURCES:
+            self.assertTrue(title.strip())
+        self.assertEqual(RELUCTANT_CHECKED_ON, date(2026, 11, 6))
+
+    # 您 for the reader, no diagnosis, no promise, no fright (ADR 0013): no numbers, no dementia,
+    # risk, cure or guarantee, even as an example of what not to say.
+    def test_reluctant_words_never_frighten_diagnose_or_promise(self):
+        for option in RELUCTANT_SITUATIONS.options:
+            for words in (
+                option.label,
+                option.explanation,
+                *option.try_saying,
+                *option.avoid_saying,
+                *(step for step, _ in option.next_steps),
+            ):
+                with self.subTest(words=words):
+                    self.assertNotRegex(words, r"\d")
+                    self.assertNotIn("你", words)
+                    self.assertNotRegex(words, r"失智|風險|治好|治癒|保證|診斷|百分")
 
 
 class FamilyScenarioTests(TestCase):
@@ -331,3 +399,101 @@ class FamilyScenarioTests(TestCase):
         self.client.force_login(consented_user(username="scenario_user"))
         content = self.client.get(self.url).content.decode()
         self.assertIn(self.section, content)
+
+
+class FamilyReluctantTests(TestCase):
+    """#429 (spec #426): 長輩不肯去怎麼說, as the server sends it. What the script does with it is
+    in pick-explain.test.js and e2e.main_flow.FamilyReluctantTest."""
+
+    # Written out: each situation's next steps, independent of the definition.
+    NEXT_STEPS = (
+        ["/questionnaire_list"],
+        ["/questionnaire_list", "/audiograms/new"],
+        ["/guide"],
+    )
+
+    def setUp(self):
+        self.url = reverse("family_reluctant")
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.content = response.content.decode()
+        self.main = _main(self.content)
+
+    def _items(self):
+        start = self.main.index("<ul", self.main.index("<fieldset"))
+        return re.findall(
+            r"<li><strong.*?</li>\s*(?=<li><strong|</ul>\s*<div)", self.main[start:], re.S
+        )
+
+    def test_address_is_family_reluctant(self):
+        self.assertEqual(self.url, "/family/reluctant")
+
+    def test_page_has_one_heading_its_title_and_the_learn_tab(self):
+        self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", self.content), ["長輩不肯去怎麼說"])
+        self.assertRegex(self.content, r"<title>\s*長輩不肯去怎麼說｜聽伴\s*</title>")  # noqa: RUF001
+        nav = test_pages.RedesignLayoutTests.NAV.search(self.content).group()
+        self.assertEqual(
+            re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),
+            ["了解"],
+        )
+
+    # Radios to pick a situation, with its words all there and nothing hiding them: without
+    # JavaScript they all show. One live region to read the picked one out.
+    def test_server_sends_every_situation_in_full_with_a_live_region(self):
+        self.assertEqual(
+            re.findall(
+                r'<label><input type="radio" name="[^"]+"><span>([^<]+)</span></label>', self.main
+            ),
+            ["他不承認聽不到", "他不想去檢查", "他不想戴助聽器"],
+        )
+        self.assertNotRegex(self.main, r"\shidden[\s>]")
+        self.assertEqual(self.main.count('aria-live="polite"'), 1)
+        self.assertRegex(self.content, r'<script defer src="[^"]*screening/pick-explain\.js')
+        items = self._items()
+        self.assertEqual(len(items), 3)
+        for item, option in zip(items, RELUCTANT_SITUATIONS.options, strict=True):
+            with self.subTest(option=option.label):
+                self.assertIn(f">{option.label}</strong>", item)
+                self.assertIn(option.explanation, item)
+                self.assertIn(">可以試的說法</h3>", item)
+                self.assertIn(">容易有反效果的說法</h3>", item)
+                self.assertIn(">下一步</h3>", item)
+                for words in option.try_saying + option.avoid_saying:
+                    self.assertIn(f"<li>{words}</li>", item)
+
+    # Each next step goes to a page that exists: open, or asking a visitor to log in first.
+    def test_next_steps_link_to_pages_that_exist(self):
+        items = self._items()
+        for item, expected in zip(items, self.NEXT_STEPS, strict=True):
+            hrefs = re.findall(r'<a class="link-card[^"]*" href="([^"]*)"', item)
+            self.assertEqual(hrefs, expected)
+        self.assertEqual(self.client.get("/guide").status_code, 200)
+        for path in ("/questionnaire_list", "/audiograms/new"):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/login", response["Location"])
+
+    def test_foot_has_sources_checked_date_and_the_way_back(self):
+        foot = self.main[self.main.index("</fieldset>") :]
+        self.assertIn('id="sources-title"', foot)
+        for title, url in RELUCTANT_SOURCES:
+            with self.subTest(url=url):
+                self.assertIn(f'<a href="{url}">{title}</a>', foot)
+        self.assertIn("內容查核於 2026/11/06。", foot)
+        self.assertRegex(foot, r'<a [^>]*href="/family"[^>]*>回到家人專區</a>')
+
+    def test_signed_in_user_gets_the_same_page_without_their_data(self):
+        user = consented_user(username="reluctant_private", email="reluctant_private@example.com")
+        self.client.force_login(user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(_main(response.content.decode()), self.main)
+        self.assertNotIn("reluctant_private", response.content.decode().split("<main")[1])
+
+    # Reads no one's data, so it can stay public: nothing in the view touches request.user.
+    def test_view_never_reads_the_user(self):
+        source = inspect.getsource(family.family_reluctant)
+        self.assertNotIn("request.user", source)
+        self.assertNotIn("login_required", source)
+        self.assertEqual(self.client.get(self.url).status_code, 200)
