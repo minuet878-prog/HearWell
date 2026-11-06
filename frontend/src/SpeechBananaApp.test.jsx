@@ -34,7 +34,7 @@ it("opens with nothing picked and the hint in the announced result area", () => 
   const { container } = render(<SpeechBananaApp data={DATA} />);
   expect(screen.getByRole("status").textContent).toBe("點圖上的注音，看那一群。");
   expect(container.querySelector('[data-selected="true"]')).toBeNull();
-  expect(screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true")).toHaveLength(0);
+  expect(container.querySelector('details [aria-pressed="true"]')).toBeNull();
 });
 
 it("draws the banana and one box per group, tied to a dot at its representative point", () => {
@@ -66,6 +66,123 @@ it("draws only the right ear's marks, with a text alternative for the chart", ()
   expect(chart.getAttribute("aria-label")).toContain("用清單選");
 });
 
+// A worked example for the ears: every status is the server's, stretches included.
+const BROKEN = { status: "broken", text: "無法確定（聽力線在這裡因無反應斷開）" };
+const JUDGED = {
+  ...DATA,
+  ears: [
+    {
+      ear: "right",
+      label: "右耳",
+      marks: [air("right", 1000, 30), air("right", 2000, 50)],
+      results: [NO_MARK, HEARD, BROKEN, NO_MARK, HARD, NO_MARK],
+      stretches: [[[1000, 30], [2000, 50]]],
+    },
+    {
+      ear: "left",
+      label: "左耳",
+      marks: [air("left", 500, 70), air("left", 1000, 75), { ...air("left", 2000, 120), no_response: true }, air("left", 4000, 80), air("left", 8000, 90)],
+      results: [HARD, HARD, BROKEN, HEARD, HARD, HEARD],
+      stretches: [[[500, 70], [1000, 75]], [[4000, 80], [8000, 90]]],
+    },
+  ],
+};
+const earButton = (name) => within(screen.getByRole("group", { name: "選耳朵" })).getByRole("button", { name });
+const after = (first, second) => Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+it("draws the marks and the line over the boxes, on a white edge that shows on a dark box", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  const lastBox = box(container, 6);
+  expect(after(lastBox, container.querySelector(".air-line-right"))).toBe(true);
+  expect(after(lastBox, container.querySelector('[data-point="right-air-1000"]'))).toBe(true);
+  // The edge sits between the boxes and the marks; the left ear's blue is the picked box's colour.
+  const edges = container.querySelector(".speech-banana-mark-edges");
+  expect(after(lastBox, edges)).toBe(true);
+  expect(after(edges, container.querySelector(".air-line-right"))).toBe(true);
+  expect([...edges.querySelectorAll("circle")].map((c) => [c.getAttribute("cx"), c.getAttribute("cy"), c.getAttribute("fill")])).toEqual([
+    [String(x(1000)), String(y(30)), "#fff"],
+    [String(x(2000)), String(y(50)), "#fff"],
+  ]);
+  expect(edges.querySelector("polyline").getAttribute("points")).toBe(`${x(1000)},${y(30)} ${x(2000)},${y(50)}`);
+  expect(edges.querySelector("polyline").getAttribute("stroke")).toBe("#fff");
+});
+
+const chartLabel = (name) => `聽力圖，畫出語言香蕉區、六群注音和${name}的標記。要看每一群的結果，請用圖下的「用清單選」。`;
+
+it("opens on the right ear and says so to a screen reader", () => {
+  render(<SpeechBananaApp data={JUDGED} />);
+  expect(earButton("右耳").getAttribute("aria-pressed")).toBe("true");
+  expect(earButton("左耳").getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("右耳"));
+});
+
+it("switching ears changes the marks and the chart's words, keeps the group and both ears' sentences", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  pick("ㄈㄐㄑㄓㄔㄒㄕ");
+  const before = screen.getByRole("status").textContent;
+  fireEvent.click(earButton("左耳"));
+  expect(earButton("左耳").getAttribute("aria-pressed")).toBe("true");
+  expect(earButton("右耳").getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("左耳"));
+  expect(container.querySelector('[data-point="left-air-500"]')).not.toBeNull();
+  expect(container.querySelector('[data-point="right-air-1000"]')).toBeNull();
+  expect(box(container, 5).getAttribute("data-selected")).toBe("true");
+  expect(screen.getByRole("status").textContent).toBe(before);
+  expect(before).toContain("右耳：可能不容易聽到");
+  expect(before).toContain("左耳：可能不容易聽到");
+  // The white edge follows the ear too.
+  expect(container.querySelectorAll(".speech-banana-mark-edges circle")).toHaveLength(5);
+  fireEvent.click(earButton("右耳"));
+  expect(container.querySelector('[data-point="right-air-1000"]')).not.toBeNull();
+  expect(screen.getByRole("img").getAttribute("aria-label")).toBe(chartLabel("右耳"));
+});
+
+const dash = (container, group) => box(container, group).querySelector("rect").getAttribute("stroke-dasharray");
+
+it("only the groups the server calls hard get a dashed box, and the same blue, for the ear shown", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  // Right ear: no mark, heard, broken, no mark, hard, no mark.
+  expect([1, 2, 3, 4, 5, 6].map((g) => Boolean(dash(container, g)))).toEqual([false, false, false, false, true, false]);
+  const strokes = () => [1, 2, 3, 4, 5, 6].map((g) => box(container, g).querySelector("rect").getAttribute("stroke"));
+  expect(new Set(strokes()).size).toBe(1);
+  fireEvent.click(earButton("左耳"));
+  // Left ear: hard, hard, broken, heard, hard, heard.
+  expect([1, 2, 3, 4, 5, 6].map((g) => Boolean(dash(container, g)))).toEqual([true, true, false, false, true, false]);
+  expect(new Set(strokes()).size).toBe(1);
+});
+
+const hatches = (container) => [...container.querySelectorAll(".speech-banana-hatch")];
+
+it("hatches one piece per stretch, from its line up to the chart's top, kept inside the banana", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  const up = (frequency) => `${x(frequency)},${y(-10)}`;
+  expect(hatches(container).map((h) => h.getAttribute("points"))).toEqual([
+    `${up(1000)} ${x(1000)},${y(30)} ${x(2000)},${y(50)} ${up(2000)}`,
+  ]);
+  const banana = container.querySelector(".speech-banana-area").getAttribute("points");
+  const clip = hatches(container)[0].getAttribute("clip-path").match(/url\(#(.+)\)/)[1];
+  expect(container.querySelector(`clipPath[id="${clip}"] polygon`).getAttribute("points")).toBe(banana);
+  // By lines rather than a colour: the fill is a pattern of grey lines.
+  const fill = hatches(container)[0].getAttribute("fill").match(/url\(#(.+)\)/)[1];
+  expect(container.querySelector(`pattern[id="${fill}"] line`).getAttribute("stroke")).toBe("#5a6371");
+  fireEvent.click(earButton("左耳"));
+  // The left ear's no-response mark splits it in two, and neither piece reaches it.
+  expect(hatches(container).map((h) => h.getAttribute("points"))).toEqual([
+    `${up(500)} ${x(500)},${y(70)} ${x(1000)},${y(75)} ${up(1000)}`,
+    `${up(4000)} ${x(4000)},${y(80)} ${x(8000)},${y(90)} ${up(8000)}`,
+  ]);
+});
+
+it("hatches nothing without a stretch, whatever the results say", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  expect(hatches(container)).toHaveLength(0);
+});
+
+it("explains the yellow, the hatching and the dashes in the reviewed words", () => {
+  render(<SpeechBananaApp data={DATA} />);
+  screen.getByText("黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。");
+});
+
 it("picking from the list darkens that box and writes the group and both ears", () => {
   const { container } = render(<SpeechBananaApp data={DATA} />);
   pick("ㄈㄐㄑㄓㄔㄒㄕ");
@@ -90,9 +207,9 @@ it("picking from the list darkens that box and writes the group and both ears", 
 });
 
 it("the list has one button per group under its title", () => {
-  render(<SpeechBananaApp data={DATA} />);
+  const { container } = render(<SpeechBananaApp data={DATA} />);
   expect(screen.getByText("用清單選").tagName).toBe("SUMMARY");
-  expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+  expect(within(container.querySelector("details")).getAllByRole("button").map((b) => b.textContent)).toEqual([
     "ㄩㄧㄨㄝㄜㄛㄦ",
     "ㄚㄨㄛㄚㄜㄦ",
     "ㄝㄩㄇㄖㄧㄋㄌ",

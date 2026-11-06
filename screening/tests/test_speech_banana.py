@@ -301,6 +301,34 @@ class SpeechBananaPageTests(TestCase):
         )
         self.assertEqual(len(data["groups"]), 6)
 
+    def test_the_browser_gets_each_ears_own_statuses_and_stretches(self):
+        """#441: the page draws dashes and hatching from these, and judges nothing itself."""
+        audiogram = self._make(
+            ("right", "air", 500, 70, False),
+            ("right", "air", 1000, 70, False),
+            ("right", "air", 2000, 120, True),
+            ("right", "air", 4000, 70, False),
+            ("right", "air", 6000, 70, False),
+            ("left", "air", 1000, 30, False),
+            ("left", "air", 2000, 50, False),
+        )
+        right, left = self._data(audiogram)["ears"]
+        self.assertEqual(
+            [r["status"] for r in right["results"]],
+            ["no_mark", "broken", "broken", "broken", "hard", "no_mark"],
+        )
+        self.assertEqual(right["stretches"], [[[500, 70], [1000, 70]], [[4000, 70], [6000, 70]]])
+        self.assertEqual(
+            [r["status"] for r in left["results"]],
+            ["no_mark", "heard", "no_mark", "no_mark", "no_mark", "no_mark"],
+        )
+        self.assertEqual(left["stretches"], [[[1000, 30], [2000, 50]]])
+
+    def test_the_page_uses_no_level_colours(self):
+        """ADR 0007: the speech banana is not a level."""
+        response = self.client.get(self._url(self._make(("right", "air", 1000, 70, False))))
+        self.assertNotIn("level-badge", self._main(response))
+
     def test_the_browser_gets_both_ears_results_and_only_air_marks(self):
         audiogram = self._make(
             ("right", "air", 1000, 30, False),

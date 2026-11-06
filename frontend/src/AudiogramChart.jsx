@@ -103,8 +103,8 @@ function Layer({ points, old = false }) {
 
 // Read-only without `symbol`; with it, press-drag-release reports onCommit(frequency, level).
 // `masked` only shapes the point drawn while dragging. `oldPoints` (read-only) is drawn underneath.
-// `label` replaces the read-only text alternative; `behind` goes under the frame and the marks, `children` over them.
-export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, label = "聽力圖", behind, children }) {
+// `label` replaces the read-only text alternative; `behind` goes under the frame and the marks.
+export default function AudiogramChart({ points, oldPoints, symbol, masked = false, onCommit, label = "聽力圖", behind }) {
   const svg = useRef(null);
   const dragging = useRef(null);
   // A finger resting before the drag starts: where it is now, and the timer that starts the drag there.
@@ -247,7 +247,6 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
         <rect className="audiogram-frame" x={CHART.left} y={CHART.top} width={CHART.right - CHART.left} height={CHART.bottom - CHART.top} fill="none" stroke="#555" />
         {oldPoints && <Layer points={oldPoints} old />}
         <Layer points={shown} />
-        {children}
       </svg>
       {/* HTML, not SVG text, so it is sized in rem and grows with the user's font size (review 1-2). */}
       {preview && (
