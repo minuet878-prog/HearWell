@@ -8,12 +8,13 @@ from screening.audiogram import (
     SPEECH_BANANA,
     SPEECH_BANANA_CHECKED_ON,
     SPEECH_GROUPS,
+    air_marks,
     compare,
     recommends_fitting_assessment,
     speech_banana,
 )
 from screening.audiogram_thumbnail import thumbnail
-from screening.models import Conduction, Ear
+from screening.models import Ear
 from screening.views.common import health_data_page
 
 
@@ -67,7 +68,7 @@ def audiogram_detail(request, audiogram_id):
     # #230: link the guide when either ear's PTA is over 25 dB; not when that is unknown.
     context["fitting_guide"] = recommends_fitting_assessment(context["points"])
     # #440: the speech banana only reads air conduction, so bone alone has nothing to show.
-    context["speech_banana"] = any(p.conduction == Conduction.AIR for p in context["points"])
+    context["has_air_marks"] = any(air_marks(context["points"], ear) for ear in Ear)
     return render(request, "screening/audiogram_detail.html", context)
 
 
@@ -99,9 +100,7 @@ def audiogram_speech_banana(request, audiogram_id):
             {
                 "ear": ear.value,
                 "label": ear.label,
-                "marks": _chart_points(
-                    p for p in points if p.ear == ear and p.conduction == Conduction.AIR
-                ),
+                "marks": _chart_points(air_marks(points, ear)),
                 **judged[ear.value],
             }
             for ear in (Ear.RIGHT, Ear.LEFT)

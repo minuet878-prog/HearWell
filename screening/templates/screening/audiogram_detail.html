@@ -70,7 +70,7 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>{% endif %}
-    {% if speech_banana %}<a class="link-card action-card" href="{% url 'audiogram_speech_banana' audiogram.id %}">
+    {% if has_air_marks %}<a class="link-card action-card" href="{% url 'audiogram_speech_banana' audiogram.id %}">
         {% include "screening/action_icon.html" with icon="ear" %}
         <span class="link-card-body">
             <span class="link-card-title">看語言香蕉區</span>

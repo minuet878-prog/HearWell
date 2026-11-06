@@ -376,6 +376,14 @@ def _speech_stretches(marks):
     return [piece for piece in pieces if len(piece) > 1]
 
 
+def air_marks(points, ear):
+    """One ear's air conduction marks in frequency order: all the speech banana reads or draws."""
+    return sorted(
+        (p for p in points if p.ear == ear and p.conduction == "air"),
+        key=lambda p: p.frequency,
+    )
+
+
 def speech_banana(points):
     """{"right": {"results": [...], "stretches": [...]}, "left": {...}} (ADR 0040, spec #436).
 
@@ -385,10 +393,7 @@ def speech_banana(points):
     points = list(points)
     result = {}
     for ear in ("right", "left"):
-        marks = sorted(
-            (p for p in points if p.ear == ear and p.conduction == "air"),
-            key=lambda p: p.frequency,
-        )
+        marks = air_marks(points, ear)
         statuses = [_speech_status(marks, group) for group in SPEECH_GROUPS]
         result[ear] = {
             "results": [{"status": s, "text": SPEECH_RESULTS[s]} for s in statuses],
