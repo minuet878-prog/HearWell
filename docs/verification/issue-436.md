@@ -2,7 +2,7 @@
 
 日期：2026-11-06。分支：`feat/436-speech-banana`。規格：[#436](https://github.com/minuet878-prog/HearWell/issues/436)；拷問決定：[speech-banana](../planning/speech-banana/grill-decisions.md)；判斷依據：[ADR 0040](../adr/0040-speech-banana-judged-against-the-hearing-line.md)。
 
-狀態：自動測試、自審、交叉審查都已完成。**還沒通過：本人實際操作、手機實測、雅文使用許可（#439）。**
+狀態：2026-11-06 本人實際操作（含手機實測）後回覆「沒問題」，驗收通過。自動測試、自審、交叉審查都已完成。雅文使用許可（#439）本人決定先跳過，見下面第 5 點。
 
 ## 本人決定
 
@@ -10,6 +10,7 @@
 2. 實作時的三項決定：聽力圖的標記畫在框上面；這一頁拿掉綠色的正常範圍帶，圖上唯一的色帶是香蕉區；選到的框一律實心深藍，只有沒選到的「可能不容易聽到」是虛線。
 3. 報讀文字照實作的寫法。
 4. 2026-11-06 豁免兩條驗收條件的測試斷言，改用下面「豁免的條件」的核對當證據。
+5. 2026-11-06 決定不等雅文的使用許可就合併，雅文的部分先跳過：這張海報本人的醫院也在用。原本「沒有同意不合併」的條件取消，#439 維持開著。
 
 ## 自動測試
 
@@ -24,7 +25,7 @@
 
 ## 交叉審查
 
-Codex 審查 `ad56f8a`，結果在 [#436 的留言](https://github.com/minuet878-prog/HearWell/issues/436#issuecomment-6680742105)：Standards 0 項；Spec 1 項「要修」，就是下面豁免的兩條；沒有功能錯誤。之後只合入 `main`，解了 `docs/roadmap.md` 和 `e2e/main_flow.py` 的衝突，兩邊都保留，語言香蕉區的程式沒有改。
+Codex 審查 `ad56f8a`，結果在 [#436 的留言](https://github.com/minuet878-prog/HearWell/issues/436#issuecomment-6680742105)：Standards 0 項；Spec 1 項「要修」，就是下面豁免的兩條；沒有功能錯誤。之後只合入 `main`，解了 `docs/roadmap.md` 和 `e2e/main_flow.py` 的衝突，兩邊都保留，語言香蕉區的程式沒有改。本人轉達 Codex 最後複核沒有要修。
 
 ## 驗收條件
 
@@ -53,7 +54,7 @@ Codex 審查 `ad56f8a`，結果在 [#436 的留言](https://github.com/minuet878
 
 - [x] 打開時是右耳、沒選任何一群、有提示。瀏覽器 `test_card_opens_the_page_with_nothing_picked`
 - [x] 點第 5 群附近的空白處選到第 5 群，框變深，圖下寫說明、例字和兩耳各一句。瀏覽器 `test_a_finger_on_empty_space_picks_the_nearest_group`
-- [ ] 手指往下滑是捲動頁面，不會選到。瀏覽器 `test_a_swipe_on_the_chart_scrolls_the_page_and_picks_nothing` 通過，**實機等本人確認**
+- [x] 手指往下滑是捲動頁面，不會選到。瀏覽器 `test_a_swipe_on_the_chart_scrolls_the_page_and_picks_nothing`；本人手機實測
 - [x] 切到左耳不換頁，選的群不變，斜線和虛線框換成左耳的。瀏覽器 `test_switching_stays_put_and_keeps_the_group`、`test_switching_ears_draws_that_ears_hatching`
 - [x] 只有沒選到的「可能不容易聽到」是虛線，選到時實心深藍。瀏覽器 `test_only_hard_boxes_are_dashed_in_the_same_blue`、`test_a_picked_hard_box_is_solid_dark_blue`
 - [x] 只標 500–4000 Hz，500 Hz 以下和 4000 Hz 以上沒有斜線。瀏覽器 `test_hatching_stays_over_the_line_inside_the_banana`
@@ -82,11 +83,11 @@ Codex 審查 `ad56f8a`，結果在 [#436 的留言](https://github.com/minuet878
 - **沒有 migration：** `git diff --name-only origin/main...HEAD` 沒有 migration 檔；`makemigrations --check --dry-run` 回報 No changes detected。
 - **#443 的每年查核：** `docs/roadmap.md` 的每年查核條目有語言香蕉區，寫明對照的海報、改哪個檔案、改完更新哪個日期。
 
-## 等本人確認
+## 本人確認
 
-- [ ] 實際操作：下面的操作步驟
-- [ ] 手機實測：手指滑動不會誤選、點得到想要的群
-- [ ] 雅文基金會同意使用海報，並確認資料來源（#439）：**沒有同意不合併**
+- [x] 實際操作：下面的操作步驟
+- [x] 手機實測：手指滑動不會誤選、點得到想要的群
+- [ ] 雅文基金會同意使用海報，並確認資料來源（#439）：本人決定先跳過
 
 ### 操作步驟
 
