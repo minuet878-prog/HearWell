@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening.audiogram import (
     SPEECH_BANANA,
+    SPEECH_BANANA_CHECKED_ON,
     SPEECH_GROUPS,
     compare,
     recommends_fitting_assessment,
@@ -107,7 +108,14 @@ def audiogram_speech_banana(request, audiogram_id):
         ],
     }
     return render(
-        request, "screening/audiogram_speech_banana.html", {"audiogram": audiogram, "data": data}
+        request,
+        "screening/audiogram_speech_banana.html",
+        {
+            "audiogram": audiogram,
+            "data": data,
+            "checked_on": SPEECH_BANANA_CHECKED_ON,
+            "fitting_guide": recommends_fitting_assessment(points),
+        },
     )
 
 
