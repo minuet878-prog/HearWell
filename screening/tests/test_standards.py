@@ -133,6 +133,20 @@ def small_tailwind_text(line):
     return bool(re.search(r"\btext-(?:xs|sm)\b", line)) or any(float(n) < 1 for n in sizes)
 
 
+class CssDataUriTests(SimpleTestCase):
+    """collectstatic takes any url( in a stylesheet for a file, even inside a data URI, and its
+    rewrite ends the URI early. Only production runs it, so tests and the preview look fine."""
+
+    def test_no_url_function_inside_a_data_uri(self):
+        css = (BASE_DIR / "frontend" / "src" / "site.css").read_text()
+        found = [
+            lineno
+            for lineno, line in enumerate(css.splitlines(), start=1)
+            if re.search(r'data:image/[^"]*\burl\(', line)
+        ]
+        self.assertEqual(found, [], "write the data URI's url( as url%28 and its ) as %29")
+
+
 class SmallPrintTests(SimpleTestCase):
     """#357: text a reader needs is at least 1rem; only small print may be smaller."""
 
