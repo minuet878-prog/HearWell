@@ -25,6 +25,10 @@ from playwright.sync_api import expect, sync_playwright
 from screening.audiogram import DB_MAX
 from screening.family_zone import (
     COMMUNICATION_SCENARIOS,
+    HEARING_AID_CARE,
+    HEARING_AID_CARE_REMINDERS,
+    HEARING_AID_PROBLEMS,
+    HEARING_AID_STAGES,
     RELUCTANT_SITUATIONS,
     VISIT_BRING,
     VISIT_QUESTIONS,
@@ -580,7 +584,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             jumps = self.page.get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(jumps).to_have_count(5)
+            expect(jumps).to_have_count(6)
             topics = (
                 ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
@@ -3907,7 +3911,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
             )
             expect(current).to_have_text("了解")
             entries = self.main().get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(entries).to_have_count(5)
+            expect(entries).to_have_count(6)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
@@ -11074,6 +11078,165 @@ class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
 
 
+class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#433 (spec #426): 助聽器怪怪的 in a real browser. Every problem is in the page from the
+    server; the script folds them away and shows the chosen one."""
+
+    PATH = "/family/hearing-aids"
+    URGENT, NO_SOUND, *_ = HEARING_AID_PROBLEMS.options
+
+    def group(self):
+        return self.main().get_by_role("group", name=HEARING_AID_PROBLEMS.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def problem_lines(self, option):
+        return [line for _, lines in option.sections for line in lines]
+
+    def assert_shows(self, chosen):
+        """The chosen problem's lines, read out from the live region; none of the others'."""
+        for option in HEARING_AID_PROBLEMS.options:
+            for words in self.problem_lines(option):
+                with self.subTest(words=words):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        for title, lines in chosen.sections:
+            expect(self.live().get_by_role("heading", name=title, level=3)).to_be_visible()
+            for words in lines:
+                expect(self.live().get_by_text(words, exact=True)).to_be_visible()
+
+    # From the zone's entry, to a pick and a change of mind, on to the doctor and the way back.
+    def test_walks_from_the_zone_home_to_a_problem_and_on_to_a_doctor(self):
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
+                "link", name=re.compile("怪怪的怎麼辦")
+            ).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            self.assert_nothing_shown()
+
+            self.group().get_by_label(self.NO_SOUND.label).check()
+            self.assert_shows(self.NO_SOUND)
+            expect(self.live().get_by_role("link", name=self.NO_SOUND.links[0][0])).to_be_visible()
+
+            self.group().get_by_label(self.URGENT.label).check()
+            self.assert_shows(self.URGENT)
+            expect(self.live().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            expect(self.live().get_by_role("heading")).to_have_count(0)
+            self.live().get_by_role("link", name="什麼時候要馬上就醫").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family#urgent-title")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    def assert_nothing_shown(self):
+        for option in HEARING_AID_PROBLEMS.options:
+            for words in self.problem_lines(option):
+                shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                expect(shown).to_have_count(0)
+
+    def test_jump_link_lands_on_the_section(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
+                "link", name="助聽器怪怪的"
+            ).click()
+            expect(self.page).to_have_url(re.compile("#problems-title$"))
+
+    def test_guide_link_opens_the_types_and_prices_chapter(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("link", name="「助聽器的種類與價格」").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/types-and-prices")
+
+    def test_keyboard_picks_and_changes(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(self.URGENT.label).focus()
+            self.page.keyboard.press("Space")
+            expect(self.live().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(self.NO_SOUND.label)).to_be_focused()
+            self.assert_shows(self.NO_SOUND)
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            expect(self.group().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            for option in HEARING_AID_PROBLEMS.options:
+                for words in self.problem_lines(option):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.NO_SOUND.label).check()
+            self.assert_shows(self.NO_SOUND)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    *self.live().get_by_role("link").all(),
+                    self.main().get_by_role("link", name="「助聽器的種類與價格」"),
+                    *self.main()
+                    .get_by_role("navigation", name="這一頁的內容")
+                    .get_by_role("link")
+                    .all(),
+                    self.main().get_by_role("link", name="回到家人專區"),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.main().get_by_text("各廠牌的按鍵"),
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link").first,
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a problem picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    def test_urgent_words_and_link_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.URGENT.label).check()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with the urgent one picked")
+            link = self.live().get_by_role("link")
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            words = self.live().get_by_text(self.URGENT.urgent, exact=True)
+            self.assertGreaterEqual(self.font_size(words), self.rem())
+
+    def test_zone_home_fits_with_the_new_entry(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            entry = self.main().get_by_role("link", name=re.compile("怪怪的怎麼辦"))
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
+
+
 class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#430 (spec #426): 陪診清單 in a real browser: ticks stay on the page until it reloads,
     nothing is sent or kept, and the page prints with them."""
@@ -11663,3 +11826,437 @@ class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
             assert_sizes()
             self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a result")
             assert_sizes()
+
+
+class FamilyAdjustingTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#434 (spec #426): 陪長輩適應 in a real browser: pick a stage, change it, and the survey's
+    link under them stays whichever is picked."""
+
+    fixtures = ("questions_fixture.json",)
+    PATH = "/family/hearing-aids"
+    STARTING, UNUSED, WONT_WEAR = HEARING_AID_STAGES.options
+    SURVEY = "配戴效果問卷"
+
+    def group(self):
+        return self.main().get_by_role("group", name=HEARING_AID_STAGES.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def survey(self):
+        return self.main().get_by_role("link", name=self.SURVEY)
+
+    def stage_lines(self, option):
+        return [line for _, lines in option.sections for line in lines]
+
+    def assert_shows(self, chosen):
+        """The chosen stage's lines, read out from the live region; none of the others'."""
+        for option in HEARING_AID_STAGES.options:
+            for words in self.stage_lines(option):
+                with self.subTest(words=words):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        expect(self.live().get_by_role("heading", name="您可以做的事", level=3)).to_be_visible()
+        for words in self.stage_lines(chosen):
+            expect(self.live().get_by_text(words, exact=True)).to_be_visible()
+
+    def test_picks_a_stage_changes_it_and_goes_on_to_the_survey(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            expect(self.survey()).to_be_visible()
+
+            self.group().get_by_label(self.STARTING.label).check()
+            self.assert_shows(self.STARTING)
+            expect(self.survey()).to_be_visible()
+
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.assert_shows(self.UNUSED)
+            expect(self.survey()).to_be_visible()
+
+            self.survey().click()
+            survey = Questionnaire.objects.get(code="ioi-ha")
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/login?next=/questionnaire/{survey.pk}"
+            )
+
+    def test_stages_link_to_the_talking_tips_and_the_reluctant_page(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.live().get_by_role("link", name="怎麼跟聽損的家人說話").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family#talk-title")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            self.group().get_by_label(self.WONT_WEAR.label).check()
+            self.live().get_by_role("link", name="長輩不肯去怎麼說").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family/reluctant")
+
+    def test_jump_link_lands_on_the_section(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            links = self.main().get_by_role("navigation", name="這一頁的內容").get_by_role("link")
+            expect(links.nth(0)).to_have_text(re.compile("助聽器怪怪的"))
+            expect(links.nth(1)).to_have_text(re.compile("陪長輩適應"))
+            links.nth(1).click()
+            expect(self.page).to_have_url(re.compile("#adjusting-title$"))
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            for option in HEARING_AID_STAGES.options:
+                for words in self.stage_lines(option):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+                for words, _ in option.links:
+                    expect(self.group().get_by_role("link", name=words)).to_be_visible()
+            expect(self.survey()).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.UNUSED.label).check()
+            self.assert_shows(self.UNUSED)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    self.live().get_by_role("link"),
+                    self.main()
+                    .get_by_role("navigation", name="這一頁的內容")
+                    .get_by_role("link", name="陪長輩適應"),
+                    self.survey(),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link"),
+                    self.survey(),
+                    self.main().get_by_text("想記錄戴起來的效果"),
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a stage picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+                self.main().get_by_text("想記錄戴起來的效果"),
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+
+class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#435 (spec #426): 日常保養 in a real browser. Both shapes are in the page from the server;
+    the script folds them away and copies the chosen one's steps, boxes and drawings into the live
+    region. Ticks stay there until the page reloads or another shape is picked."""
+
+    PATH = "/family/hearing-aids"
+    BEHIND_THE_EAR, IN_THE_EAR = HEARING_AID_CARE.options
+    STORED = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
+
+    def group(self):
+        return self.main().get_by_role("group", name=HEARING_AID_CARE.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def shape(self, option):
+        return self.group().get_by_label(option.label)
+
+    def boxes(self):
+        return self.live().get_by_role("checkbox")
+
+    def assert_shows(self, chosen):
+        """The chosen shape's steps, each with its box and drawing; none of the other's. Both
+        shapes' 關機收好 has the same words, so count how many of the chosen shape's say them."""
+        chosen_words = [step.words for step in chosen.steps]
+        for option in HEARING_AID_CARE.options:
+            for step in option.steps:
+                with self.subTest(words=step.words):
+                    shown = self.group().get_by_text(step.words).locator("visible=true")
+                    expect(shown).to_have_count(chosen_words.count(step.words))
+        for step in chosen.steps:
+            expect(self.live()).to_contain_text(f"{step.title}（{step.frequency}）")
+            expect(self.live()).to_contain_text(step.words)
+        expect(self.boxes()).to_have_count(len(chosen.steps))
+        expect(self.live().locator("svg")).to_have_count(len(chosen.steps))
+
+    def assert_no_ticks(self):
+        for box in self.boxes().all():
+            expect(box).not_to_be_checked()
+
+    # Acceptance 33: from the page's jump link, to a shape, to the other one.
+    def test_picking_a_shape_shows_only_its_steps(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
+                "link", name="日常保養"
+            ).click()
+            expect(self.page).to_have_url(re.compile("#care-title$"))
+            expect(self.live()).to_have_text("")
+            expect(self.group().get_by_role("checkbox")).to_have_count(0)
+
+            self.shape(self.BEHIND_THE_EAR).check()
+            self.assert_shows(self.BEHIND_THE_EAR)
+            expect(self.live().get_by_text(self.IN_THE_EAR.steps_note)).to_have_count(0)
+
+            self.shape(self.IN_THE_EAR).check()
+            self.assert_shows(self.IN_THE_EAR)
+            expect(self.live().get_by_text(self.IN_THE_EAR.steps_note)).to_be_visible()
+
+            for words in HEARING_AID_CARE_REMINDERS:
+                with self.subTest(words=words):
+                    expect(self.main().get_by_text(words)).to_be_visible()
+
+    # The other question on the page keeps to itself.
+    def test_picking_a_shape_leaves_the_problems_question_alone(self):
+        problem = HEARING_AID_PROBLEMS.options[1].label
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            problems = self.main().get_by_role("group", name=HEARING_AID_PROBLEMS.prompt)
+            problems.get_by_label(problem).check()
+            self.shape(self.IN_THE_EAR).check()
+            expect(problems.get_by_label(problem)).to_be_checked()
+            expect(problems.locator('[aria-live="polite"]')).to_contain_text("可以先檢查")
+            expect(problems.get_by_role("checkbox")).to_have_count(0)
+
+    # A screen reader hears the words: the drawings are hidden from it, and say nothing.
+    def test_drawings_show_in_the_site_blue_and_are_hidden_from_screen_readers(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.BEHIND_THE_EAR).check()
+            drawings = self.live().locator("svg")
+            expect(drawings).to_have_count(5)
+            for drawing in drawings.all():
+                expect(drawing).to_have_attribute("aria-hidden", "true")
+                expect(drawing).to_have_attribute("focusable", "false")
+                box = drawing.bounding_box()
+                self.assertGreater(box["width"], 100)
+                self.assertGreater(box["height"], 60)
+                self.assertEqual(
+                    self.style(drawing.locator("path").first, "stroke"), "rgb(31, 78, 140)"
+                )
+            expect(self.live().get_by_role("img")).to_have_count(0)
+
+    # The boxes are copies of what the server sent: a tick and an untick work on the copy.
+    def test_boxes_tick_by_box_and_by_words_and_untick(self):
+        step = self.BEHIND_THE_EAR.steps[1]
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.BEHIND_THE_EAR).check()
+            first = self.boxes().first
+            first.check()
+            expect(first).to_be_checked()
+            first.uncheck()
+            expect(first).not_to_be_checked()
+
+            self.live().locator("label", has_text=step.words).click()
+            expect(self.boxes().nth(1)).to_be_checked()
+            self.live().locator("label", has_text=step.words).click()
+            expect(self.boxes().nth(1)).not_to_be_checked()
+
+    # Another shape's steps start empty, and so do these when coming back to them.
+    def test_ticks_do_not_carry_over_when_the_shape_changes(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.BEHIND_THE_EAR).check()
+            for box in self.boxes().all():
+                box.check()
+            self.shape(self.IN_THE_EAR).check()
+            expect(self.boxes()).to_have_count(4)
+            self.assert_no_ticks()
+            self.shape(self.BEHIND_THE_EAR).check()
+            expect(self.boxes()).to_have_count(5)
+            self.assert_no_ticks()
+
+    # What is folded away cannot be reached: from the shape, Tab goes through the shown boxes alone,
+    # and on out of the question.
+    def test_keyboard_reaches_only_the_shown_boxes(self):
+        in_shown = "document.activeElement.closest('[data-pick-live]') !== null"
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.IN_THE_EAR).focus()
+            self.page.keyboard.press("Space")
+            self.assert_shows(self.IN_THE_EAR)
+            for box in self.boxes().all():
+                self.page.keyboard.press("Tab")
+                expect(box).to_be_focused()
+                self.assertTrue(self.page.evaluate(in_shown))
+            self.page.keyboard.press("Tab")
+            self.assertFalse(self.page.evaluate("document.activeElement.type === 'checkbox'"))
+            originals = self.group().locator("[data-pick-explanations] input")
+            expect(originals).to_have_count(9)
+            for original in originals.all():
+                expect(original).to_be_hidden()
+
+    def test_keyboard_changes_the_shape_and_ticks(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.BEHIND_THE_EAR).focus()
+            self.page.keyboard.press("Space")
+            self.page.keyboard.press("ArrowDown")
+            expect(self.shape(self.IN_THE_EAR)).to_be_focused()
+            self.assert_shows(self.IN_THE_EAR)
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Space")
+            expect(self.boxes().first).to_be_checked()
+
+    # A real reload, in Chromium: browsers can put a form's values back on their own.
+    def test_ticks_are_gone_after_a_reload_and_nothing_was_sent_or_kept(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            stored = self.page.evaluate(self.STORED)
+            cookies = self.context.cookies()
+            sent = []
+            self.page.on("request", lambda request: sent.append(request.url))
+
+            self.shape(self.BEHIND_THE_EAR).check()
+            for box in self.boxes().all():
+                box.check()
+            self.assertEqual(sent, [])
+            self.assertEqual(self.page.evaluate(self.STORED), stored)
+            self.assertEqual(self.context.cookies(), cookies)
+
+            self.page.reload()
+            self.page.wait_for_load_state("load")
+            self.shape(self.BEHIND_THE_EAR).check()
+            expect(self.boxes()).to_have_count(5)
+            self.assert_no_ticks()
+            self.assertEqual(self.page.evaluate(self.STORED), stored)
+            self.assertEqual(self.context.cookies(), cookies)
+
+    # Where Chromium does put a page's controls back on its own: leaving and pressing back, a moment
+    # after the load event. The shape may come back; its steps must not come back ticked.
+    def test_ticks_are_gone_after_leaving_and_coming_back(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.shape(self.BEHIND_THE_EAR).check()
+            for box in self.boxes().all():
+                box.check()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            self.page.go_back()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            self.page.wait_for_load_state("load")
+            self.page.wait_for_timeout(500)
+            expect(self.main().locator("input[type=checkbox]:checked")).to_have_count(0)
+            self.shape(self.IN_THE_EAR).check()
+            expect(self.boxes()).to_have_count(4)
+            self.shape(self.BEHIND_THE_EAR).check()
+            expect(self.boxes()).to_have_count(5)
+            self.assert_no_ticks()
+
+    # With no script the ticks are on the boxes the server sent, which the browser could put back.
+    def test_without_javascript_ticks_are_gone_after_leaving_and_coming_back(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False, java_script_enabled=False)
+            boxes = self.group().get_by_role("checkbox")
+            expect(boxes).to_have_count(9)
+            for box in boxes.all():
+                box.check()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            self.page.go_back()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            self.page.wait_for_load_state("load")
+            self.page.wait_for_timeout(500)
+            expect(boxes).to_have_count(9)
+            expect(self.main().locator("input[type=checkbox]:checked")).to_have_count(0)
+
+    # Acceptance 33: with no script, both shapes in full, and the boxes still tick.
+    def test_without_javascript_both_shapes_show_tick_and_fit_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            every_step = [step for option in HEARING_AID_CARE.options for step in option.steps]
+            all_words = [step.words for step in every_step]
+            for step in every_step:
+                with self.subTest(words=step.words):
+                    shown = self.group().get_by_text(step.words).locator("visible=true")
+                    expect(shown).to_have_count(all_words.count(step.words))
+            expect(self.group().get_by_text(self.IN_THE_EAR.steps_note)).to_be_visible()
+            boxes = self.group().get_by_role("checkbox")
+            expect(boxes).to_have_count(9)
+            drawings = self.group().locator("svg")
+            expect(drawings).to_have_count(9)
+            for drawing in drawings.all():
+                expect(drawing).to_be_visible()
+            boxes.first.check()
+            expect(boxes.first).to_be_checked()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_readable_words_and_whole_drawings(self):
+        for option in HEARING_AID_CARE.options:
+            with self.saving_artifacts(), self.subTest(shape=option.label):
+                self.open(self.PATH, (320, 640), signed_in=False)
+                self.shape(option).check()
+                self.assert_shows(option)
+
+                def assert_sizes():
+                    rem = self.rem()
+                    for target in (
+                        *self.group().locator(".choice-group label").all(),
+                        *self.live().locator("label").all(),
+                        self.main().get_by_role("link", name="日常保養"),
+                    ):
+                        self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                    for words in (
+                        self.group().locator("legend"),
+                        *self.live().locator("label > span").all(),
+                        *self.live().locator("strong").all(),
+                        self.main().get_by_role("heading", name="兩種都適用的提醒"),
+                        self.main().get_by_text(HEARING_AID_CARE_REMINDERS[0]),
+                    ):
+                        self.assertGreaterEqual(self.font_size(words), rem)
+
+                assert_sizes()
+                self.assert_fits_a_phone_at_double_text_size(f"{self.PATH}, {option.label}")
+                assert_sizes()
+                # It fits by more than squeezing: the words keep a few characters a line, and
+                # each drawing stays whole and big enough to read, inside the page.
+                for words in self.live().locator("label > span").all():
+                    self.assertGreaterEqual(
+                        words.bounding_box()["width"], 3 * self.font_size(words)
+                    )
+                for drawing in self.live().locator("svg").all():
+                    box = drawing.bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], 320)
+                    self.assertGreater(box["width"], 150)
+                    self.assertAlmostEqual(box["height"] / box["width"], 160 / 240, delta=0.01)
+
+
+class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """The browser puts a radio back only after the script has looked, and says nothing, so a choice
+    that comes back on 上一頁 would sit there with no explanation. It should not come back."""
+
+    def test_back_shows_no_choice_without_its_explanation(self):
+        with self.saving_artifacts():
+            for path in ("/family", "/family/reluctant", "/family/hearing-aids"):
+                with self.subTest(path=path):
+                    self.open(path, signed_in=False)
+                    question = self.main().locator("[data-pick-explain]").first
+                    question.get_by_role("radio").first.check()
+                    live = question.locator("[data-pick-live]")
+                    expect(live).not_to_be_empty()
+
+                    self.page.goto(f"{self.live_server_url}/privacy")
+                    self.page.go_back()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    for radio in question.get_by_role("radio").all():
+                        expect(radio).not_to_be_checked()
+                    expect(live).to_be_empty()
