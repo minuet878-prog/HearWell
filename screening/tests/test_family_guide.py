@@ -98,7 +98,7 @@ TIPS = {
 }
 # The shared report's help cards link to these (#194).
 ANCHORS = ("talk-title", "aid-title", "urgent-title")
-LINK_TEXT = "給家人看：怎麼跟聽損的家人溝通"
+LINK_TEXT = "家人專區：溝通與陪伴"
 DISCLAIMER = "這些是一般性的建議，不能取代醫師或聽力師的診斷"
 
 

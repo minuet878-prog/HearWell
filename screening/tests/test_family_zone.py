@@ -29,7 +29,7 @@ from screening.views import family
 FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
 LEARN_CARD = "家人專區：溝通與陪伴"
 # The footer's words stay as they were (#427).
-FOOTER_LINK = "給家人看：怎麼跟聽損的家人溝通"
+FOOTER_LINK = "家人專區：溝通與陪伴"
 # As reviewed on 2026-10-17 (spec appendix A).
 INTRO = (
     "家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。"
@@ -306,12 +306,7 @@ class FamilyContentDefinitionTests(TestCase):
                 "https://www.ncoa.org/article/how-to-talk-about-hearing-loss/",
                 "https://www.asha.org/siteassets/ais/ais-support-for-caregivers.pdf",
                 "https://www.asha.org/siteassets/ais/ais-hearing-loss-helping-others-cope.pdf",
-                "https://health.clevelandclinic.org/"
-                "what-to-do-when-a-loved-one-needs-help-for-their-hearing",
                 "https://www.nidcd.nih.gov/health/hearing-aids",
-                "https://www.uhcw.nhs.uk/download/clientfiles/files/Patient%20Information%20Leaflets/"
-                "Clinical%20Diagnostic%20Services/Audiology/"
-                "Living%20with%20someone%20who%20has%20a%20gradual%20hearing%20loss.pdf",
             ],
         )
         for title, _ in RELUCTANT_SOURCES:

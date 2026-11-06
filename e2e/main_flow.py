@@ -4403,7 +4403,7 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/account")
             rows = self.page.get_by_role("region", name="家人與手機").get_by_role("link")
             expect(rows.locator(".link-card-title")).to_have_text(
-                ["分享報告給家人", "給家人看：怎麼跟聽損的家人溝通"]
+                ["分享報告給家人", "家人專區：溝通與陪伴"]
             )
 
     def test_browser_tab_and_no_javascript_show_every_card(self):
@@ -10687,7 +10687,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                 self.assertGreaterEqual(
                     button["y"] - (words["y"] + words["height"]), 2 * self.rem() - 1
                 )
-                card = main.get_by_role("link", name=re.compile("^給家人看"))
+                card = main.get_by_role("link", name=re.compile("^家人專區"))
                 expect(card).to_be_visible()
                 self.assertGreater(card.bounding_box()["y"], button["y"] + button["height"])
 

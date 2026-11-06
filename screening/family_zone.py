@@ -192,7 +192,7 @@ RELUCTANT_SITUATIONS = PickExplain(
                 "「您就是聽不到，還不承認。」他可能覺得被指責，反而不想談。",
                 "「是您聽不到，不是我講話太小聲。」他可能真的沒有察覺，爭對錯不容易談下去。",
             ),
-            next_steps=(("他願意的話，一起做一份問卷", "questionnaire_list"),),
+            next_steps=(("他願意的話，一起做一份問卷（要先註冊或登入）", "questionnaire_list"),),
         ),
         Option(
             label="他不想去檢查",
@@ -207,8 +207,8 @@ RELUCTANT_SITUATIONS = PickExplain(
                 "「這有什麼好丟臉的，去就對了。」這樣像是在說他的感受不重要。",
             ),
             next_steps=(
-                ("還不想去檢查，可以先一起做問卷", "questionnaire_list"),
-                ("檢查完了，把聽力圖記下來", "audiogram_new"),
+                ("還不想去檢查，可以先一起做問卷（要先註冊或登入）", "questionnaire_list"),
+                ("檢查完了，把聽力圖記下來（要先註冊或登入）", "audiogram_new"),
             ),
         ),
         Option(
@@ -243,21 +243,8 @@ RELUCTANT_SOURCES = (
         "https://www.asha.org/siteassets/ais/ais-hearing-loss-helping-others-cope.pdf",
     ),
     (
-        "美國克里夫蘭診所（Cleveland Clinic）"
-        "〈What to Do When a Loved One Needs Help for Their Hearing〉",
-        "https://health.clevelandclinic.org/"
-        "what-to-do-when-a-loved-one-needs-help-for-their-hearing",
-    ),
-    (
         "美國國家耳聾及其他溝通障礙研究院（NIDCD）〈Hearing Aids〉",
         "https://www.nidcd.nih.gov/health/hearing-aids",
-    ),
-    (
-        "英國考文垂與華威大學醫院 NHS 信託（UHCW）"
-        "〈Living with someone who has a gradual hearing loss〉",
-        "https://www.uhcw.nhs.uk/download/clientfiles/files/Patient%20Information%20Leaflets/"
-        "Clinical%20Diagnostic%20Services/Audiology/"
-        "Living%20with%20someone%20who%20has%20a%20gradual%20hearing%20loss.pdf",
     ),
 )
 RELUCTANT_CHECKED_ON = date(2026, 11, 6)
