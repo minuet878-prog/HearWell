@@ -26,6 +26,17 @@
     <p class="text-center mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
     {% endif %}
 </section>
+{# Phones only: the steps are done on a phone. pwa-nav.js hides [data-hide-in-app] in the home-screen app. #}
+<div class="mt-4 mb-4 md:hidden" data-hide-in-app>
+    <a class="link-card action-card" href="{% url 'add_to_home' %}">
+        {% include "screening/action_icon.html" with icon="add-home" %}
+        <span class="link-card-body">
+            <span class="link-card-title">把聽伴加到手機主畫面</span>
+            <span>下次點一下就能打開，不用輸入網址</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>
+</div>
 <ol class="step-cards line-list" role="list">
     <li>
         <span class="step-number">1</span>
