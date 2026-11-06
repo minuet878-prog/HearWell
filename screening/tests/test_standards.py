@@ -184,6 +184,20 @@ class SmallPrintTests(SimpleTestCase):
         )
 
 
+class CssDataUriTests(SimpleTestCase):
+    """collectstatic takes any url( in a stylesheet for a file, even inside a data URI, and its
+    rewrite ends the URI early. Only production runs it, so tests and the preview look fine."""
+
+    def test_no_url_function_inside_a_data_uri(self):
+        css = (BASE_DIR / "frontend" / "src" / "site.css").read_text()
+        found = [
+            lineno
+            for lineno, line in enumerate(css.splitlines(), start=1)
+            if re.search(r'(?i)data:[^"]*\burl\(', line)
+        ]
+        self.assertEqual(found, [], "write the data URI's url( as url%28 and its ) as %29")
+
+
 class TemplateCommentTests(SimpleTestCase):
     """Django's {# #} comment ends on its own line; one split over two lines shows on the page."""
 
