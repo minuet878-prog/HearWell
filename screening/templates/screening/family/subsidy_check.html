@@ -39,7 +39,7 @@
     {% endfor %}
     <p class="mt-4 mb-0"><a class="block py-[0.6rem]" href="{{ form_9_link.url }}">{{ form_9_link.words }}</a></p>
 </section>
-{% include "screening/family/subsidy_sources.html" %}
+{% include "screening/family/sources.html" %}
 <p class="mb-8 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
 {% endif %}
 
@@ -60,6 +60,6 @@
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
-{% if not result %}{% include "screening/family/subsidy_sources.html" %}{% endif %}
+{% if not result %}{% include "screening/family/sources.html" %}{% endif %}
 </article>
 {% endblock %}

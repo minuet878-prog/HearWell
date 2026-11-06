@@ -1,10 +1,16 @@
 """補助檢核's questions, rules and words (#431, spec #426), in one place for the owner's review.
-Plain Python: no request, no database, nothing kept. Words of batch-2-wording.md section 2, drafts
+No request, no database, nothing kept. Words of batch-2-wording.md section 2, drafts
 until the owner has reviewed them. ADR 0017: it lists what is still missing and never says someone
 qualifies; whether the subsidy is granted is the authority's call."""
 
 from dataclasses import dataclass
 from datetime import date
+
+from screening.family_deadlines import FORM_9_VALID_MONTHS, NOTICE_PURCHASE_MONTHS
+from screening.family_zone import VISIT_SOURCES
+from screening.fitting_route import REAPPLY_MONTHS
+
+_REAPPLY_YEARS = REAPPLY_MONTHS // 12
 
 # The answers' values.
 HEARING, VISION, NEITHER = "hearing", "vision", "neither"
@@ -92,7 +98,7 @@ QUESTIONS = (
         "以前領過這項助聽器補助嗎？",
         (
             (NEVER, "沒有"),
-            (PAST_MINIMUM, "領過，已滿 4 年（12 歲以下滿 2 年）"),
+            (PAST_MINIMUM, f"領過，已滿 {_REAPPLY_YEARS} 年（12 歲以下滿 2 年）"),
             (TOO_SOON, "領過，還沒滿"),
             (UNSURE, "不確定"),
         ),
@@ -110,28 +116,18 @@ SEE_BELOW = "下面這些要先辦好或確認。"
 
 # At the foot of every result.
 FORM_9_LINK = Link("看九號表的流程", "/guide/form-9")
-SUBSIDY_SOURCES = (
-    (
-        "身心障礙者輔具費用補助辦法（全國法規資料庫）",
-        "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060",
-    ),
-    (
-        "身心障礙者輔具費用補助基準表（全國法規資料庫）",
-        "https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&lan=C",
-    ),
-)
+SUBSIDY_SOURCES = VISIT_SOURCES  # the same two laws
 # Taken over from the form 9 chapter (batch-2-wording.md): the law was not checked again.
 SUBSIDY_CHECKED_ON = date(2026, 10, 23)
 
-# Written out rather than reversed, so this module needs nothing of Django. The page's tests open
-# each one and look for its anchor.
+# Written out with their anchors; the page's tests open each one and look for its anchor.
 _APPLY_FOR_ASSESSMENT = Link("怎麼申請鑑定", "/guide/assessment#apply-title")
 _WITHOUT_CERTIFICATE = Link("沒有身障證明時", "/guide/form-9#without-certificate")
 _WHO_ISSUES_FORM_9 = Link("九號表找誰開", "/guide/form-9#issuer-title")
 _DEADLINES = Link("期限試算", "/family/visits/deadlines")
 _FORM_25 = Link("二十五號表", "/guide/form-25")
 
-_REAPPLY_AFTER = "滿 4 年可再申請（12 歲以下每 2 年）。"
+_REAPPLY_AFTER = f"滿 {_REAPPLY_YEARS} 年可再申請（12 歲以下每 2 年）。"
 _NO_NOTICE_NO_SUBSIDY = "沒核定就先買的不補助。"
 _NOTICE_FIRST = f"一定要先拿到核定通知再買，{_NO_NOTICE_NO_SUBSIDY}"
 
@@ -172,32 +168,29 @@ def check(answers):
     # Bought with no notice: telling them to go and apply would sit beside 沒核定就先買的不補助, so
     # question 3 adds nothing and only that reminder stays (batch-2-wording.md section 2).
     bought_without_notice = purchase == BOUGHT and progress in (NO_FORM, HAS_FORM, APPLIED)
+    apply_or_buy = None
     if bought_without_notice:
         pass
     elif progress == NO_FORM:
         missing.append(
             Item(
-                "九號表：找聽力師或縣市輔具中心做評估。九號表 3 個月內有效。",
+                f"九號表：找聽力師或縣市輔具中心做評估。九號表 {FORM_9_VALID_MONTHS} 個月內有效。",
                 (_WHO_ISSUES_FORM_9,),
             )
         )
     elif progress == HAS_FORM:
-        next_steps.append(
-            Item(
-                "帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。"
-                "九號表 3 個月內有效。",
-                (_DEADLINES,),
-            )
+        apply_or_buy = Item(
+            "帶申請表、身分證正本和九號表，到戶籍所在地的公所申請，也可以線上申請。"
+            f"九號表 {FORM_9_VALID_MONTHS} 個月內有效。",
+            (_DEADLINES,),
         )
     elif progress == APPLIED:
         next_steps.append(Item("主管機關收到評估報告後，10 天內會核定。"))
     elif progress == NOTICE:
-        next_steps.append(
-            Item(
-                "收到核定通知後 6 個月內購買並請款。"
-                "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做二十五號表。",
-                (_DEADLINES, _FORM_25),
-            )
+        apply_or_buy = Item(
+            f"收到核定通知後 {NOTICE_PURCHASE_MONTHS} 個月內購買並請款。"
+            "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做二十五號表。",
+            (_DEADLINES, _FORM_25),
         )
     elif progress == UNSURE:
         to_confirm.append(Item("九號表和核定通知辦到哪裡了，可以問戶籍所在地公所。"))
@@ -208,7 +201,10 @@ def check(answers):
         reminders.append(Item(f"{_NO_NOTICE_NO_SUBSIDY}請向戶籍所在地公所確認實際情況。"))
     elif purchase == BOUGHT and progress == NOTICE:
         to_confirm.append(
-            Item(f"是不是收到核定通知之後才買的，而且在 6 個月內。{_NO_NOTICE_NO_SUBSIDY}")
+            Item(
+                f"是不是收到核定通知之後才買的，而且在 {NOTICE_PURCHASE_MONTHS} 個月內。"
+                f"{_NO_NOTICE_NO_SUBSIDY}"
+            )
         )
     elif purchase == BOUGHT:  # question 3 unsure
         to_confirm.append(Item(f"有沒有核定通知，請向戶籍所在地公所確認。{_NO_NOTICE_NO_SUBSIDY}"))
@@ -216,11 +212,16 @@ def check(answers):
         to_confirm.append(Item(f"助聽器買了沒有。{_NOTICE_FIRST}"))
 
     if previous == PAST_MINIMUM:
-        next_steps.append(Item("再次申請簡易型，不需要重新評估。"))
+        if not bought_without_notice:
+            reminders.append(Item("如果再次申請的是簡易型，不需要重新評估。"))
     elif previous == TOO_SOON:
         missing.append(Item(_REAPPLY_AFTER))
     elif previous == UNSURE:
         to_confirm.append(Item(f"上次領補助是哪一年。{_REAPPLY_AFTER}"))
+
+    # What is still missing comes first: applying or buying waits for it (owner, 2026-11-06).
+    if apply_or_buy and not missing:
+        next_steps.append(apply_or_buy)
 
     if missing or to_confirm or bought_without_notice:
         headline = SEE_BELOW

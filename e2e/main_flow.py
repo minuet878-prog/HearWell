@@ -11021,6 +11021,12 @@ class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
             self.main().get_by_role("button", name="列印或存成 PDF").click()
             self.assertTrue(self.page.evaluate("window.printAsked"))
 
+    def test_reminder_link_is_tall_enough_to_tap(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            link = self.main().get_by_role("link", name="看九號表的流程")
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+
     # From the zone's entry to ticks and the printed page: every item, the ticked ones ticked.
     def test_walks_from_the_zone_home_to_ticking_and_printing(self):
         ticked = (VISIT_BRING[0], VISIT_QUESTIONS[2][1][1])
@@ -11276,8 +11282,10 @@ class FamilyDeadlinesTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             expect(self.field("開始配戴日期")).to_have_value(tomorrow)
             expect(self.main().get_by_text("試算結果")).to_have_count(0)
 
-            # The summary's link leads to the date to change.
-            self.page.locator(summary).get_by_role("link", name="開始配戴日期").click()
+            # The summary's link leads to the date to change, tall enough to tap.
+            link = self.page.locator(summary).get_by_role("link", name="開始配戴日期")
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            link.click()
             expect(self.field("開始配戴日期")).to_be_focused()
 
     def test_without_javascript_it_answers_and_prints(self):
@@ -11353,7 +11361,11 @@ class FamilyDeadlinesTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     def test_the_form_25_chapter_leads_here(self):
         with self.saving_artifacts():
             self.open("/guide/form-25", signed_in=False)
-            self.main().get_by_role("link", name="期限試算", exact=True).click()
+            link = self.main().get_by_role("link", name="期限試算", exact=True)
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("/guide/form-25", width=390)
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            link.click()
             expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
 
 
@@ -11416,9 +11428,9 @@ class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
             expect(self.main().get_by_role("link", name="沒有身障證明時")).to_have_attribute(
                 "href", "/guide/form-9#without-certificate"
             )
-            expect(self.main().get_by_role("link", name="期限試算")).to_have_attribute(
-                "href", "/family/visits/deadlines"
-            )
+            # Still missing a certificate: the step to apply, with its link, waits for it.
+            expect(self.main().get_by_text("帶申請表")).to_have_count(0)
+            expect(self.main().get_by_role("link", name="期限試算")).to_have_count(0)
             # The form stays under the result, as it was answered.
             for number, words in {**self.IN_PLACE, 1: "上面兩種都沒有"}.items():
                 with self.subTest(question=number):

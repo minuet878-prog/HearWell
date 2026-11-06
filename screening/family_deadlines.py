@@ -48,10 +48,9 @@ def deadlines(form_9_on, notice_on, fitted_on, *, today):
     results = []
     if form_9_on:
         valid_until = add_months(form_9_on, FORM_9_VALID_MONTHS)
-        words = (
-            f"九號表有效到 {_shown(valid_until)}（{FORM_9_VALID_MONTHS} 個月內有效）。"
-            "請在這天以前到公所申請。"
-        )
+        words = f"九號表有效到 {_shown(valid_until)}（{FORM_9_VALID_MONTHS} 個月內有效）。"
+        if valid_until >= today:
+            words += "請在這天以前到公所申請。"
         results.append(_deadline(words, valid_until, today))
     if notice_on:
         buy_by = add_months(notice_on, NOTICE_PURCHASE_MONTHS)

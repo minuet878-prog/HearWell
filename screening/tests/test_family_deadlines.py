@@ -101,6 +101,13 @@ class DeadlinesTests(SimpleTestCase):
             with self.subTest(day=day):
                 self.assertEqual(self.calculate(**day)[0].passed_note, PASSED_NOTE)
 
+    # Owner, 2026-11-06: a day gone by cannot be the day to apply before.
+    def test_a_passed_form_9_stops_asking_to_apply_before_that_day(self):
+        passed = self.calculate(form_9_on=date(2026, 3, 14))[0]
+        self.assertEqual(passed.words, "九號表有效到 2026/06/14（3 個月內有效）。")
+        on_time = self.calculate(form_9_on=date(2026, 3, 15))[0]
+        self.assertEqual(on_time.words, FORM_9_WORDS.format("2026/06/15"))
+
     def test_a_deadline_on_today_has_not_passed(self):
         for day in (
             {"form_9_on": date(2026, 3, 15)},  # until 6/15
@@ -282,7 +289,7 @@ class FamilyDeadlinesPageTests(test_family_zone.SignsInWithARecord, TestCase):
                 response = self.post(form_9_on=wrong, notice_on="2026-06-01")
                 summary = self.summary(response)
                 self.assertIn("請輸入正確的日期。", summary)
-                self.assertRegex(summary, r'<a href="#id_form_9_on">九號表開立日期</a>')
+                self.assertRegex(summary, r'<a [^>]*href="#id_form_9_on"[^>]*>九號表開立日期</a>')
                 self.assertIn(f'value="{wrong}"', self.field(response, "form_9_on"))
                 self.assertIn('value="2026-06-01"', self.field(response, "notice_on"))
                 self.assertNotIn("試算結果", self.main(response))
@@ -405,7 +412,7 @@ class Form25ChapterLinkTests(TestCase):
         text = re.sub(r"<[^>]+>", "", self.main)
         self.assertLess(text.index(self.OPENING), text.index(self.LINE))
         self.assertLess(text.index(self.LINE), text.index("誰要做、怎麼做"))
-        self.assertRegex(self.main, r'<a href="/family/visits/deadlines">期限試算</a>')
+        self.assertRegex(self.main, r'<a [^>]*href="/family/visits/deadlines"[^>]*>期限試算</a>')
 
     def test_the_line_does_not_say_your_family_member(self):
         self.assertNotIn("您的家人", self.main)

@@ -16,7 +16,7 @@
 {% if form.errors %}
 <div id="error-summary" class="mb-4 text-danger" role="alert" tabindex="-1" autofocus>
     {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
-    {% for field in form %}{% for error in field.errors %}<p class="mb-0"><a href="#{{ field.id_for_label }}">{{ field.label }}</a>：{{ error }}</p>{% endfor %}{% endfor %}
+    {% for field in form %}{% for error in field.errors %}<p class="mb-0"><a class="inline-block py-[0.6rem]" href="#{{ field.id_for_label }}">{{ field.label }}</a>：{{ error }}</p>{% endfor %}{% endfor %}
 </div>
 {% endif %}
 
@@ -50,14 +50,6 @@
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
-<section class="mb-4 family-sources" aria-labelledby="sources-title">
-    <h2 id="sources-title" class="h5 heading-bar">出處</h2>
-    <ul>
-        {% for title, url in sources %}
-        <li><a href="{{ url }}">{{ title }}</a></li>
-        {% endfor %}
-    </ul>
-    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
-</section>
+{% include "screening/family/sources.html" %}
 </article>
 {% endblock %}

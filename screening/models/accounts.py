@@ -12,7 +12,8 @@ from screening.models.submissions import Answer
 # moves PRIVACY_UPDATED_ON.
 # 2: the 助聽器與補助資料 (#286, spec #284 Q9). 3: the operator's name became 聽伴 (ADR 0039).
 CONSENT_VERSION = 3
-# The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034).
+# The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014).
 PRIVACY_UPDATED_ON = date(2026, 11, 6)
 
 

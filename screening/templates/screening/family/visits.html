@@ -56,20 +56,12 @@
     </fieldset>
 </section>
 
-<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print inline-block py-[0.6rem]" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
 
 <p class="mb-3 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
-<section class="mb-4 family-sources" aria-labelledby="sources-title">
-    <h2 id="sources-title" class="h5 heading-bar">出處</h2>
-    <ul>
-        {% for title, url in sources %}
-        <li><a href="{{ url }}">{{ title }}</a></li>
-        {% endfor %}
-    </ul>
-    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
-</section>
+{% include "screening/family/sources.html" %}
 </article>
 {% endblock %}

@@ -25,6 +25,7 @@ SEE_BELOW = "下面這些要先辦好或確認。"
 NO_NOTICE_REMINDER = "沒核定就先買的不補助。請向戶籍所在地公所確認實際情況。"
 BUY_AFTER_NOTICE = "一定要先拿到核定通知再買，沒核定就先買的不補助。"
 REAPPLY = "滿 4 年可再申請（12 歲以下每 2 年）。"
+SIMPLE_TYPE_REMINDER = "如果再次申請的是簡易型，不需要重新評估。"
 DEADLINES = ("期限試算", "/family/visits/deadlines")
 
 
@@ -225,9 +226,9 @@ class SubsidyRulesTests(SimpleTestCase):
             _words(result.next_steps),
             [
                 "到戶籍所在縣市的公所申請身障鑑定，再帶公所給的鑑定表到鑑定醫院。",
-                "再次申請簡易型，不需要重新評估。",
             ],
         )
+        self.assertEqual(_words(result.reminders), [NO_NOTICE_REMINDER])
 
     def test_bought_with_the_notice_asks_if_it_was_after_the_notice(self):
         result = check(_answers(progress=rules.NOTICE, purchase=rules.BOUGHT))
@@ -263,7 +264,8 @@ class SubsidyRulesTests(SimpleTestCase):
     def test_past_the_minimum_needs_no_new_assessment_for_the_basic_type(self):
         result = check(_answers(previous=rules.PAST_MINIMUM))
         self.assertEqual(result.headline, CAN_APPLY)
-        self.assertEqual(_words(result.next_steps)[-1], "再次申請簡易型，不需要重新評估。")
+        self.assertEqual(_words(result.reminders)[-1], SIMPLE_TYPE_REMINDER)
+        self.assertNotIn(SIMPLE_TYPE_REMINDER, _words(result.next_steps))
 
     def test_too_soon_since_the_last_subsidy_says_when_one_can_reapply(self):
         result = check(_answers(previous=rules.TOO_SOON))
@@ -342,6 +344,34 @@ class SubsidyInvariantsTests(SimpleTestCase):
                 self.assertEqual((result.missing, result.to_confirm), ((), ()), answers)
             else:
                 self.assertTrue(result.missing or result.to_confirm or result.reminders, answers)
+
+    # Owner, 2026-11-06: what is still missing comes first; applying or buying waits for it.
+    def test_anything_missing_holds_back_applying_and_buying(self):
+        for answers in _every_answer_set():
+            result = check(answers)
+            if result.missing:
+                text = "".join(_words(result.next_steps))
+                self.assertNotIn("帶申請表", text, answers)
+                self.assertNotIn("購買並請款", text, answers)
+
+    def test_steps_to_apply_and_buy_show_with_nothing_missing(self):
+        for progress, words in ((rules.HAS_FORM, "帶申請表"), (rules.NOTICE, "購買並請款")):
+            with self.subTest(progress=progress):
+                self.assertIn(words, "".join(_words(check(_answers(progress=progress)).next_steps)))
+                held = check(_answers(progress=progress, previous=rules.TOO_SOON))
+                self.assertNotIn(words, "".join(_words(held.next_steps)))
+                self.assertEqual(_words(held.missing), [REAPPLY])
+
+    def test_past_the_minimum_with_no_form_9_says_if_for_the_simple_type(self):
+        result = check(_answers(progress=rules.NO_FORM, previous=rules.PAST_MINIMUM))
+        self.assertIn("九號表：", "".join(_words(result.missing)))
+        self.assertEqual(_words(result.reminders)[-1], SIMPLE_TYPE_REMINDER)
+
+    def test_bought_without_a_notice_has_no_simple_type_reminder(self):
+        result = check(
+            _answers(progress=rules.HAS_FORM, purchase=rules.BOUGHT, previous=rules.PAST_MINIMUM)
+        )
+        self.assertEqual(_words(result.reminders), [NO_NOTICE_REMINDER])
 
     def test_bought_without_a_notice_never_offers_question_3s_steps(self):
         for answers in _every_answer_set():
@@ -642,12 +672,11 @@ class PrivacyCookieSentenceTests(TestCase):
         )
         self.assertNotContains(response, "本站只用登入需要的 cookie")
 
-    def test_the_date_moved_and_the_version_did_not(self):
+    def test_the_date_moved(self):
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 6))
-        self.assertEqual(models.CONSENT_VERSION, 3)
 
     def test_someone_who_agreed_to_this_version_is_not_asked_again(self):
-        user = consented_user(username="agreed_to_version_3")
-        self.assertEqual(Consent.objects.get(user=user).version, 3)
+        user = consented_user(username="agreed_already")
+        self.assertEqual(Consent.objects.get(user=user).version, models.CONSENT_VERSION)
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 200)
