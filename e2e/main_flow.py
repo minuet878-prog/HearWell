@@ -10980,3 +10980,110 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.assertEqual(
                 self.main().evaluate("el => el.getAnimations({ subtree: true }).length"), 0
             )
+
+
+class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#443 (spec #436): the reminders and source under the speech banana, and the way on."""
+
+    REMINDER = "這是依您輸入的聽力圖估算的結果"
+    ALARM = "這張圖沒有列火警和煙霧警報。"
+    SOURCE = "本頁資料查核於 2026/11/06。"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
+
+    def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
+        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.open(
+            f"/audiograms/{audiogram.pk}/speech-banana",
+            size,
+            java_script_enabled=java_script_enabled,
+        )
+        return audiogram
+
+    def words(self, text):
+        return self.main().get_by_text(text)
+
+    def guide_card(self):
+        return self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+
+    def way_back(self):
+        return self.main().get_by_role("link", name="回這張聽力圖")
+
+    def assert_the_reminders_show(self):
+        for text in (self.REMINDER, self.ALARM, self.SOURCE):
+            expect(self.words(text)).to_be_visible()
+
+    # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
+    def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
+        with self.saving_artifacts():
+            self.page_for(40)
+            plot = self.page.locator(".audiogram-plot")
+            plot.locator("svg").wait_for()
+            self.assert_the_reminders_show()
+            bottom = plot.bounding_box()
+            bottom = bottom["y"] + bottom["height"]
+            for text in (self.REMINDER, self.ALARM, self.SOURCE):
+                self.assertGreaterEqual(self.words(text).bounding_box()["y"], bottom, text)
+            drawn = plot.evaluate("el => el.outerHTML")
+            for alarm in ("火警", "煙霧", "警報"):
+                self.assertNotIn(alarm, drawn)
+
+    # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
+    def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
+        with self.saving_artifacts():
+            self.page_for(40, java_script_enabled=False)
+            expect(self.page.locator(".audiogram-plot")).to_have_count(0)
+            self.assert_the_reminders_show()
+            expect(
+                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+            ).to_be_visible()
+            expect(self.way_back()).to_be_visible()
+
+    # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
+    def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
+        with self.saving_artifacts():
+            audiogram = self.page_for(40)
+            self.guide_card().click()
+            self.page.wait_for_url("**/guide")
+            self.page.go_back()
+            self.way_back().click()
+            self.page.wait_for_url(f"**/audiograms/{audiogram.pk}")
+
+    # Acceptance 2: under the condition only the way back is there.
+    def test_under_the_condition_there_is_only_the_way_back(self):
+        with self.saving_artifacts():
+            self.page_for(20)
+            expect(
+                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+            ).to_have_count(0)
+            expect(self.way_back()).to_be_visible()
+
+    # Acceptance 4 (ADR 0031): the reminders at 1rem or more and the source small print; at 200%
+    # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
+    def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
+        with self.saving_artifacts():
+            self.page_for(40, (320, 640))
+            reminder, alarm, source = (
+                self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
+            )
+            links = (self.guide_card(), self.way_back())
+            self.assertGreaterEqual(self.font_size(reminder), self.rem())
+            self.assertGreaterEqual(self.font_size(alarm), self.rem())
+            before = [self.font_size(words) for words in (reminder, alarm, source)]
+            self.assert_fits_a_phone_at_double_text_size("speech banana reminders")
+            self.assertEqual(
+                [self.font_size(words) for words in (reminder, alarm, source)],
+                [size * 2 for size in before],
+            )
+            for link in links:
+                self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            self.double_text(False)
+            for link in links:
+                self.assertGreaterEqual(link.bounding_box()["height"], 44)

@@ -3,6 +3,7 @@
 Ported from the standalone audiogram tool; no Django code here.
 """
 
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from itertools import pairwise
 from math import log2
@@ -264,6 +265,7 @@ def compare(new_points, old_points):
 # The speech banana (ADR 0040): read off the Children's Hearing Foundation poster and reviewed by
 # the owner (docs/planning/speech-banana/research.md). Checked yearly. (Hz, dB HL) along each edge;
 # it runs past 8000 Hz, and the chart crops what falls outside.
+SPEECH_BANANA_CHECKED_ON = date(2026, 11, 6)
 SPEECH_BANANA = {
     "top": (
         (281, 36),
