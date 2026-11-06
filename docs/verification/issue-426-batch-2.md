@@ -2,7 +2,7 @@
 
 日期：2026-11-06。分支：`feat/426-family-zone-batch-2`。規格：[#426](https://github.com/minuet878-prog/HearWell/issues/426)；拷問決定：[family-zone](../planning/family-zone/grill-decisions.md)；審字清單：[第二批文字](../planning/family-zone/batch-2-wording.md)。
 
-狀態：自動測試、自審、交叉審查都完成。**本人審字與操作驗收還沒做**，所以驗收條件「文字由本人審過」還不算通過。第三批（#433–#435）還沒開始，母規格 #426 繼續開著。
+狀態：2026-11-06 本人審字並回覆「驗收通過」，沒有要求改字。自動測試、自審、交叉審查都已完成。第三批（#433–#435）還沒開始，母規格 #426 繼續開著。
 
 ## 本人決定
 
@@ -36,7 +36,7 @@
 | 29 | 結果列印完整，不含導覽和頁尾 | 通過 | e2e `FamilySubsidyCheckTest`、`FamilyDeadlinesTest` |
 | 36 | 手機 200% 不左右捲，44px，1rem | 通過 | 三個 e2e 類別 |
 | 37 | 唯一主標題、回專區、分頁標在了解、不用登入 | 通過 | 三個測試檔 |
-| 38 | 文字與出處由本人審過 | **未完成** | 等本人審字 |
+| 38 | 文字與出處由本人審過 | 通過 | 2026-11-06 本人審過[審字清單](../planning/family-zone/batch-2-wording.md)後回覆驗收通過；法規內容的查核日期是 2026/10/22、2026/10/23 |
 
 逐條對到 `檔案:行號` 的版本在[交叉審查留言](https://github.com/minuet878-prog/HearWell/issues/426#issuecomment-6678702579)。
 
@@ -63,6 +63,7 @@ Codex 審，基準 `origin/main`，結果[留言在 #426](https://github.com/min
 
 - `ReviewedPagesTests` 讓這三頁以後改字時測試會失敗，要本人審過再更新基準；第二批上線後可以再決定要不要留。
 - Playwright 的 Chromium 關掉往返快取，所以「按上一頁看不到勾選」只驗得到 `no-store` 標頭和 `autocomplete="off"`，不保證每種瀏覽器都擋得掉。
-- 實際朗讀沒有自動測試。
+- 實際朗讀沒有自動測試；審字與操作驗收由本人回覆通過，紀錄沒有逐項列出本人操作了哪些步驟。
+- 代理只用 e2e 臨時網站的截圖看過手機畫面。
 - 查核日期沿用指引，這次沒有重查法規。
 - 沒有操作真實資料，也沒有新增 migration。
