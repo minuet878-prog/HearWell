@@ -10,6 +10,14 @@ from screening.family_zone import (
     VISIT_QUESTIONS,
     VISIT_SOURCES,
 )
+from screening.forms import SubsidyCheckForm
+from screening.subsidy_check import (
+    FORM_9_LINK,
+    INTRO,
+    SUBSIDY_CHECKED_ON,
+    SUBSIDY_SOURCES,
+    check,
+)
 
 
 def family_reluctant(request):
@@ -39,5 +47,26 @@ def family_visits(request):
             "question_groups": VISIT_QUESTIONS,
             "sources": VISIT_SOURCES,
             "checked_on": VISIT_CHECKED_ON,
+        },
+    )
+
+
+@never_cache
+def family_subsidy_check(request):
+    # #431 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
+    # and is for family members who have no account. The answers come in this POST and go back in
+    # this response, with no redirect, session or database; never_cache keeps 上一頁 on a shared
+    # phone from showing them.
+    form = SubsidyCheckForm(request.POST if request.method == "POST" else None)
+    return render(
+        request,
+        "screening/family/subsidy_check.html",
+        {
+            "form": form,
+            "result": check(form.cleaned_data) if form.is_valid() else None,
+            "intro": INTRO,
+            "form_9_link": FORM_9_LINK,
+            "sources": SUBSIDY_SOURCES,
+            "checked_on": SUBSIDY_CHECKED_ON,
         },
     )

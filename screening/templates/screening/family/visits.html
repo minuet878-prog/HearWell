@@ -13,6 +13,18 @@
 <h1 class="h3 mt-4">陪診與代辦</h1>
 
 {# #431 and #432 add their entries here, above the checklist. #}
+<nav class="no-print" aria-label="代辦工具">
+    <ul class="list-unstyled">
+        <li><a class="link-card action-card" href="{% url 'family_subsidy_check' %}">
+            {% include "screening/action_icon.html" with icon="clipboard" %}
+            <span class="link-card-body">
+                <span class="link-card-title">補助檢核</span>
+                <span>回答幾題，看還缺什麼</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
+    </ul>
+</nav>
 <section class="mb-6" aria-labelledby="checklist-title">
     <h2 id="checklist-title" class="h4">陪診清單</h2>
     <p class="no-print">勾選不會留下，可以列印帶去。</p>

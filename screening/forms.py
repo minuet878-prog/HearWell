@@ -27,6 +27,7 @@ from screening.questionnaires.definition import (
     TINNITUS,
     UNSURE,
 )
+from screening.subsidy_check import QUESTIONS as SUBSIDY_QUESTIONS
 
 ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 
@@ -420,6 +421,25 @@ STOP_QUESTIONS = {
     "after-fitting": (FittingForm,),
     "form-25": (Form25Form,),
 }
+
+
+class SubsidyCheckForm(NoLabelSuffix, forms.Form):
+    # #431 (spec #426): the questions are subsidy_check.py's, all five to be answered. Not marked
+    # required for the browser: unanswered ones reach the page's own summary, as text anyone can
+    # read and links to each, rather than a bubble on the first one.
+    use_required_attribute = False
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        unanswered = "這一題還沒有回答"
+        for question in SUBSIDY_QUESTIONS:
+            self.fields[question.name] = forms.ChoiceField(
+                label=question.label,
+                choices=question.choices,
+                # One answer per row, the whole row a tap target, as on the answer page (#362).
+                widget=forms.RadioSelect(attrs={"class": "choice-group choice-stack"}),
+                error_messages={"required": unanswered, "invalid_choice": unanswered},
+            )
 
 
 class QaQuestionForm(NoLabelSuffix, forms.Form):
