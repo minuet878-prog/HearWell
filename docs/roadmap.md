@@ -97,7 +97,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
   「更多互動式頁面」（2026-10-24 本人提出）：2026-11-06 拷問後先做家人專區，分三批，見
-  [拷問決定](planning/family-zone/grill-decisions.md)，母規格 #426，票 #427–#435，下一步實作；「結果和圖表可以點」排在它之後。
+  [拷問決定](planning/family-zone/grill-decisions.md)，母規格 #426，票 #427–#435。第一批（#427–#429：專區首頁、溝通情境題、長輩不肯去怎麼說）已驗收，驗證見
+  `docs/verification/issue-426-batch-1.md`；下一步第二批（#430–#432）。「結果和圖表可以點」排在它之後。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
