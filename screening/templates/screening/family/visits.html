@@ -1,9 +1,14 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}陪診與代辦｜聽伴{% endblock %}
 
+{% block extra_head %}
+<script defer src="{% static 'screening/print-button.js' %}"></script>
+{% endblock %}
+
 {% block body %}
-{# #430 (spec #426): the items' words are in family_zone.py, drafts until the owner has reviewed them. Native checkboxes in no form and no script: a tick stays on this page in this browser until it reloads; autocomplete="off" stops the browser putting ticks back. #}
+{# #430 (spec #426): the items' words are in family_zone.py, drafts until the owner has reviewed them. Native checkboxes in no form, with no script of their own: a tick stays on this page in this browser until it reloads; autocomplete="off" stops the browser putting ticks back. #}
 <article class="family-guide family-visits wrap-anywhere">
 <h1 class="h3 mt-4">陪診與代辦</h1>
 
@@ -31,6 +36,8 @@
 </section>
 
 <p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+
+<p class="mb-3 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 

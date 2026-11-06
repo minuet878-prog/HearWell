@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.views.decorators.cache import never_cache
 
 from screening.family_zone import (
     RELUCTANT_CHECKED_ON,
@@ -25,10 +26,11 @@ def family_reluctant(request):
     )
 
 
+@never_cache
 def family_visits(request):
     # #430 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
     # and is for family members who have no account. The ticks stay on the page in the browser:
-    # nothing is sent or kept.
+    # nothing is sent or kept, and never_cache keeps 上一頁 on a shared phone from showing them.
     return render(
         request,
         "screening/family/visits.html",

@@ -80,14 +80,16 @@ class FamilyVisitsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertEqual(self.main.count('type="checkbox"'), 12)
 
     # No ticking is ever sent: nothing to submit, and no script on the page of its own.
-    def test_no_form_and_no_script_of_its_own(self):
+    # Ticks cannot be sent anywhere; the one script beyond the layout's only opens printing.
+    def test_no_form_and_only_the_print_script_of_its_own(self):
         self.assertNotIn("<form", self.main)
-        self.assertNotIn("<button", self.main)
         self.assertNotIn(" name=", self.main)
         self.assertNotIn("<script", self.main)
         layout = self.client.get(reverse("privacy")).content.decode()
         scripts = re.compile(r"<script[^>]*\ssrc=\"([^\"]+)\"")
-        self.assertEqual(set(scripts.findall(self.content)), set(scripts.findall(layout)))
+        extra = set(scripts.findall(self.content)) - set(scripts.findall(layout))
+        self.assertEqual(len(extra), 1)
+        self.assertIn("screening/print-button.js", extra.pop())
 
     def test_intro_reminder_and_section_heading(self):
         text = re.sub(r"<[^>]+>", "", self.main)
@@ -164,6 +166,18 @@ class FamilyVisitsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertNotIn("request.user", source)
         self.assertNotIn("login_required", source)
         self.assertEqual(self.client.get(self.url).status_code, 200)
+
+    # On a shared phone, 上一頁 should not bring back someone else's ticks (owner, 2026-11-06).
+    def test_the_response_is_never_stored(self):
+        self.assertIn("no-store", self.client.get(self.url).get("Cache-Control", ""))
+
+    def test_print_button_uses_the_report_script_and_stays_off_the_paper(self):
+        self.assertRegex(
+            self.main,
+            r'<p class="[^"]*no-print[^"]*">\s*'
+            r'<button id="print-button" type="button"[^>]*>列印或存成 PDF</button>',
+        )
+        self.assertIn("screening/print-button.js", self.content)
 
     def test_viewing_it_writes_nothing_and_sets_no_cookie(self):
         before = (Submission.objects.count(), User.objects.count())

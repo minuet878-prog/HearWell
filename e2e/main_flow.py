@@ -11004,12 +11004,20 @@ class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
             self.page.locator("footer"),
             self.main().get_by_role("link", name="回到家人專區"),
             self.main().get_by_role("link", name="看九號表的流程"),
+            self.main().get_by_role("button", name="列印或存成 PDF"),
             self.main().get_by_text("勾選不會留下，可以列印帶去。"),
         ):
             expect(bar).to_be_hidden()
         expect(self.main().get_by_role("heading", level=1)).to_have_text("陪診與代辦")
         expect(self.main().get_by_text("一定要先拿到核定通知再買")).to_be_visible()
         expect(self.main().get_by_text("內容查核於 2026/10/22。")).to_be_visible()
+
+    def test_print_button_opens_printing(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.page.evaluate("window.print = () => { window.printAsked = true; }")
+            self.main().get_by_role("button", name="列印或存成 PDF").click()
+            self.assertTrue(self.page.evaluate("window.printAsked"))
 
     # From the zone's entry to ticks and the printed page: every item, the ticked ones ticked.
     def test_walks_from_the_zone_home_to_ticking_and_printing(self):
