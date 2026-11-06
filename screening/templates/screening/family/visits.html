@@ -1,0 +1,47 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}陪診與代辦｜聽伴{% endblock %}
+
+{% block body %}
+{# #430 (spec #426): the items' words are in family_zone.py, drafts until the owner has reviewed them. Native checkboxes in no form and no script: a tick stays on this page in this browser until it reloads; autocomplete="off" stops the browser putting ticks back. #}
+<article class="family-guide family-visits wrap-anywhere">
+<h1 class="h3 mt-4">陪診與代辦</h1>
+
+{# #431 and #432 add their entries here, above the checklist. #}
+<section class="mb-6" aria-labelledby="checklist-title">
+    <h2 id="checklist-title" class="h4">陪診清單</h2>
+    <p class="no-print">勾選不會留下，可以列印帶去。</p>
+    <fieldset class="mb-6">
+        <legend class="font-bold">要帶的東西</legend>
+        {% for item in bring %}
+        <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ item }}</span></label>
+        {% endfor %}
+    </fieldset>
+    <fieldset>
+        <legend class="font-bold">想問聽力師的問題</legend>
+        {% for category, questions in question_groups %}
+        <fieldset class="mb-4">
+            <legend class="visit-category">{{ category }}</legend>
+            {% for question in questions %}
+            <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ question }}</span></label>
+            {% endfor %}
+        </fieldset>
+        {% endfor %}
+    </fieldset>
+</section>
+
+<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+
+<p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+
+<section class="mb-4 family-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title" class="h5 heading-bar">出處</h2>
+    <ul>
+        {% for title, url in sources %}
+        <li><a href="{{ url }}">{{ title }}</a></li>
+        {% endfor %}
+    </ul>
+    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
+</section>
+</article>
+{% endblock %}

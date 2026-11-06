@@ -22,7 +22,12 @@ from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
-from screening.family_zone import COMMUNICATION_SCENARIOS, RELUCTANT_SITUATIONS
+from screening.family_zone import (
+    COMMUNICATION_SCENARIOS,
+    RELUCTANT_SITUATIONS,
+    VISIT_BRING,
+    VISIT_QUESTIONS,
+)
 from screening.fitting_route import add_months
 from screening.models import (
     AidAndSubsidy,
@@ -574,7 +579,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             jumps = self.page.get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(jumps).to_have_count(4)
+            expect(jumps).to_have_count(5)
             topics = (
                 ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
@@ -3901,7 +3906,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
             )
             expect(current).to_have_text("了解")
             entries = self.main().get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(entries).to_have_count(4)
+            expect(entries).to_have_count(5)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
@@ -10975,3 +10980,177 @@ class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             entry = self.main().get_by_role("link", name=re.compile("長輩不肯去怎麼說"))
             self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
+
+
+class FamilyVisitsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#430 (spec #426): 陪診清單 in a real browser: ticks stay on the page until it reloads,
+    nothing is sent or kept, and the page prints with them."""
+
+    PATH = "/family/visits"
+    ITEMS = (
+        *VISIT_BRING,
+        *(question for _, questions in VISIT_QUESTIONS for question in questions),
+    )
+    STORED = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
+
+    def check(self, words):
+        return self.main().get_by_role("checkbox", name=words, exact=True)
+
+    def assert_prints_only_the_list(self):
+        """On paper: the list and reminder, without the site's bars or what is for the screen."""
+        for bar in (
+            self.page.locator(".site-header"),
+            self.page.get_by_role("navigation", name="主要導覽"),
+            self.page.locator("footer"),
+            self.main().get_by_role("link", name="回到家人專區"),
+            self.main().get_by_role("link", name="看九號表的流程"),
+            self.main().get_by_text("勾選不會留下，可以列印帶去。"),
+        ):
+            expect(bar).to_be_hidden()
+        expect(self.main().get_by_role("heading", level=1)).to_have_text("陪診與代辦")
+        expect(self.main().get_by_text("一定要先拿到核定通知再買")).to_be_visible()
+        expect(self.main().get_by_text("內容查核於 2026/10/22。")).to_be_visible()
+
+    # From the zone's entry to ticks and the printed page: every item, the ticked ones ticked.
+    def test_walks_from_the_zone_home_to_ticking_and_printing(self):
+        ticked = (VISIT_BRING[0], VISIT_QUESTIONS[2][1][1])
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
+                "link", name=re.compile("陪診與代辦")
+            ).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("陪診與代辦")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.main().get_by_role("checkbox")).to_have_count(12)
+            for words in self.ITEMS:
+                with self.subTest(words=words):
+                    expect(self.check(words)).not_to_be_checked()
+
+            # Every group has a name for screen readers.
+            for name in ("要帶的東西", "想問聽力師的問題", "適不適合", "價格與保固", "補助"):
+                with self.subTest(group=name):
+                    expect(self.main().get_by_role("group", name=name, exact=True)).to_be_visible()
+
+            for words in ticked:
+                self.check(words).check()
+
+            self.page.emulate_media(media="print")
+            self.assert_prints_only_the_list()
+            for words in self.ITEMS:
+                with self.subTest(words=words):
+                    expect(self.check(words)).to_be_visible()
+                    if words in ticked:
+                        expect(self.check(words)).to_be_checked()
+                    else:
+                        expect(self.check(words)).not_to_be_checked()
+
+            self.page.emulate_media(media="screen")
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    # On paper a tick can be seen: the same box, looked at before and after, is drawn differently.
+    def test_a_tick_shows_on_the_printed_page(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            box = self.check(VISIT_BRING[0])
+            self.page.emulate_media(media="print")
+            empty = box.screenshot()
+            box.check()
+            box.blur()
+            self.assertNotEqual(box.screenshot(), empty)
+
+    # A real reload, in Chromium: browsers can put a form's values back on their own.
+    def test_ticks_are_gone_after_a_reload_and_nothing_was_sent_or_kept(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            stored = self.page.evaluate(self.STORED)
+            cookies = self.context.cookies()
+            sent = []
+            self.page.on("request", lambda request: sent.append(request.url))
+
+            for words in self.ITEMS:
+                self.check(words).check()
+            self.assertEqual(sent, [])
+            self.assertEqual(self.page.evaluate(self.STORED), stored)
+            self.assertEqual(self.context.cookies(), cookies)
+
+            self.page.reload()
+            self.page.wait_for_load_state("load")
+            for words in self.ITEMS:
+                with self.subTest(words=words):
+                    expect(self.check(words)).not_to_be_checked()
+            self.assertEqual(self.page.evaluate(self.STORED), stored)
+            self.assertEqual(self.context.cookies(), cookies)
+
+    # Where Chromium does put a page's boxes back on its own, without autocomplete="off": leaving
+    # and pressing back. (Playwright's browser has no back-forward cache, which keeps a whole page.)
+    def test_ticks_are_gone_after_leaving_and_coming_back(self):
+        words = VISIT_BRING[0]
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.check(words).check()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            self.page.go_back()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            self.page.wait_for_load_state("load")
+            expect(self.check(words)).not_to_be_checked()
+
+    # Tapping the words ticks too, and a second tap takes it off.
+    def test_the_words_tick_and_untick_their_box(self):
+        words = VISIT_BRING[1]
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().locator("label", has_text=words).click()
+            expect(self.check(words)).to_be_checked()
+            self.main().locator("label", has_text=words).click()
+            expect(self.check(words)).not_to_be_checked()
+
+    def test_keyboard_ticks_and_moves_on(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.check(VISIT_BRING[0]).focus()
+            self.page.keyboard.press("Space")
+            expect(self.check(VISIT_BRING[0])).to_be_checked()
+            self.page.keyboard.press("Tab")
+            expect(self.check(VISIT_BRING[1])).to_be_focused()
+
+    def test_without_javascript_it_ticks_and_prints(self):
+        words = VISIT_BRING[0]
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            self.check(words).check()
+            self.page.emulate_media(media="print")
+            self.assert_prints_only_the_list()
+            expect(self.check(words)).to_be_checked()
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.check(VISIT_BRING[0]).check()
+
+            def assert_sizes():
+                rem = self.rem()
+                for target in (
+                    *self.main().locator("label").all(),
+                    self.main().get_by_role("link", name="回到家人專區"),
+                ):
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    *self.main().locator("legend").all(),
+                    *self.main().locator("label").all(),
+                    self.main().get_by_text("勾選不會留下，可以列印帶去。"),
+                    self.main().locator(".tip-box"),
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a tick")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in self.main().locator("label > span").all():
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))

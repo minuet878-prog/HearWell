@@ -48,6 +48,7 @@ URGENT = (
 TALK_NOTE = "情境題與溝通重點"
 AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
+VISITS_NOTE = "要帶什麼、想問什麼、補助還缺什麼、期限到哪天"
 # (href, title) of each card in a part of a page, in page order.
 CARD = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
@@ -155,6 +156,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
             ENTRY.findall(self._entries(content)),
             [
                 ("#talk-title", "family", "怎麼跟他說話", TALK_NOTE),
+                ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
                 ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),
                 ("#aid-title", "ear", "陪伴配戴助聽器", AID_NOTE),
                 ("#urgent-title", "", "什麼時候要馬上就醫", ""),
@@ -179,7 +181,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
 
     def test_entries_only_for_what_is_live(self):
         entries = self._entries(self._zone())
-        for later in ("陪診", "代辦", "/family/visits", "/family/hearing-aids"):
+        for later in ("/family/hearing-aids", "助聽器怪怪的", "日常保養"):
             with self.subTest(later=later):
                 self.assertNotIn(later, entries)
 
