@@ -11030,6 +11030,8 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
     def empty_chart_spot(self):
         """NEAR_GROUP_5 on the screen, checked to be on the chart and off every group."""
+        # Opening the list scrolls the page, which can leave the chart above the screen.
+        self.page.locator(".audiogram-plot svg").scroll_into_view_if_needed()
         spot = self.on_screen(self.NEAR_GROUP_5)
         self.assertEqual(self.page.evaluate(self.UNDER, spot), [True, False])
         return spot
