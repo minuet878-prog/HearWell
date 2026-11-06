@@ -16,7 +16,7 @@
 <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
 
 {# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #}
-<nav aria-label="本頁內容">
+<nav aria-label="專區內容">
     <ul class="list-unstyled">
         <li><a class="link-card action-card" href="#talk-title">
             {% include "screening/action_icon.html" with icon="family" %}
@@ -72,7 +72,7 @@
     <h2 id="scenarios-title" class="h4"><svg class="topic-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.7M12 17v.5"/></svg>遇到這些情況，您會怎麼做？</h2>
     <p>選您平常的做法，看看說明。這裡沒有對錯，也不會留下紀錄，可以改選。</p>
     {% for scenario in scenarios %}
-    {% include "screening/family/pick_explain.html" with pick=scenario %}
+    {% include "screening/family/pick_explain.html" with pick=scenario heading=3 %}
     {% endfor %}
 </section>
 

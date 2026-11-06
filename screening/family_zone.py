@@ -1,4 +1,5 @@
-"""The family zone's words (spec #426): one definition to review, no words in the templates."""
+"""The family zone's definitions (spec #426): scenarios, options, explanations, sources and checked
+dates are here, for review in one place; each page's fixed sentences are in its template."""
 
 from dataclasses import dataclass
 from datetime import date

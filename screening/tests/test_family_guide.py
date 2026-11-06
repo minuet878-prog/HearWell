@@ -149,7 +149,7 @@ class FamilyGuideTests(TestCase):
         markers = (
             "<h1",
             "家人有聽力困難時",
-            'aria-label="本頁內容"',
+            'aria-label="專區內容"',
             'id="talk-title"',
             'id="aid-title"',
             'id="urgent-title"',

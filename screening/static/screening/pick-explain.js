@@ -10,8 +10,8 @@
     const radios = [...question.querySelectorAll("input[type=radio]")];
     const show = (radio) => {
       // All of the option's item but its first child, the name already beside its radio (#429).
-      const [, ...words] = explanations[radios.indexOf(radio)].children;
-      live.replaceChildren(...words.map((part) => part.cloneNode(true)));
+      const [, ...parts] = explanations[radios.indexOf(radio)].children;
+      live.replaceChildren(...parts.map((part) => part.cloneNode(true)));
     };
     list.hidden = true;
     radios.forEach((radio) => radio.addEventListener("change", () => show(radio)));
