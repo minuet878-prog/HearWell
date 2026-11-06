@@ -98,7 +98,7 @@ TIPS = {
 }
 # The shared report's help cards link to these (#194).
 ANCHORS = ("talk-title", "aid-title", "urgent-title")
-LINK_TEXT = "給家人看：怎麼跟聽損的家人溝通"
+LINK_TEXT = "家人專區：溝通與陪伴"
 DISCLAIMER = "這些是一般性的建議，不能取代醫師或聽力師的診斷"
 
 
@@ -114,7 +114,7 @@ class FamilyGuideTests(TestCase):
     def test_anyone_can_read_it_without_logging_in(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "給家人的溝通與陪伴")
+        self.assertContains(response, "家人專區")
 
     # 2; #240 moved the sources to the page's end, one group per topic under its title.
     def test_topics_in_order_with_sources_grouped_at_the_end(self):
@@ -149,7 +149,7 @@ class FamilyGuideTests(TestCase):
         markers = (
             "<h1",
             "家人有聽力困難時",
-            'aria-label="本頁內容"',
+            'aria-label="專區內容"',
             'id="talk-title"',
             'id="aid-title"',
             'id="urgent-title"',

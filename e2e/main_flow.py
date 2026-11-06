@@ -22,6 +22,7 @@ from django.utils import timezone
 from playwright.sync_api import expect, sync_playwright
 
 from screening.audiogram import DB_MAX
+from screening.family_zone import COMMUNICATION_SCENARIOS, RELUCTANT_SITUATIONS
 from screening.fitting_route import add_months
 from screening.models import (
     AidAndSubsidy,
@@ -566,16 +567,16 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.get_by_role("button", name="傳給家人").click()
             shared = self.page.evaluate("window.shared")
             self.assertEqual(shared["url"], url)
-            self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
+            self.assertTrue(shared["title"].startswith("家人專區"))
 
     def test_family_guide_jumps_to_each_topic_and_marks_the_urgent_one(self):
         """#240: the jump links reach their topic; the urgent topic and 119 stand out."""
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
-            jumps = self.page.get_by_role("navigation", name="本頁內容").get_by_role("link")
-            expect(jumps).to_have_count(3)
+            jumps = self.page.get_by_role("navigation", name="專區內容").get_by_role("link")
+            expect(jumps).to_have_count(4)
             topics = (
-                ("talk-title", "怎麼跟聽損的家人說話"),
+                ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
                 ("urgent-title", "什麼時候要馬上就醫"),
             )
@@ -3855,7 +3856,7 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     def test_cards_change_page_without_javascript(self):
         cards = (
             ("了解助聽器選配與補助", "/guide", "我的選配指引"),
-            ("給家人看：怎麼跟聽損的家人溝通", "/family", "給家人的溝通與陪伴"),
+            ("家人專區：溝通與陪伴", "/family", "家人專區"),
             ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
         )
         self.open(390, javascript=False)
@@ -3866,6 +3867,91 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     self.main().get_by_role("link", name=name).click()
                     expect(self.page).to_have_url(f"{self.live_server_url}{path}")
                     expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+
+class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#427 (spec #426): the way from a new visitor's home page to 家人專區, on a phone."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.context = self.browser.new_context(viewport={"width": 320, "height": 640})
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_new_visitor_walks_from_the_home_card_to_the_zone(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.main().get_by_role("link", name="我是家人：怎麼陪伴聽損的家人").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            entries = self.main().get_by_role("navigation", name="專區內容").get_by_role("link")
+            expect(entries).to_have_count(4)
+            for entry in entries.all():
+                with self.subTest(entry=entry.inner_text()):
+                    self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            # The line under a title is words to read: at least the 18px body text's 1rem.
+            note = entries.first.get_by_text("情境題與溝通重點")
+            root = self.page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).fontSize)"
+            )
+            size = note.evaluate("el => parseFloat(getComputedStyle(el).fontSize)")
+            self.assertGreaterEqual(size, root)
+
+    def test_new_user_home_card_is_big_enough_to_touch_and_read(self):
+        client = Client()
+        client.force_login(consented_user(username="zone_card_e2e"))
+        self.context.add_cookies(
+            [
+                {
+                    "name": settings.SESSION_COOKIE_NAME,
+                    "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                    "url": self.live_server_url,
+                }
+            ]
+        )
+        words = "我是家人：怎麼陪伴聽損的家人"
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().get_by_role("link", name=words)
+            self.assertGreaterEqual(card.bounding_box()["height"], 44)
+            root = self.page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).fontSize)"
+            )
+            size = card.get_by_text(words).evaluate(
+                "el => parseFloat(getComputedStyle(el).fontSize)"
+            )
+            self.assertGreaterEqual(size, root)
+
+    def test_home_and_zone_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for path in ("/", "/family"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
+    def test_old_jump_link_lands_on_its_section(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/family#urgent-title")
+            self.page.wait_for_function(
+                "Math.abs(document.getElementById('urgent-title').getBoundingClientRect().top)"
+                " < 10 && window.scrollY > 0"
+            )
 
 
 class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -4317,7 +4403,7 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/account")
             rows = self.page.get_by_role("region", name="家人與手機").get_by_role("link")
             expect(rows.locator(".link-card-title")).to_have_text(
-                ["分享報告給家人", "給家人看：怎麼跟聽損的家人溝通"]
+                ["分享報告給家人", "家人專區：溝通與陪伴"]
             )
 
     def test_browser_tab_and_no_javascript_show_every_card(self):
@@ -4327,6 +4413,97 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 with self.saving_artifacts():
                     expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS))
                     expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS))
+
+
+class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase):
+    """The first-time home page's way to the add-to-home steps, on a phone's browser only, and
+    the icon the phone then shows."""
+
+    TITLE = "把聽伴加到手機主畫面"
+    # Share of the icon's width and height the white bird takes, and how far from the middle it
+    # reaches. icon.svg says how each file is exported; re-exporting apple-touch-icon.png at the
+    # scale in the drawing itself would shrink the bird without changing the image's size.
+    MEASURE_BIRD = """async (src) => {
+      const image = new Image();
+      image.src = src;
+      await image.decode();
+      const size = image.width;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0);
+      const { data } = context.getImageData(0, 0, size, size);
+      let left = size, right = 0, reach = 0;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = (y * size + x) * 4;
+          if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            reach = Math.max(reach, Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2));
+          }
+        }
+      }
+      return { width: (right - left + 1) / size, reach: reach / size };
+    }"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open_home(self, width, standalone=False):
+        self.context = self.browser.new_context(viewport={"width": width, "height": 800})
+        if standalone:
+            self.context.add_init_script(PwaNavTest.STANDALONE)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}/")
+        return self.page.get_by_role("link", name=re.compile(self.TITLE))
+
+    def test_phone_browser_shows_it_under_the_start_button_and_it_opens_the_steps(self):
+        card = self.open_home(390)
+        with self.saving_artifacts():
+            expect(card).to_be_visible()
+            start = self.page.get_by_role("main").get_by_role("link", name="開始篩檢")
+            steps = self.page.locator(".step-cards")
+            self.assertGreater(card.bounding_box()["y"], start.bounding_box()["y"])
+            self.assertLess(card.bounding_box()["y"], steps.bounding_box()["y"])
+            card.click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/add_to_home")
+
+    def test_home_screen_app_and_a_wide_screen_hide_it(self):
+        for width, standalone in ((390, True), (1280, False)):
+            with self.subTest(width=width, standalone=standalone):
+                card = self.open_home(width, standalone=standalone)
+                with self.saving_artifacts():
+                    expect(self.page.get_by_role("link", name="開始篩檢").first).to_be_visible()
+                    expect(card).to_have_count(0)
+
+    def measure_bird(self, name):
+        return self.page.evaluate(
+            self.MEASURE_BIRD, f"{self.live_server_url}/static/screening/pwa/{name}"
+        )
+
+    def test_iphone_icon_fills_more_than_android_and_android_stays_in_its_safe_zone(self):
+        self.open_home(390)
+        with self.saving_artifacts():
+            iphone = self.measure_bird("apple-touch-icon.png")
+            self.assertGreater(iphone["width"], 0.7)
+            for name in ("icon-192.png", "icon-512.png"):
+                with self.subTest(name=name):
+                    android = self.measure_bird(name)
+                    self.assertGreater(android["width"], 0.6)
+                    # Android's maskable safe zone: a circle 80% of the icon wide.
+                    self.assertLessEqual(android["reach"], 0.4)
 
 
 class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
@@ -10607,7 +10784,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                 self.assertGreaterEqual(
                     button["y"] - (words["y"] + words["height"]), 2 * self.rem() - 1
                 )
-                card = main.get_by_role("link", name=re.compile("^給家人看"))
+                card = main.get_by_role("link", name=re.compile("^家人專區"))
                 expect(card).to_be_visible()
                 self.assertGreater(card.bounding_box()["y"], button["y"] + button["height"])
 
@@ -11259,3 +11436,273 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             self.double_text(False)
             for link in links:
                 self.assertGreaterEqual(link.bounding_box()["height"], 44)
+
+
+class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#428 (spec #426): the scenarios on /family, picked in a real browser. Every explanation is
+    in the page from the server; the script folds them away and shows the chosen one."""
+
+    SECTION = "遇到這些情況，您會怎麼做？"
+    SCENARIO = COMMUNICATION_SCENARIOS[0]
+    CHOSEN_BLUE = "rgb(31, 78, 140)"  # --color-primary, #1f4e8c
+
+    def section(self):
+        return self.main().get_by_role("region", name=self.SECTION)
+
+    def group(self, scenario=SCENARIO):
+        return self.section().get_by_role("group", name=scenario.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def assert_only_shows(self, chosen):
+        """Only the chosen option's explanation is on screen, in the live region."""
+        for option in self.SCENARIO.options:
+            with self.subTest(option=option.label):
+                words = (
+                    self.group().get_by_text(option.explanation, exact=True).locator("visible=true")
+                )
+                expect(words).to_have_count(1 if option is chosen else 0)
+        expect(self.live()).to_have_text(chosen.explanation if chosen else "")
+
+    # From the first home page's card to the zone, on to a scenario, a pick and a change of mind.
+    def test_walks_from_the_zone_home_to_a_pick_and_changes_it(self):
+        first, second, _ = self.SCENARIO.options
+        with self.saving_artifacts():
+            self.open("/", signed_in=False)
+            self.main().get_by_role("link", name=re.compile("我是家人")).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
+                "link", name=re.compile("怎麼跟他說話")
+            ).click()
+            expect(self.page).to_have_url(re.compile("#talk-title$"))
+            expect(self.section().get_by_role("group")).to_have_count(len(COMMUNICATION_SCENARIOS))
+            self.assert_only_shows(None)
+
+            sent = []
+            self.page.on("request", lambda request: sent.append(request.url))
+            stored = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
+            stored_before = self.page.evaluate(stored)
+            self.group().get_by_label(first.label).check()
+            self.assert_only_shows(first)
+            self.assertEqual(
+                self.style(self.group().locator("label", has_text=first.label), "backgroundColor"),
+                self.CHOSEN_BLUE,
+            )
+
+            self.group().get_by_label(second.label).check()
+            self.assert_only_shows(second)
+            expect(self.group().get_by_label(first.label)).not_to_be_checked()
+            self.assertEqual(
+                self.style(self.group().locator("label", has_text=first.label), "backgroundColor"),
+                "rgb(255, 255, 255)",
+            )
+
+            # Nothing is kept or sent, and the next question is still untouched.
+            self.assertEqual(sent, [])
+            self.assertEqual(self.page.evaluate(stored), stored_before)
+            other = self.group(COMMUNICATION_SCENARIOS[1])
+            expect(other.locator('[aria-live="polite"]')).to_have_text("")
+
+    # Native radios: Space picks the one with focus, an arrow key moves on and picks that one.
+    def test_keyboard_picks_and_changes(self):
+        first, second, _ = self.SCENARIO.options
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.group().get_by_label(first.label).focus()
+            self.page.keyboard.press("Space")
+            self.assert_only_shows(first)
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(second.label)).to_be_focused()
+            self.assert_only_shows(second)
+
+    def test_without_javascript_every_explanation_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False, java_script_enabled=False)
+            for scenario in COMMUNICATION_SCENARIOS:
+                for option in scenario.options:
+                    with self.subTest(option=option.label):
+                        expect(
+                            self.group(scenario).get_by_text(option.explanation, exact=True)
+                        ).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size("/family without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        first = self.SCENARIO.options[0]
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            self.group().get_by_label(first.label).check()
+            self.assert_only_shows(first)
+
+            def assert_sizes():
+                rem = self.rem()
+                for label in self.section().locator("label").all():
+                    self.assertGreaterEqual(label.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().locator("p"),
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size("/family with a choice made")
+            assert_sizes()
+            # It fits by more than squeezing: an option's words keep a few characters a line.
+            words = self.group().locator("label > span").first
+            self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    # Nothing moves as the explanation appears, whether or not less motion is asked for.
+    def test_explanation_appears_without_animation(self):
+        first = self.SCENARIO.options[0]
+        with self.saving_artifacts():
+            for reduced_motion in ("reduce", "no-preference"):
+                with self.subTest(reduced_motion=reduced_motion):
+                    self.open("/family", signed_in=False)
+                    self.page.emulate_media(reduced_motion=reduced_motion)
+                    self.group().get_by_label(first.label).check()
+                    expect(self.live()).to_have_text(first.explanation)
+                    self.assertEqual(
+                        self.live().evaluate("el => el.getAnimations({subtree: true}).length"), 0
+                    )
+
+    # Old links: the script folds the scenarios above these after the page opens, and the jump
+    # still lands on its section.
+    def test_old_links_land_on_their_sections(self):
+        with self.saving_artifacts():
+            for anchor in ("aid-title", "urgent-title"):
+                with self.subTest(anchor=anchor):
+                    self.open(f"/family#{anchor}", signed_in=False)
+                    self.page.wait_for_function(
+                        "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
+                        " < 10 && window.scrollY > 0",
+                        arg=anchor,
+                    )
+
+
+class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#429 (spec #426): 長輩不肯去怎麼說 in a real browser. Every situation is in the page from the
+    server; the script folds them away and shows the chosen one."""
+
+    PATH = "/family/reluctant"
+    SITUATIONS = RELUCTANT_SITUATIONS.options
+
+    def group(self):
+        return self.main().get_by_role("group", name=RELUCTANT_SITUATIONS.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def assert_shows(self, chosen):
+        """The chosen situation's words, its things to try and avoid and next steps, read out from
+        the live region; nothing of the others is on screen."""
+        for option in self.SITUATIONS:
+            with self.subTest(option=option.label):
+                for words in (option.explanation, *option.try_saying, *option.avoid_saying):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        for heading in ("可以試的說法", "容易有反效果的說法", "下一步"):
+            expect(self.live().get_by_role("heading", name=heading)).to_be_visible()
+        for words, _ in chosen.next_steps:
+            expect(self.live().get_by_role("link", name=words)).to_be_visible()
+
+    # From the zone's entry, to a pick and a change of mind, on to a next step and the way back.
+    def test_walks_from_the_zone_home_to_a_situation_and_back(self):
+        first, second, third = self.SITUATIONS
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
+                "link", name=re.compile("長輩不肯去怎麼說")
+            ).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("長輩不肯去怎麼說")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            expect(
+                self.group().get_by_text(first.explanation, exact=True).locator("visible=true")
+            ).to_have_count(0)
+
+            self.group().get_by_label(second.label).check()
+            self.assert_shows(second)
+            self.group().get_by_label(first.label).check()
+            self.assert_shows(first)
+
+            self.group().get_by_label(third.label).check()
+            self.assert_shows(third)
+            self.live().get_by_role("link", name=third.next_steps[0][0]).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    def test_keyboard_picks_and_changes(self):
+        first, second, _ = self.SITUATIONS
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(first.label).focus()
+            self.page.keyboard.press("Space")
+            self.assert_shows(first)
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(second.label)).to_be_focused()
+            self.assert_shows(second)
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            for option in self.SITUATIONS:
+                for words in (option.explanation, *option.try_saying, *option.avoid_saying):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+                for words, _ in option.next_steps:
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_role("link", name=words).first).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        chosen = self.SITUATIONS[1]
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(chosen.label).check()
+            self.assert_shows(chosen)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    *self.live().get_by_role("link").all(),
+                    self.main().get_by_role("link", name="回到家人專區"),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().locator("p"),
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link").first,
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a situation picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    def test_zone_home_fits_with_the_new_entry(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            entry = self.main().get_by_role("link", name=re.compile("長輩不肯去怎麼說"))
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")

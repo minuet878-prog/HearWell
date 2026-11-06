@@ -88,7 +88,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   外觀本人在比較頁選 B 案；Codex 交叉審查要修 5 項已修；PR #405，驗證見 `docs/verification/issue-396.md`；
   正式答案內容留給 #402）、產品改名「聽伴」（英文 tingpal，新 logo 是翅膀為耳朵的小鳥，同意書第 3 版，內部名稱不改；
   本人在比較頁選 Q 案；ADR 0039，PR #422，驗證見 `docs/verification/rename-to-tingpal.md`）、
-  正式站 logo 消失（`collectstatic` 改壞 CSS 裡的 logo，遮罩失效；改寫法並加自動檢查，驗證見 `docs/verification/logo-collectstatic.md`）。
+  正式站 logo 消失（`collectstatic` 改壞 CSS 裡的 logo，遮罩失效；改寫法並加自動檢查，驗證見 `docs/verification/logo-collectstatic.md`）、
+  主畫面圖示放大、未登入首頁加「把聽伴加到手機主畫面」提示卡（本人在比較頁選 B、Y，驗證見 `docs/verification/pwa-icon-and-home-prompt.md`）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
@@ -97,6 +98,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 - 下一步：SADL 上線 PR 合併後關閉母規格 #166。APHAB 這批不做（沒有臺灣正體中文版、與 SSQ12 重疊，見
   [SADL 拷問決定](planning/adult-assessment/sadl-grill-decisions.md)）。
   互動內容（2026-10-24 本人提出「更多互動式頁面」，2026-11-06 拷問定義；每個各開一份規格，依序上線）：聽力圖看語言香蕉區 → 溝通情境練習 → 知識小測驗 → 助聽器問題排解 → 補助試算 → 配戴與保養教學 → 前 30 天適應任務 → 聽損模擬。第一個的決定見[拷問決定](planning/speech-banana/grill-decisions.md)、ADR 0040；[海報讀值](planning/speech-banana/research.md)已審定，規格見 #436；合併前本人要向雅文確認使用許可。
+  家人專區（2026-11-06 拷問決定，分三批，見 [拷問決定](planning/family-zone/grill-decisions.md)）：母規格 #426，票 #427–#435。第一批（#427–#429：專區首頁、溝通情境題、長輩不肯去怎麼說）已驗收，驗證見 `docs/verification/issue-426-batch-1.md`；下一步第二批（#430–#432）。「結果和圖表可以點」排在它之後。
+  兩份規劃重疊的部分，本人 2026-11-06 決定照家人專區的票做：溝通情境練習算 #428 做完，助聽器問題排解由 #433 做，保養由 #435 做，陪診清單 #430 照做（互動內容拷問時沒選的看診準備單）。互動內容清單繼續做的是語言香蕉區、知識小測驗、聽損模擬。專區沒涵蓋的部分另外拷問：怎麼戴、補助算出能領多少、前 30 天每天打勾記錄。
 - 等時間：見下方「時間型待辦」。
 
 ## 時間型待辦
@@ -108,13 +111,14 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   2026-10-23 `main` 偶發一次（PR #264 合併後，首頁測試等 `networkidle` 逾時，重跑通過），PR #267 已改成等畫面元素；
   觀察期從 PR #267 合併後重新算。
   改 CI job 名稱時要同時改 ruleset，不然 PR 會卡在「等待檢查」。
-- **每年查核一次助聽器選配指引的內容、鑑定醫院名冊、問答小助手的答案與語言香蕉區的資料**（下次約 2027-10）：六個章節的法規、金額、年限、
+- **每年查核一次助聽器選配指引的內容、鑑定醫院名冊、問答小助手的答案、語言香蕉區的資料與家人專區**（下次約 2027-10）：六個章節的法規、金額、年限、
   輔具中心聯絡方式，對照各章頁尾的官方來源；衛福部鑑定醫院名冊（目前版本 1150717）有新版就重新擷取
   `screening/data/assessment_hospitals.json`。改完更新各章的「本頁資料查核於」日期。
   問答小助手（#396）每題答案對照它的「資料來源」，在 `screening/qa_assistant/content.py` 改，
   改完更新那一題的 `checked_on`（答案頁的「本頁資料查核於」）。
   語言香蕉區（#436）的外框和六群代表點對照雅文基金會〈聽力圖和語言香蕉區〉海報，在 `screening/audiogram.py` 改，
   改完更新 `SPEECH_BANANA_CHECKED_ON`（頁面的「本頁資料查核於」）。
+  家人專區（#426）`screening/family_zone.py` 的內容對照各自的出處，改完更新查核日期。
 
 ---
 
