@@ -566,7 +566,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.get_by_role("button", name="傳給家人").click()
             shared = self.page.evaluate("window.shared")
             self.assertEqual(shared["url"], url)
-            self.assertTrue(shared["title"].startswith("給家人的溝通與陪伴"))
+            self.assertTrue(shared["title"].startswith("家人專區"))
 
     def test_family_guide_jumps_to_each_topic_and_marks_the_urgent_one(self):
         """#240: the jump links reach their topic; the urgent topic and 119 stand out."""
@@ -575,7 +575,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             jumps = self.page.get_by_role("navigation", name="本頁內容").get_by_role("link")
             expect(jumps).to_have_count(3)
             topics = (
-                ("talk-title", "怎麼跟聽損的家人說話"),
+                ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
                 ("urgent-title", "什麼時候要馬上就醫"),
             )
@@ -3855,7 +3855,7 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     def test_cards_change_page_without_javascript(self):
         cards = (
             ("了解助聽器選配與補助", "/guide", "我的選配指引"),
-            ("給家人看：怎麼跟聽損的家人溝通", "/family", "給家人的溝通與陪伴"),
+            ("家人專區：溝通與陪伴", "/family", "家人專區"),
             ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
         )
         self.open(390, javascript=False)
@@ -3866,6 +3866,66 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
                     self.main().get_by_role("link", name=name).click()
                     expect(self.page).to_have_url(f"{self.live_server_url}{path}")
                     expect(self.main().get_by_role("heading", level=1)).to_have_text(heading)
+
+
+class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#427 (spec #426): the way from a new visitor's home page to 家人專區, on a phone."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.context = self.browser.new_context(viewport={"width": 320, "height": 640})
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_new_visitor_walks_from_the_home_card_to_the_zone(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            self.main().get_by_role("link", name="我是家人：怎麼陪伴聽損的家人").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            entries = self.main().get_by_role("navigation", name="本頁內容").get_by_role("link")
+            expect(entries).to_have_count(3)
+            for entry in entries.all():
+                with self.subTest(entry=entry.inner_text()):
+                    self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            # The line under a title is words to read: at least the 18px body text's 1rem.
+            note = entries.first.get_by_text("讓溝通輕鬆一點的小方法")
+            root = self.page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).fontSize)"
+            )
+            size = note.evaluate("el => parseFloat(getComputedStyle(el).fontSize)")
+            self.assertGreaterEqual(size, root)
+
+    def test_home_and_zone_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for path in ("/", "/family"):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    self.assert_fits_a_phone_at_double_text_size(path)
+
+    def test_old_jump_link_lands_on_its_section(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/family#urgent-title")
+            self.page.wait_for_function(
+                "Math.abs(document.getElementById('urgent-title').getBoundingClientRect().top)"
+                " < 10 && window.scrollY > 0"
+            )
 
 
 class LoadingIndicatorTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):

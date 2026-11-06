@@ -1,7 +1,7 @@
 {% extends "screening/layout.html" %}
 {% load static %}
 
-{% block title %}給家人的溝通與陪伴｜聽伴{% endblock %}
+{% block title %}家人專區｜聽伴{% endblock %}
 
 {% block extra_head %}
 <script defer src="{% static 'screening/share-button.js' %}"></script>
@@ -11,20 +11,25 @@
 {% block body %}
 {# Content reviewed by the audiologist on 2026-10-17 (spec appendix A); change it only after review. #}
 <article class="family-guide wrap-anywhere">
-<h1 class="h3 mt-4">給家人的溝通與陪伴</h1>
+<h1 class="h3 mt-4">家人專區</h1>
 <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
 
+{# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #}
 <nav aria-label="本頁內容">
     <ul class="list-unstyled">
-        <li><a class="link-card" href="#talk-title">
+        <li><a class="link-card action-card" href="#talk-title">
+            {% include "screening/action_icon.html" with icon="family" %}
             <span class="link-card-body">
-                <span class="link-card-title">怎麼跟聽損的家人說話</span>
+                <span class="link-card-title">怎麼跟他說話</span>
+                <span>讓溝通輕鬆一點的小方法</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        <li><a class="link-card" href="#aid-title">
+        <li><a class="link-card action-card" href="#aid-title">
+            {% include "screening/action_icon.html" with icon="ear" %}
             <span class="link-card-body">
                 <span class="link-card-title">陪伴配戴助聽器</span>
+                <span>剛開始不習慣、回診和保養時可以怎麼陪</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
