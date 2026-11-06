@@ -1,15 +1,18 @@
 """Spec #426 (家人專區): the zone's home page and ways to reach it (#427), its scenarios (#428),
 what to say when an elder refuses (#429)."""
 
+import hashlib
 import inspect
 import re
 from dataclasses import replace
 from datetime import date
 from itertools import pairwise
+from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from screening.family_zone import (
@@ -48,6 +51,7 @@ URGENT = (
 TALK_NOTE = "情境題與溝通重點"
 AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
+VISITS_NOTE = "要帶什麼、想問什麼、補助還缺什麼、期限到哪天"
 # (href, title) of each card in a part of a page, in page order.
 CARD = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
@@ -159,6 +163,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
             ENTRY.findall(self._entries(content)),
             [
                 ("#talk-title", "family", "怎麼跟他說話", TALK_NOTE),
+                ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
                 ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),
                 ("#aid-title", "ear", "陪伴配戴助聽器", AID_NOTE),
                 ("#urgent-title", "", "什麼時候要馬上就醫", ""),
@@ -183,7 +188,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
 
     def test_entries_only_for_what_is_live(self):
         entries = self._entries(self._zone())
-        for later in ("陪診", "代辦", "/family/visits", "/family/hearing-aids"):
+        for later in ("/family/hearing-aids", "助聽器怪怪的", "日常保養"):
             with self.subTest(later=later):
                 self.assertNotIn(later, entries)
 
@@ -548,3 +553,38 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
         self.assertNotIn("request.user", source)
         self.assertNotIn("login_required", source)
         self.assertEqual(self.client.get(self.url).status_code, 200)
+
+
+class ReviewedPagesTests(SimpleTestCase):
+    """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
+    sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
+    is of that page on main before the batch, without those lines. Failing here means reviewed
+    words changed: have the owner review them before updating the digest."""
+
+    # (page, the lines the batch may add or change, the digest without them)
+    PAGES = (
+        (
+            "guide/form_9.html",
+            ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
+            "fe8567ae4df1c53a7c60abef2304fdd91c465c684e3b7d3d4ed0b7c4be064528",
+        ),
+        (
+            "guide/form_25.html",
+            ("<p>想算出可以做的日期？",),
+            "de444faf25a4fcb23e718c9d5e6ce1f9b617cd1112003bf9cefc0d407a6bc473",
+        ),
+        (
+            "privacy.html",
+            ('<p class="tip-box">本站只用登入',),
+            "1c81e5c234d4bcfd8e39a18434321068b7ea01c701ae6b4fe059575a32822453",
+        ),
+    )
+
+    def test_only_the_allowed_lines_changed(self):
+        templates = Path(settings.BASE_DIR) / "screening/templates/screening"
+        for page, allowed, digest in self.PAGES:
+            with self.subTest(page=page):
+                lines = (templates / page).read_text(encoding="utf-8").splitlines(keepends=True)
+                kept = [line for line in lines if not line.strip().startswith(allowed)]
+                self.assertEqual(len(lines) - len(kept), len(allowed))
+                self.assertEqual(hashlib.sha256("".join(kept).encode()).hexdigest(), digest)

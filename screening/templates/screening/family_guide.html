@@ -26,6 +26,14 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
+        <li><a class="link-card action-card" href="{% url 'family_visits' %}">
+            {% include "screening/action_icon.html" with icon="clipboard" %}
+            <span class="link-card-body">
+                <span class="link-card-title">陪診與代辦</span>
+                <span>要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
         <li><a class="link-card action-card" href="{% url 'family_reluctant' %}">
             {% include "screening/action_icon.html" with icon="question" %}
             <span class="link-card-body">
