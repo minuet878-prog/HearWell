@@ -32,6 +32,7 @@ urlpatterns = [
     path("family", home.family_guide, name="family_guide"),
     path("family/reluctant", family.family_reluctant, name="family_reluctant"),
     path("family/visits", family.family_visits, name="family_visits"),
+    path("family/visits/deadlines", family.family_deadlines, name="family_deadlines"),
     path("learn", home.learn, name="learn"),
     path("qa", qa_assistant.qa_home, name="qa_home"),
     path("qa/topic/<slug:topic>", qa_assistant.qa_topic, name="qa_topic"),

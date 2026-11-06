@@ -30,6 +30,7 @@ OPEN_PAGES = {
     "family_guide",
     "family_reluctant",
     "family_visits",
+    "family_deadlines",
     "guide_chapter",
     "shared_cover",
     "shared_report",

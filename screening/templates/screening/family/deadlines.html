@@ -1,0 +1,63 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}期限試算｜聽伴{% endblock %}
+
+{% block extra_head %}
+{% if results %}<script defer src="{% static 'screening/print-button.js' %}"></script>{% endif %}
+{% endblock %}
+
+{% block body %}
+{# #432 (spec #426): the words are in family_deadlines.py, drafts until the owner has reviewed them. An ordinary POST form, so it works without JavaScript; the results come back in the same response and nothing is kept. #}
+<article class="family-guide family-visits wrap-anywhere">
+<h1 class="h3 mt-4">期限試算</h1>
+<p class="no-print">{{ intro }}</p>
+
+{% if form.errors %}
+<div id="error-summary" class="mb-4 text-danger" role="alert" tabindex="-1" autofocus>
+    {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+    {% for field in form %}{% for error in field.errors %}<p class="mb-0"><a href="#{{ field.id_for_label }}">{{ field.label }}</a>：{{ error }}</p>{% endfor %}{% endfor %}
+</div>
+{% endif %}
+
+{% if results %}
+<section class="mb-6" aria-labelledby="results-title">
+    <h2 id="results-title" class="h4">{{ results_title }}</h2>
+    <ul class="list-unstyled">
+        {% for result in results %}
+        <li class="mb-4">
+            <p class="mb-0">{{ result.words }}</p>
+            {% if result.passed_note %}<p class="mb-0 text-danger">{{ result.passed_note }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <p>{{ closing_note }}</p>
+    <p class="mb-3 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
+</section>
+{% endif %}
+
+<form method="post" action="{% url 'family_deadlines' %}" class="mb-6 no-print">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-4">
+        <label for="{{ field.id_for_label }}" class="form-label font-bold text-xl/normal">{{ field.label }}</label>
+        {{ field }}
+        {% include "screening/field_messages.html" %}
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary btn-lg w-full">{{ submit_label }}</button>
+</form>
+
+<p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+
+<section class="mb-4 family-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title" class="h5 heading-bar">出處</h2>
+    <ul>
+        {% for title, url in sources %}
+        <li><a href="{{ url }}">{{ title }}</a></li>
+        {% endfor %}
+    </ul>
+    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
+</section>
+</article>
+{% endblock %}
