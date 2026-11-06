@@ -1,0 +1,65 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}補助檢核｜聽伴{% endblock %}
+
+{% block extra_head %}
+{% if result %}<script defer src="{% static 'screening/print-button.js' %}"></script>{% endif %}
+{% endblock %}
+
+{% block body %}
+{# #431 (spec #426): the questions, rules and words are in subsidy_check.py, drafts until the owner has reviewed them. A plain POST form: it works without JavaScript, the result comes back on this page and nothing is kept; autocomplete="off" stops the browser putting answers back. #}
+<article class="family-guide family-visits wrap-anywhere">
+<h1 class="h3 mt-4">補助檢核</h1>
+<p>{{ intro }}</p>
+
+{% if form.errors %}
+{# The answer page's summary: focus lands here on load with no script, and screen readers announce it. #}
+<div id="error-summary" class="mb-4 text-danger no-print" role="alert" tabindex="-1" autofocus>
+    <p class="mb-2">還有 {{ form.errors|length }} 題沒有回答，請看標示紅字的題目。</p>
+    <ul class="list-unstyled flex flex-wrap gap-2 mb-0">
+        {% for field in form %}{% if field.errors %}
+        <li><a class="btn btn-outline-primary" href="#question-{{ forloop.counter }}">第 {{ forloop.counter }} 題</a></li>
+        {% endif %}{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if result %}
+<section class="mb-6" aria-labelledby="result-title">
+    <h2 id="result-title" class="h4">檢核結果</h2>
+    <p class="font-bold text-xl/normal">{{ result.headline }}</p>
+    {% for heading, items in result.groups %}
+    <h3 class="h5 mt-4">{{ heading }}</h3>
+    <ul>
+        {% for item in items %}
+        <li>{{ item.words }}{% for link in item.links %}<a class="block py-[0.6rem]" href="{{ link.url }}">{{ link.words }}</a>{% endfor %}</li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+    <p class="mt-4 mb-0"><a class="block py-[0.6rem]" href="{{ form_9_link.url }}">{{ form_9_link.words }}</a></p>
+</section>
+{% include "screening/family/sources.html" %}
+<p class="mb-8 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
+{% endif %}
+
+<section class="mb-6 no-print" aria-labelledby="questions-title">
+    <h2 id="questions-title" class="h4">回答這幾題</h2>
+    <form method="post" action="{% url 'family_subsidy_check' %}" autocomplete="off">
+        {% csrf_token %}
+        {% for field in form %}
+        <fieldset id="question-{{ forloop.counter }}" tabindex="-1" class="mb-8"{% if field.errors %} aria-describedby="{{ field.auto_id }}_error"{% endif %}>
+            <legend class="font-bold text-xl/normal"><span class="question-progress">第 {{ forloop.counter }} 題／共 {{ form.fields|length }} 題</span>{{ field.label }}</legend>
+            {% include "screening/field_messages.html" %}
+            {{ field }}
+        </fieldset>
+        {% endfor %}
+        <button class="btn btn-primary btn-lg w-full" type="submit">送出</button>
+    </form>
+</section>
+
+<p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+
+{% if not result %}{% include "screening/family/sources.html" %}{% endif %}
+</article>
+{% endblock %}

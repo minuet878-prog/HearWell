@@ -47,6 +47,12 @@ def add_months(start, months):
     return date(year, month, day)
 
 
+def form_25_window(fitted_on):
+    """(from, by): form 25 is done a month to three months after the fitting date, both days
+    included (#284 Q7)."""
+    return add_months(fitted_on, 1), add_months(fitted_on, 3)
+
+
 def _fitted(aid):
     return aid is not None and aid.fitted_on is not None
 
@@ -77,14 +83,14 @@ class FittingState:
 
     @property
     def form_25(self):
-        """(from, by): form 25 is done a month to three months after the fitting date, both
-        days included (#284 Q7); None without the date, without 身障補助 or when form 25 is
-        不適用. 要做二十五號表 (spec #291): 身障補助 at a level above 簡易型 or 不知道."""
+        """form_25_window of the fitting date; None without the date, without 身障補助 or when
+        form 25 is 不適用. 要做二十五號表 (spec #291): 身障補助 at a level above 簡易型 or
+        不知道."""
         if not self.fitted or not self.aid.uses_disability_subsidy:
             return None
         if "form-25" in self.not_applicable:
             return None
-        return add_months(self.aid.fitted_on, 1), add_months(self.aid.fitted_on, 3)
+        return form_25_window(self.aid.fitted_on)
 
     @property
     def reapply_on(self):

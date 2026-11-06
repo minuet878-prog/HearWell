@@ -248,3 +248,52 @@ RELUCTANT_SOURCES = (
     ),
 )
 RELUCTANT_CHECKED_ON = date(2026, 11, 6)
+
+# Drafts for the owner's review (#430, batch-2-wording.md section 1), from the guide's
+# 去找聽力師之前 chapter. Its one sentence on the printed report is an item here, and its questions,
+# in the reader's own voice there, speak of 他 here (Q17).
+VISIT_BRING = (
+    "醫院的聽力檢查報告（聽力圖）",
+    "身分證",
+    "身心障礙證明（有的話）",
+    "現在用的助聽器（有的話）",
+    "聽伴印的聽力報告（有的話）",
+)
+# (category, its questions) pairs.
+VISIT_QUESTIONS = (
+    (
+        "適不適合",
+        (
+            "哪一種助聽器適合他？為什麼？",
+            "可以先試戴嗎？試戴多久？要收費嗎？",
+        ),
+    ),
+    (
+        "價格與保固",
+        (
+            "價格包含哪些服務？之後回來調整要另外收費嗎？",
+            "保固多久？包含哪些？",
+            "可以給我們書面的報價單和保固內容嗎？",
+        ),
+    ),
+    (
+        "補助",
+        (
+            "這一台是補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？",
+            "可以幫他開九號表嗎？",
+        ),
+    ),
+)
+
+# The same chapter's sources and the date it was checked.
+VISIT_SOURCES = (
+    (
+        "身心障礙者輔具費用補助辦法（全國法規資料庫）",
+        "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060",
+    ),
+    (
+        "身心障礙者輔具費用補助基準表（全國法規資料庫）",
+        "https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&lan=C",
+    ),
+)
+VISIT_CHECKED_ON = date(2026, 10, 22)

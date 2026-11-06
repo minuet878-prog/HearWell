@@ -2,6 +2,8 @@
 {% block chapter %}
 {# Guide chapters tidy-up: step titles, the amounts as large numbers. #}
 <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+{# #431 (spec #426): a line to 補助檢核, the link tall enough to tap; the chapter's words stay as they were. #}
+<p>想知道還缺什麼？可以用<a class="inline-block py-[0.6rem]" href="{% url 'family_subsidy_check' %}">補助檢核</a>。</p>
 {# #367 (spec #354): a jump to each part, two columns on a phone; each link a full line tall to tap. #}
 <nav aria-labelledby="page-jump-title">
     <p id="page-jump-title" class="tint-subhead mb-2">本頁段落</p>

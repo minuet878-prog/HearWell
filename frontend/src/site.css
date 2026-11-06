@@ -4718,6 +4718,62 @@
     font-size: 1rem;
   }
 
+  /* 陪診清單 (#430): native checkboxes, their words beside them, the whole row the touch target.
+     On paper only the page's own content: all items, the ticked ones ticked. */
+  .visit-check {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: var(--spacing-touch);
+    padding-block: 0.25rem;
+    cursor: pointer;
+  }
+
+  .visit-check input {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    accent-color: var(--color-primary);
+  }
+
+  .visit-check > span {
+    min-width: 0;
+  }
+
+  .visit-check:focus-within {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .visit-category {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  @media print {
+    body:has(.family-visits) .site-header,
+    body:has(.family-visits) .site-nav,
+    body:has(.family-visits) footer,
+    .family-visits .no-print {
+      display: none !important;
+    }
+
+    body:has(.family-visits) {
+      padding-bottom: 0;
+    }
+
+    /* Nothing to touch on paper: tighter rows keep the list and its reminder on one sheet. */
+    .visit-check {
+      min-height: 0;
+      padding-block: 0.0625rem;
+    }
+
+    .family-visits fieldset fieldset,
+    .family-visits .family-sources {
+      break-inside: avoid;
+    }
+  }
+
   /* 點選看說明's lists of things to say (#429). */
   .pick-explain-list {
     margin: 0;
