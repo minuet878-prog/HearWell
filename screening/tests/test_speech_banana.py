@@ -52,6 +52,18 @@ class SpeechBananaRuleTests(SimpleTestCase):
         # #436: the line is about 35 dB at 1200 Hz, and group 2 sits at 46 dB.
         self.assertEqual(_texts(_marks((1000, 30), (2000, 50)))[1], HEARD)
 
+    def test_the_line_of_the_specs_example_is_about_35_db_at_1200_hz(self):
+        # #436's example, without the function saying what the line is: only a group's level moves.
+        # It is 35.26 dB on the log axis, so 36 dB is over it and 35 dB is not; the 34 dB a linear
+        # axis gives would call 35 dB heard.
+        marks = _marks((1000, 30), (2000, 50))
+        for db, expected in ((36, HEARD), (35, HARD)):
+            with (
+                self.subTest(db=db),
+                mock.patch("screening.audiogram.SPEECH_GROUPS", ({"frequency": 1200, "db": db},)),
+            ):
+                self.assertEqual(_texts(marks), [expected])
+
     def test_group_below_the_line_may_be_hard_to_hear(self):
         # Worked by hand: at 1200 Hz the line is about 57.9 dB.
         self.assertEqual(_texts(_marks((1000, 50), (2000, 80)))[1], HARD)
@@ -325,7 +337,8 @@ class SpeechBananaPageTests(TestCase):
         self.assertEqual(left["stretches"], [[[1000, 30], [2000, 50]]])
 
     def test_the_page_uses_no_level_colours(self):
-        """ADR 0007: the speech banana is not a level."""
+        """ADR 0007: the speech banana is not a level. This reads the server's HTML; the chart is
+        React's, and e2e checks it has no green band."""
         response = self.client.get(self._url(self._make(("right", "air", 1000, 70, False))))
         self.assertNotIn("level-badge", self._main(response))
 

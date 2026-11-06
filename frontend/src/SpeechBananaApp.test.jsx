@@ -155,6 +155,33 @@ it("only the groups the server calls hard get a dashed box, and the same blue, f
   expect(new Set(strokes()).size).toBe(1);
 });
 
+it("a picked box is solid dark blue: only a hard box that is not picked is dashed", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  const rect = (group) => box(container, group).querySelector("rect");
+  // Group 5 is hard in the right ear. Picked, its dashes go; picked away from, they come back.
+  expect(dash(container, 5)).toBe("4 3");
+  pick("ㄈㄐㄑㄓㄔㄒㄕ");
+  expect(dash(container, 5)).toBeNull();
+  expect(rect(5).getAttribute("fill")).toBe("#1f4e8c");
+  expect(rect(5).getAttribute("stroke")).toBe("#1f4e8c");
+  // Group 2 is heard: solid whether picked or not.
+  pick("ㄚㄨㄛㄚㄜㄦ");
+  expect(dash(container, 5)).toBe("4 3");
+  expect(dash(container, 2)).toBeNull();
+  // Group 1 is hard only in the left ear, where the same rule holds.
+  fireEvent.click(earButton("左耳"));
+  expect(dash(container, 1)).toBe("4 3");
+  pick("ㄩㄧㄨㄝㄜㄛㄦ");
+  expect(dash(container, 1)).toBeNull();
+});
+
+it("draws no green normal range, so the only colour band on the chart is the banana (#436)", () => {
+  const { container } = render(<SpeechBananaApp data={JUDGED} />);
+  expect(container.querySelector('rect[fill="#e9f5ec"]')).toBeNull();
+  // The first thing drawn is the grid, with nothing under it.
+  expect(container.querySelector("svg").firstElementChild.tagName.toLowerCase()).toBe("g");
+});
+
 const hatches = (container) => [...container.querySelectorAll(".speech-banana-hatch")];
 
 it("hatches one piece per stretch, from its line up to the chart's top, kept inside the banana", () => {

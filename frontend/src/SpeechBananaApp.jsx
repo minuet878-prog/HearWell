@@ -80,7 +80,7 @@ function GroupBox({ group, number, centre, selected, hard }) {
         fillOpacity={selected ? 1 : 0.9}
         stroke={PRIMARY}
         strokeWidth="1.5"
-        strokeDasharray={hard ? "4 3" : undefined}
+        strokeDasharray={hard && !selected ? "4 3" : undefined}
       />
       {group.rows.map((row, i) => (
         <text
@@ -134,6 +134,7 @@ export default function SpeechBananaApp({ data }) {
         <AudiogramChart
           points={shown.marks}
           label={`聽力圖，畫出語言香蕉區、六群注音和${shown.label}的標記。要看每一群的結果，請用圖下的「用清單選」。`}
+          normalBand={false}
           behind={
             <>
               <Banana outline={data.banana} stretches={shown.stretches} />

@@ -11,6 +11,7 @@ import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
+from math import log2
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
@@ -6461,6 +6462,24 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     for states in (("hover",), ("hover", "active")):
                         self.assertEqual(self.under(current, *states, props=props), at_rest)
 
+    # #441: the speech banana page's ear switch is buttons, not links, and answers the same.
+    def test_speech_banana_ear_switch_changes_colour_when_hovered_or_pressed(self):
+        audiogram = self.audiogram(date(2026, 9, 1))
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}/speech-banana")
+            ears = self.main().get_by_role("group", name="選耳朵")
+            other = ears.get_by_role("button", name="左耳")
+            self.assertEqual(self.style(other, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "hover"), self.BRAND_SOFT)
+            self.assertEqual(self.under(other, "hover", "active"), self.BRAND_SOFT_DEEP)
+            current = ears.get_by_role("button", name="右耳")
+            props = ("backgroundColor", "backgroundImage", "color")
+            at_rest = {prop: self.style(current, prop) for prop in props}
+            self.assertEqual(at_rest["backgroundImage"], self.GRADIENT)
+            for states in (("hover",), ("hover", "active")):
+                self.assertEqual(self.under(current, *states, props=props), at_rest)
+
     # A3: on a phone the pill behind a tab's icon lights up under the finger; wide screens' top
     # bar does the same to the whole item.
     def test_navigation_items_change_colour_when_pressed(self):
@@ -10837,6 +10856,36 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
     def open_list(self):
         self.main().locator("summary", has_text="用清單選").click()
 
+    def green_bands(self):
+        """How many of what each chart on the page draws is filled with the normal range's green."""
+        charts = self.page.locator(".audiogram-plot svg")
+        charts.first.wait_for()
+        return charts.evaluate_all(
+            """charts => charts.map((chart) => [...chart.querySelectorAll("*")].filter(
+                (el) => getComputedStyle(el).fill === "rgb(233, 245, 236)",
+            ).length)"""
+        )
+
+    # The owner's decision (#436): this page's chart has no green normal range. It is React that
+    # draws it, so only the browser can tell; every other audiogram page keeps its band.
+    def test_only_this_page_leaves_out_the_green_normal_range(self):
+        older = Audiogram.objects.create(user=self.user, tested_on=date(2026, 1, 5))
+        AudiogramPoint.objects.create(
+            audiogram=older, ear="right", conduction="air", frequency=1000, db=40
+        )
+        with self.saving_artifacts():
+            self.open_page()
+            self.assertEqual(self.green_bands(), [0])
+            for path in (f"/audiograms/{self.audiogram.pk}", "/audiograms/compare", "/report"):
+                with self.subTest(path=path):
+                    self.open(path, self.PHONE)
+                    self.assertEqual(self.green_bands(), [1])
+            # Marking an ear, and the read-only chart before saving.
+            for step in (2, 4):
+                with self.subTest(step=step):
+                    audiogram_step(self.page, self.live_server_url, step)
+                    self.assertEqual(self.green_bands(), [1])
+
     # Acceptance 2, 4: the card leads here; the title has the date; nothing picked, the hint shows.
     def test_card_opens_the_page_with_nothing_picked(self):
         with self.saving_artifacts():
@@ -11011,6 +11060,17 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             i for i, r in enumerate(rects, start=1) if self.style(r, "strokeDasharray") != "none"
         ]
 
+    def assert_hatching_follows(self, stretch):
+        """One hatched piece, up from stretch's marks to the chart's top, in chart units as in
+        WHAT_IS_AT."""
+        points = self.page.locator(".speech-banana-hatch").get_attribute("points")
+        drawn = [tuple(map(float, point.split(","))) for point in points.split()]
+        outline = [(stretch[0][0], -10), *stretch, (stretch[-1][0], -10)]
+        self.assertEqual(len(drawn), len(outline))
+        for (x, y), (frequency, db) in zip(drawn, outline, strict=True):
+            self.assertAlmostEqual(x, 36 + log2(frequency / 250) / 5 * 268, delta=0.01)
+            self.assertAlmostEqual(y, 30 + (db + 10) / 130 * 312, delta=0.01)
+
     # Acceptance 1, spec 畫面與操作: the page and its scroll stay, the group stays, both ears'
     # sentences stay; the marks, the hatching, the dashes and the chart's words follow the ear.
     def test_switching_stays_put_and_keeps_the_group(self):
@@ -11024,7 +11084,8 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             sentences = result.text_content()
             self.assertIn("右耳：可能不容易聽到", sentences)
             self.assertIn("左耳：這個頻率沒有標記，無法估計", sentences)
-            self.assertEqual(self.dashed(), [3, 4, 5, 6])
+            # Group 5 is picked, so it is the one hard box that is solid.
+            self.assertEqual(self.dashed(), [3, 4, 6])
             expect(self.page.locator(".speech-banana-hatch")).to_have_count(1)
             self.ear("右耳").evaluate(
                 "el => { window.stillThisPage = true;"
@@ -11053,6 +11114,26 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                 "聽力圖，畫出語言香蕉區、六群注音和左耳的標記。"
                 "要看每一群的結果，請用圖下的「用清單選」。",
             )
+
+    # Spec 畫面與操作: the hatching on show is this ear's own, by its shape and where it lands.
+    def test_switching_ears_draws_that_ears_hatching(self):
+        with self.saving_artifacts():
+            self.open_page()
+            # Same number of pieces in both ears, so only the shape tells them apart. The left
+            # ear's line ends at 2000 Hz, where no response breaks it.
+            self.assert_hatching_follows(self.RIGHT)
+            self.assertEqual(self.at(2800, 42), "speech-banana-hatch")
+            self.assertEqual(self.at(1500, 42), "speech-banana-area")
+
+            self.ear("左耳").click()
+            expect(self.ear("左耳")).to_have_attribute("aria-pressed", "true")
+            self.assert_hatching_follows(self.LEFT[:-1])
+            self.assertEqual(self.at(2800, 42), "speech-banana-area")
+            self.assertEqual(self.at(1500, 42), "speech-banana-hatch")
+
+            self.ear("右耳").click()
+            expect(self.ear("右耳")).to_have_attribute("aria-pressed", "true")
+            self.assert_hatching_follows(self.RIGHT)
 
     # Acceptance 2: over the line, inside the banana, between the marks of one stretch only.
     # The line is low enough to hatch the whole banana where it runs, so nothing but the rule
@@ -11094,6 +11175,24 @@ class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.ear("左耳").click()
             expect(self.ear("左耳")).to_have_attribute("aria-pressed", "true")
             self.assertEqual(self.dashed(), [])
+
+    # The owner's decision (#436): picked, a hard box is solid dark blue; only one not picked is
+    # dashed, and it goes back to dashed once another is picked.
+    def test_a_picked_hard_box_is_solid_dark_blue(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.assertEqual(self.dashed(), [3, 4, 5, 6])
+            self.main().locator("summary", has_text="用清單選").click()
+            self.main().get_by_role("button", name=self.GROUP_5).click()
+            box = self.page.locator('[data-group="5"] rect')
+            expect(self.page.locator('[data-group="5"]')).to_have_attribute("data-selected", "true")
+            self.assertEqual(self.style(box, "fill"), "rgb(31, 78, 140)")
+            self.assertEqual(self.style(box, "stroke"), "rgb(31, 78, 140)")
+            self.assertEqual(self.dashed(), [3, 4, 6])
+            # A box that is not hard stays solid when picked too.
+            self.main().get_by_role("button", name="ㄚㄨㄛㄚㄜㄦ").click()
+            expect(self.page.locator('[data-group="2"]')).to_have_attribute("data-selected", "true")
+            self.assertEqual(self.dashed(), [3, 4, 5, 6])
 
     # #441, the owner's decision: a mark or the line under a box still shows, picked or not.
     def test_marks_and_the_line_are_drawn_over_the_boxes(self):
