@@ -8,14 +8,20 @@ from datetime import date
 @dataclass(frozen=True)
 class Option:
     label: str
-    # What this choice does, in plain words. Every choice has one and none is a verdict: no right,
-    # wrong or score (#428).
-    explanation: str
+    # What this choice does, in plain words. None is a verdict: no right, wrong or score (#428).
+    # Empty where the groups below say it all (#433).
+    explanation: str = ""
     # Only where a page has more to show than that paragraph (#429). Things to say and things that
     # tend to backfire, each one line; next steps as (words, URL name) pairs.
     try_saying: tuple = ()
     avoid_saying: tuple = ()
     next_steps: tuple = ()
+    # Other lists under their own titles, as (title, (line, ...)) pairs (#433).
+    sections: tuple = ()
+    # What cannot wait, in bold above the rest (#433).
+    urgent: str = ""
+    # Links to a place on a page, with no heading above them: (words, path#anchor) pairs (#433).
+    links: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -297,3 +303,145 @@ VISIT_SOURCES = (
     ),
 )
 VISIT_CHECKED_ON = date(2026, 10, 22)
+
+# Drafts for the owner's review (#433, batch-3-wording.md section 1). General to every maker: no
+# brand names, amounts or laws (types and prices are the guide's). The one to see a doctor comes
+# first, so no one spends time checking the aid before it.
+_CHECK_FIRST = "可以先檢查"
+_SEE_AUDIOLOGIST = "該回去找聽力師"
+_URGENT_SECTION = "/family#urgent-title"
+HEARING_AID_PROBLEMS = PickExplain(
+    code="hearing-aid-problem",
+    prompt="現在是什麼狀況？",
+    options=(
+        Option(
+            label="耳朵痛、流膿或突然聽不到",
+            urgent="不用先檢查助聽器，請盡快到耳鼻喉科就醫。",
+            links=(("什麼時候要馬上就醫", _URGENT_SECTION),),
+        ),
+        Option(
+            label="沒聲音或變小聲",
+            sections=(
+                (
+                    _CHECK_FIRST,
+                    (
+                        "有沒有戴好、有沒有開機；有音量鍵的話，音量是不是太小。",
+                        "電池有沒有裝對方向、貼紙撕了沒。不確定就換一顆新的；"
+                        "充電式的看有沒有充飽。",
+                        "耳模或耳塞有沒有被耳垢或水氣堵住，導管有沒有折到或堵住。",
+                    ),
+                ),
+                (
+                    _SEE_AUDIOLOGIST,
+                    (
+                        "檢查完還是沒聲音，或聲音變形。",
+                        "覺得他的聽力變了，助聽器需要調整。",
+                    ),
+                ),
+            ),
+            links=(
+                (
+                    "另外：助聽器都正常，他還是突然聽不到，請看「什麼時候要馬上就醫」。",
+                    _URGENT_SECTION,
+                ),
+            ),
+        ),
+        Option(
+            label="一直嘯叫",
+            sections=(
+                (
+                    _CHECK_FIRST,
+                    (
+                        "有沒有戴好，耳朵和助聽器之間有沒有縫。",
+                        "帽子、圍巾或耳機有沒有蓋到助聽器。",
+                        "耳模或耳塞有沒有太鬆或破損，導管有沒有裂開。",
+                        "有音量鍵的話，可以先暫時調小。",
+                    ),
+                ),
+                (
+                    _SEE_AUDIOLOGIST,
+                    (
+                        "檢查完還是一直叫，或耳模已經鬆了。",
+                        "耳朵裡可能有很多耳垢：不要自己挖，請耳鼻喉科或聽力師看看。",
+                    ),
+                ),
+            ),
+        ),
+        Option(
+            label="太吵或聲音太大",
+            sections=(
+                (
+                    _CHECK_FIRST,
+                    (
+                        "是不是剛開始戴。前幾週可能覺得環境很吵、自己的聲音怪怪的，要時間適應。",
+                        "有音量鍵的話，音量是不是太大。",
+                    ),
+                ),
+                (
+                    _SEE_AUDIOLOGIST,
+                    (
+                        "太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。",
+                        "助聽器沒辦法把想聽和不想聽的聲音完全分開。"
+                        "記下哪些場合最困擾，回診時告訴聽力師。",
+                    ),
+                ),
+            ),
+        ),
+        Option(
+            label="有嗡嗡聲",
+            sections=(
+                (
+                    _CHECK_FIRST,
+                    ("關機再開機，回到平常的設定。可能是不小心切到感應線圈（T）的設定。",),
+                ),
+                (_SEE_AUDIOLOGIST, ("開關機之後還有雜音，或聲音變形。",)),
+            ),
+        ),
+        Option(
+            label="戴起來會磨、會緊",
+            sections=(
+                (_CHECK_FIRST, ("有沒有戴對位置、左右耳有沒有戴反。",)),
+                (
+                    _SEE_AUDIOLOGIST,
+                    (
+                        "戴對了還是不舒服。耳模或耳塞通常可以調整，不用硬撐。",
+                        "如果是耳朵痛或流膿，請選第一項。",
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+
+# The sources of batch-3-wording.md section 4, for the whole page. Medical care is rewritten for
+# Taiwan: from the UK and US sources, only the things to check are taken.
+HEARING_AID_SOURCES = (
+    (
+        "RNID：Solving common hearing aid problems（2026/06/02 更新）",
+        "https://rnid.org.uk/information-and-support/hearing-aids/solving-common-problems/",
+    ),
+    (
+        "RNID：Cleaning and maintaining your hearing aids（2026/06/01 更新）",
+        "https://rnid.org.uk/information-and-support/hearing-aids/cleaning-maintaining/",
+    ),
+    (
+        "NIDCD：Hearing Aids（2022/10/11 更新）",
+        "https://www.nidcd.nih.gov/health/hearing-aids",
+    ),
+    (
+        "FDA：Hearing Aid Benefits and Limitations（2022/11/18 更新）",
+        "https://www.fda.gov/medical-devices/hearing-aids/hearing-aid-benefits-and-limitations",
+    ),
+    (
+        "Cambridge University Hospitals：NHS hearing aids problem solving（2025/04/15 核定）",
+        "https://www.cuh.nhs.uk/patient-information/nhs-hearing-aids-problem-solving/",
+    ),
+    (
+        "Hampshire Hospitals：Hearing Aid Troubleshooting Guide（沒有標日期）",
+        "https://www.hampshirehospitals.nhs.uk/our-services/az-departments-and-specialties/"
+        "audiology-1/adult-services/hearing-aid-troubleshooting-guide",
+    ),
+    ("聽伴選配指引「配戴之後」的審定內容", "/guide/after-fitting"),
+    ("家人專區的審定內容", "/family"),
+)
+HEARING_AID_CHECKED_ON = date(2026, 11, 6)

@@ -12,6 +12,9 @@ from screening.family_deadlines import (
     deadlines,
 )
 from screening.family_zone import (
+    HEARING_AID_CHECKED_ON,
+    HEARING_AID_PROBLEMS,
+    HEARING_AID_SOURCES,
     RELUCTANT_CHECKED_ON,
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
@@ -40,6 +43,20 @@ def family_reluctant(request):
             "situations": RELUCTANT_SITUATIONS,
             "sources": RELUCTANT_SOURCES,
             "checked_on": RELUCTANT_CHECKED_ON,
+        },
+    )
+
+
+def family_hearing_aids(request):
+    # #433 (spec #426): open without logging in (CODING_STANDARDS.md 2): it holds no personal data
+    # and is for family members who have no account. The same words for everyone.
+    return render(
+        request,
+        "screening/family/hearing_aids.html",
+        {
+            "problems": HEARING_AID_PROBLEMS,
+            "sources": HEARING_AID_SOURCES,
+            "checked_on": HEARING_AID_CHECKED_ON,
         },
     )
 

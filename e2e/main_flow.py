@@ -25,6 +25,7 @@ from playwright.sync_api import expect, sync_playwright
 from screening.audiogram import DB_MAX
 from screening.family_zone import (
     COMMUNICATION_SCENARIOS,
+    HEARING_AID_PROBLEMS,
     RELUCTANT_SITUATIONS,
     VISIT_BRING,
     VISIT_QUESTIONS,
@@ -580,7 +581,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             jumps = self.page.get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(jumps).to_have_count(5)
+            expect(jumps).to_have_count(6)
             topics = (
                 ("talk-title", "怎麼跟他說話"),
                 ("aid-title", "陪伴配戴助聽器"),
@@ -3907,7 +3908,7 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
             )
             expect(current).to_have_text("了解")
             entries = self.main().get_by_role("navigation", name="專區內容").get_by_role("link")
-            expect(entries).to_have_count(5)
+            expect(entries).to_have_count(6)
             for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
@@ -11070,6 +11071,162 @@ class FamilyReluctantTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         with self.saving_artifacts():
             self.open("/family", (320, 640), signed_in=False)
             entry = self.main().get_by_role("link", name=re.compile("長輩不肯去怎麼說"))
+            self.assertGreaterEqual(entry.bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
+
+
+class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#433 (spec #426): 助聽器怪怪的 in a real browser. Every problem is in the page from the
+    server; the script folds them away and shows the chosen one."""
+
+    PATH = "/family/hearing-aids"
+    URGENT, NO_SOUND, *_ = HEARING_AID_PROBLEMS.options
+
+    def group(self):
+        return self.main().get_by_role("group", name=HEARING_AID_PROBLEMS.prompt)
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def problem_lines(self, option):
+        return [line for _, lines in option.sections for line in lines]
+
+    def assert_shows(self, chosen):
+        """The chosen problem's lines, read out from the live region; none of the others'."""
+        for option in HEARING_AID_PROBLEMS.options:
+            for words in self.problem_lines(option):
+                with self.subTest(words=words):
+                    shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                    expect(shown).to_have_count(1 if option is chosen else 0)
+        for title, lines in chosen.sections:
+            expect(self.live().get_by_role("heading", name=title, level=3)).to_be_visible()
+            for words in lines:
+                expect(self.live().get_by_text(words, exact=True)).to_be_visible()
+
+    # From the zone's entry, to a pick and a change of mind, on to the doctor and the way back.
+    def test_walks_from_the_zone_home_to_a_problem_and_on_to_a_doctor(self):
+        with self.saving_artifacts():
+            self.open("/family", signed_in=False)
+            self.main().get_by_role("navigation", name="專區內容").get_by_role(
+                "link", name=re.compile("怪怪的怎麼辦")
+            ).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器")
+            current = self.page.get_by_role("navigation", name="主要導覽").locator(
+                '[aria-current="page"]'
+            )
+            expect(current).to_have_text("了解")
+            expect(self.live()).to_have_text("")
+            self.assert_nothing_shown()
+
+            self.group().get_by_label(self.NO_SOUND.label).check()
+            self.assert_shows(self.NO_SOUND)
+            expect(self.live().get_by_role("link", name=self.NO_SOUND.links[0][0])).to_be_visible()
+
+            self.group().get_by_label(self.URGENT.label).check()
+            self.assert_shows(self.URGENT)
+            expect(self.live().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            expect(self.live().get_by_role("heading")).to_have_count(0)
+            self.live().get_by_role("link", name="什麼時候要馬上就醫").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family#urgent-title")
+
+            self.page.goto(f"{self.live_server_url}{self.PATH}")
+            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            self.main().get_by_role("link", name="回到家人專區").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family")
+
+    def assert_nothing_shown(self):
+        for option in HEARING_AID_PROBLEMS.options:
+            for words in self.problem_lines(option):
+                shown = self.group().get_by_text(words, exact=True).locator("visible=true")
+                expect(shown).to_have_count(0)
+
+    def test_jump_link_lands_on_the_section(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
+                "link", name="助聽器怪怪的"
+            ).click()
+            expect(self.page).to_have_url(re.compile("#problems-title$"))
+
+    def test_guide_link_opens_the_types_and_prices_chapter(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("link", name="「外型與價格」").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guide/types-and-prices")
+
+    def test_keyboard_picks_and_changes(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.group().get_by_label(self.URGENT.label).focus()
+            self.page.keyboard.press("Space")
+            expect(self.live().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            self.page.keyboard.press("ArrowDown")
+            expect(self.group().get_by_label(self.NO_SOUND.label)).to_be_focused()
+            self.assert_shows(self.NO_SOUND)
+
+    def test_without_javascript_everything_shows_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
+            expect(self.group().get_by_text(self.URGENT.urgent, exact=True)).to_be_visible()
+            for option in HEARING_AID_PROBLEMS.options:
+                for words in self.problem_lines(option):
+                    with self.subTest(words=words):
+                        expect(self.group().get_by_text(words, exact=True)).to_be_visible()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} without javascript")
+
+    def test_phone_at_double_text_fits_with_big_targets_and_readable_words(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.NO_SOUND.label).check()
+            self.assert_shows(self.NO_SOUND)
+
+            def assert_sizes():
+                rem = self.rem()
+                targets = (
+                    *self.group().locator("label").all(),
+                    *self.live().get_by_role("link").all(),
+                    self.main().get_by_role("link", name="「外型與價格」"),
+                    self.main().get_by_role("navigation", name="這一頁的內容").get_by_role("link"),
+                    self.main().get_by_role("link", name="回到家人專區"),
+                )
+                for target in targets:
+                    self.assertGreaterEqual(target.bounding_box()["height"], 44)
+                for words in (
+                    self.main().get_by_text("各廠牌的按鍵"),
+                    self.group().locator("legend"),
+                    self.group().locator("label").first,
+                    self.live().get_by_role("heading").first,
+                    self.live().locator("li").first,
+                    self.live().get_by_role("link").first,
+                ):
+                    self.assertGreaterEqual(self.font_size(words), rem)
+
+            assert_sizes()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with a problem picked")
+            assert_sizes()
+            # It fits by more than squeezing: the words keep a few characters a line.
+            for words in (
+                self.group().locator("label > span").first,
+                self.live().locator("li").first,
+                self.live().locator(".link-card-title").first,
+            ):
+                self.assertGreaterEqual(words.bounding_box()["width"], 3 * self.font_size(words))
+
+    def test_urgent_words_and_link_fit_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, (320, 640), signed_in=False)
+            self.group().get_by_label(self.URGENT.label).check()
+            self.assert_fits_a_phone_at_double_text_size(f"{self.PATH} with the urgent one picked")
+            link = self.live().get_by_role("link")
+            self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            words = self.live().get_by_text(self.URGENT.urgent, exact=True)
+            self.assertGreaterEqual(self.font_size(words), self.rem())
+
+    def test_zone_home_fits_with_the_new_entry(self):
+        with self.saving_artifacts():
+            self.open("/family", (320, 640), signed_in=False)
+            entry = self.main().get_by_role("link", name=re.compile("怪怪的怎麼辦"))
             self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             self.assert_fits_a_phone_at_double_text_size("/family with the new entry")
 

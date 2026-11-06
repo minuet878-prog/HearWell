@@ -52,6 +52,7 @@ TALK_NOTE = "情境題與溝通重點"
 AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
 VISITS_NOTE = "要帶什麼、想問什麼、補助還缺什麼、期限到哪天"
+HEARING_AIDS_NOTE = "怪怪的怎麼辦、怎麼陪他適應、日常保養"
 # (href, title) of each card in a part of a page, in page order.
 CARD = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
@@ -165,6 +166,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
                 ("#talk-title", "family", "怎麼跟他說話", TALK_NOTE),
                 ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
                 ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),
+                ("/family/hearing-aids", "ear", "助聽器", HEARING_AIDS_NOTE),
                 ("#aid-title", "ear", "陪伴配戴助聽器", AID_NOTE),
                 ("#urgent-title", "", "什麼時候要馬上就醫", ""),
             ],
@@ -185,12 +187,6 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         content = self._zone()
         self.assertEqual(_main(content), visitor_main)
         self.assert_shows_no_record(content, "zone_private")
-
-    def test_entries_only_for_what_is_live(self):
-        entries = self._entries(self._zone())
-        for later in ("/family/hearing-aids", "助聽器怪怪的", "日常保養"):
-            with self.subTest(later=later):
-                self.assertNotIn(later, entries)
 
     # Old links and the reviewed words (the talk and aid tips word by word: test_family_guide).
     def test_old_anchors_land_on_their_original_sections_with_the_reviewed_words(self):
