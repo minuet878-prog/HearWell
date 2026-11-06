@@ -64,7 +64,9 @@ class FamilyAdjustingTests(TestCase):
         self.assertRegex(section, r"<legend[^>]*>他現在是哪個階段？</legend>")
         self.assertEqual(
             re.findall(
-                r'<input type="radio" name="hearing-aid-stage"><span>([^<]+)</span>', section
+                r'<input type="radio" name="hearing-aid-stage" autocomplete="off">'
+                r"<span>([^<]+)</span>",
+                section,
             ),
             list(STAGES),
         )

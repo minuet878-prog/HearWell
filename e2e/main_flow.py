@@ -11155,7 +11155,7 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     def test_guide_link_opens_the_types_and_prices_chapter(self):
         with self.saving_artifacts():
             self.open(self.PATH, signed_in=False)
-            self.main().get_by_role("link", name="「外型與價格」").click()
+            self.main().get_by_role("link", name="「助聽器的種類與價格」").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/types-and-prices")
 
     def test_keyboard_picks_and_changes(self):
@@ -11189,7 +11189,7 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 targets = (
                     *self.group().locator("label").all(),
                     *self.live().get_by_role("link").all(),
-                    self.main().get_by_role("link", name="「外型與價格」"),
+                    self.main().get_by_role("link", name="「助聽器的種類與價格」"),
                     *self.main()
                     .get_by_role("navigation", name="這一頁的內容")
                     .get_by_role("link")
@@ -11981,12 +11981,14 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
         return self.live().get_by_role("checkbox")
 
     def assert_shows(self, chosen):
-        """The chosen shape's steps, each with its box and drawing; none of the other's."""
+        """The chosen shape's steps, each with its box and drawing; none of the other's. Both
+        shapes' 關機收好 has the same words, so count how many of the chosen shape's say them."""
+        chosen_words = [step.words for step in chosen.steps]
         for option in HEARING_AID_CARE.options:
             for step in option.steps:
                 with self.subTest(words=step.words):
                     shown = self.group().get_by_text(step.words).locator("visible=true")
-                    expect(shown).to_have_count(1 if option is chosen else 0)
+                    expect(shown).to_have_count(chosen_words.count(step.words))
         for step in chosen.steps:
             expect(self.live()).to_contain_text(f"{step.title}（{step.frequency}）")
             expect(self.live()).to_contain_text(step.words)
@@ -12179,10 +12181,12 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     def test_without_javascript_both_shapes_show_tick_and_fit_a_phone(self):
         with self.saving_artifacts():
             self.open(self.PATH, (320, 640), signed_in=False, java_script_enabled=False)
-            for option in HEARING_AID_CARE.options:
-                for step in option.steps:
-                    with self.subTest(words=step.words):
-                        expect(self.group().get_by_text(step.words)).to_be_visible()
+            every_step = [step for option in HEARING_AID_CARE.options for step in option.steps]
+            all_words = [step.words for step in every_step]
+            for step in every_step:
+                with self.subTest(words=step.words):
+                    shown = self.group().get_by_text(step.words).locator("visible=true")
+                    expect(shown).to_have_count(all_words.count(step.words))
             expect(self.group().get_by_text(self.IN_THE_EAR.steps_note)).to_be_visible()
             boxes = self.group().get_by_role("checkbox")
             expect(boxes).to_have_count(9)
@@ -12233,3 +12237,26 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
                     self.assertLessEqual(box["x"] + box["width"], 320)
                     self.assertGreater(box["width"], 150)
                     self.assertAlmostEqual(box["height"] / box["width"], 160 / 240, delta=0.01)
+
+
+class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """The browser puts a radio back only after the script has looked, and says nothing, so a choice
+    that comes back on 上一頁 would sit there with no explanation. It should not come back."""
+
+    def test_back_shows_no_choice_without_its_explanation(self):
+        with self.saving_artifacts():
+            for path in ("/family", "/family/reluctant", "/family/hearing-aids"):
+                with self.subTest(path=path):
+                    self.open(path, signed_in=False)
+                    question = self.main().locator("[data-pick-explain]").first
+                    question.get_by_role("radio").first.check()
+                    live = question.locator("[data-pick-live]")
+                    expect(live).not_to_be_empty()
+
+                    self.page.goto(f"{self.live_server_url}/privacy")
+                    self.page.go_back()
+                    expect(self.page).to_have_url(f"{self.live_server_url}{path}")
+                    self.page.wait_for_load_state("load")
+                    for radio in question.get_by_role("radio").all():
+                        expect(radio).not_to_be_checked()
+                    expect(live).to_be_empty()

@@ -44,7 +44,11 @@ STEPS = {
         ("1. 刷開口（每天）", "一天結束時，用聽力師給的軟刷，刷掉開口上的耳垢和碎屑。"),
         ("2. 挑耳垢（刷不掉時）", "刷不掉的，用挑耳垢的工具輕輕挑，不要硬戳。"),
         ("3. 擦乾淨（每天）", "用乾淨的乾布或面紙全部擦過。不要弄濕。"),
-        ("4. 關機收好（每天）", "同上。"),
+        (
+            "4. 關機收好（每天）",
+            "不戴的時候關機，放進盒子，遠離高溫和潮濕，也放在小孩和寵物拿不到的地方。"
+            "充電式的照說明書充電。",
+        ),
     ],
 }
 DEEP_IN_THE_CANAL = "深耳道型這種放在耳道很深處的，由聽力師在回診時清潔。"
@@ -88,7 +92,9 @@ class FamilyCareTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertIn("他的助聽器是哪一種？", self.section)
         self.assertEqual(
             re.findall(
-                r'<input type="radio" name="hearing-aid-care"><span>([^<]+)</span>', self.section
+                r'<input type="radio" name="hearing-aid-care" autocomplete="off">'
+                r"<span>([^<]+)</span>",
+                self.section,
             ),
             [BEHIND_THE_EAR, IN_THE_EAR],
         )
@@ -192,3 +198,9 @@ class FamilyCareTests(test_family_zone.SignsInWithARecord, TestCase):
         content = self.client.get(self.url).content.decode()
         self.assertIn(self.section, test_family_zone._main(content))
         self.assert_shows_no_record(content, "care_private")
+
+    def test_says_ticks_are_not_kept(self):
+        self.assertIn("<p>勾選不會留下，換外型也會清掉。</p>", self.main)
+
+    def test_no_step_points_at_another_shape(self):
+        self.assertNotIn("同上", self.main)

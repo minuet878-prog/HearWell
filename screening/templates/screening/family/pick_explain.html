@@ -4,7 +4,7 @@
     <legend class="font-bold">{{ pick.prompt }}</legend>
     <div class="choice-group choice-stack">
         {% for option in pick.options %}
-        <label><input type="radio" name="{{ pick.code }}"><span>{{ option.label }}</span></label>
+        <label><input type="radio" name="{{ pick.code }}" autocomplete="off"><span>{{ option.label }}</span></label>
         {% endfor %}
     </div>
     <ul class="list-unstyled tint-rows mt-4 mb-0" data-pick-explanations>

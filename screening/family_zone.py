@@ -480,6 +480,9 @@ HEARING_AID_STAGES = PickExplain(
 
 # Drafts for the owner's review (#435, batch-3-wording.md section 3). General to every maker, like
 # the problems above; the drawings are the ones the owner went through (batch-3-drawings.html).
+_CARE_STORE_WORDS = (
+    "不戴的時候關機，放進盒子，遠離高溫和潮濕，也放在小孩和寵物拿不到的地方。充電式的照說明書充電。"
+)
 HEARING_AID_CARE = PickExplain(
     code="hearing-aid-care",
     prompt="他的助聽器是哪一種？",
@@ -523,10 +526,7 @@ HEARING_AID_CARE = PickExplain(
                 CareStep(
                     title="關機收好",
                     frequency="每天",
-                    words=(
-                        "不戴的時候關機，放進盒子，遠離高溫和潮濕，也放在小孩和寵物拿不到的地方。"
-                        "充電式的照說明書充電。"
-                    ),
+                    words=_CARE_STORE_WORDS,
                     drawing="behind_ear_store",
                 ),
             ),
@@ -552,12 +552,10 @@ HEARING_AID_CARE = PickExplain(
                     words="用乾淨的乾布或面紙全部擦過。不要弄濕。",
                     drawing="in_ear_wipe",
                 ),
-                # The draft's words, for the owner to settle at review: with this shape picked, the
-                # other shape's step 同上 points at is not on screen.
                 CareStep(
                     title="關機收好",
                     frequency="每天",
-                    words="同上。",
+                    words=_CARE_STORE_WORDS,
                     drawing="in_ear_store",
                 ),
             ),

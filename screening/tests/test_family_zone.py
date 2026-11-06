@@ -373,7 +373,7 @@ class FamilyScenarioTests(TestCase):
             with self.subTest(code=scenario.code):
                 self.assertIn(f">{scenario.prompt}</legend>", fieldset)
                 labels = re.findall(
-                    rf'<label><input type="radio" name="{scenario.code}">'
+                    rf'<label><input type="radio" name="{scenario.code}" autocomplete="off">'
                     r"<span>([^<]+)</span></label>",
                     fieldset,
                 )
@@ -483,7 +483,9 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
     def test_server_sends_every_situation_in_full_with_a_live_region(self):
         self.assertEqual(
             re.findall(
-                r'<label><input type="radio" name="[^"]+"><span>([^<]+)</span></label>', self.main
+                r'<label><input type="radio" name="[^"]+" autocomplete="off">'
+                r"<span>([^<]+)</span></label>",
+                self.main,
             ),
             ["他不承認聽不到", "他不想去檢查", "他不想戴助聽器"],
         )

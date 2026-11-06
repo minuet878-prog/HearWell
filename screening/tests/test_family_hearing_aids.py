@@ -123,7 +123,9 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertIn("現在是什麼狀況？", self.main)
         self.assertEqual(
             re.findall(
-                r'<input type="radio" name="hearing-aid-problem"><span>([^<]+)</span>', self.main
+                r'<input type="radio" name="hearing-aid-problem" autocomplete="off">'
+                r"<span>([^<]+)</span>",
+                self.main,
             ),
             [EAR_TROUBLE, *PROBLEMS],
         )
@@ -176,7 +178,7 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         chapter = reverse("guide_chapter", args=["types-and-prices"])
         self.assertRegex(
             self.main,
-            rf'看選配指引的<a [^>]*href="{chapter}"[^>]*>「外型與價格」</a>。',
+            rf'看選配指引的<a [^>]*href="{chapter}"[^>]*>「助聽器的種類與價格」</a>。',
         )
         self.assertEqual(self.client.get(chapter).status_code, 200)
         self.assertNotRegex(re.sub(r"<[^>]+>", "", self.main), r"[\d,一二三四五六七八九十百千萬]元")
@@ -266,3 +268,16 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         source = inspect.getsource(family.family_hearing_aids)
         self.assertNotIn("request.user", source)
         self.assertNotIn("login_required", source)
+
+    def test_says_it_does_not_replace_a_diagnosis(self):
+        self.assertIn(
+            "這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。",
+            self.main,
+        )
+
+    # The browser would put a choice back too late for pick-explain.js to explain it.
+    def test_radios_are_not_brought_back(self):
+        radios = re.findall(r'<input type="radio"[^>]*>', self.main)
+        self.assertTrue(radios)
+        for radio in radios:
+            self.assertIn('autocomplete="off"', radio)
