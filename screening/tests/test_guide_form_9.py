@@ -123,13 +123,13 @@ class Form9ChapterTests(TestCase):
 
     def test_reapply_and_without_certificate_anchors_land_on_their_headings(self):
         content = self.client.get(self.url).content.decode()
-        # Each part is a 段落框 (ADR 0025), its title in the bar on top, without a top margin.
+        # Each part's title is a section title (T1, ADR 0041), without a top margin.
         for anchor, title in (
             ("reapply", "再次申請（換新機）"),
             ("without-certificate", "沒有身障證明時"),
         ):
             with self.subTest(anchor=anchor):
-                heading = f'<h2 id="{anchor}" class="h4 section-box-title">{title}</h2>'
+                heading = f'<h2 id="{anchor}" class="h4">{title}</h2>'
                 self.assertIn(heading, content)
 
     def test_amounts_time_limits_and_conditions_have_their_sources_beside_them(self):

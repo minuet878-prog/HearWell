@@ -33,7 +33,7 @@
 <section class="mb-6" aria-labelledby="ssq-lowest-title">
     <h2 id="ssq-lowest-title" class="h4">分數最低的 {{ lowest|length }} 題</h2>
     <ul class="list-unstyled">{% for answer in lowest %}
-        <li class="tint-block mb-3"><div class="score-card-head"><span class="tint-subhead font-normal mb-0">{{ answer.question.question_text }}</span><span class="score-chip">{{ answer.score }} 分</span></div></li>{% endfor %}
+        <li class="mb-3"><div class="score-card-head"><span class="tint-subhead font-normal mb-0">{{ answer.question.question_text }}</span><span class="score-chip">{{ answer.score }} 分</span></div></li>{% endfor %}
     </ul>
 </section>
 {% endif %}

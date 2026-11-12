@@ -13,8 +13,8 @@ from screening.tests.helpers import consented_user
 
 ROUTE_STOP = "/guide#stop-assessment"
 CHAPTER_CARD = "/guide/assessment#stop-question"
-# The card's title, in its 段落框's title bar (ADR 0025).
-CARD_TITLE = '<h2 id="stop-question-title" class="h4 section-box-title">'
+# The card's title, a section title (T1, ADR 0041).
+CARD_TITLE = '<h2 id="stop-question-title" class="h4">'
 PTA_55 = test_guide_summary.PTA_55
 QUESTION = "您有聽覺機能的身心障礙證明嗎？"
 ANSWERS = (

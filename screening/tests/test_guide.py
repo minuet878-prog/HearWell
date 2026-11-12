@@ -248,7 +248,7 @@ class ChapterTidyT367Tests(TestCase):
         # Under the lead, before the first part.
         lead = content.index("「九號表」是買助聽器前要做的輔具評估報告書")
         self.assertLess(lead, nav.start())
-        self.assertLess(nav.end(), content.index('<section class="section-box'))
+        self.assertLess(nav.end(), content.index('<section class="mb-6" data-jump-box'))
 
     def test_form_25_tags_its_when_as_form_9_does(self):
         who_how = part(

@@ -68,9 +68,9 @@
 </nav>
 
 {# The three topics are 並列區塊s: a jump to one lights all of it, heading and block (jump-highlight.js, ADR 0029). #}
-<section class="mb-6" data-parallel-block aria-labelledby="talk-title">
+<section class="mb-6" data-jump-box aria-labelledby="talk-title">
     <h2 id="talk-title" class="h4"><svg class="topic-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>怎麼跟聽損的家人說話</h2>
-    <ul class="tips tint-block tint-rows">
+    <ul class="tips divided-rows">
         <li><strong class="tip-point tint-subhead">先叫名字，等他看你再說</strong>可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
         <li><strong class="tip-point tint-subhead">面對面、讓他看得到你的臉</strong>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</li>
         <li><strong class="tip-point tint-subhead">說清楚、稍微放慢，不用大喊</strong>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</li>
@@ -92,9 +92,9 @@
     {% endfor %}
 </section>
 
-<section class="mb-6" data-parallel-block aria-labelledby="aid-title">
+<section class="mb-6" data-jump-box aria-labelledby="aid-title">
     <h2 id="aid-title" class="h4"><svg class="topic-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M7 10a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-6 0"/><path d="M10 10a2 2 0 0 1 4 0"/></svg>陪伴配戴助聽器</h2>
-    <ul class="tips tint-block tint-rows">
+    <ul class="tips divided-rows">
         <li><strong class="tip-point tint-subhead">剛開始不習慣是正常的</strong>前幾週可能覺得自己的聲音怪怪的、環境的聲音很吵，大腦需要時間重新適應聲音。</li>
         <li><strong class="tip-point tint-subhead">鼓勵每天戴</strong>照聽力師建議，從安靜的地方、短時間開始，再慢慢拉長；戴得越規律，越容易適應。</li>
         <li><strong class="tip-point tint-subhead">陪他回診調整</strong>覺得太吵、太小聲或不舒服，都可以回去請聽力師調整，不用勉強忍耐。可以一起記下哪些場合聽不清楚，回診時告訴聽力師。</li>
@@ -104,7 +104,7 @@
     </ul>
 </section>
 
-<section class="card card-body mb-4 family-urgent" data-parallel-block aria-labelledby="urgent-title">
+<section class="card card-body mb-4 family-urgent" data-jump-box aria-labelledby="urgent-title">
     <h2 id="urgent-title" class="h4"><svg class="topic-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>什麼時候要馬上就醫</h2>
     <p>出現下面任何一種情況，<strong>不要等下次回診，請盡快到耳鼻喉科就醫</strong>：</p>
     <ul class="tips">
@@ -119,7 +119,7 @@
 <p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
 
 <section class="mb-6" aria-labelledby="share-title">
-    <h2 id="share-title" class="h5 heading-bar">傳給家人</h2>
+    <h2 id="share-title" class="h4">傳給家人</h2>
     <button id="share-button" type="button" class="btn btn-primary btn-lg mb-2" hidden>傳給家人</button>
     {# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
     {% url 'family_guide' as family_path %}
@@ -132,7 +132,7 @@
 </section>
 
 <section class="mb-4 family-sources" aria-labelledby="sources-title">
-    <h2 id="sources-title" class="h5 heading-bar">出處</h2>
+    <h2 id="sources-title" class="h4">出處</h2>
     <h3>怎麼跟聽損的家人說話</h3>
     <ul>
         <li>美國聽語學會（ASHA）<a href="https://www.asha.org/about/press-room/articles/tips-for-communicating-with-someone-who-has-hearing-loss/">〈Tips for Communicating With Someone Who Has Hearing Loss〉</a></li>

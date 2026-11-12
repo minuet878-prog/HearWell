@@ -27,9 +27,7 @@ def _text(html):
 
 def _facet_head(name, score):
     """A SADL facet card's title and score tag (text-heavy pages tidy-up)."""
-    return (
-        f'<h3 class="tint-block-title mb-0">{name}</h3><span class="score-chip">{score} 分</span>'
-    )
+    return f'<h3 class="h4 mb-0">{name}</h3><span class="score-chip">{score} 分</span>'
 
 
 def sadl_submission(user, questionnaire, *, wearing_hearing_aid=True, score=4):
