@@ -13049,6 +13049,30 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             self.page.wait_for_timeout(400)
             self.assertEqual(self.page.evaluate(self.WHERE), "shown")
 
+    # The owner after #457 (2026-11-12): back to top follows the bar down while it is away and
+    # goes back above it when it returns, so no gap is left under the button.
+    def test_back_to_top_follows_the_bar(self):
+        self.open_phone()
+        with self.saving_artifacts():
+            button = self.page.locator(".back-to-top")
+            self.page.mouse.wheel(0, 3000)
+            expect(button).to_have_attribute("data-shown", "")
+            self.wait_for_bar("hidden")
+            self.page.wait_for_timeout(400)  # past the slide
+            gap = self.page.evaluate(
+                "innerHeight - document.querySelector('.back-to-top')"
+                ".getBoundingClientRect().bottom"
+            )
+            self.assertLess(gap, 24)
+            self.page.mouse.wheel(0, -200)
+            self.wait_for_bar("shown")
+            self.page.wait_for_timeout(400)
+            button_bottom, capsule_top = self.page.evaluate(
+                "[document.querySelector('.back-to-top').getBoundingClientRect().bottom,"
+                " document.querySelector('.site-nav ul').getBoundingClientRect().top]"
+            )
+            self.assertLessEqual(button_bottom, capsule_top)
+
     # Acceptance 28; and without JavaScript the bar never goes either.
     def test_bar_stays_with_reduced_motion_or_without_javascript(self):
         for options in ({"reduced_motion": "reduce"}, {"java_script_enabled": False}):

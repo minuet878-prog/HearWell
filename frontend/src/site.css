@@ -1009,6 +1009,12 @@
     .site-nav[data-hidden] {
       transform: translateY(calc(100% + 1.5rem));
     }
+
+    /* Back to top follows the bar down while it is away, so no gap is left under it, and goes
+       back above it when it returns (the owner after #457). */
+    .site-nav[data-hidden] ~ .back-to-top {
+      transform: translateY(calc(var(--tab-bar-height) - 0.25rem));
+    }
   }
 
   /* Back to top (#340, spec #338): made by back-to-top.js, so absent without JavaScript. Shown
@@ -1029,10 +1035,12 @@
     opacity: 1;
   }
 
-  /* A short fade in and out (spec #338); with reduced motion it simply appears and goes. */
+  /* A short fade in and out (spec #338), and the slide after the tab bar (#457); with reduced
+     motion it simply appears and goes. */
   @media (prefers-reduced-motion: no-preference) {
     .back-to-top {
-      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out;
+      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out,
+        transform 0.25s ease-out;
     }
   }
 
