@@ -5243,13 +5243,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(self.style(item.locator("span").last, "color"), colour)
                     self.assertEqual(self.style(swatch, "backgroundColor"), background)
 
-    # Without JavaScript the trend summary stays and the chart's box, which would stay empty, hides.
+    # Without JavaScript the score block (#465, its 最近一次 was the trend summary's) stays and
+    # the chart's box, which would stay empty, hides.
     def test_trend_summary_shows_without_javascript(self):
         self.submission(self.hhie_s, (2,) * 10)
         self.open(javascript=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
-            expect(self.page.locator(".trend-summary")).to_be_visible()
+            expect(self.page.locator(".records-score")).to_be_visible()
             expect(self.page.locator("#trend-plot")).to_be_hidden()
 
     # #126: the badge's class is built from the level code, as the banner's is.
@@ -5544,8 +5545,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             # P3 (ADR 0041): a 提示框 has the medium radius, all four corners.
             # A returning user: the wizard only by 「幫我選問卷」 (#346, #362).
             ("/questionnaire_list?wizard=1&from=consent", ".questionnaire-guide", medium),
-            ("/my_hearing?questionnaire=hhie-s", ".trend-summary", medium),
-            ("/my_hearing?questionnaire=hhie-s", ".aided-difference", medium),
+            # #465: 我的紀錄's score block is an L1 block, as the result page's.
+            ("/my_hearing?questionnaire=hhie-s", ".records-score", medium),
             (f"/submission/{basis.pk}", ".result-banner", medium),
             (f"/submission/{ioi.pk}", ".ioi-note", medium),
             ("/audiograms/new", "#tested-on", medium),
@@ -6208,7 +6209,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         # #159: the step cards are the new-user home's own elements, so check them signed out.
         home_cases = (("/", ".step-cards li"),)
         cases = (
-            ("/my_hearing?questionnaire=hhie-s", ".trend-summary"),
+            ("/my_hearing?questionnaire=hhie-s", ".records-score"),
             (f"/submission/{record.pk}", ".result-banner"),
             # #192: batch 1's new boxes, an IOI-HA item and the comparison page's result card.
             (f"/submission/{ioi.pk}", ".ioi-item"),
@@ -8514,57 +8515,33 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for record in records.all():
                 with self.subTest(record=record.inner_text()[:10]):
                     self.assert_list_row(record)
-            self.assert_flat(self.page.get_by_role("region", name="和上一次比"))
-            # The summary box above the chart: P3's pale grey, no shadow (ADR 0041).
-            trend = self.page.get_by_role("region", name="HHIE-S 總分變化")
-            summary = trend.get_by_text("最近一次（").locator("..")
-            self.assertNotEqual(self.style(summary, "backgroundColor"), self.WHITE)
-            self.assertEqual(self.style(summary, "boxShadow"), "none")
+            # #465 (the #464 mockup 1A): 和上一次比 and 最近一次 are one block above the chart, in
+            # the latest level's pale colour (L1), no shadow.
+            block = self.main().locator(".records-score")
+            expect(block).to_have_count(1)
+            self.assertNotEqual(self.style(block, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(block, "boxShadow"), "none")
+            chart = self.page.get_by_role("region", name="HHIE-S 總分變化")
+            self.assertLess(block.bounding_box()["y"], chart.bounding_box()["y"])
 
-    # 2026-10-24 comparison page, option A: 和上一次比's two records side by side.
-    def test_since_last_sets_the_two_records_side_by_side(self):
+    # #465 (the #464 mockup 1A): the score block reads as lines of text, the score largest, and
+    # fits the smallest phone at 200% text.
+    def test_the_score_block_reads_its_lines_and_fits_a_phone(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.trend_records(), width=320)
-            since_last = self.page.get_by_role("region", name="和上一次比")
-            previous = since_last.locator(".since-last-cell").first
-            latest = since_last.locator(".since-last-latest")
-            # 上一次 on P3's pale grey (ADR 0041), 最近一次 pale blue in a brand-blue frame.
-            self.assertEqual(self.style(previous, "backgroundColor"), self.SURFACE)
-            self.assertEqual(self.style(latest, "backgroundColor"), self.BLUE_SOFT)
-            self.assert_every_side(latest, Color=self.PRIMARY, Style="solid", Width="2px")
-            for cell in (previous, latest):
-                self.assertEqual(self.style(cell, "boxShadow"), "none")
-                score = float(self.style(cell.locator(".since-last-score"), "fontSize")[:-2])
-                label = float(self.style(cell.locator(".since-last-label"), "fontSize")[:-2])
-                date = float(self.style(cell.locator(".since-last-date"), "fontSize")[:-2])
-                self.assertGreater(score, label * 1.5)
-                self.assertLess(date, label)
-            arrow = since_last.locator(".since-last-arrow")
-            self.assertEqual(self.style(arrow, "color"), self.PRIMARY)
-            # Screen readers hear each record as one line, the brackets and colon included.
+            block = self.main().locator(".records-score")
             # trend_records makes both on the same day, so each date has its time.
-            expect(since_last).to_match_aria_snapshot(
-                '- heading "和上一次比" [level=2]\n'
-                "- paragraph: /上一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 20 分/\n"
-                "- paragraph: /最近一次 （ \\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d ）： 40 分/\n"
-                "- paragraph:\n"
-                "  - strong: 比上一次多 20 分（分數越低越好）"
+            expect(block).to_match_aria_snapshot(
+                "- paragraph: /最近一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d，沒戴助聽器）/\n"
+                "- paragraph: 40 分\n"
+                "- paragraph: 顯著影響\n"
+                "- paragraph: 比上一次多 20 分（分數越低越好）\n"
+                "- paragraph: /上一次（\\d{4}/\\d\\d/\\d\\d \\d\\d:\\d\\d）：20 分/"
             )
-
-            def boxes():
-                return [cell.bounding_box() for cell in (previous, latest)]
-
-            # Side by side on the smallest phone, the arrow pointing right...
-            before, after = boxes()
-            self.assertEqual(before["y"], after["y"])
-            self.assertLess(before["x"], after["x"])
-            self.assertEqual(self.style(arrow, "transform"), "none")
-            # ...one above the other at 200% text, nothing cut, the arrow turned to point down.
-            self.assert_fits_uncut("和上一次比")
-            before, after = boxes()
-            self.assertEqual(before["x"], after["x"])
-            self.assertLess(before["y"] + before["height"], after["y"])
-            self.assertNotEqual(self.style(arrow, "transform"), "none")
+            number = float(self.style(block.locator(".result-number"), "fontSize")[:-2])
+            first = float(self.style(block.locator("p").first, "fontSize")[:-2])
+            self.assertGreater(number, first * 2)
+            self.assert_fits_uncut("我的紀錄的分數色塊")
 
     def assert_outline_button_readable(self, button):
         """#311: an outline button is filled white (S1, ADR 0041), so its words keep 4.5:1."""
@@ -8573,36 +8550,28 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             StyleInBrowserTest.lowest_contrast(self.style(button, "color"), self.WHITE), 4.5
         )
 
-    # #311: each ear's result is a flat block that keeps the line in its ear's colour on top.
-    EAR_LINES = (("右耳", "rgb(192, 57, 43)"), ("左耳", "rgb(31, 78, 140)"))
-
-    # #311: the audiogram's ear results and the comparison page's two pairs are flat blocks
-    # (ADR 0041) under a section title, the comparison's buttons as before; the summary above the
-    # ears and the new audiogram's how-to on an ear step stay flat (#301).
+    # #311, #465 (the #464 mockup 3A): each ear is a block in its degree's pale colour (L1) above
+    # the chart, its words readable on it; the comparison page's pair on screen is a flat block
+    # under its title, the pair in the report folded below it; the new audiogram's how-to on an
+    # ear step stays flat (#301).
     def test_ear_results_and_comparison_pairs_are_flat(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.audiogram_detail())
             self.assert_flat(self.page.get_by_role("region", name="兩耳程度"))
-            for ear, colour in self.EAR_LINES:
+            for ear in ("右耳", "左耳"):
                 with self.subTest(ear=ear):
-                    heading = self.page.get_by_role("heading", name=ear, exact=True)
-                    block = self.main().locator("section").filter(has=heading)
-                    self.assert_flat_part(block, top_line=colour)
-                    self.assert_block_title(heading)
-                    self.assert_readable_on_white(block, skip_own_backgrounds=True)
+                    block = self.main().locator(".audiogram-ear-block").filter(has_text=ear)
+                    # 40 dB HL both ears: 輕度, mild_to_moderate's pale yellow.
+                    self.assertEqual(self.style(block, "backgroundColor"), "rgb(255, 244, 214)")
+                    self.assertEqual(self.style(block, "boxShadow"), "none")
             self.visit(True, lambda test: test.hhi_comparison())
-            for title, button in (
-                ("目前查看的兩筆", "改放這一組到報告"),
-                ("聽力報告裡的組合", "從報告移除"),
-            ):
-                with self.subTest(block=title):
-                    block = self.page.get_by_role("region", name=title)
-                    self.assert_flat_part(block)
-                    self.assert_block_title(block.get_by_role("heading", name=title, exact=True))
-                    self.assert_readable_on_white(block, skip_own_backgrounds=True)
-                    expect(block.get_by_role("button", name=button, exact=True)).to_be_visible()
-            save = self.page.get_by_role("button", name="改放這一組到報告", exact=True)
+            block = self.page.get_by_role("region", name="目前查看的兩筆")
+            self.assert_flat_part(block)
+            self.assert_block_title(block.get_by_role("heading", name="目前查看的兩筆", exact=True))
+            self.assert_readable_on_white(block, skip_own_backgrounds=True)
+            save = block.get_by_role("button", name="改放這一組到報告", exact=True)
             self.assertEqual(self.style(save, "backgroundColor"), self.PRIMARY)
+            self.main().locator("summary", has_text="聽力報告裡的組合").click()
             self.assert_outline_button_readable(
                 self.page.get_by_role("button", name="從報告移除", exact=True)
             )
@@ -10077,16 +10046,10 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
             self.assertGreaterEqual(title - section, 4)
 
     # Acceptance 6 (#357) was the blue summary box's straight left line; ADR 0041 replaced it.
-    # P3 (ADR 0041): the summary boxes, the questionnaire guide and the continue notice are
-    # 提示框: pale grey with all four corners rounded and no line down their left side.
+    # P3 (ADR 0041): the questionnaire guide and the continue notice are 提示框: pale grey with
+    # all four corners rounded and no line down their left side. (#465: 我的紀錄's summary boxes
+    # became the L1 score block and the 配戴狀態比較 fold.)
     def test_summary_boxes_and_notices_are_grey_hint_boxes(self):
-        self.trend_records()
-        aided = self.answered("hhie-s", 0)
-        Submission.objects.filter(pk=aided.pk).update(wearing_hearing_aid=True)
-        self.visit(True, "/my_hearing?questionnaire=hhie-s", width=390)
-        boxes = [(".trend-summary", self.main()), (".aided-difference", self.main())]
-        for selector, area in boxes:
-            self.assert_grey_hint_box(area.locator(selector), selector)
         self.visit(True, "/questionnaire_list?wizard=1&from=consent", width=390)
         self.main().evaluate(
             "main => { const p = document.createElement('p'); p.className = 'continue-notice';"
@@ -10226,27 +10189,18 @@ class MyRecordsT364Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         self.answered("hhia-s", 4)
         return "/my_hearing?questionnaire=hhia-s"
 
-    # Acceptance 4: HHIA-S's 和上一次比 in the blue summary box, its title above the box.
+    # Acceptance 4, #465 (the #464 mockup 1A): HHIA-S, with no trend chart, says 和上一次比 in
+    # the same score block as HHIE-S, in its level's pale colour; at 200% text on the smallest
+    # phone nothing is cut.
     def test_hhia_s_since_last_is_a_summary_box(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.hhia_s_records(), width=390)
-            since_last = self.page.get_by_role("region", name="和上一次比")
-            box = since_last.locator(".trend-summary")
-            # P3 (ADR 0041): the pale grey 提示框, with no line down its side.
-            self.assertEqual(self.style(box, "backgroundColor"), "rgb(244, 246, 248)")
-            self.assertEqual(self.style(box, "borderLeftWidth"), "0px")
-            title = since_last.get_by_role("heading", name="和上一次比").bounding_box()
-            self.assertLessEqual(title["y"] + title["height"], box.bounding_box()["y"])
-            # On a common phone the two records still sit side by side inside the box.
-            cells = [cell.bounding_box() for cell in since_last.locator(".since-last-cell").all()]
-            self.assertEqual(len(cells), 2)
-            self.assertEqual(cells[0]["y"], cells[1]["y"])
-            # At 200% text on the smallest phone they stack, nothing cut.
+            block = self.main().locator(".records-score")
+            expect(block.locator("#since-last")).to_contain_text("比上一次多 20 分")
+            self.assertNotEqual(self.style(block, "backgroundColor"), WhiteCardRuleTest.WHITE)
+            self.assertEqual(self.style(block, "borderLeftWidth"), "0px")
             self.visit(True, "/my_hearing?questionnaire=hhia-s", width=320)
             self.assert_fits_uncut("HHIA-S 和上一次比")
-            cells = self.page.locator("#since-last .since-last-cell").all()
-            cells = [cell.bounding_box() for cell in cells]
-            self.assertLess(cells[0]["y"] + cells[0]["height"], cells[1]["y"])
 
     # Acceptance 5 (ADR 0022): the white frame holds only the chart and legend, the text above
     # it on the page; the chart keeps its width, so its crop stays the same.
@@ -13221,3 +13175,107 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
                         self.style(tab, "color"), background
                     )
                     self.assertGreaterEqual(contrast, 4.5, background)
+
+
+class RecordsT465Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#465 (spec #453, the #464 mockup): 我的紀錄 and the audiogram pages in the browser: the
+    switches' current half a pale blue pill, older records folded, no tab bar while marking an
+    audiogram, and every page fitting a phone at 200% text."""
+
+    fixtures = ("questions_fixture.json",)
+    PRIMARY = "rgb(31, 78, 140)"
+
+    # The white card rule's page-making helpers, borrowed rather than inherited so its own tests
+    # do not run twice.
+    open = WhiteCardRuleTest.open
+    visit = WhiteCardRuleTest.visit
+    answered = WhiteCardRuleTest.answered
+    audiogram = WhiteCardRuleTest.audiogram
+    hhi_comparison = WhiteCardRuleTest.hhi_comparison
+    assert_fits_uncut = WhiteCardRuleTest.assert_fits_uncut
+    CUT_OFF = WhiteCardRuleTest.CUT_OFF
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="records_t465"))
+
+    def five_records(self):
+        for score in (0, 1, 2, 3, 4):
+            self.answered("hhie-s", score)
+        return "/my_hearing?questionnaire=hhie-s"
+
+    # D5: marking an audiogram on a phone has no tab bar, and the page's end leaves no room for
+    # it; the list keeps it, and a wide screen keeps its top bar.
+    def test_marking_an_audiogram_has_no_tab_bar_on_a_phone(self):
+        with self.saving_artifacts():
+            self.visit(True, "/audiograms/new", width=390)
+            expect(self.page.locator(".site-nav")).to_be_hidden()
+            self.page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            expect(self.main().get_by_role("img", name=re.compile("聽力圖"))).to_be_visible()
+            expect(self.page.locator(".site-nav")).to_be_hidden()
+            footer = self.page.locator(".site-footer")
+            self.assertEqual(self.style(footer, "paddingBottom"), "27px")  # 1.5rem, no bar
+            expect(self.main().get_by_role("link", name="不新增了，回聽力圖清單")).to_be_visible()
+            self.visit(True, "/audiograms", width=390)
+            expect(self.page.locator(".site-nav")).to_be_visible()
+            self.visit(True, "/audiograms/new", width=1024)
+            expect(self.page.locator(".site-nav")).to_be_visible()
+
+    # D1 A: the current half of 問卷 and 聽力圖 is the tab bar's pale blue pill with bold blue words
+    # in a 2px blue frame, on a pale grey track; the other half's words stay readable.
+    def test_the_switch_marks_the_current_half_with_a_framed_pale_pill(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.five_records(), width=390)
+            switch = self.page.get_by_role("navigation", name="紀錄種類")
+            current = switch.locator('[aria-current="page"]')
+            other = switch.locator("a:not([aria-current])")
+            self.assertEqual(self.style(switch, "backgroundColor"), "rgb(244, 246, 248)")
+            self.assertEqual(self.style(current, "backgroundColor"), "rgb(232, 238, 247)")
+            self.assertEqual(
+                self.style(current, "boxShadow"), f"{self.PRIMARY} 0px 0px 0px 2px inset"
+            )
+            self.assertEqual(self.style(current, "color"), self.PRIMARY)
+            self.assertEqual(self.style(current, "fontWeight"), "700")
+            self.assertGreaterEqual(
+                StyleInBrowserTest.lowest_contrast(
+                    self.style(other, "color"), "rgb(244, 246, 248)"
+                ),
+                4.5,
+            )
+
+    # 8A: the newest three records show; the others open under 看以前的 N 筆.
+    def test_older_records_open_from_their_fold(self):
+        with self.saving_artifacts():
+            self.visit(True, lambda test: test.five_records(), width=390)
+            rows = self.main().locator('a.link-card[href^="/submission/"]')
+            expect(rows.filter(visible=True)).to_have_count(3)
+            fold = self.main().locator("summary", has_text="看以前的 2 筆")
+            self.assertGreaterEqual(fold.bounding_box()["height"], 44)
+            fold.click()
+            expect(rows.filter(visible=True)).to_have_count(5)
+
+    # #453 acceptance: no sideways scrolling and nothing cut at 200% text on the smallest phone,
+    # with the folds open.
+    def test_the_records_pages_fit_a_phone_at_double_text_size(self):
+        def comparison(test):
+            return test.hhi_comparison()
+
+        def banana(test):
+            return f"/audiograms/{test.audiogram().pk}/speech-banana"
+
+        def detail(test):
+            return f"/audiograms/{test.audiogram().pk}"
+
+        pages = (
+            ("my records", lambda test: test.five_records()),
+            ("aided comparison", comparison),
+            ("audiogram", detail),
+            ("speech banana", banana),
+        )
+        with self.saving_artifacts():
+            for name, path in pages:
+                with self.subTest(page=name):
+                    self.visit(True, path, width=320)
+                    for summary in self.main().locator("details > summary").all():
+                        summary.click()
+                    self.assert_fits_uncut(name)

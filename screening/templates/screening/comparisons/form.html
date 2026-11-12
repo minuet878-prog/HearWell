@@ -1,0 +1,11 @@
+{# The comparison page's form (#190): radio cards and a submit button, works without JavaScript. button: its classes, solid while it is the page's next thing to do (#465). #}
+<form method="get" action="{% url 'hhi_comparison' questionnaire.pk %}">
+    {% for field in form %}
+    <fieldset class="mb-6"{% if field.errors %} aria-describedby="{{ field.auto_id }}_error"{% endif %}>
+        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
+        {% include "screening/field_messages.html" %}
+        {{ field }}
+    </fieldset>
+    {% endfor %}
+    <button class="{{ button }}" name="action" value="preview">查看比較</button>
+</form>

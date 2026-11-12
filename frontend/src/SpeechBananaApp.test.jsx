@@ -239,7 +239,7 @@ it("picking from the list darkens that box and writes the group and both ears", 
 
 it("the list has one button per group under its title", () => {
   const { container } = render(<SpeechBananaApp data={DATA} />);
-  expect(screen.getByText("用清單選").tagName).toBe("SUMMARY");
+  expect(screen.getByText("用清單選").closest("summary")).not.toBeNull();
   expect(within(container.querySelector("details")).getAllByRole("button").map((b) => b.textContent)).toEqual([
     "ㄩㄧㄨㄝㄜㄛㄦ",
     "ㄚㄨㄛㄚㄜㄦ",
@@ -310,4 +310,18 @@ it("the chart stays a picture: keyboards and screen readers keep using the list"
   expect(chart.tagName.toLowerCase()).toBe("svg");
   expect(chart.hasAttribute("tabindex")).toBe(false);
   expect(chart.querySelectorAll("[tabindex], [role='button'], a, button")).toHaveLength(0);
+});
+
+it("puts the result right under the chart, the explanation after it (#465)", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  const result = screen.getByRole("status");
+  expect(container.querySelector(".audiogram-chart").nextElementSibling).toBe(result);
+  expect(result.nextElementSibling.textContent).toMatch(/^黃色是語言香蕉區/);
+});
+
+it("folds the list as a list row (#465)", () => {
+  const { container } = render(<SpeechBananaApp data={DATA} />);
+  const fold = container.querySelector("details");
+  expect(fold.classList.contains("result-details")).toBe(true);
+  expect(fold.querySelector("summary .link-card-title").textContent).toBe("用清單選");
 });

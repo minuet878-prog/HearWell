@@ -1584,118 +1584,6 @@
     overflow-wrap: anywhere;
   }
 
-  /* 和上一次比 (my_hearing; 2026-10-24 comparison page, option A): 上一次 → 最近一次 side by
-     side, each a 並列區塊 with its date and a score as large as the trend summary's; 最近一次 pale
-     blue in a brand-blue frame (ADR 0007: decoration is blue). The section is the container: at
-     200% text the two stack and the arrow points down. */
-  .since-last {
-    container-type: inline-size;
-  }
-
-  /* #364: in HHIA-S's summary box the pair has the box's inside width, so the box is what
-     decides when the two stack. */
-  .since-last .trend-summary {
-    container-type: inline-size;
-  }
-
-  .since-last-pair {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .since-last-cell {
-    flex: 1 1 0;
-    min-width: 0;
-    margin: 0;
-    padding: 0.6rem 0.75rem;
-    border: 2px solid transparent;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-surface);
-  }
-
-  .since-last-latest {
-    border-color: var(--color-primary);
-    background-color: var(--color-brand-soft);
-  }
-
-  .since-last-label,
-  .since-last-date,
-  .since-last-score {
-    display: block;
-  }
-
-  .since-last-label {
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .since-last-date {
-    font-size: 0.875rem;
-  }
-
-  .since-last-score {
-    margin-top: 0.25rem;
-    color: var(--color-heading);
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
-  }
-
-  .since-last-unit {
-    font-size: 1rem;
-    font-weight: 500;
-  }
-
-  .since-last-arrow {
-    align-self: center;
-    color: var(--color-primary);
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-
-  @container (max-width: 15rem) {
-    .since-last-pair {
-      flex-direction: column;
-    }
-
-    .since-last-arrow {
-      align-self: flex-start;
-      margin-left: 1rem;
-      transform: rotate(90deg);
-    }
-  }
-
-  /* The summary box: the trend chart's (my_hearing), the latest score at a glance above the
-     chart, and aided vs unaided HHIE-S. A 提示框 (P3, ADR 0041): pale grey, no frame. */
-  .trend-summary, .aided-difference {
-    border-radius: var(--radius-medium);
-    background-color: var(--color-surface);
-    color: var(--color-heading);
-  }
-
-  .trend-summary {
-    padding: 1.25rem 1.5rem;
-    /* A date that still does not fit breaks rather than widening the page (#163). */
-    overflow-wrap: anywhere;
-  }
-
-  /* Narrow screens and larger text: less side padding, so the date fits on one line first. */
-  @media (max-width: 35em) {
-    .trend-summary {
-      padding-inline: 0.75rem;
-    }
-  }
-
-  .trend-summary-score strong {
-    font-size: 2rem;
-    color: var(--color-primary);
-  }
-
-  .trend-summary-score span {
-    font-weight: 700;
-  }
-
   .home-illustration {
     display: block;
     width: 100%;
@@ -3304,7 +3192,8 @@
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
   /* A grid of two (or more, on wider screens) so five questionnaires take three rows on a phone
      instead of five (text-heavy pages tidy-up); the topic on top, its code small underneath. At
-     double text size the columns drop to one rather than widen the page. */
+     double text size the columns drop to one rather than widen the page. #465 (the #464 mockup
+     D1 A): pale grey tiles, the current one the tab bar's pale blue pill in a 2px blue frame. */
   .history-tabs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
@@ -3318,13 +3207,12 @@
     justify-content: center;
     min-height: var(--spacing-touch);
     padding: 0.35rem 0.6rem;
-    border: 0.125rem solid var(--color-primary);
     border-radius: var(--radius-medium);
     font-size: 1rem;
     line-height: 1.3;
-    background-color: #fff;
-    color: var(--color-primary);
-    font-weight: 600;
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 500;
     text-decoration: none;
   }
 
@@ -3334,9 +3222,10 @@
   }
 
   .history-tabs a[aria-current="page"] {
-    border-color: transparent;
-    background-color: var(--color-primary);
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
   /* #328 (A2, ADR 0028): the other tabs turn the dropdowns' title bar light blue under a mouse
@@ -3351,9 +3240,10 @@
     background-color: var(--color-brand-selected);
   }
 
-  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill, the
-     current one a gradient pill (shape as well as colour). At 200% text the two halves stack
-     instead of running off a phone. */
+  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill. #465 (the
+     #464 mockup D1 A): a pale grey track, the current half the tab bar's pale blue pill with
+     bold blue words in a 2px blue frame, so it is not taken for a solid button. At 200% text the
+     two halves stack instead of running off a phone. */
   .records-switch {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
@@ -3361,7 +3251,7 @@
     margin: 0.5rem 0 1.5rem;
     padding: 0.25rem;
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-surface);
   }
 
   .records-switch a {
@@ -3371,17 +3261,19 @@
     min-height: var(--spacing-touch);
     padding: 0.25rem 1rem;
     border-radius: var(--radius-tab);
-    color: var(--color-primary);
-    font-weight: 700;
+    color: var(--color-muted);
+    font-weight: 500;
     text-decoration: none;
   }
 
   .records-switch a[aria-current="page"] {
-    background-color: var(--color-primary);
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
-  /* #328 (A2): the other half sits on the light blue track, so it turns lighter under a mouse
+  /* #328 (A2): the other half sits on the pale grey track, so it turns pale blue under a mouse
      and deeper while pressed, either way apart from the track; colour only. */
   @media (hover: hover) and (pointer: fine) {
     .records-switch a:not([aria-current]):hover {
@@ -3410,12 +3302,6 @@
 
   :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
     view-transition-name: switch-pill;
-  }
-
-  /* Aided vs unaided HHIE-S, in the blue summary box. */
-  .aided-difference {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
   }
 
   /* Legend under both charts. */
@@ -3949,21 +3835,6 @@
     gap: 0.5rem;
   }
 
-  /* #201: both ears' degrees side by side, each kept whole when they wrap. The line is a whole
-     45px at the 18px base, so the chart below starts on a whole pixel and draws as before. */
-  .audiogram-summary p {
-    line-height: 2.5rem;
-  }
-
-  .audiogram-summary-ear {
-    display: inline-block;
-    margin-right: 1.5rem;
-  }
-
-  .audiogram-summary .level-badge {
-    vertical-align: middle;
-  }
-
   /* Edit and delete under the result: quiet, centred text links, still a full touch target. */
   .quiet-links {
     display: flex;
@@ -3982,22 +3853,6 @@
 
   .quiet-links .quiet-link-danger {
     color: var(--color-severe);
-  }
-
-  /* min(): at 200% text 14rem is wider than a phone, so a card never asks for more than the row. */
-  .ear-results {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
-    gap: 0.75rem;
-  }
-
-  /* Each ear's result sits under a line in its ear's colour (#311). */
-  .ear-result.ear-right {
-    border-top: 0.375rem solid var(--color-ear-right);
-  }
-
-  .ear-result.ear-left {
-    border-top: 0.375rem solid var(--color-ear-left);
   }
 
   /* Drag readout over the chart; rem so it grows with the user's font size. */
@@ -4216,7 +4071,7 @@
     .scroll-hint { display: none; }
   }
 
-  /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202).
+  /* Right and left ear: two links in one pill (#202), the same as 我的紀錄's switch (#465).
      The speech banana page has buttons instead, since it stays on the page (#441). */
   .ear-switch {
     display: grid;
@@ -4224,7 +4079,7 @@
     margin-bottom: 1rem;
     padding: 0.25rem;
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-surface);
   }
 
   .ear-switch :is(a, button) {
@@ -4233,14 +4088,16 @@
     justify-content: center;
     min-height: var(--spacing-touch);
     border-radius: var(--radius-tab);
-    color: var(--color-primary);
-    font-weight: 700;
+    color: var(--color-muted);
+    font-weight: 500;
     text-decoration: none;
   }
 
   .ear-switch :is(a[aria-current="true"], button[aria-pressed="true"]) {
-    background-color: var(--color-primary);
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
   .ear-switch button:focus-visible {
@@ -5222,6 +5079,90 @@
 
   .result-details-body .score-bar {
     margin-top: 0.5rem;
+  }
+}
+
+/* #465 records and audiograms (the #464 mockup): 我的紀錄's score block, the folds drawn as list
+   rows (as #461's 看完整說明), the audiogram page's two ear blocks, and no tab bar while marking an
+   audiogram. */
+@layer components {
+  /* 1A: 最近一次 in the words' weight, the score largest, then the level and the line against
+     last time (.result-since-last), all in the latest level's colours (L1, .result-banner). */
+  .records-score > p {
+    margin: 0;
+  }
+
+  .records-score > p:first-child {
+    overflow-wrap: anywhere;
+    font-weight: 500;
+  }
+
+  /* A fold's title with a muted line under it, as a list row's (E). */
+  .result-details > summary .link-card-body > :not(.link-card-title) {
+    font-weight: 400;
+  }
+
+  @container (max-width: 11rem) {
+    .result-details > summary > .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  /* Folds among list rows share the rows' lines: one line between two, never two. */
+  .link-card + .result-details,
+  .result-details + .result-details,
+  #speech-banana:not(:empty) + .speech-banana-read {
+    border-top: 0;
+  }
+
+  .result-details + .link-card {
+    border-top: 0;
+  }
+
+  /* 看以前的 N 筆／張: the folded records are list rows to the fold's edges. */
+  .result-details-body.records-fold-rows {
+    padding: 0;
+  }
+
+  .result-details-body .tip-box {
+    margin-top: 1rem;
+  }
+
+  /* 3A: each ear a block in its degree's colours (L1), side by side; at 200% text one under the
+     other instead of widening a phone page. */
+  .audiogram-ear-blocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .audiogram-ear-block > p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .audiogram-ear-block-label {
+    font-weight: 700;
+  }
+
+  .audiogram-ear-block-degree {
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* D5: no tab bar on phones while marking an audiogram (audiogram_new.html), so the chart's foot
+     is never under it; the page's end needs no room for it either. Wide screens keep the top bar. */
+  @media (max-width: 47.99em) {
+    .site-nav[data-tab-bar-hidden] {
+      display: none;
+    }
+
+    body:has(.site-nav[data-tab-bar-hidden]) {
+      --tab-bar-height: 0px;
+    }
   }
 }
 

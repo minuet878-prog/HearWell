@@ -83,8 +83,9 @@
     </header>
 
     {# One nav for all widths: top bar on wide screens, fixed bottom tab bar on phones (site.css). #}
+    {# #465: a page that fills the tab_bar_hidden block with " data-tab-bar-hidden" has no tab bar on phones (the audiogram input, ADR 0043). #}
     {% with page=request.resolver_match.url_name %}
-    <nav aria-label="主要導覽" class="site-nav">
+    <nav aria-label="主要導覽" class="site-nav"{% block tab_bar_hidden %}{% endblock %}>
         <ul class="container px-0">
             <li>
                 <a href="{% url 'index' %}"{% if page == "index" %} aria-current="page"{% endif %}>

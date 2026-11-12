@@ -258,15 +258,29 @@ class SpeechBananaPageTests(TestCase):
         found = re.search(r'<script id="speech-banana-data"[^>]*>(.*?)</script>', content, re.S)
         return json.loads(found.group(1))
 
+    def _banana_links(self, audiogram):
+        # #465 (the #464 mockup 3A): a list row beside the guide, or without one the solid button.
+        response = self.client.get(reverse("audiogram_detail", args=[audiogram.id]))
+        return re.findall(
+            r'<a class="[^"]*" href="([^"]+)">\s*(?:<span[^>]*>.*?</span>\s*)?'
+            r"(?:<span[^>]*>\s*<span[^>]*>)?看語言香蕉區<",
+            self._main(response),
+            re.S,
+        )
+
     def test_card_links_to_this_audiogram_when_either_ear_has_air_marks(self):
         for ear in ("right", "left"):
             with self.subTest(ear=ear):
                 audiogram = self._make((ear, "air", 1000, 40, False))
-                self.assertIn((self._url(audiogram), *self.CARD), self._cards(audiogram))
+                self.assertEqual(self._banana_links(audiogram), [self._url(audiogram)])
+        # Beside the guide it stays a list row with its line under it.
+        audiogram = self._make(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))
+        self.assertIn((self._url(audiogram), *self.CARD), self._cards(audiogram))
 
     def test_no_card_with_only_bone_marks(self):
         audiogram = self._make(("right", "bone", 1000, 40, False))
         self.assertNotIn(self.CARD[0], [title for _, title, _ in self._cards(audiogram)])
+        self.assertEqual(self._banana_links(audiogram), [])
 
     def test_signed_out_goes_to_the_login_page(self):
         audiogram = self._make(("right", "air", 1000, 40, False))
@@ -370,7 +384,7 @@ class SpeechBananaPageTests(TestCase):
     def test_the_reminders_and_source_are_in_the_page_below_the_chart(self):
         below = self._below_the_chart(self._make(("right", "air", 1000, 40, False)))
         for words in (
-            "看懂這張圖</h2>",
+            '<span class="link-card-title">看懂這張圖</span>',
             "這是依您輸入的聽力圖估算的結果，是沒戴助聽器時的情況，"
             "實際情形會因環境和說話的人而不同。聽得到不等於聽得清楚。這不能取代聽力師的判讀。",
             "這張圖沒有列火警和煙霧警報。清醒時聽得到，不代表睡著時會被叫醒。"
@@ -392,7 +406,14 @@ class SpeechBananaPageTests(TestCase):
         below = self._below_the_chart(audiogram)
         back = re.findall(r'<a [^>]*href="([^"]+)"[^>]*>回這張聽力圖</a>', below)
         self.assertEqual(back, [reverse("audiogram_detail", args=[audiogram.id])])
-        return action_cards(below), audiogram
+        # #465 (the #464 mockup 4): the guide is a pale blue card with the solid button.
+        cards = re.findall(
+            r'<div class="result-next">\s*<p class="result-next-label">(.*?)</p>\s*'
+            r'<a class="btn[^"]*" href="([^"]+)">(.*?)</a>',
+            below,
+            re.S,
+        )
+        return [(href, button, label) for label, href, button in cards], audiogram
 
     def test_over_the_existing_limit_the_foot_has_the_guide_card_and_the_way_back(self):
         cards, _ = self._footer(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))

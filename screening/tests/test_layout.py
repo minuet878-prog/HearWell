@@ -16,7 +16,7 @@ from screening.models import (
 )
 from screening.scoring import classify
 from screening.tests import test_report
-from screening.tests.helpers import action_cards, consented_user
+from screening.tests.helpers import consented_user
 
 LINK_CARD = re.compile(r'<a\b[^>]*class="[^"]*\blink-card\b[^"]*"[^>]*>.*?</a>', re.S)
 BADGE = re.compile(r'<span class="level-badge level-badge-([a-z_]+)">([^<]*)</span>')
@@ -166,14 +166,15 @@ class LayoutTests(TestCase):
         self.assertEqual(BADGE.findall(full_card), [("severe", "中重度"), ("normal", "正常")])
         self.assertEqual(BADGE.findall(empty_card), [("unknown", "資料不足")] * 2)
 
-        # #201: the summary card on top repeats both ears' badges before the ear cards.
-        detail = _main(self._get(reverse("audiogram_detail", args=[full.pk])))
-        self.assertEqual(BADGE.findall(detail), [("severe", "中重度"), ("normal", "正常")] * 2)
-        detail = _main(self._get(reverse("audiogram_detail", args=[empty.pk])))
-        self.assertEqual(
-            BADGE.findall(detail),
-            [("unknown", "資料不足，無法判讀")] * 2 + [("unknown", "資料不足")] * 2,
+        # #201: both ears on top; #465 (the #464 mockup 3A): each a block in the same colours.
+        blocks = re.compile(
+            r'result-banner-(\w+) audiogram-ear-block"[^>]*>\s*<p[^>]*>[^<]*</p>\s*'
+            r'<p class="audiogram-ear-block-degree">([^<]*)</p>'
         )
+        detail = _main(self._get(reverse("audiogram_detail", args=[full.pk])))
+        self.assertEqual(blocks.findall(detail), [("severe", "中重度"), ("normal", "正常")])
+        detail = _main(self._get(reverse("audiogram_detail", args=[empty.pk])))
+        self.assertEqual(blocks.findall(detail), [("unknown", "資料不足")] * 2)
 
     # 7: the clinical mapping itself (spec 4.4, the owner's decision Q4 A)
     def test_degree_to_level_mapping(self):
@@ -228,12 +229,15 @@ class LayoutTests(TestCase):
                 self.assertNotIn("stretched-link", content)
 
     # 9
-    def test_my_hearing_has_no_solid_button(self):
+    def test_my_hearing_has_one_solid_button_the_report(self):
+        # #465 (the #464 mockup 1A): the report is the page's one solid button.
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=1)
         main = _main(self._get(reverse("my_hearing")))
-        self.assertNotIn("btn-primary", main)
+        self.assertEqual(main.count("btn-primary"), 1)
         self.assertIn(
-            (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"), action_cards(main)
+            f'<a class="btn btn-primary btn-lg w-full mt-4" href="{reverse("health_report")}">'
+            "看／印聽力報告</a>",
+            main,
         )
 
     # 10 (#193: sharing moved to its own page; the report keeps one link to it)
