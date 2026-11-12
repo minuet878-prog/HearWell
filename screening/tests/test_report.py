@@ -250,9 +250,10 @@ class HealthReportTests(TestCase):
         content = self._content()
         self.assertIn('id="print-button"', content)
         self.assertIn("screening/print-button.js", content)
-        # The level is written out in a bordered label, not shown by colour alone.
+        # The level is written out in a bordered label, not shown by colour alone (#471: the
+        # site's level badge).
         self.assertIn(
-            '<span class="report-level report-level-mild_to_moderate">輕度到中度影響</span>',
+            '<span class="level-badge level-badge-mild_to_moderate">輕度到中度影響</span>',
             content,
         )
 

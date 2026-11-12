@@ -1,0 +1,11 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}網站出了一點問題｜聽伴{% endblock %}
+
+{% block body %}
+{# #471 (mockup #470 group 8): Django's default 500 view renders this with no request and no database, so the layout shows a visitor's tab bar; nothing here may read either. #}
+<h1 class="h3 mt-4">網站出了一點問題</h1>
+<p>不是您做錯了什麼。我們已經收到錯誤通知，會盡快修好。您剛剛填的資料可能沒有存起來，請稍後再試一次。</p>
+<a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>
+<p class="mt-6 wrap-anywhere">一直出現這個畫面的話，請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+{% endblock %}

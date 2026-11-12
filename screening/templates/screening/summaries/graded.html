@@ -1,0 +1,1 @@
+{# #471: a graded record's line on the report, in its summary for paper and on its fold row on screen. #}{% with result=submission.result %}{{ result.total }} 分，{% include "screening/level_badge.html" with text=result.level.text color=result.level.color %}，助聽器：{{ submission.get_wearing_hearing_aid_display }}{% endwith %}

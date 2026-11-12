@@ -8,19 +8,17 @@
 {% endblock %}
 
 {% block body %}
-{# Brand banner with the form card over it (owner's pick, 2026-10-23; docs/verification/auth-pages-banner.md). #}
+{# #471 (mockup #470 D1 B): the title on the white page like every other page; no brand banner and no card over it (the banner was the 2026-10-23 pick). The thick fields stay. #}
 <div class="narrow-form">
-    <div class="auth-hero">
-        <h1 class="auth-hero-title">登入</h1>
-        <p>歡迎回來。</p>
-        {% include "screening/auth_hero_bars.html" %}
-    </div>
-    <div class="auth-card">
+    <h1 class="h3 mt-4">登入</h1>
+    <p class="text-(--color-muted)">歡迎回來。</p>
+    <div class="auth-form">
         {% if next %}
         <p class="text-black">請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
         {% endif %}
         {% if form.errors %}
-        <div id="login_error" class="mb-4 text-danger">使用者名稱或密碼錯誤</div>
+        {# D6: in a red box, the emergency box's look, so it stands apart from the other words. #}
+        <div id="login_error" class="error-box" role="alert">使用者名稱或密碼錯誤</div>
         {% endif %}
         <form method="post" action="{% url 'login' %}">
             {% csrf_token %}

@@ -222,17 +222,15 @@ describe("progress (#153)", () => {
   it("styles the bar with colour only but for the fill: answered blue, nothing moves", () => {
     const css = readFileSync(resolve(process.cwd(), "src/site.css"), "utf-8").replace(/\/\*[\s\S]*?\*\//g, "");
     const rules = [...css.matchAll(/([^{}]*\.step-progress-(?:bar|segment)[^{}]*)\{([^}]*)\}/g)];
+    // #471 took the register page's brand banner, and its white-on-blue bar, away.
     expect(rules.map(([, selector]) => selector.trim())).toEqual([
-      // The register page's brand banner makes the bar white on blue, colour only as well.
-      ".auth-hero .step-progress-segment",
-      ".auth-hero .step-progress-segment.is-done",
       ".step-progress-bar",
       ".step-progress-segment",
       ".step-progress-segment.is-done",
       ".step-progress-segment.is-filling",
     ]);
     expect(css).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{\s*\.step-progress-segment\.is-filling \{/);
-    expect(rules[4][2]).toMatch(/background-color:\s*var\(--color-primary\)/);
+    expect(rules[2][2]).toMatch(/background-color:\s*var\(--color-primary\)/);
     rules.slice(0, -1).forEach(([, , body]) => expect(body).not.toMatch(/transition|animation|transform/));
     const fill = rules.at(-1)[2];
     expect(fill).toMatch(/animation:\s*progress-fill 0\.35s/);

@@ -246,5 +246,7 @@ class LayoutTests(TestCase):
         main = _main(self._get(reverse("health_report")))
         solid = re.compile(r'class="btn btn-primary[^"]*"[^>]*>([^<]*)<')
         self.assertEqual(solid.findall(main), ["列印或存成 PDF"])
-        link = rf'class="btn btn-outline-primary[^"]*" href="{reverse("share_report")}">'
-        self.assertRegex(main, link + "分享報告給家人<")
+        # #471 (mockup #470 B): sharing is a list row after the report.
+        share = reverse("share_report")
+        link = rf'<a class="link-card action-card" href="{share}" id="report-share">'
+        self.assertRegex(main, "(?s)" + link + r".*?分享報告給家人<")

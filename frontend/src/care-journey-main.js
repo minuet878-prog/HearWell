@@ -1,5 +1,5 @@
 // #459: the home page's 照顧旅程, loaded by index.html.
-import { playJourneyOnce, setUpJourneySteps } from "./care-journey.js";
+import { openOneAtATime, playOnceATab } from "./step-list.js";
 
-playJourneyOnce();
-setUpJourneySteps();
+playOnceATab(window, "journey-played", "journey-plays");
+openOneAtATime(document, ".journey-steps", ".journey-about");

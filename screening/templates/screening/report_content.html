@@ -1,14 +1,15 @@
 {# The report itself, shared by the owner's page and the family's copy (health_report, shared_report). #}
+{# #471 (mockup #470 B): on screen each part is a list row (E) that says its summary line and opens to its details; the summary and the parts' titles wait for paper, where the report prints as before. #}
 <section id="report-summary" class="report-summary" aria-labelledby="summary-title">
     <h2 id="summary-title" class="h4">重點摘要</h2>
     <ul class="mb-0">
         {% if audiogram %}
-        <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}</li>
+        <li>聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）：{% include "screening/summaries/ears.html" %}</li>
         {% endif %}
         {% if aid_report_text %}<li>助聽器：{{ aid_report_text }}</li>{% endif %}{# #287: health_report only #}
-        {% for section in sections|add:tinnitus_sections %}{% with latest=section.latest %}
-        <li>{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）：{{ latest.result.total }} 分，<span class="report-level report-level-{{ latest.result.level.color }}">{{ latest.result.level.text }}</span>，助聽器：{{ latest.get_wearing_hearing_aid_display }}</li>
-        {% endwith %}{% endfor %}
+        {% for section in sections|add:tinnitus_sections %}
+        <li>{{ section.questionnaire.questionnaire_name }}（{{ section.latest.created_at|date:"Y/m/d" }}）：{% include "screening/summaries/graded.html" with submission=section.latest %}</li>
+        {% endfor %}
         {% if ssq_latest %}<li>日常聆聽能力（SSQ12-TW，{{ ssq_latest.created_at|date:"Y/m/d" }}）：{% if ssq_latest.result.average is not None %}平均 {{ ssq_latest.result.average }} 分{% else %}{{ ssq_latest.result.unavailable_reason }}{% endif %}</li>{% endif %}
         {% if sadl_latest %}<li>助聽器滿意度（SADL，{{ sadl_latest.created_at|date:"Y/m/d" }}）：整體滿意度 {{ sadl_latest.result.satisfaction.overall }}</li>{% endif %}
         {% for comparison in comparisons %}<li>報告保留比較（{{ comparison.questionnaire }}）：{{ comparison.summary }}</li>{% endfor %}
@@ -17,11 +18,15 @@
         {% endif %}
     </ul>
 </section>
-{# Pages tidy-up: buttons, not a one-item bullet list; screen only, as before. #366: right under #}
-{# the summary they change, on the owner's report only. #}
-{% if manage_comparisons and comparisons %}<nav class="no-print flex flex-wrap gap-2 mt-3" aria-label="管理報告比較">{% for comparison in comparisons %}<a class="btn btn-outline-primary" href="{% url 'hhi_comparison' comparison.questionnaire_id %}">更換或移除 {{ comparison.questionnaire }} 比較</a>{% endfor %}</nav>{% endif %}
+
+<div class="report-rows">
+{# Information only, nothing to open: a grey label over its words, no icon and no arrow (screen only; paper has the summary). #}
+{% if aid_report_text %}<div class="report-info no-print"><span class="report-info-label">助聽器</span><span class="report-info-value">{{ aid_report_text }}</span></div>{% endif %}
 
 {% if audiogram %}
+<details class="report-fold">
+<summary>{% include "screening/action_icon.html" with icon="audiogram" %}<span class="report-fold-text"><h2 class="report-fold-title">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</h2><span class="report-fold-meta">{% include "screening/summaries/ears.html" %}</span></span></summary>
+<div class="report-fold-body">
 <section id="report-audiogram" aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖（檢查日期 {{ audiogram.tested_on|date:"Y/m/d" }}）</h2>
     <div id="audiogram-chart" class="audiogram-chart"></div>
@@ -33,6 +38,8 @@
     </ul>
     <p>這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
 </section>
+</div>
+</details>
 {% endif %}
 
 {% if sections %}
@@ -54,7 +61,7 @@
 <section id="report-listening" class="report-part" aria-labelledby="listening-title">
 <h2 id="listening-title" class="h4">日常聆聽能力</h2>
 <details class="report-fold">
-<summary><h3 class="h4 mb-0">SSQ12-TW</h3> <span class="report-fold-meta"><span>最近一次 {{ ssq_latest.created_at|date:"Y/m/d" }}</span> <span>{% if ssq_latest.result.average is not None %}平均 {{ ssq_latest.result.average }} 分{% else %}{{ ssq_latest.result.unavailable_reason }}{% endif %}</span></span></summary>
+<summary>{% include "screening/questionnaire_icon.html" with icon=ssq_latest.questionnaire.definition.icon %}<span class="report-fold-text"><h2 class="report-fold-title">SSQ12-TW（{{ ssq_latest.created_at|date:"Y/m/d" }}）</h2><span class="report-fold-meta">{% if ssq_latest.result.average is not None %}平均 {{ ssq_latest.result.average }} 分{% else %}{{ ssq_latest.result.unavailable_reason }}{% endif %}</span></span></summary>
 <div class="report-fold-body">
 <section id="report-ssq12" aria-labelledby="ssq-title">
 <h3 id="ssq-title" class="h5">SSQ12-TW</h3>
@@ -75,7 +82,7 @@
 <section id="report-satisfaction" class="report-part" aria-labelledby="satisfaction-title">
 <h2 id="satisfaction-title" class="h4">助聽器滿意度</h2>
 <details class="report-fold">
-<summary><h3 class="h4 mb-0">SADL</h3> <span class="report-fold-meta"><span>最近一次 {{ sadl_latest.created_at|date:"Y/m/d" }}</span> <span>整體滿意度 {{ satisfaction.overall }}</span></span></summary>
+<summary>{% include "screening/questionnaire_icon.html" with icon=sadl_latest.questionnaire.definition.icon %}<span class="report-fold-text"><h2 class="report-fold-title">SADL（{{ sadl_latest.created_at|date:"Y/m/d" }}）</h2><span class="report-fold-meta">整體滿意度 {{ satisfaction.overall }}</span></span></summary>
 <div class="report-fold-body">
 <section id="report-sadl" aria-labelledby="sadl-title">
 <h3 id="sadl-title" class="h5">SADL</h3>
@@ -98,7 +105,7 @@
 <section id="report-hearing-aid-outcome" class="report-part" aria-labelledby="outcome-title">
 <h2 id="outcome-title" class="h4">助聽器使用成效</h2>
 <details class="report-fold">
-<summary><h3 class="h4 mb-0">IOI-HA 助聽器效益</h3> <span class="report-fold-meta"><span>最近一次 {{ submission.created_at|date:"Y/m/d" }}</span> <span>{% include "screening/summaries/norm.html" %}</span></span></summary>
+<summary>{% include "screening/questionnaire_icon.html" with icon=submission.questionnaire.definition.icon %}<span class="report-fold-text"><h2 class="report-fold-title">IOI-HA（{{ submission.created_at|date:"Y/m/d" }}）</h2><span class="report-fold-meta">{% include "screening/summaries/norm.html" %}</span></span></summary>
 <div class="report-fold-body">
 <section id="report-ioi-ha" aria-labelledby="ioi-ha-title">
     <h3 id="ioi-ha-title" class="h5">IOI-HA 助聽器效益（{{ submission.created_at|date:"Y/m/d" }}）</h3>
@@ -119,4 +126,7 @@
 </section>
 {% endwith %}{% endif %}
 
-<p class="report-disclaimer">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
+{% for comparison in comparisons %}<div class="report-info no-print"><span class="report-info-label">報告保留比較（{{ comparison.questionnaire }}）</span><span class="report-info-value">{{ comparison.summary }}</span></div>{% endfor %}
+</div>
+{# #366: right under the comparisons they change, on the owner's report only; #471: text links (S1). #}
+{% if manage_comparisons and comparisons %}<nav class="no-print report-manage" aria-label="管理報告比較">{% for comparison in comparisons %}<a href="{% url 'hhi_comparison' comparison.questionnaire_id %}">更換或移除 {{ comparison.questionnaire }} 比較</a>{% endfor %}</nav>{% endif %}
