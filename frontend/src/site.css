@@ -1508,7 +1508,7 @@
     align-items: center;
     min-height: 3rem;
     padding: 0.5rem 0.5rem 0.5rem 1rem; /* the tick's room takes most of the right padding */
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--choice-border, var(--color-border));
     border-radius: var(--radius-button);
     background-color: #fff;
     font-size: 1.25rem;
@@ -2109,60 +2109,28 @@
   }
 
   /* Questionnaire intros (screening/questionnaires/*_intro.html): the reviewed sentences, grouped
-     under small titles, each group led by a round icon named by data-icon. No inner div, so the
-     page's #answer-intro box stays one div deep. */
-  /* minmax(0, 1fr), not 1fr: a long run like 「HHIA-S，2026/10/23」 at double text size would
-     otherwise widen the column, and the page, past a 320px phone (CI on #247 after #248). */
+     under small titles at the body size (#462). No round icon in front: on a white page a pale
+     blue circle reads as something to tap (#463). No inner div, so the page's #answer-intro box
+     stays one div deep. A long run like 「HHIA-S，2026/10/23」 at double text size breaks rather
+     than widen a 320px phone (CI on #247 after #248). */
   .q-intro-row {
-    display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr);
     overflow-wrap: anywhere;
-    column-gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--color-line);
+    padding: 0.5rem 0;
   }
 
   .q-intro-row:first-child {
     padding-top: 0;
-    border-top: 0;
   }
 
   .q-intro-row > * {
-    grid-column: 2;
     margin-bottom: 0.25rem;
   }
 
-  .q-intro-row::before {
-    content: "";
-    grid-column: 1;
-    grid-row: 1 / span 4;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background: var(--color-brand-soft) no-repeat center / 1.25rem;
-  }
-
-  .q-intro-row[data-icon="purpose"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="who"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="how"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v4H9zM6 5h12v16H6z'/%3E%3Cpath d='M9 13l2 2 4-4'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="note"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5M12 16.5v.5'/%3E%3C/svg%3E");
-  }
-
   .q-intro-title {
-    margin: 0.3rem 0 0.25rem;
+    margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--color-heading);
   }
 
@@ -2856,9 +2824,8 @@
   /* Dropdowns, one look site-wide (dropdowns tidy-up, owner's pick B): on the page a white box
      with a chevron, first made for add_to_home's phones (#196); inside a card a line on top
      instead, so a box never sits in a box. The summary is the tap target; hover and press change
-     colour only, never position (ADR 0006). The answer page's "這份問卷在問什麼？" is the box with
-     a button (React) instead of a summary. */
-  .dropdown-box, .answer-about {
+     colour only, never position (ADR 0006). */
+  .dropdown-box {
     border: 0.125rem solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
@@ -2871,8 +2838,7 @@
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary,
-  .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -2901,8 +2867,7 @@
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after,
-  .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -2914,8 +2879,7 @@
 
   .dropdown-box[open] > summary::after,
   .dropdown-line[open] > summary::after,
-  .report-fold[open] > summary::after,
-  .answer-about > button[aria-expanded="true"]::after {
+  .report-fold[open] > summary::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
   }
 
@@ -2943,12 +2907,11 @@
      in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
      0024); a line dropdown stays as it is. */
   .dropdown-box[open], .dropdown-box[open] > summary,
-  .answer-about:has(> button[aria-expanded="true"]), .answer-about > button[aria-expanded="true"],
   .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
     background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
   }
 
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"],
+  .dropdown-box[open] > summary,
   .report-fold[open] > summary {
     background-color: var(--color-brand-soft);
   }
@@ -2961,21 +2924,19 @@
   }
 
   /* Inside the box the bar runs on into the content, so only its top corners are round. */
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"] {
+  .dropdown-box[open] > summary {
     border-end-start-radius: 0;
     border-end-end-radius: 0;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
-    .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active,
-  .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
@@ -2993,10 +2954,6 @@
      margins would leave them too little room. */
   .dropdown-box > :is(table, fieldset, div) {
     margin-inline: 0;
-  }
-
-  .answer-about > div > div {
-    margin: 0 1rem 1rem;
   }
 
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
@@ -4505,20 +4462,6 @@
     stroke-linejoin: round;
   }
 
-  .card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .card-tag {
-    padding: 0 0.5rem;
-    border-radius: var(--radius-badge);
-    background-color: var(--color-surface);
-    color: var(--color-footer);
-    font-weight: 600;
-  }
-
   /* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
   .audiogram-thumbnail {
     flex: none;
@@ -4565,23 +4508,6 @@
     align-items: center;
     gap: 0.5rem;
     min-height: var(--spacing-touch);
-  }
-
-  /* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
-  @media (max-width: 35em) {
-    .questionnaire-card,
-    .recommended-heading {
-      flex-wrap: wrap;
-    }
-
-    .questionnaire-card .link-card-body {
-      flex: 1 0 100%;
-      order: 1;
-    }
-
-    .questionnaire-card .link-card-arrow {
-      margin-left: auto;
-    }
   }
 
   .comparison-items,
@@ -5707,6 +5633,265 @@
 
 @keyframes journey-ring {
   50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
+}
+
+/* #463 screening and answering (the #462 mockup): the catalogue's 推薦 in a pale blue block and
+   its questionnaires as list rows (E), the wizard's 看其他問卷 a row that folds open, and the
+   answer page without the phone's tab bar, its intro folded under the buttons. */
+@layer components {
+  /* A single thing to tap in a colour block (ADR 0041): pale blue, no frame; only its button,
+     or its rows when it recommends two, can be pressed. */
+  .recommended-block {
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .recommended-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .recommended-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .recommended-label + .recommended-heading {
+    margin-top: 0.5rem;
+  }
+
+  /* On the pale blue the icon's circle is white, so it stays apart. */
+  .recommended-block .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  .recommended-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .recommended-code {
+    display: block;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .recommended-facts {
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
+  }
+
+  .recommended-why {
+    margin: 0.625rem 0 0;
+  }
+
+  .recommended-block .btn {
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
+  /* Two recommended: rows inside the block, their lines a pale shade of the brand blue. */
+  .recommended-list {
+    margin-top: 0.625rem;
+  }
+
+  .recommended-list .link-card {
+    border-color: rgba(31, 78, 140, 0.18);
+    background-color: transparent;
+  }
+
+  .recommended-list .link-card:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  #catalogue-all {
+    margin-top: 2rem;
+  }
+
+  /* A questionnaire row keeps its icon beside the words, as every row (E); at large text sizes
+     the words drop under the icon instead of shrinking to a character a line, the arrow staying
+     on the icon's row (as .action-card). */
+  .questionnaire-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  @container (max-width: 11rem) {
+    .questionnaire-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .questionnaire-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  /* The wizard's 看其他問卷 and the answer page's 這份問卷在問什麼？: a list row (E) that folds
+     open, a blue chevron at its end, down while folded and swapped (not turned) for an up one when
+     open, so nothing moves (ADR 0006). */
+  .questionnaire-fold, .answer-about {
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .questionnaire-fold > summary, .answer-about > button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--color-heading);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .questionnaire-fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .questionnaire-fold > summary > span:not([class]), .answer-about-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .questionnaire-fold-arrow, .answer-about-arrow {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .questionnaire-fold[open] .questionnaire-fold-arrow,
+  .answer-about > button[aria-expanded="true"] .answer-about-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* Colour only, never position (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .questionnaire-fold > summary:hover, .answer-about > button:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .questionnaire-fold > summary:active, .answer-about > button:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* On the pale blue the icon's circle turns white to stay apart, as on a row (E). */
+  @media (hover: hover) and (pointer: fine) {
+    :is(.questionnaire-fold > summary, .answer-about > button):hover .action-card-icon {
+      background-color: #fff;
+    }
+  }
+
+  :is(.questionnaire-fold > summary, .answer-about > button):active .action-card-icon {
+    background-color: #fff;
+  }
+
+  .questionnaire-fold > summary:focus-visible, .answer-about > button:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* Open, the catalogue's rows follow under the row's own line. */
+  .questionnaire-fold[open] > .link-card:first-of-type {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .answer-about {
+    margin-top: 1rem;
+  }
+
+  .answer-about-body {
+    padding: 0 0.25rem 1rem;
+  }
+
+  .answer-about-body .source-note, .answer-about-body .q-intro-source {
+    margin-top: 0.75rem;
+  }
+
+  /* Without JavaScript the intro and its source stay above the questions, apart from them. */
+  #answer-intro {
+    margin-bottom: 2rem;
+  }
+
+  /* The answer page's line under its title: the code, count and minutes in the muted grey. */
+  .answer-meta {
+    color: var(--color-muted);
+  }
+
+  /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
+  .answer-norm {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .answer-norm > p {
+    margin: 0;
+  }
+
+  .answer-norm > p + p {
+    margin-top: 0.25rem;
+  }
+
+  /* 接著答 and 重新開始, one above the other, each the whole width. */
+  .answer-resume-title {
+    margin-top: 1.25rem;
+  }
+
+  .answer-resume {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Answer and wizard choices: the fields' edge (#272), 4.7:1 on white where the shared light
+     grey had 1.5:1, and 10px apart as the #462 mockup draws them, so IOI-HA's five choices and
+     下一題 come closer to the first screen. */
+  .answer-app, #answer-form, .wizard-form {
+    --choice-border: var(--color-input-border);
+  }
+
+  :is(.answer-app, #answer-form, .wizard-form) div.choice-group {
+    gap: 0.625rem;
+  }
+
+  /* While answering a phone shows no tab bar (#462 5B): 下一題 stays in the first screen, and 聽伴
+     at the top left leads out; wide screens keep their top bar. Nothing to keep clear of, so the
+     page's end and back to top need no room for it. */
+  @media (max-width: 47.99em) {
+    .site-nav-tucked {
+      display: none;
+    }
+
+    :root:has(.site-nav-tucked) {
+      --tab-bar-height: 0px;
+    }
+  }
 }
 
 @keyframes route-line {

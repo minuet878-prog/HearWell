@@ -33,6 +33,10 @@ export default function AnswerApp({
   csrfToken,
   minutes,
   introHtml,
+  // IOI-HA (#463): its norm basis, in a box of its own on item 1 (ADR 0002), and the intro
+  // without it for the fold there, so the norm basis is not said twice.
+  normHtml,
+  introWithoutNormHtml,
   preselectUnaided = false,
   // Why 沒戴 is already chosen when catching up an unaided record (#154); from screening.html.
   unaidedHint,
@@ -167,8 +171,9 @@ export default function AnswerApp({
     const where = saved.step === 0 ? "您上次還沒答完" : `您上次答到第 ${saved.step} 題`;
     return (
       <div className="answer-app">
-        <h3 className="h4">{where}，要接著答嗎？</h3>
-        <div className="answer-nav">
+        <h3 className="h4 answer-resume-title">{where}，要接著答嗎？</h3>
+        {/* #462: one above the other, each the whole width. */}
+        <div className="answer-nav answer-resume">
           <button type="button" className="btn btn-primary btn-lg" onClick={() => begin(saved, true)}>接著答</button>
           <button
             type="button"
@@ -187,9 +192,8 @@ export default function AnswerApp({
 
   const { step } = form;
   const isHearingAid = asksWearing && step === 0;
-  // IOI-HA has no wearing step, so its intro, which tells the norm basis before answering
-  // (ADR 0002), is in full on item 1 instead.
-  const introInFull = isHearingAid || (skipWearing && step === 1);
+  // IOI-HA has no wearing step, so item 1 shows the norm basis before answering (ADR 0002).
+  const showNorm = Boolean(normHtml) && skipWearing && step === 1;
   const question = isHearingAid ? { text: wearingQuestion, choices: HEARING_AID_CHOICES } : questions[step - 1];
   const current = isHearingAid ? form.wearing : form.answers[question.id];
   const answered = current !== undefined && (!isHearingAid || current !== null);
@@ -285,23 +289,8 @@ export default function AnswerApp({
 
   return (
     <div className="answer-app">
-      {/* The page's own intro (the definition's intro_template), in full only on the first page. */}
-      {introInFull ? (
-        // #362: IOI-HA's item 1 follows its intro straight away, so 2rem apart; no line added.
-        <div className={skipWearing ? "mb-8" : undefined} dangerouslySetInnerHTML={{ __html: introHtml }} />
-      ) : (
-        <div className="answer-about mb-4">
-          <button
-            type="button"
-            aria-expanded={introOpen}
-            aria-controls="answer-intro-text"
-            onClick={() => setIntroOpen((open) => !open)}
-          >
-            這份問卷在問什麼？
-          </button>
-          <div id="answer-intro-text">{introOpen && <div dangerouslySetInnerHTML={{ __html: introHtml }} />}</div>
-        </div>
-      )}
+      {/* A 提示框 (P3), only on item 1; item 1's question follows it straight away (#362). */}
+      {showNorm && <div className="answer-norm" dangerouslySetInnerHTML={{ __html: normHtml }} />}
       {/* The legend must be the fieldset's first child to name the radio group. A flat block: only
           the choices are white (ADR 0022). */}
       <fieldset
@@ -419,9 +408,31 @@ export default function AnswerApp({
       </div>
       {/* #362: why the button does nothing yet; its look stays as it is (#136 C). */}
       {!answered && <p className="mt-4">先選一個答案，才能按「{isLast ? "送出" : "下一題"}」。</p>}
-      {chooseFirst && <p className="mt-4 text-xl/normal font-bold text-danger" role="alert">請先選一個答案</p>}
+      {/* #462: with the fields' warning mark (#272), so the red is not the only sign. */}
+      {chooseFirst && <p className="field-error mt-4 text-xl/normal text-danger" role="alert">請先選一個答案</p>}
       {/* Always here, so a screen reader says 已送出 when it is written in (#330). */}
       <p className="visually-hidden" role="status">{isSent ? "已送出" : ""}</p>
+      {/* #462: the page's own intro (the definition's intro_template) folded on every page, the first
+          too, under the buttons, so the question and 下一題 come first; a list row (E). */}
+      <div className="answer-about">
+        <button
+          type="button"
+          aria-expanded={introOpen}
+          aria-controls="answer-intro-text"
+          onClick={() => setIntroOpen((open) => !open)}
+        >
+          <span className="action-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.5" /></svg>
+          </span>
+          <span className="answer-about-title">這份問卷在問什麼？</span>
+          <span className="answer-about-arrow" aria-hidden="true" />
+        </button>
+        <div id="answer-intro-text">
+          {introOpen && (
+            <div className="answer-about-body" dangerouslySetInnerHTML={{ __html: showNorm ? introWithoutNormHtml : introHtml }} />
+          )}
+        </div>
+      </div>
       {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
       <p className="answer-autosave">
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>

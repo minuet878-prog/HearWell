@@ -8,42 +8,52 @@
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
 <h1 class="h3 mt-2">自行選擇問卷</h1>
-<p>不確定做哪一份？<a href="{% url 'questionnaire_list' %}?wizard=1">幫我選問卷</a></p>
-{# The catalogue (ADR 0030), the returning user's 推薦問卷 above the cards when one fits (#347). #}
+{# The catalogue (ADR 0030), the returning user's 推薦問卷 above the list when one fits (#347), in a pale blue block (#463). #}
 {% if recommendation %}
-<section aria-labelledby="catalogue-recommended" class="mt-6 mb-8">
-    <h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>
+<section aria-labelledby="catalogue-recommended" class="recommended-block mt-6">
+    <h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>
     {% if recommendation.questionnaires|length > 1 %}
-    {# The age is unknown: one reason, then each questionnaire with the ages it suits. #}
-    <p><strong>為什麼推薦：</strong>{{ recommendation.why }}</p>
-    {% for questionnaire in recommendation.questionnaires %}<div class="mt-6">{% include "screening/recommended_questionnaire.html" with level=3 title_id="recommended-"|add:questionnaire.code audience=True %}</div>{% endfor %}
+    {# The age is unknown: one reason, then each questionnaire a row saying whom it suits; no solid button, as there would be two (#462). #}
+    <p class="recommended-why"><strong>為什麼推薦：</strong>{{ recommendation.why }}</p>
+    <div class="recommended-list">{% for questionnaire in recommendation.questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}</div>
     {% else %}
     {% include "screening/recommended_questionnaire.html" with questionnaire=recommendation.questionnaires.0 level=3 title_id="recommended-title" why=recommendation.why %}
     {% endif %}
 </section>
 {% endif %}
+<h2 id="catalogue-all" class="h4">全部問卷</h2>
 {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
+{# 幫我選問卷 the list's last row, where ADR 0030 put it (#462). #}
+<a class="link-card questionnaire-card" href="{% url 'questionnaire_list' %}?wizard=1">
+    {% include "screening/action_icon.html" with icon="help" %}
+    <span class="link-card-body">
+        <span class="link-card-title">幫我選問卷</span>
+        <span>不確定做哪一份？</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
 {% include "screening/step_progress.html" %}
 {% if recommended %}
 <h1 class="h3 mt-2">推薦您做這一份</h1>
-<section aria-labelledby="recommended-title" class="mb-4">
+<section aria-labelledby="recommended-title" class="recommended-block">
     {% include "screening/recommended_questionnaire.html" with questionnaire=recommended level=2 title_id="recommended-title" %}
 </section>
 {% if also %}
-<h2 class="h4">也可以做</h2>
+<h2 class="h4 mt-8">也可以做</h2>
 {% if retake %}{% include "screening/questionnaire_card.html" with questionnaire=retake.questionnaire title=retake.title note=retake.note %}{% endif %}
 {% for questionnaire in also %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 {% endif %}
-<p class="mt-6"><a class="btn btn-outline-primary btn-lg" href="{{ back_url }}">上一步</a></p>
-<details class="dropdown-box mt-4">
-    <summary>看其他問卷</summary>
+<p class="mt-6"><a class="btn btn-outline-primary btn-lg w-full" href="{{ back_url }}">上一步</a></p>
+{# A list row that folds open (#462), its rows the catalogue's. #}
+<details class="questionnaire-fold mt-6">
+    <summary>{% include "screening/action_icon.html" with icon="list" %}<span>看其他問卷</span><span class="questionnaire-fold-arrow" aria-hidden="true"></span></summary>
     {% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
 </details>
 {% else %}
 <h1 class="h3 mt-2">幫您找適合的問卷</h1>
-<form method="get" action="{% url 'questionnaire_list' %}">
+<form class="wizard-form" method="get" action="{% url 'questionnaire_list' %}">
     {% if concern %}<input type="hidden" name="concern" value="{{ concern }}">{% endif %}
     <fieldset>
         <legend class="font-bold text-xl/normal">{{ field.label }}</legend>

@@ -473,12 +473,13 @@ class ReactAnswerPageTests(TestCase):
                 content = self._page(questionnaire).content.decode()
                 app = re.search(r'<div id="answer-app"[^>]*>', content).group()
                 self.assertIn(f'data-minutes="{questionnaire.definition.minutes}"', app)
-                # The definition's intro, word for word, in the box React reads it from.
+                # The definition's intro, word for word, in the box React reads it from; its
+                # source follows it there (#463).
                 intro = re.search(r'<div id="answer-intro">(.*?)</div>', content, re.S).group(1)
                 expected = render_to_string(
                     questionnaire.definition.intro_template, {"questionnaire": questionnaire}
                 )
-                self.assertEqual(intro.strip(), expected.strip())
+                self.assertTrue(intro.strip().startswith(expected.strip()))
                 self.assertLess(
                     content.index('id="answer-intro"'), content.index('id="answer-app"')
                 )

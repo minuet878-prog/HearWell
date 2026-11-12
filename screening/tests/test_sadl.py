@@ -527,7 +527,7 @@ class SadlRecommendationTests(SadlTestCase):
         self.assertEqual(page.context["reason"], "needs_norm_basis")
         self.assertContains(
             page,
-            "<p><strong>為什麼推薦：</strong>"
+            '<p class="recommended-why"><strong>為什麼推薦：</strong>'
             "您有戴助聽器，但還沒有沒戴助聽器時的紀錄。"
             "先了解沒戴助聽器時的情況，之後做助聽器成效問卷才能比較。</p>",
         )
