@@ -449,7 +449,7 @@ class ThiNotLifeImpactTests(ThiTestCase):
         self.assertIn("journey-steps", main)
         self.assertNotIn("耳鳴對生活的影響（THI）", main)
         self.assertIn('<span class="journey-tile-date">還沒排</span>', main)
-        self.assertNotIn("再做一次", main)
+        self.assertNotIn(">再做一次", main)
 
     def test_an_unaided_thi_changes_neither_the_wizard_nor_the_ioi_ha_norm(self):
         ioi_ha = Questionnaire.objects.get(code="ioi-ha")

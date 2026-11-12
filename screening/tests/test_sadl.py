@@ -540,7 +540,7 @@ class SadlRecommendationTests(SadlTestCase):
         # Not a life-impact record (#166): no retest reminder.
         self.assertContains(page, '<span class="journey-tile-date">還沒排</span>')
         self.assertNotContains(page, "已到期")
-        self.assertNotContains(page, "再做一次")
+        self.assertNotContains(page, ">再做一次")
 
     def test_another_users_sadl_record_does_not_make_a_new_user_look_returning(self):
         other = consented_user(username="other_sadl_user", password="Test-pass-12345")

@@ -505,7 +505,8 @@ class StepInteractionTests(HomeJourneyTestCase):
         # I2: the walked steps, numbered for the entrance's timing; 「2 / 5」 stays.
         self.step_3_with_two_done()
         main = self.main()
-        self.assertIn('<ol class="journey-steps" role="list" data-play-in-view>', main)
+        # Played once the 現在這一步 is in view (ADR 0029).
+        self.assertRegex(main, r'<li class="journey-step is-current"[^>]*data-play-in-view>')
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,

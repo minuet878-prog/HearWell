@@ -467,8 +467,10 @@ class RedesignLayoutTests(TestCase):
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
         notice = [test_continue_notice.SCRIPT, wave, play_in_view, smooth, "<inline>"]
+        # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
+        journey_js = "screening/frontend/care-journey.js"
         expected = {
-            reverse("index"): [*every, logout_js, *notice],
+            reverse("index"): [*every, logout_js, notice[0], journey_js, *notice[1:]],
             reverse("questionnaire_list"): [*every, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [

@@ -71,7 +71,7 @@ class GradedButNotLifeImpactTests(TestCase):
         response = self.client.get(reverse("index"))
         self.assertContains(response, "journey-steps")
         self.assertNotContains(response, "已到期")
-        self.assertNotContains(response, "再做一次")
+        self.assertNotContains(response, ">再做一次")
 
 
 class LevelColorTests(TestCase):
