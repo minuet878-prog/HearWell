@@ -193,7 +193,8 @@ class SadlScoringTests(SadlTestCase):
         self.answer([4] * 15)
         result = self.client.get(reverse("result", args=[Submission.objects.get().pk]))
         result = result.content.decode()
-        self.assertGreater(result.find(credit), result.index(">回首頁</span>"))
+        # After the list rows, the last of which is 看我的紀錄 here (#461).
+        self.assertGreater(result.find(credit), result.index(">看我的紀錄</span>"))
 
     def test_result_page_reads_the_answers_once(self):
         self.answer([4] * 15)

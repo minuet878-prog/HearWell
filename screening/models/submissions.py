@@ -8,7 +8,6 @@ from django.utils import timezone
 from screening import questionnaires
 from screening.models.questionnaires import Category, Question, Questionnaire
 from screening.questionnaires import hhia_s, hhie_s
-from screening.scoring import HIGHER_IS_BETTER, since_last_text
 
 
 def _score_expressions():
@@ -145,29 +144,6 @@ class Submission(models.Model):
         if self.wearing_hearing_aid is None:
             return None
         return next((r for r in earlier if r.wearing_hearing_aid == self.wearing_hearing_aid), None)
-
-    @cached_property
-    def ssq_since_last(self):
-        # SSQ12-TW's 「比上一次」 (ticket #188): the record previous_same_wearing picks, shown only
-        # when both have an overall average (ADR 0001).
-        if self.result.average is None:
-            return None
-        earlier = (
-            Submission.objects.filter(user_id=self.user_id, questionnaire_id=self.questionnaire_id)
-            .filter(
-                models.Q(created_at__lt=self.created_at)
-                | models.Q(created_at=self.created_at, id__lt=self.id)
-            )
-            .order_by("-created_at", "-id")
-        )
-        previous = self.previous_same_wearing(earlier)
-        if previous is None or previous.result.average is None:
-            return None
-        # The difference of the unrounded averages, the same rule as a wearing comparison's.
-        difference = self.questionnaire.definition.comparison.difference(previous, self)
-        day = timezone.localdate(previous.created_at)
-        text = since_last_text(difference, HIGHER_IS_BETTER, day, previous.result.average)
-        return {"previous": previous, "text": text}
 
 
 class Answer(models.Model):

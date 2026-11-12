@@ -143,7 +143,7 @@ class ThiExportTests(ThiReportTestCase):
         scores = test_thi.scores_for(58)
         submission = self.record(scores, wearing="True")
         result = self.client.get(reverse("result", args=[submission.pk]))
-        self.assertContains(result, "總分 58 分（滿分 100）")
+        self.assertContains(result, '總分 <span class="result-number">58</span> 分（滿分 100）')
         self.assertContains(result, 'aria-describedby="result-score">重度障礙</h2>')
         exported = self.client.get(reverse("download_my_data")).json()["submissions"]
         self.assertEqual(len(exported), 1)
@@ -213,7 +213,7 @@ class ThiSameResultEverywhereTests(ThiReportTestCase):
         )
         exported = self.client.get(reverse("download_my_data")).json()["submissions"][0]
         on_result = (
-            int(re.search(r"總分 (\d+) 分", result).group(1)),
+            int(re.search(r"總分 <span class=\"result-number\">(\d+)</span> 分", result).group(1)),
             re.search(r'aria-describedby="result-score">([^<]+)</h2>', result).group(1),
         )
         on_report = re.search(

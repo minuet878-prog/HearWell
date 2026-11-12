@@ -186,7 +186,7 @@ class HhiaSTests(TestCase):
         self.assertRedirects(self.client.post(url, data), first.url)
         self.assertEqual(self.user.submissions.count(), 1)
         result = self.client.get(first.url)
-        self.assertContains(result, "總分 20 分")
+        self.assertContains(result, '總分 <span class="result-number">20</span> 分')
         self.assertContains(result, "——有時", count=10)
         history = self.client.get(reverse("my_hearing"), {"questionnaire": "hhia-s"})
         self.assertContains(history, first.url)

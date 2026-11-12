@@ -23,19 +23,31 @@ def retest_next_text(day):
 
 
 LOWER_IS_BETTER = "分數越低越好"
-HIGHER_IS_BETTER = "分數越高越好"
 
 
-def since_last_text(difference, better=LOWER_IS_BETTER, day=None, score=None):
-    # 「和上一次比」: numbers and direction only, no verdict (ADR 0010, ADR 0013). 我的紀錄's
-    # life-impact tabs (ticket #162) use the defaults; SSQ12-TW's result page (ticket #188) also
-    # names the previous record by its Taipei day and score, and there a higher score is better.
+def since_last_text(difference):
+    # 「和上一次比」 on 我的紀錄's life-impact tabs (ticket #162): numbers and direction only, no
+    # verdict (ADR 0010, ADR 0013).
     if difference == 0:
         return "和上一次一樣"
-    previous = f"（{day:%Y/%m/%d}，{score} 分）" if day else ""
     if difference < 0:
-        return f"比上一次{previous}少 {-difference} 分（{better}）"
-    return f"比上一次{previous}多 {difference} 分（{better}）"
+        return f"比上一次少 {-difference} 分（{LOWER_IS_BETTER}）"
+    return f"比上一次多 {difference} 分（{LOWER_IS_BETTER}）"
+
+
+def result_since_last_text(day, previous_total, difference):
+    # A graded result page's line against the record before it (#461, spec #453 acceptance 23):
+    # that record's Taipei day and total and the difference, never better or worse (ADR 0017).
+    # The same total is the #460 mockup's draft.
+    if difference == 0:
+        return f"上次 {day:%Y/%m/%d} 也是 {previous_total} 分，這次一樣"
+    change = "少" if difference < 0 else "多"
+    return f"上次 {day:%Y/%m/%d} 是 {previous_total} 分，這次{change} {abs(difference)} 分"
+
+
+def level_change_text(previous_level, level):
+    # Under that line when the level changed (spec #453 acceptance 24, the #460 mockup's words).
+    return f"分級從「{previous_level}」變成「{level}」"
 
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown", "color": "unknown"}

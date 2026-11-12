@@ -2050,8 +2050,7 @@
 
   /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
      few characters; 「（45%）。」 may not break off and would otherwise run past its box. */
-  .more-section,
-  .result-more {
+  .more-section {
     container-type: inline-size;
   }
 
@@ -3499,66 +3498,8 @@
     line-height: 1.4;
   }
 
-  /* Numbered "接下來建議您" steps on the result page (ticket #157), lines between them
-     (.divided-rows, #309): each step has its number in a blue-framed circle (N3) and its links as
-     text under the words, so the steps read as one list instead of being pushed apart by large buttons (result
-     page tidy-up, option B). Still an <ol>, so screen readers announce the count. */
-  .next-steps {
-    container-type: inline-size;
-    margin: 0.5rem 0 0;
-    padding: 0;
-    list-style: none;
-    counter-reset: next-step;
-  }
-
-  /* #363: HHIA-S's limits, still small type, stand apart from the steps above them. */
-  .next-steps + .source-note {
-    margin-top: 0.75rem;
-  }
-
-  .next-steps li {
-    display: grid;
-    grid-template-columns: 2.25rem 1fr;
-    column-gap: 0.75rem;
-    counter-increment: next-step;
-  }
-
-  .next-steps li::before {
-    content: counter(next-step);
-    grid-row: 1 / span 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 2px solid var(--color-primary);
-    border-radius: 50%;
-    background-color: #fff;
-    color: var(--color-primary);
-    font-weight: 700;
-  }
-
-  .next-steps li > span {
-    grid-column: 2;
-  }
-
-  /* At large text sizes the number sits above the words instead of squeezing them into a
-     column a few characters wide (the width is in rem, so it grows with the text). */
-  @container (max-width: 15rem) {
-    .next-steps li {
-      grid-template-columns: 1fr;
-    }
-
-    .next-steps li::before {
-      grid-row: auto;
-      margin-bottom: 0.5rem;
-    }
-
-    .next-steps li > span {
-      grid-column: 1;
-    }
-  }
-
+  /* A result page's step links (ticket #157), as text under the step's words (result page
+     tidy-up, option B); since #461 the steps are paragraphs, not a numbered list. */
   .next-steps-links {
     display: flex;
     flex-wrap: wrap;
@@ -3673,99 +3614,6 @@
     display: flex;
     justify-content: space-between;
     font-size: 1rem;
-    color: var(--color-body);
-  }
-
-  /* SSQ12-TW's 0–10 position bar (ticket #188): blue only, as SSQ12 has no levels (ADR 0007), and
-     no animation (ADR 0006). Not the score position bar above: there are no thresholds. Each
-     mark and label is placed by --average and shifted by it in proportion, so 0 and 10 sit
-     flush inside the bar, as .score-bar-marker does. */
-  .ssq-average strong {
-    font-size: 2rem;
-    color: var(--color-primary);
-  }
-
-  .ssq-bar {
-    margin: 1rem 0 0;
-    font-size: 1rem;
-    line-height: 1.3;
-  }
-
-  .ssq-bar-labels {
-    position: relative;
-    height: 1.5rem;
-  }
-
-  .ssq-bar-label {
-    position: absolute;
-    top: 0.125rem;
-    left: calc(var(--average) * 10%);
-    transform: translateX(calc(var(--average) * -10%));
-    white-space: nowrap;
-    color: var(--color-body);
-  }
-
-  .ssq-bar-label-latest {
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .ssq-bar-track {
-    position: relative;
-    height: 1.5rem;
-  }
-
-  .ssq-bar-track::before,
-  .ssq-bar-fill {
-    position: absolute;
-    top: 0.375rem;
-    left: 0;
-    height: 0.75rem;
-    border-radius: var(--radius-pill);
-  }
-
-  .ssq-bar-track::before {
-    content: "";
-    right: 0;
-    background-color: var(--color-border-subtle);
-  }
-
-  .ssq-bar-fill {
-    width: calc(var(--average) * 10%);
-    background-color: var(--color-primary);
-  }
-
-  .ssq-bar-latest,
-  .ssq-bar-previous {
-    position: absolute;
-    left: calc(var(--average) * 10%);
-    box-sizing: border-box;
-  }
-
-  .ssq-bar-latest {
-    top: 0;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: 0.1875rem solid #fff;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    transform: translateX(calc(var(--average) * -10%));
-  }
-
-  /* The previous record: a hollow diamond, told apart from this one by shape as well as colour. */
-  .ssq-bar-previous {
-    top: 0.25rem;
-    width: 1rem;
-    height: 1rem;
-    border: 0.1875rem solid var(--color-body);
-    background-color: #fff;
-    transform: translateX(calc(var(--average) * -10%)) rotate(45deg);
-  }
-
-  .ssq-bar-ends {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.25rem;
     color: var(--color-body);
   }
 
@@ -5151,6 +4999,183 @@
         font-weight: 700;
       }
     }
+  }
+}
+
+/* #461 result pages (the #460 mockup R1): the score block, one sentence, the 建議下一步 and the
+   list rows with 看完整說明 folded among them. No reveal motion (ADR 0006). */
+@layer components {
+  /* The number largest, then the level, then the line against last time, all in the level's
+     text colour on its pale colour (L1, .result-banner). */
+  .result-score {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+  }
+
+  .result-banner .result-score {
+    color: inherit;
+  }
+
+  .result-number {
+    font-size: 2.6667rem;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .result-block-level {
+    margin: 0;
+    color: inherit;
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* A date like 2026/03/26 does not break by itself: at double text size it may anywhere. */
+  .result-since-last {
+    overflow-wrap: anywhere;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    font-weight: 500;
+  }
+
+  .result-since-last > p {
+    margin: 0;
+  }
+
+  /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
+  .result-summary {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .result-summary > p {
+    margin: 0;
+  }
+
+  .result-summary-lead {
+    font-size: var(--text-section-title);
+    font-weight: 700;
+  }
+
+  .result-one-line {
+    margin: 1rem 0 0;
+    color: var(--color-heading);
+  }
+
+  /* Pale blue, no frame: the 現在這一步's card (ADR 0041); only its button is clickable. */
+  .result-next {
+    margin-top: 1.25rem;
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .result-next-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .result-next-title {
+    margin: 0.125rem 0 0.75rem;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .result-list {
+    margin: 1.25rem 0 1.5rem;
+  }
+
+  /* 看完整說明 is a list row too (E): icon, title, arrow, a line above and below. */
+  .result-details {
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .result-list .result-details + .link-card {
+    border-top: 0;
+  }
+
+  .result-rows-note {
+    margin: 1rem 0 0.5rem;
+  }
+
+  /* Its own container, as an action card is: at large text sizes the words drop under the icon
+     and the arrow stays on the icon's row, the same as the rows below it. */
+  .result-details > summary {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    color: var(--color-heading);
+    list-style: none;
+  }
+
+  .result-details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .result-details > summary > span:not([class]) {
+    flex: 1;
+  }
+
+  @container (max-width: 11rem) {
+    .result-details > summary > span:not([class]) {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .result-details-arrow {
+      margin-left: auto;
+    }
+  }
+
+  /* A blue chevron at the row's end, as the rows' arrows: down while folded, swapped (not
+     turned) for an up one when open, as the dropdowns' chevrons, so nothing moves (ADR 0006). */
+  .result-details-arrow {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .result-details[open] .result-details-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* A fold changes colour only, never position (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .result-details > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .result-details > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .result-details > summary:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  .result-details-body {
+    padding: 0 0.25rem 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .result-details-body .score-bar {
+    margin-top: 0.5rem;
   }
 }
 

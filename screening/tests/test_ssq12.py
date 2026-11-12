@@ -52,7 +52,9 @@ class Ssq12Tests(TestCase):
                 self.assertIsNone(data["level"])
                 self.assertIsNone(data["average_unavailable_reason"])
                 page = self.client.get(reverse("result", args=[data["id"]]))
-                self.assertContains(page, f"整體平均 <strong>{expected}</strong> 分（滿分 10）")
+                self.assertContains(
+                    page, f'整體平均 <span class="result-number">{expected}</span> 分（滿分 10）'
+                )
                 self.assertNotContains(page, "情緒分數")
                 self.assertNotContains(page, "總分")
                 history = self.client.get(reverse("my_hearing"), {"questionnaire": "ssq12-tw"})
@@ -221,7 +223,8 @@ class Ssq12Tests(TestCase):
 
 
 class Ssq12ResultRedesignTests(TestCase):
-    """The SSQ12-TW result page's layout and 「比上一次」 line (#188)."""
+    """The SSQ12-TW result page's layout (#188). #461 (spec #453 acceptance 25): SSQ12-TW is not
+    graded, so its 「比上一次」 line and 0-10 bar went."""
 
     def setUp(self):
         call_command("seed_questionnaires", stdout=StringIO())
@@ -251,52 +254,16 @@ class Ssq12ResultRedesignTests(TestCase):
     def text(self, main):
         return " ".join(re.sub(r"<[^>]+>", " ", main).split())
 
-    def bar(self, main):
-        # The 0–10 position bar, hidden from assistive tech; "" when the page has none.
-        found = re.search(r'<div class="ssq-bar" aria-hidden="true">(.*?)ssq-bar-ends', main, re.S)
-        return found.group(1) if found else ""
-
-    def test_since_last_names_the_previous_record_and_the_bar_marks_both(self):
+    def test_an_earlier_record_brings_no_comparison_and_no_bar(self):
         self.record((2026, 4, 20), total=70)  # 5.8
-        latest = self.record((2026, 10, 15), total=78)  # 6.5
-        main = self.main(latest)
-        self.assertIn("比上一次（2026/04/20，5.8 分）多 0.7 分（分數越高越好）", self.text(main))
-        bar = self.bar(main)
-        self.assertIn("--average: 6.5", bar)
-        self.assertIn("--average: 5.8", bar)
+        main = self.main(self.record((2026, 10, 15), total=78))  # 6.5
+        text = self.text(main)
+        self.assertIn("整體平均 6.5 分（滿分 10）", text)
+        for gone in ("上一次", "上次", "這次", "分數越高越好", "ssq-bar"):
+            with self.subTest(gone=gone):
+                self.assertNotIn(gone, main)
 
-    def test_since_last_skips_records_worn_the_other_way(self):
-        self.record((2026, 1, 10), total=60, wearing=True)  # 5.0
-        self.record((2026, 4, 20), total=70, wearing=False)
-        latest = self.record((2026, 10, 15), total=78, wearing=True)
-        main = self.main(latest)
-        self.assertIn("比上一次（2026/01/10，5.0 分）多 1.5 分（分數越高越好）", self.text(main))
-        self.assertIn("--average: 5.0", self.bar(main))
-
-    def test_no_since_last_without_a_comparable_previous_record(self):
-        not_applicable = [6] * 11 + [None]
-        cases = {
-            "first record": [],
-            "previous worn the other way": [dict(total=70, wearing=True)],
-            "previous has not applicable": [dict(total=70), dict(scores=not_applicable)],
-            "hearing aid not recorded": [dict(total=70, wearing=None)],
-        }
-        for case, earlier in cases.items():
-            with self.subTest(case):
-                Answer.objects.all().delete()
-                Submission.objects.all().delete()
-                for month, record in enumerate(earlier, start=1):
-                    self.record((2026, month, 10), **record)
-                wearing = None if case == "hearing aid not recorded" else False
-                main = self.main(self.record((2026, 10, 15), total=78, wearing=wearing))
-                self.assertNotIn("上一次", self.text(main))
-                bar = self.bar(main)
-                # #363 (spec #354): with nothing to compare, no 「這次」 label either.
-                self.assertNotIn("這次", bar)
-                self.assertNotIn("上次", bar)
-                self.assertEqual(bar.count("--average:"), 2)  # this record's fill and marker
-
-    def test_a_record_with_not_applicable_has_neither_since_last_nor_bar(self):
+    def test_a_record_with_not_applicable_has_no_average(self):
         self.record((2026, 4, 20), total=70)
         latest = self.record((2026, 10, 15), scores=[6] * 11 + [None])
         main = self.main(latest)
@@ -304,23 +271,6 @@ class Ssq12ResultRedesignTests(TestCase):
         self.assertIn("未計算：包含不適用題目", text)
         self.assertNotIn("上一次", text)
         self.assertNotIn("整體平均 ", text)
-        self.assertEqual(self.bar(main), "")
-
-    def test_difference_uses_unrounded_averages_and_reads_more_less_or_same(self):
-        # ADR 0001: 52 and 56 show 4.3 and 4.7, yet differ by 4 / 12 = 0.33, shown as 0.3.
-        for previous, latest, expected in (
-            (52, 56, "比上一次（2026/04/20，4.3 分）多 0.3 分（分數越高越好）"),
-            (56, 52, "比上一次（2026/04/20，4.7 分）少 0.3 分（分數越高越好）"),
-            (48, 52, "比上一次（2026/04/20，4.0 分）多 0.3 分（分數越高越好）"),
-            (70, 70, "和上一次一樣"),
-        ):
-            with self.subTest(previous=previous, latest=latest):
-                Answer.objects.all().delete()
-                Submission.objects.all().delete()
-                self.record((2026, 4, 20), total=previous)
-                main = self.main(self.record((2026, 10, 15), total=latest))
-                self.assertIn(expected, self.text(main))
-                self.assertIn("上次", self.bar(main))
 
     def test_page_reads_topic_status_average_then_folded_answers_and_disclaimer_last(self):
         latest = self.record((2026, 10, 15), total=78, wearing=True)

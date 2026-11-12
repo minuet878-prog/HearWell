@@ -4,52 +4,58 @@
 
 {% block body %}
 {% include "screening/result_header.html" %}
-<section class="mb-6">
-    {# #363: the opening conclusion in the blue summary box SSQ12-TW and SADL open with, no level colour (ADR 0007). #}
-    <div class="trend-summary mb-4">
+{# #461 (the #460 mockup R1): the opening conclusion in a pale grey block, no level colour (ADR 0007); the items wait behind 看完整說明. #}
+<div class="result-summary">
     {% if grouped %}
-    <p class="text-xl/normal font-bold text-heading">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
-    <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
-    {% with basis=submission.norm_basis %}
-    <p class="mb-0">分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.result.total }} 分。這是常模比較的分組，不代表聽損程度。</p>
-    {% endwith %}
+    <p class="result-summary-lead">{{ items|length }} 項中，有 {{ below|length }} 項{{ below_text }}</p>
     {% else %}
-    <p class="mb-0">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
+    <p class="result-summary-lead">需要一筆完整有效的未配戴 HHIA-S／HHIE-S 紀錄，才能跟常模比較。</p>
     {% endif %}
+</div>
+{% include "screening/result_next.html" %}
+<div class="result-list">
+<details class="result-details">
+    {% include "screening/result_details_summary.html" %}
+    <div class="result-details-body">
+        {% if grouped %}
+        <p>比較對象：一般助聽器使用者中，中間一半的人（常模）。</p>
+        {% with basis=submission.norm_basis %}
+        <p>分組依據：{{ basis.created_at|date:"Y/m/d" }} 沒戴助聽器時填的 {{ basis.questionnaire }}，{{ basis.result.total }} 分。這是常模比較的分組，不代表聽損程度。</p>
+        {% endwith %}
+        {% endif %}
+        <ul class="trend-legend" aria-hidden="true">
+            {% if grouped %}<li><span class="ioi-legend-band"></span>一般使用者的範圍（常模）</li>{% endif %}
+            <li><span class="ioi-legend-latest"></span>您的回答</li>
+        </ul>
+        {% if grouped %}
+        {% if below %}
+        <section class="ioi-below" aria-labelledby="ioi-below-title">
+            <h2 id="ioi-below-title" class="h4">{{ below_text }}的 {{ below|length }} 項</h2>
+            <ol class="ioi-items">
+                {% for item in below %}{% include "screening/ioi_ha_item.html" with heading=3 hide_versus=True %}{% endfor %}
+            </ol>
+        </section>
+        {% endif %}
+        {% if others %}
+        <details class="ioi-others dropdown-line">
+            <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
+            <ol class="ioi-items">
+                {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
+            </ol>
+        </details>
+        {% endif %}
+        <section class="my-6" aria-labelledby="ioi-next-title">
+            <h2 id="ioi-next-title" class="h4">可以帶去跟聽力師討論</h2>
+            <p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
+        </section>
+        {% else %}
+        <ol class="ioi-items">
+            {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
+        </ol>
+        {% endif %}
     </div>
-    <ul class="trend-legend" aria-hidden="true">
-        {% if grouped %}<li><span class="ioi-legend-band"></span>一般使用者的範圍（常模）</li>{% endif %}
-        <li><span class="ioi-legend-latest"></span>您的回答</li>
-    </ul>
-</section>
-{% if grouped %}
-{% if below %}
-<section class="ioi-below" aria-labelledby="ioi-below-title">
-    <h2 id="ioi-below-title" class="h4">{{ below_text }}的 {{ below|length }} 項</h2>
-    <ol class="ioi-items">
-        {% for item in below %}{% include "screening/ioi_ha_item.html" with heading=3 hide_versus=True %}{% endfor %}
-    </ol>
-</section>
-{% endif %}
-{% if others %}
-<details class="ioi-others dropdown-box">
-    <summary><h2 class="ioi-others-title">其他 {{ others|length }} 項</h2></summary>
-    <ol class="ioi-items">
-        {% for item in others %}{% include "screening/ioi_ha_item.html" with heading=3 %}{% endfor %}
-    </ol>
 </details>
-{% endif %}
-{% else %}
-<ol class="ioi-items">
-    {% for item in items %}{% include "screening/ioi_ha_item.html" with heading=2 %}{% endfor %}
-</ol>
-{% endif %}
-{% if grouped %}
-<section class="my-6" aria-labelledby="ioi-next-title">
-    <h2 id="ioi-next-title" class="h4">可以帶去跟聽力師討論</h2>
-    <p class="mb-0">如有多項低於常模，可以帶這份結果跟您的聽力師討論。</p>
-</section>
-{% endif %}
-{% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
+{% include "screening/result_rows.html" %}
+</div>
 {% include "screening/ioi_ha_source.html" with with_norms=True with_notes=True %}
 {% endblock %}
