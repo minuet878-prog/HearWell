@@ -4089,6 +4089,43 @@
     user-select: none;
   }
 
+  /* The speech banana page (#436). The words in its chart scale with the chart (ADR 0040); these
+     follow the user's text size. */
+  .speech-banana-result {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-section);
+    color: var(--color-heading);
+  }
+
+  .speech-banana-result p {
+    margin: 0 0 0.25rem;
+  }
+
+  .speech-banana-result p:last-child {
+    margin-bottom: 0;
+  }
+
+  .speech-banana-result-title {
+    font-weight: 700;
+  }
+
+  .speech-banana-picks {
+    display: grid;
+    gap: 0.5rem;
+    padding-inline: 1rem;
+  }
+
+  .speech-banana-pick {
+    text-align: left;
+  }
+
+  .speech-banana-pick[aria-pressed="true"] {
+    --btn-bg: var(--color-primary);
+    --btn-color: #fff;
+  }
+
   .audiogram-symbols {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4393,7 +4430,8 @@
     .scroll-hint { display: none; }
   }
 
-  /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202). */
+  /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202).
+     The speech banana page has buttons instead, since it stays on the page (#441). */
   .ear-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4403,7 +4441,7 @@
     background-color: var(--color-brand-selected);
   }
 
-  .ear-switch a {
+  .ear-switch :is(a, button) {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4414,20 +4452,25 @@
     text-decoration: none;
   }
 
-  .ear-switch a[aria-current="true"] {
+  .ear-switch :is(a[aria-current="true"], button[aria-pressed="true"]) {
     background-color: var(--color-primary);
     background-image: var(--gradient-brand);
     color: #fff;
   }
 
+  .ear-switch button:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
   /* #328 (A2): as 我的紀錄's switch. */
   @media (hover: hover) and (pointer: fine) {
-    .ear-switch a:not([aria-current]):hover {
+    .ear-switch :is(a:not([aria-current]), button[aria-pressed="false"]):hover {
       background-color: var(--color-brand-soft);
     }
   }
 
-  .ear-switch a:not([aria-current]):active {
+  .ear-switch :is(a:not([aria-current]), button[aria-pressed="false"]):active {
     background-color: var(--color-brand-soft-deep);
   }
 

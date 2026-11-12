@@ -75,6 +75,8 @@ OWNER_KEPT = {
     ".since-last-date": "和上一次比's dates, under their labels (2026-10-24 comparison, A)",
     ".ioi-axis .ioi-grid": "the IOI-HA chart's axis numbers; the chart stays as drawn (#364)",
     ".ioi-name": "the IOI-HA chart's item names; the chart stays as drawn (#364)",
+    # Sized in SpeechBananaApp.jsx, not site.css: its size in chart units scales with the chart.
+    "[data-group] text": "the speech banana chart's words, which scale with it (ADR 0040)",
 }
 SMALL_PRINT = SOURCES | OWNER_KEPT
 

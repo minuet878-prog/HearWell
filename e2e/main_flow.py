@@ -11,6 +11,7 @@ import re
 from contextlib import contextmanager, nullcontext
 from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
+from math import log2
 from typing import ClassVar
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
@@ -6471,6 +6472,24 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     for states in (("hover",), ("hover", "active")):
                         self.assertEqual(self.under(current, *states, props=props), at_rest)
 
+    # #441: the speech banana page's ear switch is buttons, not links, and answers the same.
+    def test_speech_banana_ear_switch_changes_colour_when_hovered_or_pressed(self):
+        audiogram = self.audiogram(date(2026, 9, 1))
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}/speech-banana")
+            ears = self.main().get_by_role("group", name="選耳朵")
+            other = ears.get_by_role("button", name="左耳")
+            self.assertEqual(self.style(other, "backgroundColor"), self.CLEAR)
+            self.assertEqual(self.under(other, "hover"), self.BRAND_SOFT)
+            self.assertEqual(self.under(other, "hover", "active"), self.BRAND_SOFT_DEEP)
+            current = ears.get_by_role("button", name="右耳")
+            props = ("backgroundColor", "backgroundImage", "color")
+            at_rest = {prop: self.style(current, prop) for prop in props}
+            self.assertEqual(at_rest["backgroundImage"], self.GRADIENT)
+            for states in (("hover",), ("hover", "active")):
+                self.assertEqual(self.under(current, *states, props=props), at_rest)
+
     # A3: on a phone the pill behind a tab's icon lights up under the finger; wide screens' top
     # bar does the same to the whole item.
     def test_navigation_items_change_colour_when_pressed(self):
@@ -9762,11 +9781,17 @@ class LayoutOnAPhone(OnAPhone):
             "url": self.live_server_url,
         }
 
-    def open(self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True):
-        """Opens path in a fresh browser window of size; script runs before the page's own."""
+    def open(
+        self, path, size=PHONE, signed_in=True, script="", java_script_enabled=True, touch=False
+    ):
+        """Opens path in a fresh browser window of size; script runs before the page's own.
+        Touch is a phone without a mouse."""
         width, height = size
         self.context = self.browser.new_context(
-            viewport={"width": width, "height": height}, java_script_enabled=java_script_enabled
+            viewport={"width": width, "height": height},
+            java_script_enabled=java_script_enabled,
+            has_touch=touch,
+            is_mobile=touch,
         )
         # The family page's 複製網址 reads back what it copied.
         self.context.grant_permissions(
@@ -10806,6 +10831,720 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     second = summary.get_by_text(makers, exact=True).bounding_box()
                     self.assertGreaterEqual(second["y"], first["y"] + first["height"] - 1)
                     self.assertAlmostEqual(second["x"], first["x"], delta=1)
+
+
+class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#440 (spec #436): the speech banana page, its six boxes and picking a group from the list."""
+
+    DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
+    WHITE_BOX = "rgb(255, 255, 255)"
+    # Group 5 at 5500 Hz: the right ear's line is over it, the left ear has no marks that far up.
+    RIGHT = ((500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65))
+    LEFT = ((500, 30), (1000, 35), (2000, 40), (4000, 50))
+    GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_e2e"))
+        self.audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=self.audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, marks in (("right", self.RIGHT), ("left", self.LEFT))
+            for f, db in marks
+        )
+        self.path = f"/audiograms/{self.audiogram.pk}/speech-banana"
+
+    def open_page(self, size=LayoutOnAPhone.PHONE):
+        self.open(self.path, size)
+        self.page.locator(".audiogram-plot svg").wait_for()
+
+    def result(self):
+        return self.main().get_by_role("status")
+
+    def pick(self, name):
+        return self.main().get_by_role("button", name=name)
+
+    def open_list(self):
+        self.main().locator("summary", has_text="用清單選").click()
+
+    def green_bands(self):
+        """How many of what each chart on the page draws is filled with the normal range's green."""
+        charts = self.page.locator(".audiogram-plot svg")
+        charts.first.wait_for()
+        return charts.evaluate_all(
+            """charts => charts.map((chart) => [...chart.querySelectorAll("*")].filter(
+                (el) => getComputedStyle(el).fill === "rgb(233, 245, 236)",
+            ).length)"""
+        )
+
+    # The owner's decision (#436): this page's chart has no green normal range. It is React that
+    # draws it, so only the browser can tell; every other audiogram page keeps its band.
+    def test_only_this_page_leaves_out_the_green_normal_range(self):
+        older = Audiogram.objects.create(user=self.user, tested_on=date(2026, 1, 5))
+        AudiogramPoint.objects.create(
+            audiogram=older, ear="right", conduction="air", frequency=1000, db=40
+        )
+        with self.saving_artifacts():
+            self.open_page()
+            self.assertEqual(self.green_bands(), [0])
+            for path in (f"/audiograms/{self.audiogram.pk}", "/audiograms/compare", "/report"):
+                with self.subTest(path=path):
+                    self.open(path, self.PHONE)
+                    self.assertEqual(self.green_bands(), [1])
+            # Marking an ear, and the read-only chart before saving.
+            for step in (2, 4):
+                with self.subTest(step=step):
+                    audiogram_step(self.page, self.live_server_url, step)
+                    self.assertEqual(self.green_bands(), [1])
+
+    # Acceptance 2, 4: the card leads here; the title has the date; nothing picked, the hint shows.
+    def test_card_opens_the_page_with_nothing_picked(self):
+        with self.saving_artifacts():
+            self.open(f"/audiograms/{self.audiogram.pk}")
+            self.main().get_by_role("link", name=re.compile("^看語言香蕉區")).click()
+            self.page.wait_for_url(f"**{self.path}")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text(
+                "2026/09/01 聽力圖的語言香蕉區"
+            )
+            expect(self.result()).to_have_text("點圖上的注音，看那一群。")
+            expect(self.page.locator('[data-selected="true"]')).to_have_count(0)
+
+    # Acceptance 5: the banana and six boxes, each box apart from the others and inside the frame,
+    # its words inside it, on a common phone and the smallest.
+    def test_boxes_do_not_overlap_and_stay_in_the_frame(self):
+        for size in (self.PHONE, (320, 640)):
+            with self.subTest(width=size[0]), self.saving_artifacts():
+                self.open_page(size)
+                self.assertGreater(
+                    self.page.locator(".speech-banana-area").bounding_box()["width"], 0
+                )
+                frame = self.page.locator(".audiogram-frame").bounding_box()
+                boxes = self.page.locator("[data-group] rect")
+                expect(boxes).to_have_count(6)
+                boxes = [box.bounding_box() for box in boxes.all()]
+                for i, box in enumerate(boxes, start=1):
+                    self.assertGreaterEqual(box["x"], frame["x"], f"group {i} left")
+                    self.assertGreaterEqual(box["y"], frame["y"], f"group {i} top")
+                    self.assertLessEqual(
+                        box["x"] + box["width"], frame["x"] + frame["width"], f"group {i} right"
+                    )
+                    self.assertLessEqual(
+                        box["y"] + box["height"], frame["y"] + frame["height"], f"group {i} bottom"
+                    )
+                    for word in self.page.locator(f'[data-group="{i}"] text').all():
+                        words = word.bounding_box()
+                        self.assertGreaterEqual(words["x"], box["x"], f"group {i} words")
+                        self.assertLessEqual(
+                            words["x"] + words["width"], box["x"] + box["width"], f"group {i} words"
+                        )
+                for i, a in enumerate(boxes):
+                    for j, b in enumerate(boxes[i + 1 :], start=i + 1):
+                        apart = (
+                            a["x"] + a["width"] <= b["x"]
+                            or b["x"] + b["width"] <= a["x"]
+                            or a["y"] + a["height"] <= b["y"]
+                            or b["y"] + b["height"] <= a["y"]
+                        )
+                        self.assertTrue(apart, f"groups {i + 1} and {j + 1} overlap")
+
+    # Acceptance 6: picked from the list, the box goes dark and the result says the group's
+    # description, examples and a sentence for each ear.
+    def test_picking_from_the_list_darkens_the_box_and_writes_the_result(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+            box = self.page.locator('[data-group="5"] rect')
+            self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
+            self.assertEqual(
+                self.style(self.page.locator('[data-group="4"] rect'), "fill"), self.WHITE_BOX
+            )
+            expect(self.result()).to_contain_text(self.GROUP_5)
+            expect(self.result()).to_contain_text("高音的子音")
+            expect(self.result()).to_contain_text("ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」")
+            expect(self.result()).to_contain_text("右耳：可能不容易聽到")
+            expect(self.result()).to_contain_text("左耳：這個頻率沒有標記，無法估計")
+            expect(self.result()).not_to_contain_text("點圖上的注音")
+
+    # Acceptance 7: with the keyboard alone the list opens and a group is picked, each focus ring
+    # shows, focus stays on the button pressed, and the chart has its text alternative.
+    def test_the_keyboard_alone_picks_a_group_and_focus_stays_on_the_button(self):
+        with self.saving_artifacts():
+            self.open_page()
+            summary = self.main().locator("summary", has_text="用清單選")
+            for _ in range(40):
+                self.page.keyboard.press("Tab")
+                if summary.evaluate("el => el === document.activeElement"):
+                    break
+            else:
+                self.fail("Tab never reached 用清單選")
+            self.assertNotEqual(self.style(summary, "outlineStyle"), "none")
+            self.page.keyboard.press("Enter")
+            first = self.pick("ㄩㄧㄨㄝㄜㄛㄦ")
+            expect(first).to_be_visible()
+            self.page.keyboard.press("Tab")
+            expect(first).to_be_focused()
+            self.page.wait_for_function(
+                "getComputedStyle(document.activeElement).boxShadow.includes('0px 0px 0px')"
+            )
+            self.page.keyboard.press("Enter")
+            expect(first).to_be_focused()
+            expect(first).to_have_attribute("aria-pressed", "true")
+            expect(self.result()).to_contain_text("母音的低音部分")
+            label = self.main().get_by_role("img").get_attribute("aria-label")
+            self.assertIn("語言香蕉區", label)
+
+    # Acceptance 8: 320 wide at 200% text the page does not scroll sideways, the result and list
+    # words double, and every button in the list is at least 44 pixels tall.
+    def test_narrow_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open_page((320, 640))
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            words = self.result().locator("p").last
+            pick = self.pick(self.GROUP_5)
+            before = (self.font_size(words), self.font_size(pick))
+            self.assert_fits_a_phone_at_double_text_size("speech banana")
+            self.assertEqual(self.font_size(words), before[0] * 2)
+            self.assertEqual(self.font_size(pick), before[1] * 2)
+            for button in self.main().get_by_role("button").all():
+                self.assertGreaterEqual(button.bounding_box()["height"], 44)
+            self.assertGreaterEqual(
+                self.main().locator("summary", has_text="用清單選").bounding_box()["height"], 44
+            )
+            self.double_text(False)
+            for button in self.main().get_by_role("button").all():
+                self.assertGreaterEqual(button.bounding_box()["height"], 44)
+
+
+class SpeechBananaEarTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#441 (spec #436): switching ears, the hatching and the dashed boxes."""
+
+    # The right ear falls with frequency. The left ear's line stops at no response at 4000 Hz.
+    RIGHT = ((250, 20), (500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65), (8000, 70))
+    LEFT = ((250, 20), (500, 30), (1000, 35), (2000, 50), (4000, 120))
+    GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
+    # Where a chart unit lands (audiogram.js's CHART, x and y), and what is drawn there.
+    WHAT_IS_AT = """([frequency, db]) => {
+        const svg = document.querySelector(".audiogram-plot svg");
+        svg.scrollIntoView({ block: "center", behavior: "instant" });
+        const box = svg.getBoundingClientRect();
+        const x = 36 + (Math.log2(frequency / 250) / 5) * 268;
+        const y = 30 + ((db + 10) / 130) * 312;
+        const found = document.elementFromPoint(
+            box.x + (x * box.width) / 320,
+            box.y + (y * box.height) / 380,
+        );
+        return found.closest("[data-point]")?.dataset.point ?? found.getAttribute("class");
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_ears_e2e"))
+
+    def open_page(self, right=RIGHT, left=LEFT, size=LayoutOnAPhone.PHONE):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(
+                audiogram=audiogram,
+                ear=ear,
+                conduction="air",
+                frequency=f,
+                db=db,
+                no_response=db == 120,
+            )
+            for ear, marks in (("right", right), ("left", left))
+            for f, db in marks
+        )
+        self.open(f"/audiograms/{audiogram.pk}/speech-banana", size)
+        self.page.locator(".audiogram-plot svg").wait_for()
+
+    def ear(self, name):
+        return self.main().get_by_role("group", name="選耳朵").get_by_role("button", name=name)
+
+    def at(self, frequency, db):
+        return self.page.evaluate(self.WHAT_IS_AT, [frequency, db])
+
+    def dashed(self):
+        rects = self.page.locator("[data-group] rect").all()
+        return [
+            i for i, r in enumerate(rects, start=1) if self.style(r, "strokeDasharray") != "none"
+        ]
+
+    def assert_hatching_follows(self, stretch):
+        """One hatched piece, up from stretch's marks to the chart's top, in chart units as in
+        WHAT_IS_AT."""
+        points = self.page.locator(".speech-banana-hatch").get_attribute("points")
+        drawn = [tuple(map(float, point.split(","))) for point in points.split()]
+        outline = [(stretch[0][0], -10), *stretch, (stretch[-1][0], -10)]
+        self.assertEqual(len(drawn), len(outline))
+        for (x, y), (frequency, db) in zip(drawn, outline, strict=True):
+            self.assertAlmostEqual(x, 36 + log2(frequency / 250) / 5 * 268, delta=0.01)
+            self.assertAlmostEqual(y, 30 + (db + 10) / 130 * 312, delta=0.01)
+
+    # Acceptance 1, spec 畫面與操作: the page and its scroll stay, the group stays, both ears'
+    # sentences stay; the marks, the hatching, the dashes and the chart's words follow the ear.
+    def test_switching_stays_put_and_keeps_the_group(self):
+        with self.saving_artifacts():
+            self.open_page()
+            expect(self.ear("右耳")).to_have_attribute("aria-pressed", "true")
+            expect(self.ear("左耳")).to_have_attribute("aria-pressed", "false")
+            self.main().locator("summary", has_text="用清單選").click()
+            self.main().get_by_role("button", name=self.GROUP_5).click()
+            result = self.main().get_by_role("status")
+            sentences = result.text_content()
+            self.assertIn("右耳：可能不容易聽到", sentences)
+            self.assertIn("左耳：這個頻率沒有標記，無法估計", sentences)
+            # Group 5 is picked, so it is the one hard box that is solid.
+            self.assertEqual(self.dashed(), [3, 4, 6])
+            expect(self.page.locator(".speech-banana-hatch")).to_have_count(1)
+            self.ear("右耳").evaluate(
+                "el => { window.stillThisPage = true;"
+                " window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 120,"
+                " behavior: 'instant' }); }"
+            )
+            scrolled = self.page.evaluate("window.scrollY")
+            self.assertGreater(scrolled, 0)
+            url = self.page.url
+
+            self.ear("左耳").click()
+
+            expect(self.ear("左耳")).to_have_attribute("aria-pressed", "true")
+            expect(self.ear("右耳")).to_have_attribute("aria-pressed", "false")
+            self.assertTrue(self.page.evaluate("window.stillThisPage === true"))
+            self.assertEqual(self.page.url, url)
+            self.assertEqual(self.page.evaluate("window.scrollY"), scrolled)
+            expect(self.page.locator('[data-selected="true"]')).to_have_attribute("data-group", "5")
+            self.assertEqual(result.text_content(), sentences)
+            self.assertEqual(self.dashed(), [])
+            expect(self.page.locator(".speech-banana-hatch")).to_have_count(1)
+            expect(self.page.locator('[data-point="left-air-500"]')).to_have_count(1)
+            expect(self.page.locator('[data-point="right-air-500"]')).to_have_count(0)
+            self.assertEqual(
+                self.main().get_by_role("img").get_attribute("aria-label"),
+                "聽力圖，畫出語言香蕉區、六群注音和左耳的標記。"
+                "要看每一群的結果，請用圖下的「用清單選」。",
+            )
+
+    # Spec 畫面與操作: the hatching on show is this ear's own, by its shape and where it lands.
+    def test_switching_ears_draws_that_ears_hatching(self):
+        with self.saving_artifacts():
+            self.open_page()
+            # Same number of pieces in both ears, so only the shape tells them apart. The left
+            # ear's line ends at 2000 Hz, where no response breaks it.
+            self.assert_hatching_follows(self.RIGHT)
+            self.assertEqual(self.at(2800, 42), "speech-banana-hatch")
+            self.assertEqual(self.at(1500, 42), "speech-banana-area")
+
+            self.ear("左耳").click()
+            expect(self.ear("左耳")).to_have_attribute("aria-pressed", "true")
+            self.assert_hatching_follows(self.LEFT[:-1])
+            self.assertEqual(self.at(2800, 42), "speech-banana-area")
+            self.assertEqual(self.at(1500, 42), "speech-banana-hatch")
+
+            self.ear("右耳").click()
+            expect(self.ear("右耳")).to_have_attribute("aria-pressed", "true")
+            self.assert_hatching_follows(self.RIGHT)
+
+    # Acceptance 2: over the line, inside the banana, between the marks of one stretch only.
+    # The line is low enough to hatch the whole banana where it runs, so nothing but the rule
+    # keeps the hatching out of the places below.
+    def test_hatching_stays_over_the_line_inside_the_banana(self):
+        with self.saving_artifacts():
+            self.open_page(right=((500, 70), (1000, 70), (2000, 70), (4000, 70)), left=())
+            self.assertEqual(self.at(2800, 42), "speech-banana-hatch")
+            # Over the banana's top edge at 2800 Hz, still over the line.
+            self.assertNotIn(self.at(2800, 36), ("speech-banana-hatch", "speech-banana-area"))
+            # Past the lowest and the highest mark.
+            self.assertEqual(self.at(400, 45), "speech-banana-area")
+            self.assertEqual(self.at(4700, 40), "speech-banana-area")
+
+    def test_hatching_stops_under_the_line_and_where_no_response_breaks_it(self):
+        with self.saving_artifacts():
+            self.open_page(right=((1000, 30), (2000, 45), (4000, 60)), left=())
+            self.assertEqual(self.at(2800, 42), "speech-banana-hatch")
+            # At 2000 Hz the line is at 45 dB: 50 dB is under it, still in the banana.
+            self.assertEqual(self.at(2000, 50), "speech-banana-area")
+        with self.saving_artifacts():
+            self.open_page(
+                right=((500, 70), (1000, 70), (2000, 120), (4000, 70), (6000, 70)), left=()
+            )
+            expect(self.page.locator(".speech-banana-hatch")).to_have_count(2)
+            self.assertEqual(self.at(700, 48), "speech-banana-hatch")
+            self.assertEqual(self.at(5000, 38), "speech-banana-hatch")
+            self.assertEqual(self.at(1500, 48), "speech-banana-area")
+
+    # Acceptance 3, 4: dashes only on the hard ones, by the line's shape, not its colour.
+    def test_only_hard_boxes_are_dashed_in_the_same_blue(self):
+        with self.saving_artifacts():
+            self.open_page()
+            # Right: heard, heard, hard, hard, hard, hard. Left: heard, heard, broken, broken,
+            # no mark, no mark, so the three other results are all solid.
+            self.assertEqual(self.dashed(), [3, 4, 5, 6])
+            rects = self.page.locator("[data-group] rect").all()
+            self.assertEqual({self.style(r, "stroke") for r in rects}, {"rgb(31, 78, 140)"})
+            self.ear("左耳").click()
+            expect(self.ear("左耳")).to_have_attribute("aria-pressed", "true")
+            self.assertEqual(self.dashed(), [])
+
+    # The owner's decision (#436): picked, a hard box is solid dark blue; only one not picked is
+    # dashed, and it goes back to dashed once another is picked.
+    def test_a_picked_hard_box_is_solid_dark_blue(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.assertEqual(self.dashed(), [3, 4, 5, 6])
+            self.main().locator("summary", has_text="用清單選").click()
+            self.main().get_by_role("button", name=self.GROUP_5).click()
+            box = self.page.locator('[data-group="5"] rect')
+            expect(self.page.locator('[data-group="5"]')).to_have_attribute("data-selected", "true")
+            self.assertEqual(self.style(box, "fill"), "rgb(31, 78, 140)")
+            self.assertEqual(self.style(box, "stroke"), "rgb(31, 78, 140)")
+            self.assertEqual(self.dashed(), [3, 4, 6])
+            # A box that is not hard stays solid when picked too.
+            self.main().get_by_role("button", name="ㄚㄨㄛㄚㄜㄦ").click()
+            expect(self.page.locator('[data-group="2"]')).to_have_attribute("data-selected", "true")
+            self.assertEqual(self.dashed(), [3, 4, 5, 6])
+
+    # #441, the owner's decision: a mark or the line under a box still shows, picked or not.
+    def test_marks_and_the_line_are_drawn_over_the_boxes(self):
+        # 6000 Hz at 25 dB sits inside group 6's box; so does the line coming to it from 4000 Hz.
+        marks = ((4000, 25), (6000, 25))
+        for ear, name in (("right", "右耳"), ("left", "左耳")):
+            with self.subTest(ear=ear), self.saving_artifacts():
+                self.open_page(right=marks, left=marks)
+                self.ear(name).click()
+                expect(self.ear(name)).to_have_attribute("aria-pressed", "true")
+                self.main().locator("summary", has_text="用清單選").click()
+                for picked in (False, True):
+                    if picked:
+                        self.main().get_by_role("button", name="ㄗㄙㄘ").click()
+                        expect(self.page.locator('[data-group="6"]')).to_have_attribute(
+                            "data-selected", "true"
+                        )
+                    self.assertEqual(self.at(6000, 25), f"{ear}-air-6000")
+                    self.assertEqual(self.at(5000, 25), f"air-line-{ear}")
+
+    # Acceptance 5: the keyboard alone, a ring in sight, focus stays on the button pressed.
+    def test_the_keyboard_alone_switches_ears(self):
+        with self.saving_artifacts():
+            self.open_page()
+            right = self.ear("右耳")
+            for _ in range(40):
+                self.page.keyboard.press("Tab")
+                if right.evaluate("el => el === document.activeElement"):
+                    break
+            else:
+                self.fail("Tab never reached 右耳")
+            self.assertEqual(self.style(right, "outlineStyle"), "solid")
+            self.assertEqual(self.style(right, "outlineColor"), "rgb(31, 78, 140)")
+            self.page.keyboard.press("Tab")
+            left = self.ear("左耳")
+            expect(left).to_be_focused()
+            self.page.keyboard.press("Enter")
+            expect(left).to_be_focused()
+            expect(left).to_have_attribute("aria-pressed", "true")
+            self.assertEqual(self.style(left, "outlineStyle"), "solid")
+            self.page.keyboard.press("Shift+Tab")
+            self.page.keyboard.press("Space")
+            expect(right).to_be_focused()
+            expect(right).to_have_attribute("aria-pressed", "true")
+
+    # Acceptance 5: at least 44 pixels, at both text sizes, and 320 wide at 200% fits; the legend
+    # grows with the text.
+    def test_narrow_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open_page(size=(320, 640))
+            legend = self.main().get_by_text("黃色是語言香蕉區，是說話聲通常落在的範圍。")
+            before = self.font_size(legend)
+            self.assertGreaterEqual(before, 18)
+            for name in ("右耳", "左耳"):
+                self.assertGreaterEqual(self.ear(name).bounding_box()["height"], 44)
+            self.assert_fits_a_phone_at_double_text_size("speech banana ears")
+            self.assertEqual(self.font_size(legend), before * 2)
+            for name in ("右耳", "左耳"):
+                self.assertGreaterEqual(self.ear(name).bounding_box()["height"], 44)
+
+    # Acceptance 6: nothing is moving or fading the moment after the switch.
+    def test_switching_has_no_animation(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.assertEqual(self.style(self.ear("左耳"), "transitionDuration"), "0s")
+            self.ear("左耳").click()
+            self.assertEqual(
+                self.main().evaluate("el => el.getAnimations({ subtree: true }).length"), 0
+            )
+
+
+class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#442 (spec #436): tapping the chart picks the nearest group; a swipe stays a scroll."""
+
+    DARK_BOX = "rgb(31, 78, 140)"  # the site's primary colour
+    GROUP_5 = "ㄈㄐㄑㄓㄔㄒㄕ"
+    HINT = "點圖上的注音，看那一群。"
+    # In chart units. Empty space: 46 from box 5's centre, 58 from box 6's. The other is on box 5.
+    NEAR_GROUP_5 = (285, 170)
+    ON_BOX_5 = (272, 214)
+    # Where a chart unit is on the screen, read from the browser, not worked out as the page does.
+    ON_SCREEN = """(svg, [x, y]) => {
+        const m = svg.getScreenCTM();
+        return [m.a * x + m.e, m.d * y + m.f];
+    }"""
+    # What is under a point on the screen: in the chart at all, and on a group's drawing.
+    UNDER = """([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return [Boolean(el?.closest(".audiogram-plot svg")), Boolean(el?.closest("[data-group]"))];
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_tap_e2e"))
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear, marks in (
+                ("right", ((500, 25), (1000, 30), (2000, 45), (4000, 60), (6000, 65))),
+                ("left", ((500, 30), (1000, 35), (2000, 40), (4000, 50))),
+            )
+            for f, db in marks
+        )
+        self.path = f"/audiograms/{audiogram.pk}/speech-banana"
+
+    def open_page(self, size=LayoutOnAPhone.PHONE, touch=False):
+        self.open(self.path, size, touch=touch)
+        self.page.locator(".audiogram-plot svg").wait_for()
+
+    def on_screen(self, chart_point):
+        return self.page.locator(".audiogram-plot svg").evaluate(self.ON_SCREEN, list(chart_point))
+
+    def empty_chart_spot(self):
+        """NEAR_GROUP_5 on the screen, checked to be on the chart and off every group."""
+        # Opening the list scrolls the page, which can leave the chart above the screen.
+        self.page.locator(".audiogram-plot svg").scroll_into_view_if_needed()
+        spot = self.on_screen(self.NEAR_GROUP_5)
+        self.assertEqual(self.page.evaluate(self.UNDER, spot), [True, False])
+        return spot
+
+    def result(self):
+        return self.main().get_by_role("status")
+
+    def pick(self, name):
+        return self.main().get_by_role("button", name=name)
+
+    def open_list(self):
+        self.main().locator("summary", has_text="用清單選").click()
+
+    def assert_group_5_picked(self):
+        expect(self.result()).to_contain_text(self.GROUP_5)
+        expect(self.result()).to_contain_text("高音的子音")
+        expect(self.result()).to_contain_text("ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」")
+        expect(self.result()).to_contain_text("右耳：可能不容易聽到")
+        expect(self.result()).to_contain_text("左耳：這個頻率沒有標記，無法估計")
+        expect(self.page.locator('[data-selected="true"]')).to_have_count(1)
+        box = self.page.locator('[data-group="5"] rect')
+        self.assertEqual(self.style(box, "fill"), self.DARK_BOX)
+        self.open_list()
+        expect(self.pick(self.GROUP_5)).to_have_attribute("aria-pressed", "true")
+        expect(self.pick(self.GROUP_5)).to_have_css("background-color", self.DARK_BOX)
+
+    def assert_nothing_picked(self):
+        expect(self.result()).to_have_text(self.HINT)
+        expect(self.page.locator('[data-selected="true"]')).to_have_count(0)
+
+    def swipe(self, start, distance):
+        """A finger pressed at start and dragged by distance down the screen (up when negative),
+        through the browser's own touch input, as a phone sends it."""
+        x, y = start
+        devtools = self.context.new_cdp_session(self.page)
+
+        def touch(kind, points):
+            devtools.send("Input.dispatchTouchEvent", {"type": kind, "touchPoints": points})
+
+        touch("touchStart", [{"x": x, "y": y}])
+        for step in range(1, 11):
+            touch("touchMove", [{"x": x, "y": y + distance * step / 10}])
+        touch("touchEnd", [])
+
+    def settled_scroll(self):
+        """Where the page stops: the browser carries a swipe on for a moment after the lift."""
+        self.page.wait_for_function(
+            "() => { const still = scrollY === window.lastY; window.lastY = scrollY; "
+            "return still; }",
+            polling=200,
+        )
+        return self.page.evaluate("window.scrollY")
+
+    # Acceptance 1: a finger on empty space picks the nearest group; its box goes dark, the
+    # result appears, and the list marks the same group.
+    def test_a_finger_on_empty_space_picks_the_nearest_group(self):
+        with self.saving_artifacts():
+            self.open_page(touch=True)
+            self.assert_nothing_picked()
+            self.page.touchscreen.tap(*self.empty_chart_spot())
+            self.assert_group_5_picked()
+
+    # Acceptance 2: one click of a mouse does the same, on a phone-sized window and a wide one,
+    # where the chart is drawn at another scale.
+    def test_a_mouse_click_picks_the_nearest_group(self):
+        for size in (self.PHONE, self.DESKTOP):
+            with self.subTest(width=size[0]), self.saving_artifacts():
+                self.open_page(size)
+                self.page.mouse.click(*self.empty_chart_spot())
+                self.assert_group_5_picked()
+
+    # Acceptance 3: a finger pressed on a box and swiped either way moves the page and picks
+    # nothing. The tap at the end shows the same finger does pick.
+    def test_a_swipe_on_the_chart_scrolls_the_page_and_picks_nothing(self):
+        with self.saving_artifacts():
+            self.open_page(touch=True)
+            start = self.on_screen(self.ON_BOX_5)
+            self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
+            self.assertEqual(self.page.evaluate("window.scrollY"), 0)
+            self.swipe(start, -200)
+            self.page.wait_for_function("window.scrollY > 100")
+            self.assert_nothing_picked()
+
+            scrolled = self.settled_scroll()
+            start = self.on_screen(self.ON_BOX_5)
+            self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
+            self.swipe(start, 100)
+            self.page.wait_for_function("y => window.scrollY < y", arg=scrolled - 50)
+            self.settled_scroll()
+            self.assert_nothing_picked()
+
+            self.page.touchscreen.tap(*self.on_screen(self.ON_BOX_5))
+            self.assert_group_5_picked()
+
+    # Acceptance 4: the same group picked from the list and on the chart leaves the same screen.
+    def test_picking_on_the_chart_and_from_the_list_look_the_same(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            self.pick(self.GROUP_5).click()
+            from_the_list = self.main().inner_html()
+
+            self.open_page()
+            self.open_list()
+            self.page.mouse.click(*self.empty_chart_spot())
+            expect(self.result()).to_contain_text(self.GROUP_5)
+            self.assertEqual(self.main().inner_html(), from_the_list)
+
+    # The chart adds to the list and takes nothing from the keyboard: Tab never lands on it,
+    # and the list still reaches every group.
+    def test_the_keyboard_passes_over_the_chart(self):
+        with self.saving_artifacts():
+            self.open_page()
+            self.open_list()
+            for _ in range(40):
+                self.page.keyboard.press("Tab")
+                self.assertFalse(
+                    self.page.evaluate("Boolean(document.activeElement.closest('.audiogram-plot'))")
+                )
+            expect(self.main().locator(".speech-banana-pick")).to_have_count(6)
+
+
+class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#443 (spec #436): the reminders and source under the speech banana, and the way on."""
+
+    REMINDER = "這是依您輸入的聽力圖估算的結果"
+    ALARM = "這張圖沒有列火警和煙霧警報。"
+    SOURCE = "本頁資料查核於 2026/11/06。"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="speech_banana_reminder_e2e"))
+
+    def page_for(self, db, size=LayoutOnAPhone.PHONE, java_script_enabled=True):
+        """Both ears flat at db, so each ear's PTA is db: over 25 dB is the guide's condition."""
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=db)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        self.open(
+            f"/audiograms/{audiogram.pk}/speech-banana",
+            size,
+            java_script_enabled=java_script_enabled,
+        )
+        return audiogram
+
+    def words(self, text):
+        return self.main().get_by_text(text)
+
+    def guide_card(self):
+        return self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+
+    def way_back(self):
+        return self.main().get_by_role("link", name="回這張聽力圖")
+
+    def assert_the_reminders_show(self):
+        for text in (self.REMINDER, self.ALARM, self.SOURCE):
+            expect(self.words(text)).to_be_visible()
+
+    # Acceptance 1: under the chart, and the chart itself says nothing of alarms.
+    def test_the_reminders_are_under_the_chart_and_no_alarm_is_on_it(self):
+        with self.saving_artifacts():
+            self.page_for(40)
+            plot = self.page.locator(".audiogram-plot")
+            plot.locator("svg").wait_for()
+            self.assert_the_reminders_show()
+            bottom = plot.bounding_box()
+            bottom = bottom["y"] + bottom["height"]
+            for text in (self.REMINDER, self.ALARM, self.SOURCE):
+                self.assertGreaterEqual(self.words(text).bounding_box()["y"], bottom, text)
+            drawn = plot.evaluate("el => el.outerHTML")
+            for alarm in ("火警", "煙霧", "警報"):
+                self.assertNotIn(alarm, drawn)
+
+    # The ticket's 不用 React: with no JavaScript the chart is gone and all of this still shows.
+    def test_without_javascript_the_reminders_and_the_way_on_still_show(self):
+        with self.saving_artifacts():
+            self.page_for(40, java_script_enabled=False)
+            expect(self.page.locator(".audiogram-plot")).to_have_count(0)
+            self.assert_the_reminders_show()
+            expect(
+                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+            ).to_be_visible()
+            expect(self.way_back()).to_be_visible()
+
+    # Acceptance 2: over the condition the card leads to the guide, and the way back to this one.
+    def test_the_guide_card_and_the_way_back_lead_where_they_say(self):
+        with self.saving_artifacts():
+            audiogram = self.page_for(40)
+            self.guide_card().click()
+            self.page.wait_for_url("**/guide")
+            self.page.go_back()
+            self.way_back().click()
+            self.page.wait_for_url(f"**/audiograms/{audiogram.pk}")
+
+    # Acceptance 2: under the condition only the way back is there.
+    def test_under_the_condition_there_is_only_the_way_back(self):
+        with self.saving_artifacts():
+            self.page_for(20)
+            expect(
+                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+            ).to_have_count(0)
+            expect(self.way_back()).to_be_visible()
+
+    # Acceptance 4 (ADR 0031): the reminders at 1rem or more and the source small print; at 200%
+    # on 320 they all double, the page does not scroll sideways, and the way on is big enough.
+    def test_the_words_follow_the_text_size_on_a_narrow_phone(self):
+        with self.saving_artifacts():
+            self.page_for(40, (320, 640))
+            reminder, alarm, source = (
+                self.words(text) for text in (self.REMINDER, self.ALARM, self.SOURCE)
+            )
+            links = (self.guide_card(), self.way_back())
+            self.assertGreaterEqual(self.font_size(reminder), self.rem())
+            self.assertGreaterEqual(self.font_size(alarm), self.rem())
+            before = [self.font_size(words) for words in (reminder, alarm, source)]
+            self.assert_fits_a_phone_at_double_text_size("speech banana reminders")
+            self.assertEqual(
+                [self.font_size(words) for words in (reminder, alarm, source)],
+                [size * 2 for size in before],
+            )
+            for link in links:
+                self.assertGreaterEqual(link.bounding_box()["height"], 44)
+            self.double_text(False)
+            for link in links:
+                self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
 
 class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

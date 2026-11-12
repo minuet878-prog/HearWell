@@ -1,0 +1,25 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}{{ audiogram.tested_on|date:"Y/m/d" }} 聽力圖的語言香蕉區｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/speech-banana.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
+<h1 class="h3 mt-4 wrap-anywhere">{{ audiogram.tested_on|date:"Y/m/d" }} 聽力圖的語言香蕉區</h1>
+<div id="speech-banana"></div>
+{{ data|json_script:"speech-banana-data" }}
+{# In the template, not React: these show without JavaScript. Wording reviewed in #438 (ADR 0013). #}
+<section class="tip-box mt-4" aria-labelledby="read-banana-title">
+    <h2 id="read-banana-title" class="tip-box-title">看懂這張圖</h2>
+    <p>這是依您輸入的聽力圖估算的結果，是沒戴助聽器時的情況，實際情形會因環境和說話的人而不同。聽得到不等於聽得清楚。這不能取代聽力師的判讀。</p>
+    <p>這張圖沒有列火警和煙霧警報。清醒時聽得到，不代表睡著時會被叫醒。建議實際試試家裡的警報器能不能叫醒您。</p>
+</section>
+<p class="source-note">語言香蕉區與注音位置參考：財團法人雅文兒童聽語文教基金會〈聽力圖和語言香蕉區〉。本頁資料查核於 {{ checked_on|date:"Y/m/d" }}。</p>
+{# #436 story 38: the audiogram page's condition, never how much is hatched. #}
+{% if fitting_guide %}{% include "screening/audiogram_guide_card.html" %}{% endif %}
+<p><a class="btn btn-outline-primary" href="{% url 'audiogram_detail' audiogram.id %}">回這張聽力圖</a></p>
+{% endblock %}

@@ -58,6 +58,14 @@ it("the left ear's older audiogram is light blue", () => {
   expect(container.querySelector('.audiogram-old [data-point="left-air-500"] path').getAttribute("stroke")).toBe("#9db5d6");
 });
 
+it("draws the green normal range down to 25 dB, under everything else", () => {
+  const { container } = render(<AudiogramChart points={[]} />);
+  const band = container.querySelector('rect[fill="#e9f5ec"]');
+  expect(Number(band.getAttribute("y"))).toBe(y(-10));
+  expect(Number(band.getAttribute("height"))).toBe(y(25) - y(-10));
+  expect(container.querySelector("svg").firstElementChild).toBe(band);
+});
+
 it("without oldPoints nothing extra is drawn", () => {
   const { container } = render(
     <AudiogramChart points={[{ ear: "right", conduction: "air", frequency: 500, db: 30, no_response: false }]} />,
