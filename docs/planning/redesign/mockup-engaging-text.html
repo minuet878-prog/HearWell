@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>讓長文想讀・五種做法</title>
+<style>
+  /* ---- tokens and base: copied from #454 / #466 / #468 ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7; --pull: #e7eef8;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --input-border: #6c757d;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  p { margin: 0 0 12px; }
+  .sheet { max-width: 2520px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1150px; }
+  .group { margin: 48px 0 0; }
+  .group > h2, .fixes > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1150px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .lead code, .q code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  .fixes { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1150px; }
+  .fixes ul { margin: 6px 0 0; padding-left: 1.2em; }
+  .fixes li { margin-bottom: 6px; }
+
+  /* annotation: draft wording and new components */
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { position: relative; outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; }
+  .newc-tag, .ill-tag { position: absolute; right: 0; top: -16px; font-size: 12px; line-height: 1.3; color: #fff; background: var(--annot); padding: 1px 6px; border-radius: 4px; z-index: 3; font-weight: 700; }
+  .ill-tag { top: 0; right: auto; left: 0; }
+  .scrolled { font-size: 13px; color: var(--annot); font-weight: 700; margin: 0 0 10px; }
+
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; }
+  .screen .pg { padding: 20px 20px 120px; }
+  .screen.long { height: 1240px; }
+  .screen.clip { height: 844px; }
+  .cut { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; background: linear-gradient(rgba(255,255,255,0), #fff 45%); z-index: 4; }
+  .cut span { padding: 0 16px; }
+  .cut span { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 13px; font-weight: 700; color: var(--annot); }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); font-weight: 700; background: rgba(255,255,255,.92); padding: 0 4px; border-radius: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+
+  /* T1 */
+  .h1 { font-size: 28px; color: var(--heading); margin: 4px 0 10px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 36px 0 8px; line-height: 1.35; font-weight: 700; }
+  .src { font-size: 16px; color: var(--muted); }
+  .src a { text-decoration: underline; text-underline-offset: 3px; }
+  .muted { color: var(--muted); }
+  .pg ul.text { margin: 0 0 12px; padding-left: 1.2em; }
+  .pg ul.text li { margin-bottom: 6px; }
+  .inl { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .kicker { margin: 0; color: var(--muted); font-weight: 700; }
+
+  /* S1 buttons and text links */
+  .b { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .b svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .back { margin: -4px 0 0; }
+  .nav2 { display: flex; gap: 12px; margin-top: 20px; }
+  .nav2 .b { margin-top: 0; flex: 1; }
+
+  /* P3 hint box */
+  .hint { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 4px 0 14px; color: var(--heading); }
+
+  /* E fold rows (as #460 R1's 看完整說明) */
+  details.more { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 8px 0 12px; }
+  details.more + details.more { margin-top: -13px; border-top: 0; }
+  details.more summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 2px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .grow { flex: 1; min-width: 0; }
+  details.more summary .chev { transform: rotate(90deg); }
+  details.more[open] summary .chev { transform: rotate(-90deg); }
+  details.more.slim summary { min-height: 56px; color: var(--primary); }
+  .ico { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .t-sub { display: block; font-size: 16px; color: var(--muted); font-weight: 500; line-height: 1.45; }
+
+  /* N3 step list */
+  ol.st { list-style: none; margin: 0; padding: 0; counter-reset: s var(--start, 0); }
+  ol.st > li { counter-increment: s; display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+  ol.st > li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: #fff; color: var(--primary); border: 2px solid var(--primary); position: relative; z-index: 1; }
+  ol.st > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  .st-b { flex: 1; min-width: 0; padding-top: 2px; }
+  .st-t { display: block; font-weight: 700; color: var(--heading); }
+  .st-when { display: block; color: var(--muted); font-weight: 700; }
+
+  /* fact rows (#282 大數字列, as #466) */
+  ul.facts { list-style: none; margin: 0 0 14px; padding: 0; border-top: 1px solid var(--line); }
+  ul.facts li { display: flex; align-items: baseline; gap: 14px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  ul.facts .v { flex: none; min-width: 104px; font-size: 22px; font-weight: 700; color: var(--heading); white-space: nowrap; }
+
+  /* tips without boxes (#468) */
+  .tips { list-style: none; margin: 0; padding: 0; }
+  .tips li { padding: 12px 0; border-top: 1px solid var(--line); }
+  .tips li:first-child { border-top: 0; padding-top: 4px; }
+  .tips b { display: block; color: var(--heading); }
+
+  /* answer-page choices (#328, as #468) */
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; font-weight: 700; color: var(--heading); font-size: 20px; line-height: 1.45; margin-bottom: 6px; }
+  .choice { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; min-height: 56px; padding: 8px 10px 8px 14px; border: 2px solid var(--input-border); border-radius: 14px; background: #fff; font-size: 20px; color: var(--heading); margin-top: 10px; line-height: 1.4; }
+  .choice .r { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--input-border); margin-right: 12px; background: #fff; }
+
+  /* progress (#151 step bar, as the answer page #462) */
+  .segs { display: flex; gap: 4px; margin: 10px 0 4px; }
+  .segs span { flex: 1; height: 8px; border-radius: 4px; background: var(--line); }
+  .segs span.d { background: var(--primary); }
+  .qline { margin: 0 0 6px; color: var(--muted); font-weight: 700; }
+
+  /* H1 key cards: #282 大數字 grown, in P3 grey (new) */
+  .keys { display: grid; gap: 10px; margin: 6px 0 18px; }
+  .kc { background: var(--surface); border-radius: 16px; padding: 12px 18px 14px; }
+  .kc .big { display: block; font-size: 28px; font-weight: 700; color: var(--heading); line-height: 1.3; margin-bottom: 2px; }
+  .kc .mid { display: block; font-size: 22px; font-weight: 700; color: var(--heading); line-height: 1.35; margin-bottom: 4px; }
+  .kc p { margin: 0; }
+
+  /* H3 drawings: the care-step line style (family care_drawings, site.css .care-drawing) */
+  .ill { position: relative; margin: 6px 0 4px; }
+  .ill svg { display: block; width: 100%; max-width: 200px; height: auto; }
+  .ill svg * { fill: none; stroke: var(--primary); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .ill svg .soft { fill: var(--pull); }
+  .ill svg .thin { stroke-width: 1.6; }
+  .ill svg .thick { stroke-width: 4; }
+  .ill svg .dot { fill: var(--primary); stroke: none; }
+
+  /* H5 story: P3 grey */
+  .story { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 6px 0 16px; color: var(--heading); }
+  .story p { margin: 0 0 8px; }
+  .story p:last-child { margin: 0; }
+
+  /* W1 */
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.spec td.n { text-align: center; white-space: nowrap; }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 3h3l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v3a3 3 0 0 1-3 3A15 15 0 0 1 3 6a3 3 0 0 1 3-3z"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-question" viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M9.5 8a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.4M12 13.8v.2"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>讓長文想讀・五種做法（九號表、家人溝通）</h1>
+  <p class="lead">您看了 #466、#468 的回饋是「字多的時候沒辦法提升看的興趣」。這頁把同樣兩頁各畫五種讀法給您比：<b>H1 重點先講、H2 問答式標題、H3 插圖帶路、H4 一次一張小卡、H5 情境故事</b>。手機寬 390px、內文 18px，元件只用 #454 選定的 T1、E、S1、P3、L1、N3、W1。</p>
+  <p class="lead">紫色虛線橫線＝手機第一個畫面的底（390×844）；<span class="draft">紫色虛線框</span>＝我新擬的字句（草稿），或新元件、新插圖，要您審。其他字句都從 <code>guide/form_9.html</code>、<code>family_guide.html</code>、<code>family_zone.py</code> 原樣搬來，<b>不改字</b>，只換位置或收進折疊列。每支手機畫第一個畫面再往下一點，底下灰白漸層＝後面還有。</p>
+
+  <!-- ================= Page 1: 九號表 ================= -->
+  <section class="group">
+    <h2>頁 1　選配指引章節：九號表</h2>
+    <p class="q">這頁要長輩做的一件事：<b>看懂能不能申請、知道先後順序（先核定再買）</b>。章節本來就沒有實心按鈕（#466：看完、回答之後章節底部才有「回選配路線看下一站」），所以 H1、H2、H3、H5 的第一個畫面沒有實心按鈕；H4 的「下一張」是那一張唯一的實心按鈕。選配路線與補助檢核會連到 <code>#steps-title</code>、<code>#issuer-title</code>、<code>#reapply</code>、<code>#without-certificate</code>，每種做法都要照顧這幾個錨點。</p>
+    <div class="row">
+
+      <!-- H1 -->
+      <div class="opt"><p class="opt-label">H1　重點先講</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <p>想知道還缺什麼？可以用<a class="inl">補助檢核</a>。</p>
+          <h2 class="h2" style="margin-top:20px"><span class="draft">先知道三件事</span></h2>
+          <div class="keys newc"><span class="newc-tag">新元件：重點卡（延伸 #282 大數字）</span>
+            <div class="kc"><span class="big"><span class="draft">先核定，再買</span></span><p>重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p></div>
+            <div class="kc"><span class="big">3 個月內有效</span><p>找聽力師或縣市輔具中心。九號表 3 個月內有效。</p></div>
+            <div class="kc"><span class="big"><span class="draft">2,000～30,000 元</span></span><p>補助上限，依助聽器等級<br>再乘上比例，而且不超過實際購買金額</p></div>
+          </div>
+          <details class="more"><summary><span class="grow">誰可以申請</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">申請流程</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">九號表找誰開</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">補助多少</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">再次申請（換新機）</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">沒有身障證明時</span><span class="chev">›</span></summary></details>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面是資料來源與查核日期）</span></div></div>
+        <div class="note">
+          <p>三張卡的小字都是原文（第 1 步、「重要」提醒、補助多少的兩句小標），只有卡上的大字是新的；六段收成 E 折疊列，原文全在裡面，「本頁段落」就拿掉。</p>
+          <p><b>好處</b>：最容易出錯的「先核定再買」第一眼就看到，一個畫面讀完重點。<b>代價</b>：重點卡跟裡面的段落重複一次；從選配路線連到某一段時那一列要自動打開（同 #466 折疊列式）；「2,000～30,000 元」把四級合成一個範圍，要您確認不會被看成「一定拿得到」。</p>
+        </div>
+      </div>
+
+      <!-- H2 -->
+      <div class="opt"><p class="opt-label">H2　問答式標題</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <p>想知道還缺什麼？可以用<a class="inl">補助檢核</a>。</p>
+          <h2 class="h2" style="margin-top:24px"><span class="draft">我可以申請嗎？</span></h2>
+          <p>有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</p>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:24px"><span class="draft">要怎麼辦？</span></h2>
+          <p class="hint">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:24px"><span class="draft">九號表去哪裡開？</span></h2>
+          <p>聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。</p>
+          <details class="more slim"><summary><span class="grow">看各縣市輔具中心電話</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:24px"><span class="draft">可以補助多少錢？</span></h2>
+          <p class="muted" style="font-weight:700;margin-bottom:4px">補助上限，依助聽器等級</p>
+          <ul class="facts">
+            <li><span class="v">2,000 元</span><span>簡易型，每只最多</span></li>
+            <li><span class="v">10,000 元</span><span>中階型，每只最多</span></li>
+          </ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有兩題問句）</span></div></div>
+        <div class="note">
+          <p>六個段落標題換成問句（錨點 id 不變），每題下面只露出原文的第一句或那段最重要的一句，其餘收進「看更多」。「要怎麼辦？」露出的是「重要」提醒，六個步驟在看更多裡。</p>
+          <p>另外兩題：<span class="draft">用了幾年可以換新的？</span>（露出「滿 4 年 可以再申請」一列）、<span class="draft">沒有身障證明怎麼辦？</span>（露出「不能申請上面的補助，但還有下面這些資源。」）。</p>
+          <p><b>好處</b>：長輩用自己心裡的問題找答案，掃標題就知道哪段跟他有關；整頁變短。<b>代價</b>：六句問句要您審；「看更多」點開才看到步驟，從路線連到「申請流程」時那一個看更多要自動打開。</p>
+        </div>
+      </div>
+
+      <!-- H3 -->
+      <div class="opt"><p class="opt-label">H3　插圖帶路</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <p>想知道還缺什麼？可以用<a class="inl">補助檢核</a>。</p>
+          <h2 class="h2" style="margin-top:22px">誰可以申請</h2>
+          <div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><rect class="soft" x="40" y="26" width="160" height="104" rx="12"/><circle cx="82" cy="68" r="15"/><path d="M58 112c4-15 14-22 24-22s20 7 24 22"/><path class="thin" d="M124 58h54M124 76h54M124 94h36"/><path class="thick" d="M40 46h160"/></svg></div>
+          <p>有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</p>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:22px">申請流程</h2>
+          <div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><path class="soft" d="M34 62L104 28L174 62Z"/><rect x="44" y="62" width="120" height="68"/><path d="M68 76v42M94 76v42M120 76v42M146 76v42"/><path class="thick" d="M28 134h152"/><rect class="soft" x="180" y="66" width="44" height="58" rx="6"/><path class="thin" d="M190 82h24M190 94h24M190 106h14"/><path class="thick" d="M194 40l8 8 16-18"/></svg></div>
+          <p class="hint">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:22px">九號表找誰開</h2>
+          <div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><path d="M74 104V82a46 46 0 0 1 92 0v22"/><rect class="soft" x="60" y="94" width="28" height="42" rx="12"/><rect class="soft" x="152" y="94" width="28" height="42" rx="12"/><path class="thin" d="M104 120c6-6 10-6 16 0s10 6 16 0"/></svg></div>
+          <p>聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有三段，各一張圖）</span></div></div>
+        <div class="note">
+          <p>畫風照家人專區保養步驟的線條圖（<code>family/care_drawings/</code>：主色 2.4 線、淡藍填色、報讀器略過）。每段一張圖＋原文一句，其他收進「看更多」。六張圖都要新畫，這裡是示意。</p>
+          <p><b>好處</b>：不用審新字；圖讓每段有「入口」，眼睛有地方停。<b>代價</b>：法規類的內容很難畫得具體（「誰可以申請」只能畫一張卡），圖幫的是節奏不是理解；每段多約 140px，整頁反而更長；六張圖要您看過。</p>
+        </div>
+      </div>
+
+      <!-- H4 card 1 -->
+      <div class="opt"><p class="opt-label">H4　一次一張小卡・第 1 張</p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <div class="segs"><span class="d"></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span class="draft">第 1 張／共 6 張</span></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <h2 class="h2" style="margin-top:18px">誰可以申請</h2>
+          <ul class="text">
+            <li>有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</li>
+            <li>中度以上視覺障礙，而且好的那一耳聽力損失大於 40 dB 的人。</li>
+            <li>最近一年在國內住超過 183 天。</li>
+          </ul>
+          <a class="b solid"><span class="draft">下一張</span><svg><use href="#i-right"/></svg></a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>六張：① 開頭＋誰可以申請 ② 申請流程 1–3 步＋「重要」提醒 ③ 申請流程 4–6 步 ④ 九號表找誰開 ⑤ 補助多少 ⑥ 再次申請＋沒有身障證明時。原文本來就在第 3、4 步之間斷開，剛好切成兩張。</p>
+          <p>進度條沿用作答頁的分段條（#151），不是新元件。「補助檢核」那句和來源移到第 6 張最後。</p>
+        </div>
+      </div>
+
+      <!-- H4 card 3 -->
+      <div class="opt"><p class="opt-label">H4　一次一張小卡・第 3 張</p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <div class="segs"><span class="d"></span><span class="d"></span><span class="d"></span><span></span><span></span><span></span></div>
+          <p class="qline"><span class="draft">第 3 張／共 6 張</span></p>
+          <p class="kicker">九號表：申請助聽器補助</p>
+          <h1 class="h1">申請流程</h1>
+          <ol class="st" style="--start:3">
+            <li><span class="st-b"><span class="st-t">購買並請款</span>收到核定通知後 6 個月內。<span class="st-when" aria-hidden="true">6 個月內</span></span></li>
+            <li><span class="st-b"><span class="st-t">使用效益驗證</span>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<a class="inl">看二十五號表</a><span class="st-when" aria-hidden="true">配戴 1–3 個月內</span></span></li>
+            <li><span class="st-b"><span class="st-t">核銷</span>帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。<span class="st-when" aria-hidden="true">1 個月內撥款</span></span></li>
+          </ol>
+          <p class="src">來源：<a>身心障礙者輔具費用補助辦法</a>、<a>身心障礙者輔具費用補助基準表</a></p>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg><span class="draft">上一張</span></a><a class="b solid"><span class="draft">下一張</span><svg><use href="#i-right"/></svg></a></div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p><b>實作是伺服器分頁</b>：每張是一個網址（例如 <code>/guide/form-9?card=3</code>），「上一張／下一張」是一般連結，不靠手勢滑動；瀏覽器的上一頁＝上一張。下一張實心、上一張 S1 藍框（一頁一顆實心）。</p>
+          <p><b>好處</b>：一次只看一小塊，最不怕字多；有進度，知道還剩多少。<b>代價</b>：最大的改造——路線和補助檢核連過來的四個錨點要改成對應的張數；看不到全貌，不能一頁捲著找、不能整章列印；第 6 張（沒有身障證明時）字最多，還是要捲；e2e 要重寫。</p>
+        </div>
+      </div>
+
+      <!-- H5 -->
+      <div class="opt"><p class="opt-label">H5　情境故事</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <div class="story draft">
+            <p>王伯伯 70 歲，有聽覺機能的身障證明。他在店裡看中一副助聽器，差一點當天就買了。</p>
+            <p>聽力師提醒他：先開九號表、到公所申請，等核定通知來了再買，才拿得到補助。</p>
+          </div>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <h2 class="h2" style="margin-top:22px">申請流程</h2>
+          <p><span class="draft">王伯伯接下來這樣做：</span></p>
+          <ol class="st">
+            <li><span class="st-b"><span class="st-t">做評估，拿到九號表</span>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="st-when" aria-hidden="true">3 個月內有效</span></span></li>
+            <li><span class="st-b"><span class="st-t">到公所申請</span>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></li>
+            <li><span class="st-b"><span class="st-t">等核定通知</span>主管機關收到評估報告後，10 天內會核定。<span class="st-when" aria-hidden="true">10 天內核定</span></span></li>
+          </ol>
+          <p class="hint">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          <ol class="st" style="--start:3">
+            <li><span class="st-b"><span class="st-t">購買並請款</span>收到核定通知後 6 個月內。<span class="st-when" aria-hidden="true">6 個月內</span></span></li>
+          </ol>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有：第 5–6 步，誰可以申請、找誰開、補助多少等收成折疊列）</span></div></div>
+        <div class="note">
+          <p>故事放在 P3 灰底（資訊、不能點），講的就是這章最重要的那件事（先核定再買），接著帶到申請流程；「申請流程」搬到最前面，其他五段收成 E 折疊列。</p>
+          <p><b>好處</b>：有人物、有差一點出錯的情節，最能讓人想往下看，也最好記。<b>代價</b>：故事要您審事實（年紀、證明、誰提醒），一不小心就像在推薦特定通路；第二次來查資料的人要先跳過故事；「誰可以申請」被移到後面，沒有證明的人要多捲才知道自己不適用。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Page 2: 家人溝通 ================= -->
+  <section class="group">
+    <h2>頁 2　家人專區：怎麼跟聽損的家人說話</h2>
+    <p class="q">這頁要家人做的一件事：<b>記住兩三個馬上能用的說話方法，試一題情境題</b>。這段是全站最長的連續文字（九個方法＋五題情境題）；#468 A 把它收在家人專區的折疊列裡，這裡為了比較，<b>把它畫成像「陪診與代辦」一樣的子頁</b>（頂端「回到家人專區」、標題用原本的段落標題），要不要真的拆成子頁見最下面決定 3。「陪伴配戴助聽器」、紅底就醫框、傳給家人照 #468 A，不在這裡畫。情境題選項沿用作答頁的樣子。</p>
+    <div class="row">
+
+      <!-- H1 -->
+      <div class="opt"><p class="opt-label">H1　重點先講</p>
+        <div class="phone screen long" style="height:1060px"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <h2 class="h2" style="margin-top:18px"><span class="draft">最重要的三件事</span></h2>
+          <div class="keys newc"><span class="newc-tag">新元件：重點卡（延伸 #282 大數字）</span>
+            <div class="kc"><span class="mid">先叫名字，等他看你再說</span><p>可以輕拍肩膀，不要從背後或隔壁房間說話。</p></div>
+            <div class="kc"><span class="mid">面對面、讓他看得到你的臉</span><p>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</p></div>
+            <div class="kc"><span class="mid">說清楚、稍微放慢，不用大喊</span><p>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</p></div>
+          </div>
+          <details class="more"><summary><span class="grow"><span class="draft">其他 6 個方法</span></span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">遇到這些情況，您會怎麼做？</span><span class="chev">›</span></summary></details>
+          <p class="src" style="margin-top:16px">（下面接「陪伴配戴助聽器」、紅底就醫框、傳給家人，照 #468 A）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面是出處）</span></div></div>
+        <div class="note">
+          <p>三張卡是九個方法裡的前三個，字全是原文，只是放大、放進灰底卡；挑哪三個要您決定（臨床上最有用的）。其餘六個原樣收進折疊列。</p>
+          <p><b>好處</b>：一個畫面就記得住三件事；新字最少。<b>代價</b>：另外六個方法（例如「重要的事寫下來」）被收起，很多人不會點開；情境題也被收起，互動最強的部分反而看不到。</p>
+        </div>
+      </div>
+
+      <!-- H2 -->
+      <div class="opt"><p class="opt-label">H2　問答式標題</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <h2 class="h2" style="margin-top:20px"><span class="draft">叫他都沒反應，怎麼辦？</span></h2>
+          <ul class="tips"><li><b>先叫名字，等他看你再說</b>可以輕拍肩膀，不要從背後或隔壁房間說話。</li></ul>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:20px"><span class="draft">要講大聲一點嗎？</span></h2>
+          <ul class="tips"><li><b>說清楚、稍微放慢，不用大喊</b>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</li></ul>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:20px"><span class="draft">講了好幾次還是聽不懂？</span></h2>
+          <ul class="tips"><li><b>聽不懂時，換個說法</b>同一句話重複很多次不一定有用，換成比較簡單或不同的詞試試看。</li></ul>
+          <details class="more slim"><summary><span class="grow">看更多</span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:20px"><span class="draft">家裡很吵、很多人在講話時呢？</span></h2>
+          <ul class="tips"><li><b>減少背景噪音</b>說話前先把電視、收音機關小聲，在餐廳選安靜的角落。</li></ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有：第 5 題、情境題）</span></div></div>
+        <div class="note">
+          <p>九個方法分成五題，每題露出一個方法，同一類的收進看更多：① 先叫名字／面對面 ② 不用大喊／不要遮住嘴巴 ③ 換個說法／重要的事寫下來 ④ 減少背景噪音／多人聊天 ⑤ <span class="draft">我可以替他回答嗎？</span>→ 耐心，也讓他參與。</p>
+          <p><b>好處</b>：家人用自己遇到的困擾找方法，比九條清單好掃；九個方法一個不刪。<b>代價</b>：五句問句要您審，分組也是新的判斷；一半的方法在「看更多」裡；段落標題變成六個（五題＋情境題），超過「一頁標題不超過三個」。</p>
+        </div>
+      </div>
+
+      <!-- H3 -->
+      <div class="opt"><p class="opt-label">H3　插圖帶路</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <ul class="tips" style="margin-top:8px">
+            <li><div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><circle cx="68" cy="50" r="18"/><path class="soft" d="M34 150c0-40 15-64 34-64s34 24 34 64"/><circle cx="168" cy="52" r="18"/><path class="soft" d="M134 150c0-38 15-62 34-62s34 24 34 62"/><path d="M96 108c16-10 30-14 46-12"/><circle class="dot" cx="144" cy="96" r="5"/><path class="thin" d="M150 28c-6-6-14-8-22-6M146 20c-8-6-18-8-28-4"/><circle class="dot" cx="162" cy="50" r="2"/></svg></div>
+              <b>先叫名字，等他看你再說</b>可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
+            <li><div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><circle cx="78" cy="78" r="24"/><path class="soft" d="M40 156c0-26 17-42 38-42s38 16 38 42"/><circle cx="162" cy="78" r="24"/><path class="soft" d="M124 156c0-26 17-42 38-42s38 16 38 42"/><circle class="dot" cx="90" cy="74" r="2.4"/><circle class="dot" cx="150" cy="74" r="2.4"/><path class="thin" d="M86 88c4 3 8 3 10 0M144 88c2 3 6 3 10 0"/><circle class="soft" cx="120" cy="22" r="10"/><path class="thin" d="M120 4v-2M102 22h-4M142 22h-4M107 9l-3-3M133 9l3-3"/></svg></div>
+              <b>面對面、讓他看得到你的臉</b>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</li>
+            <li><div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><path class="soft" d="M44 24h152a16 16 0 0 1 16 16v56a16 16 0 0 1-16 16H100l-28 24v-24H44a16 16 0 0 1-16-16V40a16 16 0 0 1 16-16z"/><path d="M52 68c14-12 28 12 42 0s28 12 42 0 28 12 42 0"/></svg></div>
+              <b>說清楚、稍微放慢，不用大喊</b>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</li>
+            <li><div class="ill draft"><span class="ill-tag">示意圖</span><svg viewBox="0 0 240 160" aria-hidden="true"><circle class="soft" cx="120" cy="74" r="50"/><circle class="dot" cx="102" cy="62" r="3"/><circle class="dot" cx="138" cy="62" r="3"/><rect x="92" y="84" width="56" height="30" rx="10"/><path class="thin" d="M92 92l-18-8M148 92l18-8"/><path class="thick" d="M180 28l-120 112"/></svg></div>
+              <b>說話時不要遮住嘴巴</b>不要邊吃東西、邊走開或戴著口罩說重要的事。</li>
+          </ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有五個方法與情境題）</span></div></div>
+        <div class="note">
+          <p>九個方法各配一張線條圖，畫風照保養步驟（同一組顏色與線寬，報讀器略過），字一個不改，也不收起。這裡畫四張示意，其他五張（換說法、關電視、寫紙條、一次一人、讓他參與）要新畫。</p>
+          <p><b>好處</b>：說話方法本來就是「動作」，最適合畫；不用審新字；跟家人專區保養步驟同一個樣子，整區一致。<b>代價</b>：九張圖要畫、要您看；整段變得更長（每個方法多約 130px）；圖畫不好反而像童書。</p>
+        </div>
+      </div>
+
+      <!-- H4 card 1 -->
+      <div class="opt"><p class="opt-label">H4　一次一張小卡・第 1 張</p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <div class="segs"><span class="d"></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span class="draft">第 1 張／共 5 張</span></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <ul class="tips" style="margin-top:6px">
+            <li><b>先叫名字，等他看你再說</b>可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
+            <li><b>面對面、讓他看得到你的臉</b>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</li>
+          </ul>
+          <a class="b solid"><span class="draft">下一張</span><svg><use href="#i-right"/></svg></a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>五張：①–④ 每張兩到三個方法（照原本的順序切，不另加小標）⑤ 情境題五題。</p>
+          <p>網址 <code>/family/talk?card=1</code>，伺服器分頁、不靠手勢滑動。</p>
+        </div>
+      </div>
+
+      <!-- H4 card 3 -->
+      <div class="opt"><p class="opt-label">H4　一次一張小卡・第 3 張</p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <div class="segs"><span class="d"></span><span class="d"></span><span class="d"></span><span></span><span></span></div>
+          <p class="qline"><span class="draft">第 3 張／共 5 張</span></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <ul class="tips" style="margin-top:6px">
+            <li><b>聽不懂時，換個說法</b>同一句話重複很多次不一定有用，換成比較簡單或不同的詞試試看。</li>
+            <li><b>減少背景噪音</b>說話前先把電視、收音機關小聲，在餐廳選安靜的角落。</li>
+          </ul>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg><span class="draft">上一張</span></a><a class="b solid"><span class="draft">下一張</span><svg><use href="#i-right"/></svg></a></div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p><b>好處</b>：每張很短、按鈕永遠在第一個畫面；適合家人在等候室、通勤時一張一張看。<b>代價</b>：一張只有兩個方法，畫面空、點的次數多（九個方法要按四次）；傳給家人的網址只會打開第 1 張；不能一次看完或列印；要新做子頁與分頁。</p>
+        </div>
+      </div>
+
+      <!-- H5 -->
+      <div class="opt"><p class="opt-label">H5　情境故事</p>
+        <div class="phone screen long"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到家人專區</a></p>
+          <h1 class="h1">怎麼跟聽損的家人說話</h1>
+          <div class="story draft">
+            <p>林媽媽的先生這幾年聽力變差。吃晚飯時她問他一句話，他沒回應，她就大聲再問一次，兩個人都不太高興。</p>
+            <p>後來她改成先叫他的名字、等他看過來再問，他一次就聽懂了。</p>
+          </div>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <p style="margin-top:4px"><b class="draft" style="color:var(--heading)">林媽媽用了這兩個方法：</b></p>
+          <ul class="tips">
+            <li><b>先叫名字，等他看你再說</b>可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
+            <li><b>說清楚、稍微放慢，不用大喊</b>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</li>
+          </ul>
+          <details class="more"><summary><span class="grow"><span class="draft">其他 7 個方法</span></span><span class="chev">›</span></summary></details>
+          <h2 class="h2" style="margin-top:24px">遇到這些情況，您會怎麼做？</h2>
+          <p>選您平常的做法，看看說明。這裡沒有對錯，也不會留下紀錄，可以改選。</p>
+          <fieldset>
+            <legend>他在看電視，聲音開得很大，您想跟他說話。</legend>
+            <div class="choice"><span class="r"></span><span>提高音量，蓋過電視</span></div>
+            <div class="choice"><span class="r"></span><span>先把電視關小聲，再跟他說</span></div>
+          </fieldset>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        <div class="cut"><span>（下面還有四題情境題）</span></div></div>
+        <div class="note">
+          <p>故事就是第一題情境題「吃飯時，您問他一句話，他沒有回應」的正確做法，所以情境題從第二題（看電視）開始；故事裡沒有新的醫療說法或數字。</p>
+          <p><b>好處</b>：家人一看就覺得「這就是我家」，最容易往下讀；情境題往上提，第一個畫面下面就能動手試。<b>代價</b>：故事三句加兩個小標要您審；九個方法只露出兩個，其他七個收起；故事跟第一題情境題重複，第一題要拿掉或留著（決定 4）。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= summary ================= -->
+  <section class="group">
+    <h2>五種做法比一比</h2>
+    <table class="spec">
+      <tr><th>做法</th><th>一句話</th><th>九號表新草稿</th><th>家人溝通新草稿</th><th>其他要您審的</th><th>做起來</th></tr>
+      <tr><td><b>H1 重點先講</b></td><td>第一個畫面放三張大字卡，細節收進折疊列。</td><td class="n">3 句</td><td class="n">2 句</td><td>挑哪三個重點；新元件「重點卡」</td><td>小：一個新元件＋折疊列</td></tr>
+      <tr><td><b>H2 問答式標題</b></td><td>段落標題改成長輩會問的問題，每題露一兩句。</td><td class="n">6 句</td><td class="n">5 句</td><td>九個方法怎麼分組</td><td>小：只改標題與折疊</td></tr>
+      <tr><td><b>H3 插圖帶路</b></td><td>每段一張線條圖＋原文一句。</td><td class="n">0 句</td><td class="n">0 句</td><td>6＋9＝15 張新圖</td><td>中：畫圖最花時間</td></tr>
+      <tr><td><b>H4 一次一張小卡</b></td><td>拆成 5–6 張，一次一張，有進度與上一張／下一張。</td><td class="n">3 個按鈕字</td><td class="n">（同左）</td><td>怎麼切張</td><td>大：伺服器分頁、錨點改寫、e2e 重寫</td></tr>
+      <tr><td><b>H5 情境故事</b></td><td>用一位長輩（家人）的例子開場，再帶出重點。</td><td class="n">4 句</td><td class="n">5 句</td><td>故事裡的事實</td><td>小，但字最需要仔細審</td></tr>
+    </table>
+    <p class="note" style="max-width:1150px">句數只算我新擬的字（紫色虛線框）。<b>句數最多是 H2（共 11 句問句）</b>，但每句都很短；<b>要審得最仔細的是 H5</b>（共 9 句，其中 6 句是故事，含年紀、證明、誰提醒等「事實」，寫錯會誤導）。H3 不用審字，但有 15 張圖要看。</p>
+  </section>
+
+  <section class="fixes">
+    <h2>建議</h2>
+    <ul>
+      <li><b>九號表（查資料的頁）→ H1＋H2。</b>長輩來這章是帶著問題來查的（我能不能申請、要多少錢、去哪裡辦）。問句標題直接對上他的問題；章首三張重點卡把最容易出錯的「先核定再買」「3 個月內有效」放在第一眼。兩個都只動標題與位置，原文一字不改，跟結果頁 R1「第一個畫面只放重點、其他看完整說明」同一個邏輯。合起來新字 9 句。</li>
+      <li><b>家人溝通（學方法的頁）→ H3，可再加 H5 開場故事。</b>說話方法本來就是動作，最適合畫；不用審新字、九個方法不收起，跟家人專區保養步驟的線條圖同一個樣子。想再拉一點興趣就加 H5 的林媽媽故事（＋5 句），它剛好就是第一題情境題的正解。</li>
+      <li><b>不建議 H4。</b>對字多最有效，但改造最大：選配路線、補助檢核連到九號表段落的四個錨點都要改成張數，傳出去的網址只開第 1 張，不能整頁找或列印。若以後真的有長輩看不下去，再只拿一章試。</li>
+    </ul>
+  </section>
+
+  <section class="group">
+    <h2>要您決定的地方</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>建議</th></tr>
+      <tr><td>1</td><td>九號表用哪種</td><td>H1＋H2：新字 9 句、改動小；H1 單用：新字 3 句，但段落標題還是名詞；H5：最有吸引力，但故事事實要審、第二次來查的人要跳過。</td><td>H1＋H2</td></tr>
+      <tr><td>2</td><td>家人溝通用哪種</td><td>H3：0 句新字、9 張新圖；H3＋H5：多 5 句故事；H1：只露三個方法，其他六個很多人不會點開。</td><td>H3（＋H5 可選）</td></tr>
+      <tr><td>3</td><td>「怎麼跟他說話」要不要拆成子頁</td><td>拆：有自己的第一個畫面，五種做法都能用，網址可單獨傳；代價是多一頁、家人專區的列從折疊變連結。不拆（#468 A 折疊列）：點開後就是這裡畫的內容，但 H4 用不了。</td><td>拆成子頁</td></tr>
+      <tr><td>4</td><td>選 H5 時，故事跟第一題情境題重複</td><td>拿掉第一題：不重複，但情境題變四題；留著：故事講了答案，第一題變成沒懸念。</td><td>拿掉第一題</td></tr>
+      <tr><td>5</td><td>重點卡（H1）挑哪三個</td><td>九號表：我挑「先核定再買」「3 個月內有效」「補助上限」；家人：我挑前三個方法。您可依臨床經驗換（例如「重要的事寫下來」）。</td><td>您決定</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>

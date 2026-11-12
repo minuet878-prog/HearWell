@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#468 了解、家人專區與問答小助手設計圖</title>
+<style>
+  /* ---- tokens and base: copied from #454 (mockup-454-components.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 6px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .fixes { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1100px; }
+  .fixes h2 { font-size: 22px; color: var(--heading); margin: 0 0 6px; }
+  .fixes ul, .fixes ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .fixes li { margin-bottom: 6px; }
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { outline: 2px dashed var(--annot); outline-offset: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* phone frame + first-screen line (from #460) */
+  .phone { background: #fff; border-radius: 28px; padding: 22px 20px 120px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .phone.short { min-height: 0; padding-bottom: 22px; }
+  .fold-line { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 4; }
+  .fold-line span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); font-weight: 700; background: rgba(255,255,255,.92); padding: 0 4px; border-radius: 4px; }
+
+  /* T1 */
+  h1.pg { font-size: 28px; color: var(--heading); margin: 4px 0 12px; line-height: 1.3; }
+  h2.sec { font-size: 22px; color: var(--heading); margin: 28px 0 8px; line-height: 1.35; }
+  .phone p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .src { font-size: 16px; color: var(--muted); }
+  .back { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; }
+
+  /* E list rows (and 460 R1 fold rows) */
+  .list { border-top: 1px solid var(--line); margin-top: 8px; }
+  .item, details.more > summary { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .ico { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .t-sub { display: block; font-size: 16px; color: var(--muted); line-height: 1.45; }
+  .chev { flex: none; font-size: 24px; font-weight: 700; line-height: 1; color: var(--primary); }
+  details.more { }
+  details.more > summary { list-style: none; cursor: pointer; }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary .chev { transform: rotate(90deg); }
+  details.more[open] > summary .chev { transform: rotate(-90deg); }
+  details.more[open] > summary { border-bottom: 0; }
+  .inside { padding: 0 2px 16px; border-bottom: 1px solid var(--line); }
+  details.plain > summary { min-height: 56px; }
+
+  /* G tiles (#454 group 2, option G) */
+  .gridG { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .tileG { border: 1.5px solid var(--line-strong); border-radius: 18px; padding: 14px; min-height: 140px; display: flex; flex-direction: column; justify-content: space-between; }
+  .tileG .ico { width: 44px; height: 44px; }
+  .tileG .t-title { margin-top: 10px; line-height: 1.4; }
+  .tileG .t-sub { margin-top: 2px; }
+
+  /* S1 buttons */
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 16px; border-radius: 14px; text-align: center; padding: 0 12px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .ilink { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* P3 hint + red urgent box */
+  .hint { background: var(--surface); border-radius: 16px; padding: 16px 18px; margin-top: 16px; }
+  .em { display: flex; gap: 12px; background: var(--severe-bg); border-radius: 16px; padding: 16px 18px; margin-top: 16px; color: var(--body); }
+  .em .dot { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--severe); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 17px; margin-top: 2px; }
+  .em .et { display: block; font-weight: 700; color: var(--severe); font-size: 20px; line-height: 1.4; }
+  .em ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .em li { padding: 10px 0; border-top: 1px solid rgba(143,42,18,.2); }
+  .em li:first-child { border-top: 0; padding-top: 4px; }
+  .em .call { border-top: 1px solid rgba(143,42,18,.35); padding-top: 12px; margin: 4px 0 0; color: var(--heading); }
+  .em .call b.n { font-size: 28px; font-weight: 800; color: var(--severe); }
+  a.em { align-items: center; }
+  a.em .chev { color: var(--severe); }
+
+  /* tips without boxes */
+  .tips { list-style: none; margin: 0; padding: 0; }
+  .tips li { padding: 12px 0; border-top: 1px solid var(--line); }
+  .tips li:first-child { border-top: 0; padding-top: 4px; }
+  .tips b { display: block; color: var(--heading); }
+  .sub { display: block; font-weight: 700; color: var(--heading); font-size: 20px; margin: 18px 0 6px; }
+  .lab { display: block; font-weight: 700; color: var(--heading); margin: 16px 0 4px; }
+  .say { margin: 0; padding-left: 1.2em; }
+  .say li { margin-bottom: 6px; }
+
+  /* radio choices: the answer page's (choice-stack, #328 C1) */
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend { padding: 0; font-weight: 700; color: var(--heading); font-size: 20px; line-height: 1.45; margin-bottom: 10px; }
+  .prog { display: block; font-size: 16px; font-weight: 500; color: var(--muted); }
+  .choice { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; min-height: 56px; padding: 8px 10px 8px 14px; border: 2px solid var(--line); border-radius: 14px; background: #fff; font-size: 20px; color: var(--heading); margin-top: 10px; line-height: 1.4; }
+  .choice .r { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line-strong); margin-right: 12px; background: #fff; }
+  .choice::after { content: ""; width: 20px; height: 20px; margin-left: 6px; border-radius: 50%; }
+  .choice.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  .choice.on .r { border-color: #fff; box-shadow: inset 0 0 0 4px var(--primary); background: #fff; }
+  .choice.on::after { background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+  .explain { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+  /* checkboxes: 陪診清單's visit-check */
+  .chk { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--line); line-height: 1.45; }
+  .chk .box { flex: none; width: 26px; height: 26px; border: 2px solid var(--line-strong); border-radius: 6px; background: #fff; }
+  .chk .box.on { background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 18px no-repeat; border-color: var(--primary); }
+  .cat { display: block; font-size: 16px; font-weight: 700; color: var(--muted); margin: 14px 0 0; }
+  .chklegend { font-size: 20px; margin: 18px 0 2px; }
+
+  /* text input (#272) */
+  .label { display: block; font-weight: 700; color: var(--heading); margin: 8px 0 6px; }
+  .input { height: 56px; border: 2px solid #6c757d; border-radius: 12px; background: #fff; }
+  .help { font-size: 16px; color: var(--muted); margin: 6px 0 0; line-height: 1.5; }
+
+  /* result groups */
+  .head { font-size: 20px; font-weight: 700; color: var(--heading); }
+  .grp { margin-top: 14px; }
+  .grp .lab { margin: 0 0 2px; }
+  .grp p { margin: 0; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .grp p .tlink { display: flex; }
+
+  /* W1 tab bar, pinned to the first screen's bottom */
+  .tabbar { position: absolute; left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; display: flex; z-index: 5; background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .tb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1100px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/></symbol>
+  <symbol id="i-family" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></symbol>
+  <symbol id="i-question" viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M9.5 8a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.4M12 13.8v.2"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></symbol>
+  <symbol id="i-ear" viewBox="0 0 24 24"><path d="M6 9.5a6 6 0 0 1 12 0c0 4-4 4.5-4 8a3 3 0 0 1-6 0"/><path d="M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.8-2.5 2.2-2.5 4"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#468 了解、家人專區與問答小助手・設計圖</h1>
+  <p class="lead">套用 #454 選定的 T1、E、S1、P3、L1、N3、W1。紫色虛線橫線＝手機第一個畫面的底（390×844），分頁列是 W1 毛玻璃、選中「了解」。<span class="draft">紫色虛線框</span>＝我擬的字句，請您審定；其他字句都從網站模板與 Python 定義（<code>family_zone.py</code>、<code>subsidy_check.py</code>、<code>qa_assistant/content.py</code>）搬來，原文不改，只換位置或收進折疊列。家人專區與問答小助手的內容、出處、查核日期都不變。</p>
+  <p class="lead">這一組頁面有一個共同點：<b>大多是「選一個」的頁面</b>（入口、目錄、點選看說明），長輩要做的事是點一列或選一項，不是按一顆按鈕。所以不是每頁都有實心按鈕；有實心按鈕的頁面，那顆按鈕是全頁唯一一顆。每張圖下面寫了「這頁要做的一件事」。</p>
+
+  <!-- ================= 1 了解 ================= -->
+  <section class="group">
+    <h2>1　了解（入口頁）</h2>
+    <p class="q">這頁要做的一件事：<b>選一個想了解的主題</b>。三項同等重要，所以不放實心按鈕。現在的三個小標（助聽器、溝通與照顧、有問題想問）每個底下只有一項，拿掉後一頁只剩一個標題。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　E 清單列<span class="rec">建議</span></p>
+        <div class="phone">
+          <h1 class="pg">了解</h1>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-book"/></svg></span><span class="grow"><span class="t-title">了解助聽器選配與補助</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-family"/></svg></span><span class="grow"><span class="t-title">家人專區：溝通與陪伴</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow"><span class="t-title">問答小助手：常見問題一次查</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>跟家人專區、篩檢頁、紀錄頁的清單同一個樣子，長輩學一次就會。字放大 200% 也不用改版面。</p><p><b>代價</b>：畫面下半部空白；只有三項，看起來比較「素」。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　G 兩欄方塊<span class="tagc">#454 第 2 組沒選</span></p>
+        <div class="phone">
+          <h1 class="pg">了解</h1>
+          <div class="gridG newc">
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-book"/></svg></span><span class="t-title">了解助聽器選配與補助</span></a>
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-family"/></svg></span><span class="t-title">家人專區：溝通與陪伴</span></a>
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="t-title">問答小助手：常見問題一次查</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>像手機桌面的圖示，「入口」的感覺最強。方塊外框 #8a94a3 對白底 3.1:1。</p><p><b>代價</b>：#454 第 2 組您選的是 E，這是另一種「能點」的樣子（虛線框標出）；三項排兩欄會空一格；字放大 200% 要改成一欄。問答小助手的「依主題找」現在就是方塊，選 B 的話兩頁一致。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 家人專區首頁 ================= -->
+  <section class="group">
+    <h2>2　家人專區（首頁）</h2>
+    <p class="q">這頁要做的一件事：<b>選一項要看的內容，或把這頁傳給家人</b>。「傳給家人」是現在這頁唯一的主要按鈕，搬到第一個畫面。頁內三段長內容（九個說話方法＋五題情境題、陪伴配戴六點）收進折疊列，原文不刪；「什麼時候要馬上就醫」紅底框<b>不收起</b>，緊接在按鈕下面（目錄裡原本跳到它的那一列拿掉）。出處收進折疊列。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　E 清單列（連結與折疊列排在一起）<span class="rec">建議</span></p>
+        <div class="phone">
+          <h1 class="pg">家人專區</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <div class="list">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-talk"/></svg></span><span class="grow"><span class="t-title">怎麼跟他說話</span><span class="t-sub">情境題與溝通重點</span></span><span class="chev">›</span></summary></details>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow"><span class="t-title">陪診與代辦</span><span class="t-sub">要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow"><span class="t-title">長輩不肯去怎麼說</span><span class="t-sub">不想檢查、不想戴時可以試的說法</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">助聽器</span><span class="t-sub">怪怪的怎麼辦、怎麼陪他適應、日常保養</span></span><span class="chev">›</span></a>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">陪伴配戴助聽器</span><span class="t-sub">剛開始不習慣、回診和保養時可以怎麼陪</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <a class="b solid">傳給家人</a>
+          <div class="em" style="margin-top:28px"><span class="dot">!</span><div class="grow">
+            <span class="et">什麼時候要馬上就醫</span>
+            <p style="margin:6px 0 0">出現下面任何一種情況，<b>不要等下次回診，請盡快到耳鼻喉科就醫</b>：</p>
+            <ul>
+              <li><b>突然聽不到或聽力變差</b>（一耳或兩耳，幾小時到幾天內發生），可能伴隨耳鳴、耳悶或暈眩。這可能是突發性聽力損失，越早治療效果越好。</li>
+              <li><b>耳朵痛、流膿或流血</b>。</li>
+              <li><b>嚴重暈眩、天旋地轉</b>，或走路不穩。</li>
+              <li><b>頭部受傷後聽力改變</b>。</li>
+            </ul>
+            <p class="call">如果同時出現<b>臉歪嘴斜、單側手腳無力、說話不清楚</b>，可能是中風，請立刻撥打 <b class="n">119</b>。</p>
+          </div></div>
+          <p style="margin-top:20px">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
+          <p class="src">可以複製這個網址傳給家人：<b style="word-break:break-all">https://hearwell.onrender.com/family</b></p>
+          <div class="list">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">出處</span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>第一個畫面：標題、一段開場、五列目錄、「傳給家人」。往下一捲就是紅底就醫框。折疊列的箭頭朝下、連結的箭頭朝右（跟結果頁 R1「看完整說明」同一種）。</p><p>電腦上「傳給家人」換成「複製網址」（現在就是這樣，兩顆不會同時出現）。</p><p><b>代價</b>：開場那句「下面幾個小方法」指的內容收起來了，要點「怎麼跟他說話」才看到。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　子頁用 G 方塊、頁內內容用折疊列<span class="tagc">#454 第 2 組沒選</span></p>
+        <div class="phone">
+          <h1 class="pg">家人專區</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。下面幾個小方法，可以讓溝通輕鬆一點。</p>
+          <div class="gridG newc">
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span><span class="t-title">陪診與代辦</span><span class="t-sub">要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span></a>
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span><span class="t-title">長輩不肯去怎麼說</span><span class="t-sub">不想檢查、不想戴時可以試的說法</span></span></a>
+            <a class="tileG"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span><span class="t-title">助聽器</span><span class="t-sub">怪怪的怎麼辦、怎麼陪他適應、日常保養</span></span></a>
+          </div>
+          <div class="list" style="margin-top:14px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-talk"/></svg></span><span class="grow"><span class="t-title">怎麼跟他說話</span><span class="t-sub">情境題與溝通重點</span></span><span class="chev">›</span></summary></details>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">陪伴配戴助聽器</span><span class="t-sub">剛開始不習慣、回診和保養時可以怎麼陪</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <a class="b solid">傳給家人</a>
+          <div class="em" style="margin-top:28px"><span class="dot">!</span><div class="grow"><span class="et">什麼時候要馬上就醫</span><p style="margin:6px 0 0;font-size:15px;color:var(--annot)">（同 A，整段不收起）</p></div></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>「去別頁」用方塊、「在這頁打開」用清單列，兩種動作分得最清楚。</p><p><b>代價</b>：一頁兩種「能點」的樣子；方塊裡的說明很長，方塊變高，「傳給家人」被擠出第一個畫面（藏在分頁列後面）；字放大 200% 要改成一欄。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">點開「怎麼跟他說話」之後（A、B 都一樣）</p>
+        <div class="phone short">
+          <div class="list" style="margin-top:0">
+            <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-talk"/></svg></span><span class="grow"><span class="t-title">怎麼跟他說話</span><span class="t-sub">情境題與溝通重點</span></span><span class="chev">›</span></summary>
+              <div class="inside">
+                <span class="sub" style="margin-top:4px">怎麼跟聽損的家人說話</span>
+                <ul class="tips">
+                  <li><b>先叫名字，等他看你再說</b>可以輕拍肩膀，不要從背後或隔壁房間說話。</li>
+                  <li><b>面對面、讓他看得到你的臉</b>表情和嘴型能幫助理解。站在光線照得到你臉的地方，不要背光。</li>
+                  <li><b>說清楚、稍微放慢，不用大喊</b>大喊會讓聲音變形，反而更難聽懂，也容易聽起來像在生氣。</li>
+                  <li><b>說話時不要遮住嘴巴</b>不要邊吃東西、邊走開或戴著口罩說重要的事。</li>
+                  <li><b>聽不懂時，換個說法</b>同一句話重複很多次不一定有用，換成比較簡單或不同的詞試試看。</li>
+                  <li><b>減少背景噪音</b>說話前先把電視、收音機關小聲，在餐廳選安靜的角落。</li>
+                  <li><b>重要的事寫下來</b>看診時間、地點、吃藥方式，說完再寫在紙上或傳文字訊息，請他確認。</li>
+                  <li><b>多人聊天時，一次一個人說話</b>換話題時先提醒「我們在講……」。</li>
+                  <li><b>耐心，也讓他參與</b>不要替他回答，也不要說「算了，沒事」，被排除在對話外會讓人更不想說話。</li>
+                </ul>
+                <span class="sub">遇到這些情況，您會怎麼做？</span>
+                <p>選您平常的做法，看看說明。這裡沒有對錯，也不會留下紀錄，可以改選。</p>
+                <fieldset>
+                  <legend>吃飯時，您問他一句話，他沒有回應。</legend>
+                  <div class="choice"><span class="r"></span><span>再說一次，大聲一點</span></div>
+                  <div class="choice on"><span class="r"></span><span>先叫他的名字，等他看您再問</span></div>
+                  <div class="choice"><span class="r"></span><span>算了，等一下再說</span></div>
+                  <p class="explain">這樣有幫助，因為他知道您在跟他說話，也看得到您的表情和嘴型。也可以先把嘴裡的東西吃完再開口。</p>
+                </fieldset>
+                <p style="font-size:15px;margin:8px 0 0;color:var(--annot)">（下面還有四題，樣子一樣：看電視、在廚房、說兩次聽不懂、陪看診。）</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="note"><p>九個方法拿掉現在的淺色底框，改成粗體重點＋說明、細線隔開。兩個段落標題在折疊列裡面變小標，全頁大標題只剩「家人專區」。</p><p>情境題選項沿用作答頁的樣子（選中變深藍）；說明出現在選項下面，用細線隔開，不另外加框。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 情境題頁：長輩不肯去怎麼說 ================= -->
+  <section class="group">
+    <h2>3　情境題頁：長輩不肯去怎麼說</h2>
+    <p class="q">這頁要做的一件事：<b>選一種最接近的狀況</b>。選項本身就是動作（點了就出現說法），不另外放實心按鈕。畫的是最擠的狀態：選了「他不想去檢查」，三種說法、兩種反效果說法、兩個下一步都出現。「助聽器」子頁的點選看說明是同一個樣子。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">選了一種狀況（唯一一版）</p>
+        <div class="phone">
+          <h1 class="pg">長輩不肯去怎麼說</h1>
+          <p>挑一個不趕時間、只有您和他在的時候，比較好開口。他可能需要一些時間，不一定談一次就有結果。</p>
+          <p>選一種最接近的狀況，看看可以怎麼說。每個人情況不同，這些說法不一定都有用。這裡不會留下紀錄，可以改選。</p>
+          <fieldset>
+            <legend>他現在的狀況，最接近哪一種？</legend>
+            <div class="choice"><span class="r"></span><span>他不承認聽不到</span></div>
+            <div class="choice on"><span class="r"></span><span>他不想去檢查</span></div>
+            <div class="choice"><span class="r"></span><span>他不想戴助聽器</span></div>
+            <div class="explain">
+              <p>有些人會覺得難為情，也需要時間接受別人注意到他的聽力。</p>
+              <span class="lab">可以試的說法</span>
+              <ul class="say">
+                <li>「我陪您去。要不要我們一起做一次檢查？」</li>
+                <li>「檢查聽力跟檢查眼睛一樣，都是照顧身體。」</li>
+                <li>「先檢查一次留個紀錄，以後可以比較。不是檢查了就要戴助聽器。」</li>
+              </ul>
+              <span class="lab">容易有反效果的說法</span>
+              <ul class="say">
+                <li>「我都幫您約好了，今天一定要去。」逼得太緊容易有反效果，可以等他準備好再幫忙。</li>
+                <li>「這有什麼好丟臉的，去就對了。」這樣像是在說他的感受不重要。</li>
+              </ul>
+              <span class="lab">下一步</span>
+              <div class="list">
+                <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow t-title">還不想去檢查，可以先一起做問卷（要先註冊或登入）</span><span class="chev">›</span></a>
+                <a class="item"><span class="ico"><svg class="i"><use href="#i-chart"/></svg></span><span class="grow t-title">檢查完了，把聽力圖記下來（要先註冊或登入）</span><span class="chev">›</span></a>
+              </div>
+            </div>
+          </fieldset>
+          <p style="margin-top:22px">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
+          <a class="b outline">回到家人專區</a>
+          <div class="list" style="margin-top:16px">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">出處</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:8px">內容查核於 2026/11/06。</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>第一個畫面：標題、兩段開場、問題和三個選項；選了之後，說明從選項正下方開始。</p><p>「可以試的說法」等三個小標改成粗體 18px 標籤，不再是段落標題，全頁大標題只有一個。下一步用 E 清單列（現在是白卡）。出處收進折疊列，查核日期留在外面。</p><p><b>代價</b>：兩段開場佔了第一個畫面的三分之一；如果要更短，可以把第一段收進折疊列（要您決定）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 陪診清單 ================= -->
+  <section class="group">
+    <h2>4　陪診與代辦（陪診清單）</h2>
+    <p class="q">這頁要做的一件事：<b>勾選要帶的東西和想問的問題，印出來帶去</b>。全頁唯一的實心按鈕是「列印或存成 PDF」。差別在補助檢核、期限試算這兩個工具放上面還是下面。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　清單在上、列印按鈕在第一個畫面<span class="rec">建議</span></p>
+        <div class="phone">
+          <h1 class="pg">陪診與代辦</h1>
+          <h2 class="sec" style="margin-top:0">陪診清單</h2>
+          <p>勾選不會留下，可以列印帶去。</p>
+          <span class="t-title chklegend">要帶的東西</span>
+          <div class="list" style="margin-top:4px">
+            <div class="chk"><span class="box on"></span><span>醫院的聽力檢查報告（聽力圖）</span></div>
+            <div class="chk"><span class="box on"></span><span>身分證</span></div>
+            <div class="chk"><span class="box"></span><span>身心障礙證明（有的話）</span></div>
+            <div class="chk"><span class="box"></span><span>現在用的助聽器（有的話）</span></div>
+            <div class="chk"><span class="box"></span><span>聽伴印的聽力報告（有的話）</span></div>
+          </div>
+          <a class="b solid">列印或存成 PDF</a>
+          <span class="t-title chklegend" style="margin-top:28px">想問聽力師的問題</span>
+          <span class="cat">適不適合</span>
+          <div class="chk"><span class="box"></span><span>哪一種助聽器適合他？為什麼？</span></div>
+          <div class="chk"><span class="box"></span><span>可以先試戴嗎？試戴多久？要收費嗎？</span></div>
+          <span class="cat">價格與保固</span>
+          <div class="chk"><span class="box"></span><span>價格包含哪些服務？之後回來調整要另外收費嗎？</span></div>
+          <div class="chk"><span class="box"></span><span>保固多久？包含哪些？</span></div>
+          <div class="chk"><span class="box"></span><span>可以給我們書面的報價單和保固內容嗎？</span></div>
+          <span class="cat">補助</span>
+          <div class="chk"><span class="box"></span><span>這一台是補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？</span></div>
+          <div class="chk"><span class="box"></span><span>可以幫他開九號表嗎？</span></div>
+          <p class="hint">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="ilink">看九號表的流程</a></p>
+          <div class="list" style="margin-top:20px">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow"><span class="t-title">補助檢核</span><span class="t-sub">回答幾題，看還缺什麼</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow"><span class="t-title">期限試算</span><span class="t-sub">輸入日期，算出期限</span></span><span class="chev">›</span></a>
+          </div>
+          <a class="b outline">回到家人專區</a>
+          <div class="list" style="margin-top:16px">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">出處</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:8px">內容查核於 2026/10/22。</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>第一個畫面：標題、要帶的五樣東西（勾了兩樣）、列印按鈕。列印按鈕從頁尾搬到「要帶的東西」下面；印出來的紙一樣有整份清單。兩個工具移到清單下面。</p><p><b>代價</b>：想先做補助檢核的家人要往下捲；「陪診清單」和「陪診與代辦」兩個標題很像。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　工具在上（現在的順序）</p>
+        <div class="phone">
+          <h1 class="pg">陪診與代辦</h1>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow"><span class="t-title">補助檢核</span><span class="t-sub">回答幾題，看還缺什麼</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow"><span class="t-title">期限試算</span><span class="t-sub">輸入日期，算出期限</span></span><span class="chev">›</span></a>
+          </div>
+          <h2 class="sec">陪診清單</h2>
+          <p>勾選不會留下，可以列印帶去。</p>
+          <span class="t-title chklegend">要帶的東西</span>
+          <div class="list" style="margin-top:4px">
+            <div class="chk"><span class="box on"></span><span>醫院的聽力檢查報告（聽力圖）</span></div>
+            <div class="chk"><span class="box on"></span><span>身分證</span></div>
+            <div class="chk"><span class="box"></span><span>身心障礙證明（有的話）</span></div>
+            <div class="chk"><span class="box"></span><span>現在用的助聽器（有的話）</span></div>
+            <div class="chk"><span class="box"></span><span>聽伴印的聽力報告（有的話）</span></div>
+          </div>
+          <span class="t-title chklegend" style="margin-top:28px">想問聽力師的問題</span>
+          <p style="font-size:15px;color:var(--annot)">（三類七題，同 A）</p>
+          <p class="hint">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="ilink">看九號表的流程</a></p>
+          <a class="b solid">列印或存成 PDF</a>
+          <a class="b outline">回到家人專區</a>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>順序跟現在一樣，只換成新元件。</p><p><b>代價</b>：實心按鈕在頁尾，第一個畫面看不到；第一個畫面只看到清單的開頭。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 補助檢核 ================= -->
+  <section class="group">
+    <h2>5　補助檢核</h2>
+    <p class="q">這頁要做的一件事：<b>回答五題、按送出，看還缺什麼</b>。五題都要回答，「送出」只能放在第五題下面，所以沒進第一個畫面（作答頁也是這樣）。送出後是同一頁：結果放最上面、「列印或存成 PDF」是唯一的實心按鈕，原本的五題收進折疊列，裡面的「送出」改成藍框按鈕，避免一頁兩顆實心。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">還沒回答（最常見）</p>
+        <div class="phone">
+          <h1 class="pg">補助檢核</h1>
+          <p>回答幾題，看申請助聽器補助還缺什麼。這裡不判斷能不能拿到補助，是否補助以主管機關核定為準。回答不會留下來。</p>
+          <h2 class="sec">回答這幾題</h2>
+          <fieldset>
+            <legend><span class="prog">第 1 題／共 5 題</span>申請的人有哪一種身心障礙證明？</legend>
+            <div class="choice"><span class="r"></span><span>聽覺機能（第二類 b230、s260，或舊制 02）</span></div>
+            <div class="choice"><span class="r"></span><span>中度以上視覺障礙</span></div>
+            <div class="choice"><span class="r"></span><span>上面兩種都沒有</span></div>
+            <div class="choice"><span class="r"></span><span>不確定</span></div>
+          </fieldset>
+          <fieldset style="margin-top:32px">
+            <legend><span class="prog">第 2 題／共 5 題</span>最近一年，申請的人在國內住超過 183 天嗎？</legend>
+            <div class="choice"><span class="r"></span><span>是</span></div>
+            <div class="choice"><span class="r"></span><span>否</span></div>
+            <div class="choice"><span class="r"></span><span>不確定</span></div>
+          </fieldset>
+          <fieldset style="margin-top:32px">
+            <legend><span class="prog">第 3 題／共 5 題</span>九號表和核定通知辦到哪裡了？</legend>
+            <div class="choice"><span class="r"></span><span>還沒有九號表</span></div>
+            <div class="choice"><span class="r"></span><span>有九號表，還沒到公所申請</span></div>
+            <div class="choice"><span class="r"></span><span>已經到公所申請，在等核定通知</span></div>
+            <div class="choice"><span class="r"></span><span>已經收到核定通知</span></div>
+            <div class="choice"><span class="r"></span><span>不確定</span></div>
+          </fieldset>
+          <fieldset style="margin-top:32px">
+            <legend><span class="prog">第 4 題／共 5 題</span>助聽器買了嗎？</legend>
+            <div class="choice"><span class="r"></span><span>還沒買</span></div>
+            <div class="choice"><span class="r"></span><span>已經買了</span></div>
+            <div class="choice"><span class="r"></span><span>不確定</span></div>
+          </fieldset>
+          <fieldset style="margin-top:32px">
+            <legend><span class="prog">第 5 題／共 5 題</span>以前領過這項助聽器補助嗎？</legend>
+            <div class="choice"><span class="r"></span><span>沒有</span></div>
+            <div class="choice"><span class="r"></span><span>領過，已滿 4 年（12 歲以下滿 2 年）</span></div>
+            <div class="choice"><span class="r"></span><span>領過，還沒滿</span></div>
+            <div class="choice"><span class="r"></span><span>不確定</span></div>
+          </fieldset>
+          <a class="b solid" style="margin-top:28px">送出</a>
+          <a class="b outline">回到家人專區</a>
+          <div class="list" style="margin-top:16px">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">出處</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:8px">內容查核於 2026/10/23。</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>第一個畫面：標題、開場（含「這裡不判斷能不能拿到補助」，不收起）、第 1 題。題目選項沿用作答頁的樣子。</p><p><b>代價</b>：「送出」在很下面。另一種做法是一題一個畫面（像精靈一樣按「下一題」），按鈕永遠看得到，但要改成多步驟表單，工比較大，這次沒畫。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">送出後（最擠：四組都有）</p>
+        <div class="phone">
+          <h1 class="pg">補助檢核</h1>
+          <p>回答幾題，看申請助聽器補助還缺什麼。這裡不判斷能不能拿到補助，是否補助以主管機關核定為準。回答不會留下來。</p>
+          <h2 class="sec">檢核結果</h2>
+          <p class="head">下面這些要先辦好或確認。</p>
+          <div class="grp"><span class="lab">還缺</span>
+            <p>要有聽覺機能的身心障礙證明，或中度以上視覺障礙且好的那一耳聽力損失大於 40 dB，才能申請這項補助。</p>
+            <p>九號表：找聽力師或縣市輔具中心做評估。九號表 3 個月內有效。<a class="tlink">九號表找誰開</a></p>
+          </div>
+          <div class="grp"><span class="lab">要先確認</span>
+            <p>上次領補助是哪一年。滿 4 年可再申請（12 歲以下每 2 年）。</p>
+          </div>
+          <div class="grp"><span class="lab">提醒</span>
+            <p>一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          </div>
+          <div class="grp"><span class="lab">下一步</span>
+            <p>到戶籍所在縣市的公所申請身障鑑定，再帶公所給的鑑定表到鑑定醫院。<a class="tlink">怎麼申請鑑定</a><a class="tlink">沒有身障證明時</a></p>
+          </div>
+          <p style="margin-top:4px"><a class="tlink">看九號表的流程</a></p>
+          <a class="b solid">列印或存成 PDF</a>
+          <div class="list" style="margin-top:20px">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="grow t-title"><span class="draft">改答案，再檢核一次</span></span><span class="chev">›</span></summary></details>
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">出處</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:8px">內容查核於 2026/10/23。</p>
+          <a class="b outline">回到家人專區</a>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>案例：沒有身障證明、還沒有九號表、還沒買、不確定上次領補助是哪一年。</p><p>「還缺」等四組改成粗體標籤＋細線隔開的段落（現在是小標題＋圓點清單），連結各自一列、44px 高。</p><p><b>代價</b>：最擠的時候列印按鈕在第二個畫面；「改答案，再檢核一次」是我擬的字（現在五題直接接在結果下面，沒有這句）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 問答小助手 ================= -->
+  <section class="group">
+    <h2>6　問答小助手（首頁）</h2>
+    <p class="q">這頁要做的一件事：<b>找到想問的那一題</b>。就醫框照舊置頂，改成紅底加圖示（ADR 0041；2026-10-27 您選的是藍框，這次照新規則換紅）；框裡只有一個能點的東西，所以整個框可以點（ADR 0041「單獨一個可點的東西放在色塊裡」）。差別在「打字問」放最後（您 2026-10-27 定的順序）還是往上搬。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　照現在的順序：主題 → 常問 → 打字問<span class="rec">建議</span></p>
+        <div class="phone">
+          <h1 class="pg">問答小助手</h1>
+          <a class="em"><span class="dot">!</span><span class="grow"><span class="et">突然聽不到、耳朵流血？請盡快就醫</span><span style="display:block;margin-top:4px;color:var(--heading)">突然聽不到、耳朵流血，該怎麼辦？</span></span><span class="chev">›</span></a>
+          <h2 class="sec">依主題找</h2>
+          <div class="gridG">
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-home"/></svg></span><span class="t-title">網站怎麼用</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="t-title">問卷是什麼</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-book"/></svg></span><span class="t-title">助聽器選配<br>與補助</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="t-title">聽力保健<br>常識</span></a>
+          </div>
+          <h2 class="sec">大家常問</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">我的分數代表什麼？</span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">哪個牌子的助聽器比較好？去哪家店買？</span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">聽力變差是什麼病？要吃什麼藥？</span><span class="chev">›</span></a>
+          </div>
+          <h2 class="sec">找不到？打字問</h2>
+          <label class="label">請輸入您想問的事</label>
+          <div class="input"></div>
+          <p class="help">您打的問題會匿名保存 90 天，用來補充題目；請不要輸入姓名、電話、身分證字號、病歷號碼。</p>
+          <a class="b solid">找答案</a>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>第一個畫面：紅底就醫框、四個主題方塊、大家常問的開頭。點主題比打字容易（長輩打注音、手寫都慢）。主題方塊現在就是「圖示在上、名字在下」的白方塊，換成 G 的樣子（有外框）。</p><p><b>代價</b>：唯一的實心按鈕「找答案」在第二個畫面；一頁有三個段落標題（就醫框的標題不算）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　打字問搬到就醫框下面</p>
+        <div class="phone">
+          <h1 class="pg">問答小助手</h1>
+          <a class="em"><span class="dot">!</span><span class="grow"><span class="et">突然聽不到、耳朵流血？請盡快就醫</span><span style="display:block;margin-top:4px;color:var(--heading)">突然聽不到、耳朵流血，該怎麼辦？</span></span><span class="chev">›</span></a>
+          <label class="label" style="margin-top:22px">請輸入您想問的事</label>
+          <div class="input"></div>
+          <p class="help">您打的問題會匿名保存 90 天，用來補充題目；請不要輸入姓名、電話、身分證字號、病歷號碼。</p>
+          <a class="b solid">找答案</a>
+          <h2 class="sec">依主題找</h2>
+          <div class="gridG">
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-home"/></svg></span><span class="t-title">網站怎麼用</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-clip"/></svg></span><span class="t-title">問卷是什麼</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-book"/></svg></span><span class="t-title">助聽器選配<br>與補助</span></a>
+            <a class="tileG" style="min-height:118px"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="t-title">聽力保健<br>常識</span></a>
+          </div>
+          <h2 class="sec">大家常問</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">我的分數代表什麼？</span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">哪個牌子的助聽器比較好？去哪家店買？</span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">聽力變差是什麼病？要吃什麼藥？</span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>像搜尋網站：一進來就能打字，實心按鈕在第一個畫面。拿掉「找不到？打字問」標題（放在最前面時「找不到？」不通）。</p><p><b>代價</b>：推翻您 2026-10-27 定的順序；打字對長輩比較難，主題方塊被擠到第一個畫面的底。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">一題的答案頁（唯一一版）</p>
+        <div class="phone">
+          <a class="back"><span aria-hidden="true">‹</span>&nbsp;回「助聽器選配與補助」</a>
+          <h1 class="pg">助聽器補助要怎麼申請？</h1>
+          <p>依法規，有聽覺機能身心障礙證明的人，先找聽力師或縣市輔具中心做評估、拿到「九號表」，再到戶籍所在地的公所申請助聽器補助。一般來說，要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          <p>誰可以申請、申請流程和補助多少，請看選配指引的<a class="ilink">「九號表：申請助聽器補助」</a>。</p>
+          <p class="hint">以上是一般說明，您的情況請以醫師、聽力師為準。</p>
+          <div class="list" style="margin-top:16px">
+            <details class="more plain"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">資料來源</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:8px">本頁資料查核於 2026/10/27。</p>
+          <h2 class="sec">相關問題</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">集音器和助聽器有什麼不同？</span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-question"/></svg></span><span class="grow t-title">哪個牌子的助聽器比較好？去哪家店買？</span><span class="chev">›</span></a>
+          </div>
+          <h2 class="sec">沒回答到您的問題？</h2>
+          <a class="b outline" style="margin-top:8px">回問答小助手首頁</a>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>這頁要做的一件事：讀答案。沒有實心按鈕。提醒框從淡藍改成 P3 淡灰（淡藍留給能點的東西）；「資料來源」本來就是折疊的，換成清單列樣子。相關問題用 E 清單列。主題頁、打字問的結果頁是同一種題目清單，不另外畫。</p><p><b>代價</b>：「沒回答到您的問題？」現在是淡藍底區塊，改成白底＋藍框按鈕。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="fixes">
+    <h2>要請您決定的地方</h2>
+    <ol>
+      <li><b>了解、家人專區用 E 清單還是 G 方塊</b>：A（E）跟全站一致、字放大不用改版（建議）；B（G）入口感強，但跟您 #454 選的 E 是兩種樣子、字放大要改一欄。</li>
+      <li><b>家人專區頁內長內容收進折疊列</b>（九個方法＋情境題、陪伴配戴）：收（建議，第一個畫面放得下目錄和「傳給家人」）／不收（照現在全部展開，第一個畫面只看到開場和目錄）。就醫框兩種都不收。</li>
+      <li><b>陪診清單</b>：A 清單在上、列印按鈕在「要帶的東西」下面（建議）／B 照現在的順序，工具在上、列印在頁尾。</li>
+      <li><b>問答小助手</b>：A 照您 2026-10-27 的順序、打字問在最後（建議，點主題比打字容易）／B 打字問搬到最上面。</li>
+      <li><b>補助檢核送出後</b>：五題收進「改答案，再檢核一次」折疊列、裡面的送出改藍框（建議，一頁只有一顆實心）／照現在五題接在結果下面、兩顆實心按鈕。</li>
+    </ol>
+  </section>
+
+  <section class="fixes">
+    <h2>沒畫、照同一套換新元件的子頁</h2>
+    <ul>
+      <li><b>助聽器</b>：跟情境題頁同一種點選看說明；頁首三列跳轉目錄改 E 清單列；「耳朵痛、流膿或突然聽不到」那個選項的粗體就醫字句維持在最上面，連到「什麼時候要馬上就醫」。保養步驟的勾選框跟陪診清單同一種。</li>
+      <li><b>期限試算</b>：日期輸入框沿用 #272（高 56px），「試算」是唯一實心按鈕；算出來之後「列印或存成 PDF」變實心、「試算」改藍框（同補助檢核的規則）。</li>
+      <li><b>問答小助手主題頁、打字問的結果</b>：題目清單用 E 清單列。</li>
+    </ul>
+  </section>
+
+  <section class="group">
+    <h2>不用選、各頁都一樣的</h2>
+    <table class="spec">
+      <tr><th>項目</th><th>做法</th></tr>
+      <tr><td>出處</td><td>收進「出處」折疊列（問答答案頁沿用「資料來源」）；查核日期留在折疊列外面，寫年/月/日</td></tr>
+      <tr><td>回到家人專區</td><td>子頁頁尾藍框按鈕（S1 第二重要）</td></tr>
+      <tr><td>「一般性的建議」那句</td><td>原文、原位置，一般內文</td></tr>
+      <tr><td>選項、勾選框</td><td>選項沿用作答頁（選中深藍白字＋白勾）；勾選框 26px、整列 44px 以上可點</td></tr>
+      <tr><td>就醫框</td><td>紅底 #feece7、紅字 #8f2a12（對比 7.6:1）加驚嘆號圖示，不收起</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>

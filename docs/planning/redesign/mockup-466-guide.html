@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#466 助聽器選配指引（設計圖第一版）</title>
+<style>
+  /* ---- tokens and base: copied from #454 (mockup-454-components.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --ear-right: #c0392b; --ear-left: #1f4e8c;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  p { margin: 0 0 12px; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2, .fixes > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .spec code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  .fixes { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1100px; }
+  .fixes ul { margin: 6px 0 0; padding-left: 1.2em; }
+  .fixes li { margin-bottom: 4px; }
+
+  /* annotation: draft wording and new components */
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { position: relative; outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; }
+  .newc-tag { position: absolute; right: 0; top: -16px; font-size: 12px; line-height: 1.3; color: #fff; background: var(--annot); padding: 1px 6px; border-radius: 4px; z-index: 3; font-weight: 700; }
+  .scrolled { font-size: 13px; color: var(--annot); font-weight: 700; margin: 0 0 10px; }
+
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; }
+  .screen { padding: 0; min-height: 900px; }
+  .screen .pg { padding: 20px 20px 120px; }
+  .screen.clip { height: 844px; min-height: 0; }
+  .screen.short { min-height: 0; }
+  .screen.mid { min-height: 0; }
+  .screen.short .pg { padding-bottom: 24px; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 4; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+
+  /* T1 */
+  .h1 { font-size: 28px; color: var(--heading); margin: 4px 0 10px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 40px 0 10px; line-height: 1.35; font-weight: 700; }
+  .h2.first { margin-top: 26px; }
+  .label { display: block; font-weight: 700; color: var(--heading); margin: 22px 0 4px; }
+  .src { font-size: 16px; color: var(--muted); }
+  .src a { text-decoration: underline; text-underline-offset: 3px; }
+  .muted { color: var(--muted); }
+  .pg ul.text { margin: 0 0 12px; padding-left: 1.2em; }
+  .pg ul.text li { margin-bottom: 6px; }
+  .inl { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* S1 buttons and text links */
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .back { margin: -4px 0 0; }
+
+  /* P3 hint box */
+  .hint { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 4px 0 14px; color: var(--heading); }
+
+  /* E fold row (as #460 R1's 看完整說明) */
+  details.more { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 8px 0 12px; }
+  details.more + details.more { margin-top: -13px; border-top: 0; }
+  details.more summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 2px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .grow { flex: 1; }
+  details.more summary .chev { transform: rotate(90deg); }
+  details.more[open] summary .chev { transform: rotate(-90deg); }
+  .ico { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .inside { padding: 0 2px 14px; }
+  .inside ul { margin: 0 0 12px; padding-left: 1.2em; }
+
+  /* N3 step list (chapters) */
+  ol.st { list-style: none; margin: 0; padding: 0; counter-reset: s var(--start, 0); }
+  ol.st > li { counter-increment: s; display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+  ol.st > li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: #fff; color: var(--primary); border: 2px solid var(--primary); position: relative; z-index: 1; }
+  ol.st > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  .st-b { flex: 1; min-width: 0; padding-top: 2px; }
+  .st-t { display: block; font-weight: 700; color: var(--heading); }
+  .st-when { display: block; color: var(--muted); font-weight: 700; }
+
+  /* fact rows and key rows: not tappable, so no icon and no arrow (E without its cues) */
+  ul.facts { list-style: none; margin: 0 0 14px; padding: 0; border-top: 1px solid var(--line); }
+  ul.facts li { display: flex; align-items: baseline; gap: 14px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  ul.facts .v { flex: none; min-width: 104px; font-size: 22px; font-weight: 700; color: var(--heading); white-space: nowrap; }
+  dl.keys { margin: 0 0 12px; border-top: 1px solid var(--line); }
+  dl.keys > div { padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  dl.keys dt { font-weight: 700; color: var(--heading); }
+  dl.keys dd { margin: 2px 0 0; }
+
+  /* the 選配路線: N3 dots and line, as the home 照顧旅程 (#458) */
+  ol.route { list-style: none; margin: 0; padding: 0; }
+  ol.route > li { position: relative; display: flex; gap: 12px; padding-bottom: 14px; }
+  ol.route > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  .dot { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; position: relative; z-index: 1; background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .dot-na { background: var(--surface); color: var(--muted); border-color: var(--line-strong); }
+  .ck { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .rb { flex: 1; min-width: 0; }
+  .r-link { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: -6px; font-weight: 700; color: var(--heading); }
+  .r-link .grow { flex: 1; min-width: 0; }
+  .r-note { margin: -6px 0 0; color: var(--muted); }
+  .r-note + .r-note { margin-top: 0; }
+  .r-sub { display: flex; align-items: center; min-height: 44px; margin-top: -6px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .r-answer { margin: -4px 0 0; color: var(--body); }
+  .r-answer a { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; display: inline-block; min-height: 44px; line-height: 44px; padding: 0 4px; }
+  .r-na .r-link { color: var(--muted); font-weight: 500; }
+  .r-gap { position: absolute; left: 44px; bottom: -4px; font-size: 16px; color: var(--muted); margin: 0; }
+  ol.route > li.has-gap { padding-bottom: 36px; }
+  /* 目前這一站: the pale blue card (ADR 0041), as the home 現在這一步 */
+  .r-here .dot { margin-top: 14px; box-shadow: 0 0 0 5px var(--primary-sel); }
+  ol.route > li.r-here:not(:last-child)::after { top: 48px; }
+  .card { flex: 1; min-width: 0; background: var(--primary-soft); border-radius: 16px; padding: 12px 16px 16px; }
+  .cur-label { margin: 0; font-weight: 700; color: var(--muted); }
+  .cur-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 22px; line-height: 1.35; font-weight: 700; color: var(--heading); min-height: 44px; }
+  .cur-title .grow { flex: 1; }
+  .card .r-note { margin: 0; }
+  .qn { margin: 18px 0 0; }
+  .qn-legend { display: block; font-weight: 700; color: var(--heading); font-size: 20px; }
+  .qn .b { margin-top: 8px; }
+  .here-plain { color: var(--primary); font-weight: 700; }
+
+  /* the 儀表條 (existing, #260): white track instead of beige, else unchanged */
+  .meter { margin: 0 0 14px; }
+  .m-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 12px; margin: 8px 0 4px; color: var(--heading); }
+  .m-label b { font-weight: 700; }
+  .m-draw { position: relative; }
+  .m-track { position: relative; height: 18px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); }
+  .m-bar { position: absolute; inset: 0 auto 0 0; }
+  .m-r { background: var(--ear-right); } .m-l { background: var(--ear-left); } .m-x { background: var(--primary); }
+  .m-beyond { position: absolute; top: 0; bottom: 0; right: 0; background-image: repeating-linear-gradient(135deg, var(--primary) 0 3px, transparent 3px 9px); opacity: .5; }
+  .m-line { position: absolute; top: -5px; bottom: -5px; width: 3px; background: var(--heading); }
+  .m-scale { padding: 2px 0 0 6px; border-left: 3px solid var(--heading); color: var(--heading); font-size: 16px; }
+
+  /* page jump links: two columns, a full line tall to tap (existing #367) */
+  .jump-k { font-weight: 700; color: var(--muted); margin: 14px 0 2px; }
+  .jump { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; list-style: none; margin: 0 0 6px; padding: 0; }
+  .jump a { display: flex; align-items: center; min-height: 48px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; line-height: 1.35; }
+
+  /* W1 */
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  .short .float { top: auto; bottom: 14px; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 3h3l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v3a3 3 0 0 1-3 3A15 15 0 0 1 3 6a3 3 0 0 1 3-3z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#466 助聽器選配指引（設計圖第一版）</h1>
+  <p class="lead">假設今天是 2026/11/12。手機寬 390px、內文 18px，元件只用 #454 選定的 T1、E、S1、P3、L1、N3、W1；選配路線的判斷與各站文字照現在的 <code>views/guide.py</code>，章節字句照現在的模板。紫色虛線橫線＝手機第一個畫面的底（390×844）；紫色虛線框＝草稿字句或新元件，要您決定。</p>
+  <p class="lead">共同的改法：段落框（ADR 0025）全部拿掉，章節只靠標題與留白分段；選配路線改成 N3 藍框圓點＋連接線，目前這一站跟首頁「現在這一步」一樣用淡藍卡片；一頁最多一顆實心按鈕。</p>
+
+  <!-- ================= 1 我的選配指引 ================= -->
+  <section class="group">
+    <h2>1　我的選配指引</h2>
+    <p class="q">這頁要長輩做的一件事：<b>做目前這一站</b>（看那一章或回答那一站的問題）。所以「您在這裡」的卡片與它的按鈕要在第一個畫面。案例甲（最常見）：2026/09/01 記錄聽力圖，右耳 48.75、左耳 42.5 dB HL，建議評估、估算未達鑑定門檻，目前這一站是「去找聽力師之前」。案例乙（最擠）：右耳 63.75、左耳 58.75、有測不到反應的點，估算達到門檻；前三站已完成、回答了有身障證明，目前這一站是九號表、問題還沒答。</p>
+    <div class="row">
+
+      <!-- A, case 1 -->
+      <div class="opt"><p class="opt-label">A　路線在前・案例甲<span class="rec">建議</span></p>
+        <div class="phone screen"><div class="pg">
+          <h1 class="h1">我的選配指引</h1>
+          <p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+          <h2 class="h2 first">選配與補助，一步一步看</h2>
+          <ol class="route">
+            <li><span class="dot"><svg class="ck" aria-hidden="true"><use href="#i-check"/></svg></span><div class="rb"><a class="r-link"><span class="grow">記錄聽力圖</span><span class="chev">›</span></a><p class="r-note">已完成・2026/09/01 的聽力圖</p></div></li>
+            <li class="r-here"><span class="dot">2</span><div class="card"><p class="cur-label">您在這裡</p><a class="cur-title"><span class="grow">去找聽力師之前</span><span class="chev">›</span></a><a class="b solid">去之前要準備什麼</a></div></li>
+            <li><span class="dot">3</span><div class="rb"><a class="r-link"><span class="grow">身障鑑定與鑑定醫院</span><span class="chev">›</span></a><p class="r-note">估算未達門檻</p><a class="r-sub">看沒有身障證明時</a></div></li>
+            <li><span class="dot">4</span><div class="rb newc"><span class="newc-tag">新組合：N3 圓點＋E 藍箭頭，站名整列可點</span><a class="r-link"><span class="grow">九號表：申請助聽器補助</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">5</span><div class="rb"><a class="r-link"><span class="grow">等待核定公文</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">6</span><div class="rb"><a class="r-link"><span class="grow">助聽器的種類與價格</span><span class="chev">›</span></a><p class="r-note">收到核定通知後 6 個月內要買。</p></div></li>
+            <li class="has-gap"><span class="dot">7</span><div class="rb"><a class="r-link"><span class="grow">配戴助聽器之後</span><span class="chev">›</span></a></div><p class="r-gap">至少 1 個月</p></li>
+            <li><span class="dot">8</span><div class="rb"><a class="r-link"><span class="grow">二十五號表：使用效益驗證</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">9</span><div class="rb"><a class="r-link"><span class="grow">等待補助發放</span><span class="chev">›</span></a></div></li>
+          </ol>
+
+          <h2 class="h2"><span class="draft">依您 2026/09/01 的聽力圖</span></h2>
+          <span class="label" style="margin-top:6px">問卷結果</span>
+          <p>您 2026/09/26 做的聽力對生活的影響（HHIE-S）：輕度到中度影響。</p>
+          <span class="label">要不要找聽力師評估</span>
+          <div class="meter">
+            <p class="m-label"><span>右耳四頻平均</span> <b>48.75 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-r" style="width:40.6%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-label"><span>左耳四頻平均</span> <b>42.5 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-l" style="width:35.4%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-scale" style="margin-left:20.8%">正常上限 25</p>
+          </div>
+          <p>您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。<a class="inl">去之前要準備什麼</a></p>
+          <span class="label">身障鑑定門檻</span>
+          <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
+          <div class="meter">
+            <p class="m-label"><span>雙耳障礙比率（估算）</span> <b>約 27.8%</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-x" style="width:27.8%"></div></div><span class="m-line" style="left:45%"></span></div>
+            <p class="m-scale" style="margin-left:45%">門檻 45%</p>
+          </div>
+          <p>依您 2026/09/01 的聽力圖估算，雙耳障礙比率約 27.8%，未達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">看完整說明</span><span class="chev">›</span></summary>
+            <div class="inside"><p>沒有身障證明的人，可能還有其他補助。<a class="inl">看沒有身障證明時</a></p><p>如果您已經有身障證明，可以直接進行九號表。<a class="inl">看九號表的流程</a></p><p class="muted">（下面接「怎麼算的」三步，見案例乙）</p></div>
+          </details>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>第一個畫面：標題、一句說明、路線前半；「您在這裡」卡片與<b>唯一的實心按鈕</b>在約 400px 高的位置。</p>
+          <p>標題只有三個：頁面標題、路線、聽力圖整理。原本的「問卷結果」「要不要找聽力師評估」「身障鑑定門檻」改成粗體小標（不是標題），字不變。</p>
+          <p>「看我的路線 ↓」按鈕拿掉：路線已經在最上面。「依您 2026/09/01 的聽力圖」是把現有那句話拿來當標題（草稿）。</p>
+          <p>完成的站跟首頁一樣用藍框藍勾，不用綠勾；「已完成」照舊寫成字。</p>
+        </div>
+      </div>
+
+      <!-- A, case 2 -->
+      <div class="opt"><p class="opt-label">A　路線在前・案例乙（最擠）</p>
+        <div class="phone screen"><div class="pg">
+          <h1 class="h1">我的選配指引</h1>
+          <p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+          <h2 class="h2 first">選配與補助，一步一步看</h2>
+          <ol class="route">
+            <li><span class="dot"><svg class="ck" aria-hidden="true"><use href="#i-check"/></svg></span><div class="rb"><a class="r-link"><span class="grow">記錄聽力圖</span><span class="chev">›</span></a><p class="r-note">已完成・2026/09/01 的聽力圖</p></div></li>
+            <li><span class="dot"><svg class="ck" aria-hidden="true"><use href="#i-check"/></svg></span><div class="rb"><a class="r-link"><span class="grow">去找聽力師之前</span><span class="chev">›</span></a><p class="r-note">已完成</p></div></li>
+            <li><span class="dot"><svg class="ck" aria-hidden="true"><use href="#i-check"/></svg></span><div class="rb"><a class="r-link"><span class="grow">身障鑑定與鑑定醫院</span><span class="chev">›</span></a><p class="r-note">已完成</p><p class="r-answer">有身障證明 <a>修改</a></p></div></li>
+            <li class="r-here"><span class="dot">4</span><div class="card"><p class="cur-label">您在這裡</p><a class="cur-title"><span class="grow">九號表：申請助聽器補助</span><span class="chev">›</span></a><a class="b solid">看九號表的流程</a>
+              <div class="qn newc"><span class="newc-tag">順序改了：按鈕在上、問題在下</span><span class="qn-legend">九號表完成了嗎？</span><a class="b outline">完成了</a><a class="b outline">還沒</a></div></div></li>
+            <li><span class="dot">5</span><div class="rb"><a class="r-link"><span class="grow">等待核定公文</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">6</span><div class="rb"><a class="r-link"><span class="grow">助聽器的種類與價格</span><span class="chev">›</span></a><p class="r-note">收到核定通知後 6 個月內要買。</p></div></li>
+            <li class="has-gap"><span class="dot">7</span><div class="rb"><a class="r-link"><span class="grow">配戴助聽器之後</span><span class="chev">›</span></a></div><p class="r-gap">至少 1 個月</p></li>
+            <li><span class="dot">8</span><div class="rb"><a class="r-link"><span class="grow">二十五號表：使用效益驗證</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">9</span><div class="rb"><a class="r-link"><span class="grow">等待補助發放</span><span class="chev">›</span></a></div></li>
+          </ol>
+
+          <h2 class="h2"><span class="draft">依您 2026/09/01 的聽力圖</span></h2>
+          <span class="label" style="margin-top:6px">問卷結果</span>
+          <p>您 2026/09/26 做的聽力對生活的影響（HHIE-S）：顯著影響。</p>
+          <span class="label">要不要找聽力師評估</span>
+          <div class="meter">
+            <p class="m-label"><span>右耳四頻平均</span> <b>63.75 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-r" style="width:53.1%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-label"><span>左耳四頻平均</span> <b>58.75 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-l" style="width:49%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-scale" style="margin-left:20.8%">正常上限 25</p>
+          </div>
+          <p>您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。<a class="inl">去之前要準備什麼</a></p>
+          <span class="label">身障鑑定門檻</span>
+          <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
+          <div class="meter">
+            <p class="m-label"><span>雙耳障礙比率（估算）</span> <b>至少約 51.9%</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-x" style="width:51.9%"></div><div class="m-beyond" style="left:51.9%"></div></div><span class="m-line" style="left:45%"></span></div>
+            <p class="m-scale" style="margin-left:45%">門檻 45%</p>
+          </div>
+          <p>依您 2026/09/01 的聽力圖估算，雙耳障礙比率約 51.9%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
+          <p>這張聽力圖有測不到反應的點，實際比率可能更高。</p>
+          <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">看完整說明</span><span class="chev">›</span></summary>
+            <div class="inside">
+              <p>身障補助要先有身心障礙證明。請先到鑑定醫院申請身障鑑定，拿到證明後，才能申請九號表的助聽器補助。<a class="inl">找鑑定醫院</a></p>
+              <p>如果您已經有身障證明，可以直接進行九號表。<a class="inl">看九號表的流程</a></p>
+              <span class="label" style="margin-top:4px">怎麼算的</span>
+              <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
+              <p>1. 每一耳：（四頻平均 − 25）× 1.5%。右耳（63.75 − 25）× 1.5% ＝ 58.125%；左耳（58.75 − 25）× 1.5% ＝ 50.625%。</p>
+              <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（50.625 × 5 ＋ 58.125）÷ 6 ＝ 51.9%，四捨五入到小數一位。</p>
+              <p class="src">3. 身障鑑定門檻是 45.0%。出處：<a>身心障礙者鑑定作業辦法附表二甲</a></p>
+            </div>
+          </details>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>最擠的情況：卡片裡有按鈕又有問題。實心按鈕仍在第一個畫面（約 520px）。</p>
+          <p>現在網站是「問題在上、按鈕藍框在下」（#367），整頁就沒有實心按鈕；這版改成「看九號表的流程」實心在上、回答在下（見決定 2）。</p>
+          <p>「看完整說明」這裡畫成打開，讓您看到原文都還在；平常預設收起。「怎麼算的」原本是自己的折疊，這版併進同一個折疊、改成粗體小標。</p>
+        </div>
+      </div>
+
+      <!-- B, case 1 -->
+      <div class="opt"><p class="opt-label">B　「您在這裡」置頂・案例甲</p>
+        <div class="phone screen"><div class="pg">
+          <h1 class="h1">我的選配指引</h1>
+          <p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+          <div class="card" style="margin-top:18px"><p class="cur-label">您在這裡</p><a class="cur-title"><span class="grow">去找聽力師之前</span><span class="chev">›</span></a><a class="b solid">去之前要準備什麼</a></div>
+          <a class="tlink" style="margin-top:6px">看我的路線<span aria-hidden="true">&nbsp;↓</span></a>
+
+          <h2 class="h2" style="margin-top:22px"><span class="draft">依您 2026/09/01 的聽力圖</span></h2>
+          <span class="label" style="margin-top:6px">要不要找聽力師評估</span>
+          <div class="meter">
+            <p class="m-label"><span>右耳四頻平均</span> <b>48.75 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-r" style="width:40.6%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-label"><span>左耳四頻平均</span> <b>42.5 dB HL</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-l" style="width:35.4%"></div></div><span class="m-line" style="left:20.8%"></span></div>
+            <p class="m-scale" style="margin-left:20.8%">正常上限 25</p>
+          </div>
+          <p>您有一耳以上的四頻平均超過 25 dB HL，建議找聽力師評估選配助聽器。</p>
+          <span class="label">身障鑑定門檻</span>
+          <div class="meter">
+            <p class="m-label"><span>雙耳障礙比率（估算）</span> <b>約 27.8%</b></p>
+            <div class="m-draw"><div class="m-track"><div class="m-bar m-x" style="width:27.8%"></div></div><span class="m-line" style="left:45%"></span></div>
+            <p class="m-scale" style="margin-left:45%">門檻 45%</p>
+          </div>
+          <p>依您 2026/09/01 的聽力圖估算，雙耳障礙比率約 27.8%，未達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">看完整說明</span><span class="chev">›</span></summary></details>
+
+          <h2 class="h2">選配與補助，一步一步看</h2>
+          <ol class="route">
+            <li><span class="dot"><svg class="ck" aria-hidden="true"><use href="#i-check"/></svg></span><div class="rb"><a class="r-link"><span class="grow">記錄聽力圖</span><span class="chev">›</span></a><p class="r-note">已完成・2026/09/01 的聽力圖</p></div></li>
+            <li><span class="dot" style="box-shadow:0 0 0 5px var(--primary-sel)">2</span><div class="rb"><a class="r-link"><span class="grow">去找聽力師之前</span><span class="chev">›</span></a><p class="r-note here-plain">您在這裡</p></div></li>
+            <li><span class="dot">3</span><div class="rb"><a class="r-link"><span class="grow">身障鑑定與鑑定醫院</span><span class="chev">›</span></a><p class="r-note">估算未達門檻</p><a class="r-sub">看沒有身障證明時</a></div></li>
+            <li><span class="dot">4</span><div class="rb"><a class="r-link"><span class="grow">九號表：申請助聽器補助</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">5</span><div class="rb"><a class="r-link"><span class="grow">等待核定公文</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">6</span><div class="rb"><a class="r-link"><span class="grow">助聽器的種類與價格</span><span class="chev">›</span></a><p class="r-note">收到核定通知後 6 個月內要買。</p></div></li>
+            <li class="has-gap"><span class="dot">7</span><div class="rb"><a class="r-link"><span class="grow">配戴助聽器之後</span><span class="chev">›</span></a></div><p class="r-gap">至少 1 個月</p></li>
+            <li><span class="dot">8</span><div class="rb"><a class="r-link"><span class="grow">二十五號表：使用效益驗證</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">9</span><div class="rb"><a class="r-link"><span class="grow">等待補助發放</span><span class="chev">›</span></a></div></li>
+          </ol>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>順序照現在網站（先聽力圖、再路線），只把目前這一站拉成卡片放最上面；路線裡那一站只寫「您在這裡」，按鈕不重複。</p>
+          <p>第一個畫面多了兩條儀表條，看得到「為什麼」。<b>代價</b>：同一站出現兩次；要往下捲很遠才看到整條路線；案例乙（卡片裡有問題）時聽力圖會被擠到第一個畫面外。</p>
+          <p>「看我的路線 ↓」從實心按鈕降成文字連結，才不會有兩顆實心。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 九號表 ================= -->
+  <section class="group">
+    <h2>2　章節：九號表：申請助聽器補助</h2>
+    <p class="q">章節要長輩做的一件事：<b>讀懂、知道下一步去哪</b>。章節本來就沒有實心按鈕（看完、回答之後章節底部才有「回選配路線看下一站」），所以第一個畫面放的是標題、導言和本頁段落。段落框拿掉，段落標題 22px、段落之間空 40px。</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">文章式・第一個畫面<span class="rec">建議</span></p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <p>想知道還缺什麼？可以用<a class="inl">補助檢核</a>。</p>
+          <p class="jump-k">本頁段落</p>
+          <ul class="jump">
+            <li><a>誰可以申請</a></li><li><a>申請流程</a></li>
+            <li><a>九號表找誰開</a></li><li><a>補助多少</a></li>
+            <li><a>再次申請（換新機）</a></li><li><a>沒有身障證明時</a></li>
+          </ul>
+          <h2 class="h2" style="margin-top:28px">誰可以申請</h2>
+          <ul class="text">
+            <li>有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。</li>
+            <li>中度以上視覺障礙，而且好的那一耳聽力損失大於 40 dB 的人。</li>
+            <li>最近一年在國內住超過 183 天。</li>
+          </ul>
+          <p class="src">來源：<a>身心障礙者輔具費用補助辦法</a>、<a>身心障礙者輔具費用補助基準表</a></p>
+          <h2 class="h2">申請流程</h2>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>本頁段落照現在兩欄、每個連結一整行高（#367），只換成 S1 的文字連結樣子。每段的「來源」照舊 16px 灰字留在段落最後。</p></div>
+      </div>
+
+      <div class="opt"><p class="opt-label">文章式・中間一段（申請流程、九號表找誰開）</p>
+        <div class="phone screen mid"><div class="pg">
+          <p class="scrolled">（往下捲到這裡）</p>
+          <h2 class="h2" style="margin-top:0">申請流程</h2>
+          <ol class="st">
+            <li><span class="st-b"><span class="st-t">做評估，拿到九號表</span>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="st-when" aria-hidden="true">3 個月內有效</span></span></li>
+            <li><span class="st-b"><span class="st-t">到公所申請</span>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></li>
+            <li><span class="st-b"><span class="st-t">等核定通知</span>主管機關收到評估報告後，10 天內會核定。<span class="st-when" aria-hidden="true">10 天內核定</span></span></li>
+          </ol>
+          <p class="hint">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+          <ol class="st" style="--start:3">
+            <li><span class="st-b"><span class="st-t">購買並請款</span>收到核定通知後 6 個月內。<span class="st-when" aria-hidden="true">6 個月內</span></span></li>
+            <li><span class="st-b"><span class="st-t">使用效益驗證</span>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<a class="inl">看二十五號表</a><span class="st-when" aria-hidden="true">配戴 1–3 個月內</span></span></li>
+            <li><span class="st-b"><span class="st-t">核銷</span>帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。<span class="st-when" aria-hidden="true">1 個月內撥款</span></span></li>
+          </ol>
+          <p class="src">來源：<a>身心障礙者輔具費用補助辦法</a>、<a>身心障礙者輔具費用補助基準表</a></p>
+          <h2 class="h2">九號表找誰開</h2>
+          <p>聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。</p>
+          <span class="label">各縣市輔具中心</span>
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-phone"/></svg></span><span class="grow">看各縣市輔具中心電話</span><span class="chev">›</span></summary></details>
+        </div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>六個步驟改 N3 藍框圓點＋連接線；「重要」提醒用 P3 灰底，照舊夾在第 3、4 步之間。</p>
+          <p>原本右邊的時限小膠囊（「3 個月內有效」）改成步驟下面一行灰色粗體字，報讀器照舊略過（內文已經寫了）。</p>
+          <p>「看各縣市輔具中心電話」用 #460 R1「看完整說明」同一種折疊列。</p>
+        </div>
+      </div>
+
+      <div class="opt"><p class="opt-label">折疊列式・第一個畫面</p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">九號表：申請助聽器補助</h1>
+          <p>「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。</p>
+          <p>想知道還缺什麼？可以用<a class="inl">補助檢核</a>。</p>
+          <details class="more"><summary><span class="grow">誰可以申請</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">申請流程</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">九號表找誰開</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">補助多少</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">再次申請（換新機）</span><span class="chev">›</span></summary></details>
+          <details class="more"><summary><span class="grow">沒有身障證明時</span><span class="chev">›</span></summary></details>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p>六段各收成一列，點開才看；「本頁段落」就不需要了。整章一眼看完有哪些部分。</p>
+          <p><b>代價</b>：要點很多次；選配路線連到「申請流程」「再次申請」「沒有身障證明時」的錨點時，那一段要自動打開（Chrome 會，舊版 Safari 不一定，要另外處理）；不會用折疊的長輩可能以為內容只有這樣。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 種類與價格 ================= -->
+  <section class="group">
+    <h2>3　章節：助聽器的種類與價格</h2>
+    <p class="q">同樣的文章式。並排的外型、補助金額用不能點的清單列（細線隔開、沒有圓形圖示和箭頭，所以看起來不能點）。</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">文章式・第一個畫面<span class="rec">建議</span></p>
+        <div class="phone screen clip"><div class="pg">
+          <p class="back"><a class="tlink"><span aria-hidden="true">‹&nbsp;</span>回到我的選配指引</a></p>
+          <h1 class="h1">助聽器的種類與價格</h1>
+          <p>適合哪一種外型，要看聽損程度、耳朵形狀和手的靈活度，請和聽力師討論。</p>
+          <h2 class="h2" style="margin-top:30px">外型</h2>
+          <dl class="keys">
+            <div><dt>耳掛型</dt><dd>掛在耳朵後面，機體比較大、好操作，可以接耳塞或客製耳模。適合輕度到極重度。</dd></div>
+            <div><dt>RIC（迷你耳掛型）</dt><dd>機體小、掛在耳後，喇叭放進耳道，戴起來比較不悶。適合到重度。</dd></div>
+            <div><dt>耳內型</dt><dd>依耳朵形狀訂製，戴在外耳殼。適合到重度。更小的有耳道型（適合到中重度）和深耳道型（最不明顯，適合輕度到中度）。</dd></div>
+          </dl>
+          <p>上面的聽損程度，不是身心障礙證明的等級。</p>
+          <h2 class="h2">擴音器／輔聽器不是助聽器</h2>
+          <ul class="text">
+            <li>助聽器是醫療器材，要有衛生福利部的醫療器材許可證，由有醫療器材販賣許可的業者販售。</li>
+          </ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>這章沒有「本頁段落」，照現在。三種外型：名稱粗體、說明接在下面，細線分開。</p></div>
+      </div>
+
+      <div class="opt"><p class="opt-label">文章式・中間一段（補助等級與上限、去哪裡買）</p>
+        <div class="phone screen mid"><div class="pg">
+          <p class="scrolled">（往下捲到這裡）</p>
+          <ul class="text">
+            <li>擴音器、輔聽器一般不是醫療器材，依法不能宣稱改善聽損。</li>
+          </ul>
+          <p class="hint">買之前，先確認是不是有許可證的助聽器。</p>
+          <h2 class="h2">補助等級與上限</h2>
+          <ul class="facts">
+            <li><span class="v">2,000 元</span><span>簡易型，每只最多補助</span></li>
+            <li><span class="v">10,000 元</span><span>中階型，每只最多補助</span></li>
+            <li><span class="v">20,000 元</span><span>進階型，每只最多補助</span></li>
+            <li><span class="v">30,000 元</span><span>雙對側傳聲型，每組最多補助</span></li>
+          </ul>
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-layers"/></svg></span><span class="grow">各等級有哪些功能</span><span class="chev">›</span></summary></details>
+          <p>實際售價依等級與店家差異很大，買之前請店家提供報價單與保固內容。</p>
+          <h2 class="h2">去哪裡買</h2>
+          <ul class="text">
+            <li>在有醫療器材販賣業許可的聽力所或醫院買。</li>
+            <li>保固書上要有醫療器材許可證字號，核銷補助時會用到。</li>
+          </ul>
+          <p>想確認是不是合法上市的助聽器，可以到食藥署「<a class="inl">西藥、醫療器材及化粧品許可證暨相關資料查詢</a>」網站（lmspiq.fda.gov.tw），輸入許可證字號、中文品名或廠商名稱查詢。查詢時要輸入驗證碼，可以按語音播放聽。</p>
+        </div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>金額照舊大字（22px 粗體）在左、說明在右。「各等級有哪些功能」原本是折疊線，改成 R1 那種折疊列。</p></div>
+      </div>
+
+      <div class="opt"><p class="opt-label">章節底部（六章共用）・還沒回答</p>
+        <div class="phone screen short"><div class="pg">
+          <p class="scrolled">（九號表捲到最底）</p>
+          <h2 class="h2" style="margin-top:0">看完了嗎？</h2>
+          <span class="qn-legend">九號表完成了嗎？</span>
+          <a class="b outline">完成了</a><a class="b outline">還沒</a>
+          <p style="margin-top:12px">答了之後，選配路線會往下一站走。</p>
+          <a class="b outline">回到我的選配指引</a>
+          <details class="more" style="margin-top:22px"><summary><span class="ico"><svg class="i"><use href="#i-list"/></svg></span><span class="grow">資料來源</span><span class="chev">›</span></summary></details>
+          <p class="src">本頁資料查核於 2026/10/23。法規、金額如有變動，以官方公告為準。</p>
+        </div></div>
+        <p class="opt-label" style="margin-top:18px">章節底部・已回答</p>
+        <div class="phone screen short"><div class="pg">
+          <h2 class="h2" style="margin-top:0">已記下：九號表完成了</h2>
+          <p style="margin:0"><a class="tlink">修改</a></p>
+          <a class="b solid">回選配路線看下一站</a>
+          <details class="more" style="margin-top:22px"><summary><span class="ico"><svg class="i"><use href="#i-list"/></svg></span><span class="grow">資料來源</span><span class="chev">›</span></summary></details>
+          <p class="src">本頁資料查核於 2026/10/23。法規、金額如有變動，以官方公告為準。</p>
+        </div></div>
+        <div class="note">
+          <p>原本兩種都在段落框裡，這版拿掉框，只留標題。沒有問題的章節（去之前、種類與價格）只有「回到我的選配指引」藍框按鈕、資料來源、查核日期。</p>
+          <p>已回答時「回選配路線看下一站」是章節唯一的實心按鈕，照現在。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= decisions ================= -->
+  <section class="group">
+    <h2>要您決定的地方</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>建議</th></tr>
+      <tr><td>1</td><td>我的選配指引的順序</td><td>A 路線在前、聽力圖整理在後：跟首頁照顧旅程同一個樣子，目前這一站只出現一次；代價是儀表條要往下捲才看到。<br>B「您在這裡」卡片置頂、聽力圖、再路線：第一眼看得到原因；代價是同一站出現兩次、路線很遠、案例乙會很擠。</td><td>A</td></tr>
+      <tr><td>2</td><td>目前這一站有問題要答時（身障鑑定、九號表、二十五號表、配戴之後），按鈕和問題誰在上</td><td>甲：按鈕實心在上、回答（藍框）在下：符合「第一個畫面一顆實心按鈕」，但改了 #367 的順序。<br>乙：照 #367，問題在上、按鈕藍框在下：整頁沒有實心按鈕，還沒做的人要先看懂問題才找得到下一步。</td><td>甲</td></tr>
+      <tr><td>3</td><td>路線每一站怎麼看出能點</td><td>甲（新組合）：N3 圓點＋站名黑字＋右邊 E 藍箭頭，站名那一整行可點；跟 E 清單列一致。<br>乙：站名改藍字加底線，沒有箭頭：比較省，但九行藍字底線很吵，也跟「標題維持黑字」不一致。</td><td>甲</td></tr>
+      <tr><td>4</td><td>長章節（九號表）的版式</td><td>文章式：標題＋留白，照您說的方向，捲下去一路讀完，錨點不用處理。<br>折疊列式：六段收成六列，短但要點很多次，從路線連過來的錨點要能自動打開那一段。</td><td>文章式（六章都用）</td></tr>
+      <tr><td>5</td><td>聽力圖整理的長段落（其他補助、已有證明、找鑑定醫院、怎麼算的）</td><td>收進「看完整說明」（R1 同一做法）：頁面短，判斷句和儀表條留在外面。代價是「看沒有身障證明時」等連結要點開才看到（路線第 3 站也有同一個連結）。<br>全部攤開：照現在，但案例乙要多捲大約一個畫面。</td><td>收起</td></tr>
+    </table>
+  </section>
+
+  <section class="fixes">
+    <h2>其他四章、其他狀態怎麼套（不另畫）</h2>
+    <ul>
+      <li><b>去找聽力師之前</b>：「要帶的東西」的小圖示清單照舊（圖示是裝飾，報讀器略過）；「可以問聽力師的問題」三組用同一種不能點的清單列；文末提醒用 P3 灰底。</li>
+      <li><b>身障鑑定與鑑定醫院</b>：鑑定門檻三級用金額那種大字清單列（第 1 級照舊加粗）；「怎麼申請鑑定」三步改 N3；縣市選單照 #272 輸入框，「查詢」照現在是實心按鈕（這章唯一一顆）；醫院名單用細線清單列。</li>
+      <li><b>配戴助聽器之後、二十五號表</b>：兩段各一個標題，問卷連結改 E 清單列（左邊圓形圖示、右邊藍箭頭）；步驟用 N3。</li>
+      <li><b>我的選配指引其他狀態</b>：還沒登入時只有標題、說明、實心「登入」，路線九站都沒有標記；沒有紀錄時實心「開始篩檢」、藍框「記錄醫院的聽力圖」；只有問卷沒有聽力圖時，聽力圖整理換成現有那段話＋實心「記錄醫院的聽力圖」（第 1 站是目前這一站，按鈕在卡片裡，兩個一樣的按鈕要改一個成文字連結，實作時處理）。</li>
+      <li><b>不適用的站</b>：圓點淡灰、站名灰字，下面寫「不適用」（字照舊）。剛答完變已完成的那一站（#336），照舊打勾動一下；勾改藍色，跟首頁一致，不用綠色。</li>
+      <li><b>修改回答時</b>：現在的答案用實心按鈕標出，會變成一頁兩顆實心；實作時改成藍框＋勾（跟 E 一樣淡藍底），要您驗收時看。</li>
+    </ul>
+  </section>
+
+  <section class="fixes">
+    <h2>跟現在網站比，改了什麼</h2>
+    <ul>
+      <li>段落框（米色標題列＋框）全部拿掉：我的選配指引的「問卷結果」「要不要找聽力師評估」「身障鑑定門檻」「選配與補助，一步一步看」，和六章所有段落、底部「看完了嗎？」。</li>
+      <li>路線：圓點從 45px 淡藍實心改成 N3 32px 白底藍框；每站的米色底拿掉；目前這一站從藍框淡藍盒改成首頁那種淡藍卡片；「已完成」「您在這裡」「估算未達門檻」從小膠囊改成一般文字。</li>
+      <li>儀表條：形狀、顏色、刻度線不變，只是底色跟著改白。</li>
+      <li>字句一律沒改；唯一的草稿是把「依您 2026/09/01 的聽力圖」拿來當標題。</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>
