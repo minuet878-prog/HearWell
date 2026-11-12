@@ -136,6 +136,8 @@ CARE_JOURNEY_STEPS = (
 LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
 LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
+# Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
+TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
 IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
 
 

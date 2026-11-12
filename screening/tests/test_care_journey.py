@@ -136,6 +136,27 @@ class FittingStepsTests(CareJourneyTestCase):
             ),
         )
 
+    def test_types_and_prices_gets_a_button_on_the_card(self):
+        # The owner on #455 (2026-11-12): the chapter is something to read, so step 3's card
+        # has a button for it, though the route itself shows none.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.NO_SUBSIDY)
+        card = self.journey().card
+        self.assertEqual(card.href, "/guide/types-and-prices")
+        self.assertEqual(card.button, ("去看助聽器種類與價格", "/guide/types-and-prices"))
+
+    def test_waiting_for_the_notice_has_no_button(self):
+        # The owner on #455: there is nothing to do but wait, so no button.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate=Certificate.YES, form_9_done=True)
+        card = self.journey().card
+        self.assertEqual(card.title, "等待核定公文")
+        self.assertIsNone(card.button)
+
     def test_within_the_normal_range_steps_3_and_4_are_not_needed(self):
         # Spec #453 acceptance 7: nothing read or answered on the route.
         self.answer(on=date(2026, 9, 12))

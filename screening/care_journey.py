@@ -20,6 +20,7 @@ from screening.scoring import (
     NEXT_STEP_REASONS,
     RETEST_BUTTON_TEXT,
     RETEST_DUE_TEXT,
+    TYPES_AND_PRICES_BUTTON,
     fitting_countdown_text,
     retest_countdown_text,
 )
@@ -191,7 +192,12 @@ def _route_card(route):
     if stop.slug == "form-25":
         because = because.format(deadline=route.form_25[1])
     icon = "audiogram" if stop.slug == AUDIOGRAM else "guide"
-    return JourneyCard(stop.title, because, icon, href=stop.url, button=stop.action)
+    button = stop.action
+    if stop.slug == "types-and-prices":
+        # The owner on #455: a chapter to read, so the card has a button the route lacks;
+        # 等待核定公文 stays without one, as there is nothing to do but wait.
+        button = (TYPES_AND_PRICES_BUTTON, stop.url)
+    return JourneyCard(stop.title, because, icon, href=stop.url, button=button)
 
 
 def next_step(user, today):
