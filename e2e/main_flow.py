@@ -13585,3 +13585,25 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             for link in links.all():
                 with self.subTest(link=link.inner_text()):
                     self.assertGreaterEqual(link.bounding_box()["height"], 44)
+
+    # The owner's decision (2026-11-12, #463's --choice-border): a stop question's choices are
+    # framed in the fields' grey, 4.7:1 on white, on the route and at a chapter's foot.
+    def test_stop_question_choices_have_the_fields_edge(self):
+        Submission.objects.create(
+            user=self.user,
+            questionnaire=Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s"),
+            wearing_hearing_aid=True,
+        )
+        self.open()
+        with self.saving_artifacts():
+            for path, question in (
+                ("/guide", '[aria-current="step"] .stop-question'),
+                ("/guide/after-fitting", "#stop-question .stop-question"),
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    choices = self.main().locator(f"{question} div.choice-group label")
+                    self.assertGreater(choices.count(), 1)
+                    for choice in choices.all():
+                        colour = choice.evaluate("el => getComputedStyle(el).borderTopColor")
+                        self.assertEqual(colour, "rgb(108, 117, 125)")

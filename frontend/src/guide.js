@@ -1,38 +1,14 @@
-// #467: 我的選配指引's 選配路線 (the owner's pick I1 + I2 on the step interactions page) and the
-// guide chapters' folds (H2). The home page's 照顧旅程 (#459) does the same for its steps in its
-// own module; the two are to become one.
+// #467: 我的選配指引's 選配路線 and the guide chapters' folds (H2). The route's steps share
+// step-list.js with the home page's 照顧旅程 (#459).
+import { playOnceATab } from "./step-list.js";
 
-// I2 (ADR 0028's 2026-11-12 exception): the done ticks, the blue line and the 目前這一站's ring
-// play on the tab's first visit only, as the header wave does; later visits and reduced motion
-// show the end at once. Until this runs the page shows the end too, so a visit that will not play
-// never flickers. A stop just answered draws its own tick (#336): not both at once. When in view
-// is in-view.js's (data-play-in-view, ADR 0029).
+// I2: the route's entrance (step-list.js), but only with a 目前這一站 to play up to, and not while
+// a stop just answered draws its own tick (#336): not both at once.
 export function playRouteOnce(win = window) {
   const doc = win.document;
   if (!doc.querySelector(".route-stop.is-here")) return;
   if (doc.querySelector(".route-stop.is-done-now")) return;
-  if (win.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  if (win.sessionStorage.getItem("route-played")) return;
-  win.sessionStorage.setItem("route-played", "1");
-  doc.documentElement.classList.add("route-plays");
-}
-
-// I1: a stop opens to say what it is, one at a time; the 您在這裡 card stays open, not a
-// <details>. Without JavaScript each stop still opens, several at once.
-export function setUpRouteStops(doc = document) {
-  for (const list of doc.querySelectorAll(".route")) {
-    // toggle does not bubble: listen on the way down.
-    list.addEventListener(
-      "toggle",
-      (event) => {
-        if (!event.target.open) return;
-        for (const other of list.querySelectorAll(".route-about[open]")) {
-          if (other !== event.target) other.open = false;
-        }
-      },
-      true,
-    );
-  }
+  playOnceATab(win, "route-played", "route-plays");
 }
 
 // H2: a chapter's folds come open in the page, so without JavaScript every part shows in full.

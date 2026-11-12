@@ -4974,6 +4974,12 @@
     }
   }
 
+  /* A stop question's choices in the fields' edge, 4.7:1 on white (the owner's decision of
+     2026-11-12, #463's --choice-border), on the route and at a chapter's foot. */
+  .stop-question {
+    --choice-border: var(--color-input-border);
+  }
+
   /* The current answer while changing it: a blue frame and tick on pale blue, as a chosen row
      (E), so the page keeps its one solid button. */
   .stop-answers .btn.is-current {
