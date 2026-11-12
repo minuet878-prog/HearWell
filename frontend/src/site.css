@@ -1415,7 +1415,7 @@
     border-top: 1px solid var(--color-line);
     text-align: center;
   }
-  .auth-alt p { margin-bottom: 0.5rem; color: var(--color-heading); }
+  .auth-alt p { margin-bottom: 1rem; color: var(--color-heading); }
 
   /* Answer choices: large horizontal buttons; the whole label is clickable. */
   div.choice-group {

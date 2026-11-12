@@ -64,7 +64,7 @@
             {% url 'shared_cover' share.token as share_path %}
             {% with share_url="https://"|add:request.get_host|add:share_path %}
             {# Without JavaScript both buttons stay hidden and the address below is the way to copy. #}
-            <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-3 mt-3">
                 <button id="share-button" type="button" class="btn btn-primary btn-lg w-full" data-url="{{ share_url }}" data-title="聽伴聽力報告" hidden>再傳一次給家人</button>
                 <button id="copy-link" type="button" class="btn btn-outline-primary btn-lg w-full" data-url="{{ share_url }}" hidden>複製連結</button>
             </div>

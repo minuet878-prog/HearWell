@@ -235,7 +235,7 @@ class LayoutTests(TestCase):
         main = _main(self._get(reverse("my_hearing")))
         self.assertEqual(main.count("btn-primary"), 1)
         self.assertIn(
-            f'<a class="btn btn-primary btn-lg w-full mt-4" href="{reverse("health_report")}">'
+            f'<a class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{reverse("health_report")}">'
             "看／印聽力報告</a>",
             main,
         )

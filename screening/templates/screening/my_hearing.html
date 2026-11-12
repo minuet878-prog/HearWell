@@ -60,7 +60,7 @@
     <span class="link-card-arrow" aria-hidden="true">›</span>
 </a>
 {% else %}
-<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'health_report' %}">看／印聽力報告</a>
+<a class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{% url 'health_report' %}">看／印聽力報告</a>
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}

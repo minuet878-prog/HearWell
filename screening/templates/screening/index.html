@@ -125,7 +125,7 @@
 <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
 {% else %}
 <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
-<p class="mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
+<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
 {% endif %}
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>

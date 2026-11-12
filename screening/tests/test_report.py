@@ -273,7 +273,9 @@ class HealthReportTests(TestCase):
         # The report and sharing it; #465 (the #464 mockup 1A): the report is the page's solid
         # button, sharing a row near the end.
         content = self.client.get(reverse("my_hearing")).content.decode()
-        self.assertIn(f'class="btn btn-primary btn-lg w-full mt-4" href="{self.url}">', content)
+        self.assertIn(
+            f'class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{self.url}">', content
+        )
         self.assertIn(
             (reverse("share_report"), "傳給家人看", "家人不用登入就能看"), action_cards(content)
         )

@@ -13829,3 +13829,74 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             expect(send).to_be_visible()
             self.assertEqual(self.style(send, "backgroundColor"), "rgb(255, 255, 255)")
             self.assert_fits_a_phone_at_double_text_size("/family/visits/subsidy, sent")
+
+
+class ButtonSpacingT453Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#453 acceptance (the owner, 2026-11-12): a wide button keeps at least 12px from the
+    words and pictures above and below it. #456 gave buttons no margin of their own, so where the
+    thing before or after was not a paragraph (a row of facts, a heading, a fold) they touched;
+    each of those places now leaves 1rem."""
+
+    fixtures = ("questions_fixture.json",)
+    LEAST = 12
+    # Every visible button at least half the main column wide, with the nearest visible words or
+    # picture straight above and below it (overlapping it sideways); those closer than LEAST.
+    CLOSE = """(least) => {
+      const main = document.querySelector('main') || document.body;
+      const seen = (el) => {
+        const r = el.getBoundingClientRect();
+        const s = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden';
+      };
+      const width = main.getBoundingClientRect().width;
+      const buttons = [...main.querySelectorAll('.btn:not(.btn-link)')]
+        .filter((b) => seen(b) && b.getBoundingClientRect().width > width / 2);
+      const pictures = ['IMG', 'svg', 'TABLE', 'CANVAS'];
+      const things = [...main.querySelectorAll('*')].filter((el) => seen(el) && (
+        pictures.includes(el.tagName)
+        || [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())));
+      const close = [];
+      for (const b of buttons) {
+        const box = b.getBoundingClientRect();
+        let above = Infinity, below = Infinity;
+        for (const el of things) {
+          if (el.contains(b) || b.contains(el) || el.closest('svg') !== el && el.closest('svg')) {
+            continue;
+          }
+          const r = el.getBoundingClientRect();
+          if (r.right <= box.left || r.left >= box.right) continue;
+          if (r.bottom <= box.top + 1) above = Math.min(above, box.top - r.bottom);
+          if (r.top >= box.bottom - 1) below = Math.min(below, r.top - box.bottom);
+        }
+        if (above < least || below < least) {
+          close.push(`${b.textContent.trim()}: ${Math.round(above)} above, ${Math.round(below)}`
+            + ' below');
+        }
+      }
+      return close;
+    }"""
+
+    def test_wide_buttons_keep_clear_of_the_words_around_them(self):
+        user = consented_user(username="button_spacing_e2e")
+        hhie_s = Questionnaire.objects.get(code="hhie-s")
+        for scores in ([2] * 10, [4] * 10):
+            record = Submission.objects.create(user=user, questionnaire=hhie_s)
+            Answer.objects.bulk_create(
+                Answer(submission=record, question=question, score=score)
+                for question, score in zip(hhie_s.questions.all(), scores, strict=True)
+            )
+        # Sharing, so the share page shows 傳給家人 and 複製連結.
+        ReportShare.objects.create(user=user)
+        self.sign_in(user)
+        pages = (
+            ("/", False),
+            ("/login", False),
+            ("/my_hearing", True),
+            ("/report", True),
+            ("/share", True),
+        )
+        for path, signed_in in pages:
+            with self.subTest(path=path):
+                self.open(path, signed_in=signed_in)
+                with self.saving_artifacts():
+                    self.assertEqual(self.page.evaluate(self.CLOSE, self.LEAST), [])
