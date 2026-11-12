@@ -41,17 +41,19 @@
 | 9 | 會交給誰：Vultr、Sentry，Sentry 不變 | ✅ 自動 | consent `test_who_receives_it_lists_vultr_and_sentry_as_before`（`:579`、Sentry 逐字比對、`:589`） |
 | 10 | 顯示第 4 版和新日期 | ✅ 自動 | consent `test_it_shows_version_4_and_the_new_date`（`:592`） |
 | 11 | 同意過第 3 版 → 轉去同意頁，同意後存第 4 版、回原頁 | ✅ 自動 | consent `test_who_agreed_to_version_3_agrees_again_to_version_4`（`:599`、`:601`、`:605`） |
-| 12 | VPS 有每天 02:30 的 purge timer，排在 03:00 備份之前 | ⬜ 本人 | `systemctl list-timers` |
+| 12 | VPS 有每天 02:30 的 purge timer，排在 03:00 備份之前 | ✅ 本人 | 2026-11-12 `systemctl list-timers 'hearwell-*'`：清除 18:30 UTC、備份 19:00 UTC（清除今晚第一次跑） |
 | 13 | Mac 自動刪除超過 8 天的備份，開機時補做 | ⬜ 本人 | Mac 的排程設定 |
-| 14 | Nginx 連線紀錄保存 14 天 | ⬜ 本人 | `/etc/logrotate.d/nginx` 的 `rotate` |
+| 14 | Nginx 連線紀錄保存 14 天 | ✅ 本人 | 2026-11-12 `/etc/logrotate.d/nginx`：`daily`、`rotate 14` |
 | 15 | 合併前 VPS 有 `SECURE_HSTS_SECONDS=3600`；Render 關掉自動部署（2026-11-12 本人決定不在 Render 設這個變數，改成不再部署） | ⬜ 本人 | VPS 的 `.env`、Render 的 Auto-Deploy 設定 |
 
 隱私權說明承諾、但不在驗收條件裡的兩項（Spec 自審提醒）：
 
-- **VPS 備份的保留天數**：備份腳本用 `find -mtime +7`，一份要滿 8 天才刪，在 10 天承諾以內。⬜ 本人確認腳本沒改過。
+- **VPS 備份的保留天數**：備份腳本用 `find -mtime +7`，一份要滿 8 天才刪，在 10 天承諾以內。✅ 2026-11-12 本人確認 `~/bin/backup-db.sh` 仍是 `-mtime +7`。
 - **Mac 硬碟加密**：2026-11-12 在 Mac 上跑 `fdesetup status`，結果是 `FileVault is On`；備份資料夾權限 700。✅ 已查。
 
 ## 本人實際操作
 
 - [x] 打開隱私權說明，讀「存放在哪裡、保存多久」與「會交給誰」兩段，句子 OK（2026-11-12 本人確認）
 - [x] 用同意過第 3 版的帳號登入，進「紀錄」會被請去同意第 4 版，同意後回到原頁（2026-11-12 本人操作；伺服器紀錄：`POST /login` → `GET /my_hearing` 302 → `GET /consent?next=/my_hearing` → `POST /consent` 302 → `GET /my_hearing` 200）
+
+切換前還要處理（不在驗收條件裡）：VPS 與 Mac 上手動備份的 `hearwell-before-*.dump` 不符合自動刪除規則，會一直留著；有真實使用者之前要刪掉。
