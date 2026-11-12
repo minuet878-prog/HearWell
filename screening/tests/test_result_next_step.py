@@ -1,4 +1,4 @@
-"""#304 (spec #297, ADR 0023): every result page shows the 建議您下一步; since #455 (ADR 0042)
+"""#304 (spec #297, ADR 0023): every result page shows the 建議您下一步; since #455 (ADR 0044)
 it is the 照顧旅程's 現在這一步, as on the home page (#459). #461 (the #460 mockup R1): the card
 has its title and button, no 「因為」, and sharing and printing are list rows below it."""
 

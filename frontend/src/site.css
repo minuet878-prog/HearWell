@@ -61,7 +61,7 @@
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
   --radius-small: 0.25rem;
-  /* The site-wide redesign (ADR 0041, #454's picks T1, E, S1, P3): a white page, thin grey
+  /* The site-wide redesign (ADR 0043, #454's picks T1, E, S1, P3): a white page, thin grey
      lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
      secondary lines (7.5:1 on white), the strong line for edges that must show (3.1:1). */
   --color-muted: #4a5460;
@@ -78,7 +78,7 @@
   --radius-medium: 0.75rem;
   --radius-pill: 999px;
   /* The logo's pebble and the wordmark's 伴 (ADR 0039): a blue teal, still blue under
-     ADR 0007; white text keeps 5.5:1 on it. Nothing else uses the gradient (ADR 0041). */
+     ADR 0007; white text keeps 5.5:1 on it. Nothing else uses the gradient (ADR 0043). */
   --color-gradient-start: #1f4e8c;
   --color-gradient-end: #1d6f99;
   /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
@@ -131,7 +131,7 @@
     h3, .h3 { font-size: 1.75rem; }
     h4, .h4 { font-size: 1.5rem; }
   }
-  /* T1 (#454, ADR 0041): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
+  /* T1 (#454, ADR 0043): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
      heading colour, at every width; no bar beside them, the size alone sets them apart. At 200%
      text on a narrow phone a long Latin word breaks rather than widen the page (#204). */
   h1.h3, .h4 {
@@ -211,7 +211,7 @@
    folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
    as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
 @layer components {
-  /* S1 (#454, ADR 0041): a rounded square at least 56px tall, its words bold and centred however
+  /* S1 (#454, ADR 0043): a rounded square at least 56px tall, its words bold and centred however
      many lines they take; a solid primary button, the second most important one framed in a 2px
      blue line. A text link (.btn-link) only needs the 44px touch height. */
   .btn {
@@ -883,7 +883,7 @@
     stroke-linejoin: round;
   }
 
-  /* W1 (#454, ADR 0041, without the frosted glass of ADR 0043, which is #457): the current page
+  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the current page
      is a pale blue pill with bold blue words, the others the heading colour (grey on a phone, as
      W1); under a finger or a mouse colour only, never position (ADR 0006). */
   .site-nav a[aria-current="page"] {
@@ -955,7 +955,7 @@
     }
   }
 
-  /* #457 translucent tab bar (ADR 0043, W1 of #454). On phones the capsule is frosted glass, 88%
+  /* #457 translucent tab bar (ADR 0045, W1 of #454). On phones the capsule is frosted glass, 88%
      white, where the browser can blur what scrolls behind it; solid white (above) where it
      cannot, or with reduced transparency. Even over black the grey tabs keep 5.8:1; the current
      tab's pale blue pill is solid. */
@@ -981,7 +981,7 @@
   }
 
   /* tab-bar.js marks the bar data-hidden while the page scrolls down: it slides below the screen,
-     its shadow too, and back. The one thing that moves without being a card (ADR 0043, an
+     its shadow too, and back. The one thing that moves without being a card (ADR 0045, an
      exception to ADR 0006); with reduced motion it never goes. Wide screens keep it in the page. */
   @media (max-width: 47.99em) and (prefers-reduced-motion: no-preference) {
     .site-nav {
@@ -1213,7 +1213,7 @@
     color: var(--color-body);
   }
 
-  /* Clickable card, E (#454, ADR 0041): a row of a list, the whole row one link, parted from the
+  /* Clickable card, E (#454, ADR 0043): a row of a list, the whole row one link, parted from the
      next by a thin line; a pale blue round icon in front (where it has one), the title in the
      heading colour and a blue arrow at the end. The first row of a run, or of a list of them,
      also has the line above it. */
@@ -1734,7 +1734,7 @@
     font-size: 1rem;
   }
 
-  /* A 提示框, P3 (#454, ADR 0041): pale grey, no frame and no line down its side. */
+  /* A 提示框, P3 (#454, ADR 0043): pale grey, no frame and no line down its side. */
   .tip-box {
     margin: 0 0 1rem;
     padding: 0.875rem 1rem;
@@ -1754,7 +1754,7 @@
     line-height: 1.4;
   }
 
-  /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0041), the line blue as
+  /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0043), the line blue as
      far as the 目前這一站, which is a pale blue card beside it (the home page's 現在這一步).
      Marks are words, never the level colours (ADR 0007). */
   .route {
@@ -2033,7 +2033,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each titled part flat on the page (ADR 0041), the parts apart by spacing.
+  /* Guide chapters: each titled part flat on the page (ADR 0043), the parts apart by spacing.
      Sources and the check date in small print. */
   .guide-chapter > :not(h1) + * {
     margin-top: 2rem;
@@ -2112,7 +2112,7 @@
     padding-bottom: 0;
   }
 
-  /* N3 (#454, ADR 0041): a white circle in a 2px blue frame, joined to the next by a grey line. */
+  /* N3 (#454, ADR 0043): a white circle in a 2px blue frame, joined to the next by a grey line. */
   .step-list-number {
     flex: none;
     width: var(--step-size);
@@ -2345,7 +2345,7 @@
     display: none;
   }
 
-  /* Result page: level banner, L1 (#454, ADR 0041): the whole block in the level's pale colour,
+  /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
      the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
     padding: 1rem 1.25rem;
@@ -3562,7 +3562,7 @@
 
   /* Family guide (#240): each topic's tips a list with lines between them (.divided-rows) under
      the topic's title (#312), each tip's point a .tint-subhead on its own line; the urgent topic
-     on the 緊急就醫 red (ADR 0041) with grey lines between its tips and 119 in large type; the
+     on the 緊急就醫 red (ADR 0043) with grey lines between its tips and 119 in large type; the
      sources at the end. */
   .family-guide section > h2 {
     display: flex;
@@ -3591,7 +3591,7 @@
     display: block;
   }
 
-  /* The 馬上就醫 box (P3, ADR 0041): pale red with no frame, its title in the warning red. Not
+  /* The 馬上就醫 box (P3, ADR 0043): pale red with no frame, its title in the warning red. Not
      under .family-guide: the Q&A assistant's home page pins its urgent answer in it too (#397). */
   .card.family-urgent {
     border: 0;
@@ -3872,7 +3872,7 @@
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
-     notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0041). */
+     notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0043). */
   .questionnaire-guide, .continue-notice {
     padding: 0.75rem 1rem;
     border-radius: var(--radius-medium);
@@ -4232,7 +4232,7 @@
     color: var(--color-heading);
   }
 
-  /* Pale blue, no frame: the 現在這一步's card (ADR 0041); only its button is clickable. */
+  /* Pale blue, no frame: the 現在這一步's card (ADR 0043); only its button is clickable. */
   .result-next {
     margin-top: 1.25rem;
     padding: 1rem 1.125rem;
@@ -4344,7 +4344,7 @@
     margin-top: 0.5rem;
   }
 
-  /* #471 report, sharing and account pages (mockup #470, ADR 0041). */
+  /* #471 report, sharing and account pages (mockup #470, ADR 0043). */
   /* The report's rows (B): a line over the first; the parts' own titles wait for paper. */
   @media screen {
     .report-rows {
@@ -4774,7 +4774,7 @@
     font-weight: 400;
   }
 
-  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0041),
+  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0043),
      its circle level with the card's first line and the line above reaching down to it. */
   .route-card {
     padding: 0.875rem 1rem 1rem;
@@ -5172,7 +5172,7 @@
   to { visibility: visible; }
 }
 
-/* #459 care journey home (ADR 0042, mockup #458): the two tiles on top, the 照顧旅程 as N3 dots
+/* #459 care journey home (ADR 0044, mockup #458): the two tiles on top, the 照顧旅程 as N3 dots
    on a line with the 現在這一步 a pale blue card beside it, the row of text links, and the
    空狀態首頁's dashed preview. */
 @layer components {
@@ -5615,7 +5615,7 @@
    its questionnaires as list rows (E), the wizard's 看其他問卷 a row that folds open, and the
    answer page without the phone's tab bar, its intro folded under the buttons. */
 @layer components {
-  /* A single thing to tap in a colour block (ADR 0041): pale blue, no frame; only its button,
+  /* A single thing to tap in a colour block (ADR 0043): pale blue, no frame; only its button,
      or its rows when it recommends two, can be pressed. */
   .recommended-block {
     padding: 1rem 1.125rem;

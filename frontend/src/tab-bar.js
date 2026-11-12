@@ -1,4 +1,4 @@
-// #457 (ADR 0043): the bottom tab bar makes way while the page scrolls down and comes back on
+// #457 (ADR 0045): the bottom tab bar makes way while the page scrolls down and comes back on
 // the way up. This only marks the bar (data-hidden); site.css slides it away on phones alone,
 // so without JavaScript, and on wide screens, it always shows.
 export function setUpTabBar(win = window) {

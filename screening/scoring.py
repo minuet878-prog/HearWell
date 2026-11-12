@@ -133,7 +133,7 @@ NEXT_STEP_REASONS = {
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
 }
-# The 照顧旅程's five steps (ADR 0042), step 1 first.
+# The 照顧旅程's five steps (ADR 0044), step 1 first.
 CARE_JOURNEY_STEPS = (
     "填生活影響問卷",
     "記錄聽力圖",

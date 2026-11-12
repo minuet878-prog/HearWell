@@ -1,4 +1,4 @@
-"""#459 (spec #453, ADR 0042, mockup #458): the home page as the 照顧旅程, and the 空狀態首頁.
+"""#459 (spec #453, ADR 0044, mockup #458): the home page as the 照顧旅程, and the 空狀態首頁.
 Which step is which is judged in test_care_journey; these check the page shows it."""
 
 import re
@@ -426,7 +426,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertNotRegex(links, r"\shidden[\s=>]")
 
     def test_the_old_returning_home_is_gone(self):
-        # ADR 0042 replaces ADR 0026's greeting band, gauge, elder and grouped cards.
+        # ADR 0044 replaces ADR 0026's greeting band, gauge, elder and grouped cards.
         self.answer()
         main = self.main()
         for gone in (

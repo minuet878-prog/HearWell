@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { setUpTabBar } from "./tab-bar.js";
 
-// #457 (ADR 0043). jsdom does not scroll, so a stand-in window holds where the page is and how
+// #457 (ADR 0045). jsdom does not scroll, so a stand-in window holds where the page is and how
 // tall it is, and says "the page scrolled" with a scroll event; the bar itself is the real
 // layout's nav, in jsdom's document.
 function fakeWindow({ reducedMotion = false, pageHeight = 3000 } = {}) {

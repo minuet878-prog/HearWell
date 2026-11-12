@@ -122,7 +122,7 @@ class Form9ChapterTests(TestCase):
 
     def test_reapply_and_without_certificate_anchors_land_on_their_headings(self):
         content = self.client.get(self.url).content.decode()
-        # Each part's title is a section title (T1, ADR 0041), without a top margin.
+        # Each part's title is a section title (T1, ADR 0043), without a top margin.
         for anchor, title in (
             ("reapply", "用了幾年可以換新的？"),
             ("without-certificate", "沒有身障證明怎麼辦？"),

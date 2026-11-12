@@ -1,4 +1,4 @@
-"""#455 (spec #453, ADR 0042): the 照顧旅程 judged from a user's records on a given day."""
+"""#455 (spec #453, ADR 0044): the 照顧旅程 judged from a user's records on a given day."""
 
 from datetime import date, datetime
 

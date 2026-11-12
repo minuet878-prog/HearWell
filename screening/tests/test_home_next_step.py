@@ -1,5 +1,5 @@
 """#261 (spec #257): the reason for every 目前這一站, on the home page's 現在這一步 card since
-#459 (ADR 0042) and on a result page's 建議您下一步. The rest of the home page is
+#459 (ADR 0044) and on a result page's 建議您下一步. The rest of the home page is
 test_home_journey's."""
 
 import re
@@ -106,7 +106,7 @@ class EveryStopNextStepTests(TestCase):
                 )
 
     def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):
-        # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0042) a
+        # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0044) a
         # result page suggests the 照顧旅程's 現在這一步: here step 3 (an assessment suggested),
         # the stop with the route's own button. 等待核定公文 has no button on the route, so the
         # page suggests sharing instead (spec #453 acceptance 22); 等待補助發放 is never step 3's.

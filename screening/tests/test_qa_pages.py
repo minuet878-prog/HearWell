@@ -94,7 +94,7 @@ class QaHomeTests(TestCase):
         self.assertEqual(places, sorted(places))
 
     def test_the_urgent_answer_sits_in_the_family_page_urgent_box(self):
-        # The owner's call (2026-10-27): the family page's 馬上就醫 look, red since ADR 0041.
+        # The owner's call (2026-10-27): the family page's 馬上就醫 look, red since ADR 0043.
         boxes = {name: urgent_box(self.client.get(reverse(name))) for name in URGENT_BOX_PAGES}
         for name, (classes, _) in boxes.items():
             with self.subTest(page=name):
@@ -172,7 +172,7 @@ class QaLookTests(TestCase):
         self.assertTrue(cards)
         self.assertEqual([code for code, _ in cards], re.findall(r'href="/qa/([^"/#]+)"', main))
 
-    # #469: on the white page (ADR 0041), no longer a pale blue block.
+    # #469: on the white page (ADR 0043), no longer a pale blue block.
     def test_the_ask_form_sits_on_the_page_its_button_full_width(self):
         main = self.main(reverse("qa_home"))
         block = re.search(
@@ -195,7 +195,7 @@ class QaLookTests(TestCase):
             main[main.index("<article") : main.index("</article>")],
         )
 
-    # #469: on the white page (ADR 0041), no longer a pale blue block.
+    # #469: on the white page (ADR 0043), no longer a pale blue block.
     def test_not_answered_is_on_the_page_with_a_full_width_outline_button(self):
         main = self.main(reverse("qa_answer", args=["brands-and-shops"]))
         self.assertRegex(

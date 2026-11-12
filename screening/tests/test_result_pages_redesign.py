@@ -173,7 +173,7 @@ class EveryResultPageTests(TestCase):
     _main = test_result_pages.ResultPagesTests._main
 
     def test_every_result_page_has_one_solid_button_at_most(self):
-        # ADR 0041: the 建議下一步 card's.
+        # ADR 0043: the 建議下一步 card's.
         for code in test_result_pages.QUESTIONNAIRES:
             with self.subTest(code=code):
                 main = self._main(code)

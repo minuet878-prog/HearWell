@@ -14,7 +14,7 @@
 <h1 class="h3 mt-4">{{ faq.question }}</h1>
 {# The owner reviews every answer in content.py (ADR 0033): written as HTML there. #}
 {{ faq.answer|safe }}
-{# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the tip box (pale grey since ADR 0041). #}
+{# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the tip box (pale grey since ADR 0043). #}
 <p class="tip-box mt-4">以上是一般說明，您的情況請以醫師、聽力師為準。</p>
 </article>
 {# The guide chapters' sources and check date (chapter.html), without their 法規、金額 line. #}
@@ -39,7 +39,7 @@
     {% endfor %}
 </ul>
 {% endif %}
-{# #469: on the white page with its outline button (ADR 0041). #}
+{# #469: on the white page with its outline button (ADR 0043). #}
 <section class="mt-6" aria-labelledby="qa-more-title">
     <h2 id="qa-more-title" class="h4">沒回答到您的問題？</h2>
     <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'qa_home' %}">回問答小助手首頁</a>

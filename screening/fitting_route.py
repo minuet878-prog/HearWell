@@ -70,7 +70,7 @@ class FittingState:
     today: date  # the day the route is judged on, for its dated rules
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they answer any
     # Q7: within the normal range, not wearing hearing aids, the route waits until the user
-    # starts on a stop; the 照顧旅程's 目前不需要 is the same (ADR 0042).
+    # starts on a stop; the 照顧旅程's 目前不需要 is the same (ADR 0044).
     waiting: bool
 
     @property

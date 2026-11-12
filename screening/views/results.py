@@ -15,7 +15,7 @@ def submission_result(request, submission_id):
         Submission.objects.defined(), pk=submission_id, user=request.user
     )
     result = submission.result
-    # #455 (ADR 0042): the 照顧旅程's 現在這一步, by the user's state now, not this record's.
+    # #455 (ADR 0044): the 照顧旅程's 現在這一步, by the user's state now, not this record's.
     suggested = next_step(request.user, timezone.localdate())
     shared = {
         "submission": submission,

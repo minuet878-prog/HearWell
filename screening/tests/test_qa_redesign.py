@@ -1,5 +1,5 @@
 """#469 (spec #453, the #468 mockup A): the Q&A assistant redesigned. The urgent answer is one red
-box that is a link (ADR 0041); topics are framed tiles (G); every list of questions is list rows
+box that is a link (ADR 0043); topics are framed tiles (G); every list of questions is list rows
 with an icon (E); typing to ask and 沒回答到您的問題？ sit on the white page. Order, answers,
 sources and check dates are unchanged."""
 

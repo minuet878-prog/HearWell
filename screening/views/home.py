@@ -21,7 +21,7 @@ def index(request):
         # #471 (mockup #458 ⑪): a visitor sees the 空狀態首頁; no one's records, so it may be
         # cached.
         return render(request, "screening/index.html")
-    # #459 (ADR 0042): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
+    # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
     has_records = user.submissions.defined().exists() or user.audiograms.exists()
     journey = care_journey(user, timezone.localdate()) if has_records else None

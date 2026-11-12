@@ -10,7 +10,7 @@
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if journey %}
-{# #459 (ADR 0042, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
+{# #459 (ADR 0044, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
 <h1 class="h3">{{ greeting }}，{% if journey.card.button %}今天只要做一件事{% else %}今天沒有要做的事{% endif %}</h1>
 {# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
 <div class="journey-tiles">

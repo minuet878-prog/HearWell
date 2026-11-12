@@ -1,4 +1,4 @@
-"""Where a user stands on the 照顧旅程 (GLOSSARY, ADR 0042, spec #453): each step's state, the
+"""Where a user stands on the 照顧旅程 (GLOSSARY, ADR 0044, spec #453): each step's state, the
 現在這一步 and its card, and the home page's two tiles, the one place both the home page and
 the result pages ask. It reads the 選配路線 and the main flow's state; it judges nothing anew."""
 
@@ -241,7 +241,7 @@ def _route_card(route):
 
 
 def next_step(user, today):
-    """The result pages' 建議下一步 (ADR 0042): the 現在這一步's card, or without a button
+    """The result pages' 建議下一步 (ADR 0044): the 現在這一步's card, or without a button
     sharing the report, printing it once any link was ever made (#261)."""
     card = care_journey(user, today).card
     if card.button is not None:
