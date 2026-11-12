@@ -259,11 +259,12 @@ class RetestStepTests(CareJourneyTestCase):
 
     def test_counting_down_step_5_says_the_day_without_a_button_at_4_of_5(self):
         # Spec #453 acceptance 14: steps 1 to 4 done or 目前不需要, the last HHIE-S 2 months
-        # ago, so the next one is 2027/03/12, 120 days on.
+        # ago, so the next one is 2027/03/12, 120 days on; the 下次篩檢 tile says the day, so
+        # the card says what happens then instead (#458 D8).
         self.normal_range(date(2026, 9, 12))
         journey = self.journey()
         self.assertEqual(journey.current, 5)
-        self.assertEqual(journey.card.because, "下次篩檢 2027/03/12，還有 120 天。")
+        self.assertEqual(journey.card.because, "時間到了，這裡會出現「再做一次」的按鈕。")
         self.assertIsNone(journey.card.button)
         self.assertEqual(journey.progress, 4)
 
@@ -310,7 +311,8 @@ class RetestStepTests(CareJourneyTestCase):
         journey = self.journey()
         self.assertEqual(self.states(), [LATER, LATER, DONE, DONE, CURRENT])
         hhie = self.questionnaires[hhie_s.CODE]
-        self.assertTrue(journey.next_screening.due)
+        # #458 D6: the 下次篩檢 tile has no day to count from, not called due.
+        self.assertIsNone(journey.next_screening)
         self.assertEqual(journey.card.button, ("去做問卷", f"/questionnaire/{hhie.pk}"))
 
     def test_without_an_age_step_1_opens_the_catalogue(self):
@@ -325,3 +327,72 @@ class RetestStepTests(CareJourneyTestCase):
         hhie = self.answer(on=date(2026, 9, 1))
         self.answer(code=thi.CODE, on=date(2026, 10, 1))
         self.assertEqual(self.journey().last_result, hhie)
+
+
+class CompletionDateTests(CareJourneyTestCase):
+    """#459 (#458 D7): a done step says when, so someone sees their record was kept."""
+
+    def test_each_done_step_says_the_day_it_was_done(self):
+        # Step 1 the latest life-impact record, step 2 the audiogram's test day, step 3 the
+        # fitting date, step 4 the latest IOI-HA from the fitting date on.
+        self.answer(on=date(2026, 3, 2))
+        self.answer(on=date(2026, 9, 26))
+        self.make(PTA_55, PTA_55, tested_on=date(2026, 6, 15))
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 7, 1), subsidy=Subsidy.OTHER
+        )
+        self.answer(code=ioi_ha.CODE, on=date(2026, 8, 1))
+        self.answer(code=ioi_ha.CODE, on=date(2026, 10, 15))
+        self.assertEqual(
+            [step.done_on for step in self.journey().steps],
+            [
+                date(2026, 9, 26),
+                date(2026, 6, 15),
+                date(2026, 7, 1),
+                date(2026, 10, 15),
+                None,
+            ],
+        )
+
+    def test_a_step_not_done_has_no_day(self):
+        # An audiogram missing a frequency is not done, so it has no day either.
+        self.answer()
+        audiogram = self.make(NORMAL, NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        self.assertEqual(
+            [step.done_on for step in self.journey().steps], [TODAY, None, None, None, None]
+        )
+
+
+class WithoutLifeImpactTilesTests(CareJourneyTestCase):
+    """#459 (#458 D6): with no life-impact record there is nothing to show on top yet."""
+
+    def test_only_an_audiogram_leaves_both_tiles_without_a_record(self):
+        # Spec #453 acceptance 2: no 上次結果, and no day to count 下次篩檢 from, so it is not
+        # called due either.
+        self.make(PTA_55, PTA_55)
+        journey = self.journey()
+        self.assertIsNone(journey.last_result)
+        self.assertIsNone(journey.next_screening)
+
+    def test_a_life_impact_record_gives_the_tile_its_day(self):
+        self.answer(on=date(2026, 9, 26))
+        self.assertIsNotNone(self.journey().next_screening)
+
+
+class StepAboutTests(CareJourneyTestCase):
+    """#459 I1 (the owner's pick on the step interactions page): each step opens to say what it
+    is; the 現在這一步's card says its own."""
+
+    def test_each_step_says_what_it_is(self):
+        self.answer()
+        self.assertEqual(
+            [step.about for step in self.journey().steps],
+            [
+                "先做一份生活影響問卷，了解聽力對您生活的影響。",
+                "選配指引要用聽力圖才能整理下一步。",
+                "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+                "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
+                "時間到了，這裡會出現「再做一次」的按鈕。",
+            ],
+        )

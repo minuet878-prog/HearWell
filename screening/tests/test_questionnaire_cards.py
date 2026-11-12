@@ -10,7 +10,8 @@ from screening.views.answering import list_order
 
 GUIDE = "自行選擇問卷"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')
-TAGS = re.compile(r'<span class="card-tag">([^<]*)</span>')
+# #463: the count and minutes in one line of muted words, where they were tags.
+FACTS = re.compile(r"<span>(\d+ 題・約 \d+ 分鐘)</span>")
 
 
 class QuestionnaireCardTests(TestCase):
@@ -63,21 +64,12 @@ class QuestionnaireCardTests(TestCase):
                 self.assertEqual(ICON.findall(self._card(questionnaire)), [icon])
 
     # 3
-    def test_tags_and_audience(self):
+    def test_count_minutes_and_audience(self):
         hhie = self._card(self.hhie_s)
-        self.assertEqual(TAGS.findall(hhie), ["10 題", "約 3 分鐘"])
+        self.assertEqual(FACTS.findall(hhie), ["10 題・約 3 分鐘"])
         self.assertIn("適合 65 歲以上的長輩。", test_layout._text(hhie))
-        self.assertEqual(TAGS.findall(self._card(self.ioi_ha)), ["7 題", "約 2 分鐘"])
-        self.assertEqual(TAGS.findall(self._card(self.other)), ["3 題", "約 4 分鐘"])
-
-    # 4 (review B): a screen reader pauses between the tags; the comma is not shown
-    def test_tags_read_apart(self):
-        card = self._card(self.hhie_s)
-        self.assertIn(
-            '<span class="card-tag">10 題</span><span class="visually-hidden">，</span>'
-            '<span class="card-tag">約 3 分鐘</span>',
-            card,
-        )
+        self.assertEqual(FACTS.findall(self._card(self.ioi_ha)), ["7 題・約 2 分鐘"])
+        self.assertEqual(FACTS.findall(self._card(self.other)), ["3 題・約 4 分鐘"])
 
     # 4
     def test_card_is_one_link_naming_everything(self):
@@ -89,7 +81,7 @@ class QuestionnaireCardTests(TestCase):
 
     # 5
     def test_order_hhie_s_then_ioi_ha_then_others(self):
-        hrefs = re.findall(r'class="link-card[^"]*" href="([^"]+)"', self._main())
+        hrefs = re.findall(r'class="link-card[^"]*" href="(/questionnaire/[^"]+)"', self._main())
         expected = [
             reverse("screening", args=[q.pk]) for q in (self.hhie_s, self.ioi_ha, self.other)
         ]

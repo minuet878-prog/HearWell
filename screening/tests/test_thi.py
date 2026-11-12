@@ -72,7 +72,8 @@ class ThiCatalogTests(ThiTestCase):
     def test_production_catalog_lists_thi_last_with_its_audience_and_minutes(self):
         # Tests run with DEBUG=False, as the production site does.
         content = self.client.get(reverse("questionnaire_list"), {"choose": "self"})
-        cards = test_layout._cards(content.content.decode())
+        # The last questionnaire, before #463's 幫我選問卷 row.
+        cards = test_layout._cards(content.content.decode())[:-1]
         self.assertIn(f'href="{reverse("screening", args=[self.thi.pk])}"', cards[-1])
         text = test_layout._text(cards[-1])
         for part in ("耳鳴對生活的影響（THI）", "給有耳鳴的人，不限年齡。", "25 題", "約 5 分鐘"):
@@ -430,25 +431,26 @@ class ThiNotLifeImpactTests(ThiTestCase):
         self._record(self.hhie_s, 0, date(2026, 3, 1))
         self._record(self.thi, 2, date(2026, 5, 1))
         main = self._home(date(2026, 9, 1))
-        self.assertIn("距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。", main)
+        # #459: due while recording an audiogram is the 現在這一步, so said on the tile.
+        self.assertIn('<span class="journey-tile-date">已到期</span>', main)
         retake = reverse("screening", args=[self.hhie_s.pk])
-        self.assertIn(f'href="{retake}">再做一次（大約 3 分鐘）</a>', main)
+        self.assertIn(f'href="{retake}">再做一次</a>', main)
         self.assertNotIn(f'href="{reverse("screening", args=[self.thi.pk])}"', main)
 
     def test_next_suggested_date_follows_hhie_s_not_a_later_thi(self):
         self._record(self.hhie_s, 0, date(2026, 3, 1))
         self._record(self.thi, 2, date(2026, 5, 1))
         main = self._home(date(2026, 8, 1))
-        self.assertIn("<span>下次建議 2026/09/01 再做</span>", main)
+        self.assertIn('<span class="journey-tile-date">2026/09/01</span>', main)
 
     def test_only_thi_is_a_returning_user_without_a_retest_reminder(self):
         self._record(self.thi, 2, date(2026, 3, 1))
         main = self._home(date(2026, 10, 1))
-        self.assertIn("歡迎回來", main)
-        self.assertIn("耳鳴對生活的影響（THI）", main)
-        self.assertNotIn("距離上次的生活影響評估", main)
-        self.assertNotIn("下次建議", main)
-        self.assertNotIn("再做一次", main)
+        # #459 (spec #453 Q15): the 上次結果 tile is a life-impact record's only.
+        self.assertIn("journey-steps", main)
+        self.assertNotIn("耳鳴對生活的影響（THI）", main)
+        self.assertIn('<span class="journey-tile-date">還沒排</span>', main)
+        self.assertNotIn(">再做一次", main)
 
     def test_an_unaided_thi_changes_neither_the_wizard_nor_the_ioi_ha_norm(self):
         ioi_ha = Questionnaire.objects.get(code="ioi-ha")

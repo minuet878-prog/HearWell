@@ -292,13 +292,13 @@ class AudiogramInputTabBarTests(Records):
 
     def nav(self, url):
         content = self.client.get(url).content.decode()
-        return re.search(r'<nav aria-label="主要導覽" class="site-nav"([^>]*)>', content).group(1)
+        return re.search(r'<nav aria-label="主要導覽" class="site-nav([^"]*)"', content).group(1)
 
     def test_the_input_and_edit_pages_hide_it_on_phones(self):
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 3))
         for url in (reverse("audiogram_new"), reverse("audiogram_edit", args=[audiogram.id])):
             with self.subTest(url=url):
-                self.assertEqual(self.nav(url), " data-tab-bar-hidden")
+                self.assertEqual(self.nav(url), " site-nav-tucked")
 
     def test_the_other_record_pages_keep_it(self):
         audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 3))

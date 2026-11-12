@@ -245,13 +245,8 @@ class SharePageEntryTests(TestCase):
 
     def test_home_share_card_goes_to_the_share_page(self):
         content = self.client.get(reverse("index")).content.decode()
-        # #261: an action card, its icon before the title.
-        self.assertRegex(
-            content,
-            r'(?s)<a class="link-card action-card" href="/share">\s*<span class="action-card-icon"'
-            r'.*?</span>\s*<span class="link-card-body">\s*'
-            r'<span class="link-card-title">分享報告給家人</span>',
-        )
+        # #459: a text link under the 照顧旅程 (spec #453 Q10).
+        self.assertIn('<li><a href="/share">分享給家人</a></li>', content)
         self.assertNotIn("#report-share", content)
 
 

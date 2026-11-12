@@ -28,16 +28,13 @@ class Result:
     unavailable_reason = None  # why there is no average (ADR 0001)
     satisfaction = None  # the definition's score(): overall, subscales, not_applicable
     norm_group = None  # the norm group's name
-    norm_summary = None  # the record against its norm group, for the home page and the report
+    norm_summary = None  # the record against its norm group, for the report
     not_applicable_choice = None  # the download's choice for an answer without a score
     # The result page's 與上次比較 (#461): {"text", "level_change"}; graded only.
     since_last = None
 
-    # The record's summary (plain text for the home page's last result, in a block, and the
-    # report; None for a type with no summary of its own: graded), its row of 我的紀錄 (#409) and
-    # its result page; page_context() is the page's data of this type, the view adding what every
-    # page has.
-    summary_template = None
+    # The record's row of 我的紀錄 (#409) and its result page; page_context() is the page's data
+    # of this type, the view adding what every page has.
     row_template = None
     page_template = None
     page_shows_wearing = True  # the result page's header says how the hearing aids were worn
@@ -196,7 +193,6 @@ def score_bar(definition, score, level):
 class AverageResult(Result):
     """平均: the average of the items, no grade (SSQ12-TW)."""
 
-    summary_template = "screening/summaries/average.html"
     row_template = "screening/record_rows/average.html"
     page_template = "screening/ssq12_result.html"
     not_applicable_choice = "不適用"
@@ -242,7 +238,6 @@ class AverageResult(Result):
 class NormResult(Result):
     """常模比對: each item against the norms, no total (IOI-HA)."""
 
-    summary_template = "screening/summaries/norm.html"
     row_template = "screening/record_rows/norm.html"
     page_template = "screening/result_ioi_ha.html"
     page_shows_wearing = False  # not asked: IOI-HA is answered about the hearing aids worn
@@ -334,7 +329,6 @@ def ioi_ha_summary(submission):
 class SubscaleResult(Result):
     """分量表: the overall and subscale averages (SADL)."""
 
-    summary_template = "screening/summaries/subscale.html"
     row_template = "screening/record_rows/subscale.html"
     page_template = "screening/sadl_result.html"
     page_shows_wearing = False  # not asked: always worn (always_aided)

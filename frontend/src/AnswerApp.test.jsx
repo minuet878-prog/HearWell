@@ -243,23 +243,29 @@ describe("progress (#153)", () => {
   });
 });
 
-describe("questionnaire intro (#153)", () => {
+describe("questionnaire intro (#153, #463)", () => {
   const introText = () => screen.queryByText("本問卷的目的在幫助您了解自己的聽力。");
   const toggle = () => screen.queryByRole("button", { name: "這份問卷在問什麼？" });
+  const follows = (later, earlier) =>
+    Boolean(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-  it("shows the intro in full on the hearing aid question", async () => {
+  it("folds it on the hearing aid question too, under the button (#462 3A)", async () => {
     await renderApp();
+    expect(introText()).toBeNull();
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    expect(follows(toggle(), screen.getByRole("button", { name: "下一題" }))).toBe(true);
+    fireEvent.click(toggle());
     expect(introText()).not.toBeNull();
     expect(screen.getByText("請圈選常常、有時或從未。")).not.toBeNull();
-    expect(toggle()).toBeNull();
   });
 
-  it("folds it from question 1 on, and 這份問卷在問什麼？ opens it", async () => {
+  it("folds it on every question, and 這份問卷在問什麼？ opens and closes it", async () => {
     await renderApp();
     choose("沒戴");
     next();
     expect(introText()).toBeNull();
     expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    expect(follows(toggle(), screen.getByRole("button", { name: "下一題" }))).toBe(true);
     fireEvent.click(toggle());
     expect(toggle().getAttribute("aria-expanded")).toBe("true");
     expect(introText()).not.toBeNull();
@@ -268,14 +274,10 @@ describe("questionnaire intro (#153)", () => {
     expect(introText()).toBeNull();
   });
 
-  it("shows it in full again back on the hearing aid question", async () => {
+  it("puts it under 送出 on the last question too", async () => {
     await renderApp();
-    choose("沒戴");
-    next();
-    history.back();
-    await waitFor(() => expect(legend()).toMatch(/有沒有戴助聽器/));
-    expect(introText()).not.toBeNull();
-    expect(toggle()).toBeNull();
+    answerAll();
+    expect(follows(toggle(), screen.getByRole("button", { name: /送出/ }))).toBe(true);
   });
 });
 
@@ -414,6 +416,8 @@ describe("next and previous", () => {
     expect(screen.getByRole("alert").textContent).toBe(CHOOSE_FIRST);
     // Under the buttons, after the line saying what they need (#362).
     expect(screen.getByRole("alert").previousElementSibling.previousElementSibling).toBe(button.parentElement);
+    // #462: a warning sign before the words, so the red is not the only sign (#272).
+    expect(screen.getByRole("alert").classList.contains("field-error")).toBe(true);
     expect(document.activeElement.tagName).toBe("LEGEND");
     choose("有戴");
     expect(screen.queryByRole("alert")).toBeNull();
@@ -1138,17 +1142,28 @@ describe("IOI-HA (#245)", () => {
     );
   });
 
-  it("shows the intro, with its norm basis, in full on item 1 only (ADR 0002)", async () => {
+  it("shows the norm basis in its own box on item 1 and folds the rest (ADR 0002, #462)", async () => {
     mockApi(undefined, IOI_HA);
-    const intro = "<p>本次常模依據：HHIE-S，2026/10/20 未配戴紀錄，20 分。</p>";
-    await renderApp({ skipWearing: true, normToken: "signed", introHtml: intro });
-    expect(screen.getByText(/本次常模依據/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "這份問卷在問什麼？" })).toBeNull();
+    const norm = "<p>本次常模依據：HHIE-S，2026/10/20 未配戴紀錄，20 分。</p>";
+    const brief = "<p>本量表適合已配戴助聽器的人。</p>";
+    await renderApp({
+      skipWearing: true, normToken: "signed", normHtml: norm, introHtml: brief + norm, introWithoutNormHtml: brief,
+    });
+    const basis = screen.getByText(/本次常模依據/);
+    expect(basis.closest(".answer-norm")).not.toBeNull();
+    // Before the question, so it is read before answering.
+    const question = screen.getByRole("group");
+    expect(Boolean(basis.compareDocumentPosition(question) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    expect(screen.queryByText("本量表適合已配戴助聽器的人。")).toBeNull();
+    // The fold holds the rest, without saying the norm basis twice.
+    fireEvent.click(screen.getByRole("button", { name: "這份問卷在問什麼？" }));
+    expect(screen.getByText("本量表適合已配戴助聽器的人。")).toBeTruthy();
+    expect(screen.getAllByText(/本次常模依據/)).toHaveLength(1);
     choose("第1題選項1");
     next();
-    expect(screen.queryByText(/本次常模依據/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "這份問卷在問什麼？" }));
-    expect(screen.getByText(/本次常模依據/)).toBeTruthy();
+    // From item 2 on, the norm basis is in the fold alone.
+    expect(document.querySelector(".answer-norm")).toBeNull();
+    expect(screen.getByText(/本次常模依據/).closest("#answer-intro-text")).not.toBeNull();
   });
 
   it("sends the page's norm token and no wearing answer", async () => {

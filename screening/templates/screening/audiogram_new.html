@@ -7,8 +7,8 @@
 <script type="module" src="{% static 'screening/frontend/audiogram-input.js' %}"></script>
 {% endblock %}
 
-{# #465 (the #464 mockup, D5): no tab bar on phones while marking, so the chart's foot is not under it; the way out is the quiet link below. #}
-{% block tab_bar_hidden %} data-tab-bar-hidden{% endblock %}
+{# #465 (the #464 mockup, D5): no tab bar on phones while marking, so the chart's foot is not under it; the way out is the quiet link below; the same block as the answer page (#463). #}
+{% block nav_class %} site-nav-tucked{% endblock %}
 
 {% block body %}
 <h1 class="h3 mt-4">{% if audiogram %}修改 {{ audiogram.tested_on|date:"Y/m/d" }} 的聽力圖{% else %}新增聽力圖{% endif %}</h1>

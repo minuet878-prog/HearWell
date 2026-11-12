@@ -26,11 +26,6 @@
   --color-severe: #8f2a12;
   --color-severe-bg: #feece7;
   --color-severe-bg-deep: #f6c3b3;
-  /* The welcome-back gauge's arcs (ADR 0026): brighter than the level text colours, so the
-     three levels read as a dial; the level itself is written in text under it. */
-  --color-gauge-normal: #3f9c6f;
-  --color-gauge-mild: #e2a92b;
-  --color-gauge-severe: #c4532f;
   --color-surface: #f4f6f8;
   --color-brand-soft: #eef3fa;
   --color-brand-soft-deep: #d6e2f2;
@@ -1513,7 +1508,7 @@
     align-items: center;
     min-height: 3rem;
     padding: 0.5rem 0.5rem 0.5rem 1rem; /* the tick's room takes most of the right padding */
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--choice-border, var(--color-border));
     border-radius: var(--radius-button);
     background-color: #fff;
     font-size: 1.25rem;
@@ -1596,7 +1591,7 @@
     stroke-linejoin: round;
   }
 
-  /* The home page's top, first visit or 歡迎回來: a flat block on the page (ADR 0022, #298's
+  /* The visitor's home page top: a flat block on the page (ADR 0022, #298's
      pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
   .home-hero {
     margin-bottom: 1.5rem;
@@ -1705,196 +1700,6 @@
     }
   }
 
-  /* Welcome back, option D (ADR 0026): a blue greeting band with the smiling elder, and the result
-     box tucked under it. Neither is a link, so neither has a hover or press effect (ADR 0006). */
-  /* The title beside the elder; the date runs the band's full width under both, so it keeps to one
-     line on a phone and wraps on its own at large text sizes. */
-  .welcome-band {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: 0 0.75rem;
-    padding: 1.5rem 1rem 3rem;
-    border-radius: var(--radius-large);
-    /* Two faint rings, like sound spreading out, drawn in the background so nothing pokes out. */
-    background-image:
-      radial-gradient(circle at calc(100% - 3rem) 2rem, transparent 7.8rem,
-        rgba(255, 255, 255, 0.18) 7.8rem 8rem, transparent 8rem),
-      radial-gradient(circle at 2rem calc(100% + 1rem), transparent 4.8rem,
-        rgba(255, 255, 255, 0.18) 4.8rem 5rem, transparent 5rem);
-    background-color: var(--color-primary);
-    color: #fff;
-  }
-
-  .welcome-title {
-    min-width: 0;
-    margin: 0;
-    color: #fff;
-    font-size: 1.85rem;
-    font-weight: 700;
-  }
-
-  .welcome-date {
-    grid-column: 1 / -1;
-    margin: 0.35rem 0 0;
-  }
-
-  /* On the blue: a white body and sound, dark lines. */
-  .home-hero .welcome-band .home-illustration {
-    width: 6rem;
-    margin: 0;
-    stroke: var(--color-primary-active);
-  }
-
-  .welcome-band .home-illustration .ill-solid {
-    fill: #fff;
-    opacity: 0.9;
-  }
-
-  .welcome-band .home-illustration .ill-hair {
-    stroke: var(--color-border-subtle);
-  }
-
-  .welcome-band .home-illustration .ill-accent {
-    stroke: #fff;
-  }
-
-  /* At large text sizes the elder would leave the title a character or less: it gives way. */
-  .welcome {
-    container-type: inline-size;
-  }
-
-  @container (max-width: 14rem) {
-    .welcome-band {
-      grid-template-columns: 1fr;
-    }
-
-    .home-hero .welcome-band .home-illustration {
-      display: none;
-    }
-  }
-
-  .welcome .result-banner {
-    position: relative;
-    margin: -1.75rem 0.75rem 0;
-    border-radius: var(--radius-large);
-    text-align: center;
-  }
-
-  .welcome .result-banner > div:first-child {
-    font-weight: 700;
-    text-align: left;
-  }
-
-  .welcome-result-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-    min-height: var(--spacing-touch);
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--color-border);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .welcome-reminder {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin: 1rem 0 0;
-    color: var(--color-heading);
-  }
-
-  .welcome-reminder svg {
-    flex: none;
-    width: 1.4rem;
-    height: 1.4rem;
-    margin-top: 0.15rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .welcome-reminder-due {
-    padding: 0.6rem 0.75rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
-    font-weight: 700;
-  }
-
-  /* Side by side when there is room, one under the other on a phone. */
-  .welcome-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 1rem;
-  }
-
-  .welcome-actions .btn {
-    flex: 1 1 14rem;
-  }
-
-  /* The gauge: the score bar's levels as arcs, the needle at the score (option D). */
-  .score-gauge {
-    display: block;
-    width: 13rem;
-    max-width: 100%;
-    margin: 0.25rem auto 0.35rem;
-  }
-
-  .score-gauge-arc {
-    fill: none;
-    stroke-width: 18;
-    stroke-dasharray: 1;
-  }
-
-  .score-gauge-arc-normal { stroke: var(--color-gauge-normal); }
-  .score-gauge-arc-mild_to_moderate { stroke: var(--color-gauge-mild); }
-  .score-gauge-arc-severe { stroke: var(--color-gauge-severe); }
-
-  .score-gauge-needle {
-    stroke: var(--color-heading);
-    stroke-width: 5;
-    stroke-linecap: round;
-    /* GAUGE_CENTRE in views/results.py, in the drawing's own units. */
-    transform-box: view-box;
-    transform-origin: 110px 105px;
-    transform: rotate(var(--angle));
-  }
-
-  .score-gauge-hub {
-    fill: var(--color-heading);
-  }
-
-  .score-gauge text {
-    fill: var(--color-body);
-    font-size: 1rem;
-    text-anchor: middle;
-  }
-
-  /* Once on arrival, about 2.6 seconds (ADR 0006): the elder sways (as above) and the sound
-     lights up twice; the arcs draw left to right, then the needle swings from 0 to the score and
-     stops without bouncing, bad news included. Reduced motion shows the end at once. */
-  @media (prefers-reduced-motion: no-preference) {
-    .welcome-band .ill-accent {
-      animation: welcome-sound 2.4s ease-in-out;
-    }
-
-    .score-gauge-arc {
-      animation: gauge-draw 0.45s ease-out 0.1s both;
-    }
-
-    .score-gauge-arc:nth-of-type(2) { animation-delay: 0.45s; }
-    .score-gauge-arc:nth-of-type(3) { animation-delay: 0.8s; }
-
-    .score-gauge-needle {
-      animation: gauge-needle 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) 1.1s both;
-    }
-  }
-
   /* The audiologist line at the bottom (design picker round 3): a gradient shield before the
      words, flat on the page since it is not a link (ADR 0022). */
   .home-credential {
@@ -1929,73 +1734,6 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  /* 建議您下一步 on the returning user's home (#261, option Z): a pale blue box with a blue
-     border. Only its button is clickable, so the box has no hover or press effect (ADR 0006). */
-  .next-step {
-    margin-bottom: 1.5rem;
-    padding: 1.25rem;
-    border: 0.125rem solid var(--color-primary);
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft);
-  }
-
-  .next-step-label {
-    display: inline-block;
-    margin-bottom: 0.75rem;
-    padding: 0.125rem 0.75rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-primary);
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  /* With large text the title drops under the icon instead of squeezing into a narrow column. */
-  .next-step-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  /* #316: the box is not a link (only its button is), so nothing in it is white (ADR 0022): the
-     icon tile and the reason are a light blue a little deeper than the box. */
-  .next-step .action-card-icon {
-    background-color: var(--color-brand-soft-deep);
-  }
-
-  .next-step-title {
-    flex: 1 1 10rem;
-    margin: 0;
-    color: var(--color-heading);
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  .next-step-because {
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft-deep);
-    overflow-wrap: anywhere;
-  }
-
-  /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
-     few characters; 「（45%）。」 may not break off and would otherwise run past its box. */
-  .more-section {
-    container-type: inline-size;
-  }
-
-  @container (max-width: 14rem) {
-    .next-step {
-      padding: 0.75rem;
-    }
-
-    .next-step-because {
-      padding: 0.25rem 0.4rem;
-    }
   }
 
   /* The other cards' group titles: small, plain and dark, so the cards stay the focus. */
@@ -2259,60 +1997,28 @@
   }
 
   /* Questionnaire intros (screening/questionnaires/*_intro.html): the reviewed sentences, grouped
-     under small titles, each group led by a round icon named by data-icon. No inner div, so the
-     page's #answer-intro box stays one div deep. */
-  /* minmax(0, 1fr), not 1fr: a long run like 「HHIA-S，2026/10/23」 at double text size would
-     otherwise widen the column, and the page, past a 320px phone (CI on #247 after #248). */
+     under small titles at the body size (#462). No round icon in front: on a white page a pale
+     blue circle reads as something to tap (#463). No inner div, so the page's #answer-intro box
+     stays one div deep. A long run like 「HHIA-S，2026/10/23」 at double text size breaks rather
+     than widen a 320px phone (CI on #247 after #248). */
   .q-intro-row {
-    display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr);
     overflow-wrap: anywhere;
-    column-gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--color-line);
+    padding: 0.5rem 0;
   }
 
   .q-intro-row:first-child {
     padding-top: 0;
-    border-top: 0;
   }
 
   .q-intro-row > * {
-    grid-column: 2;
     margin-bottom: 0.25rem;
   }
 
-  .q-intro-row::before {
-    content: "";
-    grid-column: 1;
-    grid-row: 1 / span 4;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background: var(--color-brand-soft) no-repeat center / 1.25rem;
-  }
-
-  .q-intro-row[data-icon="purpose"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="who"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="how"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v4H9zM6 5h12v16H6z'/%3E%3Cpath d='M9 13l2 2 4-4'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="note"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5M12 16.5v.5'/%3E%3C/svg%3E");
-  }
-
   .q-intro-title {
-    margin: 0.3rem 0 0.25rem;
+    margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--color-heading);
   }
 
@@ -2561,7 +2267,7 @@
       animation: route-ring 2.4s ease-in-out both;
     }
 
-    /* The tick draws as the score gauge's arcs do. */
+    /* The tick draws itself. */
     .route-tick path {
       animation: gauge-draw 0.45s ease-out both;
     }
@@ -3046,9 +2752,8 @@
   /* Dropdowns, one look site-wide (dropdowns tidy-up, owner's pick B): on the page a white box
      with a chevron, first made for add_to_home's phones (#196); inside a card a line on top
      instead, so a box never sits in a box. The summary is the tap target; hover and press change
-     colour only, never position (ADR 0006). The answer page's "這份問卷在問什麼？" is the box with
-     a button (React) instead of a summary. */
-  .dropdown-box, .answer-about {
+     colour only, never position (ADR 0006). */
+  .dropdown-box {
     border: 0.125rem solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
@@ -3061,8 +2766,7 @@
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary,
-  .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -3091,8 +2795,7 @@
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after,
-  .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -3104,8 +2807,7 @@
 
   .dropdown-box[open] > summary::after,
   .dropdown-line[open] > summary::after,
-  .report-fold[open] > summary::after,
-  .answer-about > button[aria-expanded="true"]::after {
+  .report-fold[open] > summary::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
   }
 
@@ -3133,12 +2835,11 @@
      in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
      0024); a line dropdown stays as it is. */
   .dropdown-box[open], .dropdown-box[open] > summary,
-  .answer-about:has(> button[aria-expanded="true"]), .answer-about > button[aria-expanded="true"],
   .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
     background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
   }
 
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"],
+  .dropdown-box[open] > summary,
   .report-fold[open] > summary {
     background-color: var(--color-brand-soft);
   }
@@ -3151,21 +2852,19 @@
   }
 
   /* Inside the box the bar runs on into the content, so only its top corners are round. */
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"] {
+  .dropdown-box[open] > summary {
     border-end-start-radius: 0;
     border-end-end-radius: 0;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
-    .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active,
-  .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
@@ -3183,10 +2882,6 @@
      margins would leave them too little room. */
   .dropdown-box > :is(table, fieldset, div) {
     margin-inline: 0;
-  }
-
-  .answer-about > div > div {
-    margin: 0 1rem 1rem;
   }
 
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
@@ -4664,20 +4359,6 @@
     stroke-linejoin: round;
   }
 
-  .card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .card-tag {
-    padding: 0 0.5rem;
-    border-radius: var(--radius-badge);
-    background-color: var(--color-surface);
-    color: var(--color-footer);
-    font-weight: 600;
-  }
-
   /* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
   .audiogram-thumbnail {
     flex: none;
@@ -4724,23 +4405,6 @@
     align-items: center;
     gap: 0.5rem;
     min-height: var(--spacing-touch);
-  }
-
-  /* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
-  @media (max-width: 35em) {
-    .questionnaire-card,
-    .recommended-heading {
-      flex-wrap: wrap;
-    }
-
-    .questionnaire-card .link-card-body {
-      flex: 1 0 100%;
-      order: 1;
-    }
-
-    .questionnaire-card .link-card-arrow {
-      margin-left: auto;
-    }
   }
 
   .comparison-items,
@@ -5083,8 +4747,8 @@
 }
 
 /* #465 records and audiograms (the #464 mockup): 我的紀錄's score block, the folds drawn as list
-   rows (as #461's 看完整說明), the audiogram page's two ear blocks, and no tab bar while marking an
-   audiogram. */
+   rows (as #461's 看完整說明) and the audiogram page's two ear blocks. The audiogram input drops the
+   tab bar with #463's site-nav-tucked. */
 @layer components {
   /* 1A: 最近一次 in the words' weight, the score largest, then the level and the line against
      last time (.result-since-last), all in the latest level's colours (L1, .result-banner). */
@@ -5151,18 +4815,6 @@
     font-size: var(--text-page-title);
     font-weight: 700;
     line-height: 1.2;
-  }
-
-  /* D5: no tab bar on phones while marking an audiogram (audiogram_new.html), so the chart's foot
-     is never under it; the page's end needs no room for it either. Wide screens keep the top bar. */
-  @media (max-width: 47.99em) {
-    .site-nav[data-tab-bar-hidden] {
-      display: none;
-    }
-
-    body:has(.site-nav[data-tab-bar-hidden]) {
-      --tab-bar-height: 0px;
-    }
   }
 }
 
@@ -5237,18 +4889,9 @@
   to { box-shadow: 0 0 0 1rem rgba(29, 111, 153, 0); }
 }
 
-/* Welcome back (ADR 0026): the elder's sound lights up twice, the gauge draws and its needle swings. */
-@keyframes welcome-sound {
-  0%, 50% { opacity: 0.2; }
-  25%, 75% { opacity: 1; }
-}
-
+/* A line drawing itself, as the 選配路線's tick. */
 @keyframes gauge-draw {
   from { stroke-dashoffset: 1; }
-}
-
-@keyframes gauge-needle {
-  from { transform: rotate(0deg); }
 }
 
 /* Waiting (ADR 0027): a piece slides across its track; spinner; shown only after 0.3 s. With a 35%
@@ -5264,4 +4907,702 @@
 
 @keyframes loading-appear {
   to { visibility: visible; }
+}
+
+/* #459 care journey home (ADR 0042, mockup #458): the two tiles on top, the 照顧旅程 as N3 dots
+   on a line with the 現在這一步 a pale blue card beside it, the row of text links, and the
+   空狀態首頁's dashed preview. */
+@layer components {
+  /* Side by side on a phone, one under the other once the text is large (#458 D1). */
+  .journey-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.75rem;
+  }
+
+  /* 上次結果 is a link in its level's pale colour (L1, from .result-banner-*); grey is
+     information, not a link (P3). */
+  .journey-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0.75rem 0.875rem 0.875rem;
+    border-radius: var(--radius-medium);
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+
+  .journey-tile-info {
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .journey-tile-label {
+    font-weight: 700;
+  }
+
+  a.journey-tile .journey-tile-label {
+    padding-right: 1.75rem;
+  }
+
+  .journey-tile-info .journey-tile-label,
+  .journey-tile-small {
+    color: var(--color-muted);
+  }
+
+  /* The score a size above the next screening's day (#453 Q13). */
+  .journey-tile-score {
+    font-size: 2.2222rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .journey-tile-score small {
+    font-size: var(--text-button);
+  }
+
+  .journey-tile-level {
+    font-weight: 700;
+  }
+
+  .journey-tile-arrow {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    color: var(--color-primary);
+    font-size: 1.6667rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .journey-tile-date {
+    margin-top: 0.4rem;
+    font-size: 1.4444rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .journey-tile-link {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* Only clickable cards move (ADR 0006), as the E rows do. */
+  a.journey-tile {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    a.journey-tile:hover {
+      color: inherit;
+      transform: translateY(-0.25rem);
+      box-shadow: var(--shadow-lifted);
+    }
+  }
+
+  a.journey-tile:active {
+    transform: translateY(0.125rem);
+    box-shadow: none;
+  }
+
+  a.journey-tile:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    a.journey-tile { transition: none; }
+    a.journey-tile:hover, a.journey-tile:active { transform: none; box-shadow: none; }
+  }
+
+  .journey {
+    margin-bottom: 1rem;
+  }
+
+  .journey-head {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    column-gap: 1rem;
+  }
+
+  .journey-head .h4 {
+    margin: 0;
+  }
+
+  .journey-count {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+  }
+
+  .journey-steps {
+    --journey-dot: 2rem;
+    container-type: inline-size;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .journey-step {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+  }
+
+  .journey-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--journey-dot) + 0.125rem);
+    bottom: 0.125rem;
+    left: calc((var(--journey-dot) - 2px) / 2);
+    width: 2px;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-line-strong);
+  }
+
+  /* N3: a white circle in a 2px blue frame, a blue tick once done (#458 D3, not the level
+     green); the steps after only pale the circle, their words keep the muted grey. */
+  .journey-dot {
+    flex: none;
+    width: var(--journey-dot);
+    height: var(--journey-dot);
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .journey-dot svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .journey-step:is(.is-later, .is-not-needed) .journey-dot {
+    border-color: var(--color-line-strong);
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+  }
+
+  .journey-step-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.625rem;
+    min-width: 0;
+    padding-top: 0.1rem;
+  }
+
+  .journey-step:is(.is-later, .is-not-needed) .journey-step-body,
+  .journey-when {
+    color: var(--color-muted);
+  }
+
+  /* The 現在這一步: its dot level with the card's first line, the line on from under it and the
+     line above reaching down to it. */
+  .journey-step.is-current .journey-dot {
+    margin-top: 0.875rem;
+  }
+
+  .journey-step.is-current:not(:last-child)::after {
+    top: calc(var(--journey-dot) + 1rem);
+  }
+
+  .journey-step:has(+ .is-current)::after {
+    bottom: -0.75rem;
+  }
+
+  /* #459 I2: the line is blue as far as the 現在這一步, the way walked. */
+  .journey-step.is-walked::after {
+    z-index: 1;
+    background-color: var(--color-primary);
+    transform-origin: top;
+  }
+
+  /* I1: every step but the 現在這一步 opens in place to say what it is; the row is the toggle,
+     its arrow turning down when open. Pressing only changes colour (ADR 0028). */
+  .journey-about {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .journey-about > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    margin-top: -0.375rem;
+    padding: 0 0.25rem;
+    border-radius: var(--radius-small);
+    color: inherit;
+    font-weight: 400;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .journey-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .journey-about > summary .journey-step-body {
+    flex: 1;
+    padding-top: 0;
+  }
+
+  .journey-about > summary:active {
+    background-color: var(--color-brand-soft);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .journey-about > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .journey-about-arrow {
+    flex: none;
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    transform: rotate(90deg);
+  }
+
+  .journey-about[open] .journey-about-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .journey-about-body {
+    padding: 0.25rem 0.25rem 0.5rem;
+  }
+
+  .journey-about-body p {
+    margin: 0 0 0.25rem;
+  }
+
+  .journey-about-body a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (care-journey.js), the ticks
+     draw one by one, the blue line grows down to the 現在這一步 and its dot's ring lights once,
+     each step half a second after the one before; held until in view (ADR 0029). Otherwise, and
+     with reduced motion, the end at once. Longhands, not the animation shorthand: that would
+     set the play state back to running and so outrank the hold until in view. */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Held, as in-view.js holds any, until the 現在這一步 (data-play-in-view) is in view: the
+       whole list is taller than half a phone's screen and would wait for a scroll, yet the way
+       walked ends at that card. */
+    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+      .journey-dot path,
+    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+      .journey-step::after {
+      animation-play-state: paused;
+    }
+
+    .journey-plays .journey-step.is-done .journey-dot path {
+      stroke-dasharray: 1;
+      animation-name: gauge-draw;
+      animation-duration: 0.35s;
+      animation-timing-function: ease-out;
+      animation-delay: calc(var(--journey-step) * 0.5s);
+      animation-fill-mode: both;
+    }
+
+    .journey-plays .journey-step.is-walked::after {
+      animation-name: journey-line;
+      animation-duration: 0.45s;
+      animation-timing-function: linear;
+      animation-delay: calc(var(--journey-step) * 0.5s + 0.1s);
+      animation-fill-mode: both;
+    }
+
+    .journey-plays .journey-step.is-current .journey-dot {
+      animation-name: journey-ring;
+      animation-duration: 0.9s;
+      animation-timing-function: ease-in-out;
+      animation-delay: calc(var(--journey-step) * 0.5s + 0.05s);
+      animation-fill-mode: both;
+    }
+  }
+
+  .journey-card {
+    flex: 1;
+    min-width: 0;
+    padding: 0.875rem 1rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+  }
+
+  .journey-card-label {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  .journey-card-title {
+    margin: 0 0 0.375rem;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .journey-card-because {
+    margin: 0;
+  }
+
+  .journey-card .btn {
+    margin-top: 0.75rem;
+  }
+
+  .journey-card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    margin-top: 0.25rem;
+    font-weight: 700;
+  }
+
+  /* At large text sizes the card drops under its dot instead of shrinking to a few characters a
+     line; the joining line would cross it, so it goes. */
+  @container (max-width: 15rem) {
+    .journey-step {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .journey-step:not(:last-child)::after {
+      display: none;
+    }
+
+    .journey-step.is-current .journey-dot {
+      margin-top: 0;
+    }
+  }
+
+  /* Text links in a row (S1), each a 44px touch target, wrapping as they need. */
+  .home-links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    margin: 0.5rem 0 1rem;
+    padding: 0.375rem 0 0;
+    border-top: 1px solid var(--color-line);
+    list-style: none;
+  }
+
+  .home-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+    text-underline-offset: 0.25em;
+  }
+
+  /* A preview of what comes, not a link: a dashed line on white (#458 A). */
+  .empty-preview {
+    margin-bottom: 1.25rem;
+    padding: 0.875rem 1rem 0.25rem;
+    border: 2px dashed var(--color-line-strong);
+    border-radius: var(--radius-medium);
+  }
+
+  .empty-preview-title {
+    margin: 0 0 0.75rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .empty-credit {
+    color: var(--color-muted);
+  }
+}
+
+@keyframes journey-line {
+  from { transform: scaleY(0); }
+}
+
+@keyframes journey-ring {
+  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
+}
+
+/* #463 screening and answering (the #462 mockup): the catalogue's 推薦 in a pale blue block and
+   its questionnaires as list rows (E), the wizard's 看其他問卷 a row that folds open, and the
+   answer page without the phone's tab bar, its intro folded under the buttons. */
+@layer components {
+  /* A single thing to tap in a colour block (ADR 0041): pale blue, no frame; only its button,
+     or its rows when it recommends two, can be pressed. */
+  .recommended-block {
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .recommended-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .recommended-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .recommended-label + .recommended-heading {
+    margin-top: 0.5rem;
+  }
+
+  /* On the pale blue the icon's circle is white, so it stays apart. */
+  .recommended-block .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  .recommended-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .recommended-code {
+    display: block;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .recommended-facts {
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
+  }
+
+  .recommended-why {
+    margin: 0.625rem 0 0;
+  }
+
+  .recommended-block .btn {
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
+  /* Two recommended: rows inside the block, their lines a pale shade of the brand blue. */
+  .recommended-list {
+    margin-top: 0.625rem;
+  }
+
+  .recommended-list .link-card {
+    border-color: rgba(31, 78, 140, 0.18);
+    background-color: transparent;
+  }
+
+  .recommended-list .link-card:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  #catalogue-all {
+    margin-top: 2rem;
+  }
+
+  /* A questionnaire row keeps its icon beside the words, as every row (E); at large text sizes
+     the words drop under the icon instead of shrinking to a character a line, the arrow staying
+     on the icon's row (as .action-card). */
+  .questionnaire-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  @container (max-width: 11rem) {
+    .questionnaire-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .questionnaire-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  /* The wizard's 看其他問卷 and the answer page's 這份問卷在問什麼？: a list row (E) that folds
+     open, a blue chevron at its end, down while folded and swapped (not turned) for an up one when
+     open, so nothing moves (ADR 0006). */
+  .questionnaire-fold, .answer-about {
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .questionnaire-fold > summary, .answer-about > button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--color-heading);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .questionnaire-fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .questionnaire-fold > summary > span:not([class]), .answer-about-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .questionnaire-fold-arrow, .answer-about-arrow {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .questionnaire-fold[open] .questionnaire-fold-arrow,
+  .answer-about > button[aria-expanded="true"] .answer-about-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* Colour only, never position (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .questionnaire-fold > summary:hover, .answer-about > button:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .questionnaire-fold > summary:active, .answer-about > button:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* On the pale blue the icon's circle turns white to stay apart, as on a row (E). */
+  @media (hover: hover) and (pointer: fine) {
+    :is(.questionnaire-fold > summary, .answer-about > button):hover .action-card-icon {
+      background-color: #fff;
+    }
+  }
+
+  :is(.questionnaire-fold > summary, .answer-about > button):active .action-card-icon {
+    background-color: #fff;
+  }
+
+  .questionnaire-fold > summary:focus-visible, .answer-about > button:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* Open, the catalogue's rows follow under the row's own line. */
+  .questionnaire-fold[open] > .link-card:first-of-type {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .answer-about {
+    margin-top: 1rem;
+  }
+
+  .answer-about-body {
+    padding: 0 0.25rem 1rem;
+  }
+
+  .answer-about-body .source-note, .answer-about-body .q-intro-source {
+    margin-top: 0.75rem;
+  }
+
+  /* Without JavaScript the intro and its source stay above the questions, apart from them. */
+  #answer-intro {
+    margin-bottom: 2rem;
+  }
+
+  /* The answer page's line under its title: the code, count and minutes in the muted grey. */
+  .answer-meta {
+    color: var(--color-muted);
+  }
+
+  /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
+  .answer-norm {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .answer-norm > p {
+    margin: 0;
+  }
+
+  .answer-norm > p + p {
+    margin-top: 0.25rem;
+  }
+
+  /* 接著答 and 重新開始, one above the other, each the whole width. */
+  .answer-resume-title {
+    margin-top: 1.25rem;
+  }
+
+  .answer-resume {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Answer and wizard choices: the fields' edge (#272), 4.7:1 on white where the shared light
+     grey had 1.5:1, and 10px apart as the #462 mockup draws them, so IOI-HA's five choices and
+     下一題 come closer to the first screen. */
+  .answer-app, #answer-form, .wizard-form {
+    --choice-border: var(--color-input-border);
+  }
+
+  :is(.answer-app, #answer-form, .wizard-form) div.choice-group {
+    gap: 0.625rem;
+  }
+
+  /* While answering a phone shows no tab bar (#462 5B): 下一題 stays in the first screen, and 聽伴
+     at the top left leads out; wide screens keep their top bar. Nothing to keep clear of, so the
+     page's end and back to top need no room for it. */
+  @media (max-width: 47.99em) {
+    .site-nav-tucked {
+      display: none;
+    }
+
+    :root:has(.site-nav-tucked) {
+      --tab-bar-height: 0px;
+    }
+  }
 }
