@@ -467,8 +467,10 @@ class RedesignLayoutTests(TestCase):
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
         notice = [test_continue_notice.SCRIPT, wave, play_in_view, smooth, "<inline>"]
+        # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
+        journey_js = "screening/frontend/care-journey.js"
         expected = {
-            reverse("index"): [*every, logout_js, *notice],
+            reverse("index"): [*every, logout_js, notice[0], journey_js, *notice[1:]],
             reverse("questionnaire_list"): [*every, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
@@ -580,11 +582,6 @@ class PageFlowTests(TestCase):
         start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
         self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
-    def test_home_order_for_logged_in_without_hint(self):
-        main = self._main(self.client.get(reverse("index")))
-        self._assert_in_order(main, self.HOME_ORDER)
-        self.assertNotIn(self.HINT, main)
-
     def test_home_has_no_missing_features(self):
         # HHIE-S is allowed since phase9_ui_refresh_4a_home.md (result preview, trust block).
         for logged_in in (True, False):
@@ -604,9 +601,8 @@ class PageFlowTests(TestCase):
                 "自行選擇問卷",
                 "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
-                # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
-                '<span class="card-tag">10 題</span>',
-                '<span class="card-tag">約 3 分鐘</span>',
+                # One line of muted words since #463 (tags since phase9 4b 4.1).
+                "<span>10 題・約 3 分鐘</span>",
             ),
         )
         self.assertRegex(
@@ -621,16 +617,15 @@ class PageFlowTests(TestCase):
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
-        self.assertIn('<span class="card-tag">3 題</span>', card)
+        self.assertIn("<span>3 題・約 4 分鐘</span>", card)
         self.assertIn("短問卷・共 3 題・", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
-        self.assertRegex(
-            page, r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>\s*<p>HHIE-S・共 10 題・大約 3 分鐘</p>"
-        )
+        title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
+        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
@@ -967,8 +962,8 @@ class PwaTests(TestCase):
                 steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
                 self.assertEqual(steps, [4, 4])
 
-    # 23, as changed by the footer redesign: the guide is linked from the home page's "您還可以"
-    # (test_home) and the account page, no longer from the footer.
+    # 23, as changed by the footer redesign: the guide is linked from the home page
+    # (test_home_journey) and the account page, no longer from the footer.
     def test_footer_no_longer_links_to_guide(self):
         content = self.client.get(reverse("index")).content.decode()
         footer = content.split('<footer class="site-footer"', 1)[1]
@@ -1173,13 +1168,10 @@ class HomeTests(TestCase):
 
     # 1
     def test_illustration_first_and_hidden(self):
-        for logged_in in (False, True):
-            if logged_in:
-                self.client.force_login(consented_user(username="hometester"))
-            with self.subTest(logged_in=logged_in):
-                main = self._main()
-                self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
-                self.assertLess(main.index("home-illustration"), main.index("<h1"))
+        # The visitor's home only: a signed-in user's has none since #459 (test_home_journey).
+        main = self._main()
+        self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
+        self.assertLess(main.index("home-illustration"), main.index("<h1"))
 
     # 3
     def test_step_cards(self):

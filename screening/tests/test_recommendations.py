@@ -149,7 +149,7 @@ class ConcernWizardTests(TestCase):
         self.assertIn('<h1 class="h3 mt-2">推薦您做這一份</h1>', main)
         self.assertIn(f"{recommended.definition.topic}<span", main)
         self.assertIn(f">{recommended}</span>", main)
-        self.assertIn(f"<p><strong>為什麼推薦：</strong>{why}</p>", main)
+        self.assertIn(f'<p class="recommended-why"><strong>為什麼推薦：</strong>{why}</p>', main)
 
     def test_life_impact_or_unsure_with_a_known_age_recommends_by_age_in_two_steps(self):
         # #339 acceptance 11.
@@ -317,7 +317,7 @@ class ConcernWizardTests(TestCase):
 
     def assert_catalog(self, html):
         # The whole questionnaire list, every defined questionnaire once.
-        self.assertEqual(html.count("questionnaire-card"), len(self.by_code))
+        self.assertEqual(html.count('questionnaire-card" href="/questionnaire/'), len(self.by_code))
         for questionnaire in self.by_code.values():
             self.assertIn(f'href="{reverse("screening", args=[questionnaire.pk])}"', html)
 
@@ -346,7 +346,7 @@ class ConcernWizardTests(TestCase):
                 self.assertIn(f'href="{back}">上一步</a>', main)
                 self.assertIn(choose, main)
                 details = main[main.index("<details") : main.index("</details>")]
-                self.assertIn("<summary>看其他問卷</summary>", details)
+                self.assertIn("<span>看其他問卷</span>", details)
                 self.assert_catalog(details)
 
     def test_back_to_step_one_keeps_the_answer_chosen(self):
@@ -427,7 +427,9 @@ class ConcernWizardTests(TestCase):
                 self.assertIn(greeting, main)
                 # #339 acceptance 10: above step 1, its progress and its form alike.
                 self.assertLess(main.index(greeting), main.index('<div class="step-progress">'))
-                self.assertLess(main.index(greeting), main.index('<form method="get"'))
+                self.assertLess(
+                    main.index(greeting), main.index('<form class="wizard-form" method="get"')
+                )
                 self.assertNotContains(self.wizard(), greeting)
         self.login_age(None)
         self.assertNotContains(
@@ -492,7 +494,9 @@ class ConcernWizardTests(TestCase):
     def submit_choice(self, page, value):
         # What a browser without JavaScript sends: the form's hidden fields plus one radio.
         html = page.content.decode()
-        form = re.search(r'<form method="get" action="([^"]+)">(.*?)</form>', html, re.DOTALL)
+        form = re.search(
+            r'<form class="wizard-form" method="get" action="([^"]+)">(.*?)</form>', html, re.DOTALL
+        )
         action, body = form.groups()
         data = dict(re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)">', body))
         name = re.search(rf'<input type="radio" name="([^"]+)" value="{value}"', body).group(1)
@@ -546,7 +550,7 @@ class ReturningCatalogueTests(TestCase):
     def cards(self, page):
         # Each catalogue card as (href, text), in order.
         return re.findall(
-            r'<a class="link-card mt-4 questionnaire-card" href="([^"]+)">(.*?)</a>',
+            r'<a class="link-card questionnaire-card" href="(/questionnaire/[^"]+)">(.*?)</a>',
             page.content.decode(),
             re.S,
         )
@@ -581,10 +585,13 @@ class ReturningCatalogueTests(TestCase):
         for questionnaire in self.ordered:
             text = cards[reverse("screening", args=[questionnaire.pk])]
             with self.subTest(code=questionnaire.code):
-                tags = re.findall(r'<span class="card-tag">([^<]*)</span>', text)
-                last = {"hhie-s": ["上次 2026/03/02"], "thi": ["上次 2026/02/10"]}
-                self.assertEqual(tags[2:], last.get(questionnaire.code, []))
-                self.assertEqual(tags[0], f"{questionnaire.questions.count()} 題")
+                # #463: one line of muted words, 上次 and its date kept together.
+                last = {"hhie-s": "2026/03/02", "thi": "2026/02/10"}.get(questionnaire.code)
+                count, minutes = questionnaire.questions.count(), questionnaire.definition.minutes
+                facts = f"{count} 題・約 {minutes} 分鐘"
+                if last:
+                    facts += f'・<span class="inline-block max-w-full">上次 {last}</span>'
+                self.assertIn(f"<span>{facts}</span>", text)
 
     def test_the_dates_come_in_one_query_however_many_cards_have_one(self):
         # A recent life-impact record on both sides, none answered worn: the recommendation asks
@@ -604,9 +611,9 @@ class ReturningCatalogueTests(TestCase):
         self.login("hhie-s")
         catalogue = reverse("questionnaire_list")
         main = self.catalogue().content.decode()
-        link = f'<a href="{catalogue}?wizard=1">幫我選問卷</a>'
-        # #362: right under the title, above every card, and said once.
-        self.assertIn(f"自行選擇問卷</h1>\n<p>不確定做哪一份？{link}</p>", main)
+        # #463 (ADR 0030): the list's last row, and said once.
+        rows = re.findall(r'<a class="link-card questionnaire-card" href="([^"]+)">', main)
+        self.assertEqual(rows[-1], f"{catalogue}?wizard=1")
         self.assertEqual(main.count("不確定做哪一份？"), 1)
         page = self.catalogue(wizard="1")
         self.assertContains(
@@ -640,7 +647,7 @@ class ReturningCatalogueTests(TestCase):
         self.assertEqual(len(self.cards(page)), 6)
         self.assertNotContains(page, "上次")
         wizard = f"{reverse('questionnaire_list')}?wizard=1"
-        self.assertContains(page, f'<a href="{wizard}">幫我選問卷</a>')
+        self.assertContains(page, f'<a class="link-card questionnaire-card" href="{wizard}">')
 
     def test_a_returning_users_choose_yourself_is_the_same_catalogue(self):
         # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫我選問卷」.
@@ -696,8 +703,11 @@ class RecommendedQuestionnaireTests(TestCase):
         return block and block.group(1)
 
     def starts(self, block):
-        # The block's 開始作答 links, in order.
-        return re.findall(r'<a class="btn btn-primary btn-lg" href="([^"]+)">開始作答', block)
+        # The block's 開始作答 links, or with two (#463) its rows, in order.
+        return re.findall(
+            r'<a class="(?:btn btn-primary btn-lg|link-card questionnaire-card)" href="([^"]+)">',
+            block,
+        )
 
     def start_url(self, code):
         return reverse("screening", args=[self.by_code[code].pk])
@@ -708,16 +718,18 @@ class RecommendedQuestionnaireTests(TestCase):
         self.record(user, "hhia-s", wearing=False, days_ago=200)
         page = self.client.get(reverse("questionnaire_list"))
         block = self.recommended(page)
-        self.assertIn('<h2 id="catalogue-recommended" class="h4">推薦您做這一份</h2>', block)
+        self.assertIn(
+            '<h2 id="catalogue-recommended" class="recommended-label">推薦您做這一份</h2>', block
+        )
         self.assertEqual(self.starts(block), [self.start_url("hhia-s")])
         self.assertIn(f"<strong>為什麼推薦：</strong>{RETEST_DUE_TEXT}</p>", block)
         # On top: the whole block comes before the first card.
         main = page.content.decode()
-        card = '<a class="link-card mt-4 questionnaire-card"'
+        card = '<a class="link-card questionnaire-card"'
         section = main.index('<section aria-labelledby="catalogue-recommended"')
         self.assertLess(main.index("</section>", section), main.index(card))
         # Still in the catalogue below, all six cards.
-        cards = re.findall(rf'{card} href="([^"]+)">', main)
+        cards = re.findall(rf'{card} href="(/questionnaire/[^"]+)">', main)
         self.assertEqual(len(cards), 6)
         self.assertIn(self.start_url("hhia-s"), cards)
 
@@ -746,15 +758,13 @@ class RecommendedQuestionnaireTests(TestCase):
                     self.starts(block), [self.start_url("hhie-s"), self.start_url("hhia-s")]
                 )
                 self.assertEqual(block.count("為什麼推薦："), 1)
+                # #463: two rows, each saying whom it suits; no 開始作答 button at all.
                 for code in ("hhie-s", "hhia-s"):
                     questionnaire = self.by_code[code]
-                    item = block[block.index(f'id="recommended-{code}"') :]
-                    item = item[: item.index("開始作答")]
-                    self.assertIn(f"<p>{questionnaire.definition.audience}</p>", item)
-                    # Two 開始作答 buttons, each named after its questionnaire for screen readers.
-                    self.assertIn(
-                        f'開始作答<span class="visually-hidden">：{questionnaire}</span></a>', block
-                    )
+                    item = block[block.index(f'href="{self.start_url(code)}"') :]
+                    item = item[: item.index("</a>")]
+                    self.assertIn(f"<span>{questionnaire.definition.audience}</span>", item)
+                self.assertNotIn("開始作答", block)
 
     def test_aided_and_unaided_records_without_ioi_ha_recommend_ioi_ha(self):
         # #339 acceptance 6: an unaided HHIE-S within six months, and a record answered wearing
@@ -787,7 +797,9 @@ class RecommendedQuestionnaireTests(TestCase):
                 page = self.client.get(reverse("questionnaire_list"))
                 self.assertIsNone(self.recommended(page))
                 self.assertNotContains(page, "推薦您做這一份")
-                self.assertEqual(page.content.decode().count("questionnaire-card"), 6)
+                self.assertEqual(
+                    page.content.decode().count('questionnaire-card" href="/questionnaire/'), 6
+                )
 
     def test_a_due_retest_comes_before_ioi_ha(self):
         # Rules 1 and 3 both hold: rule 1 wins.

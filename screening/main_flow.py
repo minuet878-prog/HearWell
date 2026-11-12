@@ -3,17 +3,15 @@
 from dataclasses import dataclass
 from datetime import date
 
-from django.urls import reverse
 from django.utils import timezone
 
-from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
+from screening.fitting_route import add_months
 from screening.forms import AgeGroupForm
 from screening.ioi_norm import norm_bases
 from screening.questionnaires import hhia_s, hhie_s, ioi_ha
 from screening.questionnaires.definition import RETEST_MONTHS
 from screening.scoring import (
     CATALOGUE_REASONS,
-    NEXT_STEP_REASONS,
     RETEST_BUTTON_TEXT,
     RETEST_DUE_TEXT,
     retest_next_text,
@@ -33,7 +31,7 @@ class UserState:
     retest_due: bool
     next_suggested_date: date | None
     retest_questionnaire: object | None  # the questionnaire "再做一次" should open
-    reminder: str | None = None  # the home page's retest line
+    reminder: str | None = None  # my records' retest line
     retest_button: str | None = None  # the retake button's text, once a retest is due
 
 
@@ -120,69 +118,3 @@ def catalogue_recommendation(user, questionnaires, state):
         ioi = next(q for q in questionnaires if q.code == ioi_ha.CODE)
         return Recommendation([ioi], CATALOGUE_REASONS["aided_and_unaided"])
     return None
-
-
-@dataclass(frozen=True)
-class HomeCard:
-    title: str
-    href: str
-    icon: str  # an action_icon.html icon
-
-
-@dataclass(frozen=True)
-class NextStep:
-    card: HomeCard
-    because: str
-    button: str
-    suggested: str | None  # the key of the card it suggests; None for 修改這張聽力圖
-
-
-# #261 (spec #257): the returning user's 「您還可以」 cards in four groups by use, each
-# (key, title, card keys).
-HOME_GROUPS = (
-    ("record", "聽力圖", ("record",)),
-    ("show", "給別人看", ("print", "share")),
-    ("learn", "了解", ("guide",)),
-    ("convenience", "方便使用", ("add-home",)),
-)
-# The group pwa-nav.js hides in the home-screen app (ticket #160): it is added already.
-HIDDEN_IN_APP = "convenience"
-
-
-def home_more(user, today):
-    """The 建議下一步 (GLOSSARY) and the other cards, in their groups with none left empty:
-    each group (title, cards, hidden in the home-screen app)."""
-    cards = {
-        "record": HomeCard("記錄醫院的聽力圖", reverse("audiogram_new"), "audiogram"),
-        "print": HomeCard("印聽力報告給醫師看", reverse("health_report"), "report"),
-        "share": HomeCard("分享報告給家人", reverse("share_report"), "share"),
-        "guide": HomeCard("了解助聽器選配與補助", reverse("guide"), "guide"),
-        "add-home": HomeCard("加到手機主畫面", reverse("add_to_home"), "add-home"),
-    }
-    state = fitting_state(user, today)
-    if state.stop == AUDIOGRAM and state.insufficient:
-        suggested = None  # not a card of its own: 記錄醫院的聽力圖 stays in its group
-        edit = HomeCard(
-            "修改這張聽力圖", reverse("audiogram_edit", args=[state.audiogram.pk]), "audiogram"
-        )
-        next_step = NextStep(edit, NEXT_STEP_REASONS["edit"], "修改這張聽力圖", suggested)
-    elif state.stop == AUDIOGRAM:
-        suggested = "record"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去記錄", suggested)
-    elif state.stop:
-        suggested = "guide"
-        because = NEXT_STEP_REASONS[state.stop]
-        if state.stop == "form-25":
-            because = because.format(deadline=state.form_25[1])  # #296: always dated there
-        next_step = NextStep(cards[suggested], because, "看我的選配指引", suggested)
-    elif user.report_shares.exists():  # any link ever made, ended ones too
-        suggested = "print"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去印報告", suggested)
-    else:
-        suggested = "share"
-        next_step = NextStep(cards[suggested], NEXT_STEP_REASONS[suggested], "去分享", suggested)
-    groups = (
-        (title, [cards[key] for key in keys if key != suggested], group == HIDDEN_IN_APP)
-        for group, title, keys in HOME_GROUPS
-    )
-    return next_step, [(title, shown, hidden) for title, shown, hidden in groups if shown]

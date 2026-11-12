@@ -35,20 +35,6 @@ class ReturningUserGuideEntryTests(TestCase):
         self.client.force_login(self.user)
         self.content = self.client.get(reverse("index")).content.decode()
 
-    def test_more_you_can_do_has_a_guide_card_linking_to_the_summary_page(self):
-        section = re.search(
-            r'<section[^>]*aria-labelledby="more-title".*?</section>', self.content, re.DOTALL
-        ).group(0)
-        # #261: an action card in the 了解 group (this user has no audiogram, so the
-        # suggestion is recording one and the guide stays a card).
-        cards = re.findall(
-            r'<li([^>]*)><a class="link-card action-card" href="([^"]*)">.*?'
-            r'<span class="link-card-title">([^<]*)</span>',
-            section,
-            re.DOTALL,
-        )
-        self.assertIn(("", "/guide", CARD), cards)
-
     def test_bottom_tab_bar_is_home_screening_records_learn(self):
         nav = self.content[
             self.content.index('<nav aria-label="主要導覽"') : self.content.index("</nav>")
@@ -75,6 +61,8 @@ class NewUserGuideEntryTests(TestCase):
     def test_visitor_sees_the_guide_card_after_the_steps(self):
         self.assert_guide_card_after_the_steps()
 
-    def test_signed_in_user_without_records_sees_the_guide_card_after_the_steps(self):
+    def test_signed_in_user_without_records_has_a_guide_link(self):
+        # #459: the 空狀態首頁 keeps the way in as a text link (mockup #458 A).
         self.client.force_login(consented_user(username="guide_entry_new"))
-        self.assert_guide_card_after_the_steps()
+        content = self.client.get(reverse("index")).content.decode()
+        self.assertIn(f'<li><a href="/guide">{CARD}</a></li>', content)
