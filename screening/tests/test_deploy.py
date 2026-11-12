@@ -49,22 +49,25 @@ print(json.dumps({
 }))
 """
 
-    def _run(self, args, debug, module="config.settings"):
+    def _run(self, args, debug, module="config.settings", hsts="3600"):
         env = {
             **os.environ,
             "DJANGO_SETTINGS_MODULE": module,
             "DEBUG": "True" if debug else "False",
             # A throwaway key for this process only; never written anywhere.
             "SECRET_KEY": get_random_secret_key(),
-            # Production settings refuse to start without it; DUMP's request uses this host.
+            # Production settings refuse to start without these; DUMP's request uses this host.
             "ALLOWED_HOSTS": "localhost",
         }
+        env.pop("SECURE_HSTS_SECONDS", None)
+        if hsts is not None:
+            env["SECURE_HSTS_SECONDS"] = hsts
         return subprocess.run(
             [sys.executable, *args], cwd=self.ROOT, env=env, capture_output=True, text=True
         )
 
-    def _settings(self, debug, toolbar="as-installed", module="config.settings"):
-        result = self._run(["-c", self.DUMP, toolbar], debug, module)
+    def _settings(self, debug, toolbar="as-installed", module="config.settings", hsts="3600"):
+        result = self._run(["-c", self.DUMP, toolbar], debug, module, hsts)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout.strip().splitlines()[-1])
 
@@ -78,14 +81,30 @@ print(json.dumps({
         dumped = self._settings(debug=False)
         self.assertFalse(self._uses_toolbar(dumped))
         self.assertFalse(dumped["debug_url"])
-        self.assertEqual(dumped["hsts_header"], "max-age=86400; includeSubDomains")
-        self.assertEqual(dumped["hsts_seconds"], 86400)
+        self.assertEqual(dumped["hsts_header"], "max-age=3600; includeSubDomains")
+        self.assertEqual(dumped["hsts_seconds"], 3600)
         self.assertIs(dumped["hsts_subdomains"], True)
         self.assertIs(dumped["hsts_preload"], False)
 
+    # Issue #451: Render and the VPS each set their own seconds.
+    def test_hsts_seconds_follow_the_environment(self):
+        dumped = self._settings(debug=False, hsts="86400")
+        self.assertEqual(dumped["hsts_header"], "max-age=86400; includeSubDomains")
+        self.assertEqual(dumped["hsts_seconds"], 86400)
+
+    # Issue #451: a forgotten variable stops the site instead of guessing a value.
+    def test_production_requires_hsts_seconds(self):
+        # AllowedHostsTests.LOAD stubs out dotenv, so a local .env cannot fill the variable in.
+        result = self._run(["-c", AllowedHostsTests.LOAD], debug=False, hsts=None)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        error = json.loads(result.stdout.strip().splitlines()[-1])["error"]
+        self.assertIn("缺少 SECURE_HSTS_SECONDS 環境變數", error)
+        self.assertIn("部署平台", error)
+
     # 4, 7
     def test_debug_without_dev_packages_still_works(self):
-        dumped = self._settings(debug=True, toolbar="without-toolbar")
+        # Issue #451: development needs no SECURE_HSTS_SECONDS.
+        dumped = self._settings(debug=True, toolbar="without-toolbar", hsts=None)
         self.assertFalse(self._uses_toolbar(dumped))
         self.assertFalse(dumped["debug_url"])
         self.assertIsNone(dumped["hsts_header"])
@@ -181,6 +200,8 @@ else:
             "DEBUG": "True" if debug else "False",
             # A throwaway key for this process only; never written anywhere.
             "SECRET_KEY": get_random_secret_key(),
+            # Production settings refuse to start without it.
+            "SECURE_HSTS_SECONDS": "3600",
         }
         env.pop("ALLOWED_HOSTS", None)
         if hosts is not None:

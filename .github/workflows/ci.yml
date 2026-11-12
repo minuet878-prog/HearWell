@@ -62,8 +62,9 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           DEBUG: "False"
-          # Same value as Render; production settings refuse to start without it.
-          ALLOWED_HOSTS: hearwell.onrender.com
+          # Same as the production site; production settings refuse to start without them.
+          ALLOWED_HOSTS: tingpal.tw
+          SECURE_HSTS_SECONDS: "3600"
         run: |
           python -m venv /tmp/prod
           /tmp/prod/bin/pip install -r requirements.txt
