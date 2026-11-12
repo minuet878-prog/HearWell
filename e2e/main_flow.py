@@ -6716,13 +6716,16 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 {"backgroundColor": self.BRAND_SOFT, "borderTopColor": self.PRIMARY},
             )
 
-    # D1: an open box dropdown or report fold has a thick blue edge on its left and its title bar
-    # stays light blue; closed again, it is as before. A line dropdown gets neither.
+    # D1: an open box dropdown has a thick blue edge on its left and its title bar stays light
+    # blue; closed again, it is as before. A line dropdown gets neither. The report's folds are
+    # list rows since #471, with almost no inner space, so the edge ran over their words and
+    # pictures; the owner had it taken off them (2026-11-12, no side bars, ADR 0043): their title
+    # bar alone stays light blue.
     def test_open_dropdowns_get_a_blue_edge_and_keep_their_bar_tinted(self):
         self.submission(self.hhie_s, [2] * 10)
         self.open()
 
-        def check(name, path, fold, edges):
+        def check(name, path, fold, edges, edge=True):
             with self.subTest(name):
                 if path:
                     self.page.goto(f"{self.live_server_url}{path}")
@@ -6739,7 +6742,9 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 self.assertEqual(summary.bounding_box(), place)
                 self.assertEqual(self.style(summary, "backgroundColor"), self.BRAND_SOFT)
                 for part in parts:
-                    self.assertEqual(self.style(part, "backgroundImage"), self.OPEN_EDGE)
+                    self.assertEqual(
+                        self.style(part, "backgroundImage"), self.OPEN_EDGE if edge else "none"
+                    )
                 summary.click()
                 self.page.mouse.move(0, 0)
                 expect(details).not_to_have_attribute("open", "")
@@ -6747,7 +6752,13 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 self.assertEqual(self.style(summary, "backgroundColor"), bar)
 
         with self.saving_artifacts():
-            check("report fold", "/report", "details.report-fold", ("> summary", "> summary + *"))
+            check(
+                "report fold",
+                "/report",
+                "details.report-fold",
+                ("> summary", "> summary + *"),
+                edge=False,
+            )
             # #471: add_to_home's phones became list rows that open (mockup #470), so the box
             # checked is the report's answers, inside its open fold.
             self.main().locator("details.report-fold > summary").first.click()

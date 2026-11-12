@@ -2459,12 +2459,13 @@
     font-weight: 400;
   }
 
-  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue and gains a
-     thick blue edge on its left, so a reader deep in its content still sees which one they are
-     in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
-     0024); a line dropdown stays as it is. */
-  .dropdown-box[open], .dropdown-box[open] > summary,
-  .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
+  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue, and a box
+     dropdown gains a thick blue edge on its left, so a reader deep in its content still sees
+     which one they are in. Painted on the background, so nothing inside moves; a line dropdown
+     stays as it is. The report's folds are list rows since #471, with almost no inner space, so
+     the edge ran over their words and pictures: the owner had it taken off them (2026-11-12, no
+     side bars, ADR 0043). */
+  .dropdown-box[open], .dropdown-box[open] > summary {
     background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
   }
 
