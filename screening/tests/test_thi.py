@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Questionnaire, Submission
-from screening.tests import test_layout
+from screening.tests import test_layout, test_result_next_steps
 from screening.tests.helpers import consented_user
 
 
@@ -232,7 +232,7 @@ class ThiScoringTests(ThiTestCase):
         submission, page = self._web_result(scores)
         self.assertContains(page, f'<div class="result-banner result-banner-{color}">')
         self.assertContains(page, f'aria-describedby="result-score">{text}</h2>')
-        self.assertContains(page, f"總分 {total} 分（滿分 100）")
+        self.assertContains(page, f'總分 <span class="result-number">{total}</span> 分（滿分 100）')
         record = self._api_result(submission)
         self.assertEqual(record["scores"]["total"], total)
         self.assertEqual(record["level"], {"code": code, "text": text})
@@ -386,17 +386,17 @@ class ThiResultAdviceTests(ThiTestCase):
         for total, expected in STEPS.items():
             with self.subTest(total=total):
                 main = self._main(total)
-                start = main.index('<ol class="next-steps')
-                items = main[start : main.index("</ol>", start)].split("<li>")[1:]
-                self.assertEqual(len(items), len(expected))
-                for item, (text, action) in zip(items, expected, strict=True):
-                    self.assertIn(f"<span>{text}</span>", item)
+                # Step 1 under the level, the rest behind 看完整說明 (#461).
+                steps = test_result_next_steps.ResultNextStepsTests._steps(self, main)
+                self.assertEqual(len(steps), len(expected))
+                for (words, links), (text, action) in zip(steps, expected, strict=True):
+                    self.assertEqual(words, text)
                     if action is None:
-                        self.assertNotIn("<a ", item)
+                        self.assertFalse(links)
                     else:
                         label, url = action
-                        self.assertIn(f'href="{url}">{label}</a>', item)
-                self.assertIn(f"<span>{RETAKE[0]}</span>", items[-1])
+                        self.assertIn(f'href="{url}">{label}</a>', links)
+                self.assertEqual(steps[-1][0], RETAKE[0])
                 self.assertNotIn("半年後", main)
                 self.assertNotIn("首頁會提醒您", main)
 

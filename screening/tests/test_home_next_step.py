@@ -1,6 +1,6 @@
 """#261 (spec #257): the reason for every 目前這一站, on the home page's 現在這一步 card since
-#459 (ADR 0042), and the records the result pages' 建議您下一步 tests (test_result_next_step)
-set up. The rest of the home page is test_home_journey's."""
+#459 (ADR 0042) and on a result page's 建議您下一步. The rest of the home page is
+test_home_journey's."""
 
 import re
 from dataclasses import replace
@@ -17,18 +17,12 @@ from screening.models import (
     Category,
     Question,
     Questionnaire,
-    ReportShare,
     Submission,
 )
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide_summary
 from screening.tests.helpers import consented_user
 
-# The 「因為」 sentences of spec #257's table (★ ones are drafts the owner settles on review).
-NO_AUDIOGRAM = "因為：您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。"
-TOO_LITTLE_DATA = "因為：這張聽力圖缺少頻率，資料不足，無法判斷。"
-SHARE = "因為：讓家人也知道您的聽力狀況，家人不用登入就能看。"
-REPORT = "因為：看診時把報告帶給醫師，一張紙看完所有紀錄。"
 # Spec #291's drafts, one for each stop of the nine-stop route but form 25 (#296); #363
 # (spec #354) made four of them say why: the drafts the owner settles on review.
 BEFORE_YOU_GO = "因為：第一次去找聽力師前先準備好，看診時比較不會漏問。"
@@ -39,67 +33,11 @@ TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之
 AFTER_FITTING = "因為：記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
 PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼發。"
 
-NEXT_STEP = re.compile(
-    r'<div class="next-step">\s*<p class="next-step-label">([^<]*)</p>.*?'
-    r'<h2 class="next-step-title">([^<]*)</h2>\s*</div>\s*'
-    r'<p class="next-step-because">([^<]*)</p>\s*'
-    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
-    re.S,
+# A result page's 建議您下一步 (#461): title, button link and text.
+RESULT_NEXT_STEP = re.compile(
+    r'<h2 class="result-next-title">([^<]*)</h2>\s*'
+    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>',
 )
-
-
-class HomeNextStepTests(TestCase):
-    """Records that make a 建議您下一步, for test_result_next_step and the tests below."""
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
-        cls.questions = Question.objects.bulk_create(
-            Question(
-                questionnaire=cls.hhie_s,
-                question_text=f"HHIE-S題{i}",
-                question_number=i,
-                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
-            )
-            for i in range(1, 11)
-        )
-
-    def setUp(self):
-        self.user = consented_user(username="next_step_user")
-        self.client.force_login(self.user)
-
-    make = test_guide_summary.GuideSummaryTests.make
-
-    def answer(self, wearing=False):
-        submission = Submission.objects.create(
-            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=wearing
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=submission, question=question, score=0) for question in self.questions
-        )
-
-    def next_step(self, page):
-        """(title, because, button href, button text) of a page's 建議您下一步 box."""
-        found = NEXT_STEP.findall(page)
-        self.assertEqual(len(found), 1, "not one 建議您下一步 card")
-        label, *rest = found[0]
-        self.assertEqual(label, "建議您下一步")
-        return tuple(rest)
-
-    def suggest(self, suggestion):
-        """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
-        self.answer()
-        if suggestion == "記錄醫院的聽力圖":
-            return
-        if suggestion == "修改這張聽力圖":
-            audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
-            audiogram.points.filter(ear="left", frequency=4000).delete()
-        elif suggestion == "了解助聽器選配與補助":
-            self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
-        else:
-            self.make((20, 20, 20, 20), (20, 20, 20, 20))
-            if suggestion == "印聽力報告給醫師看":
-                ReportShare.objects.create(user=self.user, revoked_at=timezone.now())
 
 
 class EveryStopNextStepTests(TestCase):
@@ -119,11 +57,28 @@ class EveryStopNextStepTests(TestCase):
         self.enterContext(patch("django.utils.timezone.localdate", localdate))
         self.answer()
 
-    setUpTestData = classmethod(HomeNextStepTests.setUpTestData.__func__)
-    answer = HomeNextStepTests.answer
-    next_step = HomeNextStepTests.next_step
+    @classmethod
+    def setUpTestData(cls):
+        cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
+        cls.questions = Question.objects.bulk_create(
+            Question(
+                questionnaire=cls.hhie_s,
+                question_text=f"HHIE-S題{i}",
+                question_number=i,
+                category=Category.EMOTIONAL if i <= 5 else Category.SOCIAL,
+            )
+            for i in range(1, 11)
+        )
 
-    make = HomeNextStepTests.make
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def answer(self):
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=0) for question in self.questions
+        )
 
     def at(self, stop):
         def state_at(user, today):
@@ -150,30 +105,22 @@ class EveryStopNextStepTests(TestCase):
                     content,
                 )
 
-    def test_each_reworded_stop_says_why_on_a_result_page_too(self):
-        # #363 (spec #354): the reasons that now say why, on a result page's box. Since #455
-        # (ADR 0042) a result page suggests the 照顧旅程's 現在這一步: here step 3 (an
-        # assessment suggested), the stop with the route's own button. 等待核定公文 has no
-        # button on the route, so the page suggests sharing instead (spec #453 acceptance 22);
-        # 等待補助發放 is never step 3's.
+    def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):
+        # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0042) a
+        # result page suggests the 照顧旅程's 現在這一步: here step 3 (an assessment suggested),
+        # the stop with the route's own button. 等待核定公文 has no button on the route, so the
+        # page suggests sharing instead (spec #453 acceptance 22); 等待補助發放 is never step 3's.
+        # #461 (the #460 mockup R1): the result page's box has no 「因為」.
         submission = Submission.objects.get(user=self.user)
         self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
         for stop, expected in (
-            (
-                "before-you-go",
-                ("去找聽力師之前", BEFORE_YOU_GO, "/guide/before-you-go", "去之前要準備什麼"),
-            ),
+            ("before-you-go", ("去找聽力師之前", "/guide/before-you-go", "去之前要準備什麼")),
             (
                 "after-fitting",
-                (
-                    "配戴助聽器之後",
-                    AFTER_FITTING,
-                    "/guide/after-fitting#record-title",
-                    "記錄配戴的效果",
-                ),
+                ("配戴助聽器之後", "/guide/after-fitting#record-title", "記錄配戴的效果"),
             ),
-            ("notice", ("分享報告給家人", SHARE, "/share", "去分享")),
+            ("notice", ("分享報告給家人", "/share", "去分享")),
         ):
             with self.subTest(stop=stop), self.at(stop):
                 content = self.client.get(reverse("result", args=[submission.pk])).content
-                self.assertEqual(self.next_step(content.decode()), expected)
+                self.assertEqual(RESULT_NEXT_STEP.findall(content.decode()), [expected])

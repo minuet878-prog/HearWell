@@ -1,4 +1,5 @@
-"""Result pages tidy-up: one header, one closing row and one dropdown style on every result page."""
+"""Result pages tidy-up: one header and one dropdown style on every result page (#461: the closing
+row became the list rows of test_result_pages_redesign)."""
 
 import re
 from io import StringIO
@@ -9,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, NormGroup, Questionnaire, Submission
-from screening.tests.helpers import action_cards, consented_user
+from screening.tests.helpers import consented_user
 
 # A valid score for every item of each questionnaire, and what its header names.
 QUESTIONNAIRES = {
@@ -20,7 +21,6 @@ QUESTIONNAIRES = {
     "ioi-ha": (3, "助聽器使用成效", "IOI-HA"),
     "sadl": (4, "助聽器滿意度", "SADL"),
 }
-TREND_CHART = ("hhie-s", "thi")  # HHIA-S has no trend chart
 ALWAYS_AIDED = ("ioi-ha", "sadl")
 ENDS = "<span>較差</span><span>較好</span>"
 
@@ -77,50 +77,15 @@ class ResultPagesTests(TestCase):
         self.assertContains(response, "<title>THI 結果\uff5c聽伴</title>", html=True)
         self.assertNotContains(response, "篩檢結果")
 
-    def test_every_result_page_ends_with_records_report_and_home(self):
+    def test_every_dropdown_on_a_result_page_is_a_list_row_or_a_line_inside_it(self):
+        # #461: 看完整說明 is a list row; the folds inside it are lines, so a box never sits in a
+        # box (dropdowns tidy-up).
         for code in QUESTIONNAIRES:
             with self.subTest(code=code):
-                main = self._main(code)
-                row = re.search(r'<div class="result-actions[^"]*">(.*?)</div>', main, re.S)
-                records = "看我的紀錄與趨勢" if code in TREND_CHART else "看我的紀錄"
-                self.assertEqual(row.group(1).count("<a "), 3)
-                self.assertEqual(
-                    action_cards(row.group(1)),
-                    [
-                        (
-                            f"{reverse('my_hearing')}?questionnaire={code}",
-                            records,
-                            "每一次的結果都在這裡",
-                        ),
-                        (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"),
-                        (reverse("index"), "回首頁", "選其他問卷或功能"),
-                    ],
-                )
-                self.assertEqual(main.count('class="result-actions'), 1)
-
-    def test_every_dropdown_on_a_result_page_is_the_framed_kind(self):
-        # The site-wide dropdown box (.dropdown-box), not a bare ▶ line of small text.
-        for code in QUESTIONNAIRES:
-            with self.subTest(code=code):
-                for details in re.findall(r"<details[^>]*>", self._main(code)):
-                    self.assertIn("dropdown-box", details)
-
-    def test_ssq12_says_higher_is_better_once(self):
-        # 「比上一次」's line already says it, so the line under it does not repeat it.
-        earlier = self.submissions["ssq12-tw"]
-        Submission.objects.filter(pk=earlier.pk).update(
-            created_at=timezone.now() - timezone.timedelta(days=1)
-        )
-        newer = Submission.objects.create(
-            user=self.user, questionnaire=earlier.questionnaire, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=newer, question=question, score=8)
-            for question in newer.questionnaire.questions.all()
-        )
-        main = self.client.get(reverse("result", args=[newer.pk])).content.decode()
-        self.assertIn("（分數越高越好）", main)
-        self.assertNotIn("分數越高，代表您回報的聆聽能力越好。", main)
+                tags = re.findall(r"<details[^>]*>", self._main(code))
+                self.assertEqual(tags[0], '<details class="result-details">')
+                for details in tags[1:]:
+                    self.assertIn("dropdown-line", details)
 
     def test_ssq12_without_an_earlier_record_still_says_which_way_is_better(self):
         self.assertIn("分數越高，代表您回報的聆聽能力越好。", self._main("ssq12-tw"))
@@ -138,7 +103,7 @@ class ResultPagesTests(TestCase):
             ['<div class="ioi-scale-ends" aria-hidden="true">' + ENDS + "</div>"] * 7,
         )
 
-    def test_the_page_s_own_comparison_comes_before_the_closing_row(self):
+    def test_the_page_s_own_comparison_is_a_row_after_the_others(self):
         unaided = self.submissions["hhia-s"]
         aided = Submission.objects.create(
             user=self.user, questionnaire=unaided.questionnaire, wearing_hearing_aid=True
@@ -147,5 +112,16 @@ class ResultPagesTests(TestCase):
             Answer(submission=aided, question=question, score=0)
             for question in unaided.questionnaire.questions.all()
         )
-        main = self._main("hhia-s")
-        self.assertLess(main.index("比較戴與不戴助聽器</a>"), main.index('class="result-actions'))
+        cards = action_cards_titles(self._main("hhia-s"))
+        # The optional SSQ12-TW row (unaided HHIA-S) comes last.
+        self.assertEqual(
+            cards[:4], ["分享給家人", "印聽力報告給醫師看", "看我的紀錄", "比較戴與不戴助聽器"]
+        )
+
+
+def action_cards_titles(html):
+    return re.findall(
+        r'<a class="link-card action-card" href="[^"]*">.*?<span class="link-card-title">([^<]*)',
+        html,
+        re.S,
+    )

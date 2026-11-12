@@ -230,7 +230,7 @@ class HistoryScorePathTests(TestCase):
         result = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(history, "總分：26")
         self.assertContains(history, "顯著影響")
-        self.assertContains(result, "總分 26 分")
+        self.assertContains(result, '總分 <span class="result-number">26</span> 分')
         self.assertContains(result, "情緒分數：20")
         self.assertContains(result, "社交分數：6")
         self.assertContains(result, "顯著影響")

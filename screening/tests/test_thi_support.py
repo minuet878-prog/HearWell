@@ -29,15 +29,15 @@ class ThiSupportResultTests(test_thi.ThiTestCase):
 
     def test_item_5_often_shows_the_support_message_under_a_slight_level(self):
         main = self._main(only_often(5))
-        self.assertIn("總分 4 分（滿分 100）", main)
+        self.assertIn('總分 <span class="result-number">4</span> 分（滿分 100）', main)
         self.assertIn('aria-describedby="result-score">無障礙或輕微障礙</h2>', main)
         self.assertIn(SUPPORT, main)
-        # Under the level: after the banner, before the score bar and the steps.
-        banner_end = main.index('<div id="result-score"')
+        # Under the level: after the banner, before the 建議下一步 and the folded score bar.
+        banner_end = main.index('<p id="result-score"')
         support = main.index(SUPPORT)
         self.assertLess(banner_end, support)
+        self.assertLess(support, main.index('<div class="result-next">'))
         self.assertLess(support, main.index('<div class="score-bar"'))
-        self.assertLess(support, main.index('<h2 class="h4 mt-6">接下來建議您</h2>'))
 
     def test_item_11_or_item_23_alone_often_shows_the_support_message(self):
         for number in (11, 23):

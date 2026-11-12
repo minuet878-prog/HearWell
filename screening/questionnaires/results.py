@@ -12,7 +12,8 @@ import the definitions.
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
 
-from django.db.models import Prefetch, prefetch_related_objects
+from django.db.models import Prefetch, Q, prefetch_related_objects
+from django.utils import timezone
 
 
 class Result:
@@ -29,6 +30,8 @@ class Result:
     norm_group = None  # the norm group's name
     norm_summary = None  # the record against its norm group, for the report
     not_applicable_choice = None  # the download's choice for an answer without a score
+    # The result page's 與上次比較 (#461): {"text", "level_change"}; graded only.
+    since_last = None
 
     # The record's row of 我的紀錄 (#409) and its result page; page_context() is the page's data
     # of this type, the view adding what every page has.
@@ -87,10 +90,52 @@ class GradedResult(Result):
 
         return classify(self.total, self.submission.questionnaire.code)
 
+    @cached_property
+    def since_last(self):
+        # Against this questionnaire's record just before this one worn the same way, even when
+        # a newer one exists (spec #453 acceptance 26; the owner on #461: worn against not worn
+        # is the wearing comparison's). The same rule as 我的紀錄's previous_same_wearing: no
+        # hearing aid status, no comparison. None also for the first, or when either cannot be
+        # graded.
+        from screening.models import Submission
+        from screening.scoring import UNKNOWN, level_change_text, result_since_last_text
+
+        submission = self.submission
+        if submission.wearing_hearing_aid is None:
+            return None
+        previous = (
+            Submission.objects.filter(
+                user_id=submission.user_id,
+                questionnaire_id=submission.questionnaire_id,
+                wearing_hearing_aid=submission.wearing_hearing_aid,
+            )
+            .filter(
+                Q(created_at__lt=submission.created_at)
+                | Q(created_at=submission.created_at, id__lt=submission.id)
+            )
+            .select_related("questionnaire")
+            .with_scores()
+            .first()
+        )
+        if previous is None:
+            return None
+        level, previous_level = self.level, previous.result.level
+        if UNKNOWN["level"] in (level["level"], previous_level["level"]):
+            return None
+        day = timezone.localdate(previous.created_at)
+        previous_total = previous.result.total
+        changed = level["level"] != previous_level["level"]
+        return {
+            "text": result_since_last_text(day, previous_total, self.total - previous_total),
+            "level_change": (
+                level_change_text(previous_level["text"], level["text"]) if changed else None
+            ),
+        }
+
     def page_context(self):
         from screening.models import Questionnaire
         from screening.questionnaires import hhia_s, hhie_s, ssq12_tw
-        from screening.scoring import UNKNOWN, get_advice, max_score
+        from screening.scoring import get_advice, max_score
 
         submission = self.submission
         definition = submission.questionnaire.definition
@@ -104,8 +149,6 @@ class GradedResult(Result):
             "score_bar": score_bar(definition, self.total, level),
             "next_steps": definition.next_steps.get(level, ()),
             "advice": get_advice(level, code),
-            # #363: 「無法判讀」 has nothing else saying why, so its advice is not folded away.
-            "advice_open": level == UNKNOWN["level"],
             "support_message": definition.support(
                 {answer.question.question_number: answer.score for answer in answers}
             ),

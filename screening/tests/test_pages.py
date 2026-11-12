@@ -26,7 +26,7 @@ from screening.models import (
 from screening.questionnaires import hhie_s
 from screening.scoring import classify, get_advice
 from screening.tests import test_answering, test_continue_notice, test_history
-from screening.tests.helpers import action_cards, consented_user, fake_definition, register
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class CopyTests(TestCase):
@@ -659,8 +659,9 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
-        # Ticket #157 (ADR 0010): numbered next steps, then the full advice, then the
-        # collapsed score detail, with the secondary buttons last.
+        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1): the level block, step 1, the
+        # 建議下一步, then 看完整說明 with the other steps, the folded full advice and score
+        # detail, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
@@ -669,30 +670,35 @@ class PageFlowTests(TestCase):
             main,
             (
                 f"{day} 作答",
+                '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
-                "總分 12 分（滿分 40）",
-                "接下來建議您",
                 steps[0]["text"],
+                "建議您下一步",
+                "<span>看完整說明</span>",
                 steps[1]["text"],
                 steps[2]["text"],
-                # Text-heavy pages tidy-up: the full advice waits behind its own dropdown.
                 "<summary>看完整建議</summary>",
                 get_advice("mild_to_moderate"),
                 "分數細節與作答明細",
                 "情緒分數：12",
                 "社交分數：0",
                 "助聽器：未記錄",
+                "分享給家人",
+                "印聽力報告給醫師看",
                 "看我的紀錄與趨勢",
-                "回首頁",
             ),
         )
 
     def test_result_next_step_links(self):
         main = self._result(self._submit([0] * 10))
         records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
-        cards = [card[:2] for card in action_cards(main)]
-        self.assertIn((records, "看我的紀錄與趨勢"), cards)
-        self.assertIn((reverse("index"), "回首頁"), cards)
+        self.assertRegex(
+            main,
+            rf'(?s)<a class="link-card action-card" href="{re.escape(records)}">.*?'
+            r'<span class="link-card-title">看我的紀錄與趨勢</span>',
+        )
+        # 回首頁 went with the closing row (#461): the tab bar has 首頁.
+        self.assertNotIn("回首頁", main)
 
     def test_result_has_no_username_or_halfwidth_colon(self):
         main = self._result(self._submit([2] * 10))
@@ -738,7 +744,7 @@ class PageFlowTests(TestCase):
 
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))
-        self.assertIn("總分 0 分（滿分 40）", main)
+        self.assertIn('總分 <span class="result-number">0</span> 分（滿分 40）', main)
         self.assertIn("無／極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
@@ -747,7 +753,7 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn("總分 20 分", main)
+        self.assertIn('總分 <span class="result-number">20</span> 分', main)
         self.assertNotIn("滿分", main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
@@ -958,8 +964,8 @@ class PwaTests(TestCase):
                 steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
                 self.assertEqual(steps, [4, 4])
 
-    # 23, as changed by the footer redesign: the guide is linked from the home page's "您還可以"
-    # (test_home) and the account page, no longer from the footer.
+    # 23, as changed by the footer redesign: the guide is linked from the home page
+    # (test_home_journey) and the account page, no longer from the footer.
     def test_footer_no_longer_links_to_guide(self):
         content = self.client.get(reverse("index")).content.decode()
         footer = content.split('<footer class="site-footer"', 1)[1]

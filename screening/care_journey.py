@@ -49,7 +49,7 @@ class HomeCard:
 
 @dataclass(frozen=True)
 class NextStep:
-    """A result page's 建議下一步 (next_step.html)."""
+    """A result page's 建議下一步 (result_next.html)."""
 
     card: HomeCard
     because: str
