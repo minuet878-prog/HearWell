@@ -5995,16 +5995,16 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(stroke, self.PRIMARY)
             self.assertGreaterEqual(self.lowest_contrast(stroke, self.BRAND_SOFT), 3)
 
-    # W1 (ADR 0041, its frosted glass left to #457): on a phone the tab bar is a white capsule
-    # floating over the foot of the screen; the current tab is a pale blue pill, its words bold
-    # blue, the others grey.
+    # W1 (ADR 0041; its frosted glass, #457, is TabBarHidesOnScrollT457Test's): on a phone the
+    # tab bar is a capsule of 88% white floating over the foot of the screen; the current tab is
+    # a pale blue pill, its words bold blue, the others grey.
     def test_phone_tab_bar_is_a_capsule_with_the_current_tab_in_a_pill(self):
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             nav = self.page.get_by_role("navigation", name="主要導覽")
             capsule = nav.locator("ul")
-            self.assertEqual(self.style(capsule, "backgroundColor"), self.WHITE)
+            self.assertEqual(self.style(capsule, "backgroundColor"), "rgba(255, 255, 255, 0.88)")
             self.assertNotEqual(self.style(capsule, "boxShadow"), "none")
             self.assertEqual(self.style(nav, "backgroundColor"), "rgba(0, 0, 0, 0)")
             box = capsule.bounding_box()
