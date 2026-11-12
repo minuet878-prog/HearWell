@@ -84,7 +84,8 @@ class QuestionLogAdmin(admin.ModelAdmin):
         return False
 
     def changelist_view(self, request, extra_context=None):
-        # #401: there is no scheduler, so opening the list clears those past 90 days first.
+        # #401: besides the VPS's daily 02:30 run (#452), opening the list clears those past
+        # 90 days first.
         purge_question_log()
         return super().changelist_view(request, extra_context)
 

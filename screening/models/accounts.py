@@ -11,10 +11,13 @@ from screening.models.submissions import Answer
 # or who receives it) raises CONSENT_VERSION, so everyone agrees again; a minor fix only
 # moves PRIVACY_UPDATED_ON.
 # 2: the 助聽器與補助資料 (#286, spec #284 Q9). 3: the operator's name became 聽伴 (ADR 0039).
-CONSENT_VERSION = 3
+# 4: the site moved to a Vultr VPS in Tokyo, so the data's country and who stores it changed,
+# and the backups keep deleted data up to 10 days (#452, ADR 0042).
+CONSENT_VERSION = 4
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
-# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014).
-PRIVACY_UPDATED_ON = date(2026, 11, 6)
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); version 4 moved
+# it with the version (#452).
+PRIVACY_UPDATED_ON = date(2026, 11, 12)
 
 
 class User(AbstractUser):

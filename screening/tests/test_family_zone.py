@@ -567,10 +567,23 @@ class ReviewedPagesTests(SimpleTestCase):
             ("<p>想算出可以做的日期？",),
             "6fcf398c884e87c620884ec6f5ada0bbe08fa004ef266b71c60da07c46c25414",
         ),
+        # #452 (spec #450) rewrote where the data is kept and who keeps it; without those lines
+        # the page hashes the same before and after #452, and the owner reviews them at acceptance.
         (
             "privacy.html",
-            ('<p class="tip-box">本站只用登入',),
-            "28ec76b9781a82e8c12e70b54b9fe369c88e8d0a8fcd18be0e4e5162cba17723",
+            (
+                '<p class="tip-box">本站只用登入',
+                "<li>網站主機和資料庫：Vultr",
+                "<li>所以您的資料會傳到日本存放",
+                "<li>另一份加密的備份",
+                "<li>網站主機會留下連線紀錄",
+                "<li>您的資料會保存到您刪除帳號",
+                "<li>刪除的資料（包括刪除的帳號",
+                "<li>Vultr（網站主機與資料庫）",
+            ),
+            # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
+            # list; the visible words are the same as main's apart from that list's title.
+            "17467e7e5a55fcc7356b4f4c930b87314054faf270f5800c5b1cfa97f2de536e",
         ),
     )
 
