@@ -3,6 +3,9 @@
 
 {% block title %}{{ questionnaire.questionnaire_name }} 作答｜聽伴{% endblock %}
 
+{# #462: no tab bar on a phone while answering, so 下一題 stays in the first screen; 聽伴 at the top left leads out, and the answers wait in this browser. #}
+{% block nav_class %} site-nav-tucked{% endblock %}
+
 {% block extra_head %}
 {% if use_react %}
 <script type="module" src="{% static 'screening/frontend/answer.js' %}"></script>
@@ -31,11 +34,17 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 {% endif %}
 <div>
     <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
-    <p>{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
-    {# React reads the intro from here and shows it per step (#153); without JS it just stays. #}
+    <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
+    {# React reads the intro from here and folds it under 這份問卷在問什麼？ (#153, #463), the source with it; without JS it just stays. #}
     <div id="answer-intro">
     {% include questionnaire.definition.intro_template %}
+    {% if is_ioi_ha %}{% include "screening/ioi_ha_source.html" %}{% endif %}
+    {% if questionnaire.definition.source_template %}{% include questionnaire.definition.source_template %}{% endif %}
     </div>
+    {% if is_ioi_ha %}
+    {# IOI-HA's norm basis for React's item 1, shown before answering (ADR 0002); a template, so never shown by itself. #}
+    <template id="answer-norm">{% include "screening/ioi_ha_norm_basis.html" %}</template>
+    {% endif %}
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="text-xl/normal font-bold loading-message" role="status"></p>
@@ -88,6 +97,4 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 
     </form>
 </div>
-{% if is_ioi_ha %}{% include "screening/ioi_ha_source.html" %}{% endif %}
-{% if questionnaire.definition.source_template %}{% include questionnaire.definition.source_template %}{% endif %}
 {% endblock %}
