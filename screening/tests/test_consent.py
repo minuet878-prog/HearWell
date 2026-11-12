@@ -56,11 +56,12 @@ class PrivacyPageTests(TestCase):
     def test_lists_only_services_the_site_still_uses(self):
         # #181, ADR 0014: cdnjs went with Bootstrap and the font comes from our own host, so
         # neither is listed; one fewer service was a minor fix that kept version 1 (#286 then
-        # raised it to 2 for the 助聽器與補助資料).
+        # raised it to 2 for the 助聽器與補助資料). #452: Render and Neon went with the move to
+        # Vultr.
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "cdnjs")
         self.assertNotContains(response, "Google")
-        for service in ("Render", "Neon", "Sentry"):
+        for service in ("Vultr", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
 
@@ -73,7 +74,7 @@ class PrivacyPageTests(TestCase):
         # site footer adds one more on every page.
         notice = response.content.decode().split('<footer class="site-footer"')[0]
         self.assertEqual(notice.count('href="mailto:hearwellweb@gmail.com"'), 3)
-        self.assertContains(response, "美國俄亥俄州", count=2)
+        self.assertContains(response, "日本東京")
 
     def test_it_names_what_error_monitoring_sends(self):
         response = self.client.get(reverse("privacy"))
@@ -167,8 +168,8 @@ class PrivacyHighlightsTests(TestCase):
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 10, 25))
 
     def test_the_new_name_raises_the_version_so_everyone_agrees_again(self):
-        # ADR 0039: who is collecting now reads 聽伴, so version 3.
-        self.assertEqual(models.CONSENT_VERSION, 3)
+        # ADR 0039: who is collecting now reads 聽伴, so version 3 (#452 raised it to 4).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 3)
         user = User.objects.create_user(username="agreed_to_version_2")
         Consent.objects.create(user=user, version=2)
         self.client.force_login(user)
@@ -529,3 +530,65 @@ class PrivacyPageT361Tests(TestCase):
             for _, classes, _ in self._headings()
         }
         self.assertEqual(sizes, {("h4",)})
+
+
+class VpsPrivacyTests(TestCase):
+    """#452 (spec #450 acceptance 7-11, ADR 0042): the notice describes the VPS in Tokyo, the
+    backup on the operator's computer and the 10 days, and asks everyone to agree to version 4."""
+
+    def setUp(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        self.main = content[content.index("<main") : content.index("</main>")]
+
+    def _section(self, start, end):
+        html = self.main[self.main.index(f'id="{start}"') : self.main.index(f'id="{end}"')]
+        return test_layout._text(html)
+
+    def test_where_it_is_kept_names_the_vps_the_backup_and_how_long(self):
+        storage = self._section("storage-title", "recipients-title")
+        for words in (
+            "網站主機和資料庫：Vultr，位於日本東京的機房。",
+            "所以您的資料會傳到日本存放。",
+            "另一份加密的備份存在營運者在台灣的電腦。",
+            "網站主機會留下連線紀錄（包含 IP 位址），用來維持網站運作，保存 14 天後自動刪除。",
+            "刪除後，備份中的資料最多再保留 10 天，之後自動清除。",
+            "刪除帳號、超過 90 天的提問紀錄都一樣。",
+        ):
+            with self.subTest(words=words):
+                self.assertIn(words, storage)
+
+    def test_the_old_hosts_and_6_hours_are_gone(self):
+        response = self.client.get(reverse("privacy"))
+        for words in ("Render", "Neon", "美國俄亥俄州", "6 小時"):
+            with self.subTest(words=words):
+                self.assertNotContains(response, words)
+
+    def test_who_receives_it_lists_vultr_and_sentry_as_before(self):
+        recipients = self._section("recipients-title", "sharing-title")
+        self.assertIn("Vultr（網站主機與資料庫）：存放上面所有資料。", recipients)
+        # Word for word as in version 3, the <strong> included.
+        self.assertIn(
+            "<li>Sentry（錯誤監控，資料存放在歐盟）：網站出錯時，只送出錯誤的種類、在程式的哪個位置、"
+            "網址路徑（不含「?」後面的部分）、時間，以及伺服器的技術資訊（例如程式版本）。"
+            "<strong>不會</strong>送出您的名稱、電子郵件、出生年、IP 位址、密碼、"
+            "作答內容或分數。</li>",
+            self.main,
+        )
+        services = re.findall(r"<li>(\w+)（", self.main[self.main.index('id="recipients-title"') :])
+        self.assertEqual(services[:2], ["Vultr", "Sentry"])
+
+    def test_it_shows_version_4_and_the_new_date(self):
+        self.assertIn("第 4 版，2026/11/12 更新", self.main)
+
+    def test_who_agreed_to_version_3_agrees_again_to_version_4(self):
+        user = User.objects.create_user(username="agreed_to_version_3")
+        Consent.objects.create(user=user, version=3)
+        self.client.force_login(user)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), _consent_url(url))
+        response = self.client.post(reverse("consent"), {"agree": "", "next": url})
+        self.assertRedirects(response, url)
+        versions = (
+            Consent.objects.filter(user=user).order_by("id").values_list("version", flat=True)
+        )
+        self.assertEqual(list(versions), [3, 4])
