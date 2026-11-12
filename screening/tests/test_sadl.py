@@ -202,7 +202,14 @@ class SadlScoringTests(SadlTestCase):
         submission = Submission.objects.get()
         with CaptureQueriesContext(connection) as ctx:
             self.client.get(reverse("result", args=[submission.pk]))
-        reads = [q for q in ctx.captured_queries if '"screening_question"' in q["sql"]]
+        # This record's answers; the 照顧旅程 (#455) reads the home state, every record's score
+        # in one query by user, apart from them.
+        reads = [
+            q
+            for q in ctx.captured_queries
+            if '"screening_question"' in q["sql"]
+            and '"screening_submission"."user_id"' not in q["sql"]
+        ]
         self.assertEqual(len(reads), 1)
 
     def test_each_subscale_shows_the_owner_approved_explanation(self):

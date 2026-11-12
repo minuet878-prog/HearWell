@@ -365,7 +365,11 @@ class WearingComparisonEntryTests(TestCase):
         ssq12 = self.record(self.ssq12, False, 6)
         main = self.main(reverse("result", args=[ssq12.pk]))
         self.assertNotIn("選擇問卷", main)
-        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main)
+        # Without a life-impact record or an age, the 建議下一步 box (#455, the 照顧旅程's step
+        # 1) opens the catalogue: that is not the page's own button.
+        box = re.search(r'<div class="next-step">.*?</a>\s*</div>', main, re.S).group(0)
+        self.assertIn(f'href="{reverse("questionnaire_list")}"', box)
+        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main.replace(box, ""))
 
 
 def preview_text(page):
