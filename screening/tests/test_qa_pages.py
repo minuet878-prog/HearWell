@@ -16,27 +16,28 @@ from screening.tests.helpers import consented_user
 
 REFERRALS = ("my-results", "diagnosis-and-medication", "brands-and-shops", "sudden-hearing-loss")
 SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
-# The family page's 馬上就醫 box, which the assistant's home page pins its urgent answer in.
+# The family page's 馬上就醫 box, which the assistant's home page pins its urgent answer in (since
+# #469 the box is the answer's link).
 URGENT_BOX_PAGES = ("qa_home", "family_guide")
 
 
 def urgent_box(response):
-    """(its classes, what is inside) of the section saying to see a doctor soon."""
+    """(its classes, all of it) of the section, or the link (#469), saying to see a doctor soon."""
     content = response.content.decode()
-    for classes, inside in re.findall(
-        r'<section class="([^"]*)"[^>]*>(.*?)</section>', content, re.S
-    ):
-        if "請盡快" in inside:
-            return classes, inside
+    for box in re.finditer(r'<(section|a) class="([^"]*)"[^>]*>.*?</\1>', content, re.S):
+        if "請盡快" in box.group():
+            return box.group(2), box.group()
     raise AssertionError("no section says to see a doctor soon")
 
 
-# The owner's pick (2026-10-27, B): every question in a list is a white card with an arrow and no
-# icon (ADR 0022); each topic is a white tile, its icon above its name.
+# Every question in a list is a row with the assistant's icon and an arrow (#469, the #468 mockup
+# A; the owner's 2026-10-27 pick had no icon); each topic is a tile, its icon above its name.
 QUESTION_CARD = re.compile(
-    r'<a class="link-card" href="/qa/([^"/#]+)">\s*<span class="link-card-body">'
-    r'<span class="link-card-title">([^<]+)</span></span>\s*'
-    r'<span class="link-card-arrow" aria-hidden="true">›</span>\s*</a>'  # noqa: RUF001
+    r'<a class="link-card action-card" href="/qa/([^"/#]+)">\s*'
+    r'<span class="action-card-icon" aria-hidden="true" data-icon="question">.*?</span>\s*'
+    r'<span class="link-card-body"><span class="link-card-title">([^<]+)</span></span>\s*'
+    r'<span class="link-card-arrow" aria-hidden="true">›</span>\s*</a>',  # noqa: RUF001
+    re.S,
 )
 TOPIC_TILE = re.compile(
     r'<a class="link-card qa-topic" href="/qa/topic/([^"]+)">\s*'
@@ -93,7 +94,7 @@ class QaHomeTests(TestCase):
         self.assertEqual(places, sorted(places))
 
     def test_the_urgent_answer_sits_in_the_family_page_urgent_box(self):
-        # The owner's call (2026-10-27): the family page's 馬上就醫 look, blue, not red (ADR 0007).
+        # The owner's call (2026-10-27): the family page's 馬上就醫 look, red since ADR 0041.
         boxes = {name: urgent_box(self.client.get(reverse(name))) for name in URGENT_BOX_PAGES}
         for name, (classes, _) in boxes.items():
             with self.subTest(page=name):
@@ -157,7 +158,7 @@ class QaLookTests(TestCase):
         self.assertIn(">依主題找</h2>", main)
         self.assertEqual(topic_tiles(main), TOPIC_TILES)
 
-    def test_popular_questions_are_white_cards_without_icons(self):
+    def test_popular_questions_are_rows_with_the_assistant_icon(self):
         main = self.main(reverse("qa_home"))
         popular = main[main.index(">大家常問</h2>") : main.index("qa-ask-title")]
         self.assertEqual(
@@ -165,16 +166,17 @@ class QaLookTests(TestCase):
             [(code, content.BY_CODE[code].question) for code in content.POPULAR],
         )
 
-    def test_matched_questions_are_white_cards_without_icons(self):
+    def test_matched_questions_are_rows_with_the_assistant_icon(self):
         main = self.main(reverse("qa_search"), {"question": "助聽器補助怎麼申請"})
         cards = question_cards(main)
         self.assertTrue(cards)
         self.assertEqual([code for code, _ in cards], re.findall(r'href="/qa/([^"/#]+)"', main))
 
-    def test_the_ask_form_sits_on_a_pale_blue_block_its_button_full_width(self):
+    # #469: on the white page (ADR 0041), no longer a pale blue block.
+    def test_the_ask_form_sits_on_the_page_its_button_full_width(self):
         main = self.main(reverse("qa_home"))
         block = re.search(
-            r'<section class="qa-ask mt-6" aria-labelledby="qa-ask-title">\s*'
+            r'<section class="mt-6" aria-labelledby="qa-ask-title">\s*'
             r'<h2 id="qa-ask-title" class="h4">找不到？打字問</h2>(.*?)</section>',
             main,
             re.S,
@@ -193,11 +195,12 @@ class QaLookTests(TestCase):
             main[main.index("<article") : main.index("</article>")],
         )
 
-    def test_not_answered_is_a_pale_blue_block_with_a_full_width_outline_button(self):
+    # #469: on the white page (ADR 0041), no longer a pale blue block.
+    def test_not_answered_is_on_the_page_with_a_full_width_outline_button(self):
         main = self.main(reverse("qa_answer", args=["brands-and-shops"]))
         self.assertRegex(
             main,
-            r'<section class="qa-ask mt-6" aria-labelledby="qa-more-title">\s*'
+            r'<section class="mt-6" aria-labelledby="qa-more-title">\s*'
             r'<h2 id="qa-more-title" class="h4">沒回答到您的問題？</h2>\s*'
             rf'<a class="btn btn-outline-primary btn-lg w-full" href="{reverse("qa_home")}">'
             r"回問答小助手首頁</a>\s*</section>",
@@ -222,8 +225,9 @@ class QaAnswerTests(TestCase):
         self.assertIn("小助手不推薦品牌、型號或店家。", text)
         self.assertIn("以上是一般說明，您的情況請以醫師、聽力師為準。", text)
         footer = content[content.index("<footer") : content.index("</footer>")]
-        self.assertIn('<details class="dropdown-box mb-2">', footer)
-        self.assertIn("<summary>資料來源</summary>", footer)
+        # #469: a fold row like a result page's 看完整說明.
+        self.assertIn('<details class="result-details">', footer)
+        self.assertIn("<span>資料來源</span>", footer)
         self.assertIn(f'href="{reverse("guide_chapter", args=["types-and-prices"])}"', footer)
         self.assertIn(f'href="{reverse("guide_chapter", args=["assessment"])}"', footer)
         self.assertIn('<p class="guide-checked">本頁資料查核於 2026/10/27。</p>', footer)
@@ -325,7 +329,7 @@ class QaReferralTests(TestCase):
         types = reverse("guide_chapter", args=["types-and-prices"])
         self.assertIn(f'<a href="{types}">「助聽器的種類與價格」</a>', answer)
         hospitals = f"{reverse('guide_chapter', args=['assessment'])}#hospitals-title"
-        self.assertIn(f'<a href="{hospitals}">「找鑑定醫院」</a>', answer)
+        self.assertIn(f'<a href="{hospitals}">「去哪家醫院鑑定？」</a>', answer)
 
     def test_sudden_hearing_loss_says_to_see_a_doctor_soon(self):
         answer = self.answer("sudden-hearing-loss")

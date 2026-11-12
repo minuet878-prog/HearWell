@@ -1,4 +1,4 @@
-{# 點選看說明 (#428, spec #426), given a PickExplain as pick. The server sends every option with its explanation; pick-explain.js folds the list away and shows the chosen one in the live region. Without JavaScript the list stays. Options are the answer page's (ADR 0028); this block is a 並列區塊, not a white card (ADR 0022). heading: the subheads' level, 3 under /family's section, 2 directly under the h1 of /family/reluctant. #}
+{# 點選看說明 (#428, spec #426), given a PickExplain as pick. The server sends every option with its explanation; pick-explain.js folds the list away and shows the chosen one in the live region. Without JavaScript the list stays. Options are the answer page's (ADR 0028); this block is a 並列區塊, not a white card (ADR 0022). #469 (the #468 mockup): 可以試的說法 and the like are bold labels, not section titles. #}
 <div class="pick-explain mb-4">
 <fieldset data-pick-explain>
     <legend class="font-bold">{{ pick.prompt }}</legend>
@@ -10,13 +10,13 @@
     <ul class="list-unstyled divided-rows mt-4 mb-0" data-pick-explanations>
         {% for option in pick.options %}
         <li><strong class="tint-subhead block">{{ option.label }}</strong>{% if option.urgent %}<p class="mb-0"><strong>{{ option.urgent }}</strong></p>{% endif %}{% if option.explanation %}<p class="mb-0">{{ option.explanation }}</p>{% endif %}{% if option.try_saying %}
-            <h{{ heading }} class="tint-subhead mt-4">可以試的說法</h{{ heading }}>
+            <p class="part-label">可以試的說法</p>
             <ul class="pick-explain-list">{% for words in option.try_saying %}<li>{{ words }}</li>{% endfor %}</ul>{% endif %}{% if option.avoid_saying %}
-            <h{{ heading }} class="tint-subhead mt-4">容易有反效果的說法</h{{ heading }}>
+            <p class="part-label">容易有反效果的說法</p>
             <ul class="pick-explain-list">{% for words in option.avoid_saying %}<li>{{ words }}</li>{% endfor %}</ul>{% endif %}{% for title, lines in option.sections %}
-            <h{{ heading }} class="tint-subhead mt-4">{{ title }}</h{{ heading }}>
+            <p class="part-label">{{ title }}</p>
             <ul class="pick-explain-list">{% for words in lines %}<li>{{ words }}</li>{% endfor %}</ul>{% endfor %}{% if option.next_steps %}
-            <h{{ heading }} class="tint-subhead mt-4">下一步</h{{ heading }}>
+            <p class="part-label">下一步</p>
             <ul class="list-unstyled mb-0">{% for words, url_name in option.next_steps %}<li><a class="link-card" href="{% url url_name %}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.links %}
             <ul class="list-unstyled mt-4 mb-0">{% for words, href in option.links %}<li><a class="link-card" href="{{ href }}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.steps %}
             <ol class="care-steps divided-rows">{% for step in option.steps %}<li>{% with "screening/family/care_drawings/"|add:step.drawing|add:".html" as drawing %}{% include drawing %}{% endwith %}<label class="visit-check"><input type="checkbox" autocomplete="off"><span><strong class="block">{{ forloop.counter }}. {{ step.title }}（{{ step.frequency }}）</strong>{{ step.words }}</span></label></li>{% endfor %}</ol>{% endif %}{% if option.steps_note %}

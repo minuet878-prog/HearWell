@@ -2,14 +2,7 @@
 {% load static %}
 {% block title %}{{ chapter.title }}｜聽伴{% endblock %}
 {% block extra_head %}
-<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
-{# #467 (H2): the folds come open in the page, so without JavaScript every part shows in full; guide.js folds them all but the one a jump lands on. Till then their contents wait unseen, so they do not show and then shrink; if it has not run in 3 seconds, they show. #}
-<script>
-    document.documentElement.classList.add("guide-folds-pending");
-    window.guideFoldsFallback = setTimeout(function () {
-        document.documentElement.classList.remove("guide-folds-pending");
-    }, 3000);
-</script>
+{% include "screening/guide/folds_pending.html" %}
 {% endblock %}
 {% block body %}
 {# Every chapter's wording is finalised in #220; change it only after review (ADR 0013). #}

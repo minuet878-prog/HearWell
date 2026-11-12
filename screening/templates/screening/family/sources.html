@@ -1,9 +1,10 @@
-<section class="mb-4 family-sources" aria-labelledby="sources-title">
-    <h2 id="sources-title" class="h4">出處</h2>
-    <ul>
+{# #469 (the #468 mockup): 出處 folded into a row like a result page's 看完整說明; the check date stays outside it. #}
+<details class="result-details family-sources">
+    {% include "screening/result_details_summary.html" with title="出處" %}
+    <div class="result-details-body"><ul class="mb-0">
         {% for title, url in sources %}
         <li><a href="{{ url }}">{{ title }}</a></li>
         {% endfor %}
-    </ul>
-    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
-</section>
+    </ul></div>
+</details>
+<p class="guide-checked">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>

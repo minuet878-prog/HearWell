@@ -15,7 +15,8 @@ from django.urls import reverse
 # who may have an account of their own (spec phase8_c1_family_share.md). The Q&A assistant
 # reads nobody's records and its answers are the same for everyone (ADR 0032), and family send
 # each other its answer links (the owner's call for spec #396, 2026-10-27); typing a question
-# there is part of it (#399).
+# there is part of it (#399). The zone's page on how to talk with him came out of the family guide
+# with the same words (#469).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -28,6 +29,7 @@ OPEN_PAGES = {
     "delete_account",
     "account_settings",
     "family_guide",
+    "family_talk",
     "family_reluctant",
     "family_hearing_aids",
     "family_visits",

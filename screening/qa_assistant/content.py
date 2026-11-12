@@ -77,7 +77,8 @@ FAQS = (
             "<p>助聽器有哪些外型、價格和補助上限，請看選配指引的"
             '<a href="/guide/types-and-prices">「助聽器的種類與價格」</a>。'
             "要申請身障補助，先要到鑑定醫院做身障鑑定，可以用"
-            '<a href="/guide/assessment#hospitals-title">「找鑑定醫院」</a>查各縣市的醫院。</p>'
+            '<a href="/guide/assessment#hospitals-title">「去哪家醫院鑑定？」</a>'
+            "查各縣市的醫院。</p>"
         ),
         sources=(
             ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
@@ -142,7 +143,8 @@ FAQS = (
             "由有醫療器材販賣許可的業者販售。集音器、輔聽器一般不是醫療器材，"
             "依法不能宣稱改善聽損。</p>"
             "<p>買之前，先確認是不是有許可證的助聽器，說明在選配指引的"
-            '<a href="/guide/types-and-prices#sound-amplifier-title">「集音器不是助聽器」</a>。</p>'
+            '<a href="/guide/types-and-prices#sound-amplifier-title">'
+            "「擴音器、輔聽器可以代替助聽器嗎？」</a>。</p>"
         ),
         sources=(
             ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),

@@ -3,11 +3,6 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
 from screening.care_journey import care_journey
-from screening.family_zone import (
-    COMMUNICATION_CHECKED_ON,
-    COMMUNICATION_SCENARIOS,
-    COMMUNICATION_SOURCES,
-)
 from screening.views.answering import continue_notice
 
 
@@ -46,15 +41,8 @@ def index(request):
 
 def family_guide(request):
     # Spec phase8_c1_family_guide.md: the same reviewed content for everyone, no user data.
-    return render(
-        request,
-        "screening/family_guide.html",
-        {
-            "scenarios": COMMUNICATION_SCENARIOS,
-            "scenario_sources": COMMUNICATION_SOURCES,
-            "scenario_checked_on": COMMUNICATION_CHECKED_ON,
-        },
-    )
+    # #469: its communication tips and scenarios are on family_talk.
+    return render(request, "screening/family_guide.html")
 
 
 def learn(request):

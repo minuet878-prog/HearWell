@@ -29,9 +29,10 @@
 <section class="mb-6" aria-labelledby="result-title">
     <h2 id="result-title" class="h4">檢核結果</h2>
     <p class="font-bold text-xl/normal">{{ result.headline }}</p>
+    {# #469 (the #468 mockup): each group a bold label over its items, a thin line between them. #}
     {% for heading, items in result.groups %}
-    <h3 class="h5 mt-4">{{ heading }}</h3>
-    <ul>
+    <p class="part-label">{{ heading }}</p>
+    <ul class="list-unstyled divided-rows mb-0">
         {% for item in items %}
         <li>{{ item.words }}{% for link in item.links %}<a class="block py-[0.6rem]" href="{{ link.url }}">{{ link.words }}</a>{% endfor %}</li>
         {% endfor %}
@@ -39,12 +40,15 @@
     {% endfor %}
     <p class="mt-4 mb-0"><a class="block py-[0.6rem]" href="{{ form_9_link.url }}">{{ form_9_link.words }}</a></p>
 </section>
-{% include "screening/family/sources.html" %}
-<p class="mb-8 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
-{% endif %}
-
+<p class="mb-6 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
+{# #469 (the #468 mockup): once sent, the questions fold away under the result and their 送出 turns a blue outline, so print is the page's one solid button. #}
+<details class="result-details no-print">
+    {% include "screening/result_details_summary.html" with icon="clipboard" title="改答案，再檢核一次" %}
+    <div class="result-details-body">
+{% else %}
 <section class="mb-6 no-print" aria-labelledby="questions-title">
     <h2 id="questions-title" class="h4">回答這幾題</h2>
+{% endif %}
     <form method="post" action="{% url 'family_subsidy_check' %}" autocomplete="off">
         {% csrf_token %}
         {% for field in form %}
@@ -54,12 +58,21 @@
             {{ field }}
         </fieldset>
         {% endfor %}
-        <button class="btn btn-primary btn-lg w-full" type="submit">送出</button>
+        <button class="btn {% if result %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg w-full" type="submit">送出</button>
     </form>
+{% if result %}
+    </div>
+</details>
+
+{% include "screening/family/sources.html" %}
+
+<p class="my-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
+{% else %}
 </section>
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
-{% if not result %}{% include "screening/family/sources.html" %}{% endif %}
+{% include "screening/family/sources.html" %}
+{% endif %}
 </article>
 {% endblock %}

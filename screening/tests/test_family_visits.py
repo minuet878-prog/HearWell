@@ -141,7 +141,7 @@ class FamilyVisitsTests(test_family_zone.SignsInWithARecord, TestCase):
             self.assertLessEqual(level, previous + 1)
 
     def test_foot_has_sources_and_checked_date(self):
-        foot = self.main[self.main.index('id="sources-title"') :]
+        foot = self.main[self.main.index('<details class="result-details family-sources">') :]
         self.assertIn("內容查核於 2026/10/22。", foot)
         self.assertIn("身心障礙者輔具費用補助辦法", foot)
         self.assertIn("身心障礙者輔具費用補助基準表", foot)

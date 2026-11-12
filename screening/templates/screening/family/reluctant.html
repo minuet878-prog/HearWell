@@ -14,20 +14,12 @@
 <p>挑一個不趕時間、只有您和他在的時候，比較好開口。他可能需要一些時間，不一定談一次就有結果。</p>
 <p>選一種最接近的狀況，看看可以怎麼說。每個人情況不同，這些說法不一定都有用。這裡不會留下紀錄，可以改選。</p>
 
-{% include "screening/family/pick_explain.html" with pick=situations heading=2 %}
+{% include "screening/family/pick_explain.html" with pick=situations %}
 
 <p class="mt-6">這些是一般性的建議，不能取代醫師或聽力師的診斷。有任何疑問，請和您的醫師或聽力師討論。</p>
 
 <p class="mb-6"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 
-<section class="mb-4 family-sources" aria-labelledby="sources-title">
-    <h2 id="sources-title" class="h4">出處</h2>
-    <ul>
-        {% for title, url in sources %}
-        <li><a href="{{ url }}">{{ title }}</a></li>
-        {% endfor %}
-    </ul>
-    <p class="guide-checked mb-0">內容查核於 {{ checked_on|date:"Y/m/d" }}。</p>
-</section>
+{% include "screening/family/sources.html" %}
 </article>
 {% endblock %}

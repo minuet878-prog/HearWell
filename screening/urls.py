@@ -30,6 +30,7 @@ urlpatterns = [
     path("register", accounts.register, name="register"),
     path("privacy", accounts.privacy, name="privacy"),
     path("family", home.family_guide, name="family_guide"),
+    path("family/talk", family.family_talk, name="family_talk"),
     path("family/reluctant", family.family_reluctant, name="family_reluctant"),
     path("family/hearing-aids", family.family_hearing_aids, name="family_hearing_aids"),
     path("family/visits", family.family_visits, name="family_visits"),

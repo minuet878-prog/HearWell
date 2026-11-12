@@ -38,12 +38,12 @@
 
 <section class="mb-6" data-jump-box aria-labelledby="problems-title">
     <h2 id="problems-title" class="h4">助聽器怪怪的</h2>
-    {% include "screening/family/pick_explain.html" with pick=problems heading=3 %}
+    {% include "screening/family/pick_explain.html" with pick=problems %}
 </section>
 
 <section class="mb-6" data-jump-box aria-labelledby="adjusting-title">
     <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
-    {% include "screening/family/pick_explain.html" with pick=stages heading=3 %}
+    {% include "screening/family/pick_explain.html" with pick=stages %}
     {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="tap-link" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
 </section>
 
@@ -51,7 +51,7 @@
 <section class="mb-6" data-jump-box aria-labelledby="care-title">
     <h2 id="care-title" class="h4">日常保養</h2>
     <p>勾選不會留下，換外型也會清掉。</p>
-    {% include "screening/family/pick_explain.html" with pick=care heading=3 %}
+    {% include "screening/family/pick_explain.html" with pick=care %}
     <h3 class="tint-subhead mt-4">兩種都適用的提醒</h3>
     <ul class="pick-explain-list">{% for words in care_reminders %}<li>{{ words }}</li>{% endfor %}</ul>
 </section>
