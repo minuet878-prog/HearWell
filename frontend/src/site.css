@@ -263,20 +263,22 @@
     --btn-disabled-bg: #fff;
     --btn-disabled-border-color: #8da2bf;
   }
+  /* #471 (mockup #470 D4): the level red, white words at 8.4:1; darker under a mouse and when
+     pressed, colour only. */
   .btn-danger {
     --btn-color: #fff;
-    --btn-bg: #dc3545;
-    --btn-border-color: #dc3545;
+    --btn-bg: var(--color-severe);
+    --btn-border-color: var(--color-severe);
     --btn-hover-color: #fff;
-    --btn-hover-bg: #bb2d3b;
-    --btn-hover-border-color: #b02a37;
-    --btn-focus-ring: rgba(225, 83, 97, 0.5);
+    --btn-hover-bg: #74220f;
+    --btn-hover-border-color: #74220f;
+    --btn-focus-ring: rgba(143, 42, 18, 0.5);
     --btn-active-color: #fff;
-    --btn-active-bg: #b02a37;
-    --btn-active-border-color: #a52834;
+    --btn-active-bg: #5c1b0c;
+    --btn-active-border-color: #5c1b0c;
     --btn-disabled-color: #fff;
-    --btn-disabled-bg: #dc3545;
-    --btn-disabled-border-color: #dc3545;
+    --btn-disabled-bg: var(--color-severe);
+    --btn-disabled-border-color: var(--color-severe);
   }
   /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
@@ -307,21 +309,6 @@
     --btn-disabled-color: #6c757d;
     --btn-disabled-bg: transparent;
     --btn-disabled-border-color: #6c757d;
-  }
-  .btn-outline-danger {
-    --btn-color: #dc3545;
-    --btn-bg: #fff;
-    --btn-border-color: #dc3545;
-    --btn-hover-color: #fff;
-    --btn-hover-bg: #dc3545;
-    --btn-hover-border-color: #dc3545;
-    --btn-focus-ring: rgba(220, 53, 69, 0.5);
-    --btn-active-color: #fff;
-    --btn-active-bg: #dc3545;
-    --btn-active-border-color: #dc3545;
-    --btn-disabled-color: #dc3545;
-    --btn-disabled-bg: transparent;
-    --btn-disabled-border-color: #dc3545;
   }
   /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
      never overrode it. */
@@ -547,14 +534,14 @@
   .text-danger {
     color: var(--color-severe) !important;
   }
-  /* #272: a field's error (field_messages.html), and every error in the login and register card,
-     gets a warning mark, so it does not rest on the red alone. */
-  .field-error, .auth-card .text-danger {
+  /* #272: a field's error (field_messages.html), and the login and register error boxes (#471),
+     get a warning mark, so they do not rest on the red alone. */
+  .field-error, .error-box {
     display: flex;
     gap: 0.4rem;
     font-weight: 700;
   }
-  .field-error::before, .auth-card .text-danger::before {
+  .field-error::before, .error-box::before {
     --warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
     content: "";
     flex: none;
@@ -1369,79 +1356,17 @@
   }
 
   /* Login and register (owner's pick from the design comparison, 2026-10-23; see
-     docs/verification/auth-pages-banner.md): a brand-gradient banner, the form card laid over
-     its lower edge, and thicker fields with an icon inside. The thicker fields stay on these two
-     pages; the rest of the site keeps the plain .form-control for now. */
-  .auth-hero {
-    position: relative;
-    overflow: hidden;
-    padding: 1.75rem 1.25rem 4.5rem;
-    border-radius: var(--radius-large) var(--radius-large) 0 0;
-    background: var(--color-primary);
-    color: #fff;
-  }
-  .auth-hero-title {
-    margin: 0 0 0.35rem;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #fff;
-  }
-  .auth-hero p { margin: 0; color: #fff; }
-  .auth-hero .step-progress { margin: 0.75rem 0 0; }
-  .auth-hero .step-progress-text { color: #fff; }
-  .auth-hero .step-progress-segment { background-color: rgba(255, 255, 255, 0.35); }
-  .auth-hero .step-progress-segment.is-done { background-color: #fff; }
-  /* Still bars, like the header wave stopped: decoration only, nothing moves. They sit just
-     above the card and stay under the banner's padding, clear of the step bar. */
-  .auth-hero-bars {
-    position: absolute;
-    right: 1rem;
-    bottom: 3.25rem;
-    display: flex;
-    align-items: flex-end;
-    gap: 0.3rem;
-    opacity: 0.35;
-  }
-  .auth-hero-bars span {
-    width: 0.4rem;
-    border-radius: var(--radius-pill);
-    background-color: #fff;
-  }
-  .auth-hero-bars span:nth-child(1) { height: 0.4rem; }
-  .auth-hero-bars span:nth-child(2) { height: 0.7rem; }
-  .auth-hero-bars span:nth-child(3) { height: 1rem; }
-  .auth-hero-bars span:nth-child(4) { height: 0.55rem; }
-  .auth-hero-bars span:nth-child(5) { height: 0.85rem; }
-  .auth-hero-bars span:nth-child(6) { height: 1rem; }
-  .auth-hero-bars span:nth-child(7) { height: 0.7rem; }
-  .auth-hero-bars span:nth-child(8) { height: 0.4rem; }
-
-  /* #360 (spec #354): the consent page, step 2 after register, wears the register banner. No
-     card lies over its lower edge, so it is round all round and its bars sit lower; what follows
-     is flat on the page (ADR 0022). */
-  .consent-hero {
-    margin-bottom: 1.5rem;
-    padding-bottom: 2.75rem;
-    border-radius: var(--radius-large);
-  }
-  .consent-hero .auth-hero-bars { bottom: 1rem; }
-
-  .auth-card {
-    position: relative;
-    margin: -3rem 1rem 0;
-    padding: 1.25rem;
-    background-color: #fff;
-    border: 1px solid var(--color-line);
-    border-radius: var(--radius-large);
-    box-shadow: 0 0.25rem 0.75rem rgba(33, 37, 41, 0.08);
-  }
-  .auth-card label { font-weight: 700; color: var(--color-heading); }
+     docs/verification/auth-pages-banner.md): thicker fields with an icon inside. The thicker
+     fields stay on these two pages; the rest of the site keeps the plain .form-control. #471
+     (mockup #470 D1 B) took away the banner and the card laid over it: the form is on the white
+     page under a plain title. */
+  .auth-form label { font-weight: 700; color: var(--color-heading); }
   .auth-field:focus-within label { color: var(--color-primary); }
   .auth-field:has([aria-invalid="true"]) label { color: var(--color-severe); }
   /* Twice the width of the site's field edge (#272 gave every field its colour). */
-  .auth-card .form-control, .auth-card .input-group-text { border-width: 2px; }
-  .auth-card .input-group > :not(:first-child) { margin-left: -2px; }
-  .auth-card .form-control { min-height: 3.25rem; font-size: 1.25rem; }
+  .auth-form .form-control, .auth-form .input-group-text { border-width: 2px; }
+  .auth-form .input-group > :not(:first-child) { margin-left: -2px; }
+  .auth-form .form-control { min-height: 3.25rem; font-size: 1.25rem; }
   .auth-input { position: relative; }
   .auth-input > svg {
     position: absolute;
@@ -1691,88 +1616,6 @@
     font-weight: 700;
   }
 
-  .home-illustration {
-    display: block;
-    width: 100%;
-    max-width: 20rem;
-    margin: 0 auto 1rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* The visitor's home page top: a flat block on the page (ADR 0022, #298's
-     pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
-  .home-hero {
-    margin-bottom: 1.5rem;
-  }
-
-  .home-chips {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .home-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.875rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-brand-soft);
-    color: var(--color-primary);
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  .home-chip svg {
-    width: 1.125rem;
-    height: 1.125rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* The smiling elder: blue lines, a white face, grey hair, teal cheeks and sound. */
-  .home-hero .home-illustration {
-    max-width: 14rem;
-  }
-
-  .home-illustration .ill-solid {
-    fill: var(--color-primary);
-    stroke: none;
-  }
-
-  .home-illustration .ill-face {
-    fill: #fff;
-  }
-
-  .home-illustration .ill-hair {
-    stroke: var(--color-border-strong);
-    stroke-width: 9;
-  }
-
-  .home-illustration .ill-cheek {
-    fill: var(--color-gradient-end);
-    stroke: none;
-    opacity: 0.3;
-  }
-
-  .home-illustration .ill-accent {
-    stroke: var(--color-gradient-end);
-    stroke-width: 5;
-  }
-
-  .home-illustration .ill-faint {
-    opacity: 0.5;
-  }
-
   /* Start button: the logo before the words, and one ring sent out once (ADR 0006). The ring is
      its own layer, so the button itself never moves. */
   .btn-start {
@@ -1802,50 +1645,9 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .home-hero .home-illustration {
-      transform-origin: 50% 85%;
-      animation: home-sway 2.6s ease-in-out both;
-    }
-
     .btn-start::after {
       animation: start-ring 2s ease-out 1.2s both;
     }
-  }
-
-  /* The audiologist line at the bottom (design picker round 3): a gradient shield before the
-     words, flat on the page since it is not a link (ADR 0022). */
-  .home-credential {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .home-credential-icon {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-  }
-
-  /* On a phone the line wraps into two even halves, not one word alone on the second line;
-     「聽力師」 stays whole unless it alone is wider than the card (keep-all, wrap anywhere). */
-  .home-credential-text {
-    text-wrap: balance;
-  }
-
-  .home-credential-icon svg {
-    width: 1.375rem;
-    height: 1.375rem;
-    fill: none;
-    stroke: #fff;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
   }
 
   /* The other cards' group titles: small, plain and dark, so the cards stay the focus. */
@@ -1856,127 +1658,13 @@
     font-weight: 700;
   }
 
-  /* The login link under the start button: a full touch target, still a plain link. */
+  /* The login link under the start button: a full touch target, still a plain link; #471: at
+     the left edge, under the start button, as the text links below it. */
   .home-login {
     display: inline-flex;
     align-items: center;
     min-height: var(--spacing-touch);
-    padding: 0 0.75rem;
     font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  /* Four steps: two across when they fit (never 3 + 1), otherwise one per row. */
-  .step-cards {
-    list-style: none;
-    padding: 0;
-    margin-bottom: 1.5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-    gap: 0.75rem;
-  }
-
-  /* Number, icon and words in one row (pages tidy-up); at large text sizes the words drop under
-     the number and icon instead of widening the page. */
-  .step-cards li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .step-number {
-    /* N3 (#454, ADR 0041): every step number is a white circle in a 2px blue frame. */
-    flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 2px solid var(--color-primary);
-    border-radius: 50%;
-    background-color: #fff;
-    color: var(--color-primary);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .step-cards li > span:last-child {
-    flex: 1 1 10rem;
-    min-width: 0;
-  }
-
-  .step-icon {
-    flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* A shrunken result, clearly marked as an example, with the result page's score bar since
-     design picker round 2. Not a link, so a flat block framed by its title (ADR 0022). */
-  .result-preview {
-    position: relative;
-    margin-bottom: 1.5rem;
-  }
-
-  /* What the result page tells you, instead of advice cut off mid-sentence. */
-  .result-preview-tells {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .result-preview-tells li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .result-preview-tells svg {
-    flex: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .result-preview figcaption {
-    margin-top: 0.75rem;
-    color: var(--color-muted);
-  }
-
-  .result-preview .result-level {
-    font-size: 1.5rem;
-  }
-
-  /* Round 4: the title and the 示意圖 tag share the card's top row. */
-  .result-preview-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .preview-tag {
-    flex: none;
-    padding: 0 0.5rem;
-    border-radius: var(--radius-badge);
-    background-color: var(--color-brand-soft);
-    color: var(--color-primary);
     font-weight: 700;
   }
 
@@ -2009,14 +1697,6 @@
       background-repeat: no-repeat;
       animation: progress-fill 0.35s ease-out both;
     }
-  }
-
-  /* Share page (#193): each step's heading starts with its number in the home page's
-     brand-gradient circle; inside the heading it keeps its size and the body font size. */
-  .share-step { display: flex; align-items: center; gap: 0.75rem; }
-  .share-step .step-number {
-    flex: none;
-    font-size: 1.125rem;
   }
 
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
@@ -2881,17 +2561,6 @@
   .dropdown-line[open] > summary::after,
   .report-fold[open] > summary::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
-  }
-
-  .phone-choice-icon {
-    flex: none;
-    width: 1.75rem;
-    height: 1.75rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
   }
 
   /* #361: under each phone choice, the makers it covers, in body text, so an older reader who
@@ -3957,70 +3626,22 @@
     overflow-wrap: anywhere;
   }
 
-  /* The level is written out in a box, never shown by colour alone. */
-  .report-level {
-    font-weight: 700;
-    border: 2px solid currentColor;
-    border-radius: var(--radius-small);
-    padding: 0 0.4rem;
-  }
-
   .report-disclaimer {
     border-top: 1px solid var(--color-input-border);
     padding-top: 0.5rem;
     margin-top: 1.5rem;
   }
 
-  /* The report on screen (pages tidy-up): the summary in the brand-blue card, levels in the
-     site's coloured labels, scores as tags, the answers in the dropdown box, the handwriting line
-     on paper only. Each part's questionnaire, the audiogram and a kept comparison are flat blocks
-     framed by their titles and spacing (ADR 0022, #303). Screen only: the printed report stays as
-     it was (the print block below undoes the box). */
+  /* The report on screen (pages tidy-up): scores as tags, the answers in the dropdown box, the
+     handwriting line on paper only. #471 (mockup #470 B): each part's row says its summary line,
+     so the summary itself is for paper; levels are the site's level badges (L1 colours). */
   @media screen {
-    /* #366: the family's 「先看重點」 in the same box. */
-    .health-report .report-summary, .family-highlights {
-      border: 0.125rem solid var(--color-primary);
-      border-radius: var(--radius-large);
-      background-color: #fff;
-      padding: 1rem;
-    }
-
-    /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
-    .health-report:has(.family-highlights) .report-summary {
+    .health-report .report-summary {
       display: none;
     }
 
     .report-handwrite {
       display: none;
-    }
-
-    /* A whole label moves to the next line rather than splitting (it wraps inside only when it
-       alone is wider than the line). */
-    .health-report .report-level {
-      display: inline-block;
-      max-width: 100%;
-      border-radius: var(--radius-badge);
-      padding: 0 0.5rem;
-    }
-
-    .report-level-normal {
-      background-color: var(--color-normal-bg);
-      color: var(--color-normal);
-    }
-
-    .report-level-mild_to_moderate {
-      background-color: var(--color-mild-bg);
-      color: var(--color-mild);
-    }
-
-    .report-level-severe {
-      background-color: var(--color-severe-bg);
-      color: var(--color-severe);
-    }
-
-    .report-level-unknown {
-      background-color: var(--color-surface);
-      color: var(--color-heading);
     }
 
     .report-score {
@@ -4384,6 +4005,10 @@
     color: var(--color-severe);
   }
 
+  .settings-card-danger .action-card-icon {
+    background-color: var(--color-severe-bg);
+  }
+
   .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
   }
@@ -4546,35 +4171,57 @@
     }
   }
 
-  /* #314 (ADR 0024): on screen the report folds by questionnaire. The summary row looks like
-     the site's dropdowns (a white box, grey edge, chevron) and says the questionnaire's name,
-     latest date and result; what opens below is flat. Its summary row already names the
-     questionnaire, so its own title waits for paper. On paper every fold opens and the row goes:
-     the report prints as it did before the folds. */
+  /* #314 (ADR 0024): on screen the report folds by part. #471 (mockup #470 B): each fold is a
+     list row (E), its icon, its title and the summary line under it in the muted grey, a blue
+     chevron at the end, a thin line under it; what opens below is flat. Its row already names
+     the part, so its own title waits for paper. On paper every fold opens and the row goes: the
+     report prints as it did before the folds. */
   .report-fold {
-    margin-top: 1rem;
+    border-bottom: 1px solid var(--color-line);
   }
 
   .report-fold > summary {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.25rem 0.75rem;
-    border: 0.125rem solid var(--color-border);
-    border-radius: var(--radius-button);
-    background-color: #fff;
+    container-type: inline-size;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    color: var(--color-heading);
+    font-weight: 400;
   }
 
   .report-fold > summary::after {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+  }
+
+  .report-fold-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .report-fold-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: inherit;
   }
 
   .report-fold-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1rem;
     color: var(--color-muted);
-    font-weight: 400;
+  }
+
+  /* At large text sizes the words drop under the icon, the chevron staying on the icon's row,
+     as on an action card. */
+  @container (max-width: 11rem) {
+    .report-fold-text {
+      flex: 1 0 100%;
+      order: 1;
+    }
   }
 
   .report-fold-body {
@@ -4586,7 +4233,7 @@
       margin-top: 0;
     }
 
-    .report-fold-body > section:first-child > h3:first-child {
+    .report-fold-body > section:first-child > :is(h2, h3):first-child {
       display: none;
     }
   }
@@ -4846,6 +4493,260 @@
 
   .result-details-body .score-bar {
     margin-top: 0.5rem;
+  }
+
+  /* #471 report, sharing and account pages (mockup #470, ADR 0041). */
+  /* The report's rows (B): a line over the first; the parts' own titles wait for paper. */
+  @media screen {
+    .report-rows {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--color-line);
+    }
+
+    .health-report .report-rows > .report-part {
+      margin-top: 0;
+    }
+
+    .report-rows > .report-part > h2 {
+      display: none;
+    }
+  }
+
+  /* Information with nothing to open (hearing aids, a kept comparison): the grey label over the
+     words in the heading colour, the rows' line rhythm without an icon or an arrow. */
+  .report-info {
+    display: flex;
+    flex-direction: column;
+    min-height: 4rem;
+    padding: 0.75rem 0.25rem;
+    border-bottom: 1px solid var(--color-line);
+    overflow-wrap: anywhere;
+  }
+
+  .report-info-label {
+    color: var(--color-muted);
+  }
+
+  .report-info-value {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* Text links in a row (S1), each a 44px touch target. */
+  .report-manage {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .report-manage a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* The family's 「先看重點」: the life-impact level in its whole level colour (L1), the
+     audiogram's ears in the grey of a block with no level of its own. */
+  .family-highlights {
+    margin-bottom: 1.5rem;
+  }
+
+  .family-level {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.625rem;
+    padding: 0.875rem 1.125rem;
+    border-radius: var(--radius-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .family-level > :not(.family-level-name) {
+    color: var(--color-heading);
+  }
+
+  .family-level-label {
+    font-weight: 700;
+  }
+
+  .family-level-name {
+    font-size: var(--text-section-title);
+    font-weight: 700;
+  }
+
+  .family-highlights > p {
+    margin-top: 0.625rem;
+  }
+
+  /* Share A: a step not reachable yet is pale, as the care journey's later steps; its words
+     keep their colour. Each step's name is a section title. */
+  .step-list-number.is-later {
+    border-color: var(--color-line-strong);
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+  }
+
+  .share-step-title {
+    margin: 0 0 0.375rem;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .dropdown-line > summary > .share-step-title {
+    margin: 0;
+  }
+
+  /* D4: what cancels a share or deletes is red; as a link, a red underlined word that is still a
+     44px touch target. Colour only under a mouse or a finger (ADR 0006). */
+  .danger-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-severe);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+    cursor: pointer;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .danger-link:hover {
+      text-decoration-thickness: 3px;
+    }
+  }
+
+  .danger-link:active {
+    background-color: var(--color-severe-bg);
+  }
+
+  /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
+     bold in the red, a warning mark before them; never by colour alone. */
+  .error-box {
+    margin: 0 0 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  /* A list row that opens (E): the privacy notice's sections and the phones on 加到主畫面. The
+     row's words in the heading colour, a blue chevron at its end, down while folded and swapped
+     (not turned) for an up one when open, so nothing moves (ADR 0006); a thin line under each
+     row and over the first. */
+  .fold-rows {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .fold-row {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .fold-row > summary {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.75rem;
+    padding: 0.75rem 0.25rem;
+    color: var(--color-heading);
+    font-weight: 700;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .fold-row > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .fold-row > summary::after {
+    content: "";
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: auto;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .fold-row[open] > summary::after {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .fold-row > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .fold-row > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .fold-row > summary:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  .fold-row-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .fold-row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* At large text sizes the words drop under the icon, the chevron staying on the icon's row. */
+  @container (max-width: 11rem) {
+    .fold-row-text {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  .fold-row-body {
+    padding: 0 0.25rem 1rem;
+  }
+
+  .fold-row-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* The privacy notice's highlights in a 提示框: room for their bullets inside it. */
+  ul.tip-box {
+    padding-inline-start: 2.25rem;
+  }
+
+  /* A link inside a sentence in a 提示框 (deleting the account's 下載我的資料) keeps its negative
+     margin when it is the box's last element, so its line does not grow. */
+  .tip-box > .inline-link:last-child {
+    margin-bottom: -0.6rem;
+  }
+
+  /* On paper a level stays the plain bordered word it was before the badges. */
+  @media print {
+    .health-report .level-badge {
+      padding: 0 0.4rem;
+      border-radius: var(--radius-small);
+      background: none;
+      color: inherit;
+    }
   }
 }
 
@@ -5140,12 +5041,6 @@
 @keyframes icon-ripple {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(1.6); }
-}
-
-/* First-visit home (brand refresh): the picture sways once, the start button rings once. */
-@keyframes home-sway {
-  25% { transform: rotate(-3deg); }
-  75% { transform: rotate(3deg); }
 }
 
 /* Answer page (#326 C3): a segment just answered fills from the left; its size never changes. */

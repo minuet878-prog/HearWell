@@ -1,6 +1,6 @@
-{# #314: a graded questionnaire folded on screen; its summary row says what the report summary says. #}
+{# #314: a graded questionnaire folded on screen; #471: its row (E) says its summary line. #}
 <details class="report-fold">
-<summary><h3 class="h4 mb-0">{{ section.questionnaire.questionnaire_name }}</h3> <span class="report-fold-meta"><span>最近一次 {{ latest.created_at|date:"Y/m/d" }}</span> <span>{{ latest.result.total }} 分 <span class="report-level report-level-{{ latest.result.level.color }}">{{ latest.result.level.text }}</span></span></span></summary>
+<summary>{% include "screening/questionnaire_icon.html" with icon=section.questionnaire.definition.icon %}<span class="report-fold-text"><h2 class="report-fold-title">{{ section.questionnaire.questionnaire_name }}（{{ latest.created_at|date:"Y/m/d" }}）</h2><span class="report-fold-meta">{% include "screening/summaries/graded.html" with submission=latest %}</span></span></summary>
 <div class="report-fold-body">
 {% include "screening/report_graded_section.html" %}{% if section.comparison %}{% include "screening/report_comparison.html" with comparison=section.comparison %}{% endif %}
 </div>
