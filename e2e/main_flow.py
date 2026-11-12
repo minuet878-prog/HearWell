@@ -2489,7 +2489,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             "undecided": undecided.cookies[settings.SESSION_COOKIE_NAME].value,
         }
         pages = [
-            *(("anonymous", path) for path in ("/", "/login", "/register")),
+            # #471: the visitor's 空狀態首頁 and the Chinese 404 page are on this list too.
+            *(("anonymous", path) for path in ("/", "/login", "/register", "/no-such-page")),
             *(
                 (who, path)
                 for who in ("anonymous", "signed in")
