@@ -1,4 +1,6 @@
-"""#304 (spec #297, ADR 0023): every result page shows the home page's 建議您下一步."""
+"""#304 (spec #297, ADR 0023): every result page shows the 建議您下一步; since #455 (ADR 0042)
+it is the 照顧旅程's 現在這一步. The old home page still suggests by home_more until #459, so
+the two may differ meanwhile."""
 
 import re
 from io import StringIO
@@ -6,7 +8,9 @@ from io import StringIO
 from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from screening.care_journey import care_journey
 from screening.models import Answer, NormGroup, Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_home_next_step, test_result_pages
@@ -21,6 +25,9 @@ SUGGESTIONS = (
 )
 REPORT_CARD = (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF")
 OTHERS_TITLE = "其他您可以做的"
+NO_AUDIOGRAM = test_home_next_step.NO_AUDIOGRAM
+TOO_LITTLE_DATA = test_home_next_step.TOO_LITTLE_DATA
+BEFORE_YOU_GO = test_home_next_step.BEFORE_YOU_GO
 
 
 class ResultNextStepTests(TestCase):
@@ -66,19 +73,38 @@ class ResultNextStepTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def test_every_result_page_suggests_what_the_home_page_does(self):
-        # Acceptance 8: label, title, 「因為」, button text and link, for every suggestion.
+    def expected(self, suggestion):
+        """(title, because, button href, button text) a result page suggests now."""
+        if suggestion == "記錄醫院的聽力圖":
+            # Step 2, the route's 記錄聽力圖 stop and its button.
+            return ("記錄聽力圖", NO_AUDIOGRAM, "/audiograms/new", "記錄醫院的聽力圖")
+        if suggestion == "修改這張聽力圖":
+            edit = reverse("audiogram_edit", args=[self.user.audiograms.get().pk])
+            return ("記錄聽力圖", TOO_LITTLE_DATA, edit, "修改這張聽力圖")
+        if suggestion == "了解助聽器選配與補助":
+            # Step 3 at 去找聽力師之前, the 目前這一站, with the route's button.
+            return ("去找聽力師之前", BEFORE_YOU_GO, "/guide/before-you-go", "去之前要準備什麼")
+        # Within the normal range step 5 counts down without a button (spec #453 acceptance 22).
+        if suggestion == "分享報告給家人":
+            return ("分享報告給家人", test_home_next_step.SHARE, "/share", "去分享")
+        return ("印聽力報告給醫師看", test_home_next_step.REPORT, "/report", "去印報告")
+
+    def test_every_result_page_suggests_the_care_journey_s_current_step(self):
+        # Spec #453 acceptance 21-22 (#455): title, 「因為」, button text and link, for every
+        # questionnaire's result page, the journey's card where it has a button.
         for suggestion in SUGGESTIONS:
             with self.subTest(suggestion=suggestion):
                 self.sign_in(f"result {suggestion}")
                 submissions = self.answer_all()
-                # Last, so the newest answer is HHIE-S without hearing aids, as on home.
+                # Last, so the newest answer is HHIE-S without hearing aids.
                 self.suggest(suggestion)
-                home = self.next_step()
-                self.assertEqual(home[0], suggestion)
+                expected = self.expected(suggestion)
+                card = care_journey(self.user, timezone.localdate()).card
+                if card.button is not None:
+                    self.assertEqual((card.title, card.button[1]), (expected[0], expected[2]))
                 for code, submission in submissions.items():
                     with self.subTest(questionnaire=code):
-                        self.assertEqual(self.next_step(self.result(submission)), home)
+                        self.assertEqual(self.next_step(self.result(submission)), expected)
 
     def test_the_suggestion_tops_the_tappable_cards_with_the_others_titled_below(self):
         # Spec #297: the box comes first, then a small title over the other cards (the
@@ -137,12 +163,12 @@ class ResultNextStepTests(TestCase):
                             self.assertIn(REPORT_CARD, cards)
 
     def test_an_old_result_suggests_by_the_user_s_state_now(self):
-        # Acceptance 10: the audiogram came after the answer, so no 記錄醫院的聽力圖 now.
+        # Acceptance 10: the audiogram came after the answer, so no 記錄聽力圖 now.
         self.sign_in("old result")
         submissions = self.answer_all()
         self.answer()
         before = self.next_step(self.result(submissions["thi"]))
-        self.assertEqual(before[0], "記錄醫院的聽力圖")
+        self.assertEqual(before, self.expected("記錄醫院的聽力圖"))
         self.make((20, 20, 20, 20), (20, 20, 20, 20))
         for code, submission in submissions.items():
             with self.subTest(questionnaire=code):

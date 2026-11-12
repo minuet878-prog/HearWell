@@ -322,11 +322,13 @@ class EveryStopNextStepTests(TestCase):
     section = HomeNextStepTests.section
     next_step = HomeNextStepTests.next_step
 
-    def at(self, stop):
+    make = HomeNextStepTests.make
+
+    def at(self, stop, where="screening.main_flow.fitting_state"):
         def state_at(user, today):
             return replace(fitting_state(user, today), stop=stop)
 
-        return patch("screening.main_flow.fitting_state", state_at)
+        return patch(where, state_at)
 
     def test_each_stop_on_the_guide_says_why(self):
         for stop, because in (
@@ -344,21 +346,32 @@ class EveryStopNextStepTests(TestCase):
                 )
 
     def test_each_reworded_stop_says_why_on_a_result_page_too(self):
-        # #363 (spec #354): the four reasons that now say why, on the box a result page shares
-        # with the home page (ADR 0023).
+        # #363 (spec #354): the reasons that now say why, on a result page's box. Since #455
+        # (ADR 0042) a result page suggests the 照顧旅程's 現在這一步: here step 3 (an
+        # assessment suggested), the stop with the route's own button. 等待核定公文 has no
+        # button on the route, so the page suggests sharing instead (spec #453 acceptance 22);
+        # 等待補助發放 is never step 3's.
         submission = Submission.objects.get(user=self.user)
-        for stop, because in (
-            ("before-you-go", BEFORE_YOU_GO),
-            ("notice", NOTICE),
-            ("after-fitting", AFTER_FITTING),
-            ("payout", PAYOUT),
+        self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
+        for stop, expected in (
+            (
+                "before-you-go",
+                ("去找聽力師之前", BEFORE_YOU_GO, "/guide/before-you-go", "去之前要準備什麼"),
+            ),
+            (
+                "after-fitting",
+                (
+                    "配戴助聽器之後",
+                    AFTER_FITTING,
+                    "/guide/after-fitting#record-title",
+                    "記錄配戴的效果",
+                ),
+            ),
+            ("notice", ("分享報告給家人", SHARE, "/share", "去分享")),
         ):
-            with self.subTest(stop=stop), self.at(stop):
+            with self.subTest(stop=stop), self.at(stop, "screening.care_journey.fitting_state"):
                 content = self.client.get(reverse("result", args=[submission.pk])).content
-                self.assertEqual(
-                    self.next_step(content.decode()),
-                    ("了解助聽器選配與補助", because, "/guide", "看我的選配指引"),
-                )
+                self.assertEqual(self.next_step(content.decode()), expected)
 
     def test_form_25_says_its_deadline(self):
         # Fitted 2026/05/01 with 身障補助 at 中階型: form 25 is due by 2026/08/01.
