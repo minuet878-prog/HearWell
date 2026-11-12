@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
+import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
 // questionnaire's own (the API's wearing_question, #212). 沒戴 first, as the wizard and
@@ -76,7 +77,7 @@ export default function AnswerApp({
   const startWearing = alwaysAided ? true : preselectUnaided ? false : null;
   const asksWearing = !alwaysAided && !skipWearing;
   const newAnswers = () => ({
-    key: crypto.randomUUID(),
+    key: newReceiptKey(),
     wearing: startWearing,
     answers: {},
     step: asksWearing ? 0 : 1,

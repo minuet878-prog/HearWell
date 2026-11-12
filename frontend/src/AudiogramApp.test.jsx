@@ -521,6 +521,24 @@ describe("steps", () => {
 describe("save", () => {
   const sent = () => JSON.parse(fetch.mock.calls[0][1].body);
 
+  // http on a LAN address, or Safari before iOS 15.4: no crypto.randomUUID, which used to throw
+  // as the page opened.
+  it("opens and saves without crypto.randomUUID", async () => {
+    const { getRandomValues } = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: getRandomValues.bind(globalThis.crypto) });
+    try {
+      renderApp();
+      setDate("2026-10-01");
+      forward();
+      drag(1000, 40, 40);
+      confirmAndSave();
+      await waitFor(() => expect(navigate).toHaveBeenCalledWith("/audiograms/42"));
+      expect(fetch.mock.calls[0][1].headers["Idempotency-Key"]).toMatch(/^[0-9a-f-]{36}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("posts the points and date, then opens the saved audiogram (acceptance 12)", async () => {
     renderApp();
     setDate("2026-10-01");

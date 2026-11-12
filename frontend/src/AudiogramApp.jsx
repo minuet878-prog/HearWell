@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import AudiogramChart from "./AudiogramChart.jsx";
 import FoldSummary from "./FoldSummary.jsx";
 import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
+import { newReceiptKey } from "./receipt-key.js";
 
 const FAILED = "存檔失敗，請再按一次存檔";
 // #330 (spec #326 B1): how long ✓ 已存檔 stays before the saved audiogram opens.
@@ -107,7 +108,7 @@ export default function AudiogramApp({
   const [saved, setSaved] = useState(false);
   // One receipt number per page, so a retry after a lost response cannot save twice. Editing needs
   // none: putting the same audiogram again changes nothing.
-  const key = useRef(crypto.randomUUID());
+  const key = useRef(newReceiptKey());
   const busy = useRef(false);
 
   const symbol = SYMBOLS.find((s) => s.key === symbolKey);

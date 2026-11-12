@@ -142,6 +142,25 @@ describe("pages", () => {
   });
 });
 
+// The page on http at a LAN address, or Safari before iOS 15.4: no crypto.randomUUID. It used to
+// throw on the first draw, so the Django form showed every question at once.
+describe("without crypto.randomUUID", () => {
+  it("still shows one question per page and sends a receipt key", async () => {
+    const { getRandomValues } = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: getRandomValues.bind(globalThis.crypto) });
+    try {
+      await renderApp();
+      expect(legend()).toContain("這次填答時，您有沒有戴助聽器？");
+      answerAll();
+      submit();
+      await waitFor(() => expect(postCalls()).toHaveLength(1));
+      expect(postHeaders()["Idempotency-Key"]).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe("progress (#153)", () => {
   // Segments of the bar above the question (the register steps' bar); answered ones are done.
   const segments = () => [...document.querySelectorAll(".step-progress-bar > .step-progress-segment")];
