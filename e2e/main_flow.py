@@ -408,6 +408,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             # #161: the comparison link only shows once both statuses exist; the page was
             # rendered before the aided record above, so reload to see it.
             self.page.reload()
+            # #465 (the #464 mockup 1A): the entry waits in the 配戴狀態比較 fold.
+            self.main().locator("summary", has_text="配戴狀態比較").click()
             self.main().get_by_role("link", name="比較戴與不戴助聽器", exact=True).click()
             self.page.locator(f'input[name="unaided"][value="{unaided.pk}"]').check()
             self.page.locator(f'input[name="aided"][value="{aided.pk}"]').check()
@@ -1455,12 +1457,13 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.page.goto(self.live_server_url)
             self.step3_retest()
             self.page.goto(f"{self.live_server_url}/my_hearing")
-            expect(self.main().get_by_role("region", name="和上一次比")).to_be_visible()
+            # #465 (the #464 mockup 1A): 和上一次比 is in the score block.
+            expect(self.main().locator("#since-last")).to_be_visible()
             # The trend chart arrives after the page loads; measure the page with it.
             expect(self.page.locator(".recharts-wrapper")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("my_hearing")
-            # Its dates stay inside its own box, not only inside the page.
-            since_last = self.main().get_by_role("region", name="和上一次比")
+            # Its dates stay inside its own block, not only inside the page.
+            since_last = self.main().locator(".records-score")
             content_width, box_width = since_last.evaluate("e => [e.scrollWidth, e.clientWidth]")
             self.assertLessEqual(content_width, box_width, "和上一次比")
 
@@ -1468,7 +1471,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         # Before the retest: the reminder is there and one record has nothing to compare with.
         self.page.goto(f"{self.live_server_url}/my_hearing")
         expect(self.page.locator("#retest-reminder")).to_contain_text(self.REMINDER)
-        expect(self.main().get_by_role("region", name="和上一次比")).to_have_count(0)
+        expect(self.main().locator("#since-last")).to_have_count(0)
 
     def step2_home_shows_the_reminder(self):
         # #459: no audiogram, so recording one is the 現在這一步 and the due retest is on top.
@@ -1544,9 +1547,10 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             "link", name="紀錄"
         ).click()
         expect(self.page.locator("#retest-reminder")).to_have_count(0)
-        since_last = self.main().get_by_role("region", name="和上一次比")
+        # #465 (the #464 mockup 1A): 和上一次比 in the score block, under its 最近一次.
+        since_last = self.main().locator(".records-score")
         expect(since_last).to_contain_text(f"上一次（{self.old_date}）：40 分")
-        expect(since_last).to_contain_text(f"最近一次（{today}）：20 分")
+        expect(since_last).to_contain_text(f"最近一次（{today}，沒戴助聽器）")
         # 40 then 20 points, both 沒戴.
         expect(since_last).to_contain_text("比上一次少 20 分（分數越低越好）")
 
@@ -2136,7 +2140,9 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                 expect(
                     self.main().get_by_role("button", name="改放這一組到報告", exact=True)
                 ).to_be_visible()
-                expect(self.main().get_by_role("region", name="聽力報告裡的組合")).to_be_visible()
+                # #465 (the #464 mockup 7): the pair in the report folds below the one on screen.
+                self.main().locator("summary", has_text="聽力報告裡的組合").click()
+                expect(self.main().get_by_role("button", name="從報告移除")).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("HHIE-S comparison")
             with self.subTest(page="SSQ12-TW comparison"):
                 self.page.goto(
@@ -2217,8 +2223,9 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             main.get_by_role("button", name="存檔", exact=True).click()
             expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
 
+            # #465 (the #464 mockup 3A): each ear a block with its degree.
             summary = main.get_by_role("region", name="兩耳程度")
-            expect(summary).to_have_text(re.compile(r"右耳：\s*中度\s*左耳：\s*中度"))
+            expect(summary).to_have_text(re.compile(r"右耳\s*中度.*左耳\s*中度", re.S))
             expect(main.locator(".audiogram-plot svg")).to_be_visible()
             main.get_by_role("link", name="和以前的聽力圖比較").click()
 
@@ -2232,7 +2239,8 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             expect(card).to_contain_text("右耳四頻平均：舊 40 → 新 50 dB HL，多 10 dB")
             expect(card).to_contain_text("程度：舊 輕度，新 中度")
             expect(card).to_contain_text("差最多的頻率：500、1000、2000、4000 Hz，各多 10 dB")
-            expect(card.locator(".audiogram-plot svg")).to_be_visible()
+            # #465 (the #464 mockup 6): the chart in its own frame right under the summary.
+            expect(main.locator(".audiogram-plot svg")).to_be_visible()
             main.get_by_role("link", name="左耳", exact=True).click()
             expect(main.get_by_role("region", name="左耳的比較")).to_contain_text(
                 "左耳四頻平均：舊 40 → 新 50 dB HL"
@@ -5076,8 +5084,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/audiograms/{first.pk}")
             table = self.page.locator("table.table").first
             self.assertEqual(self.style(table, "marginBottom"), "18px")
-            # Inside the dropdown box since the pages tidy-up: as wide as the box inside its border.
-            inner = table.locator("..").evaluate("el => el.clientWidth")
+            # Inside a fold since #465 (a box dropdown since the pages tidy-up): as wide as the
+            # fold's content.
+            self.page.get_by_role("main").locator("summary", has_text="標記的數值").click()
+            inner = table.locator("..").evaluate(
+                "el => { const s = getComputedStyle(el);"
+                " return el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight); }"
+            )
             self.assertEqual(self.size(table)[0], inner)
             cell = table.locator("th").first
             self.assertEqual(
@@ -5254,14 +5267,15 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_level_badge_colours(self):
         for _, scores, _, _ in self.BANNERS[:3]:
             self.submission(self.hhie_s, scores)
-        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
+        Audiogram.objects.create(user=self.user, tested_on=date(2026, 9, 28))
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=hhie-s")
             for level, _, background, colour in self.BANNERS:
                 if level == "unknown":
-                    # An audiogram with no points has no degree on either ear.
-                    self.page.goto(f"{self.live_server_url}/audiograms/{audiogram.pk}")
+                    # An audiogram with no points has no degree on either ear; #465: its badges
+                    # are on the list, the audiogram page shows ear blocks.
+                    self.page.goto(f"{self.live_server_url}/audiograms")
                 with self.subTest(level=level):
                     badge = self.page.locator(f".level-badge-{level}").first
                     expect(badge).to_be_visible()
@@ -5965,10 +5979,13 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 },
             )
             self.assertGreaterEqual(self.text_contrast(current), 4.5)
+            # #465 (the #464 mockup D1 A): a questionnaire tab is the same pale blue pill as the
+            # bar's current page, framed in 2px blue.
             tab = self.page.locator('.history-tabs a[aria-current="page"]')
-            self.assertEqual(self.style(tab, "backgroundColor"), self.PRIMARY)
+            self.assertEqual(self.style(tab, "backgroundColor"), self.BRAND_SELECTED)
             self.assertEqual(self.style(tab, "backgroundImage"), "none")
-            self.assertEqual(self.style(tab, "color"), self.WHITE)
+            self.assertEqual(self.style(tab, "color"), self.PRIMARY)
+            self.assertEqual(self.style(tab, "boxShadow"), f"{self.PRIMARY} 0px 0px 0px 2px inset")
             # Shape as well as colour: only the current page is a pill.
             self.assertEqual(self.style(current, "borderTopLeftRadius"), "27px")
             self.assertEqual(self.style(current, "boxShadow"), "none")
@@ -6084,7 +6101,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             card = self.page.locator("div.choice-group label").first
             card.scroll_into_view_if_needed()
             before = card.bounding_box()
-            self.assertEqual(self.style(card, "borderTopColor"), "rgb(206, 212, 218)")
+            # The fields' darker edge (4.7:1), as the owner chose for every choice after #463.
+            self.assertEqual(self.style(card, "borderTopColor"), "rgb(108, 117, 125)")
             card.hover()
             self.assertEqual(self.settled(card).bounding_box(), before)
             self.assertEqual(self.style(card, "borderTopColor"), self.PRIMARY)
@@ -6382,6 +6400,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
     GREY_EDGE = "rgb(206, 212, 218)"
     # The light blues the dropdowns' title bars already use, and the deeper one beside them.
     BRAND_SOFT = "rgb(238, 243, 250)"
+    SURFACE = "rgb(244, 246, 248)"
     BRAND_SELECTED = "rgb(232, 238, 247)"
     BRAND_SOFT_DEEP = "rgb(214, 226, 242)"
     # D1: the thick blue edge on an open dropdown's left, 0.3rem at the 18px base, painted on its
@@ -6475,7 +6494,7 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         return values if len(props) > 1 else values[props[0]]
 
     # A2: the tab or half not chosen turns light blue under a mouse and a step deeper pressed;
-    # the chosen one stays as it is.
+    # the chosen one, #465's framed pale blue pill (the #464 mockup D1 A), stays as it is.
     def test_tabs_and_switches_change_colour_when_hovered_or_pressed(self):
         self.submission(self.hhie_s, [2] * 10)
         self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7)
@@ -6487,11 +6506,11 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 "questionnaire tabs",
                 "/my_hearing?questionnaire=hhie-s",
                 "問卷",
-                self.WHITE,
+                self.SURFACE,
                 self.BRAND_SOFT,
                 self.BRAND_SELECTED,
             ),
-            # The two halves sit on a light blue track: hovered lighter, pressed deeper.
+            # The two halves sit on a pale grey track (#465): hovered pale blue, pressed deeper.
             (
                 "records switch",
                 "/audiograms",
@@ -6525,7 +6544,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                     current = nav.locator("[aria-current]")
                     props = ("backgroundColor", "backgroundImage", "color")
                     at_rest = {prop: self.style(current, prop) for prop in props}
-                    self.assertEqual(at_rest["backgroundColor"], self.PRIMARY)
+                    self.assertEqual(at_rest["backgroundColor"], self.BRAND_SELECTED)
+                    self.assertEqual(at_rest["color"], self.PRIMARY)
                     self.assertEqual(at_rest["backgroundImage"], "none")
                     for states in (("hover",), ("hover", "active")):
                         self.assertEqual(self.under(current, *states, props=props), at_rest)
@@ -6544,7 +6564,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             current = ears.get_by_role("button", name="右耳")
             props = ("backgroundColor", "backgroundImage", "color")
             at_rest = {prop: self.style(current, prop) for prop in props}
-            self.assertEqual(at_rest["backgroundColor"], self.PRIMARY)
+            self.assertEqual(at_rest["backgroundColor"], self.BRAND_SELECTED)
+            self.assertEqual(at_rest["color"], self.PRIMARY)
             self.assertEqual(at_rest["backgroundImage"], "none")
             for states in (("hover",), ("hover", "active")):
                 self.assertEqual(self.under(current, *states, props=props), at_rest)
@@ -6785,9 +6806,11 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
             details = self.main().locator("details", has_text="標記的數值")
             details.locator("> summary").click()
             expect(details).to_have_attribute("open", "")
-            box, table = details.bounding_box(), details.locator("> table").bounding_box()
-            edge = float(self.style(details, "borderLeftWidth").removesuffix("px")) + 5.4
-            self.assertGreaterEqual(table["x"], box["x"] + edge - 0.5)
+            # #465 (the #464 mockup 3A): 標記的數值 is a list-row fold now, no blue edge of its
+            # own; its table starts inside the fold.
+            box, table = details.bounding_box(), details.locator("table").bounding_box()
+            self.assertEqual(self.style(details, "borderLeftWidth"), "0px")
+            self.assertGreaterEqual(table["x"], box["x"])
 
 
 # White card rule (ADR 0022, spec #297): the pages WhiteCardRuleTest walks, one tuple per ticket
@@ -9817,7 +9840,8 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
                         self.assertAlmostEqual(footer["y"] + footer["height"], size[1], delta=1)
                         gap = self.page.evaluate(self.FOOTER_GAP)
                         self.assertGreaterEqual(gap, 5.5 * self.rem() - 1)
-                        if size == self.PHONE:
+                        # #465: no tab bar while marking an audiogram, so nothing to cover.
+                        if size == self.PHONE and path != "/audiograms/new":
                             tab_bar = self.page.locator(".site-nav").bounding_box()
                             last_line = self.page.locator(".site-footer p").last.bounding_box()
                             self.assertLessEqual(last_line["y"] + last_line["height"], tab_bar["y"])
@@ -11416,6 +11440,10 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         return self.main().get_by_role("link", name="回這張聽力圖")
 
     def assert_the_reminders_show(self):
+        # #465 (the #464 mockup 4): the reminders wait in the 看懂這張圖 fold, the source stays in
+        # sight (ADR 0040).
+        expect(self.words(self.SOURCE)).to_be_visible()
+        self.main().locator("summary", has_text="看懂這張圖").click()
         for text in (self.REMINDER, self.ALARM, self.SOURCE):
             expect(self.words(text)).to_be_visible()
 
@@ -13233,7 +13261,10 @@ class RecordsT465Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTes
             expect(self.main().get_by_role("img", name=re.compile("聽力圖"))).to_be_visible()
             expect(self.page.locator(".site-nav")).to_be_hidden()
             footer = self.page.locator(".site-footer")
-            self.assertEqual(self.style(footer, "paddingBottom"), "27px")  # 1.5rem, no bar
+            room = footer.evaluate(
+                "el => getComputedStyle(el).getPropertyValue('--tab-bar-height')"
+            )
+            self.assertEqual(room.strip(), "0px")
             expect(self.main().get_by_role("link", name="不新增了，回聽力圖清單")).to_be_visible()
             self.visit(True, "/audiograms", width=390)
             expect(self.page.locator(".site-nav")).to_be_visible()

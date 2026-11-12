@@ -4749,6 +4749,18 @@
     padding: 0;
   }
 
+  /* The audiogram's value table runs to the fold's edges, as it ran to its box's (#204): at
+     200% text on a phone a frequency's select takes the whole row. */
+  .audiogram-table > fieldset.result-details-body {
+    padding-inline: 0;
+  }
+
+  /* The comparison's number tables keep their words whole and scroll in their own box (#204,
+     #344), as they did in a box dropdown: breaking anywhere would squeeze the dates instead. */
+  .result-details-body .scroll-box {
+    overflow-wrap: normal;
+  }
+
   .result-details-body .tip-box {
     margin-top: 1rem;
   }
