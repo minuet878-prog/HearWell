@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#462 篩檢與作答設計圖</title>
+<style>
+  /* ---- tokens and base: copied from #454 (mockup-454-components.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --severe: #8f2a12;
+    --input-border: #6c757d; /* #272: 4.7:1 on white */
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1680px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .fixes { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1100px; }
+  .fixes h2 { font-size: 24px; color: var(--heading); margin: 0 0 4px; }
+  .fixes ul, .fixes ol { margin: 6px 0 0; padding-left: 1.3em; }
+  .fixes li { margin-bottom: 6px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* annotations */
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; position: relative; }
+  .newc::before { content: "新元件"; position: absolute; right: -2px; top: -26px; font-size: 12px; font-weight: 700; color: var(--annot); background: #fff; padding: 0 4px; border-radius: 4px; }
+
+  /* phone frame + first-screen line (#460) */
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; }
+  .screen { min-height: 900px; }
+  .pg { padding: 18px 20px 120px; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+
+  /* T1 */
+  .brand { margin: 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .h1 { font-size: 28px; color: var(--heading); margin: 6px 0 8px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 26px 0 6px; line-height: 1.35; font-weight: 700; }
+  .meta { margin: 0 0 12px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .src { font-size: 16px; color: var(--muted); margin: 12px 0 0; }
+  p { margin: 0 0 10px; }
+
+  /* S1 buttons and text links */
+  .b { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .b svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .nav2 { display: flex; gap: 12px; margin-top: 16px; }
+  .nav2 .b { margin-top: 0; flex: 1; }
+
+  /* E: tappable list rows */
+  .list { border-top: 1px solid var(--line); }
+  .item { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .ico { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .nw { white-space: nowrap; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .t-sub { display: block; color: var(--muted); }
+  .chev { flex: none; font-size: 26px; font-weight: 700; color: var(--primary); line-height: 1; }
+  details.more { border-bottom: 1px solid var(--line); }
+  details.more summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 2px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .chev { transform: rotate(90deg); }
+  details.more[open] summary .chev { transform: rotate(-90deg); }
+  .inside { padding: 0 2px 14px; }
+  .inside .lbl { display: block; font-weight: 700; color: var(--heading); }
+  .inside p { margin: 0 0 10px; }
+
+  /* single tappable thing in a colour block (ADR 0041) */
+  .rec-card { background: var(--primary-soft); border-radius: 18px; padding: 16px 18px; margin-top: 14px; }
+  .rec-card .tag { display: block; font-size: 18px; font-weight: 700; color: var(--primary); margin: 0; }
+  .rec-card .ttl { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .rec-card .ttl .ico { background: #fff; }
+  .rec-card .t { margin: 0; font-size: 22px; font-weight: 700; color: var(--heading); line-height: 1.35; }
+  .rec-card .t small { display: block; font-size: 18px; font-weight: 500; color: var(--muted); }
+  .rec-card .why { margin: 10px 0 0; }
+  .rec-card .facts { margin: 8px 0 0; color: var(--muted); }
+  .rec-card .list { border-top-color: rgba(31,78,140,.18); margin-top: 10px; }
+  .rec-card .item { border-bottom-color: rgba(31,78,140,.18); }
+  .rec-card .item .ico { background: #fff; }
+
+  /* P3 hint */
+  .hint { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .hint .ci { display: flex; gap: 10px; align-items: flex-start; }
+  .hint svg { flex: none; width: 24px; height: 24px; margin-top: 2px; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* step progress (existing #151 bar) */
+  .sp-text { margin: 14px 0 6px; font-weight: 700; color: var(--heading); }
+  .segs { display: flex; gap: 4px; margin: 0 0 4px; }
+  .segs span { flex: 1; height: 8px; border-radius: 4px; background: var(--line); }
+  .segs span.d { background: var(--primary); }
+
+  /* answer page */
+  .qline { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 10px 0 0; color: var(--muted); }
+  .saved { color: var(--heading); font-weight: 700; white-space: nowrap; }
+  .legend { margin: 6px 0 4px; font-size: 22px; font-weight: 700; color: var(--heading); line-height: 1.45; }
+  .ch { display: grid; grid-template-columns: auto minmax(0, 1fr) 26px; align-items: center; min-height: 56px; padding: 8px 12px 8px 16px; margin-top: 10px; border: 2px solid var(--input-border); border-radius: 14px; background: #fff; font-size: 20px; color: var(--heading); }
+  .ch .rd { width: 24px; height: 24px; margin-right: 12px; border-radius: 50%; border: 2px solid var(--input-border); background: #fff; }
+  .ch.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  .ch.on .rd { border-color: #fff; background: radial-gradient(circle, var(--primary) 0 5px, #fff 6px); }
+  .ch.on::after { content: ""; width: 24px; height: 24px; border-radius: 50%; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 16px no-repeat; }
+  .ch.onB { background: var(--primary-soft); border-color: var(--primary); color: var(--heading); font-weight: 700; }
+  .ch.onB .rd { border-color: var(--primary); background: radial-gradient(circle, var(--primary) 0 6px, #fff 7px); }
+  .ch.onB::after { content: ""; width: 24px; height: 24px; border-radius: 50%; background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 16px no-repeat; }
+  .err { color: var(--severe); font-weight: 700; display: flex; gap: 8px; margin: 12px 0 0; }
+  .err svg { flex: none; width: 24px; height: 24px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; }
+  .need { margin: 12px 0 0; }
+  .autosave { display: flex; gap: 8px; margin: 14px 0 0; color: var(--muted); }
+  .autosave svg { flex: none; width: 24px; height: 24px; margin-top: 2px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .notab { position: absolute; left: 12px; right: 12px; top: 776px; font-size: 13px; color: var(--annot); text-align: center; z-index: 6; }
+
+  /* W1 tab bar, sitting at the first screen's bottom (#460) */
+  .tabbar { position: absolute; left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; display: flex; z-index: 5; background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .tb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- questionnaire icons: screening/templates/screening/questionnaire_icon.html -->
+  <symbol id="q-ear" viewBox="0 0 24 24"><path d="M8 18a3 3 0 0 0 5-1c.5-1.5 2-2.5 3-4a6 6 0 1 0-11-3.5"/><path d="M11 10a2 2 0 1 1 3 1.7c-1 .6-1.5 1.3-1.5 2.3"/><path d="M19 4c1.3 1.4 2 3.2 2 5"/></symbol>
+  <symbol id="q-aid" viewBox="0 0 24 24"><path d="M9 3a5 5 0 0 1 5 5v5a3 3 0 0 1-3 3H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M11 16v2a3 3 0 0 0 3 3h2"/><circle cx="10.5" cy="7.5" r="1"/></symbol>
+  <symbol id="q-clip" viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17v.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#462 篩檢與作答設計圖</h1>
+  <p class="lead">案例：68 歲的使用者，2026/05/08 沒戴助聽器做過 HHIE-S（18 分），2026/06/20 做過 THI；今天 2026/11/12。手機寬 390px，紫色虛線＝手機第一個畫面的底（390×844），分頁列是 W1 毛玻璃。紫色虛線框的字是我擬的草稿，標「新元件」的是 #454 沒有的樣子；其他字句都是網站現有的（模板、表單、問卷定義），只搬位置。</p>
+  <p class="lead">只套 #454 選定的 T1、E、S1、P3、L1、N3、W1。作答的行為（草稿自動存、接著答、送出中、一題一頁、上一頁＝上一題）都不變，這裡只畫樣子。</p>
+
+  <!-- ================= 1 catalogue ================= -->
+  <section class="group">
+    <h2>1　篩檢分頁：老使用者看到的問卷目錄</h2>
+    <p class="q">這頁要長輩做的一件事：<b>開始做推薦的那一份</b>（沒有推薦時：從清單挑一份）。推薦問卷放進淡藍色塊（單獨一個能點的東西），全頁唯一的實心按鈕是「開始作答」；六份問卷排成 E 清單列。卡片上的「10 題」「約 3 分鐘」「上次…」原本是三個小膠囊框，改成一行灰字。</p>
+    <div class="row">
+
+      <!-- C-A -->
+      <div class="opt"><p class="opt-label">A　「幫我選問卷」在標題下（現在的位置）</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">自行選擇問卷</h1>
+          <p>不確定做哪一份？<a class="tlink">幫我選問卷</a></p>
+          <section class="rec-card">
+            <h2 class="tag">推薦您做這一份</h2>
+            <div class="ttl"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><p class="t">聽力對生活的影響<small>HHIE-S</small></p></div>
+            <p class="facts">10 題・約 3 分鐘・<span class="nw">上次 2026/05/08</span></p>
+            <p class="why"><b>為什麼推薦：</b>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>
+            <a class="b solid">開始作答</a>
+          </section>
+          <h2 class="h2 draft">全部問卷</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIE-S）</span></span><span class="t-sub">適合 65 歲以上的長輩。</span><span class="t-sub">10 題・約 3 分鐘・<span class="nw">上次 2026/05/08</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器使用成效<span class="nw">（IOI-HA）</span></span><span class="t-sub">適合已配戴助聽器的人。</span><span class="t-sub">7 題・約 2 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器滿意度<span class="nw">（SADL）</span></span><span class="t-sub">給正在戴或最近戴過助聽器的人。</span><span class="t-sub">15 題・約 5 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIA-S）</span></span><span class="t-sub">適合 18–64 歲成人。</span><span class="t-sub">10 題・約 3 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-clip"/></svg></span><span class="grow"><span class="t-title">日常聆聽能力<span class="nw">（SSQ12-TW）</span></span><span class="t-sub">了解您目前生活中的聆聽能力。</span><span class="t-sub">12 題・約 5 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">耳鳴對生活的影響<span class="nw">（THI）</span></span><span class="t-sub">給有耳鳴的人，不限年齡。</span><span class="t-sub">25 題・約 5 分鐘・<span class="nw">上次 2026/06/20</span></span></span><span class="chev">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">字句、順序與現在一樣。<b>代價</b>：「幫我選問卷」和「開始作答」都在最上面，第一眼有兩個入口。</p>
+      </div>
+
+      <!-- C-B -->
+      <div class="opt"><p class="opt-label">B　「幫我選問卷」放到清單最後一列<span class="rec">建議</span></p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">自行選擇問卷</h1>
+          <section class="rec-card">
+            <h2 class="tag">推薦您做這一份</h2>
+            <div class="ttl"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><p class="t">聽力對生活的影響<small>HHIE-S</small></p></div>
+            <p class="facts">10 題・約 3 分鐘・<span class="nw">上次 2026/05/08</span></p>
+            <p class="why"><b>為什麼推薦：</b>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>
+            <a class="b solid">開始作答</a>
+          </section>
+          <h2 class="h2 draft">全部問卷</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIE-S）</span></span><span class="t-sub">適合 65 歲以上的長輩。</span><span class="t-sub">10 題・約 3 分鐘・<span class="nw">上次 2026/05/08</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器使用成效<span class="nw">（IOI-HA）</span></span><span class="t-sub">適合已配戴助聽器的人。</span><span class="t-sub">7 題・約 2 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器滿意度<span class="nw">（SADL）</span></span><span class="t-sub">給正在戴或最近戴過助聽器的人。</span><span class="t-sub">15 題・約 5 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIA-S）</span></span><span class="t-sub">適合 18–64 歲成人。</span><span class="t-sub">10 題・約 3 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-clip"/></svg></span><span class="grow"><span class="t-title">日常聆聽能力<span class="nw">（SSQ12-TW）</span></span><span class="t-sub">了解您目前生活中的聆聽能力。</span><span class="t-sub">12 題・約 5 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">耳鳴對生活的影響<span class="nw">（THI）</span></span><span class="t-sub">給有耳鳴的人，不限年齡。</span><span class="t-sub">25 題・約 5 分鐘・<span class="nw">上次 2026/06/20</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-help"/></svg></span><span class="grow"><span class="t-title">幫我選問卷</span><span class="t-sub">不確定做哪一份？</span></span><span class="chev">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">第一個畫面只剩推薦和清單開頭。ADR 0030 原本就寫「目錄底下留一行幫您挑」，模板放在上面；這版回到 ADR 寫的位置，字句只拆成標題和小字。<b>代價</b>：不確定的人要捲到底才看到；但推薦色塊本身就是「幫您挑好的」。</p>
+      </div>
+
+      <!-- C-crowded -->
+      <div class="opt"><p class="opt-label">最擠的狀態：有沒答完的草稿＋看不出年齡（推兩份）</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <div class="hint"><div class="ci"><svg><use href="#i-info"/></svg><span>您上次的「助聽器滿意度（SADL）」答到第 6 題，答案都還在。<a class="tlink">接著答</a></span></div></div>
+          <h1 class="h1">自行選擇問卷</h1>
+          <section class="rec-card">
+            <h2 class="tag">推薦您做這一份</h2>
+            <p class="why"><b>為什麼推薦：</b>您還沒做過聽力對生活影響的問卷，做一次之後才有基礎可以比較。</p>
+            <div class="list">
+              <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIE-S）</span></span><span class="t-sub">適合 65 歲以上的長輩。</span><span class="t-sub">10 題・約 3 分鐘</span></span><span class="chev">›</span></a>
+              <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIA-S）</span></span><span class="t-sub">適合 18–64 歲成人。</span><span class="t-sub">10 題・約 3 分鐘</span></span><span class="chev">›</span></a>
+            </div>
+          </section>
+          <h2 class="h2 draft">全部問卷</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">聽力對生活的影響<span class="nw">（HHIE-S）</span></span><span class="t-sub">適合 65 歲以上的長輩。</span><span class="t-sub">10 題・約 3 分鐘</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器使用成效<span class="nw">（IOI-HA）</span></span><span class="t-sub">適合已配戴助聽器的人。</span><span class="t-sub">7 題・約 2 分鐘</span></span><span class="chev">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">接著答提示由藍底左色條改成 P3 灰底（ADR 0041 不再用左邊色條），「接著答」維持文字連結。推兩份時現在是兩顆「開始作答」，會變成一頁兩顆實心按鈕；改成色塊裡兩列 E 清單（點了直接進作答頁，跟按鈕去的地方一樣），這個狀態整頁沒有實心按鈕。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 wizard ================= -->
+  <section class="group">
+    <h2>2　推薦精靈（新使用者點「篩檢」、老使用者點「幫我選問卷」）</h2>
+    <p class="q">問題頁要做的一件事：<b>選一個答案、按下一步</b>；結果頁：<b>開始作答</b>。選項是輸入框（不是按鈕），沿用作答頁的一列一個、整列可點；外框改用 #272 的 #6c757d（4.7:1），現在的 #ced4da 只有 1.5:1。年齡那一步（看不出年齡才問）樣子同第 1 步，只是兩個選項，不另畫。</p>
+    <div class="row">
+
+      <!-- W1 -->
+      <div class="opt"><p class="opt-label">第 1 步：剛建好帳號（最常見的進入方式）</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <div class="hint">帳號建好了！接下來幫您找適合的問卷</div>
+          <p class="sp-text" style="margin-top:8px">第 1 步／共 2 步</p>
+          <div class="segs"><span class="d"></span><span></span></div>
+          <h1 class="h1" style="margin-top:12px">幫您找適合的問卷</h1>
+          <p class="legend">您最想了解什麼？</p>
+          <label class="ch"><span class="rd"></span>聽不清楚對生活、心情的影響</label>
+          <label class="ch"><span class="rd"></span>耳鳴的困擾</label>
+          <label class="ch"><span class="rd"></span>吵雜地方、多人說話聽不懂</label>
+          <label class="ch"><span class="rd"></span>助聽器戴得好不好</label>
+          <label class="ch"><span class="rd"></span>不確定</label>
+          <div class="nav2"><a class="b outline">上一步</a><a class="b solid">下一步</a></div>
+          <p style="margin-top:14px">知道要做哪一份？<a class="tlink">自己選問卷</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">「帳號建好了」只有從同意書頁來的第一步才有，藍底左色條改 P3 灰底。進度條沿用現有樣子（#151）。<b>代價</b>：五個選項加兩顆按鈕剛好塞滿，「自己選問卷」貼著分頁列；看不出年齡時進度寫「共 3 步」，樣子一樣。</p>
+      </div>
+
+      <!-- W result common -->
+      <div class="opt"><p class="opt-label">結果：選「聽不清楚對生活、心情的影響」</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <p class="sp-text">第 2 步／共 2 步</p>
+          <div class="segs"><span class="d"></span><span class="d"></span></div>
+          <h1 class="h1" style="margin-top:12px">推薦您做這一份</h1>
+          <section class="rec-card">
+            <div class="ttl" style="margin-top:0"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><h2 class="t">聽力對生活的影響<small>HHIE-S</small></h2></div>
+            <p class="facts">10 題・約 3 分鐘</p>
+            <p class="why"><b>為什麼推薦：</b>這份問卷幫您了解聽力對日常生活和心情的影響。</p>
+            <a class="b solid">開始作答</a>
+          </section>
+          <a class="b outline" style="margin-top:20px">上一步</a>
+          <div class="list" style="margin-top:18px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-list"/></svg></span><span class="grow">看其他問卷</span><span class="chev">›</span></summary></details>
+          </div>
+          <p style="margin-top:14px">知道要做哪一份？<a class="tlink">自己選問卷</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">推薦色塊與目錄的同一個樣子。「看其他問卷」原本是外框折疊盒，改成 E 樣式的折疊列，點開是同一份 E 清單。</p>
+      </div>
+
+      <!-- W result crowded -->
+      <div class="opt"><p class="opt-label">最擠的結果：選「助聽器戴得好不好」、有沒戴紀錄</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <p class="sp-text">第 2 步／共 2 步</p>
+          <div class="segs"><span class="d"></span><span class="d"></span></div>
+          <h1 class="h1" style="margin-top:12px">推薦您做這一份</h1>
+          <section class="rec-card">
+            <div class="ttl" style="margin-top:0"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><h2 class="t">助聽器使用成效<small>IOI-HA</small></h2></div>
+            <p class="facts">7 題・約 2 分鐘</p>
+            <p class="why"><b>為什麼推薦：</b>您有戴助聽器，也有沒戴助聽器時的紀錄。這份問卷了解助聽器對您的幫助，並和沒戴時困擾程度相近的一般使用者比較。</p>
+            <a class="b solid">開始作答</a>
+          </section>
+          <h2 class="h2">也可以做</h2>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-ear"/></svg></span><span class="grow"><span class="t-title">戴著助聽器再做一次「聽力對生活的影響」<span class="nw">（HHIE-S）</span></span><span class="t-sub">和沒戴時的結果比較，看助聽器幫了多少。</span><span class="t-sub">10 題・約 3 分鐘・<span class="nw">上次 2026/05/08</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#q-aid"/></svg></span><span class="grow"><span class="t-title">助聽器滿意度<span class="nw">（SADL）</span></span><span class="t-sub">給正在戴或最近戴過助聽器的人。</span><span class="t-sub">15 題・約 5 分鐘</span></span><span class="chev">›</span></a>
+          </div>
+          <a class="b outline" style="margin-top:20px">上一步</a>
+          <div class="list" style="margin-top:18px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-list"/></svg></span><span class="grow">看其他問卷</span><span class="chev">›</span></summary></details>
+          </div>
+          <p style="margin-top:14px">知道要做哪一份？<a class="tlink">自己選問卷</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">三個標題（推薦、問卷名、也可以做）。理由最長的一種仍放得下按鈕；「也可以做」在第二個畫面。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 intro / first page ================= -->
+  <section class="group">
+    <h2>3　問卷介紹（作答的第一頁：介紹＋有沒有戴助聽器）</h2>
+    <p class="q">網站沒有獨立的介紹頁：介紹（<code>questionnaires/*_intro.html</code>）在作答第一頁全文顯示，之後每題收成「這份問卷在問什麼？」。這頁要做的一件事：<b>回答有沒有戴、按下一題</b>。以 HHIE-S 為例。</p>
+    <div class="row">
+
+      <!-- I-A -->
+      <div class="opt"><p class="opt-label">A　介紹預設收起（跟後面各題同一列）<span class="rec">建議</span></p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <p class="legend" style="margin-top:18px">這次填答時，您有沒有戴助聽器？</p>
+          <label class="ch"><span class="rd"></span>沒戴</label>
+          <label class="ch"><span class="rd"></span>有戴</label>
+          <a class="b solid" style="margin-top:16px">下一題<svg><use href="#i-right"/></svg></a>
+          <p class="need">先選一個答案，才能按「下一題」。</p>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">題目和按鈕在第一個畫面中間，不用捲。介紹四段原文不刪，在按鈕下面的折疊列裡（右邊「點開後」）。現在這一列在題目上面，改放到按鈕下面，題目和按鈕才往上。<b>代價</b>：第一次來的人要自己點開才看到「怎麼回答」；不過選項本身就寫著常常／有時／從未。</p>
+      </div>
+
+      <!-- I-B -->
+      <div class="opt"><p class="opt-label">B　介紹全文在上（現在的做法，換新樣式）</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <div class="list inside" style="padding:0">
+            <div class="item" style="display:block;min-height:0"><span class="lbl">這份問卷在了解</span>本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。</div>
+            <div class="item" style="display:block;min-height:0"><span class="lbl">適合誰</span>適合 65 歲以上的長輩；若您持續使用原問卷追蹤，也可以繼續填寫。</div>
+            <div class="item" style="display:block;min-height:0"><span class="lbl">怎麼回答</span>請在閱讀每項問題後圈選<strong>常常</strong>、<strong>有時</strong>或<strong>從未</strong>。</div>
+            <div class="item" style="display:block;min-height:0"><span class="lbl">什麼時候再填</span>已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。</div>
+          </div>
+          <p class="legend" style="margin-top:18px">這次填答時，您有沒有戴助聽器？</p>
+          <label class="ch"><span class="rd"></span>沒戴</label>
+          <label class="ch"><span class="rd"></span>有戴</label>
+          <a class="b solid" style="margin-top:16px">下一題<svg><use href="#i-right"/></svg></a>
+          <p class="need">先選一個答案，才能按「下一題」。</p>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">介紹每段前面的淡藍圓形圖示拿掉：在 E 裡淡藍圓形＝能點，介紹不能點。<b>代價</b>：「下一題」被推到分頁列後面，第一個畫面看不到要按的按鈕。</p>
+      </div>
+
+      <!-- I-open -->
+      <div class="opt"><p class="opt-label">A 的「這份問卷在問什麼？」點開後</p>
+        <div class="phone" style="padding:18px 20px 22px">
+          <div class="list">
+            <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary>
+              <div class="inside">
+                <p><span class="lbl">這份問卷在了解</span>本問卷的目的在幫助您了解自己的聽力是否對於日常生活造成了影響。</p>
+                <p><span class="lbl">適合誰</span>適合 65 歲以上的長輩；若您持續使用原問卷追蹤，也可以繼續填寫。</p>
+                <p><span class="lbl">怎麼回答</span>請在閱讀每項問題後圈選<strong>常常</strong>、<strong>有時</strong>或<strong>從未</strong>。</p>
+                <p><span class="lbl">什麼時候再填</span>已選配助聽器一段時間後，可以再填一次，有助於了解所配的助聽器是否真的有幫助。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        <p class="note">四個小標題從 16px 粗體改成 18px 粗體（T1 內文字級）。有出處的問卷（HHIA-S、THI、IOI-HA 等）出處原本在頁尾，一起收進來。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 answering ================= -->
+  <section class="group">
+    <h2>4　作答頁（一題一頁）</h2>
+    <p class="q">這頁要做的一件事：<b>選一個答案、按下一題</b>。全頁唯一的實心按鈕是「下一題」（最後一題是「送出」）；「上一題」是 S1 藍框。「這份問卷在問什麼？」從題目上面移到按鈕下面，先看到題目。選中的答案是輸入框的狀態，不算按鈕，但看起來也是一塊深藍，所以並排兩種給您比。</p>
+    <div class="row">
+
+      <!-- A mid, chosen dark -->
+      <div class="opt"><p class="opt-label">選中的樣子 A　深藍底白字（現在的 #328）<span class="rec">建議</span></p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <div class="segs" style="margin-top:18px"><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span>第 4 題／共 10 題・還剩大約 2 分鐘</span><span class="saved">✓ 已儲存</span></p>
+          <p class="legend">你覺得聽力問題會讓你有障礙嗎？</p>
+          <label class="ch"><span class="rd"></span>常常</label>
+          <label class="ch on"><span class="rd"></span>有時</label>
+          <label class="ch"><span class="rd"></span>從未</label>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg>上一題</a><a class="b solid">下一題<svg><use href="#i-right"/></svg></a></div>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">#328 當初選深藍，是為了不靠「分辨兩種淺色」看出選了哪個；白色圓勾也還在。<b>代價</b>：畫面上有兩塊深藍（選中的答案、下一題）。</p>
+      </div>
+
+      <!-- B mid, chosen light -->
+      <div class="opt"><p class="opt-label">選中的樣子 B　淡藍底＋藍框＋藍勾</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <div class="segs" style="margin-top:18px"><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span>第 4 題／共 10 題・還剩大約 2 分鐘</span><span class="saved">✓ 已儲存</span></p>
+          <p class="legend">你覺得聽力問題會讓你有障礙嗎？</p>
+          <label class="ch"><span class="rd"></span>常常</label>
+          <label class="ch onB newc"><span class="rd"></span>有時</label>
+          <label class="ch"><span class="rd"></span>從未</label>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg>上一題</a><a class="b solid">下一題<svg><use href="#i-right"/></svg></a></div>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">實心藍只剩「下一題」，最符合一頁一塊深藍。<b>代價</b>：新元件；選中靠淡藍底＋藍框＋粗體＋藍勾四個線索，比深藍弱，是 #328 刻意避開的「分辨淺色」。</p>
+      </div>
+
+      <!-- last question, crowded -->
+      <div class="opt"><p class="opt-label">最擠的狀態：最後一題沒選就按「送出」</p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <div class="segs" style="margin-top:18px"><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span><span></span></div>
+          <p class="qline"><span>第 10 題／共 10 題・還剩大約 1 分鐘</span></p>
+          <p class="legend">和親友在餐館吃飯時，聽力問題會讓你感到困難嗎？</p>
+          <label class="ch"><span class="rd"></span>常常</label>
+          <label class="ch"><span class="rd"></span>有時</label>
+          <label class="ch"><span class="rd"></span>從未</label>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg>上一題</a><a class="b solid"><svg><use href="#i-tick"/></svg>送出</a></div>
+          <p class="need">先選一個答案，才能按「送出」。</p>
+          <p class="err"><svg><use href="#i-warn"/></svg>請先選一個答案</p>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">紅字錯誤加驚嘆號圖示（#272 的做法，不只靠紅色）。按下送出後按鈕照舊變「送出中…」再變「✓ 已送出」，行為不變。</p>
+      </div>
+
+      <!-- resume draft -->
+      <div class="opt"><p class="opt-label">接著答（這支手機有上次沒答完的草稿）</p>
+        <div class="phone screen" style="min-height:860px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽力對生活的影響</h1>
+          <p class="meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+          <p class="legend" style="margin-top:22px">您上次答到第 4 題，要接著答嗎？</p>
+          <a class="b solid" style="margin-top:16px">接著答</a>
+          <a class="b outline">重新開始</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note">現在這句標題左邊有藍色條（heading-bar），T1 不加藍條，拿掉。兩顆按鈕改成上下排、滿寬。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 IOI-HA ================= -->
+  <section class="group">
+    <h2>5　IOI-HA 作答頁</h2>
+    <p class="q">IOI-HA 不問有沒有戴，第 1 題就是第一頁；ADR 0002 規定<b>填答前要看到常模依據</b>（哪份問卷、日期、分數），所以這一段不收進折疊，用 P3 灰底露出，其餘介紹收進「這份問卷在問什麼？」。IOI-HA 的題目長、每題五個選項，是全站最擠的作答頁，下面拿它來比「作答時要不要顯示分頁列」。</p>
+    <div class="row">
+
+      <!-- IOI item 1 with tab -->
+      <div class="opt"><p class="opt-label">第 1 題・分頁列 A　照舊顯示</p>
+        <div class="phone screen" style="min-height:1000px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">助聽器使用成效</h1>
+          <p class="meta">IOI-HA・共 7 題・大約 2 分鐘</p>
+          <div class="hint" style="margin-bottom:0"><p style="font-weight:700;margin-bottom:4px">本次常模依據：HHIE-S，2026/05/08 未配戴紀錄，18 分。</p><p style="margin:0">這是常模比較的分組，不代表聽損程度。</p></div>
+          <div class="segs" style="margin-top:16px"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span>第 1 題／共 7 題・還剩大約 2 分鐘</span></p>
+          <p class="legend">最近兩周內，您每天平均使用助聽器幾個小時？</p>
+          <label class="ch"><span class="rd"></span>沒使用</label>
+          <label class="ch"><span class="rd"></span>不到一小時</label>
+          <label class="ch"><span class="rd"></span>一到四小時</label>
+          <label class="ch"><span class="rd"></span>四到八小時</label>
+          <label class="ch"><span class="rd"></span>超過八小時</label>
+          <a class="b solid" style="margin-top:16px">下一題<svg><use href="#i-right"/></svg></a>
+          <p class="need">先選一個答案，才能按「下一題」。</p>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <p class="note"><b>代價</b>：「下一題」在分頁列後面，第一個畫面看不到，要先捲。</p>
+      </div>
+
+      <!-- IOI item 1 no tab -->
+      <div class="opt"><p class="opt-label">第 1 題・分頁列 B　作答時收起<span class="rec">建議</span></p>
+        <div class="phone screen" style="min-height:1000px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">助聽器使用成效</h1>
+          <p class="meta">IOI-HA・共 7 題・大約 2 分鐘</p>
+          <div class="hint" style="margin-bottom:0"><p style="font-weight:700;margin-bottom:4px">本次常模依據：HHIE-S，2026/05/08 未配戴紀錄，18 分。</p><p style="margin:0">這是常模比較的分組，不代表聽損程度。</p></div>
+          <div class="segs" style="margin-top:16px"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span>第 1 題／共 7 題・還剩大約 2 分鐘</span></p>
+          <p class="legend">最近兩周內，您每天平均使用助聽器幾個小時？</p>
+          <label class="ch"><span class="rd"></span>沒使用</label>
+          <label class="ch"><span class="rd"></span>不到一小時</label>
+          <label class="ch"><span class="rd"></span>一到四小時</label>
+          <label class="ch"><span class="rd"></span>四到八小時</label>
+          <label class="ch"><span class="rd"></span>超過八小時</label>
+          <a class="b solid" style="margin-top:16px">下一題<svg><use href="#i-right"/></svg></a>
+          <p class="need">先選一個答案，才能按「下一題」。</p>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        </div>
+        <p class="note">作答頁（含第 3、4 節）不顯示分頁列，多出約 100px。要離開：左上「聽伴」回首頁、加到主畫面時左上「上一頁」；草稿會自動存，之後首頁和目錄會提示接著答。<b>代價</b>：要改 <code>layout.html</code> 的分頁列（只在作答頁收起），跟其他頁不一樣；200% 字級時仍要捲。</p>
+      </div>
+
+      <!-- IOI item 2 crowded -->
+      <div class="opt"><p class="opt-label">最擠：第 2 題（最長的題目）・分頁列 B</p>
+        <div class="phone screen" style="min-height:1000px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">助聽器使用成效</h1>
+          <p class="meta">IOI-HA・共 7 題・大約 2 分鐘</p>
+          <div class="segs" style="margin-top:16px"><span class="d"></span><span class="d"></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="qline"><span>第 2 題／共 7 題・還剩大約 2 分鐘</span><span class="saved">✓ 已儲存</span></p>
+          <p class="legend">想一想在您使用現有的助聽器之前，您在什麼情況下最希望能夠聽得清楚。最近兩周內，在前述情況下，您的助聽器對您有多少幫助？</p>
+          <label class="ch"><span class="rd"></span>完全沒幫助</label>
+          <label class="ch"><span class="rd"></span>只有一點幫助</label>
+          <label class="ch"><span class="rd"></span>有中等幫助</label>
+          <label class="ch on"><span class="rd"></span>幫助很大</label>
+          <label class="ch"><span class="rd"></span>非常有幫助</label>
+          <div class="nav2"><a class="b outline"><svg><use href="#i-left"/></svg>上一題</a><a class="b solid">下一題<svg><use href="#i-right"/></svg></a></div>
+          <div class="list" style="margin-top:16px">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="autosave"><svg><use href="#i-save"/></svg>答案會自動存在這支手機，中途離開也沒關係。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        </div>
+        <p class="note">第 2 題起常模依據也收進折疊列（跟現在一樣只在第 1 題全文）。四行長題目＋五個選項，收起分頁列後按鈕剛好在第一個畫面內；照舊顯示的話會被分頁列蓋住。</p>
+      </div>
+
+      <!-- IOI intro open -->
+      <div class="opt"><p class="opt-label">IOI-HA 的「這份問卷在問什麼？」點開後</p>
+        <div class="phone" style="padding:18px 20px 22px">
+          <div class="list">
+            <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="grow">這份問卷在問什麼？</span><span class="chev">›</span></summary>
+              <div class="inside">
+                <p><span class="lbl">這份問卷在了解</span>本量表適合已配戴助聽器的人，用來了解助聽器對您的幫助。</p>
+                <p><span class="lbl">怎麼回答</span>請依照最近兩週戴著現有助聽器的經驗，每題選一個最符合的答案。</p>
+                <p><span class="lbl">常模比較</span><b>本次常模依據：HHIE-S，2026/05/08 未配戴紀錄，18 分。</b></p>
+                <p>這是常模比較的分組，不代表聽損程度。</p>
+                <p class="src">原量表：IOI-HA（Cox 等人）。中譯：林克寰《助聽器選配與驗證》，CC BY 3.0 台灣。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+        <p class="note">第 1 題時，常模比較那段已經在灰框裡，折疊裡不再重複（實作時同一份模板拆兩處用）。沒有未配戴紀錄時，灰框改成現有那句「目前沒有完整有效的未配戴 HHIA-S／HHIE-S 紀錄；仍可填答，但本次不與常模比較。」</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="fixes">
+    <h2>需要您決定的地方</h2>
+    <ol>
+      <li><b>作答時要不要顯示分頁列</b>（第 5 節）：A 照舊顯示／B 作答頁收起。<b>建議 B</b>：IOI-HA 第 1、2 題的「下一題」才會在第一個畫面；代價是要改共用版面，離開作答要點左上「聽伴」。</li>
+      <li><b>作答第一頁的問卷介紹</b>（第 3 節）：A 預設收起／B 全文（現在）。<b>建議 A</b>：B 的「下一題」會被分頁列蓋住。IOI-HA 不管選哪個，常模依據一律露出（ADR 0002）。</li>
+      <li><b>選中的答案</b>（第 4 節）：A 深藍底白字（現在，#328）／B 淡藍底藍框藍勾（新元件）。<b>建議 A</b>：#328 刻意不靠分辨淺色，輸入框的狀態不算按鈕。</li>
+      <li><b>目錄的「幫我選問卷」</b>（第 1 節）：A 標題下一行（現在）／B 清單最後一列（ADR 0030 寫的位置）。<b>建議 B</b>：第一個畫面只剩推薦一個入口。</li>
+      <li><b>看不出年齡、推兩份時</b>（第 1 節最擠）：照畫的改成色塊裡兩列清單、這個狀態沒有實心按鈕；或維持兩顆「開始作答」（會違反一頁一顆）。<b>建議照畫的</b>。</li>
+    </ol>
+    <h2 style="margin-top:16px">草稿字句（紫色虛線框）</h2>
+    <ul><li>目錄清單上方的小標「全部問卷」（現在清單沒有標題；加了讓推薦和清單分開，螢幕閱讀器也能跳）。</li></ul>
+    <h2 style="margin-top:16px">順手發現（不在這張票改）</h2>
+    <ul>
+      <li>作答與精靈選項的外框 #ced4da 對白底只有 1.5:1，不到介面元件要的 3:1；設計圖改用 #272 的 #6c757d（4.7:1）。</li>
+      <li>問卷介紹每段的淡藍圓形圖示，在 E 樣式裡會被當成「能點」，設計圖拿掉。</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

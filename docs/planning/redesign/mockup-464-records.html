@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#464 紀錄與聽力圖設計圖</title>
+<style>
+  /* ---- tokens and base: copied from #454 / #460 (T1, E, S1, P3, L1, N3, W1 only) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 6px; }
+  .lead { margin: 0 0 6px; color: var(--muted); max-width: 1000px; }
+  .group { margin: 52px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 4px; color: var(--muted); max-width: 1000px; }
+  .q b { color: var(--heading); }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 18px; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  ul.diff { margin: 6px 0 0; padding-left: 1.2em; font-size: 16px; color: var(--muted); max-width: 1000px; }
+  ul.diff b { color: var(--heading); }
+  .phone { background: #fff; border-radius: 28px; padding: 22px 20px 120px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .phone.clip { height: 844px; }
+  .phone.short { min-height: 0; padding-bottom: 22px; }
+  .fold-line { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold-line span { position: absolute; right: 8px; top: -24px; font-size: 13px; color: var(--annot); font-weight: 700; background: #fff; padding: 0 6px; }
+  svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* annotations: draft wording and new components */
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { position: relative; outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; }
+  .newc::after { content: "新元件"; position: absolute; right: -2px; top: -18px; font-size: 12px; font-weight: 700; color: var(--annot); background: #fff; padding: 0 4px; line-height: 1.3; }
+
+  /* T1 */
+  .kicker { font-size: 16px; color: var(--muted); margin: 0; }
+  h2.page { font-size: 28px; color: var(--heading); margin: 2px 0 14px; line-height: 1.3; }
+  h3.sec { font-size: 22px; color: var(--heading); margin: 28px 0 6px; line-height: 1.35; }
+  .phone p { margin: 0 0 10px; }
+  .src { font-size: 16px; color: var(--muted); }
+  .muted { color: var(--muted); }
+
+  /* S1 */
+  .btn { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; border-radius: 14px; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .outline.off { color: var(--muted); border-color: var(--line-strong); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .tlink.danger { color: #a0281d; }
+  .links { display: flex; flex-wrap: wrap; column-gap: 24px; margin-top: 8px; }
+  .btn2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn2 .btn { margin-top: 0; }
+
+  /* L1 */
+  .lv { border-radius: 18px; padding: 14px 18px; }
+  .lv .k { font-size: 17px; font-weight: 500; }
+  .lv .n { font-size: 44px; font-weight: 700; line-height: 1.1; }
+  .lv .n small { font-size: 20px; }
+  .lv .nm { font-size: 22px; font-weight: 700; }
+  .lv .cmp { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(112,72,0,.25); font-size: 17px; font-weight: 500; }
+  .L1n { background: var(--normal-bg); color: var(--normal); } .L1m { background: var(--mild-bg); color: var(--mild); } .L1s { background: var(--severe-bg); color: var(--severe); }
+  /* L1, small: the level badge inside a list row */
+  .badge { display: inline-block; border-radius: 8px; padding: 1px 10px; font-weight: 700; font-size: 17px; line-height: 1.5; }
+
+  /* two ear blocks side by side (L1 colours) */
+  .ears { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ear { border-radius: 16px; padding: 12px 14px; }
+  .ear .lab { font-size: 18px; font-weight: 700; }
+  .ear .deg { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .ear .pta { font-size: 18px; line-height: 1.4; margin-top: 4px; }
+
+  /* P3 */
+  .hint { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin-top: 12px; }
+  .hint .t { display: block; font-weight: 700; color: var(--heading); }
+  .hint p:last-child { margin-bottom: 0; }
+  .next { background: var(--primary-soft); border-radius: 18px; padding: 16px 18px; margin-top: 18px; }
+  .next p { margin: 0; color: var(--heading); }
+  .next .tag { font-size: 16px; font-weight: 700; color: var(--primary); display: block; }
+
+  /* E */
+  .list { border-top: 1px solid var(--line); margin-top: 18px; }
+  .item { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .ico { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .body { flex: 1; min-width: 0; }
+  .body .t { display: block; font-weight: 700; color: var(--heading); }
+  .body .s { display: block; color: var(--muted); }
+  .chev { flex: none; color: var(--primary); font-size: 24px; font-weight: 700; line-height: 1; }
+  .thumb { flex: none; width: 72px; height: 56px; border-radius: 10px; background: #fff; border: 1px solid var(--line); }
+  details.more { border-bottom: 1px solid var(--line); }
+  details.more summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 2px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .chev { transform: rotate(90deg); }
+  details.more[open] summary .chev { transform: rotate(-90deg); }
+  .inside { padding: 0 2px 16px; }
+  table.vals { width: 100%; border-collapse: collapse; font-size: 18px; }
+  table.vals th, table.vals td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  table.vals th { color: var(--heading); }
+
+  /* N3 */
+  ol.st { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  ol.st li { counter-increment: s; display: flex; gap: 12px; margin-bottom: 12px; }
+  ol.st li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+  .stC li { position: relative; padding-bottom: 4px; }
+  .stC li::before { background: #fff; color: var(--primary); border: 2px solid var(--primary); position: relative; z-index: 1; }
+  .stC li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: -12px; width: 2px; background: var(--line-strong); }
+
+  /* W1 */
+  .tabbar { position: absolute; left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; display: flex; z-index: 5; background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .tb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 17px; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  /* ---- new on this page (marked .newc where used) ---- */
+  /* two-way switch: W1's selected look on a P3 track */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface); margin: 0 0 18px; }
+  .seg a { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 999px; color: var(--muted); font-weight: 500; }
+  .seg a.on { background: var(--primary-sel); color: var(--primary); font-weight: 700; box-shadow: inset 0 0 0 2px var(--primary); }
+  .seg.old { background: var(--primary-sel); }
+  .seg.old a { color: var(--primary); font-weight: 700; }
+  .seg.old a.on { background: var(--primary); color: #fff; box-shadow: none; }
+  /* questionnaire tabs: same look, two columns */
+  .qtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 18px; }
+  .qtabs a { display: flex; flex-direction: column; justify-content: center; min-height: 56px; padding: 6px 12px; border-radius: 14px; background: var(--surface); color: var(--heading); font-size: 18px; line-height: 1.3; }
+  .qtabs a small { font-size: 14px; color: var(--muted); }
+  .qtabs a.on { background: var(--primary-sel); color: var(--primary); font-weight: 700; box-shadow: inset 0 0 0 2px var(--primary); }
+  .qtabs a.on small { color: var(--primary); }
+  /* chart placeholders: the chart itself is out of scope */
+  .ph { display: grid; place-items: center; text-align: center; border: 2px dashed var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 16px; padding: 12px; }
+  .ph b { display: block; font-size: 20px; color: var(--heading); }
+  .ph-trend { height: 360px; }
+  .ph-ag { height: 415px; margin: 0 -6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 8px 0 0; padding: 0; list-style: none; }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .sw { display: inline-block; width: 18px; height: 18px; border-radius: 4px; }
+  /* radio rows (the answering page's ticket decides their final look) */
+  fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+  legend { font-size: 20px; font-weight: 700; color: var(--heading); padding: 0; margin-bottom: 4px; }
+  .radio { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--line); }
+  .radio:first-of-type { border-top: 1px solid var(--line); }
+  .rdot { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line-strong); background: #fff; }
+  .radio.on .rdot { border: 8px solid var(--primary); }
+  .radio.on { font-weight: 700; color: var(--heading); }
+  /* comparison numbers */
+  .pair { display: flex; align-items: center; justify-content: center; gap: 16px; text-align: center; margin: 6px 0 10px; }
+  .pair p { margin: 0; }
+  .pair strong { display: block; font-size: 30px; line-height: 1.25; color: var(--heading); }
+  .pair .p-new strong { color: var(--primary); }
+  .pair .d { font-size: 16px; color: var(--muted); }
+  .big { font-size: 20px; font-weight: 700; color: var(--heading); }
+  .steps { margin: 0 0 14px; }
+  .steps .stxt { font-weight: 700; color: var(--heading); }
+  .pbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
+  .pbar span { height: 8px; border-radius: 4px; background: var(--line); }
+  .pbar span.done { background: var(--primary); }
+  .sym { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .sym a { min-height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; border: 2px solid var(--line-strong); color: var(--heading); }
+  .sym a.on { border-color: var(--primary); background: var(--primary-sel); color: var(--primary); }
+  .sym a .mk-r { color: #c0392b; font-size: 22px; }
+  .mask { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 16px; border-radius: 14px; border: 2px solid var(--line-strong); font-weight: 700; color: var(--heading); margin-bottom: 12px; }
+  .track { display: inline-flex; align-items: center; gap: 8px; }
+  .track i { display: inline-block; width: 48px; height: 28px; border-radius: 14px; background: var(--line-strong); position: relative; }
+  .track i::after { content: ""; position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+  .countrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 12px; margin-top: 8px; }
+  .pick { display: flex; align-items: center; gap: 10px; min-height: 60px; border-bottom: 1px solid var(--line); }
+  .pick:first-child { border-top: 1px solid var(--line); }
+  .pick .lb { font-weight: 700; color: var(--heading); width: 1.5em; }
+  .pick .chg { margin-left: auto; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .banana-res { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin-top: 12px; }
+  .banana-res .gt { font-size: 22px; font-weight: 700; color: var(--heading); letter-spacing: .04em; }
+  .spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1100px; margin-top: 12px; }
+  .spec th, .spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .spec th { background: var(--surface); color: var(--heading); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7.2M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 4-4 5-4 9a3 3 0 0 1-5 1"/><path d="M10 10a2 2 0 0 1 4 0"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></symbol>
+  <symbol id="i-guide" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M9 10v9"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2"/><path d="M20 4v5h-5M4 20v-5h5"/></symbol>
+  <!-- decorative thumbnail, as audiogram_thumbnail.html draws it -->
+  <symbol id="thumb-a" viewBox="0 0 72 56"><rect x="6" y="6" width="60" height="10" fill="#e9f5ec"/><g stroke="#dee2e6" stroke-width=".6"><line x1="6" x2="66" y1="16" y2="16"/><line x1="6" x2="66" y1="28" y2="28"/><line x1="6" x2="66" y1="40" y2="40"/></g><polyline points="8,20 20,22 32,26 44,34 56,40 64,44" fill="none" stroke="#c0392b" stroke-width="1.6"/><polyline points="8,18 20,20 32,22 44,28 56,34 64,36" fill="none" stroke="#1f4e8c" stroke-width="1.6"/></symbol>
+  <symbol id="thumb-b" viewBox="0 0 72 56"><rect x="6" y="6" width="60" height="10" fill="#e9f5ec"/><g stroke="#dee2e6" stroke-width=".6"><line x1="6" x2="66" y1="16" y2="16"/><line x1="6" x2="66" y1="28" y2="28"/><line x1="6" x2="66" y1="40" y2="40"/></g><polyline points="8,18 20,20 32,22 44,28 56,32 64,36" fill="none" stroke="#c0392b" stroke-width="1.6"/><polyline points="8,16 20,18 32,20 44,24 56,30 64,32" fill="none" stroke="#1f4e8c" stroke-width="1.6"/></symbol>
+  <symbol id="thumb-c" viewBox="0 0 72 56"><rect x="6" y="6" width="60" height="10" fill="#e9f5ec"/><g stroke="#dee2e6" stroke-width=".6"><line x1="6" x2="66" y1="16" y2="16"/><line x1="6" x2="66" y1="28" y2="28"/><line x1="6" x2="66" y1="40" y2="40"/></g><polyline points="8,14 20,16 32,18 44,22 56,28 64,30" fill="none" stroke="#c0392b" stroke-width="1.6"/><polyline points="8,10 20,12 32,12 44,14 56,18 64,22" fill="none" stroke="#1f4e8c" stroke-width="1.6"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#464 紀錄與聽力圖・設計圖</h1>
+  <p class="lead">只用 #454 選定的 T1、E、S1、P3、L1、N3、W1。紫色虛線橫線＝手機第一個畫面的底（390×844），分頁列是 W1 毛玻璃，畫在第一個畫面的底部。灰色虛線框＝圖表本身（不在這次範圍，畫法照舊），框的大小照現在的實際高度：趨勢圖 360px、聽力圖約 350×415px。</p>
+  <p class="lead">紫色虛線框標「新元件」＝ #454 沒有的東西，要您決定；只有紫色虛線外框的字＝我擬的草稿。其他字句都是網站現有的（模板與 Python 定義），只搬位置、不改寫。</p>
+  <p class="lead">案例：HHIE-S 三筆（2026/05/20 沒戴 18 分、2026/08/15 有戴 12 分、2026/11/12 沒戴 14 分），聽力圖三張（最新 2026/10/03 右耳中度、左耳輕度）。</p>
+  <ul class="diff">
+    <li>各頁共同的改法：<b>白底、拿掉段落框</b>；能點的入口一律排成 E 清單列；「看懂這張圖」這類說明收進折疊列（預設收起，原文照搬）；回上一頁的大框按鈕改成文字連結（S1：其他用文字連結）。</li>
+    <li>每頁標題不超過三個：原本的「接下來」「要給醫師或家人看？」「配戴狀態比較」小標拿掉，改成清單列或折疊列的名稱。</li>
+  </ul>
+
+  <!-- ================= 1 我的紀錄・問卷 ================= -->
+  <section class="group">
+    <h2>1　我的紀錄・問卷（含「我的聽力趨勢」）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>看分數有沒有變</b>。「我的聽力趨勢」就是這頁問卷那一邊的趨勢圖（網址 <code>/my_hearing</code>），所以跟我的紀錄畫在一起。</p>
+    <p class="q">現在的頁面上「和上一次比」藍框和趨勢圖上方的「最近一次」藍框講的是同一筆，兩個都改成<b>一個 L1 分數色塊</b>（字句照搬兩處的原文）。</p>
+    <div class="row">
+      <!-- 1A -->
+      <div class="opt">
+        <p class="opt-label">1A　分數色塊在上、趨勢圖在下<span class="rec">建議</span></p>
+        <div class="phone">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a class="on">問卷</a><a>聽力圖</a></nav>
+          <div class="lv L1m">
+            <div class="k">最近一次（2026/11/12，沒戴助聽器）</div>
+            <div class="n">14 <small>分</small></div>
+            <div class="nm">輕度到中度影響</div>
+            <div class="cmp">比上一次少 4 分（分數越低越好）<br>上一次（2026/05/20）：18 分</div>
+          </div>
+          <a class="btn solid">看／印聽力報告</a>
+          <h3 class="sec">HHIE-S 總分變化</h3>
+          <p>分數越低，聽力對生活的影響越小。</p>
+          <div class="ph ph-trend"><span><b>圖表照舊</b>趨勢圖（TrendChart.jsx）</span></div>
+          <ul class="legend">
+            <li><svg width="40" height="20" viewBox="0 0 48 24" aria-hidden="true"><line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3"/><circle cx="38" cy="12" r="7" fill="#1f4e8c" stroke="#1f4e8c" stroke-width="3"/></svg>沒戴助聽器</li>
+            <li><svg width="40" height="20" viewBox="0 0 48 24" aria-hidden="true"><line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3" stroke-dasharray="8 6"/><rect x="31" y="5" width="14" height="14" fill="#fff" stroke="#1f4e8c" stroke-width="3"/></svg>有戴助聽器</li>
+          </ul>
+          <ul class="legend">
+            <li><span class="sw" style="background:#f6cfc3"></span>顯著影響</li>
+            <li><span class="sw" style="background:#f7e2a8"></span>輕度到中度影響</li>
+            <li><span class="sw" style="background:#cfe9da"></span>無／極輕微影響</li>
+          </ul>
+          <h3 class="sec">每次的紀錄</h3>
+          <div class="list" style="margin-top:8px">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/11/12</span><span class="s">總分：14　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/08/15</span><span class="s">總分：12　助聽器：有戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/05/20</span><span class="s">總分：18　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-share"/></svg></span><span class="body"><span class="t">傳給家人看</span><span class="s">家人不用登入就能看</span></span><span class="chev">›</span></a>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-compare"/></svg></span><span class="body"><span class="t">配戴狀態比較</span><span class="s" style="font-weight:400">沒戴 18 分、有戴 12 分，少了 6 分</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>第一個畫面：二選一、分數色塊（含和上一次比）、唯一實心按鈕「看／印聽力報告」，趨勢圖的標題露出來，告訴長輩往下還有圖。</p>
+          <p>「要給醫師或家人看？」小標拿掉，報告升成實心按鈕，傳給家人變成清單列。配戴狀態比較收成折疊列，副標用網站現有的摘要句；點開是現在 <code>total_history.html</code> 的原文和「比較戴與不戴助聽器」藍框按鈕。</p>
+          <p><b>代價</b>：趨勢圖要往下捲才看完整；報告按鈕比現在醒目很多。</p>
+        </div>
+      </div>
+
+      <!-- 1B -->
+      <div class="opt">
+        <p class="opt-label">1B　趨勢圖優先</p>
+        <div class="phone">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a class="on">問卷</a><a>聽力圖</a></nav>
+          <h3 class="sec" style="margin-top:0">HHIE-S 總分變化</h3>
+          <p>分數越低，聽力對生活的影響越小。</p>
+          <p class="big" style="margin-bottom:8px">最近一次 14 分 <span class="badge L1m">輕度到中度影響</span><br><span style="font-size:18px;font-weight:500;color:var(--body)">比上一次少 4 分（分數越低越好）</span></p>
+          <div class="ph ph-trend"><span><b>圖表照舊</b>趨勢圖（TrendChart.jsx）</span></div>
+          <ul class="legend">
+            <li><svg width="40" height="20" viewBox="0 0 48 24" aria-hidden="true"><line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3"/><circle cx="38" cy="12" r="7" fill="#1f4e8c" stroke="#1f4e8c" stroke-width="3"/></svg>沒戴助聽器</li>
+            <li><svg width="40" height="20" viewBox="0 0 48 24" aria-hidden="true"><line x1="2" y1="12" x2="30" y2="12" stroke="#1f4e8c" stroke-width="3" stroke-dasharray="8 6"/><rect x="31" y="5" width="14" height="14" fill="#fff" stroke="#1f4e8c" stroke-width="3"/></svg>有戴助聽器</li>
+          </ul>
+          <a class="btn solid">看／印聽力報告</a>
+          <ul class="legend" style="margin-top:18px">
+            <li><span class="sw" style="background:#f6cfc3"></span>顯著影響</li>
+            <li><span class="sw" style="background:#f7e2a8"></span>輕度到中度影響</li>
+            <li><span class="sw" style="background:#cfe9da"></span>無／極輕微影響</li>
+          </ul>
+          <h3 class="sec">每次的紀錄</h3>
+          <div class="list" style="margin-top:8px">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/11/12</span><span class="s">總分：14　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/08/15</span><span class="s">總分：12　助聽器：有戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>第一個畫面幾乎都是趨勢圖，分數縮成一行字加分級標籤，按鈕在圖下面。下面的清單和 1A 一樣（省略）。</p>
+          <p><b>代價</b>：分數變小，沒有整塊分級色；「上一次（日期）：分數」那行放不下，要拿掉或移到圖下面；按鈕已經被分頁列蓋住一半（底在 760px，分頁列從 748px 開始），200% 字級時整個掉到第二個畫面。</p>
+        </div>
+      </div>
+
+      <!-- 1 crowded -->
+      <div class="opt">
+        <p class="opt-label">最擠的狀態：做過五份問卷＋該再篩檢了（1A 版式）</p>
+        <div class="phone clip">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a class="on">問卷</a><a>聽力圖</a></nav>
+          <nav class="qtabs newc">
+            <a class="on">聽力對生活的影響<small>HHIE-S（65 歲以上）</small></a>
+            <a>助聽器使用成效<small>IOI-HA</small></a>
+            <a>助聽器滿意度<small>SADL</small></a>
+            <a>日常聆聽能力<small>SSQ12-TW</small></a>
+            <a>耳鳴對生活的影響<small>THI</small></a>
+          </nav>
+          <div class="next" style="margin-top:0">
+            <p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>
+            <a class="btn solid">再做一次（大約 3 分鐘）</a>
+          </div>
+          <div class="lv L1m" style="margin-top:16px">
+            <div class="k">最近一次（2026/11/12，沒戴助聽器）</div>
+            <div class="n">14 <small>分</small></div>
+            <div class="nm">輕度到中度影響</div>
+            <div class="cmp">比上一次少 4 分（分數越低越好）<br>上一次（2026/05/20）：18 分</div>
+          </div>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-print"/></svg></span><span class="body"><span class="t">看／印聽力報告</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>該再篩檢時，再篩檢按鈕拿走唯一的實心（字句照首頁現有的），報告退成清單列。問卷分頁排兩欄；代號小字在 ADR 0031 白名單（紀錄分頁代號）。</p>
+          <p><b>代價</b>：五份問卷時分頁佔掉約 200px，分數色塊被擠到第一個畫面的底。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 聽力圖清單 ================= -->
+  <section class="group">
+    <h2>2　我的紀錄・聽力圖（聽力圖清單）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>新增聽力圖</b>（唯一實心按鈕），或點進某一張。清單照 E（GLOSSARY「可點的卡片」已經寫明聽力圖清單用這個）；差別只在左邊放縮圖還是圓形圖示。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">2A　左邊放縮圖<span class="rec">建議</span></p>
+        <div class="phone">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a>問卷</a><a class="on">聽力圖</a></nav>
+          <a class="btn solid" style="margin-top:0">新增聽力圖</a>
+          <a class="btn outline">比較聽力圖</a>
+          <div class="list">
+            <a class="item"><svg class="thumb"><use href="#thumb-a"/></svg><span class="body"><span class="t">2026/10/03</span><span class="s">右耳：<span class="badge L1m">中度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a>
+            <a class="item"><svg class="thumb"><use href="#thumb-b"/></svg><span class="body"><span class="t">2025/04/12</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a>
+            <a class="item"><svg class="thumb"><use href="#thumb-c"/></svg><span class="body"><span class="t">2024/03/20</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1n">正常</span></span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>縮圖就是現在的縮圖（只畫氣導、裝飾用），放在 E 圓形圖示的位置。兩耳程度用小的 L1 分級色標籤，一耳一行。</p>
+          <p><b>代價</b>：縮圖是長方形，跟其他頁的圓形圖示不一樣。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">2B　照 E 放圓形圖示</p>
+        <div class="phone">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a>問卷</a><a class="on">聽力圖</a></nav>
+          <a class="btn solid" style="margin-top:0">新增聽力圖</a>
+          <a class="btn outline">比較聽力圖</a>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="body"><span class="t">2026/10/03</span><span class="s">右耳：<span class="badge L1m">中度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="body"><span class="t">2025/04/12</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="body"><span class="t">2024/03/20</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1n">正常</span></span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>跟其他清單完全一致。<b>代價</b>：拿掉縮圖，三張圖的圖示一模一樣，只能靠日期分辨；縮圖是 Phase 9 特別做的。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">還沒有聽力圖（只做過問卷）</p>
+        <div class="phone">
+          <h2 class="page">我的紀錄</h2>
+          <nav class="seg newc"><a>問卷</a><a class="on">聽力圖</a></nav>
+          <a class="btn solid" style="margin-top:0">新增聽力圖</a>
+          <a class="btn outline off">比較聽力圖</a>
+          <p class="muted" style="margin-top:6px">要有兩張聽力圖才能比較</p>
+          <p style="margin-top:18px">還沒有聽力圖。拿著醫院的聽力檢查報告，按上面的「新增聽力圖」把它描進來。</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>停用的比較按鈕是灰框灰字（現在就有），下面一行說明原因。字句都是現有的。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 聽力圖詳細頁 ================= -->
+  <section class="group">
+    <h2>3　聽力圖詳細頁</h2>
+    <p class="q">這頁要長輩做的一件事：<b>知道兩耳是什麼程度，接著看下一步</b>。現在這頁沒有實心按鈕，「接下來」有四張卡片一樣大；改成兩耳分級色塊＋圖＋一顆實心按鈕，其他入口排成清單。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">3A　兩耳色塊在圖上面<span class="rec">建議</span></p>
+        <div class="phone">
+          <h2 class="page">2026/10/03 檢查的聽力圖</h2>
+          <div class="ears">
+            <div class="ear L1m"><div class="lab">右耳</div><div class="deg">中度</div><div class="pta">四頻平均：<br>41.25 dB HL</div></div>
+            <div class="ear L1m"><div class="lab">左耳</div><div class="deg">輕度</div><div class="pta">四頻平均：<br>33.75 dB HL</div></div>
+          </div>
+          <div class="ph ph-ag" style="margin-top:14px"><span><b>圖表照舊</b>聽力圖（AudiogramChart.jsx）</span></div>
+          <a class="btn solid">看我的選配指引</a>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="body"><span class="t">看語言香蕉區</span><span class="s">看哪些說話聲可能不容易聽到</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-compare"/></svg></span><span class="body"><span class="t">和以前的聽力圖比較</span><span class="s">看聽力有沒有變化</span></span><span class="chev">›</span></a>
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-print"/></svg></span><span class="body"><span class="t">看／印聽力報告</span><span class="s">聽力報告放的是最新一張（2026/10/03）</span></span><span class="chev">›</span></a>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="body">看完整說明</span><span class="chev">›</span></summary></details>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">標記的數值</span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="links"><a class="tlink">修改這張</a><a class="tlink danger">刪除這張</a><a class="tlink">回聽力圖清單</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>兩耳色塊用 L1（聽力圖程度的顏色照 <code>DEGREE_LEVELS</code>），只放程度和四頻平均；類型、含無反應的提醒搬進「看完整說明」。</p>
+          <p>實心按鈕是「看我的選配指引」（有一耳四頻平均超過 25 dB 時才有，條件照舊）；兩耳都正常、沒有選配指引時，改由「看語言香蕉區」當實心按鈕。</p>
+          <p><b>代價</b>：按鈕剛好卡在第一個畫面的底；標題換兩行或 200% 字級時會掉到第二個畫面。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">3B　圖在最上面</p>
+        <div class="phone">
+          <h2 class="page">2026/10/03 檢查的聽力圖</h2>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>聽力圖（AudiogramChart.jsx）</span></div>
+          <div class="list" style="margin-top:12px">
+            <div class="item" style="min-height:56px"><span class="body"><span class="t">右耳：<span class="badge L1m">中度</span></span><span class="s">四頻平均：41.25 dB HL</span></span></div>
+            <div class="item" style="min-height:56px"><span class="body"><span class="t">左耳：<span class="badge L1m">輕度</span></span><span class="s">四頻平均：33.75 dB HL</span></span></div>
+          </div>
+          <a class="btn solid">看我的選配指引</a>
+          <div class="list">
+            <a class="item"><span class="ico"><svg class="i"><use href="#i-ear"/></svg></span><span class="body"><span class="t">看語言香蕉區</span><span class="s">看哪些說話聲可能不容易聽到</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>跟現在的順序一樣（現在是兩耳膠囊一行→圖→每耳一個框）。下面的清單同 3A（省略）。<b>代價</b>：兩耳結果和按鈕都在第二個畫面；先看到圖、再看到字，跟結果頁 R1「先給結果」不一致。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">「看完整說明」點開後</p>
+        <div class="phone short">
+          <div class="list" style="margin-top:0">
+            <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="body">看完整說明</span><span class="chev">›</span></summary>
+              <div class="inside">
+                <p><b>右耳</b>　類型：<strong>感音神經性</strong></p>
+                <p><b>左耳</b>　類型：需要骨導資料才能判斷<br>含無反應的頻率，實際聽力可能更差</p>
+                <div class="hint">
+                  <span class="t">看懂這張圖</span>
+                  <p>紅色 O 是右耳，藍色 X 是左耳；兩耳一樣時會疊在一起。淺綠色是 25 dB 以內，屬於正常範圍。</p>
+                  <p>dB 數字越大，代表要越大聲才聽得到。</p>
+                  <p>四頻平均是 500、1000、2000、4000 Hz 的平均。這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
+                </div>
+              </div>
+            </details>
+            <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">標記的數值</span><span class="chev">›</span></summary>
+              <div class="inside">
+                <table class="vals"><tr><th>項目</th><th>頻率</th><th>聽閾</th></tr><tr><td>右耳氣導</td><td>500 Hz</td><td>35 dB</td></tr><tr><td>右耳氣導</td><td>1000 Hz</td><td>40 dB</td></tr><tr><td>……</td><td></td><td></td></tr></table>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div class="note"><p>現在每耳一個框裡的「類型」「含無反應」與「看懂這張圖」提示框原文搬進來，提示框改 P3 淡灰底。四頻平均和程度在色塊裡，這裡不重複。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 語言香蕉區 ================= -->
+  <section class="group">
+    <h2>4　聽力圖看語言香蕉區</h2>
+    <p class="q">這頁要長輩做的一件事：<b>點圖上的注音，看那一群聽不聽得到</b>。圖本身就是操作，所以第一個畫面沒有實心按鈕；唯一的實心按鈕是圖下面的「看我的選配指引」（有條件時才出現，照 ADR 0040）。判斷與字句照 ADR 0040 不變，圖上的小字是 ADR 0031 的例外，跟著圖縮放。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">4　還沒點（剛打開）</p>
+        <div class="phone">
+          <h2 class="page">2026/10/03 聽力圖的語言香蕉區</h2>
+          <nav class="seg newc"><a class="on">右耳</a><a>左耳</a></nav>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>語言香蕉區、六群注音、斜線<br>（SpeechBananaApp.jsx；圖上小字是 ADR 0031 例外）</span></div>
+          <div class="banana-res"><p style="margin:0">點圖上的注音，看那一群。</p></div>
+          <p style="margin-top:14px">黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
+          <div class="list">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">用清單選</span><span class="chev">›</span></summary></details>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="body">看懂這張圖</span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="src" style="margin-top:12px">語言香蕉區與注音位置參考：財團法人雅文兒童聽語文教基金會〈聽力圖和語言香蕉區〉。本頁資料查核於 2026/11/06。</p>
+          <div class="next">
+            <span class="tag">依您的聽力圖整理下一步</span>
+            <a class="btn solid">看我的選配指引</a>
+          </div>
+          <div class="links"><a class="tlink">回這張聽力圖</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>改順序：結果框移到圖的正下方，點了注音不用往下找；說明那句接在結果框後面。「看懂這張圖」提示框（兩段原文）收進折疊列，出處照舊露出來（ADR 0040 要寫明出處）。</p>
+          <p>右耳｜左耳跟問卷｜聽力圖用同一種二選一。選配指引卡改成「淡藍卡片＋實心按鈕」（同結果頁 R1 的下一步卡片），小字是現有卡片的副標。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">點了一群之後（最擠）</p>
+        <div class="phone">
+          <h2 class="page">2026/10/03 聽力圖的語言香蕉區</h2>
+          <nav class="seg newc"><a class="on">右耳</a><a>左耳</a></nav>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>第 5 群的框被選取</span></div>
+          <div class="banana-res">
+            <p class="gt">ㄈㄐㄑㄓㄔㄒㄕ</p>
+            <p>高音的子音</p>
+            <p>ㄕ「是」、ㄑ「七」、ㄒ「西」、ㄔ「吃」</p>
+            <p><strong>右耳：</strong>可能不容易聽到</p>
+            <p style="margin:0"><strong>左耳：</strong>可能聽得到</p>
+          </div>
+          <p style="margin-top:14px">黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>結果框用 P3 淡灰底（不能點的資訊）。<b>代價</b>：兩耳結果那兩行在分頁列後面，要往下捲一點（分頁列往下捲會收起，實作時在預覽站試）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 輸入與修改 ================= -->
+  <section class="group">
+    <h2>5　聽力圖輸入與修改</h2>
+    <p class="q">這頁要長輩做的一件事：<b>照報告在圖上標點</b>。四步（檢查日期→標右耳→標左耳→確認存檔）和手機上「按住 0.3 秒才標點、再上下拖」的行為都不變，這裡只排版面。聽力圖約 415px 高，加上分頁列就放不下「標完了」按鈕，所以建議<b>輸入時不顯示分頁列</b>（見要決定的事 5）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">5A　第 2 步：標右耳（說明展開）<span class="rec">建議</span></p>
+        <div class="phone">
+          <h2 class="page" style="margin-bottom:8px">新增聽力圖</h2>
+          <div class="steps"><span class="stxt">第 2 步／共 4 步：標右耳</span><div class="pbar"><span class="done"></span><span class="done"></span><span></span><span></span></div></div>
+          <p class="big" style="font-size:18px">報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）</p>
+          <ol class="st stC">
+            <li>選下面的符號</li>
+            <li>在圖上按住不動一下，等數值出現，再上下拖到報告上的位置</li>
+            <li>放開就標好了；標錯就在那個點上按住一下再放開，可以刪除</li>
+          </ol>
+          <p class="src">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
+          <div class="sym"><a class="on">右耳氣導 <span class="mk-r">○</span></a><a>右耳骨導 <span class="mk-r">&lt;</span></a></div>
+          <div class="mask">遮蔽<span class="track"><i></i>關</span></div>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>按住 0.3 秒才標點</span></div>
+          <div class="countrow"><span class="big" style="font-size:18px">右耳已標：氣導 6 個、骨導 0 個</span></div>
+          <a class="btn outline" style="border-color:var(--line-strong);color:var(--heading)">清除 右耳氣導 4000 Hz</a>
+          <div class="list"><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">用數值輸入（鍵盤或螢幕閱讀器）</span><span class="chev">›</span></summary></details></div>
+          <a class="btn solid">右耳標完了，換左耳</a>
+          <a class="btn outline">上一步</a>
+          <div class="links"><a class="tlink">不新增了，回聽力圖清單</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        </div>
+        <div class="note">
+          <p>第一次標的那一耳（右耳）說明用 N3 步驟點展開；符號、遮蔽、圖照現在的順序。沒有分頁列。</p>
+          <p><b>代價</b>：說明佔掉約 230px，圖的下半和按鈕都在第二個畫面，要邊捲邊標。說明「無反應」那行現在是 16px（text-base），照 ADR 0031 應改 18px，實作時一起修。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">5B　說明收起（修改時・第 3 步，最擠）</p>
+        <div class="phone">
+          <h2 class="page" style="margin-bottom:8px">修改 2026/10/03 的聽力圖</h2>
+          <div class="steps"><span class="stxt">第 3 步／共 4 步：標左耳</span><div class="pbar"><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div></div>
+          <div class="hint" style="margin:0 0 10px">原本標的點已經放在圖上，照報告移動、刪除或補上，再按存檔。</div>
+          <div class="list" style="margin:0 0 12px"><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="body draft">怎麼標記</span><span class="chev">›</span></summary></details></div>
+          <div class="sym"><a class="on">左耳氣導 <span style="color:#1f4e8c;font-size:22px">✕</span></a><a>左耳骨導 <span style="color:#1f4e8c;font-size:22px">&gt;</span></a></div>
+          <div class="mask">遮蔽<span class="track"><i></i>關</span></div>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>原本的點已經在圖上</span></div>
+          <div class="countrow"><span class="big" style="font-size:18px">左耳已標：氣導 6 個、骨導 2 個</span></div>
+          <a class="btn outline" style="border-color:var(--line-strong);color:var(--heading)">清除剛標的點</a>
+          <div class="list"><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">用數值輸入（鍵盤或螢幕閱讀器）</span><span class="chev">›</span></summary></details></div>
+          <a class="btn solid">左耳標完了，確認存檔</a>
+          <a class="btn outline">上一步</a>
+          <div class="links"><a class="tlink">不修改了，回到這張聽力圖</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        </div>
+        <div class="note">
+          <p>第二耳（左耳）和修改時，說明收成折疊列，點開是 5A 那段原文；修改提示改 P3 淡灰底。圖幾乎整張在第一個畫面。</p>
+          <p><b>代價</b>：要多一個折疊列名稱「怎麼標記」（草稿）。「標完了」按鈕仍在第二個畫面：圖下方要留「已標幾個」「清除」，按鈕放不上來。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">第 4 步：確認存檔</p>
+        <div class="phone">
+          <h2 class="page" style="margin-bottom:8px">新增聽力圖</h2>
+          <div class="steps"><span class="stxt">第 4 步／共 4 步：確認存檔</span><div class="pbar"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></div></div>
+          <div class="countrow" style="margin:0 0 6px"><span class="big" style="font-size:18px">檢查日期：2026/10/03</span><a class="tlink" style="margin:0">改日期</a></div>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>兩耳一起、只能看</span></div>
+          <div class="list">
+            <div class="item" style="min-height:56px"><span class="body">右耳：氣導 6 個、骨導 0 個</span><a class="tlink" style="margin:0">改右耳</a></div>
+            <div class="item" style="min-height:56px"><span class="body">左耳：氣導 6 個、骨導 2 個</span><a class="tlink" style="margin:0">改左耳</a></div>
+          </div>
+          <a class="btn solid">存檔</a>
+          <a class="btn outline">上一步</a>
+          <div class="list"><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">用數值輸入（鍵盤或螢幕閱讀器）</span><span class="chev">›</span></summary></details></div>
+          <div class="links"><a class="tlink">不新增了，回聽力圖清單</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        </div>
+        <div class="note"><p>改順序：存檔按鈕提到數值表折疊列前面，第一個畫面就看得到。每耳一列加「改右耳／改左耳」文字連結（現在就是連結樣式）。第 1 步只有日期欄和「下一步：標右耳」，沒有畫。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 聽力圖比較 ================= -->
+  <section class="group">
+    <h2>6　聽力圖比較</h2>
+    <p class="q">這頁要長輩做的一件事：<b>看這一耳新舊兩張差多少</b>。這頁是用看的，第一個畫面沒有實心按鈕；唯一的實心按鈕「比較」在「換一張」打開後才出現（現在也是）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">6　剛打開（最常見）</p>
+        <div class="phone">
+          <h2 class="page">比較聽力圖</h2>
+          <div>
+            <div class="pick"><span class="lb">舊</span><svg width="40" height="12" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" x2="38" y1="6" y2="6" stroke="#c0392b" stroke-width="3" stroke-dasharray="6 4"/></svg><strong>2025/04/12</strong><span class="chg">換一張</span></div>
+            <div class="pick"><span class="lb">新</span><svg width="40" height="12" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" x2="38" y1="6" y2="6" stroke="#c0392b" stroke-width="3"/></svg><strong>2026/10/03</strong><span class="chg">換一張</span></div>
+          </div>
+          <nav class="seg newc" style="margin-top:16px"><a class="on">右耳</a><a>左耳</a></nav>
+          <p class="big">右耳四頻平均：舊 35 → 新 41.25 dB HL，多 6.25 dB</p>
+          <p>程度：舊 輕度，新 中度</p>
+          <p>差最多的頻率：4000 Hz，多 15 dB</p>
+          <div class="ph ph-ag"><span><b>圖表照舊</b>新舊兩條線</span></div>
+          <p style="margin-top:8px">舊（2025/04/12）虛線、新（2026/10/03）實線</p>
+          <div class="list">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span class="body">看懂這張比較</span><span class="chev">›</span></summary></details>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-table"/></svg></span><span class="body">看每個頻率的數字</span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="links"><a class="tlink">回聽力圖清單</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>摘要文字拿掉外框，第一行放大加粗；「看懂這張比較」提示框（三句原文）收成折疊列，名稱用提示框現有的標題。</p>
+          <p><b>代價</b>：圖的下半在第二個畫面（現在也是）。</p>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">按了「換一張」（舊）</p>
+        <div class="phone">
+          <h2 class="page">比較聽力圖</h2>
+          <div class="pick" style="border-top:1px solid var(--line)"><span class="lb">舊</span><svg width="40" height="12" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" x2="38" y1="6" y2="6" stroke="#c0392b" stroke-width="3" stroke-dasharray="6 4"/></svg><strong>2025/04/12</strong><span class="chg">換一張</span></div>
+          <div style="padding:8px 0 14px;border-bottom:1px solid var(--line)">
+            <div class="radio"><span class="rdot"></span>2026/10/03</div>
+            <div class="radio on"><span class="rdot"></span>2025/04/12</div>
+            <div class="radio"><span class="rdot"></span>2024/03/20</div>
+            <p style="margin:10px 0 0">新舊依檢查日期決定，跟選在哪一列無關。</p>
+            <a class="btn solid">比較</a>
+          </div>
+          <div class="pick"><span class="lb">新</span><svg width="40" height="12" viewBox="0 0 40 12" aria-hidden="true"><line x1="2" x2="38" y1="6" y2="6" stroke="#c0392b" stroke-width="3"/></svg><strong>2026/10/03</strong><span class="chg">換一張</span></div>
+          <nav class="seg newc" style="margin-top:16px"><a class="on">右耳</a><a>左耳</a></nav>
+          <p class="big">右耳四頻平均：舊 35 → 新 41.25 dB HL，多 6.25 dB</p>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>選項排成單選清單列（樣式跟作答頁同一套，由作答頁那張票決定），一列至少 56px 高。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 7 配戴比較 ================= -->
+  <section class="group">
+    <h2>7　配戴比較（比較戴與不戴助聽器）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>選一次沒戴、一次有戴，看差多少</b>。現在這頁同時會有兩顆實心按鈕（「查看比較」和「放進聽力報告」）；改成每個狀態只有一顆。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">剛打開（還沒選、報告裡也沒有）</p>
+        <div class="phone">
+          <h2 class="page" style="margin-bottom:4px">比較戴與不戴助聽器</h2>
+          <p class="muted">聽力對生活的影響（HHIE-S）</p>
+          <p>選一次沒戴、一次有戴時填的同一份問卷。</p>
+          <fieldset>
+            <legend>沒戴助聽器時</legend>
+            <div class="radio"><span class="rdot"></span>2026/11/12・14 分</div>
+            <div class="radio"><span class="rdot"></span>2026/05/20・18 分</div>
+          </fieldset>
+          <fieldset>
+            <legend>戴助聽器時</legend>
+            <div class="radio on"><span class="rdot"></span>2026/08/15・12 分</div>
+          </fieldset>
+          <a class="btn solid">查看比較</a>
+          <div class="links"><a class="tlink">回我的紀錄</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>跟現在一樣的表單，只換元件：單選清單列、唯一實心「查看比較」、「回我的紀錄」改文字連結。有戴只有一筆時照現在預先選好。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">看了一組新的、報告裡已有別組（最擠）<span class="tagc">改順序</span></p>
+        <div class="phone">
+          <h2 class="page" style="margin-bottom:4px">比較戴與不戴助聽器</h2>
+          <p class="muted">聽力對生活的影響（HHIE-S）</p>
+          <h3 class="sec" style="margin-top:8px">目前查看的兩筆</h3>
+          <div class="pair">
+            <p>沒戴<strong>14 分</strong><span class="d">2026/11/12</span></p>
+            <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true" style="fill:none;stroke:var(--primary);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"><path d="M4 12h16M14 6l6 6-6 6"/></svg>
+            <p class="p-new">有戴<strong>12 分</strong><span class="d">2026/08/15</span></p>
+          </div>
+          <p class="big">有戴比沒戴少 2 分（分數越低越好）</p>
+          <p>差值不能單獨判定助聽器效益。</p>
+          <p class="src">兩筆是不同時間填的，不一定是開始戴之前和之後的比較。</p>
+          <a class="btn solid">改放這一組到報告</a>
+          <div class="list">
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-print"/></svg></span><span class="body"><span class="t">聽力報告裡的組合</span><span class="s" style="font-weight:400">沒戴 18 分、有戴 12 分，少了 6 分</span></span><span class="chev">›</span></summary></details>
+            <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-swap"/></svg></span><span class="body draft">換別的兩筆</span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="links"><a class="tlink">回我的紀錄</a></div>
+          <div class="fold-line"><span>第一個畫面到這裡</span></div>
+          <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p>按了「查看比較」之後，結果放最上面，唯一實心是「改放這一組到報告」（報告裡還沒有時是「放進聽力報告」）。表單收成折疊列「換別的兩筆」（草稿），裡面是左邊那張表單，按鈕改 2px 藍框。</p>
+          <p>報告裡的組合收成折疊列，副標用現有摘要句；點開是現在的卡片、「新增紀錄不會自動換掉這一組……」原文和藍框「從報告移除」。</p>
+          <p><b>代價</b>：版面順序跟沒按之前不一樣（表單從上面移到下面）。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ================= 8 紀錄很多 ================= -->
+  <section class="group">
+    <h2>8　紀錄很多的時候</h2>
+    <p class="q">案例：問卷約 20 筆、跨 3 年、4 種問卷（HHIE-S 8 筆，IOI-HA、SSQ12-TW、THI 各 4 筆）；聽力圖 6 張。</p>
+    <p class="q">先說現況：我的紀錄<b>本來就一次只列一種問卷</b>（上面的問卷分頁切換），所以 20 筆不會擠在同一張清單裡，最長的是 HHIE-S 那一頁的 8 筆。真正變長的是「每次的紀錄」那一段。以下只畫那一段（上面的分數色塊、趨勢圖同 1A）。</p>
+    <h3 style="font-size:22px;color:var(--heading);margin:22px 0 0">問卷紀錄：三種整理做法</h3>
+    <div class="row">
+      <div class="opt"><p class="opt-label">8A　只露最新 3 筆，舊的收起<span class="rec">建議</span></p><div class="phone short"><p class="src" style="margin:0 0 8px">（上面的二選一、分數色塊、趨勢圖同 1A，省略）</p><nav class="qtabs newc"><a class="on">聽力對生活的影響<small>HHIE-S（65 歲以上）</small></a><a>助聽器使用成效<small>IOI-HA</small></a><a>日常聆聽能力<small>SSQ12-TW</small></a><a>耳鳴對生活的影響<small>THI</small></a></nav><h3 class="sec" style="margin-top:6px">每次的紀錄</h3><div class="list" style="margin-top:8px"><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/11/12</span><span class="s">總分：14　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/08/15</span><span class="s">總分：12　助聽器：有戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/05/20</span><span class="s">總分：18　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="body"><span class="t draft">看以前的 5 筆</span><span class="s" style="font-weight:400">2024/01/10 到 2025/11/08</span></span><span class="chev">›</span></summary></details></div></div><div class="note"><p>最新 3 筆照常列出，其他收進一列「看以前的 5 筆」（草稿），副標寫日期範圍。點開是同樣的清單列。</p><p><b>代價</b>：要找某一筆舊的紀錄要多點一下；「3 筆」是我定的數字（實作時寫成一個常數）。</p></div></div>
+      <div class="opt"><p class="opt-label">8B　依年份分組，今年展開、舊年份收起</p><div class="phone short"><p class="src" style="margin:0 0 8px">（上面的二選一、分數色塊、趨勢圖同 1A，省略）</p><nav class="qtabs newc"><a class="on">聽力對生活的影響<small>HHIE-S（65 歲以上）</small></a><a>助聽器使用成效<small>IOI-HA</small></a><a>日常聆聽能力<small>SSQ12-TW</small></a><a>耳鳴對生活的影響<small>THI</small></a></nav><h3 class="sec" style="margin-top:6px">每次的紀錄</h3><div class="list" style="margin-top:8px"><details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="body"><span class="t draft">2026 年（3 筆）</span></span><span class="chev">›</span></summary><div class="inside" style="padding:0"><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/11/12</span><span class="s">總分：14　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/08/15</span><span class="s">總分：12　助聽器：有戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2026/05/20</span><span class="s">總分：18　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a></div></details><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="body"><span class="t draft">2025 年（2 筆）</span></span><span class="chev">›</span></summary><div class="inside" style="padding:0"><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2025/11/08</span><span class="s">總分：20　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2025/05/02</span><span class="s">總分：18　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a></div></details><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="body"><span class="t draft">2024 年（3 筆）</span></span><span class="chev">›</span></summary><div class="inside" style="padding:0"><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2024/11/15</span><span class="s">總分：16　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2024/06/01</span><span class="s">總分：14　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">2024/01/10</span><span class="s">總分：10　助聽器：沒戴</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a></div></details></div></div><div class="note"><p>每年一列「2025 年（2 筆）」（草稿），今年預設打開。</p><p><b>代價</b>：年初（例如 1 月）今年只有 0–1 筆，畫面上幾乎都是收起的年份列；年份列多一層，長輩要先猜紀錄在哪一年。</p></div></div>
+      <div class="opt"><p class="opt-label">8C　拿掉問卷分頁，改成「各問卷最新一次」摘要</p><div class="phone short"><p class="src" style="margin:0 0 8px">（上面的二選一同 1A；沒有問卷分頁）</p><h3 class="sec" style="margin-top:6px"><span class="draft">各問卷最新一次</span></h3><div class="list" style="margin-top:8px"><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">聽力對生活的影響</span><span class="s">HHIE-S（65 歲以上）・8 筆</span><span class="s">2026/11/12　總分：14</span><span class="badge L1m">輕度到中度影響</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">助聽器使用成效</span><span class="s">IOI-HA・4 筆</span><span class="s">2026/09/01　常模組別：輕度至中度</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">日常聆聽能力</span><span class="s">SSQ12-TW・4 筆</span><span class="s">2026/09/01　整體平均：6.4／10</span></span><span class="chev">›</span></a><a class="item"><span class="ico"><svg class="i"><use href="#i-doc"/></svg></span><span class="body"><span class="t">耳鳴對生活的影響</span><span class="s">THI・4 筆</span><span class="s">2026/07/10　總分：28</span><span class="badge L1m">輕度障礙</span></span><span class="chev">›</span></a></div><p class="src" style="margin-top:10px">點一列＝現在的那一個問卷分頁（分數色塊、趨勢圖、每次的紀錄）。</p></div><div class="note"><p>一種問卷一列，只露最新一次；點進去才是那一份問卷的分數色塊、趨勢圖和全部紀錄。</p><p><b>代價</b>：改動最大，要多一層頁面；趨勢圖要多點一下才看得到；摘要裡每種問卷的寫法不同（總分、常模組別、整體平均），一列長短不一。</p></div></div>
+    </div>
+    <h3 style="font-size:22px;color:var(--heading);margin:30px 0 0">聽力圖清單 6 張</h3>
+    <div class="row">
+      <div class="opt"><p class="opt-label">8D　6 張全部列出</p><div class="phone"><h2 class="page">我的紀錄</h2><nav class="seg newc"><a>問卷</a><a class="on">聽力圖</a></nav><a class="btn solid" style="margin-top:0">新增聽力圖</a><a class="btn outline">比較聽力圖</a><div class="list"><a class="item"><svg class="thumb"><use href="#thumb-a"/></svg><span class="body"><span class="t">2026/10/03</span><span class="s">右耳：<span class="badge L1m">中度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-a"/></svg><span class="body"><span class="t">2025/10/20</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-b"/></svg><span class="body"><span class="t">2025/04/12</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-b"/></svg><span class="body"><span class="t">2024/10/05</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1n">正常</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-c"/></svg><span class="body"><span class="t">2024/03/20</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1n">正常</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-c"/></svg><span class="body"><span class="t">2023/09/14</span><span class="s">右耳：<span class="badge L1n">正常</span></span><span class="s">左耳：<span class="badge L1n">正常</span></span></span><span class="chev">›</span></a></div><div class="fold-line"><span>第一個畫面到這裡</span></div><nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div><div class="note"><p>跟 2A 一樣，不另外整理。6 張約 600px，大概兩個畫面。</p><p><b>代價</b>：到第 10 張以上會很長。</p></div></div>
+      <div class="opt"><p class="opt-label">8E　只露最新 3 張，舊的收起<span class="rec">建議</span></p><div class="phone"><h2 class="page">我的紀錄</h2><nav class="seg newc"><a>問卷</a><a class="on">聽力圖</a></nav><a class="btn solid" style="margin-top:0">新增聽力圖</a><a class="btn outline">比較聽力圖</a><div class="list"><a class="item"><svg class="thumb"><use href="#thumb-a"/></svg><span class="body"><span class="t">2026/10/03</span><span class="s">右耳：<span class="badge L1m">中度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-a"/></svg><span class="body"><span class="t">2025/10/20</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><a class="item"><svg class="thumb"><use href="#thumb-b"/></svg><span class="body"><span class="t">2025/04/12</span><span class="s">右耳：<span class="badge L1m">輕度</span></span><span class="s">左耳：<span class="badge L1m">輕度</span></span></span><span class="chev">›</span></a><details class="more"><summary><span class="ico"><svg class="i"><use href="#i-clock"/></svg></span><span class="body"><span class="t draft">看以前的 3 張</span><span class="s" style="font-weight:400">2023/09/14 到 2024/10/05</span></span><span class="chev">›</span></summary></details></div><div class="fold-line"><span>第一個畫面到這裡</span></div><nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div><div class="note"><p>跟 8A 同一套做法：「看以前的 3 張」（草稿）。比較舊圖時本來就用「比較聽力圖」頁裡的選單，不用在清單裡找。</p><p><b>代價</b>：要點開舊的那張要多點一下。</p></div></div>
+    </div>
+    <p class="q" style="margin-top:12px">建議 <b>8A＋8E</b>：問卷和聽力圖用同一套「最新 3 筆＋看以前的」，長輩學一次就會；不動現在的問卷分頁結構，第一個畫面也不變。8C 要動結構，等真的有人做超過 4 種問卷再說。</p>
+  </section>
+
+  <!-- ================= decisions ================= -->
+  <section class="group">
+    <h2>要您決定的事</h2>
+    <table class="spec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>建議</th></tr>
+      <tr><td>D1</td><td>二選一（問卷｜聽力圖、右耳｜左耳）和問卷分頁選中的樣子（新元件）</td><td>
+        <b>A</b>：照 W1 分頁列：淡灰軌道，選中的淡藍膠囊、藍字粗體、2px 藍框。跟實心按鈕分得開。<br>
+        <b>B</b>：維持現在的實心藍膠囊（下面範例）。代價：一頁出現兩塊實心藍，跟「一頁一顆實心按鈕」打架。<br>
+        <nav class="seg old" style="max-width:300px;margin:8px 0 0"><a class="on">問卷</a><a>聽力圖</a></nav></td><td>A</td></tr>
+      <tr><td>D2</td><td>我的紀錄（問卷）第一個畫面</td><td><b>1A</b> 分數色塊＋報告實心按鈕，圖在下面；<b>1B</b> 趨勢圖優先、分數縮成一行。兩版都把「和上一次比」和「最近一次」兩個藍框併成一個。報告是否升為實心按鈕也一起決定（不升的話這頁平常沒有實心按鈕）。</td><td>1A</td></tr>
+      <tr><td>D3</td><td>聽力圖清單左邊</td><td><b>2A</b> 現有縮圖（資訊多、跟圓形圖示不同形）；<b>2B</b> E 圓形圖示（一致、三張長一樣）。</td><td>2A</td></tr>
+      <tr><td>D4</td><td>聽力圖詳細頁的實心按鈕</td><td><b>甲</b>：「看我的選配指引」，沒有選配指引時改「看語言香蕉區」（同結果頁 R1 的「下一步」）。<br><b>乙</b>：一律「看語言香蕉區」，選配指引排清單列。代價：香蕉區是看的、不是下一步。</td><td>甲</td></tr>
+      <tr><td>D5</td><td>輸入聽力圖時要不要顯示底部分頁列</td><td><b>不顯示</b>：多 96px 給圖，拖曳到圖下緣時不會被毛玻璃蓋住；離開靠「不新增了」文字連結。<br><b>顯示</b>（現在）：跟全站一致；代價是圖下緣被分頁列蓋住、要捲開才拖得到。</td><td>不顯示</td></tr>
+      <tr><td>D6</td><td>紀錄很多時怎麼整理（第 8 節）</td><td><b>8A</b> 每種問卷只露最新 3 筆、其他收進「看以前的 N 筆」；<b>8B</b> 依年份分組、舊年份收起；<b>8C</b> 拿掉問卷分頁，改各問卷最新一次摘要。聽力圖：<b>8D</b> 全列或 <b>8E</b> 最新 3 張＋收起。</td><td>8A＋8E</td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>我擬的草稿字句</h2>
+    <table class="spec">
+      <tr><th>位置</th><th>草稿</th><th>說明</th></tr>
+      <tr><td>輸入頁折疊列名稱（第二耳與修改時）</td><td>怎麼標記</td><td>點開是現有的標記說明原文</td></tr>
+      <tr><td>配戴比較折疊列名稱（看過結果後）</td><td>換別的兩筆</td><td>點開是現有表單</td></tr>
+      <tr><td>紀錄很多（8A／8E）</td><td>看以前的 5 筆／看以前的 3 張（副標：2024/01/10 到 2025/11/08）</td><td>數字跟著實際筆數</td></tr>
+      <tr><td>紀錄很多（8B）</td><td>2025 年（2 筆）</td><td>年份列</td></tr>
+      <tr><td>紀錄很多（8C）</td><td>各問卷最新一次</td><td>摘要標題</td></tr>
+    </table>
+    <p class="q" style="margin-top:10px">其他折疊列名稱都沿用現有字句：看完整說明（結果頁 R1 已選）、標記的數值、看懂這張圖、看懂這張比較、看每個頻率的數字、用清單選、用數值輸入（鍵盤或螢幕閱讀器）、配戴狀態比較、聽力報告裡的組合。</p>
+  </section>
+</div>
+</body>
+</html>

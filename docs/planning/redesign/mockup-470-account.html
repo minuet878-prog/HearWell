@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#470 報告、分享與帳號（設計圖第一版）</title>
+<style>
+  /* ---- tokens and base: copied from #454 (mockup-454-components.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; max-width: 100%; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .spec code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* annotation: draft wording and new components */
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; position: relative; }
+  .newc-tag { position: absolute; right: 0; top: -14px; font-size: 12px; font-weight: 700; color: #fff; background: var(--annot); padding: 0 6px; border-radius: 4px; line-height: 1.5; z-index: 3; }
+
+  /* phone frame, first-screen line, W1 tab bar fixed at the first screen's bottom */
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .pg { padding: 18px 20px 120px; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  /* T1 type */
+  .brand { margin: 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .h1 { font-size: 28px; color: var(--heading); margin: 6px 0 8px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 28px 0 8px; line-height: 1.35; font-weight: 700; }
+  .meta { margin: 0 0 4px; color: var(--muted); }
+  .pg p { margin: 0 0 12px; }
+  .pg ul, .pg ol.plain { margin: 0 0 12px; padding-left: 1.3em; }
+  .pg li { margin-bottom: 2px; }
+  .muted { color: var(--muted); }
+  .src { font-size: 16px; color: var(--muted); }
+
+  /* S1 buttons and text links */
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* E: list rows with a pale blue round icon and a blue arrow */
+  .listE { border-top: 1px solid var(--line); margin: 14px 0 0; padding: 0; list-style: none; }
+  .tap { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .icoE { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .t-sub { display: block; color: var(--muted); }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+  details.fx { border-bottom: 1px solid var(--line); }
+  details.fx > summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; cursor: pointer; }
+  details.fx > summary::-webkit-details-marker { display: none; }
+  details.fx > summary .chev { transform: rotate(90deg); }
+  details.fx[open] > summary .chev { transform: rotate(-90deg); }
+  .inside { padding: 0 2px 16px; }
+  .inside p { margin: 0 0 10px; }
+  /* not-clickable info rows (same line rhythm, no icon, no arrow) */
+  .info { display: flex; flex-wrap: wrap; column-gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .info dt { color: var(--muted); flex-basis: 100%; }
+  .info dd { margin: 0; font-weight: 700; color: var(--heading); }
+  dl.infos { margin: 0; border-top: 1px solid var(--line); }
+
+  /* P3 grey hint box; red box for danger */
+  .h3b { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .h3b ul { margin: 4px 0 0; }
+  .em { display: flex; gap: 12px; background: var(--severe-bg); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .dot-i { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--severe); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; margin-top: 2px; }
+
+  /* L1 level colours: blocks, and the existing small label (level_badge) */
+  .L1n { background: var(--normal-bg); color: var(--normal); } .L1m { background: var(--mild-bg); color: var(--mild); } .L1s { background: var(--severe-bg); color: var(--severe); }
+  .lv { border-radius: 16px; padding: 14px 18px; margin-top: 10px; }
+  .lv .k { font-weight: 700; color: var(--heading); display: block; }
+  .lv .nm { font-size: 22px; font-weight: 700; display: block; line-height: 1.35; }
+  .lv .d { color: var(--heading); display: block; }
+  .lb { display: inline-block; border-radius: 8px; padding: 0 8px; font-weight: 700; }
+
+  /* N3 steps with a connecting line */
+  ol.jr { list-style: none; margin: 18px 0 0; padding: 0; }
+  ol.jr > li { position: relative; display: flex; gap: 12px; padding-bottom: 18px; }
+  ol.jr > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  .dot { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; position: relative; z-index: 1; background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .dot-later { background: var(--surface); color: var(--muted); border-color: var(--line-strong); }
+  .jb { flex: 1; min-width: 0; padding-top: 1px; }
+  .jt { margin: 0 0 6px; font-size: 22px; line-height: 1.35; color: var(--heading); font-weight: 700; }
+  .jb ul { margin-bottom: 6px; list-style: disc; }
+  .j-later .jt { color: var(--muted); }
+  ol.stC { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  ol.stC li { counter-increment: s; display: flex; gap: 12px; margin-bottom: 14px; position: relative; padding-bottom: 6px; }
+  ol.stC li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: #fff; color: var(--primary); border: 2px solid var(--primary); position: relative; z-index: 1; }
+  ol.stC li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: -14px; width: 2px; background: var(--line-strong); }
+
+  /* forms: today's thick-bordered fields (login.html, register.html), unchanged */
+  .field { margin: 0 0 18px; }
+  .lab { display: block; font-weight: 700; color: var(--heading); margin: 0 0 4px; }
+  .labrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 4px; }
+  .inp { position: relative; display: flex; align-items: center; min-height: 58px; border: 2px solid var(--line-strong); border-radius: 12px; padding: 0 14px 0 48px; font-size: 20px; color: var(--heading); background: #fff; }
+  .inp svg { position: absolute; left: 13px; width: 24px; height: 24px; fill: none; stroke: var(--body); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .inp.focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(31,78,140,.25); }
+  .inp.focus svg { stroke: var(--primary); }
+  .inp.plain { padding-left: 14px; }
+  .ig { display: flex; }
+  .ig span { display: grid; place-items: center; padding: 0 14px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--heading); min-height: 58px; }
+  .ig span:first-child { border-radius: 12px 0 0 12px; border-right: 0; }
+  .ig span:last-child { border-radius: 0 12px 12px 0; border-left: 0; }
+  .ig .inp { flex: 1; border-radius: 0; padding-left: 14px; }
+  .help { color: var(--muted); margin: 6px 0 0; }
+  .toggle { min-height: 44px; padding: 0 14px; border: 2px solid var(--primary); color: var(--primary); border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; font-size: 18px; }
+  .err { color: var(--severe); font-weight: 700; margin: 0 0 12px; }
+  /* step_progress.html: today's 第 n 步／共 N 步 bar, unchanged */
+  .sp-t { margin: 0 0 6px; font-weight: 700; color: var(--heading); }
+  .sp-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+  .sp-bar span { flex: 1; height: 9px; border-radius: 999px; background: var(--line-strong); }
+  .sp-bar span.on { background: var(--primary); }
+
+  /* login / register banner (today's auth-hero, made one colour) */
+  .hero { position: relative; overflow: hidden; margin: 8px 0 20px; padding: 22px 20px 26px; border-radius: 20px; background: var(--primary); color: #fff; }
+  .hero h1 { margin: 0 0 4px; font-size: 32px; color: #fff; line-height: 1.25; }
+  .hero p { margin: 0; color: #fff; }
+  .hero .sp-t { color: #fff; margin-top: 12px; }
+  .hero .sp-bar span { background: rgba(255,255,255,.35); }
+  .hero .sp-bar span.on { background: #fff; }
+  .hero .sp-bar { margin-bottom: 0; }
+  .hbars { position: absolute; right: 18px; top: 22px; display: flex; align-items: flex-end; gap: 5px; opacity: .35; }
+  .hbars span { width: 7px; border-radius: 999px; background: #fff; }
+
+  /* empty-state home (copied from #458 ⑪) */
+  .dashed { border: 2px dashed var(--line-strong); border-radius: 16px; padding: 14px 16px 2px; }
+  .dashed-title { margin: 0 0 12px !important; font-weight: 700; color: var(--heading); }
+  .links { display: flex; flex-wrap: wrap; column-gap: 22px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
+  .cred { color: var(--muted); margin: 14px 0 0 !important; }
+
+  .url { font-weight: 700; color: var(--heading); word-break: break-all; }
+  .danger-t { color: var(--severe) !important; }
+  .icoD { background: var(--severe-bg); color: var(--severe); }
+  .solid-d { background: var(--severe); color: #fff; }
+  .rec-table td { vertical-align: top; }
+  .mini { width: 100%; border-collapse: collapse; font-size: 18px; margin: 4px 0 10px; }
+  .mini td, .mini th { border-bottom: 1px solid var(--line); padding: 6px 4px; text-align: left; }
+  .mini th { color: var(--muted); font-weight: 700; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+  table.dec td:last-child { min-width: 180px; }
+  @media (max-width: 700px) { table.spec { display: block; overflow-x: auto; } table.dec td:last-child { min-width: 0; } }
+  .sw { display: inline-grid; place-items: center; width: 30px; height: 26px; border-radius: 6px; border: 1px solid; margin-right: 8px; font-weight: 700; font-size: 15px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></symbol>
+  <symbol id="i-reg" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 4-4 5-4 9a3 3 0 0 1-5 1"/><path d="M10 10a2 2 0 0 1 4 0"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h3l2-5 4 10 3-7 2 2h4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-gram" viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M7 8l4 3 4-1 4 5"/><circle cx="7" cy="8" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="19" cy="15" r="1"/></symbol>
+  <symbol id="i-aid" viewBox="0 0 24 24"><path d="M14 3a6 6 0 0 1 4 10.5L13 18v3h-3v-4l5-5"/><circle cx="14" cy="9" r="2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7.2M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-family" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 8v6M9 11h6"/></symbol>
+  <symbol id="i-iphone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M10.5 4.5h3M10 19h4"/></symbol>
+  <symbol id="i-android" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="4.75" r="0.75"/><path d="M9.5 19h.01M12 19h.01M14.5 19h.01"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#470 報告、分享與帳號・設計圖第一版</h1>
+  <p class="lead">共用元件照 #454 選定的 T1、E、S1、P3、L1、N3、W1（ADR 0041）。手機寬 390px；紫色虛線橫線＝手機第一個畫面的底（844px），分頁列（W1 毛玻璃）浮在第一個畫面底部，內容從它下面捲過去。紫色虛線框＝<b>草稿字句</b>（網站上找不到、我擬的）或<b>新元件</b>（框上有標）。其他字句都是網站現有的（模板與 Python 定義），只搬位置、不改寫。</p>
+  <p class="lead">案例：使用者 wang_ming，1956 年生（70 歲）；HHIE-S 2026/11/12 做的 14 分（輕度到中度影響）；聽力圖 2026/09/01（右耳輕度、左耳中度）。列印版面照舊、不畫。</p>
+
+  <!-- ================= 1 聽力報告 ================= -->
+  <section class="group">
+    <h2>1　聽力報告（螢幕版）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>印出來（或存成 PDF）帶去給醫師看</b>。實心按鈕「列印或存成 PDF」放在標題正下方。「分享報告給家人」「回我的紀錄」從兩顆藍框按鈕改成清單列。各問卷的內容現在就是摺疊的（<code>report_graded_fold.html</code>），改成 E 清單列的摺疊樣子；點開後的字句、表格原文不動。</p>
+    <div class="row">
+
+      <!-- A -->
+      <div class="opt">
+        <p class="opt-label">A　保留「重點摘要」段落，下面是摺疊列</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽伴聽力報告</h1>
+          <p class="meta">使用者：wang_ming　出生年：1956（70 歲）　產生日期：2026/11/12</p>
+          <a class="b solid">列印或存成 PDF</a>
+          <h2 class="h2">重點摘要</h2>
+          <ul>
+            <li>聽力圖（2026/09/01）：右耳 37.5 dB HL 輕度、感音神經性；左耳 47.5 dB HL 中度、感音神經性</li>
+            <li>HHIE-S（2026/11/12）：14 分，<span class="lb L1m">輕度到中度影響</span>，助聽器：沒戴</li>
+          </ul>
+          <div class="listE">
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-gram"/></svg></span><span class="grow"><span class="t-title">聽力圖</span><span class="t-sub">檢查日期 2026/09/01</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">生活影響</span><span class="t-sub">HHIE-S・最近一次 2026/11/12</span></span><span class="chev">›</span></summary></details>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-share"/></svg></span><span class="grow"><span class="t-title">分享報告給家人</span></span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-chart"/></svg></span><span class="grow"><span class="t-title">回我的紀錄</span></span><span class="chev">›</span></a>
+          </div>
+          <p class="muted" style="margin-top:14px">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>最接近現在：摘要一段、明細摺疊。<b>代價</b>：同一件事講兩次（摘要一次、摺疊列又一次），問卷多時摘要很長，摺疊列被擠到第二個畫面。</p><p>分級標籤沿用現有的 <code>level_badge</code>，顏色換成 L1（見 D3）。</p></div>
+      </div>
+
+      <!-- B -->
+      <div class="opt">
+        <p class="opt-label">B　摘要直接寫在摺疊列上<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽伴聽力報告</h1>
+          <p class="meta">使用者：wang_ming　出生年：1956（70 歲）　產生日期：2026/11/12</p>
+          <a class="b solid">列印或存成 PDF</a>
+          <div class="listE" style="margin-top:20px">
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-gram"/></svg></span><span class="grow"><span class="t-title">聽力圖（2026/09/01）</span><span class="t-sub">右耳 37.5 dB HL 輕度、感音神經性；左耳 47.5 dB HL 中度、感音神經性</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">HHIE-S（2026/11/12）</span><span class="t-sub">14 分，<span class="lb L1m">輕度到中度影響</span>，助聽器：沒戴</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <div class="listE" style="margin-top:22px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-share"/></svg></span><span class="grow"><span class="t-title">分享報告給家人</span></span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-chart"/></svg></span><span class="grow"><span class="t-title">回我的紀錄</span></span><span class="chev">›</span></a>
+          </div>
+          <p class="muted" style="margin-top:14px">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>每份問卷一列，列上就是「重點摘要」那一句（原文），點開是明細。整頁只有一個標題。<b>代價</b>：螢幕上不再有「重點摘要」這四個字（列印版照舊有）；「生活影響」「耳鳴」這些分類標題變成列裡的字，不再是大標題。</p></div>
+      </div>
+
+      <!-- B crowded -->
+      <div class="opt">
+        <p class="opt-label">B・最擠的狀態（七種紀錄＋助聽器＋比較）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">聽伴聽力報告</h1>
+          <p class="meta">使用者：wang_ming　出生年：1956（70 歲）　產生日期：2026/11/12</p>
+          <a class="b solid">列印或存成 PDF</a>
+          <div class="listE" style="margin-top:20px">
+            <div class="info" style="border-top:0"><dt>助聽器</dt><dd>雙耳，2026/05/01 開始戴，中階型</dd></div>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-gram"/></svg></span><span class="grow"><span class="t-title">聽力圖（2026/09/01）</span><span class="t-sub">右耳 37.5 dB HL 輕度、感音神經性；左耳 47.5 dB HL 中度、感音神經性</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">HHIE-S（2026/11/12）</span><span class="t-sub">14 分，<span class="lb L1m">輕度到中度影響</span>，助聽器：有戴</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-wave"/></svg></span><span class="grow"><span class="t-title">THI（2026/10/02）</span><span class="t-sub">28 分，<span class="lb L1m">輕度障礙</span>，助聽器：有戴</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-bell"/></svg></span><span class="grow"><span class="t-title">SSQ12-TW（2026/10/02）</span><span class="t-sub">平均 6.4 分</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-star"/></svg></span><span class="grow"><span class="t-title">SADL（2026/08/20）</span><span class="t-sub">整體滿意度 5.2</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-aid"/></svg></span><span class="grow"><span class="t-title">IOI-HA（2026/08/20）</span><span class="t-sub">7 項中 2 項低於常模、1 項高於常模</span></span><span class="chev">›</span></summary></details>
+            <div class="info"><dt>報告保留比較（HHIE-S）</dt><dd>沒戴 22 分、有戴 14 分，少了 8 分</dd></div>
+          </div>
+          <a class="tlink" style="margin-top:4px">更換或移除 HHIE-S 比較</a>
+          <div class="listE" style="margin-top:16px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-share"/></svg></span><span class="grow"><span class="t-title">分享報告給家人</span></span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-chart"/></svg></span><span class="grow"><span class="t-title">回我的紀錄</span></span><span class="chev">›</span></a>
+          </div>
+          <p class="muted" style="margin-top:14px">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>助聽器和保留比較沒有明細可點，畫成灰字標籤＋黑字的資訊列（沒有圖示、沒有箭頭），跟帳號設定的「我的帳號」同一種。列印按鈕還是在第一個畫面最上面。</p></div>
+      </div>
+
+      <!-- B opened -->
+      <div class="opt">
+        <p class="opt-label">B・點開 HHIE-S 那一列</p>
+        <div class="phone" style="min-height:0"><div class="pg" style="padding-bottom:24px">
+          <div class="listE" style="margin-top:0">
+            <details class="fx" open><summary><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">HHIE-S（2026/11/12）</span><span class="t-sub">14 分，<span class="lb L1m">輕度到中度影響</span>，助聽器：沒戴</span></span><span class="chev">›</span></summary>
+              <div class="inside">
+                <p><b style="font-size:22px;color:var(--heading)">14 分</b>（滿分 40） <span class="lb L1m">輕度到中度影響</span></p>
+                <p>情緒 6、社交 8（分項僅供參考）　助聽器：沒戴</p>
+                <p>聽力的問題已經慢慢開始影響到您的社交活動以及情緒，例如與家人之間常常因為聽不清楚或是電視聲音等而產生爭吵、在多人且吵雜的社交環境當中會因為聽不清楚而導致社交上的窘迫及退縮，許多聽力衰退帶來的問題是微妙且和緩的，但經過此次篩檢能夠讓您體認到聽力對自身生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查及詢問相關專業意見。</p>
+                <details class="fx" style="border-top:1px solid var(--line)"><summary style="min-height:56px"><span class="grow t-title">最近一次逐題回答</span><span class="chev">›</span></summary></details>
+                <p style="margin-top:10px">共 2 次</p>
+                <table class="mini"><tr><th>日期</th><th>總分</th><th>分級</th><th>助聽器</th></tr><tr><td>2026/11/12</td><td>14</td><td>輕度到中度影響</td><td>沒戴</td></tr><tr><td>2026/03/26</td><td>18</td><td>輕度到中度影響</td><td>沒戴</td></tr></table>
+              </div>
+            </details>
+          </div>
+        </div></div>
+        <div class="note"><p>點開後是 <code>report_graded_section.html</code> 的原文：分數、分項、建議全文、逐題回答（再一層摺疊）、最近 5 次表格。表格裡的「分級」維持文字，不加顏色。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 分享設定 ================= -->
+  <section class="group">
+    <h2>2　分享報告給家人（分享設定）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>還沒分享時是「產生連結」，分享中是「傳給家人」</b>。現在是三個灰底段落、每段一個編號；改成 N3 藍框圓點加連接線（跟照顧旅程同一個樣子），段落框拿掉。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">A　三步驟＋連接線（還沒分享）<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">分享報告給家人</h1>
+          <ol class="jr">
+            <li><span class="dot">1</span><div class="jb"><p class="jt">家人會看到什麼</p>
+              <ul><li>聽力圖</li><li>各問卷的分數、分級和建議</li><li>每一題的回答</li><li>每份問卷最近 5 筆紀錄</li><li>放進報告的配戴比較</li><li>年齡</li></ul>
+              <p style="margin-bottom:4px">不會看到：使用者名稱、出生年</p></div></li>
+            <li><span class="dot">2</span><div class="jb"><p class="jt">產生連結</p>
+              <p style="margin-bottom:0">拿到連結的人，不用登入就看得到這份報告；連結 7 天後失效，您可以隨時取消。</p>
+              <a class="b solid">我知道了，產生連結</a></div></li>
+            <li><span class="dot dot-later">3</span><div class="jb"><p class="jt">傳給家人</p><p class="muted" style="margin:0">產生連結後才能傳。</p></div></li>
+          </ol>
+          <p class="muted" style="margin-top:4px">連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>「家人會看到什麼」不收起來：按鈕寫「我知道了」，要先看到才能同意。還沒輪到的第 3 步用淡灰圓點（首頁「之後的步」同一種）。「連結有效期間…」從第 1 步移到最下面，讓按鈕上來。</p><p><b>代價</b>：每步標題 22px，加頁面標題共四個標題字級（步驟名算 N3 的一部分，見 D2）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　不編號：先看清單、再按（還沒分享）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">分享報告給家人</h1>
+          <p>拿到連結的人，不用登入就看得到這份報告；連結 7 天後失效，您可以隨時取消。</p>
+          <div class="h3b"><b>家人會看到什麼</b>
+            <ul><li>聽力圖</li><li>各問卷的分數、分級和建議</li><li>每一題的回答</li><li>每份問卷最近 5 筆紀錄</li><li>放進報告的配戴比較</li><li>年齡</li></ul>
+            <p style="margin:6px 0 0">不會看到：使用者名稱、出生年</p></div>
+          <a class="b solid">我知道了，產生連結</a>
+          <p class="muted" style="margin-top:16px">連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>最短，按鈕最高。清單放 P3 灰框（資訊、不能點）。<b>代價</b>：看不出「之後還有傳給家人這一步」；分享中的畫面跟這張長得完全不同。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">A・分享中（最擠的狀態）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">分享報告給家人</h1>
+          <ol class="jr">
+            <li><span class="dot">1</span><div class="jb">
+              <details class="fx" style="border-bottom:0"><summary style="min-height:44px;padding:0"><span class="grow jt" style="margin:0">家人會看到什麼</span><span class="chev">›</span></summary></details></div></li>
+            <li><span class="dot">2</span><div class="jb"><p class="jt">產生連結</p>
+              <ul style="margin-bottom:0"><li>有效到 2026/11/19 14:30</li><li>家人打開過 2 次</li><li>最後一次打開：2026/11/13 20:05</li></ul></div></li>
+            <li><span class="dot">3</span><div class="jb"><p class="jt">傳給家人</p>
+              <a class="b solid" style="margin-top:4px">再傳一次給家人</a>
+              <a class="b outline">複製連結</a>
+              <p style="margin:12px 0 0">可以複製這個網址傳給家人：<span class="url">https://hearwell.onrender.com/shared/Xk3vQ9pL2mTw8sYb</span></p>
+              <div style="border-top:1px solid var(--line);margin-top:16px;padding-top:4px"><span class="newc" style="display:inline-block"><span class="newc-tag">新元件</span><a class="tlink danger-t">取消分享</a></span></div></div></li>
+          </ol>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb on"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>分享中，第 1 步的清單已經看過，<span class="draft">收成一列可點開</span>（現在是照樣展開，這是改動）。「再傳一次給家人」是這時唯一的實心按鈕、在第一個畫面。</p><p>「取消分享」現在是紅框按鈕；S1 沒有危險按鈕，這裡畫成紅色文字連結（新元件，見 D4）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 家人看的分享報告 ================= -->
+  <section class="group">
+    <h2>3　家人看的分享報告</h2>
+    <p class="q">這頁要家人做的一件事：<b>看懂重點</b>，再決定要不要印。封面頁（<code>shared_cover.html</code>）只有一顆「打開報告」；報告頁沿用第 1 組的版式（建議 B），上面多「先看重點」和「您可以怎麼幫忙」。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">封面（連結預覽看到的頁，沒有健康資料）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:24px">家人分享了一份聽伴聽力報告給您</h1>
+          <p>連結有效到 2026/11/19。</p>
+          <a class="b solid">打開報告</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>只換元件，不改結構。家人沒登入，分頁列是訪客的四格。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">分享報告</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <p class="meta" style="margin-top:6px">這是您的家人在聽伴自己作答與輸入的自我篩檢結果。</p>
+          <h1 class="h1">聽伴聽力報告</h1>
+          <p style="font-weight:700;color:var(--heading)">這是家人分享給您的報告，連結有效到 2026/11/19。</p>
+          <h2 class="h2" style="margin-top:18px">先看重點</h2>
+          <div class="lv L1m"><span class="k">聽力對生活的影響</span><span class="nm">輕度到中度影響</span><span class="d">2026/11/12 作答</span></div>
+          <div class="lv" style="background:var(--surface)"><span class="k">聽力圖（2026/09/01）</span><span class="d">右耳：<span class="lb L1m">輕度</span>　左耳：<span class="lb L1m">中度</span></span></div>
+          <p class="muted" style="margin-top:10px">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+          <h2 class="h2" style="margin-top:18px">您可以怎麼幫忙</h2>
+          <div class="listE" style="margin-top:6px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-talk"/></svg></span><span class="grow t-title">怎麼跟聽損的家人說話</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-aid"/></svg></span><span class="grow t-title">陪伴配戴助聽器</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-info"/></svg></span><span class="grow t-title">什麼時候要馬上就醫</span><span class="chev">›</span></a>
+          </div>
+          <a class="b solid" style="margin-top:20px">列印或存成 PDF</a>
+          <p class="meta" style="margin-top:12px">年齡：70 歲　產生日期：2026/11/12</p>
+          <div class="listE">
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-gram"/></svg></span><span class="grow"><span class="t-title">聽力圖（2026/09/01）</span><span class="t-sub">右耳 37.5 dB HL 輕度、感音神經性；左耳 47.5 dB HL 中度、感音神經性</span></span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">HHIE-S（2026/11/12）</span><span class="t-sub">14 分，<span class="lb L1m">輕度到中度影響</span>，助聽器：沒戴</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <p class="muted" style="margin-top:14px">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>「先看重點」的生活影響用 L1 整塊分級色；聽力圖兩耳程度不同，用灰底資訊框＋兩個分級標籤。三個幫忙連結改 E 清單列。</p><p><b>代價</b>：列印按鈕在第二個畫面。這頁家人先要看懂，不是先要印，所以讓重點先（見 D5）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">連結失效（家人看到的錯誤頁）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:24px">這個連結已經失效</h1>
+          <p>分享連結 7 天後會失效，分享的人也可以提前取消。請向分享報告給您的家人要一個新的連結。</p>
+          <a class="b solid">回首頁</a>
+          <div class="listE" style="margin-top:28px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-family"/></svg></span><span class="grow t-title">家人專區：溝通與陪伴</span><span class="chev">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>「回首頁」從藍框改成實心（這頁唯一的事）。跟第 8 組錯誤頁同一個版式。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 帳號設定 ================= -->
+  <section class="group">
+    <h2>4　帳號設定、刪除帳號、下載我的資料</h2>
+    <p class="q">帳號設定沒有一件主要的事，是「找到要改的東西」的目錄，所以<b>不放實心按鈕</b>（驗收條件是最多一顆）。現在是頁面標題＋三個段落標題＝四個標題，超過三個；兩版都減到三個以內。「下載我的資料」不是一頁，是直接下載一個檔案：清單列用下載圖示、不放箭頭（照現在）。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">A　兩個段落標題<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2" style="margin-top:18px">我的帳號</h2>
+          <dl class="infos">
+            <div class="info"><dt>使用者名稱</dt><dd>wang_ming</dd></div>
+            <div class="info"><dt>電子郵件</dt><dd>未填</dd></div>
+            <div class="info"><dt>出生年</dt><dd>民國 45 年（1956）</dd></div>
+          </dl>
+          <p style="margin:8px 0 0">要修改請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+          <h2 class="h2"><span class="draft">家人與資料</span></h2>
+          <div class="listE" style="margin-top:6px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-share"/></svg></span><span class="grow"><span class="t-title">分享報告給家人</span><span class="t-sub">分享中，2026/11/19 到期</span></span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-family"/></svg></span><span class="grow t-title">家人專區：溝通與陪伴</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-phone"/></svg></span><span class="grow t-title">加到手機主畫面</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-down"/></svg></span><span class="grow"><span class="t-title">下載我的資料</span><span class="t-sub">把您在聽伴的所有資料下載成一個檔案保存。</span></span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-lock"/></svg></span><span class="grow"><span class="t-title">隱私權說明</span><span class="t-sub">您在 2026/11/06 同意了目前的版本。</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="listE" style="margin-top:40px">
+            <a class="tap newc"><span class="newc-tag">新元件</span><span class="icoE icoD"><svg class="i"><use href="#i-trash"/></svg></span><span class="grow"><span class="t-title danger-t">刪除帳號</span><span class="t-sub">刪除後，帳號和所有紀錄都會消失，無法復原。</span></span><span class="chev danger-t">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>「家人與手機」「資料與隱私」合成一組，<span class="draft">家人與資料</span>是我擬的組名。帳號資料是灰字標籤＋黑字的資訊列（不能點）。刪除帳號隔開放最下面，紅色圖示＋紅字（E 的紅色版，新元件，見 D4）。</p><p>還沒同意目前版本時，「隱私權說明」上面多一列「前往同意」（現有字句），不畫。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　不分段，帳號資料放灰框</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <div class="h3b">
+            <span class="muted">使用者名稱</span><br><b>wang_ming</b><br>
+            <span class="muted">電子郵件</span><br><b>未填</b><br>
+            <span class="muted">出生年</span><br><b>民國 45 年（1956）</b>
+            <p style="margin:8px 0 0">要修改請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+          </div>
+          <div class="listE" style="margin-top:18px">
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-share"/></svg></span><span class="grow"><span class="t-title">分享報告給家人</span><span class="t-sub">分享中，2026/11/19 到期</span></span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-family"/></svg></span><span class="grow t-title">家人專區：溝通與陪伴</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-phone"/></svg></span><span class="grow t-title">加到手機主畫面</span><span class="chev">›</span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-down"/></svg></span><span class="grow"><span class="t-title">下載我的資料</span><span class="t-sub">把您在聽伴的所有資料下載成一個檔案保存。</span></span></a>
+            <a class="tap"><span class="icoE"><svg class="i"><use href="#i-lock"/></svg></span><span class="grow"><span class="t-title">隱私權說明</span><span class="t-sub">您在 2026/11/06 同意了目前的版本。</span></span><span class="chev">›</span></a>
+          </div>
+          <div class="listE" style="margin-top:40px">
+            <a class="tap"><span class="icoE icoD"><svg class="i"><use href="#i-trash"/></svg></span><span class="grow"><span class="t-title danger-t">刪除帳號</span><span class="t-sub">刪除後，帳號和所有紀錄都會消失，無法復原。</span></span><span class="chev danger-t">›</span></a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>只有一個標題，不用擬組名。<b>代價</b>：灰框裡三組字擠在一起，比 A 難掃；七列混在一起，長輩要從頭讀到尾才找得到。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">刪除帳號</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">刪除帳號</h1>
+          <p>刪除後，下面這些資料會全部消失，<strong>無法復原</strong>：</p>
+          <ul>
+            <li>您的帳號（使用者名稱、電子郵件、出生年）</li>
+            <li>問卷紀錄 6 筆（每一題的作答和分數）</li>
+            <li>聽力圖 2 張</li>
+            <li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>
+            <li>同意紀錄</li>
+          </ul>
+          <div class="h3b">想留一份紀錄的話，請先<a class="tlink" style="min-height:0;display:inline">下載我的資料</a>。</div>
+          <div class="field"><label class="lab">請輸入密碼確認</label><div class="inp plain">&nbsp;</div></div>
+          <a class="b solid-d newc"><span class="newc-tag">新元件</span>刪除帳號</a>
+          <a class="b outline">取消</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>字句全部照現在。「先下載我的資料」放 P3 灰框，讓它跟清單分開。刪除按鈕是這頁唯一的實心按鈕，用紅色（現在就是紅色實心，S1 沒有這種，標新元件，見 D4）；取消用藍框。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 登入 ================= -->
+  <section class="group">
+    <h2>5　登入（含忘記密碼）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>登入</b>。流程與欄位不變；粗框輸入框（2px、高 58px、字 20px、左邊圖示）照現在。差別只在要不要保留品牌橫幅。現在的橫幅是藍色漸層，A 改成單一主色（ADR 0041「主色只用 #1f4e8c」），表單不再疊一張白卡在橫幅上，直接放白底。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">A　保留橫幅（單色、不疊卡片）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <div class="hero"><h1>登入</h1><p>歡迎回來。</p><div class="hbars"><span style="height:7px"></span><span style="height:13px"></span><span style="height:18px"></span><span style="height:10px"></span><span style="height:15px"></span><span style="height:18px"></span><span style="height:13px"></span><span style="height:7px"></span></div></div>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>wang_ming</div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg>••••••••</div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px">忘記密碼？請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+          <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:12px">
+            <p style="margin:0">還沒有帳號？</p>
+            <a class="b outline" style="margin-top:6px">註冊新帳號</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>保留您 2026/10/23 選的品牌感，第一次來的人知道到了哪裡。<b>代價</b>：橫幅佔約 130px；全站只有登入、註冊、同意書三頁有大色塊，跟其他白底頁不一樣。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　拿掉橫幅，白底大標題<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:14px">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <div class="field" style="margin-top:20px"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>wang_ming</div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg>••••••••</div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px">忘記密碼？請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+          <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:12px">
+            <p style="margin:0">還沒有帳號？</p>
+            <a class="b outline" style="margin-top:6px">註冊新帳號</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>跟全站一樣白底、靠字級分層；欄位和按鈕往上約 100px，字放大 200% 時差更多。<b>代價</b>：比較素，少了您之前選的品牌橫幅。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B・帳號或密碼打錯（最擠的狀態）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:14px">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <p>請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。</p>
+          <div class="em"><span class="dot-i">!</span><span><b style="color:var(--severe)">使用者名稱或密碼錯誤</b></span></div>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp" style="border-color:var(--severe)"><svg style="stroke:var(--severe)"><use href="#i-user"/></svg>wang_ming</div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp focus"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px">忘記密碼？請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>從別的頁被帶來登入、又打錯一次。錯誤訊息現在是紅字一行，這裡放進紅底框（緊急就醫框同一個樣子），跟一般說明分得開（見 D6）。「登入」按鈕仍在第一個畫面。</p><p><b>忘記密碼</b>：現在沒有忘記密碼頁，只有這一行。自助重設（#355）還被擋著；那張做的時候，忘記密碼頁、重設密碼頁照這張登入頁的版式套，不另畫。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 註冊 ================= -->
+  <section class="group">
+    <h2>6　註冊</h2>
+    <p class="q">這頁要長輩做的一件事：<b>填完五欄、按註冊</b>。欄位、說明字句、密碼規則都不變。表單太長，實心按鈕一定落在第一個畫面外面；第一個畫面先讓長輩看到「第 1 步／共 2 步」和第一欄（見 D7）。橫幅要不要保留跟登入頁一起決定。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">A　保留橫幅（單色）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <div class="hero"><h1>註冊</h1><p>建立帳號，篩檢結果會幫您存起來。</p><p class="sp-t">第 1 步／共 2 步：建立帳號</p><div class="sp-bar"><span class="on"></span><span></span></div><div class="hbars"><span style="height:7px"></span><span style="height:13px"></span><span style="height:18px"></span><span style="height:10px"></span><span style="height:15px"></span><span style="height:18px"></span><span style="height:13px"></span><span style="height:7px"></span></div></div>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <div class="field"><label class="lab">電子郵件</label><div class="inp"><svg><use href="#i-mail"/></svg></div><p class="help">忘記密碼時，用這個信箱確認是您本人。</p></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div>
+            <div class="h3b" style="margin-bottom:0">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼確認</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div><p class="help">請再輸入一次同樣的密碼。</p></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp">45</div><span>年</span></div><p class="help">填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。</p></div>
+          <p>註冊後，會請您閱讀並同意<a class="tlink" style="min-height:0;display:inline">隱私權說明</a>，才能開始使用。</p>
+          <a class="b solid">註冊</a>
+          <a class="b outline" style="margin-top:20px">已經有帳號？登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb on"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>步驟條放在橫幅裡（照現在）。第一個畫面看到兩欄半。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　拿掉橫幅<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:14px">註冊</h1>
+          <p class="muted" style="margin-bottom:10px">建立帳號，篩檢結果會幫您存起來。</p>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p><div class="sp-bar"><span class="on"></span><span></span></div>
+          <div class="field" style="margin-top:18px"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <div class="field"><label class="lab">電子郵件</label><div class="inp"><svg><use href="#i-mail"/></svg></div><p class="help">忘記密碼時，用這個信箱確認是您本人。</p></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div>
+            <div class="h3b" style="margin-bottom:0">設定密碼時，請您注意：<ul><li>至少 8 個字</li><li>不要全部是數字</li><li>不要跟您的使用者名稱太像</li><li>不要用太常見的密碼</li></ul></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼確認</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div><p class="help">請再輸入一次同樣的密碼。</p></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp">45</div><span>年</span></div><p class="help">填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。</p></div>
+          <p>註冊後，會請您閱讀並同意<a class="tlink" style="min-height:0;display:inline">隱私權說明</a>，才能開始使用。</p>
+          <a class="b solid">註冊</a>
+          <a class="b outline" style="margin-top:20px">已經有帳號？登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb on"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>步驟條改成白底上的藍色（作答頁同一個樣子）。第一個畫面看到三欄。密碼規則從左邊藍條的提示框改成 P3 灰框。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 7 隱私權與同意書 ================= -->
+  <section class="group">
+    <h2>7　同意書與隱私權說明（長文頁示範）</h2>
+    <p class="q">同意書要長輩做的一件事：<b>看重點、按「我同意，開始篩檢」</b>。隱私權說明是長文：現在有 13 個段落標題，超過「一頁三個標題」；兩版字句都一字不改，差在段落要不要預設收起。審定過的法律字句只搬位置（頁面裡的註解要求每句都要對得上程式，不能改寫）。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">同意書（註冊第 2 步，以登入 B 版為例）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:14px">開始使用之前</h1>
+          <p class="sp-t">第 2 步／共 2 步：同意隱私權</p><div class="sp-bar"><span class="on"></span><span class="on"></span></div>
+          <p>聽伴會保存您的篩檢作答、分數和聽力圖，這些是健康資料，需要您同意才能使用。</p>
+          <h2 class="h2" style="margin-top:14px">重點</h2>
+          <ul>
+            <li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li>
+            <li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li>
+            <li>您可以隨時要求查詢、更正或刪除您的資料。</li>
+            <li>結果只是參考，不是醫療診斷。</li>
+          </ul>
+          <a class="tlink">閱讀完整的隱私權說明</a>
+          <a class="b solid">我同意，開始篩檢</a>
+          <a class="b outline">不同意</a>
+          <div class="h3b" style="margin-top:16px">按「不同意」會登出。您的帳號會保留，之後想用時再登入同意即可。</div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>標題兩個（開始使用之前、重點）。登入註冊選 A 的話，這頁也戴同一條單色橫幅（照現在的做法）。實心按鈕在第一個畫面內，但貼近分頁列，200% 字級時要往下捲。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">隱私權 A　全文展開、段落標題照舊</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">隱私權說明</h1>
+          <p class="src">第 3 版，2026/11/06 更新</p>
+          <div class="listE" style="margin-top:6px">
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-search"/></svg></span><span class="grow t-title">這一頁的段落</span><span class="chev">›</span></summary></details>
+          </div>
+          <h2 class="h2" style="margin-top:20px">先看重點</h2>
+          <div class="h3b" style="margin-top:0"><ul style="margin:0;padding-left:1.2em"><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li><li>您可以隨時要求查詢、更正或刪除您的資料。</li><li>結果只是參考，不是醫療診斷。</li></ul></div>
+          <p>聽伴會保存您的聽力篩檢結果，這些屬於法律上特別保護的「健康資料」。這一頁用白話說明我們怎麼處理您的資料。</p>
+          <h2 class="h2">誰在蒐集</h2>
+          <ul><li>營運者：聽伴開發者</li><li>聯絡信箱：<a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></li></ul>
+          <h2 class="h2">為什麼蒐集</h2>
+          <ul><li>讓您做聽力篩檢問卷，算出分數和建議。</li><li>保存您的紀錄，讓您看到聽力和助聽器效果隨時間的變化。</li><li>網站出錯時找出原因、修好它。</li><li>看大家在問答小助手怎麼問，補充題目。</li></ul>
+          <p>我們不會把您的資料拿去賣、做廣告，或做上面以外的用途。</p>
+          <h2 class="h2">蒐集哪些資料</h2>
+          <p class="muted">……（以下 10 段照現在，每段一個 22px 標題）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>只換元件：「先看重點」放 P3 灰框；上方「這一頁的段落」摺疊目錄照舊，改成 E 清單列的樣子。<b>代價</b>：13 個標題，整頁很長，違反「一頁三個標題」；但從頭讀到尾、用瀏覽器找字最方便。這頁沒有要按的按鈕。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">隱私權 B　重點展開、其他段落各收成一列<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">隱私權說明</h1>
+          <p class="src">第 3 版，2026/11/06 更新</p>
+          <h2 class="h2" style="margin-top:16px">先看重點</h2>
+          <div class="h3b" style="margin-top:0"><ul style="margin:0;padding-left:1.2em"><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。</li><li>您可以隨時要求查詢、更正或刪除您的資料。</li><li>結果只是參考，不是醫療診斷。</li></ul></div>
+          <p>聽伴會保存您的聽力篩檢結果，這些屬於法律上特別保護的「健康資料」。這一頁用白話說明我們怎麼處理您的資料。</p>
+          <div class="listE">
+            <details class="fx" open><summary style="min-height:60px"><span class="grow t-title">誰在蒐集</span><span class="chev">›</span></summary><div class="inside"><ul style="margin:0"><li>營運者：聽伴開發者</li><li>聯絡信箱：<a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></li></ul></div></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">為什麼蒐集</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">蒐集哪些資料</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">問答小助手的提問紀錄</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">存放在哪裡、保存多久</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">會交給誰</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">您主動分享時</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">您可以要求什麼</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">不提供資料會怎樣</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">不是醫療診斷</span><span class="chev">›</span></summary></details>
+            <details class="fx"><summary style="min-height:60px"><span class="grow t-title">說明改版</span><span class="chev">›</span></summary></details>
+          </div>
+          <h2 class="h2">有問題或要刪除資料？</h2>
+          <p>寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a>，或到「帳號設定」自己下載、刪除。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>標題三個（隱私權說明、先看重點、有問題或要刪除資料？）；11 段各收成一列（圖中點開「誰在蒐集」示範），清單本身就是目錄，「這一頁的段落」可以拿掉。字句全部保留。</p><p><b>代價</b>：要看全文得一段段點開；從別頁連到某一段（例如註冊頁連「隱私權說明」）時要自動打開那一段。新版 Chrome 用瀏覽器找字時會自動打開收起的段落，其他瀏覽器不一定。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 8 錯誤頁 ================= -->
+  <section class="group">
+    <h2>8　錯誤頁（找不到這一頁、網站出錯）</h2>
+    <p class="q">現在網站沒有自己的錯誤頁，打錯網址會看到 Django 預設的英文「Not Found」。這頁要長輩做的一件事：<b>回首頁</b>。字句都是我擬的（紫框）；版式跟「連結失效」同一種。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">找不到這一頁（404）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:24px"><span class="draft">找不到這一頁</span></h1>
+          <p><span class="draft">網址可能打錯了，或這一頁已經搬家。請回首頁再找一次。</span></p>
+          <a class="b solid">回首頁</a>
+          <p style="margin-top:22px"><span class="draft">一直找不到的話，請寫信到</span> <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>保留分頁列（長輩可以直接點別的分頁）。登入與沒登入的人看到同一頁，分頁列照各自的。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">網站出錯（500）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:24px"><span class="draft">網站出了一點問題</span></h1>
+          <p><span class="draft">不是您做錯了什麼。我們已經收到錯誤通知，會盡快修好。您剛剛填的資料可能沒有存起來，請稍後再試一次。</span></p>
+          <a class="b solid">回首頁</a>
+          <p style="margin-top:22px"><span class="draft">一直出現這個畫面的話，請寫信到</span> <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>網站出錯時錯誤會送到 Sentry，所以可以寫「已經收到錯誤通知」。500 頁不能讀資料庫，實作時這頁要是不經過登入判斷的純頁面（分頁列可能只能畫訪客版，實作時確認）。作答草稿會存在瀏覽器裡，「可能沒有存起來」要不要寫，請您看字句時決定。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 9 其他 ================= -->
+  <section class="group">
+    <h2>9　新訪客首頁、加到主畫面</h2>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">新訪客首頁（沿用 #458 ⑪，不重畫）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-bottom:18px"><span class="draft">從一份問卷開始</span></h1>
+          <p style="margin-bottom:18px"><span class="draft">聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</span></p>
+          <div class="dashed"><p class="dashed-title"><span class="draft">做完第一份問卷，這裡會排出您的照顧旅程</span></p><ol class="stC"><li>建立帳號，大約 1 分鐘。</li><li>回答問題，大約 3 分鐘。</li><li>馬上看到結果分級和建議。</li></ol></div>
+          <a class="b solid">開始篩檢</a>
+          <a class="tlink" style="margin-top:6px">我已經有帳號，登入</a>
+          <div class="links"><a class="tlink">了解助聽器選配與補助</a><a class="tlink">我是家人</a><a class="tlink">加到手機主畫面</a></div>
+          <p class="cred">內容由台灣執業聽力師設計與審定。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>從 <code>mockup-458-home.html</code> 的 ⑪ 照搬，紫框字句在 #458 驗收時審定。唯一改的是分頁列：#458 圖上畫的是登入後的四格，訪客實際是「首頁、了解、登入、註冊」。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">加到主畫面</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">把聽伴加到手機主畫面</h1>
+          <p>加到主畫面後，聽伴會像其他 app 一樣出現在手機桌面上，點一下就能打開，不用每次輸入網址。</p>
+          <p>這些步驟要在手機上做。如果您現在用電腦，請用手機打開聽伴。</p>
+          <div class="listE">
+            <details class="fx" open><summary><span class="icoE"><svg class="i"><use href="#i-iphone"/></svg></span><span class="grow"><span class="t-title">我用 iPhone</span><span class="t-sub">蘋果手機</span></span><span class="chev">›</span></summary>
+              <div class="inside"><ol class="stC"><li>用 Safari 打開聽伴網站。</li><li>點畫面下方的「分享」按鈕（一個方框，上面有向上的箭頭）。如果沒看到，先點「⋯」再點「分享」。</li><li>往下滑，點「加入主畫面」。</li><li>點右上角的「加入」。</li></ol><p style="margin:0">第一次從主畫面打開時，需要再登入一次。</p></div></details>
+            <details class="fx"><summary><span class="icoE"><svg class="i"><use href="#i-android"/></svg></span><span class="grow"><span class="t-title">我用 Android</span><span class="t-sub">三星、小米、OPPO、華碩、Google 等</span></span><span class="chev">›</span></summary></details>
+          </div>
+          <p style="margin-top:16px">從主畫面打開時，請用畫面下方的「首頁、篩檢、紀錄、了解」切換頁面。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>沒有按鈕（步驟在手機的瀏覽器裡做）。兩支手機的選擇改成 E 清單列的摺疊樣子；點開後的步驟用 N3 編號圓點，字句照舊。圖中點開 iPhone 示範。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= decisions ================= -->
+  <section class="group">
+    <h2>要您決定的地方</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>我的建議</th></tr>
+      <tr><td>D1</td><td>登入、註冊（和同意書）要不要保留品牌橫幅</td><td>A 保留，改單色 #1f4e8c、表單不疊卡片：有品牌感，是您 10/23 選的；三頁跟全站白底不一樣，欄位低約 100px。<br>B 拿掉，白底大標題：跟全站一致，欄位和按鈕最高；比較素。</td><td><b>B</b></td></tr>
+      <tr><td>D2</td><td>聽力報告的版式；分享設定的版式</td><td>報告：A 保留「重點摘要」段落＋摺疊列（同一件事講兩次）／B 摘要寫在摺疊列上（一個標題，最少字）。<br>分享：A 三步驟＋連接線（步驟名 22px，加上頁面標題算四個標題字級，但它們是 N3 的一部分）／B 不編號、清單放灰框（最短，但分享中的畫面會長得不一樣）。</td><td>報告 <b>B</b>；分享 <b>A</b></td></tr>
+      <tr><td>D3</td><td>清單裡的分級怎麼標</td><td>A 沿用現有的小分級標籤（<code>level_badge</code>，換成 L1 的底色與字色）：一眼看出好壞，跟結果頁同色。<br>B 只寫文字不上色：最安靜；長輩要讀字才知道好壞。</td><td><b>A</b></td></tr>
+      <tr><td>D4</td><td>危險動作的樣子（S1 沒有定）</td><td>刪除帳號頁的按鈕：紅色實心（現在就是）／紅框＋「取消」改實心藍（比較不容易誤按，但頁面主角變成取消）。<br>帳號設定的「刪除帳號」列：E 列的紅色版（紅圖示、紅字）／照一般 E 列只是隔開放最下面。<br>分享中的「取消分享」：紅色文字連結／紅框按鈕（現在）。</td><td>紅色實心；紅色 E 列；紅色文字連結</td></tr>
+      <tr><td>D5</td><td>家人看的分享報告：列印按鈕放哪</td><td>A 放在「先看重點」「您可以怎麼幫忙」後面（第二個畫面）：家人先看懂。<br>B 放最上面，跟本人的報告一樣：一致，但家人先看到按鈕、重點被擠下去。</td><td><b>A</b></td></tr>
+      <tr><td>D6</td><td>登入錯誤訊息</td><td>A 放紅底框（緊急就醫框的樣子）：明顯；紅底框原本只給緊急就醫，現在多一個用途。<br>B 維持紅字一行：不多用紅框；容易被看漏。</td><td><b>A</b></td></tr>
+      <tr><td>D7</td><td>註冊頁的實心按鈕在第一個畫面外</td><td>A 照畫，表單頁按鈕本來就在最後一欄後面；第一個畫面看到步驟條和前幾欄。<br>B 把密碼規則收成「看密碼規則」摺疊列，省約 150px，但按鈕還是到不了第一個畫面，打密碼時又要點開。</td><td><b>A</b>（表單頁不適用「按鈕在第一個畫面」這條）</td></tr>
+    </table>
+    <p class="q" style="margin-top:12px">還有一個小決定：隱私權說明（第 7 組）A 全文展開／B 段落收成清單列，我建議 <b>B</b>；改了這頁，頁面裡要求字句對得上程式的註解不受影響（只是排版）。</p>
+  </section>
+
+  <section class="group">
+    <h2>沒有另外畫的頁</h2>
+    <table class="spec">
+      <tr><th>頁面</th><th>怎麼套</th></tr>
+      <tr><td>下載我的資料</td><td>不是一個頁面，是直接下載 JSON 檔。入口是帳號設定的清單列（下載圖示、沒有箭頭）、刪除帳號頁的灰框連結、隱私權說明「您可以要求什麼」段裡的連結。</td></tr>
+      <tr><td>忘記密碼</td><td>現在只有登入頁的「忘記密碼？請寫信到…」一行（第 5 組）。自助重設（#355）被「搬到 VPS＋新網域」擋著；那張做時，忘記密碼頁、「信寄出了」頁、設新密碼頁照登入 B（或 A）版式：一個標題、一欄、一顆實心按鈕。</td></tr>
+      <tr><td>還沒有紀錄的報告／分享</td><td>「還沒有可以放進報告的紀錄。」＋實心「開始篩檢」，跟錯誤頁同一個版式。</td></tr>
+      <tr><td>管理員帳號刪除</td><td>「管理員帳號請先在後台移除管理員權限，再回來刪除。」＋藍框「回帳號設定」（沒有實心按鈕）。</td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>新用到的顏色組合與對比值</h2>
+    <p class="q">文字要 ≥4.5:1，元件邊界（輸入框、虛線框）要 ≥3:1。其他組合沿用 #454、#458 已驗過的值。</p>
+    <table class="spec">
+      <tr><th>組合</th><th>對比</th><th>要求</th><th>結果</th></tr>
+      <tr><td><span class="sw" style="background:#fff4d6;color:#704800;border-color:#704800">字</span>分級標籤 #704800／#fff4d6</td><td>7.3:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#ffffff;color:#8f2a12;border-color:#8f2a12">字</span>紅字（刪除帳號、取消分享）#8f2a12／白</td><td>8.4:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#8f2a12;color:#ffffff;border-color:#ffffff">字</span>紅色實心按鈕 白字／#8f2a12</td><td>8.4:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#1f4e8c;color:#ffffff;border-color:#ffffff">字</span>橫幅 白字／#1f4e8c（A 版）</td><td>8.3:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#ffffff;color:#8a94a3;border-color:#8a94a3">框</span>輸入框外框 #8a94a3／白</td><td>3.1:1</td><td>≥3:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#f4f6f8;color:#4a5460;border-color:#4a5460">字</span>灰框裡的灰字標籤 #4a5460／#f4f6f8</td><td>7.1:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#feece7;color:#8f2a12;border-color:#8f2a12">字</span>登入錯誤紅底框 #8f2a12／#feece7</td><td>7.3:1</td><td>≥4.5:1</td><td>合格</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>
