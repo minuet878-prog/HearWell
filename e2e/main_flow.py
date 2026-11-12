@@ -12973,3 +12973,157 @@ class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     for radio in question.get_by_role("radio").all():
                         expect(radio).not_to_be_checked()
                     expect(live).to_be_empty()
+
+
+class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#457 (ADR 0043, #453 acceptance 27-31): on a phone the tab bar is 88% white frosted glass,
+    makes way while the page scrolls down and comes back on the way up; it stays with reduced
+    motion, on the tabs' keyboard focus and at the page's bottom; solid white with reduced
+    transparency; its words readable over the darkest page behind it."""
+
+    PAGE = "/privacy"
+    # Where the bar is against the window's foot: "shown" with its foot at the window's, or
+    # "hidden" wholly below the window, the capsule's shadow too; else (sliding) "moving".
+    WHERE = """() => {
+        const nav = document.querySelector(".site-nav").getBoundingClientRect();
+        if (Math.abs(nav.bottom - innerHeight) < 1) return "shown";
+        const capsule = document.querySelector(".site-nav ul").getBoundingClientRect();
+        return capsule.top >= innerHeight ? "hidden" : "moving";
+    }"""
+
+    def open_phone(self, reduced_motion="no-preference", java_script_enabled=True, path=PAGE):
+        width, height = self.PHONE
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            reduced_motion=reduced_motion,
+            java_script_enabled=java_script_enabled,
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def wait_for_bar(self, where):
+        self.page.wait_for_function(f"({self.WHERE})() === {where!r}")
+
+    def scroll_y(self):
+        return self.page.evaluate("scrollY")
+
+    # Acceptance 27 and 29 (the bottom): a real scroll with the mouse wheel.
+    def test_scrolling_down_hides_the_bar_up_and_the_bottom_bring_it_back(self):
+        self.open_phone()
+        with self.saving_artifacts():
+            self.assertEqual(self.page.evaluate(self.WHERE), "shown")
+            self.page.mouse.wheel(0, 600)
+            self.wait_for_bar("hidden")
+            self.page.mouse.wheel(0, -200)
+            self.wait_for_bar("shown")
+            self.page.mouse.wheel(0, 200)
+            self.wait_for_bar("hidden")
+            self.page.mouse.wheel(0, 100_000)
+            self.page.wait_for_function(
+                "scrollY + innerHeight >= document.documentElement.scrollHeight - 1"
+            )
+            self.wait_for_bar("shown")
+
+    # Acceptance 29: Tab from the header's last link moves onto the first tab; the bar comes
+    # back where the page is, without scrolling it.
+    def test_keyboard_focus_on_a_tab_brings_the_bar_back(self):
+        self.open_phone()
+        with self.saving_artifacts():
+            self.page.mouse.wheel(0, 600)
+            self.wait_for_bar("hidden")
+            scrolled = self.scroll_y()
+            self.page.locator(".site-brand a").evaluate("el => el.focus({preventScroll: true})")
+            self.page.keyboard.press("Tab")
+            first_tab = self.page.get_by_role("navigation", name="主要導覽").get_by_role(
+                "link", name="首頁"
+            )
+            expect(first_tab).to_be_focused()
+            self.wait_for_bar("shown")
+            self.assertEqual(self.scroll_y(), scrolled)
+            # Still there while the focus stays on the tabs, whichever way the page goes.
+            self.page.mouse.wheel(0, 300)
+            self.page.wait_for_function(f"scrollY > {scrolled}")
+            self.page.wait_for_timeout(400)
+            self.assertEqual(self.page.evaluate(self.WHERE), "shown")
+
+    # Acceptance 28; and without JavaScript the bar never goes either.
+    def test_bar_stays_with_reduced_motion_or_without_javascript(self):
+        for options in ({"reduced_motion": "reduce"}, {"java_script_enabled": False}):
+            with self.subTest(**options):
+                self.open_phone(**options)
+                self.page.mouse.wheel(0, 600)
+                # Longer than the slide would take. (No wait_for_function: it needs the page's
+                # JavaScript.)
+                self.page.wait_for_timeout(400)
+                self.assertGreater(self.scroll_y(), 0)
+                self.assertEqual(self.page.evaluate(self.WHERE), "shown")
+                self.assertIsNone(self.page.locator(".site-nav").get_attribute("data-hidden"))
+
+    # Acceptance 30: frosted glass where the browser blurs, solid white with reduced
+    # transparency, and solid white too where it cannot blur (the glass is only set inside an
+    # @supports for backdrop-filter).
+    def test_glass_falls_back_to_solid_white(self):
+        self.open_phone()
+        with self.saving_artifacts():
+            capsule = self.page.locator(".site-nav ul")
+            self.assertEqual(self.style(capsule, "backgroundColor"), "rgba(255, 255, 255, 0.88)")
+            self.assertEqual(self.style(capsule, "backdropFilter"), "blur(18px) saturate(1.6)")
+            glass_rules = self.page.evaluate(
+                """() => {
+                    const found = [];
+                    const walk = (rules, inside) => {
+                        for (const rule of rules) {
+                            const here = rule instanceof CSSSupportsRule
+                                ? [...inside, rule.conditionText] : inside;
+                            if (rule.style?.backgroundColor === "rgba(255, 255, 255, 0.88)"
+                                && rule.selectorText === ".site-nav ul") found.push(here);
+                            if (rule.cssRules) walk(rule.cssRules, here);
+                        }
+                    };
+                    for (const sheet of document.styleSheets) walk(sheet.cssRules, []);
+                    return found;
+                }"""
+            )
+            self.assertEqual(len(glass_rules), 1, glass_rules)
+            self.assertTrue(all("backdrop-filter" in c for c in glass_rules[0]), glass_rules)
+            self.assertTrue(glass_rules[0], "the glass is set outside any @supports")
+
+            devtools = self.context.new_cdp_session(self.page)
+            devtools.send(
+                "Emulation.setEmulatedMedia",
+                {"features": [{"name": "prefers-reduced-transparency", "value": "reduce"}]},
+            )
+            self.assertEqual(self.style(capsule, "backgroundColor"), "rgb(255, 255, 255)")
+            self.assertEqual(self.style(capsule, "backdropFilter"), "none")
+
+    # Acceptance 31: the darkest a page can be behind the bar is black; 88% white over it, the
+    # colour the glass shows at worst (a blur only mixes what is behind), still gives each tab's
+    # words 4.5:1. The current tab is on its own solid pale blue pill.
+    def test_tab_words_keep_their_contrast_over_dark_content(self):
+        self.open_phone(path="/")  # 首頁 is the current tab
+        with self.saving_artifacts():
+            capsule = self.page.locator(".site-nav ul")
+            alpha = float(
+                re.fullmatch(
+                    r"rgba\(255, 255, 255, ([\d.]+)\)", self.style(capsule, "backgroundColor")
+                )[1]
+            )
+            worst = round(255 * alpha)
+            over_black = f"rgb({worst}, {worst}, {worst})"
+            tabs = self.page.locator(".site-nav a")
+            self.assertGreater(tabs.count(), 1)
+            expect(tabs.and_(self.page.locator("[aria-current=page]"))).to_have_count(1)
+            for tab in tabs.all():
+                with self.subTest(tab=tab.inner_text()):
+                    if tab.get_attribute("aria-current") == "page":
+                        background = self.style(tab, "backgroundColor")
+                    else:
+                        self.assertEqual(self.style(tab, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                        background = over_black
+                    contrast = StyleInBrowserTest.lowest_contrast(
+                        self.style(tab, "color"), background
+                    )
+                    self.assertGreaterEqual(contrast, 4.5, background)
