@@ -29,9 +29,15 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # HSTS starts short and grows in steps (1 hour -> 1 day -> 1 week -> 1 year, see roadmap),
-    # so a broken HTTPS setup cannot lock users out for long.
-    SECURE_HSTS_SECONDS = 86400
+    # HSTS starts short and grows in steps, so a broken HTTPS setup cannot lock users out for long.
+    # The seconds come from the environment, so each host steps up on its own by editing .env
+    # (schedule in the roadmap, ADR 0041).
+    hsts_seconds = os.environ.get("SECURE_HSTS_SECONDS")
+    if not hsts_seconds:
+        raise ImproperlyConfigured(
+            "正式環境缺少 SECURE_HSTS_SECONDS 環境變數，請在部署平台設定秒數，例如 3600"
+        )
+    SECURE_HSTS_SECONDS = int(hsts_seconds)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECRET_KEY = os.environ.get("SECRET_KEY")
     if not SECRET_KEY:
@@ -95,7 +101,8 @@ if DEBUG:
         MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
         INTERNAL_IPS = ["127.0.0.1"]
 
-# HSTS preload needs a domain we own; *.onrender.com is shared, so it can never be submitted.
+# Our own domain could apply for HSTS preload, but preload is almost impossible to undo,
+# so we wait until the 1-year HSTS has been stable before deciding (ADR 0041).
 SILENCED_SYSTEM_CHECKS = ["security.W021"]
 
 ROOT_URLCONF = "config.urls"

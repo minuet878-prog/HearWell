@@ -63,8 +63,8 @@ class QuestionLogMonth(models.Model):
 def purge_question_log():
     """Count each question over 90 days into its month, then delete it; returns how many.
 
-    Called when a question is saved, when the owner opens the log in the admin and on each
-    deploy, since there is no scheduler (spec #396).
+    Run every day at 02:30 on the VPS; also called when a question is saved and when the owner
+    opens the log in the admin (spec #396, #452).
     """
     return count_and_delete_questions(
         QuestionLog.objects.filter(created_at__lt=timezone.now() - KEPT_FOR)

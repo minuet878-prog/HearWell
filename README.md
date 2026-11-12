@@ -275,6 +275,7 @@ docker exec -it hearwell-db psql -U hearwell -d hearwell_dev
 | `DEBUG` | 否 | 本機開發設為 `True`；正式環境不設定或設為 `False` |
 | `SECRET_KEY` | 正式環境必填 | `DEBUG=False` 時缺少會報錯 |
 | `ALLOWED_HOSTS` | 正式環境必填 | 以逗號分隔；`DEBUG=False` 時缺少會報錯，本機沒設時用 `127.0.0.1,localhost`；設成空的一律報錯 |
+| `SECURE_HSTS_SECONDS` | 正式環境必填 | HSTS 秒數；`DEBUG=False` 時缺少會報錯，逐步拉長的時程見 `docs/roadmap.md`（ADR 0041） |
 
 ## 常用指令
 
