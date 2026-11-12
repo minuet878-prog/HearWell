@@ -7,10 +7,11 @@ from screening.tests import test_guide
 
 # Wording finalised in #220 (D2–D18a), shortened in the guide chapters tidy-up (2026-10-23, the
 # owner's request): the limits as rows of numbers, each level's features folded away. RIC and
-# 擴音器 renamed on 2026-10-27 (the owner's request).
+# 擴音器 renamed on 2026-10-27 (the owner's request). #467 (H1 + H2): the parts titled as
+# questions, read after the key cards.
 SENTENCES = (
     "適合哪一種外型，要看聽損程度、耳朵形狀和手的靈活度，請和聽力師討論。",
-    "外型",
+    "有哪幾種外型？",
     "耳掛型",
     "掛在耳朵後面，機體比較大、好操作，可以接耳塞或客製耳模。適合輕度到極重度。",
     "RIC（迷你耳掛型）",
@@ -19,11 +20,12 @@ SENTENCES = (
     "依耳朵形狀訂製，戴在外耳殼。適合到重度。"
     "更小的有耳道型（適合到中重度）和深耳道型（最不明顯，適合輕度到中度）。",
     "上面的聽損程度，不是身心障礙證明的等級。",
-    "擴音器／輔聽器不是助聽器",
-    "助聽器是醫療器材，要有衛生福利部的醫療器材許可證，由有醫療器材販賣許可的業者販售。",
+    "擴音器、輔聽器可以代替助聽器嗎？",
+    # #467 (H2): the answer in sight, the rest behind 看更多.
     "擴音器、輔聽器一般不是醫療器材，依法不能宣稱改善聽損。",
+    "助聽器是醫療器材，要有衛生福利部的醫療器材許可證，由有醫療器材販賣許可的業者販售。",
     "買之前，先確認是不是有許可證的助聽器。",
-    "補助等級與上限",
+    "補助分哪幾級？",
     "2,000 元 簡易型，每只最多補助",
     "10,000 元 中階型，每只最多補助",
     "20,000 元 進階型，每只最多補助",
@@ -34,7 +36,7 @@ SENTENCES = (
     "進階型：中階型的功能，再加上指向性麥克風、可以接無線傳輸。",
     "雙對側傳聲型：好的那一耳戴進階型助聽器、另一耳戴無線收音麥克風，兩件一組。",
     "實際售價依等級與店家差異很大，買之前請店家提供報價單與保固內容。",
-    "去哪裡買",
+    "要去哪裡買？",
     "在有醫療器材販賣業許可的聽力所或醫院買。",
     "保固書上要有醫療器材許可證字號，核銷補助時會用到。",
     "想確認是不是合法上市的助聽器，可以到食藥署「西藥、醫療器材及化粧品許可證暨相關資料查詢」網站"
@@ -73,7 +75,7 @@ class TypesAndPricesChapterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>助聽器的種類與價格")
         self.assertContains(response, '<h1 class="h3 mt-4">助聽器的種類與價格</h1>')
-        text = flat_text(response)
+        text = "".join(test_guide.article_text(response).split())
         positions = [text.index("".join(sentence.split())) for sentence in SENTENCES]
         self.assertEqual(positions, sorted(positions))
 

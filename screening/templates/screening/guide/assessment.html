@@ -1,9 +1,17 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Guide chapters tidy-up: the numbers and the things to bring set apart from the sentences. #}
+{# Guide chapters tidy-up: the numbers and the things to bring set apart from the sentences. #467 (the owner's pick H1 + H2): three key cards, then each part titled as a question (its id kept for the links in), one sentence in sight and the rest behind 看更多, word for word. The key cards' large lines and the questions are drafts. #}
 <p>要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。</p>
-<section class="mb-6" data-jump-box aria-labelledby="threshold-title">
-    <h2 id="threshold-title" class="h4">鑑定門檻</h2>
+<div>
+    <p id="key-points-title" class="tint-subhead mb-2">先知道三件事</p>
+    <ul class="key-cards" role="list" aria-labelledby="key-points-title">
+        <li class="key-card"><span class="key-card-big">45.0% 以上是第 1 級</span><p>雙耳整體障礙比率</p></li>
+        <li class="key-card"><span class="key-card-big">先到公所申請</span><p>戶籍所在縣市的任一區（鄉、鎮、市）公所，也可以線上申請。</p></li>
+        <li class="key-card"><span class="key-card-big">大約 35 天</span><p>拿到證明</p><p>鑑定完成後大約 35 天。</p></li>
+    </ul>
+</div>
+<section data-jump-box aria-labelledby="threshold-title">
+    <h2 id="threshold-title" class="h4">聽力要到多少才達到門檻？</h2>
     <p class="tint-subhead mb-2">雙耳整體障礙比率</p>
     <ul class="fact-rows" role="list">
         <li class="is-key"><span class="fact-rows-value">45.0%</span><span>以上：第 1 級（輕度）</span></li>
@@ -17,8 +25,8 @@
         <p>用 500、1000、2000、4000 Hz 的聽力平均計算。</p>
     </details>
 </section>
-<section class="mb-6" data-jump-box aria-labelledby="exam-title">
-    <h2 id="exam-title" class="h4">鑑定時會做什麼</h2>
+<section data-jump-box aria-labelledby="exam-title">
+    <h2 id="exam-title" class="h4">鑑定時要做哪些檢查？</h2>
     <p class="mb-0">耳鼻喉科專科醫師會做這三項，必要時再加做其他檢查：</p>
     <ul class="icon-list" role="list">
         <li>{% include "screening/guide/icon.html" with icon="tone" %}純音聽力檢查</li>
@@ -26,20 +34,25 @@
         <li>{% include "screening/guide/icon.html" with icon="ear" %}鼓室圖</li>
     </ul>
 </section>
-<section class="mb-6" data-jump-box aria-labelledby="apply-title">
-    <h2 id="apply-title" class="h4">怎麼申請鑑定</h2>
+<section data-jump-box aria-labelledby="apply-title">
+    <h2 id="apply-title" class="h4">要怎麼申請鑑定？</h2>
     <ol class="step-list" role="list">
         <li><span class="step-list-number">1</span><div class="step-list-body"><span class="step-list-title">到公所申請</span>戶籍所在縣市的任一區（鄉、鎮、市）公所，也可以線上申請。要帶：<ul class="icon-list" role="list">
             <li>{% include "screening/guide/icon.html" with icon="id" %}身分證影本</li>
             <li>{% include "screening/guide/icon.html" with icon="photo" %}一吋半身照片 3 張</li>
             <li>{% include "screening/guide/icon.html" with icon="stamp" %}印章</li>
         </ul></div></li>
-        <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">帶公所給的鑑定表，到鑑定醫院</span>檢查費用由政府或健保支付。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">拿到證明</span>鑑定完成後大約 35 天。<span class="step-when" aria-hidden="true">約 35 天</span></span></li>
     </ol>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <ol class="step-list" role="list" start="2">
+            <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">帶公所給的鑑定表，到鑑定醫院</span>檢查費用由政府或健保支付。</span></li>
+            <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">拿到證明</span>鑑定完成後大約 35 天。<span class="step-when" aria-hidden="true">約 35 天</span></span></li>
+        </ol>
+    </details>
 </section>
-<section class="mb-6" data-jump-box aria-labelledby="hospitals-title">
-    <h2 id="hospitals-title" class="h4">找鑑定醫院</h2>
+<section data-jump-box aria-labelledby="hospitals-title">
+    <h2 id="hospitals-title" class="h4">去哪家醫院鑑定？</h2>
     {# Searching lands on the results, not at the top of the page. #}
     <form method="get" action="{% url 'guide_chapter' 'assessment' %}#hospital-results">
         <label for="county" class="form-label text-xl/normal font-bold">選擇您的縣市，列出可以做聽覺機能鑑定的醫院</label>
