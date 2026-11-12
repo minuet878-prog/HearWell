@@ -5,7 +5,7 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
 
 ---
 
-## 目前進度（2026-11-05）
+## 目前進度（2026-11-12）
 
 - 已完成：Phase 0–10、無障礙修正（#70–#74）、成人問卷第一批（#76–#84、#90）、設計系統更新第 1 階段（#108：共用
   token——Noto Sans TC 字體、`.link-card` 等共用 class 的圓角／陰影／間距微調；不換主色、不動版面）、第二批前置重構
@@ -89,7 +89,8 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   正式答案內容留給 #402）、產品改名「聽伴」（英文 tingpal，新 logo 是翅膀為耳朵的小鳥，同意書第 3 版，內部名稱不改；
   本人在比較頁選 Q 案；ADR 0039，PR #422，驗證見 `docs/verification/rename-to-tingpal.md`）、
   正式站 logo 消失（`collectstatic` 改壞 CSS 裡的 logo，遮罩失效；改寫法並加自動檢查，驗證見 `docs/verification/logo-collectstatic.md`）、
-  主畫面圖示放大、未登入首頁加「把聽伴加到手機主畫面」提示卡（本人在比較頁選 B、Y，驗證見 `docs/verification/pwa-icon-and-home-prompt.md`）。
+  主畫面圖示放大、未登入首頁加「把聽伴加到手機主畫面」提示卡（本人在比較頁選 B、Y，驗證見 `docs/verification/pwa-icon-and-home-prompt.md`）、
+  正式站搬到 VPS（母規格 #450，#451、#452，ADR 0041、0042：`tingpal.tw`、Vultr 東京；HSTS 改由環境變數設定、沒設就不啟動；隱私權說明改寫存放地點、連線紀錄 14 天、刪除的資料在備份中最多再留 10 天，同意書第 4 版；Render 關掉自動部署當退路；本人略過交叉審查直接驗收；PR #473，驗證見 `docs/verification/issue-450.md`；Mac 自動刪除舊備份、刪手動備份要在開放真實使用者之前做）。
 - 進行中：
   - SADL 助聽器滿意度（母規格 #166，ADR 0011）：#167–#169 已合併（網頁表單作答、整體與四個子量表計分、
     子量表白話說明）；#170–#174（React 作答頁與送出 API、我的紀錄、聽力報告與分享報告、資料匯出、推薦精靈與
