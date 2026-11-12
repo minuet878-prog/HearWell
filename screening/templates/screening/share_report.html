@@ -18,7 +18,7 @@
 <a class="btn btn-primary btn-lg w-full" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% else %}
 {# #471 (mockup #470 share A): the steps as N3 numbers on a line, as the care journey; a step not yet reachable in the pale grey of the journey's later steps. While shared, what the family sees was read when the link was made, so it folds. #}
-<ol class="step-list share-steps" role="list">
+<ol class="step-list share-steps mt-6" role="list">
     <li class="share-step" id="share-step-1">
         <span class="step-list-number" aria-hidden="true">1</span>
         <div class="step-list-body">
@@ -73,7 +73,7 @@
             <p id="share-url" class="mt-3">可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold text-heading">{{ share_url }}</span></p>
             {% endwith %}
             {# #366: the danger stands apart, under a line, from what sends; #471 (D4): a red text link. #}
-            <form class="mt-4 pt-1 border-t border-line" method="post" action="{% url 'report_share_cancel' share.pk %}">
+            <form class="mt-5 pt-5 border-t border-line" method="post" action="{% url 'report_share_cancel' share.pk %}">
                 {% csrf_token %}
                 <button class="danger-link" type="submit">取消分享</button>
             </form>

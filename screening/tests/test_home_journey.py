@@ -163,12 +163,17 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         Submission.objects.create(user=other, questionnaire=self.questionnaires[hhie_s.CODE])
         self.assertIn("從一份問卷開始", self.main())
 
-    def test_a_visitor_still_sees_the_visitor_home(self):
-        # #471 redoes the signed-out home; this ticket leaves it as it was.
+    def test_a_visitor_sees_it_with_making_the_account_first(self):
+        # #471 (mockup #458 ⑪ for a visitor): the same page, 建立帳號 its first step, a way to
+        # log in; a signed-in user has neither (test_home.NewUserHomeTests for the visitor's).
+        signed_in = self.main()
         self.client.logout()
-        main = self.main()
-        self.assertIn("我已經有帳號，登入", main)
-        self.assertNotIn("從一份問卷開始", main)
+        visitor = self.main()
+        for main, signed_out in ((signed_in, False), (visitor, True)):
+            with self.subTest(signed_out=signed_out):
+                self.assertIn("從一份問卷開始", main)
+                self.assertEqual("建立帳號，大約 1 分鐘。" in main, signed_out)
+                self.assertEqual("我已經有帳號，登入" in main, signed_out)
 
 
 class JourneyHomeTests(HomeJourneyTestCase):

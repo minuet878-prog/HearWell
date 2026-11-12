@@ -190,7 +190,7 @@ class ShareStepsTests(TestCase):
         return _main(self.client.get(reverse("share_report")).content.decode())
 
     def _steps(self, main):
-        steps = re.search(r'<ol class="step-list share-steps".*?</ol>', main, re.S).group(0)
+        steps = re.search(r'<ol class="step-list share-steps[^"]*".*?</ol>', main, re.S).group(0)
         return re.split(r"<li class=\"share-step\"", steps)[1:]
 
     def test_before_sharing_the_third_step_waits_in_grey(self):

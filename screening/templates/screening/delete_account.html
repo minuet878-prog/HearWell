@@ -27,7 +27,7 @@
         {% include "screening/field_messages.html" with field=form.password %}
     </div>
     {# #471 (D4): deleting is the page's one solid button, in red; cancelling the blue frame under it. #}
-    <div class="flex flex-col gap-3">
+    <div class="flex flex-col gap-4">
         <button type="submit" class="btn btn-danger btn-lg w-full">刪除帳號</button>
         <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'account_settings' %}">取消</a>
     </div>

@@ -134,30 +134,23 @@ class PhoneBrandsT361Tests(TestCase):
 
 class NewUserHomePromptTests(TestCase):
     """A first-time visitor had no way to find the add-to-home steps: the home page's card is for
-    returning users and the account page needs an account."""
+    returning users and the account page needs an account. #471: a text link since."""
 
     TITLE = "把聽伴加到手機主畫面"
-    REASON = "下次點一下就能打開，不用輸入網址"
 
     def _home(self):
         return self.client.get(reverse("index")).content.decode()
 
-    def assert_prompt_between_start_button_and_steps(self):
-        content = self._home()
-        start = content.index("</section>", content.index('<section class="home-hero'))
-        between = content[start : content.index('<ol class="step-cards')]
-        link = re.search(
-            r'<a class="link-card action-card" href="([^"]*)">(.*?)</a>', between, re.S
-        )
-        self.assertIsNotNone(link, between)
-        self.assertEqual(link.group(1), reverse("add_to_home"))
-        self.assertIn(f'<span class="link-card-title">{self.TITLE}</span>', link.group(2))
-        self.assertIn(f"<span>{self.REASON}</span>", link.group(2))
-        # pwa-nav.js hides it inside the home-screen app, where it would be pointless.
-        self.assertIn("data-hide-in-app", between)
-
     def test_visitor_sees_the_prompt(self):
-        self.assert_prompt_between_start_button_and_steps()
+        # #471 (mockup #458 ⑪): in the visitor's row of text links under the start button, with
+        # the 空狀態首頁's words; pwa-nav.js hides it inside the home-screen app.
+        content = self._home()
+        links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', content, re.S)
+        self.assertIn(
+            f'<li data-hide-in-app><a href="{reverse("add_to_home")}">加到手機主畫面</a></li>',
+            links.group(1),
+        )
+        self.assertGreater(links.start(), content.index(">開始篩檢</a>"))
 
     def test_returning_user_keeps_only_the_card_in_their_list(self):
         user = consented_user(username="prompt_returning")

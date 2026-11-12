@@ -107,8 +107,8 @@ def audiogram_step(page, live_server_url, step):
         page.get_by_role("main").get_by_role("button", name=AUDIOGRAM_FORWARD).click()
 
 
-# #314: each questionnaire's summary row on the report: a summary holding a level 3 heading.
-REPORT_FOLDS = "details > summary:has(> h3)"
+# #314: each questionnaire's summary row on the report (#471: each part's, the audiogram's too).
+REPORT_FOLDS = "details.report-fold > summary"
 
 
 def open_report_folds(page):
@@ -1887,10 +1887,10 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     self.page.goto(f"{self.live_server_url}{path}")
                     # Not networkidle, which Playwright discourages and which once never came in
                     # CI: wait for the charts React draws (/report has an audiogram), then their
-                    # fonts.
+                    # fonts. #471: on the report the audiogram waits in a closed fold.
                     expect(self.page.get_by_text("趨勢圖載入中…")).to_have_count(0)
                     if self.page.locator("#audiogram-chart").count():
-                        expect(self.page.locator("#audiogram-chart svg").first).to_be_visible()
+                        expect(self.page.locator("#audiogram-chart svg").first).to_be_attached()
                     self.page.evaluate("document.fonts.ready")
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 320)
@@ -1927,7 +1927,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/report")
             handwrite = self.page.locator(".report-handwrite")
-            level = self.page.locator(".report-summary .report-level").first
+            level = self.page.locator(".report-summary .level-badge").first
             expect(handwrite).to_be_hidden()
             self.assertNotEqual(level.evaluate(background), clear)
             self.page.emulate_media(media="print")
@@ -2338,7 +2338,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         self.open(1024)
         background = "el => getComputedStyle(el).backgroundColor"
         with self.saving_artifacts():
-            for path, selector in (("/add_to_home", ".dropdown-box > summary"),):
+            for path, selector in (("/add_to_home", ".fold-row > summary"),):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     target = self.page.locator(selector).first
@@ -2444,41 +2444,30 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         )
                         self.assertAlmostEqual(widths[0], widths[1], delta=0.5)
 
-    # phase9_ui_refresh_4a_home.md acceptance 8: step cards stack on a phone
-    def test_home_step_cards_stack_on_a_phone(self):
-        # #159: the step cards are the new-user home's own elements; this fixture user has
-        # records, so check signed out.
+    # phase9_ui_refresh_4a_home.md acceptance 8: the visitor's steps stack on a phone. #471
+    # (mockup #458 ⑪): three numbered steps in the 空狀態首頁's dashed box since.
+    def test_home_steps_stack_on_a_phone(self):
+        # #159: this fixture user has records, so check signed out.
         self.open(320, 640, signed_in=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
-            # Spec #148 (ticket #150) adds the account step.
-            self.assertEqual(len(boxes), 4)
+            steps = self.page.locator(".empty-preview .step-list > li")
+            boxes = [step.bounding_box() for step in steps.all()]
+            self.assertEqual(len(boxes), 3)
             self.assertEqual({box["x"] for box in boxes}, {boxes[0]["x"]})
             for upper, lower in pairwise(boxes):
                 self.assertGreaterEqual(lower["y"], upper["y"] + upper["height"])
             scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
             self.assertLessEqual(scroll_width, 320)
 
-    # Spec #148 (ticket #150): four steps sit two by two on a wide screen, never three and one.
-    def test_home_step_cards_two_by_two_on_a_wide_screen(self):
-        self.open(1280, signed_in=False)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/")
-            boxes = [card.bounding_box() for card in self.page.locator(".step-cards > li").all()]
-            self.assertEqual(len(boxes), 4)
-            self.assertEqual(boxes[0]["y"], boxes[1]["y"])
-            self.assertEqual(boxes[2]["y"], boxes[3]["y"])
-            self.assertGreater(boxes[2]["y"], boxes[0]["y"])
-
-    # phase9_ui_refresh_4a_home.md review 1: at 200% text the step cards still fit a phone
-    def test_home_step_cards_fit_a_phone_at_double_text_size(self):
+    # phase9_ui_refresh_4a_home.md review 1: at 200% text the steps still fit a phone
+    def test_home_steps_fit_a_phone_at_double_text_size(self):
         self.open(320, 640, signed_in=False)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
             self.page.add_style_tag(content="html { font-size: 225% !important; }")  # 2 x 112.5%
-            for card in self.page.locator(".step-cards > li").all():
-                box = card.bounding_box()
+            for step in self.page.locator(".empty-preview .step-list > li").all():
+                box = step.bounding_box()
                 self.assertLessEqual(box["x"] + box["width"], 320)
 
     # #127 acceptance 3: public and account pages at 200% text on a phone
@@ -2517,11 +2506,13 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                         "main :is(.btn, .form-control, .input-group-text):visible"
                     ).all()
                     boxes = [control.bounding_box() for control in controls]
-                    # 1px: an input group's parts share their border on purpose.
+                    # An input group's parts share their border on purpose: 1px, or 2px on the
+                    # register page's thicker fields, which since #471 (no card round the form)
+                    # have the room to keep 民國, the year and 年 on one line.
                     for a, b in combinations(boxes, 2):
                         apart = (
-                            a["x"] + a["width"] <= b["x"] + 1
-                            or b["x"] + b["width"] <= a["x"] + 1
+                            a["x"] + a["width"] <= b["x"] + 2
+                            or b["x"] + b["width"] <= a["x"] + 2
                             or a["y"] + a["height"] <= b["y"] + 1
                             or b["y"] + b["height"] <= a["y"] + 1
                         )
@@ -3896,7 +3887,8 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
     def test_new_visitor_walks_from_the_home_card_to_the_zone(self):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            self.main().get_by_role("link", name="我是家人：怎麼陪伴聽損的家人").click()
+            # #471 (mockup #458 ⑪): a text link in the visitor's 空狀態首頁.
+            self.main().get_by_role("link", name="我是家人", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("家人專區")
             current = self.page.get_by_role("navigation", name="主要導覽").locator(
@@ -4393,9 +4385,10 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open_home(standalone=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/account")
-            rows = self.page.get_by_role("region", name="家人與手機").get_by_role("link")
+            # #471 (mockup #470 account A): one group with the data rows since.
+            rows = self.page.get_by_role("region", name="家人與資料").get_by_role("link")
             expect(rows.locator(".link-card-title")).to_have_text(
-                ["分享報告給家人", "家人專區：溝通與陪伴"]
+                ["分享報告給家人", "家人專區：溝通與陪伴", "下載我的資料", "隱私權說明"]
             )
 
     def test_browser_tab_and_no_javascript_show_every_card(self):
@@ -4407,10 +4400,11 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
 
 class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase):
-    """The first-time home page's way to the add-to-home steps, on a phone's browser only, and
-    the icon the phone then shows."""
+    """The first-time home page's way to the add-to-home steps, and the icon the phone then
+    shows. #471 (mockup #458 ⑪): a text link in the visitor's 空狀態首頁, as for a signed-in user
+    without records, so on every width; still not in the home-screen app."""
 
-    TITLE = "把聽伴加到手機主畫面"
+    TITLE = "加到手機主畫面"
     # Share of the icon's width and height the white bird takes, and how far from the middle it
     # reaches. icon.svg says how each file is exported; re-exporting apple-touch-icon.png at the
     # scale in the drawing itself would shrink the bird without changing the image's size.
@@ -4458,21 +4452,19 @@ class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.page.goto(f"{self.live_server_url}/")
-        return self.page.get_by_role("link", name=re.compile(self.TITLE))
+        return self.page.locator("main .home-links").get_by_role("link", name=self.TITLE)
 
     def test_phone_browser_shows_it_under_the_start_button_and_it_opens_the_steps(self):
         card = self.open_home(390)
         with self.saving_artifacts():
             expect(card).to_be_visible()
             start = self.page.get_by_role("main").get_by_role("link", name="開始篩檢")
-            steps = self.page.locator(".step-cards")
             self.assertGreater(card.bounding_box()["y"], start.bounding_box()["y"])
-            self.assertLess(card.bounding_box()["y"], steps.bounding_box()["y"])
             card.click()
             expect(self.page).to_have_url(f"{self.live_server_url}/add_to_home")
 
-    def test_home_screen_app_and_a_wide_screen_hide_it(self):
-        for width, standalone in ((390, True), (1280, False)):
+    def test_home_screen_app_hides_it(self):
+        for width, standalone in ((390, True),):
             with self.subTest(width=width, standalone=standalone):
                 card = self.open_home(width, standalone=standalone)
                 with self.saving_artifacts():
@@ -4699,7 +4691,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             )
             self.page.goto(f"{self.live_server_url}/privacy")
             self.assertEqual(self.style(self.page.locator("p.text-body"), "color"), self.TEXT)
-            section = self.page.locator("h2.h4", has_text="誰在蒐集")
+            # #471: the open 先看重點's title, the other sections being folded rows.
+            section = self.page.locator("h2.h4", has_text="先看重點")
             self.assertEqual(
                 self.styles(section, "fontSize", "fontWeight", "color", "borderLeftWidth"),
                 {
@@ -4788,13 +4781,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 True,
                 "button",
                 "刪除帳號",
+                # #471 (mockup #470 D4): the level red, white on it at 8.4:1.
                 {
                     **large,
-                    "backgroundColor": "rgb(220, 53, 69)",
+                    "backgroundColor": "rgb(143, 42, 18)",
                     "color": white,
-                    "borderTopColor": "rgb(220, 53, 69)",
+                    "borderTopColor": "rgb(143, 42, 18)",
                 },
-                "rgba(225, 83, 97, 0.5)",
+                "rgba(143, 42, 18, 0.5)",
             ),
             (
                 "/audiograms/new",
@@ -4850,9 +4844,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     },
                 )
                 self.assertGreaterEqual(self.size(link)[1], 44)
-                # A stretched line would make the paragraph no whole number of lines tall.
+                # A stretched line would make the paragraph no whole number of lines tall (#471:
+                # it is a 提示框, so its padding is left out).
                 lines = link.locator("..").evaluate(
-                    "p => p.getBoundingClientRect().height"
+                    "p => (p.clientHeight - parseFloat(getComputedStyle(p).paddingTop)"
+                    " - parseFloat(getComputedStyle(p).paddingBottom))"
                     " / parseFloat(getComputedStyle(p).lineHeight)"
                 )
                 self.assertAlmostEqual(lines, round(lines), delta=0.05)
@@ -5338,7 +5334,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/report")
             self.page.emulate_media(media="print")
-            levels = self.page.locator(f"#report-{self.hhie_s.code} .report-level")
+            levels = self.page.locator(f"#report-{self.hhie_s.code} .level-badge")
             expect(levels).to_have_count(1)
             expect(levels).to_be_visible()
             expect(levels).to_have_text("顯著影響")
@@ -5648,38 +5644,35 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.assertEqual(wave.get_attribute("aria-hidden"), "true")
                     expect(wave.locator("span")).to_have_count(28)
 
-    # Brand refresh: the first-visit home is a white card; its illustration sways once and the
-    # start button sends out one ring, inside ADR 0006's four seconds. Reduced motion keeps both
-    # still (test_reduced_motion_keeps_the_header_still counts every animation on "/").
-    def test_first_visit_home_card_plays_two_animations_once(self):
+    # Brand refresh: the first-visit home's start button sends out one ring, inside ADR 0006's
+    # four seconds. #471 (mockup #458 ⑪): the swaying illustration went with the old visitor
+    # home. Reduced motion keeps it still (test_reduced_motion_keeps_the_header_still counts
+    # every animation on "/").
+    def test_first_visit_home_start_button_rings_once(self):
         self.open(signed_in=False, motion=True)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            hero = self.page.locator(".home-hero")
-            # Design picker round 2: the result example has the score bar.
-            preview = self.page.locator(".result-preview")
-            expect(preview.locator(".score-bar-marker")).to_be_visible()
+            main = self.page.get_by_role("main")
             animations = self.page.evaluate(
                 """() => document.getAnimations()
-                    .filter(a => a.effect.target.closest('.home-hero'))
+                    .filter(a => a.effect.target.closest('main'))
                     .map(a => ({ name: a.animationName, pseudo: a.effect.pseudoElement,
                                  iterations: a.effect.getComputedTiming().iterations,
                                  end: a.effect.getComputedTiming().endTime }))"""
             )
             self.assertEqual(
-                sorted((a["name"], a["pseudo"]) for a in animations),
-                [("home-sway", None), ("start-ring", "::after")],
+                [(a["name"], a["pseudo"]) for a in animations], [("start-ring", "::after")]
             )
             for animation in animations:
                 with self.subTest(animation=animation["name"]):
                     self.assertEqual(animation["iterations"], 1)
                     self.assertLessEqual(animation["end"], 4000)
 
-            start = hero.get_by_role("link", name="開始篩檢")
+            start = main.get_by_role("link", name="開始篩檢")
             self.assertEqual(self.style(start, "borderTopLeftRadius"), self.BUTTON_RADIUS)
             self.assertIn("data:image/svg+xml", self.mask(start, "::before"))
             self.assertGreaterEqual(self.text_contrast(start), 4.5)
-            login = hero.get_by_role("link", name="我已經有帳號，登入")
+            login = main.get_by_role("link", name="我已經有帳號，登入")
             self.assertEqual(self.style(login, "backgroundImage"), "none")
             self.assertEqual(self.style(login, "textDecorationLine"), "underline")
             self.assertGreaterEqual(login.bounding_box()["height"], 44)
@@ -5887,20 +5880,22 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         audiogram = self.audiogram(date(2026, 9, 28))
         self.submission(self.hhie_s, [2] * 10)
         ReportShare.objects.create(user=self.user, token="red-button-share")
-        red = "rgb(220, 53, 69)"
+        # #471 (mockup #470 D4): the level red, white on it at 8.4:1; 取消分享 a red text link.
+        red = self.ERROR
         cases = (
-            ("/account/delete", "button", "刪除帳號", "backgroundColor"),
-            (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", "backgroundColor"),
-            ("/share", "button", "取消分享", "color"),
+            ("/account/delete", "button", "刪除帳號", ("backgroundColor", "borderTopColor")),
+            (f"/audiograms/{audiogram.pk}/delete", "button", "確定刪除", ("backgroundColor",)),
+            ("/share", "button", "取消分享", ("color", "textDecorationColor")),
         )
         self.open()
         with self.saving_artifacts():
-            for path, role, name, prop in cases:
+            for path, role, name, props in cases:
                 with self.subTest(button=name):
                     self.page.goto(f"{self.live_server_url}{path}")
                     button = self.page.get_by_role(role, name=name, exact=True)
-                    self.assertEqual(self.style(button, prop), red)
-                    self.assertEqual(self.style(button, "borderTopColor"), red)
+                    for prop in props:
+                        self.assertEqual(self.style(button, prop), red)
+                    self.assertGreaterEqual(self.size(button)[1], 44)
             # #201: the result page's delete is a red text link on the page, darker than the
             # button red to keep 4.5:1, and still a full touch target.
             with self.subTest(button="刪除這張"):
@@ -5978,10 +5973,11 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             for other in others.all():
                 self.assertEqual(self.style(other, "backgroundColor"), "rgba(0, 0, 0, 0)")
 
-            # #159: the step numbers are the new-user home's own elements, so check them signed out.
+            # #159: the step numbers are the new-user home's own elements, so check them signed out
+            # (#471: in the 空狀態首頁's dashed box).
             self.open(signed_in=False)
             self.page.goto(f"{self.live_server_url}/")
-            number = self.page.locator(".step-number").first
+            number = self.page.locator(".empty-preview .step-list-number").first
             self.assertEqual(
                 self.styles(number, "backgroundColor", "color", "borderTopColor", "borderTopWidth"),
                 {
@@ -6231,7 +6227,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         ioi = self.submission(Questionnaire.objects.get(code="ioi-ha"), [3] * 7, wearing=True)
         Submission.objects.filter(pk=ioi.pk).update(norm_group=NormGroup.UNGROUPED)
         # #159: the step cards are the new-user home's own elements, so check them signed out.
-        home_cases = (("/", ".step-cards li"),)
+        # #471: the 空狀態首頁's dashed box of steps since.
+        home_cases = (("/", ".empty-preview"),)
         cases = (
             ("/my_hearing?questionnaire=hhie-s", ".trend-summary"),
             (f"/submission/{record.pk}", ".result-banner"),
@@ -6715,7 +6712,8 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
 
         def check(name, path, fold, edges):
             with self.subTest(name):
-                self.page.goto(f"{self.live_server_url}{path}")
+                if path:
+                    self.page.goto(f"{self.live_server_url}{path}")
                 details = self.main().locator(fold).first
                 summary = details.locator("> summary")
                 parts = [details.locator(edge) for edge in edges]
@@ -6737,12 +6735,15 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
                 self.assertEqual(self.style(summary, "backgroundColor"), bar)
 
         with self.saving_artifacts():
-            check("box dropdown", "/add_to_home", "details", ("xpath=.", "> summary"))
+            check("report fold", "/report", "details.report-fold", ("> summary", "> summary + *"))
+            # #471: add_to_home's phones became list rows that open (mockup #470), so the box
+            # checked is the report's answers, inside its open fold.
+            self.main().locator("details.report-fold > summary").first.click()
             check(
-                "report fold",
-                "/report",
-                "details:has(> summary > h3)",
-                ("> summary", "> summary + *"),
+                "box dropdown",
+                None,
+                "details.report-answers",
+                ("xpath=.", "> summary"),
             )
             with self.subTest("answer page's box"):
                 # "這份問卷在問什麼？" is the box dropdown with a button, after the first page.
@@ -7314,15 +7315,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     )
                     self.assertEqual(self.page.evaluate(self.SIZES), {"buttons": [], "targets": []})
 
-    # #299: the signed-out home's four steps, result example and audiologist line are flat; the
-    # steps without the thin line on their left since ADR 0041.
+    # #299: the signed-out home's steps and audiologist line are flat; the steps without the thin
+    # line on their left since ADR 0041. #471 (mockup #458 ⑪): three steps in the 空狀態首頁's
+    # dashed box, the result example gone.
     def test_first_visit_home_blocks_are_flat(self):
         with self.saving_artifacts():
             self.visit(False, "/")
-            for text in ("建立帳號", "回答問題", "馬上看到結果", "半年後再做"):
+            for text in ("建立帳號", "回答問題", "馬上看到結果"):
                 with self.subTest(step=text):
                     self.assert_unlined(self.main().get_by_role("listitem").filter(has_text=text))
-            self.assert_flat(self.main().get_by_role("figure"))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
 
     # #459 (ADR 0042): the 現在這一步's card is pale blue, flat and not a link, its one button
@@ -7895,32 +7896,37 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertAlmostEqual(control.bounding_box()["width"], inside, delta=0.5)
 
     # #311: the share page's steps 1-3 are flat blocks (ADR 0041) under a section title; their
-    # buttons are still buttons.
+    # buttons are still buttons. #471 (mockup #470 share A): N3 steps on a line; while shared,
+    # what the family sees folds under its title; 取消分享 a red text link (D4).
     def test_share_steps_are_flat_and_keep_their_buttons(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.share_settings())
-            for step in ("家人會看到什麼", "產生連結", "傳給家人"):
+            for number, step in enumerate(("家人會看到什麼", "產生連結", "傳給家人"), start=1):
                 with self.subTest(step=step):
-                    block = self.main().get_by_role("region", name=step)
+                    block = self.main().locator(f"#share-step-{number}")
                     self.assert_flat_part(block)
                     self.assert_block_title(block.get_by_role("heading", name=step, exact=True))
                     self.assert_readable_on_white(block, skip_own_backgrounds=True)
             cancel = self.main().get_by_role("button", name="取消分享", exact=True)
             expect(cancel).to_be_visible()
-            self.assertEqual(self.style(cancel, "borderTopStyle"), "solid")
-            self.assert_outline_button_readable(cancel)
+            self.assertEqual(self.style(cancel, "color"), "rgb(143, 42, 18)")
+            self.assertEqual(self.style(cancel, "textDecorationLine"), "underline")
+            self.assertEqual(self.style(cancel, "borderTopStyle"), "none")
+            self.assertGreaterEqual(cancel.bounding_box()["height"], 44)
 
-    # #303: the report's audiogram on screen is flat under its title (no bar since ADR 0041); the
-    # summary keeps its blue frame. (A questionnaire's part folds since #314.)
-    def test_report_parts_are_flat_and_the_summary_keeps_its_blue_frame(self):
+    # #303: the report's audiogram on screen is flat under its title (no bar since ADR 0041).
+    # #471 (mockup #470 B): it opens from its row, as each questionnaire's part does since #314,
+    # and the summary waits for paper.
+    def test_report_parts_are_flat_and_the_summary_waits_for_paper(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.report())
+            open_report_folds(self.page)
             self.assert_flat(self.main().get_by_role("region", name=re.compile("^聽力圖（")))
-            audiogram_title = self.main().get_by_role("heading", name=re.compile("^聽力圖（"))
+            expect(self.main().get_by_role("region", name="重點摘要")).to_be_hidden()
+            self.page.emulate_media(media="print")
+            expect(self.main().get_by_role("region", name="重點摘要")).to_be_visible()
+            audiogram_title = self.main().get_by_role("heading", name=re.compile("^聽力圖（檢查"))
             self.assert_titled(audiogram_title)
-            summary = self.main().get_by_role("region", name="重點摘要")
-            self.assertEqual(self.style(summary, "backgroundColor"), self.WHITE)
-            self.assertEqual(self.style(summary, "borderTopColor"), self.PRIMARY)
 
     # #303: on paper the report's parts stay unframed, as before.
     def test_printed_report_parts_stay_unframed(self):
@@ -7979,35 +7985,37 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.fail("Tab never reached it")
 
     # #314 (spec #308 acceptance 1, 6-8): on both reports each questionnaire starts as a closed
-    # summary row that looks like the site's dropdowns; a click, or Tab to it and Enter, opens
-    # only that one, its comparison inside, and again closes it; a reload closes it. The
-    # audiogram stays open. Every fold opens flat on the white page (ADR 0041) with readable
-    # text. It opens without JavaScript too.
+    # summary row; a click, or Tab to it and Enter, opens only that one, its comparison inside,
+    # and again closes it; a reload closes it. Every fold opens flat on the white page (ADR 0041)
+    # with readable text. It opens without JavaScript too. #471 (mockup #470 B): each row is a
+    # list row (E) saying the summary's line, the audiogram's a row too; the summary and the
+    # parts' titles wait for paper.
     def test_report_folds_by_questionnaire_closed_until_opened(self):
         with self.saving_artifacts():
             for name, signed_in, path in self.both_folded_reports():
                 with self.subTest(report=name):
                     self.visit(signed_in, path)
-                    expect(
-                        self.main().get_by_role("region", name=re.compile("^聽力圖（"))
-                    ).to_be_visible()
-                    if signed_in:
-                        expect(self.main().get_by_role("region", name="重點摘要")).to_be_visible()
+                    expect(self.main().get_by_role("region", name="重點摘要")).to_be_hidden()
                     expect(
                         self.main().get_by_role("heading", level=2, name="生活影響", exact=True)
-                    ).to_be_visible()
+                    ).to_be_hidden()
                     folds = self.report_folds()
+                    titles = [
+                        fold.get_by_role("heading", level=2).inner_text() for fold in folds.all()
+                    ]
                     self.assertEqual(
-                        [fold.get_by_role("heading", level=3).inner_text() for fold in folds.all()],
-                        ["HHIE-S", "SSQ12-TW", "SADL", "IOI-HA 助聽器效益"],
+                        [re.sub(r"（\d{4}/\d\d/\d\d）$", "", title) for title in titles],
+                        ["聽力圖", "HHIE-S", "SSQ12-TW", "SADL", "IOI-HA"],
                     )
                     for fold in folds.all():
                         expect(self.fold_body(fold)).to_be_hidden()
-                    summary = folds.first
-                    title = summary.get_by_role("heading", level=3)
-                    # The latest record (aided, all 0): its date, score and level.
+                    summary = folds.nth(1)
+                    title = summary.get_by_role("heading", level=2)
+                    # The latest record (aided, all 0): its date, score, level and hearing aids.
                     expect(summary).to_have_text(
-                        re.compile(r"^HHIE-S\s*最近一次 \d{4}/\d\d/\d\d\s*0 分 無／極輕微影響$")
+                        re.compile(
+                            r"^\s*HHIE-S（\d{4}/\d\d/\d\d）\s*0 分，無／極輕微影響，助聽器：有戴$"
+                        )
                     )
                     part = self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
                     comparison = self.main().get_by_role(
@@ -8015,17 +8023,18 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     )
                     expect(part).to_be_hidden()
                     expect(comparison).to_be_hidden()
-                    # Like the site's dropdowns: white, a grey edge, no shadow, a chevron.
-                    self.assertEqual(self.style(summary, "backgroundColor"), self.WHITE)
-                    self.assertEqual(self.style(summary, "borderTopColor"), self.GREY_EDGE)
+                    # A list row (E): flat on the white page, a thin line under it, a chevron.
+                    row = summary.locator("xpath=..")
+                    self.assertEqual(self.style(summary, "backgroundColor"), self.CLEAR)
+                    self.assertEqual(self.style(row, "borderBottomColor"), self.LINE)
                     self.assertEqual(self.style(summary, "boxShadow"), "none")
                     chevron = summary.evaluate("el => getComputedStyle(el, '::after').maskImage")
                     self.assertIn("M6 9l6 6 6-6", chevron)
-                    self.assert_block_title(title)
+                    self.assert_block_title(title, ratio=1)
                     summary.click()
                     expect(part).to_be_visible()
                     expect(comparison).to_be_visible()
-                    for other in folds.all()[1:]:
+                    for other in folds.all()[:1] + folds.all()[2:]:
                         expect(self.fold_body(other)).to_be_hidden()
                     body = self.fold_body(summary)
                     expect(
@@ -8049,7 +8058,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                             self.assert_flat_part(self.fold_body(fold))
                             self.assert_readable_on_white(self.fold_body(fold))
                     self.visit(signed_in, path, javascript=False)
-                    self.report_folds().first.click()
+                    self.report_folds().nth(1).click()
                     expect(
                         self.main().get_by_role("region", name=re.compile("^HHIE-S（"))
                     ).to_be_visible()
@@ -8065,7 +8074,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assert_fits_uncut(name)
                     self.page.reload()  # every fold closed again, the text its normal size
                     folds = self.report_folds()
-                    self.assertEqual(folds.count(), 4)
+                    self.assertEqual(folds.count(), 5)  # #471: the audiogram's row too
                     folds.nth(1).click()
                     expect(self.fold_body(folds.nth(1))).to_be_visible()
                     self.page.emulate_media(media="print")
@@ -8319,20 +8328,20 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(whites, [])
                     self.assert_fits_uncut(code)
 
-    # #300: login and register keep their form card: white over the blue banner, on a soft
-    # neutral shadow (ADR 0041 took the warm one off).
-    def test_login_and_register_form_cards_stay_white_cards(self):
+    # #300 kept a white form card over the blue banner; #471 (mockup #470 D1 B) took both away:
+    # the form is flat on the white page under a plain title.
+    def test_login_and_register_forms_are_flat_on_the_page(self):
         with self.saving_artifacts():
             for path, button in (("/login", "登入"), ("/register", "註冊")):
                 with self.subTest(page=path):
                     self.visit(False, path)
-                    form_card = self.main().locator(".auth-card")
-                    expect(form_card.get_by_role("button", name=button, exact=True)).to_be_visible()
-                    self.assertEqual(self.style(form_card, "backgroundColor"), self.WHITE)
-                    self.assertEqual(
-                        self.style(form_card, "boxShadow"),
-                        "rgba(33, 37, 41, 0.08) 0px 4.5px 13.5px 0px",
-                    )
+                    expect(self.main().locator(".auth-hero")).to_have_count(0)
+                    form = self.main().locator(".auth-form")
+                    expect(form.get_by_role("button", name=button, exact=True)).to_be_visible()
+                    self.assertEqual(self.style(form, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                    self.assertEqual(self.style(form, "boxShadow"), "none")
+                    title = self.main().get_by_role("heading", level=1, name=button)
+                    self.assertEqual(self.style(title, "color"), self.HEADING)
 
     # #300: the suggested questionnaire is flat with its 開始作答 button; whole cards are list
     # rows (ADR 0041).
@@ -9954,7 +9963,6 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
     # meter label are 1rem; on a narrow phone the bar's level stays whole inside the bar.
     def test_labels_needed_to_read_a_chart_are_1rem(self):
         cases = (
-            ("home's score bar", False, "/", (".score-bar-current span", ".score-bar-ends > span")),
             (
                 "result's score bar",
                 True,
@@ -10274,40 +10282,32 @@ class HomeConsentT360Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
     def setUp(self):
         self.sign_in(consented_user(username="home_consent_e2e"))
 
-    # Acceptance 1: the title is bold in the heading colour, about 31.5px on a phone and 40.5px
-    # on a wide screen; step 4 keeps to one line on a desktop.
-    def test_first_visit_title_size_and_step_four_on_one_line(self):
-        for width, size in ((390, "31.5px"), (1024, "40.5px")):
+    # Acceptance 1: the title is bold in the heading colour. #471 (mockup #458 ⑪): the visitor's
+    # home is the 空狀態首頁, its title a page title like every other page's (T1), and its
+    # four step cards went.
+    def test_first_visit_title_is_a_page_title(self):
+        for width in (390, 1024):
             with self.subTest(width=width), self.saving_artifacts():
                 self.visit(False, "/", width=width)
-                title = self.main().get_by_role("heading", level=1, name="了解聽力對您生活的影響")
-                self.assertEqual(self.style(title, "fontSize"), size)
+                title = self.main().get_by_role("heading", level=1, name="從一份問卷開始")
+                size = float(self.style(title, "fontSize").removesuffix("px"))
+                self.assertAlmostEqual(size, 28, delta=0.1)
                 self.assertEqual(self.style(title, "fontWeight"), "700")
                 self.assertEqual(self.style(title, "color"), self.HEADING)
-                if width == 1024:
-                    step = self.main().locator(".step-cards li > span").filter(has_text="半年後")
-                    expect(step).to_have_text("半年後再做，看分數變化。")
-                    self.assertEqual(len(self.lines(step)), 1)
 
     # Acceptance 5 and 6: on a 390 phone 我同意，開始篩檢 is on top, on one line, and each button
-    # fills the row; on a desktop they stay side by side. The title and step sit in the blue
-    # banner; what follows is flat on the page.
-    def test_consent_banner_and_buttons(self):
+    # fills the row; on a desktop they stay side by side. The title and step sit on top; what
+    # follows is flat on the page. #471 (mockup #470 D1 B): no blue banner round them.
+    def test_consent_title_and_buttons(self):
         for width in (390, 1024):
             with self.subTest(width=width), self.saving_artifacts():
                 self.visit(True, lambda test: test.undecided(), width=width)
-                hero = self.main().locator(".auth-hero")
-                self.assertEqual(self.style(hero, "backgroundColor"), "rgb(31, 78, 140)")
-                banner = hero.bounding_box()
-                for part in (
-                    hero.get_by_role("heading", level=1, name="開始使用之前"),
-                    hero.get_by_text("第 2 步／共 2 步：同意隱私權"),
-                ):
-                    box = part.bounding_box()
-                    self.assertGreaterEqual(box["y"], banner["y"])
-                    self.assertLessEqual(box["y"] + box["height"], banner["y"] + banner["height"])
+                expect(self.main().locator(".auth-hero")).to_have_count(0)
+                title = self.main().get_by_role("heading", level=1, name="開始使用之前")
+                step = self.main().get_by_text("第 2 步／共 2 步：同意隱私權")
                 intro = self.main().get_by_text("聽伴會保存您的篩檢作答")
-                self.assertGreaterEqual(intro.bounding_box()["y"], banner["y"] + banner["height"])
+                self.assertLess(title.bounding_box()["y"], step.bounding_box()["y"])
+                self.assertLess(step.bounding_box()["y"], intro.bounding_box()["y"])
                 self.assertEqual(self.style(intro, "backgroundColor"), "rgba(0, 0, 0, 0)")
                 agree = self.main().get_by_role("button", name="我同意，開始篩檢", exact=True)
                 decline = self.main().get_by_role("button", name="不同意", exact=True)
@@ -10474,29 +10474,21 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             widths = sorted(width for _, width in lines)
             self.assertGreaterEqual(widths[0], widths[1] * 0.6, lines)
 
-    # Acceptance 4: the family's 「先看重點」 is framed like the owner's 「重點摘要」.
-    def test_family_highlights_have_the_owners_summary_box(self):
-        props = (
-            "borderTopColor",
-            "borderTopWidth",
-            "borderLeftColor",
-            "borderLeftWidth",
-            "borderTopLeftRadius",
-            "backgroundColor",
-            "paddingTop",
-            "paddingLeft",
-        )
+    # Acceptance 4 framed the family's 「先看重點」 like the owner's 「重點摘要」. #471 (mockup
+    # #470 group 3): the summary is for paper and 「先看重點」 is flat on the page, each result a
+    # block of its own colour (the audiogram's grey: its ears may differ in level).
+    def test_family_highlights_are_flat_with_a_block_each(self):
         with self.saving_artifacts():
             self.open("/report", self.DESKTOP)
-            summary = self.main().get_by_role("region", name="重點摘要")
-            owner = {prop: self.style(summary, prop) for prop in props}
-            owner_title = self.style(summary.get_by_role("heading"), "borderLeftWidth")
-            self.assertEqual(owner["borderTopColor"], self.PRIMARY)
+            expect(self.main().locator("#report-summary")).to_be_hidden()
             self.open(f"/shared/{self.share.token}/report", self.DESKTOP, signed_in=False)
             highlights = self.main().get_by_role("region", name="先看重點")
-            self.assertEqual({prop: self.style(highlights, prop) for prop in props}, owner)
-            title = highlights.get_by_role("heading", name="先看重點")
-            self.assertEqual(self.style(title, "borderLeftWidth"), owner_title)
+            self.assertEqual(self.style(highlights, "backgroundColor"), "rgba(0, 0, 0, 0)")
+            self.assertEqual(self.style(highlights, "borderTopWidth"), "0px")
+            block = highlights.locator(".family-level")
+            self.assertEqual(self.style(block, "backgroundColor"), "rgb(244, 246, 248)")
+            self.assertEqual(self.style(block, "borderTopWidth"), "0px")
+            self.assertNotEqual(self.style(block, "borderTopLeftRadius"), "0px")
 
     # Acceptance 5: on a 390 phone no card title on the 了解 page ends with one character
     # alone, and 聽損 stays whole.
@@ -10846,6 +10838,8 @@ class SpeechBananaListTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
             for path in (f"/audiograms/{self.audiogram.pk}", "/audiograms/compare", "/report"):
                 with self.subTest(path=path):
                     self.open(path, self.PHONE)
+                    if path == "/report":  # #471: the audiogram waits in a closed fold
+                        open_report_folds(self.page)
                     self.assertEqual(self.green_bands(), [1])
             # Marking an ear, and the read-only chart before saving.
             for step in (2, 4):
@@ -13062,6 +13056,9 @@ class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
         self.addCleanup(self.context.close)
         self.page.goto(f"{self.live_server_url}{path}")
         self.page.wait_for_load_state("load")
+        if path == self.PAGE and java_script_enabled:
+            # #471: the notice's sections fold into rows; open, it is long enough to scroll.
+            self.page.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)")
 
     def wait_for_bar(self, where):
         self.page.wait_for_function(f"({self.WHERE})() === {where!r}")
