@@ -17,8 +17,8 @@
 <p>還沒有可以放進報告的紀錄。</p>
 <a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a>
 {% else %}
-<section class="mt-6 tint-block" aria-labelledby="share-step-1">
-    <h2 id="share-step-1" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">1</span>家人會看到什麼</h2>
+<section class="mt-6" data-jump-box aria-labelledby="share-step-1">
+    <h2 id="share-step-1" class="h4 share-step"><span class="step-number" aria-hidden="true">1</span>家人會看到什麼</h2>
     <ul>
         <li>聽力圖</li>
         <li>各問卷的分數、分級和建議</li>
@@ -31,8 +31,8 @@
     <p class="mb-0">連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。</p>
 </section>
 
-<section class="mt-6 tint-block" aria-labelledby="share-step-2">
-    <h2 id="share-step-2" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">2</span>產生連結</h2>
+<section class="mt-6" data-jump-box aria-labelledby="share-step-2">
+    <h2 id="share-step-2" class="h4 share-step"><span class="step-number" aria-hidden="true">2</span>產生連結</h2>
     {% if share %}
     {# #354: a 年/月/日 date has no space to break at, so it wraps inside at 200% text. #}
     <ul class="mb-0 wrap-anywhere">
@@ -49,8 +49,8 @@
     {% endif %}
 </section>
 
-<section class="mt-6 tint-block" aria-labelledby="share-step-3">
-    <h2 id="share-step-3" class="tint-block-title share-step"><span class="step-number" aria-hidden="true">3</span>傳給家人</h2>
+<section class="mt-6" data-jump-box aria-labelledby="share-step-3">
+    <h2 id="share-step-3" class="h4 share-step"><span class="step-number" aria-hidden="true">3</span>傳給家人</h2>
     {% if share %}
     {# The site always redirects to HTTPS; the server cannot tell behind Render's proxy. #}
     {% url 'shared_cover' share.token as share_path %}
@@ -65,7 +65,7 @@
     <p id="share-url">可以複製這個網址傳給家人：<span class="wrap-anywhere font-bold">{{ share_url }}</span></p>
     {% endwith %}
     {# #366: the danger button stands apart, under a line, from the buttons that send. #}
-    <form class="mt-5 pt-5 border-t border-tint-line" method="post" action="{% url 'report_share_cancel' share.pk %}">
+    <form class="mt-5 pt-5 border-t border-line" method="post" action="{% url 'report_share_cancel' share.pk %}">
         {% csrf_token %}
         <button class="btn btn-outline-danger btn-lg" type="submit">取消分享</button>
     </form>

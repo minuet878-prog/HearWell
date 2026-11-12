@@ -15,7 +15,7 @@
   --color-primary: #1f4e8c;
   --color-primary-hover: #173b6a;
   --color-primary-active: #122f55;
-  --color-body: #495057;
+  --color-body: #343a40;
   --color-heading: #212529;
   --color-footer: #343a40;
   --color-normal: #14573c;
@@ -31,7 +31,7 @@
   --color-gauge-normal: #3f9c6f;
   --color-gauge-mild: #e2a92b;
   --color-gauge-severe: #c4532f;
-  --color-surface: #f1f3f5;
+  --color-surface: #f4f6f8;
   --color-brand-soft: #eef3fa;
   --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
@@ -47,7 +47,7 @@
   /* The phone's fixed bottom tab bar: about this tall, until back-to-top.js (#340) keeps its
      measured height here. */
   --tab-bar-height: 5rem;
-  --radius-button: 0.5rem;
+  --radius-button: 0.7778rem;
   --radius-badge: 1rem;
   --radius-tab: 1.5rem;
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
@@ -66,34 +66,26 @@
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
   --radius-small: 0.25rem;
-  /* 2a shared shell (#120, #137): a warm page under white surfaces, three radius levels, and the
-     blue gradient's two ends for the header, buttons and navigation. */
-  --color-page: #faf7f2;
-  --color-footer-bg: #f3ede3;
-  --color-border-warm: #efe6d8;
-  /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
-  --color-line-warm: #d9cdb9;
-  /* A 並列區塊 (ADR 0024): pale beige a little deeper than the page (about 1.2:1), and the deeper
-     beige of the lines between the parts inside one. Text and links on it keep 4.5:1 or more. */
-  --color-tint: #ece3d4;
-  --color-tint-line: #c9bba3;
-  /* A 段落框 (ADR 0025): paler than a 並列區塊, its title in a deeper beige bar on top. Body
-     text 7.15:1 and links 7.27:1 on the box, the title 10.34:1 on its bar. */
-  --color-section: #f5efe5;
-  --color-section-title: #e0d2b8;
-  /* ADR 0024's larger subheads in flat content, against 1rem body text: a 並列區塊's title, and
-     a bold subhead inside one (or in a guide chapter). */
-  --text-block-title: 1.35rem;
+  /* The site-wide redesign (ADR 0041, #454's picks T1, E, S1, P3): a white page, thin grey
+     lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
+     secondary lines (7.5:1 on white), the strong line for edges that must show (3.1:1). */
+  --color-muted: #4a5460;
+  --color-line: #e3e7ec;
+  --color-line-strong: #8a94a3;
+  --text-page-title: 1.5556rem;
+  --text-section-title: 1.2222rem;
+  --text-button: 1.1111rem;
   --text-subhead: 1.2rem;
-  --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
-  --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
+  --spacing-button: 3.1111rem;
+  /* A clickable card under a mouse (ADR 0006): lifted on a soft neutral shadow. */
+  --shadow-lifted: 0 0.5rem 1.25rem rgba(33, 37, 41, 0.14);
   --radius-large: 1.5rem;
   --radius-medium: 0.75rem;
   --radius-pill: 999px;
+  /* The logo's pebble and the wordmark's 伴 (ADR 0039): a blue teal, still blue under
+     ADR 0007; white text keeps 5.5:1 on it. Nothing else uses the gradient (ADR 0041). */
   --color-gradient-start: #1f4e8c;
-  /* Brand refresh: a blue teal, still blue under ADR 0007; white text keeps 5.5:1 on it. */
   --color-gradient-end: #1d6f99;
-  --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
   /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
   /* Its url%28 stays encoded: collectstatic would take a plain url( here for a file and break it. */
   --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='bird'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url%28%23bird%29'/%3E%3C/svg%3E");
@@ -114,7 +106,7 @@
     font-weight: 400;
     line-height: 1.5;
     color: var(--color-body);
-    background-color: var(--color-page);
+    background-color: #fff;
     -webkit-text-size-adjust: 100%;
   }
   @media print {
@@ -138,29 +130,24 @@
   h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
   h5, .h5 { font-size: 1.25rem; }
   h6, .h6 { font-size: 1rem; }
-  /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
-     a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card, the report's summary box (and the family's 「先看重點」 since #366) or a 段落框
-     has none; the box already frames it. */
-  h1.h3,
-  h2.h4:not(:where(.card, .report-summary, .family-highlights, .section-box) *),
-  .heading-bar {
-    padding-left: 0.75rem;
-    border-left: 0.3rem solid var(--color-primary);
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-  /* #357: on a phone a page title is about 29px, at least 4px above a section title (h2.h4).
-     At 200% text on a narrow phone a long Latin word breaks rather than widen the
-     page (as #204's wrap-anywhere). */
-  @media (max-width: 47.99em) {
-    h1.h3 { font-size: 1.6rem; overflow-wrap: anywhere; }
-  }
   @media (min-width: 1200px) {
     h1, .h1 { font-size: 2.5rem; }
     h2, .h2 { font-size: 2rem; }
     h3, .h3 { font-size: 1.75rem; }
     h4, .h4 { font-size: 1.5rem; }
+  }
+  /* T1 (#454, ADR 0041): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
+     heading colour, at every width; no bar beside them, the size alone sets them apart. At 200%
+     text on a narrow phone a long Latin word breaks rather than widen the page (#204). */
+  h1.h3, .h4 {
+    color: var(--color-heading);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  h1.h3 { font-size: var(--text-page-title); }
+  .h4 { font-size: var(--text-section-title); }
+  @media (max-width: 47.99em) {
+    h1.h3 { overflow-wrap: anywhere; }
   }
   p { margin: 0 0 1rem; }
   ol, ul { padding-left: 2rem; }
@@ -229,20 +216,25 @@
    folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
    as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
 @layer components {
+  /* S1 (#454, ADR 0041): a rounded square at least 56px tall, its words bold and centred however
+     many lines they take; a solid primary button, the second most important one framed in a 2px
+     blue line. A text link (.btn-link) only needs the 44px touch height. */
   .btn {
-    --btn-padding-x: 0.75rem;
+    --btn-padding-x: 1rem;
     --btn-padding-y: 0.375rem;
     --btn-font-size: 1rem;
     --btn-color: var(--color-body);
     --btn-bg: transparent;
     --btn-border-color: transparent;
     --btn-hover-border-color: transparent;
-    display: inline-block;
-    min-height: var(--spacing-touch);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-button);
     min-width: var(--spacing-touch);
     padding: var(--btn-padding-y) var(--btn-padding-x);
     font-size: var(--btn-font-size);
-    font-weight: 400;
+    font-weight: 700;
     line-height: 1.5;
     color: var(--btn-color);
     text-align: center;
@@ -250,18 +242,17 @@
     vertical-align: middle;
     cursor: pointer;
     user-select: none;
-    border: 1px solid var(--btn-border-color);
-    border-radius: var(--radius-pill);
+    border: 2px solid var(--btn-border-color);
+    border-radius: var(--radius-button);
     background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
   .btn-lg {
-    --btn-padding-x: 1rem;
+    --btn-padding-x: 1.25rem;
     --btn-padding-y: 0.5rem;
-    --btn-font-size: 1.25rem;
+    --btn-font-size: var(--text-button);
   }
-  /* The gradient (2a, #139, below) covers the border, so the border stays transparent. */
   .btn-primary {
     --btn-color: #fff;
     --btn-bg: var(--color-primary);
@@ -295,6 +286,7 @@
   /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);
+    --btn-bg: #fff;
     --btn-border-color: var(--color-primary);
     --btn-hover-color: #fff;
     --btn-hover-bg: var(--color-primary);
@@ -323,6 +315,7 @@
   }
   .btn-outline-danger {
     --btn-color: #dc3545;
+    --btn-bg: #fff;
     --btn-border-color: #dc3545;
     --btn-hover-color: #fff;
     --btn-hover-bg: #dc3545;
@@ -345,6 +338,7 @@
     --btn-active-border-color: transparent;
     --btn-disabled-color: #6c757d;
     --btn-disabled-border-color: transparent;
+    min-height: var(--spacing-touch);
     text-decoration: underline;
   }
   .btn:hover, .btn:focus-visible {
@@ -368,27 +362,9 @@
     opacity: 0.65;
   }
 
-  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a glow
-     on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only, never
-     movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
-     ring (owner's choice after #139 review); with both, the ring stays next to the button. */
-  .btn-primary {
-    --btn-glow: rgba(29, 111, 153, 0.45);
-    background-image: var(--gradient-brand);
-    background-origin: border-box;
-  }
-  .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
-  .btn-primary:active {
-    background-image: linear-gradient(var(--color-primary-hover), #185f83);
-    box-shadow: none;
-  }
-  .btn-primary:focus-visible:hover {
-    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0.9rem 0.45rem var(--btn-glow);
-  }
-  .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  /* The solid primary button: darker under a mouse and darker still when pressed, colour only
+     (ADR 0006); disabled it is white with a blue-grey edge. */
   .btn-primary:disabled, fieldset:disabled .btn-primary {
-    background-image: none;
-    box-shadow: inset 0 0 0 1px var(--btn-disabled-border-color);
     opacity: 1;
   }
 
@@ -519,9 +495,8 @@
     overflow-wrap: break-word;
     background-color: #fff;
     background-clip: border-box;
-    border: 1px solid var(--color-border-warm);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-large);
-    box-shadow: var(--shadow-warm);
   }
   .card-body { flex: 1 1 auto; padding: 1rem; }
   .table {
@@ -614,7 +589,7 @@
     position: relative;
     overflow: hidden;
     background-color: #fff;
-    border-bottom: 1px solid var(--color-border-warm);
+    border-bottom: 1px solid var(--color-line);
     color: var(--color-primary);
   }
 
@@ -926,37 +901,41 @@
     stroke-linejoin: round;
   }
 
+  /* W1 (#454, ADR 0041, without the frosted glass of ADR 0043, which is #457): the current page
+     is a pale blue pill with bold blue words, the others the heading colour (grey on a phone, as
+     W1); under a finger or a mouse colour only, never position (ADR 0006). */
+  .site-nav a[aria-current="page"] {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-selected);
+    font-weight: 700;
+  }
+
+  .site-nav a:active {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-soft);
+  }
+
+  .site-nav a[aria-current="page"]:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
   @media (min-width: 48em) {
-    /* Design picker round 2: white like the header, parted from it by a soft shadow along the
-       top; the padding keeps the current-page pill inside the bar instead of filling it. */
+    /* White like the header, a thin line under it; the padding keeps the current-page pill
+       inside the bar instead of filling it. */
     .site-nav {
       padding-block: 0.375rem;
-      border-bottom: 1px solid var(--color-border-strong);
-      box-shadow: inset 0 0.4rem 0.5rem -0.4rem rgba(20, 30, 50, 0.25);
+      border-bottom: 1px solid var(--color-line);
     }
 
     .site-nav ul {
       gap: 0.5rem;
     }
-
-    /* The current page is a gradient pill: shape as well as colour (#140). */
-    .site-nav a[aria-current="page"] {
-      border-radius: var(--radius-pill);
-      background-image: var(--gradient-brand);
-      color: #fff;
-    }
-
-    /* #328 (A3): pressed, an item turns a light blue pill, the current one's gradient deepens. */
-    .site-nav a:active {
-      border-radius: var(--radius-pill);
-      background-color: var(--color-brand-selected);
-    }
-
-    .site-nav a[aria-current="page"]:active {
-      background-image: linear-gradient(var(--color-primary-hover), #185f83);
-    }
   }
 
+  /* Phones: a floating white capsule over the foot of the screen. The nav itself is the fixed,
+     see-through strip around it, so its height (back-to-top.js, in-view.js) still counts the
+     gap under the capsule. The capsule's insets are in px, so at 200% text the tabs keep their
+     width for the words. */
   @media (max-width: 47.99em) {
     .site-nav {
       position: fixed;
@@ -964,12 +943,17 @@
       bottom: 0;
       left: 0;
       z-index: 1030;
-      border-top: 1px solid var(--color-border-strong);
-      padding-bottom: env(safe-area-inset-bottom);
+      padding: 0 12px calc(6px + env(safe-area-inset-bottom));
+      background-color: transparent;
+      pointer-events: none;
     }
 
     .site-nav ul {
-      padding: 0;
+      padding: 3px;
+      border-radius: 1.75rem;
+      background-color: #fff;
+      box-shadow: 0 0.375rem 1.5rem rgba(33, 37, 41, 0.16);
+      pointer-events: auto;
     }
 
     .site-nav li {
@@ -980,36 +964,12 @@
     .site-nav a {
       min-width: 0;
       flex-direction: column;
-      gap: 0.125rem;
-      padding: 0.375rem 0.25rem;
+      gap: 0;
+      padding: 0.25rem;
       font-size: 1rem;
-    }
-
-    /* Every icon gets the same pill room, so the current one can fill it without the bar
-       shifting; the current icon turns white in a gradient pill, its label bold blue (#140). */
-    .site-nav svg {
-      box-sizing: content-box;
-      padding: 0.125rem 0.75rem;
-      border-radius: var(--radius-pill);
-    }
-
-    .site-nav a[aria-current="page"] {
-      font-weight: 700;
-    }
-
-    .site-nav a[aria-current="page"] svg {
-      background-image: var(--gradient-brand);
-      stroke: #fff;
-    }
-
-    /* #328 (A3): under the finger the pill behind the icon lights up, the current one's
-       gradient deepens like a pressed primary button; colour only (ADR 0028). */
-    .site-nav a:active svg {
-      background-color: var(--color-brand-selected);
-    }
-
-    .site-nav a[aria-current="page"]:active svg {
-      background-image: linear-gradient(var(--color-primary-hover), #185f83);
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--color-muted);
     }
   }
 
@@ -1048,7 +1008,7 @@
     position: relative;
     margin-top: 5.5rem;
     padding: 1.5rem 0;
-    background-color: var(--color-footer-bg);
+    background-color: var(--color-surface);
     color: var(--color-footer);
     text-align: center;
   }
@@ -1091,7 +1051,7 @@
     height: 3.3rem;
     transform: translateX(-50%);
     border-radius: 3.25rem 3.25rem 0 0;
-    background-color: var(--color-footer-bg);
+    background-color: var(--color-surface);
   }
 
   .site-footer::after {
@@ -1225,32 +1185,37 @@
     color: var(--color-body);
   }
 
-  /* Clickable card: the whole card is one link, with an arrow to say so (spec 4.5). */
+  /* Clickable card, E (#454, ADR 0041): a row of a list, the whole row one link, parted from the
+     next by a thin line; a pale blue round icon in front (where it has one), the title in the
+     heading colour and a blue arrow at the end. The first row of a run, or of a list of them,
+     also has the line above it. */
   .link-card {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
-    padding: 1.1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
+    gap: 0.75rem;
+    min-height: 4rem;
+    margin: 0;
+    padding: 0.875rem 0.25rem;
+    border-bottom: 1px solid var(--color-line);
     background-color: #fff;
     color: inherit;
     text-decoration: none;
-    box-shadow: var(--shadow-warm);
     transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
-      border-color 0.15s ease-out, background-color 0.15s ease-out;
+      background-color 0.15s ease-out;
+  }
+
+  .link-card:not(.link-card + .link-card, li + li > .link-card) {
+    border-top: 1px solid var(--color-line);
   }
 
   /* Only clickable cards move (#141, ADR 0006). Hover only where there is a mouse, so a tap
      never leaves a card looking hovered; a press sinks the card on every device. */
   @media (hover: hover) and (pointer: fine) {
     .link-card:hover {
-      border-color: var(--color-primary);
       background-color: var(--color-brand-soft);
       color: inherit;
       transform: translateY(-0.25rem);
-      box-shadow: var(--shadow-warm-lifted);
+      box-shadow: var(--shadow-lifted);
     }
 
     .link-card:hover .questionnaire-icon::after {
@@ -1259,24 +1224,22 @@
   }
 
   .link-card:active {
-    border-color: var(--color-primary);
     background-color: var(--color-brand-selected);
     color: inherit;
     transform: translateY(0.125rem);
     box-shadow: none;
   }
 
-  /* Keyboard focus never moves the card; the border turns blue beside the ring. */
+  /* Keyboard focus never moves the card. */
   .link-card:focus-visible {
-    border-color: var(--color-primary);
     outline: 0.25rem solid var(--color-primary);
-    outline-offset: 0.25rem;
+    outline-offset: 0.125rem;
   }
 
-  /* Reduced motion: colour changes only, so the shadow stays put as well. */
+  /* Reduced motion: colour changes only, so no shadow either. */
   @media (prefers-reduced-motion: reduce) {
     .link-card { transition: none; }
-    .link-card:hover, .link-card:active { transform: none; box-shadow: var(--shadow-warm); }
+    .link-card:hover, .link-card:active { transform: none; box-shadow: none; }
     .link-card:hover .questionnaire-icon::after { animation: none; }
   }
 
@@ -1288,34 +1251,39 @@
     min-width: 0;
   }
 
+  /* T1: what follows the title is the muted secondary text. */
+  .link-card-body > :not(.link-card-title) {
+    color: var(--color-muted);
+  }
+
   .link-card-title {
-    color: var(--color-primary);
-    font-size: 1.25rem;
+    color: var(--color-heading);
     font-weight: 700;
   }
 
   .link-card-arrow {
     color: var(--color-primary);
     font-size: 2rem;
+    font-weight: 700;
     line-height: 1;
   }
 
-  /* Action card: a link-card that leads somewhere else (report, share, home), with an icon
-     tile in front. The tile turns white while the card itself turns pale blue. */
+  /* Action card: a link-card that leads somewhere else (report, share, home), with its icon in a
+     pale blue circle in front. */
   .action-card-icon {
     display: flex;
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: var(--radius-medium);
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
     background-color: var(--color-brand-soft);
   }
 
   .action-card-icon svg {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
     fill: none;
     stroke: var(--color-primary);
     stroke-width: 2;
@@ -1323,12 +1291,13 @@
     stroke-linejoin: round;
   }
 
-  .link-card:active .action-card-icon {
+  /* The row turns pale blue under a mouse or a finger; the circle turns white to stay apart. */
+  .link-card:active :is(.action-card-icon, .questionnaire-icon) {
     background-color: #fff;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .link-card:hover .action-card-icon {
+    .link-card:hover :is(.action-card-icon, .questionnaire-icon) {
       background-color: #fff;
     }
   }
@@ -1367,7 +1336,7 @@
     overflow: hidden;
     padding: 1.75rem 1.25rem 4.5rem;
     border-radius: var(--radius-large) var(--radius-large) 0 0;
-    background: var(--gradient-brand);
+    background: var(--color-primary);
     color: #fff;
   }
   .auth-hero-title {
@@ -1421,9 +1390,9 @@
     margin: -3rem 1rem 0;
     padding: 1.25rem;
     background-color: #fff;
-    border: 1px solid var(--color-border-warm);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-large);
-    box-shadow: var(--shadow-warm);
+    box-shadow: 0 0.25rem 0.75rem rgba(33, 37, 41, 0.08);
   }
   .auth-card label { font-weight: 700; color: var(--color-heading); }
   .auth-field:focus-within label { color: var(--color-primary); }
@@ -1477,7 +1446,7 @@
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
     text-align: center;
   }
   .auth-alt p { margin-bottom: 0.5rem; color: var(--color-heading); }
@@ -1596,7 +1565,7 @@
     padding: 0.6rem 0.75rem;
     border: 2px solid transparent;
     border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
+    background-color: var(--color-surface);
   }
 
   .since-last-latest {
@@ -1651,13 +1620,11 @@
     }
   }
 
-  /* The blue summary box: the trend chart's (my_hearing), the latest score at a glance above
-     the chart, and aided vs unaided HHIE-S. Its left corners are square, so the thick line stays
-     straight instead of bending round them; the right corners keep the large radius (#357). */
+  /* The summary box: the trend chart's (my_hearing), the latest score at a glance above the
+     chart, and aided vs unaided HHIE-S. A 提示框 (P3, ADR 0041): pale grey, no frame. */
   .trend-summary, .aided-difference {
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-selected);
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -1820,8 +1787,8 @@
       radial-gradient(circle at calc(100% - 3rem) 2rem, transparent 7.8rem,
         rgba(255, 255, 255, 0.18) 7.8rem 8rem, transparent 8rem),
       radial-gradient(circle at 2rem calc(100% + 1rem), transparent 4.8rem,
-        rgba(255, 255, 255, 0.18) 4.8rem 5rem, transparent 5rem),
-      var(--gradient-brand);
+        rgba(255, 255, 255, 0.18) 4.8rem 5rem, transparent 5rem);
+    background-color: var(--color-primary);
     color: #fff;
   }
 
@@ -2011,7 +1978,7 @@
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    background-image: var(--gradient-brand);
+    background-color: var(--color-primary);
   }
 
   /* On a phone the line wraps into two even halves, not one word alone on the second line;
@@ -2127,7 +2094,7 @@
   }
 
   /* Number, icon and words in one row (pages tidy-up); at large text sizes the words drop under
-     the number and icon instead of widening the page. Flat with a thin line (.line-list). */
+     the number and icon instead of widening the page. */
   .step-cards li {
     display: flex;
     flex-wrap: wrap;
@@ -2136,13 +2103,14 @@
   }
 
   .step-number {
+    /* N3 (#454, ADR 0041): every step number is a white circle in a 2px blue frame. */
     flex: none;
     width: 2.25rem;
     height: 2.25rem;
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    color: #fff;
+    background-color: #fff;
+    color: var(--color-primary);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -2203,7 +2171,7 @@
 
   .result-preview figcaption {
     margin-top: 0.75rem;
-    color: var(--color-body);
+    color: var(--color-muted);
   }
 
   .result-preview .result-level {
@@ -2233,8 +2201,7 @@
   .ioi-note {
     margin: 0.5rem 0 0;
     padding: 0.5rem 0.75rem;
-    background-color: var(--color-brand-soft);
-    border-left: 0.25rem solid var(--color-primary);
+    background-color: var(--color-surface);
     border-radius: var(--radius-medium);
   }
 
@@ -2273,7 +2240,7 @@
   .question-progress {
     display: block;
     font-size: 1rem;
-    color: var(--color-body);
+    color: var(--color-muted);
   }
 
   /* React answer page (#326 B4): ✓ 已儲存 follows the progress on its line. Its box is there even
@@ -2369,7 +2336,7 @@
     overflow-wrap: anywhere;
     column-gap: 0.75rem;
     padding: 0.75rem 0;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   .q-intro-row:first-child {
@@ -2437,23 +2404,23 @@
     text-decoration-line: underline;
   }
 
-  /* Register form: labels bold, each field's help in the body grey, at the body size (#357). */
+  /* Register form: labels bold, each field's help in the muted grey, at the body size (#357). */
   .register-form label {
     font-weight: 700;
     color: var(--color-heading);
   }
 
   .field-help {
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
+  /* A 提示框, P3 (#454, ADR 0041): pale grey, no frame and no line down its side. */
   .tip-box {
     margin: 0 0 1rem;
-    padding: 0.85rem 1rem;
-    border-left: 0.3rem solid var(--color-primary);
+    padding: 0.875rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -2468,9 +2435,8 @@
     line-height: 1.4;
   }
 
-  /* My guide's 選配路線 (#258): numbered stops on a line, the 目前這一站 in the brand blue with a
-     soft ring. Marks are blue or neutral, never the level colours (ADR 0007). The route is one
-     段落框 (#321, ADR 0025), so its joining line is the box's deeper beige. */
+  /* My guide's 選配路線 (#258): numbered stops on a line (N3, ADR 0041), the 目前這一站 in the
+     brand blue with a soft ring. Marks are blue or neutral, never the level colours (ADR 0007). */
   .route {
     --route-size: 2.5rem;
     container-type: inline-size;
@@ -2491,21 +2457,20 @@
     position: absolute;
     top: calc(var(--route-size) + 0.25rem);
     bottom: 0.25rem;
-    left: calc((var(--route-size) - 0.2rem) / 2);
-    width: 0.2rem;
+    left: calc((var(--route-size) - 2px) / 2);
+    width: 2px;
     border-radius: var(--radius-pill);
-    background-color: var(--color-border-warm);
+    background-color: var(--color-line-strong);
   }
 
-  /* #316: a pale blue circle with a blue number, like the chapters' .step-list-number; not white,
-     as the number is not tappable (ADR 0022). */
+  /* A white circle in a 2px blue frame, like the chapters' .step-list-number. */
   .route-number {
     flex: none;
     width: var(--route-size);
     height: var(--route-size);
-    border: 0.15rem solid var(--color-primary);
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: #fff;
     color: var(--color-primary);
     font-weight: 700;
     display: flex;
@@ -2513,14 +2478,13 @@
     justify-content: center;
   }
 
-  /* A stop's box is a 並列區塊 in the route's 段落框 (#321, ADR 0025): the deeper beige, no
-     frame; only the 目前這一站 restyles it. Its title is the link. */
+  /* A stop's box is flat on the page; only the 目前這一站 frames it in pale blue. Its title is
+     the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
   }
 
   .route-title {
@@ -2564,10 +2528,9 @@
     color: #fff;
   }
 
-  /* #321: the neutral marks are the title bar's deeper beige, not white (white is what can be
-     tapped): the heading colour 10.34:1 on it, the body colour 5.48:1. */
+  /* #321: the neutral marks are pale grey. */
   .route-stop.is-below .route-mark {
-    background-color: var(--color-section-title);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -2580,7 +2543,7 @@
   }
 
   .route-stop.is-na .route-mark {
-    background-color: var(--color-section-title);
+    background-color: var(--color-surface);
     color: var(--color-body);
   }
 
@@ -2613,14 +2576,14 @@
     flex-basis: 100%;
     margin: 0;
     padding-left: calc(var(--route-size) + 0.75rem);
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
-  /* #293: the answer in short under a stop, in the body grey, as the field help is. */
+  /* #293: the answer in short under a stop, in the muted grey, as the field help is. */
   .route-answer {
     margin: 0.5rem 0 0;
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
@@ -2791,68 +2754,27 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each titled part a 段落框 (ADR 0025), the boxes apart by spacing; the
-     chapter's title, its lead and a tip of its own stay outside. Sources and the check date in
-     small print. */
+  /* Guide chapters: each titled part flat on the page (ADR 0041), the parts apart by spacing.
+     Sources and the check date in small print. */
   .guide-chapter > :not(h1) + * {
     margin-top: 2rem;
   }
 
-  /* #367 (spec #354): a chapter opening straight on a box (配戴之後) keeps its title off it. */
-  .guide-chapter > h1 + .section-box {
+  /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後) keeps its title off
+     it. */
+  .guide-chapter > h1 + section {
     margin-top: 1.5rem;
   }
 
-  /* A 段落框 (ADR 0025): a titled part of an article read in order, on a pale beige with no
-     shadow and no border, its title (.section-box-title, first in the box) in a deeper beige bar
-     across its top: bold, the heading colour, a 並列區塊's title size, no brand-blue bar; a long
-     title wraps in the bar. The pale warm lines inside (a list's dividers, a step list's or the
-     route's joining line) would vanish on the beige, so they take a 並列區塊's deeper line.
-     What can be tapped inside keeps its own look. On paper: a thin grey frame, the title bold
-     above a grey line. */
-  .section-box {
-    --color-border-warm: var(--color-tint-line);
-    padding: 0 1.25rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-section);
-  }
-
-  .section-box > :last-child {
-    margin-bottom: 0;
-  }
-
-  .section-box-title {
-    margin: 0 -1.25rem 1rem;
-    padding: 0.6rem 1.25rem;
-    border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-    background-color: var(--color-section-title);
-    color: var(--color-heading);
-    font-size: var(--text-block-title);
-    font-weight: 700;
-    line-height: 1.3;
-  }
-
-  /* A title the page moves the focus to (the route's, #321) shows a ring inside its bar, the
-     brand blue 5.6:1 on the bar's beige, so nothing around the box hides it. */
-  .section-box-title:focus {
+  /* A title the page moves the focus to (the route's, #321) shows a blue ring around it, 7.5:1 on
+     the white page. */
+  h2[tabindex="-1"]:focus {
     outline: 3px solid var(--color-primary);
-    outline-offset: -3px;
+    outline-offset: 2px;
   }
 
-  @media print {
-    .section-box {
-      border: 1px solid var(--color-border-strong);
-      background-color: transparent;
-    }
-
-    .section-box-title {
-      border-bottom: 1px solid var(--color-border-strong);
-      background-color: transparent;
-    }
-  }
-
-  /* #343 (ADR 0029): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
-     itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
+  /* #343 (ADR 0029): the part a jump lands on (a titled part marked data-jump-box, a route stop,
+     or the target itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
      level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
      takes it off after 3 seconds. Only the look changes: the focus stays where it was.
@@ -2901,23 +2823,24 @@
     position: absolute;
     top: calc(var(--step-size) + 0.25rem);
     bottom: 0.25rem;
-    left: calc((var(--step-size) - 0.15rem) / 2);
-    width: 0.15rem;
+    left: calc((var(--step-size) - 2px) / 2);
+    width: 2px;
     border-radius: var(--radius-pill);
-    background-color: var(--color-border-warm);
+    background-color: var(--color-line-strong);
   }
 
   .step-list > li:last-child {
     padding-bottom: 0;
   }
 
+  /* N3 (#454, ADR 0041): a white circle in a 2px blue frame, joined to the next by a grey line. */
   .step-list-number {
     flex: none;
     width: var(--step-size);
     height: var(--step-size);
-    border: 0.125rem solid var(--color-primary);
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: #fff;
     color: var(--color-primary);
     font-weight: 700;
     display: flex;
@@ -2984,8 +2907,8 @@
     grid-template-columns: subgrid;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-button);
-    background-color: var(--color-brand-soft);
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -3024,7 +2947,7 @@
   }
 
   /* Short things to bring or to expect, one per line after a decorative icon. No frame and no
-     white: white is for what can be tapped (ADR 0024, #313). */
+     white (ADR 0024, #313). */
   .icon-list {
     display: grid;
     gap: 0.5rem;
@@ -3060,7 +2983,7 @@
 
   .key-list > div {
     padding: 0.6rem 0;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   .key-list > div:first-child {
@@ -3106,8 +3029,10 @@
     white-space: nowrap;
   }
 
-  /* A questionnaire's source line under a result: small print, after the content. */
+  /* A questionnaire's source line under a result: small print in the muted grey (T1), after
+     the content. */
   .source-note {
+    color: var(--color-muted);
     font-size: 0.875rem;
   }
 
@@ -3141,10 +3066,10 @@
     display: none;
   }
 
-  /* Result page: level banner, same colours as the trend chart bands, framed in its text colour (#149). */
+  /* Result page: level banner, L1 (#454, ADR 0041): the whole block in the level's pale colour,
+     the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
     padding: 1rem 1.25rem;
-    border: 2px solid currentColor;
     border-radius: var(--radius-medium);
   }
 
@@ -3198,7 +3123,7 @@
 
   .dropdown-line {
     margin-top: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
@@ -3366,8 +3291,6 @@
   .history-tabs a[aria-current="page"] {
     border-color: transparent;
     background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    background-origin: border-box;
     color: #fff;
   }
 
@@ -3410,7 +3333,6 @@
 
   .records-switch a[aria-current="page"] {
     background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
     color: #fff;
   }
 
@@ -3527,25 +3449,8 @@
     background-color: var(--color-severe-bg-deep);
   }
 
-  /* A 並列區塊 (ADR 0024): one of several complete units of the same kind side by side, on a
-     pale beige with no shadow and no border, so it sinks where a tappable white card floats.
-     Only something tappable or usable inside it may be white. .tint-rows puts a deeper beige
-     line between its parts (the result page's advice); .tint-block-title is the block's title.
-     .tint-subhead is a bold subhead, in a 並列區塊 (a family guide tip's point) or in flat
-     content (a guide chapter's lead). Both are in the heading colour, not link blue. */
-  .tint-block {
-    padding: 1rem 1.25rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
-  }
-
-  /* An outline button in a 並列區塊 is filled white (#311): white is what can be tapped, and its
-     words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
-  .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
-    --btn-bg: #fff;
-  }
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
-     seconds, whether pressed, hovered or not. After the white fill above, which it replaces.
+     seconds, whether pressed, hovered or not.
      #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button
      stays disabled, so its disabled colours are the green too. */
   .btn.is-copied, .btn.is-sent {
@@ -3576,20 +3481,16 @@
     stroke-linejoin: round;
   }
 
-  .tint-rows > * + * {
+  /* A thin grey line between the parts of a group (the result page's advice, a family topic's
+     tips). */
+  .divided-rows > * + * {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid var(--color-tint-line);
+    border-top: 1px solid var(--color-line);
   }
 
-  .tint-block-title {
-    margin: 0 0 0.5rem;
-    color: var(--color-heading);
-    font-size: var(--text-block-title);
-    font-weight: 700;
-    line-height: 1.3;
-  }
-
+  /* A bold subhead in the heading colour, not link blue: a family guide tip's point, a guide
+     chapter's lead (ADR 0024). */
   .tint-subhead {
     margin: 0 0 0.25rem;
     color: var(--color-heading);
@@ -3598,23 +3499,14 @@
     line-height: 1.4;
   }
 
-  /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
-     a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
-     one such block on its own (THI's support message). The list itself is unstyled by its own
-     class (.step-cards). */
-  .line-list > *,
-  .line-block {
-    padding: 0.1em 0 0.1em 0.7em;
-    border-left: 0.18em solid var(--color-line-warm);
-  }
-
-  /* Numbered "接下來建議您" steps on the result page (ticket #157), one .tint-block of
-     .tint-rows (#309): each step has its number in a pale circle and its links as text under the
-     words, so the steps read as one list instead of being pushed apart by large buttons (result
+  /* Numbered "接下來建議您" steps on the result page (ticket #157), lines between them
+     (.divided-rows, #309): each step has its number in a blue-framed circle (N3) and its links as
+     text under the words, so the steps read as one list instead of being pushed apart by large buttons (result
      page tidy-up, option B). Still an <ol>, so screen readers announce the count. */
   .next-steps {
     container-type: inline-size;
     margin: 0.5rem 0 0;
+    padding: 0;
     list-style: none;
     counter-reset: next-step;
   }
@@ -3639,8 +3531,9 @@
     justify-content: center;
     width: 2.25rem;
     height: 2.25rem;
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: #fff;
     color: var(--color-primary);
     font-weight: 700;
   }
@@ -3982,8 +3875,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
-     here is a link, so no hover (ADR 0006). */
+  /* IOI-HA result (#187): one titled block per item (#310); nothing here is a link, so no hover
+     (ADR 0006). */
   .ioi-below,
   .ioi-others {
     margin-bottom: 1.5rem;
@@ -4032,13 +3925,13 @@
     color: var(--color-body);
   }
 
-  /* An empty cell is clear with a thin deeper beige frame, not white, so it never looks like
-     something to tap (#310); the norm's grey cells keep their own fill. */
+  /* An empty cell is clear with a thin grey frame that shows on white (3.1:1, #310); the norm's
+     grey cells keep their own fill. */
   .ioi-cell {
     display: grid;
     place-items: center;
     height: 1.5rem;
-    border: 1px solid var(--color-tint-line);
+    border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-small);
   }
 
@@ -4054,7 +3947,7 @@
   .chart-canvas,
   .audiogram-chart,
   .ioi-chart {
-    border: 1px solid var(--color-border-warm);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-small);
     background-color: #fff;
   }
@@ -4095,7 +3988,7 @@
     margin-bottom: 1rem;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-section);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -4204,8 +4097,7 @@
     gap: 0.75rem;
   }
 
-  /* Each ear's result is a .tint-block (並列區塊, ADR 0024, #311) under a line in its ear's
-     colour. */
+  /* Each ear's result sits under a line in its ear's colour (#311). */
   .ear-result.ear-right {
     border-top: 0.375rem solid var(--color-ear-right);
   }
@@ -4454,7 +4346,6 @@
 
   .ear-switch :is(a[aria-current="true"], button[aria-pressed="true"]) {
     background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
     color: #fff;
   }
 
@@ -4642,10 +4533,10 @@
     }
   }
 
-  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
-     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
-     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
-     the sources at the end. */
+  /* Family guide (#240): each topic's tips a list with lines between them (.divided-rows) under
+     the topic's title (#312), each tip's point a .tint-subhead on its own line; the urgent topic
+     on the 緊急就醫 red (ADR 0041) with grey lines between its tips and 119 in large type; the
+     sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -4665,6 +4556,7 @@
 
   .family-guide .tips {
     margin: 0;
+    padding: 0;
     list-style: none;
   }
 
@@ -4672,12 +4564,18 @@
     display: block;
   }
 
-  /* The 馬上就醫 box. Not under .family-guide: the Q&A assistant's home page pins its urgent
-     answer in it too (#397, the owner's call). */
+  /* The 馬上就醫 box (P3, ADR 0041): pale red with no frame, its title in the warning red. Not
+     under .family-guide: the Q&A assistant's home page pins its urgent answer in it too (#397). */
   .card.family-urgent {
-    border: 0.125rem solid var(--color-primary);
-    background-color: var(--color-brand-soft);
-    box-shadow: none;
+    border: 0;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+  }
+
+  .family-urgent > h2,
+  .family-urgent > h2 .topic-icon {
+    color: var(--color-severe);
+    stroke: var(--color-severe);
   }
 
   .family-guide .family-urgent .tips {
@@ -4698,13 +4596,12 @@
     padding-bottom: 0;
   }
 
-  /* #316: not white (white means tappable, ADR 0022) but a light blue a little deeper than the
-     urgent box, so the 119 line still stands out. */
+  /* #316: white on the pale red, so the 119 line still stands out. */
   .family-guide .urgent-call {
     margin-bottom: 0;
     padding: 0.875rem;
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft-deep);
+    border-radius: var(--radius-medium);
+    background-color: #fff;
     color: var(--color-heading);
   }
 
@@ -4793,10 +4690,6 @@
   }
 
   @container (max-width: 15rem) {
-    .pick-explain .tint-block {
-      padding-inline: 0.5rem;
-    }
-
     .pick-explain .link-card {
       gap: 0.25rem;
       padding: 0.5rem;
@@ -4863,7 +4756,7 @@
   .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
   .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
 
-  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a white tile a topic, the
+  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a tile a topic, the
      .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
      row holds fewer, down to one, and a tile never gets wider than its row. */
   .qa-topics {
@@ -4875,12 +4768,13 @@
     list-style: none;
   }
 
-  .qa-topic {
+  /* Tiles side by side: each keeps the line above it, as the first row of a list does. */
+  .qa-topics .qa-topic.link-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
     height: 100%;
-    margin-bottom: 0;
+    border-top: 1px solid var(--color-line);
   }
 
   /* A topic name's phrase stays on one line when it fits; the name breaks between phrases. */
@@ -4897,7 +4791,7 @@
   }
 
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
-     a thin line between them; each link row is a white card of its own (.link-card). */
+     a thin line between them; each link row is a clickable card (.link-card). */
   .settings-group {
     margin: 0;
   }
@@ -4914,7 +4808,7 @@
   }
 
   .settings-group > * + * {
-    border-top: 1px solid var(--color-line-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   .settings-row dd {
@@ -4955,13 +4849,11 @@
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
-     notice on the home and screening pages (#337) is framed the same way. Like the blue summary
-     boxes, the left corners are square so the thick line stays straight (owner, 2026-10-25). */
+     notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0041). */
   .questionnaire-guide, .continue-notice {
-    padding: 0.75rem 1.25rem;
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-soft);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -4994,11 +4886,10 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
+    width: 2.6667rem;
+    height: 2.6667rem;
     border-radius: 50%;
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
+    background-color: var(--color-brand-soft);
   }
 
   /* The ring a hovered card's icon sends out once (#141); invisible at rest. */
@@ -5007,16 +4898,16 @@
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    box-shadow: 0 0 0 0.25rem rgba(29, 111, 153, 0.4);
+    box-shadow: 0 0 0 0.25rem rgba(31, 78, 140, 0.4);
     opacity: 0;
   }
 
-  /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
+  /* E (#454): the brand blue on the pale blue circle, as the action cards' icons. */
   .questionnaire-icon svg {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
     fill: none;
-    stroke: #fff;
+    stroke: var(--color-primary);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -5139,9 +5030,9 @@
 
   /* #314 (ADR 0024): on screen the report folds by questionnaire. The summary row looks like
      the site's dropdowns (a white box, grey edge, chevron) and says the questionnaire's name,
-     latest date and result; what opens below is a 並列區塊 on the tint. Its summary row already
-     names the questionnaire, so its own title waits for paper. On paper every fold opens and the
-     row and tint go: the report prints as it did before the folds. */
+     latest date and result; what opens below is flat. Its summary row already names the
+     questionnaire, so its own title waits for paper. On paper every fold opens and the row goes:
+     the report prints as it did before the folds. */
   .report-fold {
     margin-top: 1rem;
   }
@@ -5164,7 +5055,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1rem;
-    color: var(--color-body);
+    color: var(--color-muted);
     font-weight: 400;
   }
 
@@ -5240,7 +5131,7 @@
       }
 
       .health-report .table > tbody > tr + tr {
-        border-top: 1px solid var(--color-tint-line);
+        border-top: 1px solid var(--color-line);
       }
 
       /* The value goes beside its name, or whole onto the next line when it does not fit. */

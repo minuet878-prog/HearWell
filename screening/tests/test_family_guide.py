@@ -139,7 +139,7 @@ class FamilyGuideTests(TestCase):
     # #354: a heading names the section, without a colon after it.
     def test_sources_heading_has_no_colon(self):
         self.assertContains(
-            self.client.get(self.url), '<h2 id="sources-title" class="h5 heading-bar">出處</h2>'
+            self.client.get(self.url), '<h2 id="sources-title" class="h4">出處</h2>'
         )
 
     # #240: the order of comparison row 15, option A.

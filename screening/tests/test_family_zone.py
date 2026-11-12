@@ -556,20 +556,21 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
 class ReviewedPagesTests(SimpleTestCase):
     """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
     sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
-    is of that page on main before the batch, without those lines. Failing here means reviewed
-    words changed: have the owner review them before updating the digest."""
+    is of that page on main before the batch, without those lines (updated by #456, which only
+    took the 段落框 classes off its tags). Failing here means reviewed words changed: have the
+    owner review them before updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "fe8567ae4df1c53a7c60abef2304fdd91c465c684e3b7d3d4ed0b7c4be064528",
+            "a810558f146265e8b3881b9b8402c94fc97c32288be4e8dacaf049e91ee65b1c",
         ),
         (
             "guide/form_25.html",
             ("<p>想算出可以做的日期？",),
-            "de444faf25a4fcb23e718c9d5e6ce1f9b617cd1112003bf9cefc0d407a6bc473",
+            "c475e83ace6e3c8e3361042929e69e60fada307a99203558281f5d2135afcbd3",
         ),
         (
             "privacy.html",
