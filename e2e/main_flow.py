@@ -386,7 +386,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             ).to_be_visible()
             expect(self.main().get_by_text("情緒分數", exact=False)).to_have_count(0)
             self.page.screenshot(path="/tmp/hearwell-ssq12-result.png", full_page=True)
-            self.main().locator(".result-actions").get_by_role("link", name="看我的紀錄").click()
+            self.main().locator(".result-list").get_by_role("link", name="看我的紀錄").click()
             expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text(
                 "整體平均：6.3"
             )
@@ -1484,16 +1484,19 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         # Every answer 有時 (2 points) x 10.
         expect(self.main().locator("#result-score")).to_contain_text("總分 20 分")
         expect(self.main().locator(".result-banner")).to_contain_text("輕度到中度影響")
-        # HHIE-S 輕度到中度影響's steps (ticket #157): the guide link, then the retest. The report
-        # is left to the closing row, as this step's words do not mention it (result page tidy-up).
-        expect(self.main().get_by_role("heading", name="接下來建議您")).to_be_visible()
-        steps = self.main().locator("ol.next-steps > li")
-        expect(steps).to_have_count(3)
-        expect(steps.nth(0)).to_contain_text("聽力問題已經慢慢影響您的社交活動與情緒")
-        expect(steps.nth(1)).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(steps.nth(1).get_by_role("link", name="看助聽器選配指引")).to_be_visible()
-        expect(steps.nth(1).get_by_role("link", name="看／印聽力報告")).to_have_count(0)
-        expect(steps.nth(2)).to_have_text("半年後再做一次，時間到了首頁會提醒您。")
+        # HHIE-S 輕度到中度影響's steps (ticket #157), since #461 step 1 under the level and the
+        # others behind 看完整說明: the guide link, then the retest. The report is left to the
+        # list rows, as this step's words do not mention it (result page tidy-up).
+        expect(self.main().locator(".result-one-line")).to_contain_text(
+            "聽力問題已經慢慢影響您的社交活動與情緒"
+        )
+        folded = self.main().locator(".result-details-body")
+        expect(folded).to_be_hidden()
+        self.main().locator(".result-details > summary").click()
+        expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
+        expect(folded.get_by_role("link", name="看助聽器選配指引")).to_be_visible()
+        expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
+        expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
         # (9-24 of 0-40).
         bar = self.page.locator(".score-bar-segments").bounding_box()
@@ -1514,7 +1517,8 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.page.locator(".score-bar-ends > span")).to_have_text(["0", "40"])
 
     def step5_home_shows_the_next_date(self):
-        self.main().get_by_role("link", name="回首頁").click()
+        # #461: the result page's 回首頁 went; the tab bar has 首頁.
+        self.page.goto(f"{self.live_server_url}/")
         today = datetime.now(self.TAIPEI).date()
         expect(self.main()).to_contain_text(f"上次是 {today:%Y/%m/%d} 做的")
         expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 20 分")
@@ -2000,31 +2004,6 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
                     for left, right in pairwise(boxes):
                         self.assertGreaterEqual(right["x"] - (left["x"] + left["width"]), 26)
 
-    def test_ssq12_bar_fits_a_phone_at_double_text_size(self):
-        # #188: the 0–10 bar's 「這次」 and 「上次」 sit at its two ends here, at 1rem.
-        call_command("seed_questionnaires", verbosity=0)
-        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
-        for score in (10, 0):  # the previous record averages 10, this one 0
-            record = Submission.objects.create(
-                user=self.user, questionnaire=ssq12, wearing_hearing_aid=False
-            )
-            Answer.objects.bulk_create(
-                Answer(submission=record, question=question, score=score)
-                for question in ssq12.questions.all()
-            )
-        self.open(320, 640)
-        with self.saving_artifacts():
-            self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            labels = self.page.locator(".ssq-bar-label")
-            expect(labels).to_have_text(["這次", "上次"])
-            self.assertEqual(labels.first.evaluate("e => getComputedStyle(e).fontSize"), "18px")
-            # 2 x the site's 112.5% base, as OnAPhone.assert_fits_a_phone_at_double_text_size.
-            self.page.wait_for_load_state("load")
-            self.page.locator("html").evaluate(
-                "html => html.style.setProperty('font-size', '225%', 'important')"
-            )
-            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 320)
-
     # #192 (#183 接縫 3): batch 1's route, 結果頁 → 比較 → 放進聽力報告 → 聽力報告, for HHIE-S
     # and SSQ12-TW, each with two unaided records to choose from and one aided.
     def test_wearing_comparison_route_from_result_page_to_report(self):
@@ -2115,12 +2094,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
         with self.saving_artifacts():
             with self.subTest(page="IOI-HA result"):
                 self.page.goto(f"{self.live_server_url}/submission/{ioi.pk}")
+                self.main().locator(".result-details > summary").click()
                 self.main().get_by_text(re.compile(r"^其他 \d+ 項$")).click()
                 expect(self.main().locator(".ioi-others .ioi-item").first).to_be_visible()
                 self.assert_fits_a_phone_at_double_text_size("IOI-HA result")
             with self.subTest(page="SSQ12-TW result"):
                 self.page.goto(f"{self.live_server_url}/submission/{ssq_latest.pk}")
-                expect(self.main()).to_contain_text("比上一次（2026/10/02，7.0 分）少 1.0 分")
+                # #461: SSQ12-TW is not graded, so no 比上一次; its items are folded.
+                expect(self.main()).not_to_contain_text("比上一次")
+                self.main().locator(".result-details > summary").click()
                 expect(self.main().get_by_role("heading", name="分數最低的 3 題")).to_be_visible()
                 self.main().get_by_text("看全部 12 題的回答", exact=True).click()
                 expect(
@@ -3638,13 +3620,12 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(narrow, [], path)
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
-    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason). #304:
-    # the result page shows the same box (spec #297 acceptance 12).
+    # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason). #461:
+    # the result page's box has no reason any more (the #460 mockup R1).
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
-        submission = Submission.objects.get(user__username="guide_e2e")
         with self.saving_artifacts():
-            for path in ("/", f"/submission/{submission.pk}"):
+            for path in ("/",):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     reason = self.main().locator(".next-step-because")
@@ -5301,7 +5282,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                 banner = self.page.locator(f".result-banner-{level}")
                 expect(banner).to_be_visible()
                 with self.subTest(page="result", level=level):
-                    text = self.style(banner.locator(".result-level"), "color")
+                    text = self.style(banner.locator(".result-block-level"), "color")
                     self.assertGreaterEqual(
                         self.lowest_contrast(text, self.style(banner, "backgroundColor")), 7
                     )
@@ -6243,6 +6224,9 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
 
         def check(path, selector):
             self.page.goto(f"{self.live_server_url}{path}")
+            if selector == ".ioi-item":  # #461: behind 看完整說明
+                self.page.locator(".result-details > summary").click()
+                self.page.mouse.move(0, 0)
             box = self.page.locator(selector).first
             box.scroll_into_view_if_needed()
             before = (box.bounding_box(), box.evaluate(every_style))
@@ -6312,6 +6296,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.open(width=390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
+            # #461: the bar and the dropdowns are behind 看完整說明, itself a dropdown.
+            self.page.locator(".result-details > summary").click()
             segments = self.page.locator(".score-bar-segment").all()
             self.assertEqual([self.style(s, "backgroundColor") for s in segments], fills)
             self.assertEqual(
@@ -6320,7 +6306,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             )
             self.assertEqual(self.style(segments[0], "borderLeftWidth"), "0px")
             summaries = self.page.locator("main details > summary").all()
-            self.assertEqual(len(summaries), 2)
+            self.assertEqual(len(summaries), 3)
             for summary in summaries:
                 self.assertGreaterEqual(summary.bounding_box()["height"], 44)
             self.page.goto(f"{self.live_server_url}/my_hearing?questionnaire=thi")
@@ -6560,8 +6546,10 @@ class ColourOnlyFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTe
         self.open()
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-            steps = self.main().get_by_role("heading", name="接下來建議您")
-            step_link = steps.locator("xpath=following-sibling::ol[1]").get_by_role("link").first
+            # #461: the steps' links are behind 看完整說明.
+            self.main().locator(".result-details > summary").click()
+            self.page.mouse.move(0, 0)
+            step_link = self.main().locator(".result-details-body .next-steps-link").first
             footer_link = self.page.get_by_role("contentinfo").get_by_role(
                 "link", name="隱私權說明"
             )
@@ -7340,32 +7328,28 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 with self.subTest(card=card.inner_text()):
                     self.assert_list_row(card)
 
-    # #309: advice 1-3 sit in one block with a line between each (flat on the white page since
-    # ADR 0041); the links in it still look like links and the cards below are list rows. THI's
-    # support message above them has no line beside it any more.
-    def test_result_advice_is_one_block_with_links_that_look_like_links(self):
+    # #309: the advice's links still look like links and the cards below are list rows. Since
+    # #461 (the #460 mockup R1) step 1 is the sentence under the level and the others are behind
+    # 看完整說明, flat on the white page. THI's support message has no line beside it.
+    def test_result_advice_is_flat_with_links_that_look_like_links(self):
         links_seen = 0
         with self.saving_artifacts():
             # HHIE-S and HHIA-S at 20 (mild to moderate), THI at full marks: the pages with advice.
             for name, signed_in, path in WHITE_CARD_PAGES_HOME_RESULT[2:]:
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
-                    advice = self.main().locator("ol.next-steps")
+                    self.assert_unlined(self.main().locator(".result-one-line"))
+                    self.main().locator(".result-details > summary").click()
+                    advice = self.main().locator(".result-details-body")
                     self.assert_flat_part(advice)
                     self.assert_readable_on_white(advice)
-                    # Three steps, four on THI's page: all in the one block.
-                    steps = advice.locator("> li")
-                    self.assert_lines_between(steps)
-                    for step in steps.all():
-                        self.assertEqual(self.style(step, "backgroundColor"), "rgba(0, 0, 0, 0)")
-                        self.assertEqual(self.style(step, "boxShadow"), "none")
-                    links = advice.get_by_role("link")
+                    links = self.main().locator(".next-steps-link")
                     links_seen += links.count()
                     for link in links.all():
                         with self.subTest(link=link.inner_text()):
                             self.assertEqual(self.style(link, "color"), self.PRIMARY)
                             self.assertEqual(self.style(link, "textDecorationLine"), "underline")
-                    cards = self.main().locator(".result-actions a.link-card")
+                    cards = self.main().locator(".result-list a.link-card")
                     self.assertGreater(cards.count(), 0)
                     for card in cards.all():
                         with self.subTest(card=card.inner_text()[:10]):
@@ -7383,6 +7367,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             ):
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
+                    if name.endswith(" result"):
+                        self.assert_result_next_step_box()
+                        continue
                     box = self.main().locator(".next-step")
                     self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
                     for part in (".action-card-icon", ".next-step-because"):
@@ -7403,6 +7390,18 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.assertEqual(
                         self.style(box.get_by_role("link"), "backgroundColor"), self.PRIMARY
                     )
+
+    def assert_result_next_step_box(self):
+        """#461 (the #460 mockup R1): pale blue, no frame, no reason, only its solid button to
+        tap, the page's one solid button."""
+        box = self.main().locator(".result-next")
+        self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
+        self.assertEqual(self.style(box, "borderTopWidth"), "0px")
+        expect(box.get_by_text("因為：", exact=False)).to_have_count(0)
+        self.assertEqual(box.get_by_role("link").count(), 1)
+        self.assertEqual(self.style(box.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+        # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
+        expect(self.main().locator(".btn-primary")).to_have_count(1)
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
@@ -8419,7 +8418,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_result_items_are_flat_blocks_with_larger_titles(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.ioi_ha_result())
-            self.assert_flat(self.main().locator("section").filter(has_text="比較對象：").first)
+            # #461: the items are behind 看完整說明.
+            self.main().locator(".result-details > summary").click()
+            self.assert_flat(self.main().get_by_text(re.compile("^比較對象：")))
             self.assert_flat(
                 self.page.get_by_role("region", name="可以帶去跟聽力師討論", exact=True)
             )
@@ -8431,6 +8432,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.SECTION_TITLE_RATIO,
             )
             self.visit(True, lambda test: test.result("sadl", 4))
+            self.main().locator(".result-details > summary").click()
             facets = (
                 self.main()
                 .get_by_role("list")
@@ -8442,6 +8444,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 facets, lambda item: item.get_by_role("heading"), 4, self.SECTION_TITLE_RATIO
             )
             self.visit(True, lambda test: test.result("ssq12-tw", 5))
+            self.main().locator(".result-details > summary").click()
             lowest = self.page.get_by_role("region", name=re.compile("分數最低的")).get_by_role(
                 "listitem"
             )
@@ -9432,30 +9435,18 @@ class GuideMeterFillTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiv
                 # Running, or already over on a slow machine; waiting for the screen is paused.
                 self.assertNotIn("paused", {a["state"] for a in found}, meter)
 
-    # #338 acceptance 21: the result page's score position bar and SSQ12's position bar stay
-    # still, scrolled to or not.
+    # #338 acceptance 21: the result page's score position bar stays still, scrolled to or not
+    # (#461: SSQ12-TW's position bar went, and the score bar is behind 看完整說明).
     def test_result_position_bars_stay_still(self):
-        call_command("seed_questionnaires", verbosity=0)
-        ssq12 = Questionnaire.objects.get(code="ssq12-tw")
-        ssq12_record = Submission.objects.create(
-            user=self.user, questionnaire=ssq12, wearing_hearing_aid=False
-        )
-        Answer.objects.bulk_create(
-            Answer(submission=ssq12_record, question=question, score=5)
-            for question in ssq12.questions.all()
-        )
         self.open(f"/submission/{self.submission.pk}")
         with self.saving_artifacts():
-            for record, bar in ((self.submission, ".score-bar"), (ssq12_record, ".ssq-bar")):
-                self.page.goto(f"{self.live_server_url}/submission/{record.pk}")
-                found = self.page.locator(bar)
-                expect(found).to_be_attached()
-                self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
-                found.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
-                self.page.wait_for_timeout(300)
-                self.assertEqual(
-                    found.evaluate("el => el.getAnimations({subtree: true}).length"), 0, bar
-                )
+            self.main().locator(".result-details > summary").click()
+            found = self.page.locator(".score-bar")
+            expect(found).to_be_visible()
+            self.page.evaluate("window.scrollTo({top: 99999, behavior: 'instant'})")
+            found.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
+            self.page.wait_for_timeout(300)
+            self.assertEqual(found.evaluate("el => el.getAnimations({subtree: true}).length"), 0)
 
 
 class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
@@ -9987,6 +9978,8 @@ class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
         for name, signed_in, path, selectors in cases:
             with self.subTest(page=name):
                 self.visit(signed_in, path, width=320)
+                if "result" in name:  # #461: behind 看完整說明
+                    self.main().locator(".result-details > summary").click()
                 for selector in selectors:
                     labels = self.main().locator(selector)
                     expect(labels.first).to_be_visible()
@@ -10548,15 +10541,16 @@ class ResultPagesT363Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
         call_command("seed_questionnaires", verbosity=0)
         self.sign_in(consented_user(username="result_pages_t363"))
 
-    # Acceptance 2: 0.75rem between HHIA-S's steps and its limits, still in small type.
-    def test_hhia_s_limits_sit_apart_from_the_steps_above(self):
+    # Acceptance 2: HHIA-S's limits in small type, outside the folds; since #461 under the list
+    # rows, which end at least 0.75rem above it.
+    def test_hhia_s_limits_sit_apart_from_the_rows_above(self):
         self.visit(True, lambda test: test.result("hhia-s", 2), width=390)
         with self.saving_artifacts():
-            steps = self.main().locator("ol.next-steps").bounding_box()
+            rows = self.main().locator(".result-list").bounding_box()
             note = self.main().locator(".source-note")
             expect(note).to_be_visible()
-            gap = note.bounding_box()["y"] - (steps["y"] + steps["height"])
-            self.assertAlmostEqual(gap, 0.75 * self.REM, delta=0.5)
+            gap = note.bounding_box()["y"] - (rows["y"] + rows["height"])
+            self.assertGreaterEqual(gap, 0.75 * self.REM - 0.5)
             self.assertEqual(self.font_size(note), 0.875 * self.REM)
 
     # Acceptance 3: on a 390 phone the SSQ12-TW card has its icon, and 「（SSQ12-TW）」 is on
@@ -12973,6 +12967,82 @@ class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                     for radio in question.get_by_role("radio").all():
                         expect(radio).not_to_be_checked()
                     expect(live).to_be_empty()
+
+
+class ResultPagesT461Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#461 (spec #453, the #460 mockup R1): on a phone the first screen is the level block with
+    the line against last time, one sentence and the 建議下一步's one solid button; the rest is
+    folded under 看完整說明, and every result page fits a phone at 200% text."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ZoneInfo("Asia/Taipei")
+    SCORES: ClassVar = {"hhie-s": 2, "hhia-s": 2, "thi": 2, "ssq12-tw": 6, "ioi-ha": 3, "sadl": 4}
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="result_pages_t461"))
+
+    def record(self, code, scores, day=None, **fields):
+        questionnaire = Questionnaire.objects.get(code=code)
+        record = Submission.objects.create(user=self.user, questionnaire=questionnaire, **fields)
+        Answer.objects.bulk_create(
+            Answer(submission=record, question=question, score=score)
+            for question, score in zip(
+                questionnaire.questions.order_by("question_number"), scores, strict=True
+            )
+        )
+        if day:
+            moment = datetime(*day, 10, 0, tzinfo=self.TAIPEI)
+            Submission.objects.filter(pk=record.pk).update(created_at=moment)
+        return record
+
+    def test_the_first_screen_has_the_block_the_sentence_and_one_solid_button(self):
+        self.record("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, (2026, 3, 26), wearing_hearing_aid=False)
+        latest = self.record("hhie-s", [4, 4, 4, 2] + [0] * 6, wearing_hearing_aid=False)
+        self.open(f"/submission/{latest.pk}")
+        with self.saving_artifacts():
+            banner = self.main().locator(".result-banner")
+            expect(banner).to_contain_text("輕度到中度影響")
+            expect(banner.locator(".result-since-last")).to_have_text(
+                "上次 2026/03/26 是 18 分，這次少 4 分"
+            )
+            # 48px for the number (2.6667rem), at least the body size for every other word.
+            self.assertAlmostEqual(self.font_size(banner.locator(".result-number")), 48, delta=0.1)
+            for words in (
+                banner.locator(".result-since-last p"),
+                self.main().locator(".result-one-line"),
+            ):
+                self.assertGreaterEqual(self.font_size(words), self.rem())
+            # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
+            solid = self.main().locator(".btn-primary")
+            expect(solid).to_have_count(1)
+            box = solid.bounding_box()
+            # 56px (S1's 3.1111rem, a hair under it when rounded).
+            self.assertGreaterEqual(box["height"], 55.9)
+            # On the first screen of a 390 x 844 phone, above the floating tab bar.
+            tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+            self.assertLessEqual(box["y"] + box["height"], tab_bar["y"])
+            # Folded: the score bar waits behind 看完整說明 until it is opened.
+            expect(self.page.locator(".score-bar")).not_to_be_visible()
+            summary = self.main().locator(".result-details > summary")
+            self.assertGreaterEqual(summary.bounding_box()["height"], 44)
+            summary.click()
+            expect(self.page.locator(".score-bar")).to_be_visible()
+
+    def test_every_result_page_fits_a_phone_at_double_text_size(self):
+        basis = None
+        for code, score in self.SCORES.items():
+            count = Questionnaire.objects.get(code=code).questions.count()
+            fields = {"wearing_hearing_aid": code in ("ioi-ha", "sadl")}
+            if code == "ioi-ha":
+                fields |= {"norm_group": NormGroup.MILD_MODERATE, "norm_basis": basis}
+            self.record(code, [score] * count, (2026, 3, 26), **fields)
+            record = self.record(code, [score] * count, **fields)
+            basis = basis or record
+            with self.subTest(code=code), self.saving_artifacts():
+                self.open(f"/submission/{record.pk}", (320, 640))
+                self.main().locator(".result-details > summary").click()
+                self.assert_fits_a_phone_at_double_text_size(code)
 
 
 class TabBarHidesOnScrollT457Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

@@ -53,6 +53,11 @@ NEXT_STEP = re.compile(
     r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
     re.S,
 )
+# A result page's 建議您下一步 (#461): title, button link and text.
+RESULT_NEXT_STEP = re.compile(
+    r'<h2 class="result-next-title">([^<]*)</h2>\s*'
+    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>',
+)
 GROUP = re.compile(
     r'<div class="more-group"([^>]*)>\s*<h3 class="more-group-title">([^<]*)</h3>(.*?)</ul>',
     re.S,
@@ -345,33 +350,25 @@ class EveryStopNextStepTests(TestCase):
                     self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
                 )
 
-    def test_each_reworded_stop_says_why_on_a_result_page_too(self):
-        # #363 (spec #354): the reasons that now say why, on a result page's box. Since #455
-        # (ADR 0042) a result page suggests the 照顧旅程's 現在這一步: here step 3 (an
-        # assessment suggested), the stop with the route's own button. 等待核定公文 has no
-        # button on the route, so the page suggests sharing instead (spec #453 acceptance 22);
-        # 等待補助發放 is never step 3's.
+    def test_each_reworded_stop_is_a_result_page_s_suggestion_too(self):
+        # #363 (spec #354): the reworded stops, on a result page's box. Since #455 (ADR 0042) a
+        # result page suggests the 照顧旅程's 現在這一步: here step 3 (an assessment suggested),
+        # the stop with the route's own button. 等待核定公文 has no button on the route, so the
+        # page suggests sharing instead (spec #453 acceptance 22); 等待補助發放 is never step 3's.
+        # #461 (the #460 mockup R1): the result page's box has no 「因為」.
         submission = Submission.objects.get(user=self.user)
         self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
         for stop, expected in (
-            (
-                "before-you-go",
-                ("去找聽力師之前", BEFORE_YOU_GO, "/guide/before-you-go", "去之前要準備什麼"),
-            ),
+            ("before-you-go", ("去找聽力師之前", "/guide/before-you-go", "去之前要準備什麼")),
             (
                 "after-fitting",
-                (
-                    "配戴助聽器之後",
-                    AFTER_FITTING,
-                    "/guide/after-fitting#record-title",
-                    "記錄配戴的效果",
-                ),
+                ("配戴助聽器之後", "/guide/after-fitting#record-title", "記錄配戴的效果"),
             ),
-            ("notice", ("分享報告給家人", SHARE, "/share", "去分享")),
+            ("notice", ("分享報告給家人", "/share", "去分享")),
         ):
             with self.subTest(stop=stop), self.at(stop, "screening.care_journey.fitting_state"):
                 content = self.client.get(reverse("result", args=[submission.pk])).content
-                self.assertEqual(self.next_step(content.decode()), expected)
+                self.assertEqual(RESULT_NEXT_STEP.findall(content.decode()), [expected])
 
     def test_form_25_says_its_deadline(self):
         # Fitted 2026/05/01 with 身障補助 at 中階型: form 25 is due by 2026/08/01.

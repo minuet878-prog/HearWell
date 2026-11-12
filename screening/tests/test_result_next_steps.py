@@ -1,4 +1,5 @@
-"""Spec #148 batch 2, ticket #157: result page next steps by level."""
+"""Spec #148 batch 2, ticket #157: result page next steps by level. #461 (the #460 mockup R1):
+step 1 is the one sentence under the level, the others wait behind 看完整說明."""
 
 import re
 
@@ -167,8 +168,16 @@ class ResultNextStepsTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _steps(self, main):
-        start = main.index('<ol class="next-steps')
-        return main[start : main.index("</ol>", start)]
+        """Each step's words and the links under them, step 1 first, then the folded ones."""
+        first = re.search(
+            r'<p class="result-one-line">(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?',
+            main,
+            re.S,
+        )
+        body = main[main.index('<div class="result-details-body">') :]
+        body = body[: body.index("<details")]
+        folded = re.findall(r'<p>(.*?)</p>\s*(<p class="next-steps-links">.*?</p>)?', body, re.S)
+        return [first.groups(), *folded]
 
     def test_each_level_shows_its_finalized_steps_and_action_buttons(self):
         for code, levels in STEPS.items():
@@ -176,22 +185,16 @@ class ResultNextStepsTests(TestCase):
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
                     steps = self._steps(main)
-                    items = steps.split("<li>")[1:]
-                    self.assertEqual(len(items), len(expected))
-                    for item, (text, action) in zip(items, expected, strict=True):
-                        self.assertIn(f"<span>{text}</span>", item)
+                    self.assertEqual(len(steps), len(expected))
+                    for (words, links), (text, action) in zip(steps, expected, strict=True):
+                        self.assertEqual(words, text)
+                        links = links or ""
                         if action is None:
                             for _, own_url in (AUDIOGRAM, REPORT):
-                                self.assertNotIn(f'href="{own_url}"', item)
+                                self.assertNotIn(f'href="{own_url}"', links)
                         else:
                             label, url = action
-                            self.assertIn(f'href="{url}">{label}</a>', item)
-
-    def test_the_step_list_keeps_its_list_role(self):
-        # The steps drop their bullets for the numbered circles, and Safari then stops telling
-        # VoiceOver it is a list; role="list" keeps 「清單，共 3 項」, as on the home page's steps.
-        main = self._main(self._submit(self.questionnaires["hhie-s"], TOTALS["severe"]))
-        self.assertRegex(main, r'<ol class="next-steps[^"]*" role="list">')
+                            self.assertIn(f'href="{url}">{label}</a>', links)
 
     def test_full_advice_is_unchanged_for_every_level(self):
         for code, levels in ADVICE.items():
@@ -200,38 +203,31 @@ class ResultNextStepsTests(TestCase):
                     main = self._main(self._submit(self.questionnaires[code], TOTALS[level]))
                     self.assertIn(f"<p>{advice}</p>", main)
 
-    def test_hhia_s_states_its_limits_under_the_steps_outside_the_folded_advice(self):
+    def test_hhia_s_states_its_limits_outside_the_fold(self):
         # Text-heavy pages tidy-up: the full advice is folded away, and it was the only place
-        # HHIA-S said what the score cannot tell; the owner chose to show that under the steps.
+        # HHIA-S said what the score cannot tell; the owner chose to show that outside the fold.
+        # #461: under the list rows, with the page's other source notes.
         limits = hhia_s.EXPLANATION
         for level in ("normal", "mild_to_moderate", "severe"):
             with self.subTest(level=level):
                 main = self._main(self._submit(self.questionnaires["hhia-s"], TOTALS[level]))
                 note = f'<p class="source-note">{limits}</p>'
                 self.assertIn(note, main)
-                self.assertLess(main.index("</ol>"), main.index(note))
-                self.assertLess(main.index(note), main.index("<summary>看完整建議</summary>"))
+                self.assertLess(main.rindex("</details>"), main.index(note))
         main = self._main(self._submit(self.questionnaires["hhie-s"], TOTALS["normal"]))
         self.assertNotIn('class="source-note"', main)
 
-    def test_no_step_list_when_unclassifiable(self):
+    def test_no_steps_when_unclassifiable_and_the_advice_is_the_sentence(self):
+        # #363 (spec #354): 「無法判讀」's only explanation is the full advice, so it is not folded:
+        # it is the one sentence under the level; every other level folds it.
         submission = Submission.objects.create(user=self.user, questionnaire=self.unknown)
         Answer.objects.create(submission=submission, question=self.unknown_question, score=4)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._main(submission)
-        self.assertNotIn("接下來建議您", main)
         self.assertNotIn("next-steps", main)
-        self.assertIn(f"<p>{UNKNOWN_ADVICE}</p>", main)
-
-    def test_the_full_advice_opens_by_itself_only_when_unclassifiable(self):
-        # #363 (spec #354): 「無法判讀」's only explanation is the full advice, so it is open;
-        # every other level keeps it folded.
+        self.assertIn(f'<p class="result-one-line">{UNKNOWN_ADVICE}</p>', main)
+        self.assertNotIn("看完整建議", main)
         advice = re.compile(r"<details([^>]*)>\s*<summary>看完整建議</summary>")
-        submission = Submission.objects.create(user=self.user, questionnaire=self.unknown)
-        Answer.objects.create(submission=submission, question=self.unknown_question, score=4)
-        with self.assertLogs("screening.scoring", "ERROR"):
-            attributes = advice.search(self._main(submission)).group(1)
-        self.assertRegex(attributes, r"\bopen\b")
         for code in self.questionnaires:
             for level, total in TOTALS.items():
                 with self.subTest(questionnaire=code, level=level):

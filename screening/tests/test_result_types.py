@@ -117,9 +117,9 @@ class GradedResultTests(ResultTestCase):
         self.assertContains(page, '<div class="result-banner result-banner-mild_to_moderate">')
         self.assertContains(
             page,
-            '<h2 class="result-level mb-0" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
         )
-        self.assertContains(page, "總分 16 分（滿分 40）")
+        self.assertContains(page, '總分 <span class="result-number">16</span> 分（滿分 40）')
         self.assertContains(page, '<p class="mb-1">情緒分數：12　社交分數：4</p>')
         self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
@@ -160,7 +160,7 @@ class GradedResultTests(ResultTestCase):
         context = self.assert_page(record, "screening/result.html")
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
-        self.assertContains(page, "總分 4 分（滿分 100）")
+        self.assertContains(page, '總分 <span class="result-number">4</span> 分（滿分 100）')
         self.assertNotContains(page, "情緒分數")  # result.subscores is None: no subscores shown
         self.assertNotContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["support_message"])

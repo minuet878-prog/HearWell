@@ -38,7 +38,7 @@ class AccessibilityPageTests(TestCase):
                 self.assertRegex(page.content.decode(), r"<h2\b[^>]*>顯著影響</h2>")
                 self.assertContains(page, 'aria-describedby="result-score"')
                 self.assertContains(page, 'id="result-score"')
-                self.assertContains(page, "總分 40 分")
+                self.assertContains(page, '總分 <span class="result-number">40</span> 分')
 
     def test_login_fields_identify_username_and_current_password(self):
         self.client.logout()

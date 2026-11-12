@@ -164,6 +164,6 @@ class ScoreBarTests(TestCase):
         self.assertIn('<div class="score-bar" aria-hidden="true">', page)
         # The level and score text, read normally, stay outside the hidden bar.
         self.assertIn(
-            '<h2 class="result-level mb-0" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
             page,
         )
