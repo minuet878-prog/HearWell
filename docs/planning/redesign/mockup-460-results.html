@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#460 結果頁（第二版：少字、主題清楚）</title>
+<style>
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --mild: #704800; --mild-bg: #fff4d6; --normal-bar: #3f9c6f; --mild-bar: #e2a92b; --severe-bar: #c4532f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 6px; }
+  .lead { margin: 0 0 6px; color: var(--muted); max-width: 980px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 24px; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .note b { color: var(--heading); }
+  .phone { background: #fff; border-radius: 28px; padding: 22px 20px 120px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .fold-line { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed #7b4fc9; }
+  .fold-line span { position: absolute; right: 8px; top: -24px; font-size: 13px; color: #7b4fc9; font-weight: 700; background: #fff; padding: 0 6px; }
+  svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .kicker { font-size: 16px; color: var(--muted); margin: 0; }
+  h2.page { font-size: 28px; color: var(--heading); margin: 2px 0 14px; line-height: 1.3; }
+  .lv { background: var(--mild-bg); color: var(--mild); border-radius: 18px; padding: 16px 18px; }
+  .lv .n { font-size: 48px; font-weight: 700; line-height: 1.05; }
+  .lv .n small { font-size: 20px; }
+  .lv .nm { font-size: 22px; font-weight: 700; }
+  .lv .cmp { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(112,72,0,.25); font-size: 17px; font-weight: 500; }
+  .one { margin: 16px 0 0; font-size: 19px; color: var(--heading); }
+
+  .next { background: var(--primary-soft); border-radius: 18px; padding: 16px 18px; margin-top: 18px; }
+  .next .tag { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .next .t { display: block; font-size: 20px; font-weight: 700; color: var(--heading); margin-top: 2px; }
+  .btn { display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 14px; font-size: 20px; font-weight: 700; margin-top: 12px; }
+  .solid { background: var(--primary); color: #fff; }
+
+  .list { border-top: 1px solid var(--line); margin-top: 18px; }
+  .item { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .ico { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .item .t { flex: 1; font-weight: 700; color: var(--heading); }
+  .chev { color: var(--primary); font-size: 24px; font-weight: 700; }
+
+  details.more { border-bottom: 1px solid var(--line); }
+  details.more summary { list-style: none; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 2px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary .chev { transform: rotate(90deg); }
+  details.more[open] summary .chev { transform: rotate(-90deg); }
+  .inside { padding: 0 2px 16px; }
+  .inside p { margin: 0 0 12px; }
+  .bar { position: relative; display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin: 6px 0 4px; }
+  .bar span { display: block; }
+  .bar-wrap { position: relative; margin: 8px 0 14px; }
+  .pin { position: absolute; top: -6px; width: 4px; height: 24px; background: var(--heading); border-radius: 2px; }
+  .scale { display: flex; justify-content: space-between; font-size: 15px; color: var(--muted); }
+
+  /* R2 centred */
+  .hero2 { text-align: center; padding: 8px 0 4px; }
+  .hero2 .lvname { font-size: 32px; font-weight: 800; color: var(--mild); line-height: 1.25; background: var(--mild-bg); display: inline-block; padding: 6px 18px; border-radius: 999px; }
+  .hero2 .score { font-size: 22px; color: var(--heading); margin-top: 10px; }
+  .hero2 .score b { font-size: 44px; }
+  .chip { display: inline-block; margin-top: 8px; padding: 4px 14px; border-radius: 999px; background: var(--surface); color: var(--heading); font-size: 17px; }
+
+  /* R3 Q&A */
+  .qa h3 { font-size: 22px; color: var(--heading); margin: 22px 0 8px; }
+  .qa h3:first-of-type { margin-top: 6px; }
+  .qa .lv { padding: 14px 18px; }
+
+  .tabbar { position: absolute; left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; display: flex; background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .tb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 17px; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  ul.diff { margin: 8px 0 0; padding-left: 1.2em; font-size: 16px; color: var(--muted); max-width: 980px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7.2M8.2 13.2l7.6 3.6"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#460 結果頁・第二版：少字、主題清楚</h1>
+  <p class="lead">案例：HHIE-S 這次 14 分、上次 18 分（都是輕度到中度影響），照顧旅程現在在第 3 步、選配路線停在九號表。紫色虛線＝手機第一個畫面的底（390×844），分頁列是 W1 毛玻璃。</p>
+  <p class="lead">三種版式共同的改法：</p>
+  <ul class="diff">
+    <li>第一個畫面只有三樣：<b>分數與分級</b>、<b>一句話</b>、<b>一件要做的事</b>（唯一的實心按鈕）。</li>
+    <li>「這代表什麼」的長段落、分數位置條、半年後再做一次，全部收進「看完整說明」（點開才看到，字句不改）。</li>
+    <li>分享給家人、印聽力報告改成一列一個的清單（E 樣式），不再各自一段加說明。</li>
+    <li>與上次比較縮成一行，放進分數色塊裡。</li>
+  </ul>
+
+  <div class="row">
+    <!-- R1 -->
+    <div class="opt">
+      <p class="opt-label">R1　分數色塊＋一句話＋一件事<span class="rec">建議</span></p>
+      <div class="phone">
+        <p class="kicker">聽力對生活的影響・2026/11/12</p>
+        <h2 class="page">這次的結果</h2>
+        <div class="lv">
+          <div class="n">14 <small>分（滿分 40）</small></div>
+          <div class="nm">輕度到中度影響</div>
+          <div class="cmp">上次 2026/03/26 是 18 分，這次少 4 分</div>
+        </div>
+        <p class="one">聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p>
+        <div class="next">
+          <span class="tag">建議您下一步</span>
+          <span class="t">九號表：申請助聽器補助</span>
+          <a class="btn solid">看九號表的流程</a>
+        </div>
+        <div class="list">
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span style="flex:1">看完整說明</span><span class="chev">›</span></summary></details>
+          <a class="item"><span class="ico"><svg class="i"><use href="#i-share"/></svg></span><span class="t">分享給家人</span><span class="chev">›</span></a>
+          <a class="item"><span class="ico"><svg class="i"><use href="#i-print"/></svg></span><span class="t">印聽力報告給醫師看</span><span class="chev">›</span></a>
+        </div>
+        <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+      </div>
+      <p class="note">一句話用問卷定義裡已審定的建議 1，原文不改。<b>代價</b>：一句話仍有兩行半；嚴重度高的問卷（例如 HHIE-S 顯著影響）那句更長。</p>
+    </div>
+
+    <!-- R2 -->
+    <div class="opt">
+      <p class="opt-label">R2　分級當大標題、置中</p>
+      <div class="phone">
+        <p class="kicker" style="text-align:center">聽力對生活的影響・2026/11/12</p>
+        <div class="hero2">
+          <div class="lvname">輕度到中度影響</div>
+          <div class="score"><b>14</b> 分（滿分 40）</div>
+          <div class="chip">比上次（2026/03/26）少 4 分</div>
+        </div>
+        <div class="bar-wrap"><div class="bar"><span style="width:22.5%;background:var(--normal-bar)"></span><span style="width:40%;background:var(--mild-bar)"></span><span style="width:37.5%;background:var(--severe-bar)"></span></div><div class="pin" style="left:35%"></div><div class="scale"><span>0</span><span>40</span></div></div>
+        <div class="next">
+          <span class="tag">建議您下一步</span>
+          <span class="t">九號表：申請助聽器補助</span>
+          <a class="btn solid">看九號表的流程</a>
+        </div>
+        <div class="list">
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span style="flex:1">這代表什麼</span><span class="chev">›</span></summary></details>
+          <a class="item"><span class="ico"><svg class="i"><use href="#i-share"/></svg></span><span class="t">分享給家人</span><span class="chev">›</span></a>
+          <a class="item"><span class="ico"><svg class="i"><use href="#i-print"/></svg></span><span class="t">印聽力報告給醫師看</span><span class="chev">›</span></a>
+        </div>
+        <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+      </div>
+      <p class="note">最像「揭曉」：先看到分級，再看到分數。說明文字全部收起來，第一個畫面最空。<b>代價</b>：分級標籤是新元件；沒有一句話說明，要點開才知道意思。</p>
+    </div>
+
+    <!-- R3 -->
+    <div class="opt">
+      <p class="opt-label">R3　兩個問題：結果如何？接下來呢？</p>
+      <div class="phone qa">
+        <p class="kicker">聽力對生活的影響・2026/11/12</p>
+        <h3>結果如何？</h3>
+        <div class="lv">
+          <div class="n">14 <small>分</small></div>
+          <div class="nm">輕度到中度影響</div>
+          <div class="cmp">上次 2026/03/26 是 18 分，這次少 4 分</div>
+        </div>
+        <h3>接下來呢？</h3>
+        <div class="next" style="margin-top:0">
+          <span class="t" style="margin-top:0">九號表：申請助聽器補助</span>
+          <span style="display:block;color:var(--muted);margin-top:4px">您已經有身障證明，可以準備申請九號表的助聽器補助。</span>
+          <a class="btn solid">看九號表的流程</a>
+        </div>
+        <div class="list">
+          <details class="more"><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span style="flex:1">這代表什麼</span><span class="chev">›</span></summary></details>
+          <a class="item"><span class="ico"><svg class="i"><use href="#i-share"/></svg></span><span class="t">分享給家人</span><span class="chev">›</span></a>
+        </div>
+        <div class="fold-line"><span>第一個畫面到這裡</span></div>
+        <nav class="tabbar"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb on"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+      </div>
+      <p class="note">整頁只有兩個標題，長輩知道每塊在回答什麼。下一步卡片寫出「為什麼」（選配路線現有字句）。<b>代價</b>：「印聽力報告」移到第二個畫面。</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="opt">
+      <p class="opt-label">「看完整說明」點開後（三種版式都一樣）</p>
+      <div class="phone" style="min-height:0;padding-bottom:22px">
+        <div class="list" style="margin-top:0">
+          <details class="more" open><summary><span class="ico"><svg class="i"><use href="#i-info"/></svg></span><span style="flex:1">看完整說明</span><span class="chev">›</span></summary>
+            <div class="inside">
+              <div class="bar-wrap"><div class="bar"><span style="width:22.5%;background:var(--normal-bar)"></span><span style="width:40%;background:var(--mild-bar)"></span><span style="width:37.5%;background:var(--severe-bar)"></span></div><div class="pin" style="left:35%"></div><div class="scale"><span>0</span><span>40</span></div></div>
+              <p>這次篩檢能讓您體認到聽力對生活的影響，建議前往醫院耳鼻喉科進行聽力相關檢查，並詢問專業意見。</p>
+              <p>半年後再做一次，時間到了首頁會提醒您。</p>
+              <p style="font-size:16px;color:var(--muted)">情緒與社交分項、作答明細與出處也在這裡。</p>
+            </div>
+          </details>
+        </div>
+      </div>
+      <p class="note">現有的建議 2、3、分數位置條、分項與作答明細原文搬進來，不刪字，只是預設收起。</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
