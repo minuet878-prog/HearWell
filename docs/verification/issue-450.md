@@ -12,7 +12,7 @@
 
 ## 做了什麼
 
-- **HSTS 改用環境變數**（#451）：正式環境讀 `SECURE_HSTS_SECONDS`，沒設就用中文報錯、不啟動；子網域寫死強制 HTTPS、不 preload；W021 的註解改成「自己的網域可以 preload，但幾乎撤不回，等 1 年期穩定後再評估」。CI 的正式環境檢查加上這個變數，`ALLOWED_HOSTS` 改成 `tingpal.tw`。roadmap 的 HSTS 時程改成 VPS 從 3600 起、每穩定 1 週升一階，Render 停在 86400。README 的環境變數表加一列。
+- **HSTS 改用環境變數**（#451）：正式環境讀 `SECURE_HSTS_SECONDS`，沒設就用中文報錯、不啟動；子網域寫死強制 HTTPS、不 preload；W021 的註解改成「自己的網域可以 preload，但幾乎撤不回，等 1 年期穩定後再評估」。CI 的正式環境檢查加上這個變數，`ALLOWED_HOSTS` 改成 `tingpal.tw`。roadmap 的 HSTS 時程改成 VPS 從 3600 起、每穩定 1 週升一階；Render 關掉自動部署、停在搬家前的版本。README 的環境變數表加一列。
 - **隱私權說明**（#452）：「存放在哪裡、保存多久」改成 Vultr 日本東京機房、資料傳到日本、另一份加密備份在營運者在台灣的電腦、連線紀錄（含 IP）保存 14 天；最後一行「刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄），在備份中最多再保留 10 天，之後自動清除」取代原本的 6 小時。「會交給誰」的 Render、Neon 換成 Vultr，Sentry 一字未改。
 - **同意書第 4 版**，更新日期 2026/11/12；同意過第 3 版的人下次進健康資料頁面會再同意一次。
 - `purge_question_log` 的 docstring、指令 help，以及 admin、問答小助手 view 裡的註解，都拿掉「沒有排程器」，改成「VPS 每天 02:30 執行，這裡也順便清」。行為不變，`build.sh` 不改。
@@ -44,7 +44,7 @@
 | 12 | VPS 有每天 02:30 的 purge timer，排在 03:00 備份之前 | ⬜ 本人 | `systemctl list-timers` |
 | 13 | Mac 自動刪除超過 8 天的備份，開機時補做 | ⬜ 本人 | Mac 的排程設定 |
 | 14 | Nginx 連線紀錄保存 14 天 | ⬜ 本人 | `/etc/logrotate.d/nginx` 的 `rotate` |
-| 15 | 合併前 Render（86400）、VPS（3600）都有 `SECURE_HSTS_SECONDS` | ⬜ 本人 | 兩邊的環境變數 |
+| 15 | 合併前 VPS 有 `SECURE_HSTS_SECONDS=3600`；Render 關掉自動部署（2026-11-12 本人決定不在 Render 設這個變數，改成不再部署） | ⬜ 本人 | VPS 的 `.env`、Render 的 Auto-Deploy 設定 |
 
 隱私權說明承諾、但不在驗收條件裡的兩項（Spec 自審提醒）：
 
