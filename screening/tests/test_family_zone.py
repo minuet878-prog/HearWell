@@ -557,8 +557,9 @@ class ReviewedPagesTests(SimpleTestCase):
     """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
     sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
     is of that page on main before the batch, without those lines (updated by #456, which only
-    took the 段落框 classes off its tags). Failing here means reviewed words changed: have the
-    owner review them before updating the digest."""
+    took the 段落框 classes off its tags, and by #471, which only folded the privacy notice's
+    sections into rows and took off its folded list of them, mockup #470 privacy B). Failing
+    here means reviewed words changed: have the owner review them before updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
@@ -575,7 +576,7 @@ class ReviewedPagesTests(SimpleTestCase):
         (
             "privacy.html",
             ('<p class="tip-box">本站只用登入',),
-            "1c81e5c234d4bcfd8e39a18434321068b7ea01c701ae6b4fe059575a32822453",
+            "28ec76b9781a82e8c12e70b54b9fe369c88e8d0a8fcd18be0e4e5162cba17723",
         ),
     )
 

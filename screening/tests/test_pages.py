@@ -106,7 +106,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="auth-hero-title">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="h3 mt-4">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -964,7 +964,9 @@ class PwaTests(TestCase):
                 main = content[content.index("<main") : content.index("</main>")]
                 positions = [main.index(part) for part in self.GUIDE_ORDER]
                 self.assertEqual(positions, sorted(positions))
-                steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
+                # #471: each phone's steps as numbered dots (N3).
+                lists = re.findall(r'<ol class="step-list" role="list">(.*?)</ol>', main, re.S)
+                steps = [ol.count("<li>") for ol in lists]
                 self.assertEqual(steps, [4, 4])
 
     # 23, as changed by the footer redesign: the guide is linked from the home page's "您還可以"

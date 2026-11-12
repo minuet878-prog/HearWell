@@ -13,10 +13,11 @@ from screening.models import Questionnaire, Submission, User
 from screening.tests.helpers import consented_user, step_bar
 
 
-def banner(content):
-    """The brand banner on the login and register pages (2026-10-23)."""
+def page_top(content):
+    """What comes before the form on the login and register pages: since #471 (mockup #470 D1 B)
+    a plain title and line on the white page, where the brand banner (2026-10-23) was."""
     return re.search(
-        r'<div class="auth-hero">(.*?)</div>\s*<div class="auth-card">', content, re.DOTALL
+        r'<div class="narrow-form">(.*?)<div class="auth-form">', content, re.DOTALL
     ).group(1)
 
 
@@ -228,7 +229,7 @@ class LoginViewTests(TestCase):
 
     def _error_block(self, response):
         content = response.content.decode()
-        return re.search(r'class="mb-4 text-danger">(.*?)</div>', content, re.DOTALL).group(1)
+        return re.search(r'class="error-box" role="alert">(.*?)</div>', content, re.DOTALL).group(1)
 
     def _username_input(self, response):
         return re.search(r'<input[^>]*name="username"[^>]*>', response.content.decode()).group()
@@ -266,11 +267,11 @@ class LoginViewTests(TestCase):
         self.assertLess(main.index('type="submit">登入</button>'), line.start())
         self.assertLess(line.start(), main.index("還沒有帳號？"))
 
-    def test_banner_greets_and_field_icons_stay_silent(self):
+    def test_title_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
-        hero = banner(content)
-        self.assertIn('<h1 class="auth-hero-title">登入</h1>', hero)
-        self.assertIn("<p>歡迎回來。</p>", hero)
+        top = page_top(content)
+        self.assertIn('<h1 class="h3 mt-4">登入</h1>', top)
+        self.assertIn('<p class="text-muted">歡迎回來。</p>', top)
         icons = field_icons(content)
         self.assertEqual(len(icons), 2)
         for icon in icons:
@@ -331,7 +332,7 @@ class LoginViewTests(TestCase):
         response = self._login("alice", "wrong-password")
         self.assertContains(
             response,
-            f'<div id="login_error" class="mb-4 text-danger">{self.ERROR}</div>',
+            f'<div id="login_error" class="error-box" role="alert">{self.ERROR}</div>',
             html=True,
         )
         for name, tag in inputs(response).items():
@@ -568,11 +569,11 @@ class RegisterPageGuidanceTests(TestCase):
         self.assertIn("第 1 步／共 2 步：建立帳號", self._main(response))
         self.assertEqual(step_bar(response), (1, 2))
 
-    def test_banner_holds_the_line_and_the_step(self):
-        hero = banner(self.client.get(self.url).content.decode())
-        self.assertIn('<h1 class="auth-hero-title">註冊</h1>', hero)
-        self.assertIn("<p>建立帳號，篩檢結果會幫您存起來。</p>", hero)
-        self.assertIn("第 1 步／共 2 步：建立帳號", hero)
+    def test_the_top_holds_the_title_the_line_and_the_step(self):
+        top = page_top(self.client.get(self.url).content.decode())
+        self.assertIn('<h1 class="h3 mt-4">註冊</h1>', top)
+        self.assertIn('<p class="text-muted">建立帳號，篩檢結果會幫您存起來。</p>', top)
+        self.assertIn("第 1 步／共 2 步：建立帳號", top)
 
     # #360 (spec #354): 出生年 says it is optional in its name; 電子郵件 says what it is for and
     # stays required (RegisterFormTests.test_required_fields).

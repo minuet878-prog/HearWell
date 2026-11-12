@@ -23,6 +23,8 @@ IPHONE_STEPS = (
     "往下滑，點「加入主畫面」。",
     "點右上角的「加入」。",
 )
+# #471: each step beside its number dot (N3).
+STEP = re.compile(r'<span class="step-list-body">(.*?)</span></li>')
 SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 ANDROID_STEPS = (
     "用 Chrome 打開聽伴網站。",
@@ -43,18 +45,19 @@ class AddToHomeTests(TestCase):
         # PhoneBrandsT361Tests.
         for details_attrs, _, summary, body in DETAILS.findall(self.main):
             words = re.search(r"<span>([^<]+)</span>", summary).group(1)
-            self.icons[words] = summary[: summary.index("<span")]
+            self.icons[words] = summary[: summary.index('<span class="fold-row-text">')]
             self.blocks[words] = (details_attrs, body)
 
     def test_each_phone_has_a_decorative_icon(self):
         for words, icon in self.icons.items():
             with self.subTest(summary=words):
-                self.assertRegex(icon, r'^<svg [^>]*aria-hidden="true"')
+                # #471: in the pale blue circle of a list row (E), hidden as a whole.
+                self.assertRegex(icon, r'^<span class="action-card-icon" aria-hidden="true"><svg ')
 
     def test_iphone_block_holds_only_the_iphone_steps_with_the_fallback(self):
         self.assertEqual(list(self.blocks), ["我用 iPhone", "我用 Android"])
         _, body = self.blocks["我用 iPhone"]
-        steps = re.findall(r"<li>(.*?)</li>", body)
+        steps = STEP.findall(body)
         self.assertEqual(steps, list(IPHONE_STEPS))
         self.assertIn("如果沒看到，先點「⋯」再點「分享」。", body)
         for step in ANDROID_STEPS:
@@ -62,7 +65,7 @@ class AddToHomeTests(TestCase):
 
     def test_android_block_holds_only_the_android_steps(self):
         _, body = self.blocks["我用 Android"]
-        self.assertEqual(re.findall(r"<li>(.*?)</li>", body), list(ANDROID_STEPS))
+        self.assertEqual(STEP.findall(body), list(ANDROID_STEPS))
         for step in IPHONE_STEPS:
             self.assertNotIn(step, body)
 
@@ -89,13 +92,16 @@ class AddToHomeTests(TestCase):
         for summary, (_, body) in self.blocks.items():
             with self.subTest(summary=summary):
                 self.assertNotIn("<summary", body)
-        self.assertIn('<details class="dropdown-box', self.main)
+        # #471 (mockup #470): list rows that open (E), as on the privacy notice.
+        self.assertIn('<details class="fold-row">', self.main)
         css = SITE_CSS.read_text(encoding="utf-8")
-        rules = re.findall(r"\.dropdown-box[^{]*\{[^}]*\}", css)
+        rules = re.findall(r"\.fold-row[^{]*\{[^}]*\}", css)
         self.assertTrue(rules)
         # Tap target of at least 44px (2.75rem); hover and press change colour, never position
         # (ADR 0006).
-        self.assertTrue(any("min-height: var(--spacing-touch)" in rule for rule in rules))
+        heights = [float(h) for rule in rules for h in re.findall(r"min-height: ([\d.]+)rem", rule)]
+        self.assertTrue(heights)
+        self.assertGreaterEqual(min(heights), 2.75)
         self.assertTrue(any(":hover" in rule for rule in rules))
         self.assertTrue(any(":active" in rule for rule in rules))
         for rule in rules:

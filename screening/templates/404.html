@@ -1,0 +1,11 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}找不到這一頁｜聽伴{% endblock %}
+
+{% block body %}
+{# #471 (mockup #470 group 8): Django's default 404 view renders this; the same layout as a lapsed share link. #}
+<h1 class="h3 mt-4">找不到這一頁</h1>
+<p>網址可能打錯了，或這一頁已經搬家。請回首頁再找一次。</p>
+<a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回首頁</a>
+<p class="mt-6 wrap-anywhere">一直找不到的話，請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+{% endblock %}

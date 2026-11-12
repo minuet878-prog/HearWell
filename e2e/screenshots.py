@@ -315,9 +315,10 @@ class Screenshots(StaticLiveServerTestCase):
         if shot.javascript:
             expect(page.get_by_text("趨勢圖載入中…")).to_have_count(0)
             expect(page.locator("html.answer-loading")).to_have_count(0)
+            # Attached, not visible: on the report the audiogram waits in a closed fold (#471).
             for mount, drawn in (("#audiogram-chart", "svg"), ("#audiogram-app", ".step-progress")):
                 if page.locator(mount).count():
-                    expect(page.locator(f"{mount} {drawn}").first).to_be_visible()
+                    expect(page.locator(f"{mount} {drawn}").first).to_be_attached()
         page.evaluate("document.fonts.ready")
         if page.locator("#trend-chart, #audiogram-chart, #audiogram-app").count():
             page.wait_for_timeout(SETTLE_MS)

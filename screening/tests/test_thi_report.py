@@ -42,7 +42,7 @@ class ThiReportPartTests(ThiReportTestCase):
                 self.assertIn(f"THI（最近一次 {_day(latest)}）", thi)
                 self.assertIn(
                     '<span class="report-score">58 分</span>（滿分 100） '
-                    '<span class="report-level report-level-severe">重度障礙</span>',
+                    '<span class="level-badge level-badge-severe">重度障礙</span>',
                     thi,
                 )
                 self.assertIn("助聽器：有戴", thi)
@@ -84,7 +84,7 @@ class ThiReportPartTests(ThiReportTestCase):
                 summary = test_report._section(response.content.decode(), "report-summary")
                 self.assertIn(
                     f"<li>THI（{_day(latest)}）：58 分，"
-                    '<span class="report-level report-level-severe">重度障礙</span>'
+                    '<span class="level-badge level-badge-severe">重度障礙</span>'
                     "，助聽器：有戴</li>",
                     summary,
                 )
@@ -102,7 +102,7 @@ class ThiReportPartTests(ThiReportTestCase):
             with self.subTest(page=page):
                 content = response.content.decode()
                 self.assertIn(
-                    '<span class="report-level report-level-normal">無障礙或輕微障礙</span>',
+                    '<span class="level-badge level-badge-normal">無障礙或輕微障礙</span>',
                     content,
                 )
                 self.assertNotIn(support, content)
@@ -218,7 +218,7 @@ class ThiSameResultEverywhereTests(ThiReportTestCase):
         )
         on_report = re.search(
             r'<span class="report-score">(\d+) 分</span>.*?'
-            r'<span class="report-level[^"]*">([^<]+)<',
+            r'<span class="level-badge[^"]*">([^<]+)<',
             report,
         ).groups()
         self.assertEqual(

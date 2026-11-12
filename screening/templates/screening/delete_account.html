@@ -16,7 +16,8 @@
     <li>助聽器與補助資料（您在選配路線上的回答，以及看過哪幾個選配指引章節）</li>
     <li>同意紀錄</li>
 </ul>
-<p>想留一份紀錄的話，請先<a class="inline-link" href="{% url 'download_my_data' %}" download>下載我的資料</a>。</p>
+{# #471 (mockup #470): in a 提示框 (P3), apart from the list above. #}
+<p class="tip-box">想留一份紀錄的話，請先<a class="inline-link" href="{% url 'download_my_data' %}" download>下載我的資料</a>。</p>
 {# #361: as narrow as the login form, but starting where the text above starts. #}
 <form id="delete-account-form" method="post" class="max-w-form">
     {% csrf_token %}
@@ -25,9 +26,10 @@
         <input {% if form.password.errors %}autofocus aria-invalid="true" aria-describedby="id_password_error" {% endif %}class="form-control" id="id_password" type="password" name="password" autocomplete="current-password" required>
         {% include "screening/field_messages.html" with field=form.password %}
     </div>
-    <div class="flex flex-wrap gap-4">
-        <button type="submit" class="btn btn-danger btn-lg">刪除帳號</button>
-        <a class="btn btn-outline-primary btn-lg" href="{% url 'account_settings' %}">取消</a>
+    {# #471 (D4): deleting is the page's one solid button, in red; cancelling the blue frame under it. #}
+    <div class="flex flex-col gap-3">
+        <button type="submit" class="btn btn-danger btn-lg w-full">刪除帳號</button>
+        <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'account_settings' %}">取消</a>
     </div>
 </form>
 {% endif %}
