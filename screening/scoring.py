@@ -132,9 +132,6 @@ NEXT_STEP_REASONS = {
     "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
-    # without a 目前這一站
-    "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
-    "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",
 }
 # The 照顧旅程's five steps (ADR 0042), step 1 first.
 CARE_JOURNEY_STEPS = (

@@ -44,7 +44,6 @@ FITTING_MONTHS = 3  # IOI-HA once hearing aids are worn 3 months (spec #453 Q8)
 class HomeCard:
     title: str
     href: str
-    icon: str  # an action_icon.html icon
 
 
 @dataclass(frozen=True)
@@ -52,7 +51,6 @@ class NextStep:
     """A result page's 建議下一步 (result_next.html)."""
 
     card: HomeCard
-    because: str
     button: str
     suggested: str | None  # "print" or "share" off the journey, so the page drops that card
 
@@ -248,9 +246,9 @@ def next_step(user, today):
     card = care_journey(user, today).card
     if card.button is not None:
         text, href = card.button
-        return NextStep(HomeCard(card.title, href, card.icon), card.because, text, None)
+        return NextStep(HomeCard(card.title, href), text, None)
     if user.report_shares.exists():
-        print_card = HomeCard("印聽力報告給醫師看", reverse("health_report"), "report")
-        return NextStep(print_card, NEXT_STEP_REASONS["print"], "去印報告", "print")
-    share_card = HomeCard("分享報告給家人", reverse("share_report"), "share")
-    return NextStep(share_card, NEXT_STEP_REASONS["share"], "去分享", "share")
+        print_card = HomeCard("印聽力報告給醫師看", reverse("health_report"))
+        return NextStep(print_card, "去印報告", "print")
+    share_card = HomeCard("分享報告給家人", reverse("share_report"))
+    return NextStep(share_card, "去分享", "share")
