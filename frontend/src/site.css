@@ -203,7 +203,9 @@
   width: 100%;
   max-width: var(--container-content);
   margin-inline: auto;
-  padding-inline: 0.75rem;
+  /* An iPhone turned sideways keeps the words clear of its camera notch (viewport-fit=cover). */
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
 }
 
 
@@ -573,6 +575,20 @@
     background-color: #fff;
     border-bottom: 1px solid var(--color-line);
     color: var(--color-primary);
+    /* viewport-fit=cover (layout.html) lets the page run under the iPhone's status bar; the
+       header's white fills it and its contents start below. 0 everywhere else. */
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* An iPhone home-screen app softly blurs about 1.25rem more under its status bar (iOS 26 on),
+     which the page cannot turn off: the logo and logout start below it. Only iOS reads
+     -webkit-touch-callout, so Android's home-screen app keeps the plain header. */
+  @media (display-mode: standalone) {
+    @supports (-webkit-touch-callout: none) {
+      .site-header {
+        padding-top: calc(env(safe-area-inset-top) + 1.5rem);
+      }
+    }
   }
 
   .site-header-bar {
@@ -925,7 +941,8 @@
       bottom: 0;
       left: 0;
       z-index: 1030;
-      padding: 0 12px calc(6px + env(safe-area-inset-bottom));
+      padding: 0 calc(12px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom))
+        calc(12px + env(safe-area-inset-left));
       background-color: transparent;
       pointer-events: none;
     }
@@ -1004,8 +1021,8 @@
      phones it sits above the tab bar (--tab-bar-height). */
   .back-to-top {
     position: fixed;
-    right: 1rem;
-    bottom: 1rem;
+    right: calc(1rem + env(safe-area-inset-right));
+    bottom: calc(1rem + env(safe-area-inset-bottom));
     z-index: 1020;
     white-space: nowrap;
     visibility: hidden;

@@ -845,6 +845,13 @@ class PwaTests(TestCase):
                     head, rf'<link rel="apple-touch-icon" href="{self.STATIC}apple-touch-icon\.png'
                 )
                 self.assertIn('<meta name="apple-mobile-web-app-title" content="聽伴">', head)
+                # Without viewport-fit=cover an iPhone reports every safe-area inset as 0, so the
+                # home-screen app's tab bar sat on the home indicator (2026-11-12).
+                self.assertIn(
+                    '<meta name="viewport" content="width=device-width, initial-scale=1, '
+                    'viewport-fit=cover">',
+                    head,
+                )
 
     # 19
     def test_manifest_fields(self):
