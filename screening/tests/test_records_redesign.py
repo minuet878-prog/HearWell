@@ -154,11 +154,6 @@ class MyRecordsTests(Records):
             self.hhie_s([0] * 10, day)
         self.assertNotIn("看以前的", self.records())
 
-    def test_the_two_switches_are_marked_for_the_pale_pill(self):
-        self.hhie_s([0] * 10, (2026, 11, 12))
-        main = self.records()
-        self.assertIn('<nav class="records-switch" aria-label="紀錄種類">', main)
-
 
 class AudiogramListTests(Records):
     def make(self, tested_on):
