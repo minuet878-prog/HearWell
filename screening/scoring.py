@@ -157,8 +157,17 @@ def fitting_countdown_text(days):
     return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
 
 
-def retest_countdown_text(day, days):
-    return f"下次篩檢 {day:%Y/%m/%d}，還有 {days} 天。"
+# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
+RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
+# What each step is, said when it is opened on the home page (#459 I1): drafts the owner
+# settles on review, step 1 first.
+CARE_JOURNEY_ABOUT = (
+    LIFE_IMPACT_BECAUSE,
+    "選配指引要用聽力圖才能整理下一步。",
+    "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+    "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
+    RETEST_COUNTDOWN_TEXT,
+)
 
 
 # The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,

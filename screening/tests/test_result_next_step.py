@@ -1,7 +1,6 @@
 """#304 (spec #297, ADR 0023): every result page shows the 建議您下一步; since #455 (ADR 0042)
-it is the 照顧旅程's 現在這一步. The old home page still suggests by home_more until #459, so
-the two may differ meanwhile. #461 (the #460 mockup R1): the card has its title and button, no
-「因為」, and sharing and printing are list rows below it."""
+it is the 照顧旅程's 現在這一步, as on the home page (#459). #461 (the #460 mockup R1): the card
+has its title and button, no 「因為」, and sharing and printing are list rows below it."""
 
 import re
 from io import StringIO
@@ -12,9 +11,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.care_journey import care_journey
-from screening.models import Answer, NormGroup, Questionnaire, Submission
+from screening.models import Answer, NormGroup, Questionnaire, ReportShare, Submission
 from screening.questionnaires import hhie_s
-from screening.tests import test_home_next_step, test_result_pages
+from screening.tests import test_guide_summary, test_result_pages
 from screening.tests.helpers import consented_user
 
 SUGGESTIONS = (
@@ -44,13 +43,34 @@ class ResultNextStepTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         call_command("seed_questionnaires", stdout=StringIO())
-        # What the home page tests' answer() needs: HHIE-S and its questions.
+        # What answer() needs: HHIE-S and its questions.
         cls.hhie_s = Questionnaire.objects.get(code=hhie_s.CODE)
         cls.questions = list(cls.hhie_s.questions.all())
 
-    answer = test_home_next_step.HomeNextStepTests.answer
-    make = test_home_next_step.HomeNextStepTests.make
-    suggest = test_home_next_step.HomeNextStepTests.suggest
+    make = test_guide_summary.GuideSummaryTests.make
+
+    def answer(self):
+        submission = Submission.objects.create(
+            user=self.user, questionnaire=self.hhie_s, wearing_hearing_aid=False
+        )
+        Answer.objects.bulk_create(
+            Answer(submission=submission, question=question, score=0) for question in self.questions
+        )
+
+    def suggest(self, suggestion):
+        """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
+        self.answer()
+        if suggestion == "記錄醫院的聽力圖":
+            return
+        if suggestion == "修改這張聽力圖":
+            audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
+            audiogram.points.filter(ear="left", frequency=4000).delete()
+        elif suggestion == "了解助聽器選配與補助":
+            self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
+        else:
+            self.make((20, 20, 20, 20), (20, 20, 20, 20))
+            if suggestion == "印聽力報告給醫師看":
+                ReportShare.objects.create(user=self.user, revoked_at=timezone.now())
 
     def next_step(self, main):
         """(title, button href, button text) of the page's one 建議您下一步 card."""
