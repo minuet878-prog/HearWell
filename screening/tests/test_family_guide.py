@@ -96,8 +96,14 @@ TIPS = {
         ),
     ),
 }
-# The shared report's help cards link to these (#194).
-ANCHORS = ("talk-title", "aid-title", "urgent-title")
+# The shared report's help cards link to these (#194); #469 moved 怎麼跟聽損的家人說話 to its own
+# page (family_talk), where the talk tips and their sources are now.
+ANCHORS = ("aid-title", "urgent-title")
+# Each page and the topics whose sources it lists, in order.
+PAGE_TOPICS = (
+    ("family_talk", ("怎麼跟聽損的家人說話",)),
+    ("family_guide", ("陪伴配戴助聽器", "什麼時候要馬上就醫")),
+)
 LINK_TEXT = "家人專區：溝通與陪伴"
 DISCLAIMER = "這些是一般性的建議，不能取代醫師或聽力師的診斷"
 
@@ -116,33 +122,36 @@ class FamilyGuideTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "家人專區")
 
-    # 2; #240 moved the sources to the page's end, one group per topic under its title.
+    # 2; #240 moved the sources to the page's end, one group per topic under its title. #469: in
+    # a 出處 fold, each page with its own topics' sources.
     def test_topics_in_order_with_sources_grouped_at_the_end(self):
         content = self.client.get(self.url).content.decode()
         headings = [content.index(f'id="{anchor}"') for anchor in ANCHORS]
         self.assertEqual(headings, sorted(headings))
-        start = content.index('id="sources-title"')
-        sources = content[start : content.index("</section>", start)]
-        positions = [sources.index(f"<h3>{topic}</h3>") for topic in TOPICS]
-        self.assertEqual(positions, sorted(positions))
-        ends = [*positions[1:], len(sources)]
-        for (topic, topic_sources), start, end in zip(TOPICS.items(), positions, ends, strict=True):
-            group = sources[start:end]
-            text = re.sub(r"<[^>]+>", "", group)
-            for wording, url in topic_sources:
-                with self.subTest(topic=topic, url=url):
-                    self.assertIn(f'href="{url}"', group)
-                    self.assertIn(wording, text)
-        self.assertNotIn("（英文）", content)
-        self.assertIn("119", content)
+        for name, topics in PAGE_TOPICS:
+            content = self.client.get(reverse(name)).content.decode()
+            start = content.index('<details class="result-details family-sources">')
+            sources = content[start : content.index("</details>", start)]
+            positions = [sources.index(f"<h3>{topic}</h3>") for topic in topics]
+            self.assertEqual(positions, sorted(positions))
+            ends = [*positions[1:], len(sources)]
+            for topic, start, end in zip(topics, positions, ends, strict=True):
+                group = sources[start:end]
+                text = re.sub(r"<[^>]+>", "", group)
+                for wording, url in TOPICS[topic]:
+                    with self.subTest(topic=topic, url=url):
+                        self.assertIn(f'href="{url}"', group)
+                        self.assertIn(wording, text)
+            self.assertNotIn("（英文）", content)
+        self.assertIn("119", self.client.get(self.url).content.decode())
 
-    # #354: a heading names the section, without a colon after it.
+    # #354: a heading names the section, without a colon after it. #469: the 出處 fold's row.
     def test_sources_heading_has_no_colon(self):
-        self.assertContains(
-            self.client.get(self.url), '<h2 id="sources-title" class="h4">出處</h2>'
-        )
+        for name in ("family_guide", "family_talk"):
+            with self.subTest(page=name):
+                self.assertContains(self.client.get(reverse(name)), "<span>出處</span>")
 
-    # #240: the order of comparison row 15, option A.
+    # #240: the order of comparison row 15, option A; #469: the #468 mockup A.
     def test_blocks_in_the_redesigned_order(self):
         content = self.client.get(self.url).content.decode()
         main = content[content.index("<main") : content.index("</main>")]
@@ -150,27 +159,28 @@ class FamilyGuideTests(TestCase):
             "<h1",
             "家人有聽力困難時",
             'aria-label="專區內容"',
-            'id="talk-title"',
             'id="aid-title"',
+            'id="share-button"',
             'id="urgent-title"',
             DISCLAIMER,
-            'id="share-title"',
-            'id="sources-title"',
+            'class="result-details family-sources"',
         )
         positions = [main.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
 
     # #240: the bold point on one line, the rest on the next, without the colon between them.
+    # #469: the talk tips on their own page, each under its drawing; the aid tips in their fold.
     def test_each_tip_puts_its_point_above_the_rest(self):
-        content = self.client.get(self.url).content.decode()
-        for anchor, tips in TIPS.items():
-            start = content.index(f'id="{anchor}"')
-            section = content[start : content.index("</section>", start)]
+        for name, anchor in (("family_talk", "talk-title"), ("family_guide", "aid-title")):
+            content = self.client.get(reverse(name)).content.decode()
             found = re.findall(
-                r'<li><strong class="tip-point[^"]*">([^<]+)</strong>([^<]+)</li>', section
+                r'<li>(?:<svg class="care-drawing".*?</svg>\s*)?'
+                r'<strong class="tip-point[^"]*">([^<]+)</strong>([^<]+)</li>',
+                content,
+                re.S,
             )
             with self.subTest(anchor=anchor):
-                self.assertEqual(tuple(found), tips)
+                self.assertEqual(tuple(found), TIPS[anchor])
 
     # 3
     def test_user_without_consent_can_read_it(self):
@@ -210,11 +220,12 @@ class CopyAddressT361Tests(TestCase):
 
     def setUp(self):
         content = self.client.get(reverse("family_guide")).content.decode()
-        self.share = content[content.index('aria-labelledby="share-title"') :]
-        self.share = self.share[: self.share.index("</section>")]
+        # #469: the buttons under the zone's list, the address under the disclaimer.
+        self.share = content[content.index('id="share-button"') :]
+        self.share = self.share[: self.share.index("</p>", self.share.index("可以複製這個網址"))]
         self.content = content
 
-    def test_copy_button_under_the_address_hidden_until_the_script_shows_it(self):
+    def test_copy_button_hidden_until_the_script_shows_it_the_address_below(self):
         address = "https://testserver" + reverse("family_guide")
         button = re.search(r'<button id="copy-link"([^>]*)>(.*?)</button>', self.share)
         self.assertIsNotNone(button)
@@ -224,6 +235,6 @@ class CopyAddressT361Tests(TestCase):
         self.assertIn("data-without-share-sheet", attrs)
         # Without JavaScript the button never shows and the address is there to copy by hand.
         self.assertRegex(attrs, r"\shidden(\s|$)")
-        self.assertLess(self.share.index(f">{address}<"), self.share.index('id="copy-link"'))
+        self.assertLess(self.share.index('id="copy-link"'), self.share.index(f">{address}<"))
         self.assertIn('id="copy-status"', self.share)
         self.assertIn("screening/copy-link.js", self.content)

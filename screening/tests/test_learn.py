@@ -16,9 +16,6 @@ GUIDE_CHAPTERS = (
     "form-25",
 )
 
-GROUP = re.compile(
-    r'<div class="more-group">\s*<h2 class="more-group-title">([^<]*)</h2>(.*?)</div>', re.S
-)
 CARD = re.compile(
     r'<li><a class="link-card action-card" href="([^"]*)">\s*'
     r'<span class="action-card-icon" aria-hidden="true" data-icon="([^"]+)"><svg[^>]*>.+?</svg>'
@@ -29,26 +26,26 @@ CARD = re.compile(
 
 
 class LearnPageTests(TestCase):
-    """#269 (spec #268 了解入口頁): the public entry to guides and family help, in groups."""
+    """#269 (spec #268 了解入口頁): the public entry to guides and family help. #469 (the #468
+    mockup A): one list of rows (E) under the page title, without the three group titles."""
 
-    def groups(self):
+    def cards(self):
         response = self.client.get(reverse("learn"))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertRegex(content, r"<h1[^>]*>了解</h1>")
-        return [(title, CARD.findall(cards)) for title, cards in GROUP.findall(content)]
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertEqual(re.findall(r"<h(\d)[^>]*>([^<]*)</h\d>", main), [("1", "了解")])
+        self.assertEqual(main.count("<ul"), 1)
+        return CARD.findall(main)
 
     def assert_groups(self):
         self.assertEqual(
-            self.groups(),
+            self.cards(),
             [
-                ("助聽器", [(reverse("guide"), "guide", "了解助聽器選配與補助")]),
-                (
-                    "溝通與照顧",
-                    [(reverse("family_guide"), "family", "家人專區：溝通與陪伴")],
-                ),
+                (reverse("guide"), "guide", "了解助聽器選配與補助"),
+                (reverse("family_guide"), "family", "家人專區：溝通與陪伴"),
                 # #397 (spec #396): the Q&A assistant's entry.
-                ("有問題想問", [(reverse("qa_home"), "question", "問答小助手：常見問題一次查")]),
+                (reverse("qa_home"), "question", "問答小助手：常見問題一次查"),
             ],
         )
 
@@ -74,6 +71,7 @@ class LearnPageTests(TestCase):
             reverse("guide"),
             *(reverse("guide_chapter", args=[slug]) for slug in GUIDE_CHAPTERS),
             reverse("family_guide"),
+            reverse("family_talk"),
             # #397: the Q&A assistant opens from the 了解 page.
             reverse("qa_home"),
             reverse("qa_answer", args=["my-results"]),

@@ -188,22 +188,22 @@ class SharedReportHighlightsTests(TestCase):
         self.assertEqual(
             links,
             [
-                ("/family#talk-title", "怎麼跟聽損的家人說話"),
+                ("/family/talk", "怎麼跟聽損的家人說話"),
                 ("/family#aid-title", "陪伴配戴助聽器"),
                 ("/family#urgent-title", "什麼時候要馬上就醫"),
             ],
         )
+        # #469: 怎麼跟聽損的家人說話 has a page of its own; 陪伴配戴助聽器 folds in the zone's list.
+        talk = self.client.get(reverse("family_talk")).content.decode()
+        self.assertRegex(talk, r"<h1[^>]*>怎麼跟聽損的家人說話</h1>")
         guide = self.client.get(reverse("family_guide")).content.decode()
-        for anchor, title in (
-            ("talk-title", "怎麼跟聽損的家人說話"),
-            ("aid-title", "陪伴配戴助聽器"),
-            ("urgent-title", "什麼時候要馬上就醫"),
-        ):
-            with self.subTest(anchor=anchor):
-                # #240 put a decorative icon before each title.
-                self.assertRegex(
-                    guide, rf'id="{anchor}"[^>]*>(<svg [^>]*aria-hidden="true".*?</svg>)?{title}<'
-                )
+        self.assertRegex(guide, r'(?s)<details id="aid-title"[^>]*>.*?>陪伴配戴助聽器</span>')
+        # #240 put a decorative icon before the title.
+        self.assertRegex(
+            guide,
+            r'id="urgent-title"[^>]*>(<svg [^>]*aria-hidden="true".*?</svg>)?'
+            r"什麼時候要馬上就醫<",
+        )
 
     def test_help_links_carry_no_share_token_and_the_page_sends_no_referrer(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)

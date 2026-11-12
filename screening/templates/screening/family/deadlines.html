@@ -45,7 +45,8 @@
         {% include "screening/field_messages.html" %}
     </div>
     {% endfor %}
-    <button class="btn btn-primary btn-lg w-full">{{ submit_label }}</button>
+    {# #469: once there are dates, print is the one solid button and this turns a blue outline. #}
+    <button class="btn {% if results %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg w-full">{{ submit_label }}</button>
 </form>
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>

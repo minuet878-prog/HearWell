@@ -14,18 +14,19 @@
 <h1 class="h3 mt-4">{{ faq.question }}</h1>
 {# The owner reviews every answer in content.py (ADR 0033): written as HTML there. #}
 {{ faq.answer|safe }}
-{# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the pale blue tip box. #}
+{# The owner's pick (2026-10-27, B): the answer stays on the page, only this reminder in the tip box (pale grey since ADR 0041). #}
 <p class="tip-box mt-4">以上是一般說明，您的情況請以醫師、聽力師為準。</p>
 </article>
 {# The guide chapters' sources and check date (chapter.html), without their 法規、金額 line. #}
 <footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
-    <details class="dropdown-box mb-2">
-        <summary>資料來源</summary>
-        <ul>
+    {# #469 (the #468 mockup): folded into a row like a result page's 看完整說明. #}
+    <details class="result-details">
+        {% include "screening/result_details_summary.html" with title="資料來源" %}
+        <div class="result-details-body"><ul class="mb-0">
             {% for title, url in faq.sources %}
             <li><a href="{{ url }}">{{ title }}</a></li>
             {% endfor %}
-        </ul>
+        </ul></div>
     </details>
     <p class="guide-checked">本頁資料查核於 {{ faq.checked_on|date:"Y/m/d" }}。</p>
 </footer>
@@ -38,8 +39,8 @@
     {% endfor %}
 </ul>
 {% endif %}
-{# A pale blue block like the home page's 找不到？打字問, not a white card: only its button is tapped (ADR 0022). #}
-<section class="qa-ask mt-6" aria-labelledby="qa-more-title">
+{# #469: on the white page with its outline button (ADR 0041). #}
+<section class="mt-6" aria-labelledby="qa-more-title">
     <h2 id="qa-more-title" class="h4">沒回答到您的問題？</h2>
     <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'qa_home' %}">回問答小助手首頁</a>
 </section>

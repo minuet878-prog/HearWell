@@ -115,7 +115,7 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
 
     def _groups(self, chunk):
         """{group title: its lines} for the groups in an option's HTML."""
-        groups = re.findall(r"<h3[^>]*>([^<]+)</h3>\s*<ul[^>]*>(.*?)</ul>", chunk, re.S)
+        groups = re.findall(r'<p class="part-label">([^<]+)</p>\s*<ul[^>]*>(.*?)</ul>', chunk, re.S)
         return {title: re.findall(r"<li>([^<]+)</li>", lines) for title, lines in groups}
 
     # The one to see a doctor comes first, so no one spends time checking the aid before it.
@@ -201,7 +201,7 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertLess(self.main.index('href="#problems-title"'), self.main.index("<h2"))
 
     def test_foot_has_sources_and_checked_date(self):
-        foot = self.main[self.main.index('id="sources-title"') :]
+        foot = self.main[self.main.index('<details class="result-details family-sources">') :]
         self.assertIn("內容查核於 2026/11/06。", foot)
         self.assertEqual(
             re.findall(r'<li><a href="([^"]+)">([^<]+)</a></li>', foot),

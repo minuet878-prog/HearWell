@@ -221,7 +221,7 @@ class FamilyDeadlinesPageTests(test_family_zone.SignsInWithARecord, TestCase):
 
     def test_foot_has_sources_and_checked_date(self):
         main = self.main(self.get())
-        foot = main[main.index('id="sources-title"') :]
+        foot = main[main.index('<details class="result-details family-sources">') :]
         self.assertIn("內容查核於 2026/10/22。", foot)
         self.assertIn("身心障礙者輔具費用補助辦法", foot)
         self.assertIn("身心障礙者輔具費用補助基準表", foot)
@@ -392,12 +392,13 @@ class FamilyDeadlinesEntryTests(TestCase):
         response = self.client.get(reverse("family_visits"))
         self.main = test_family_zone._main(response.content.decode())
 
-    def test_visits_page_has_the_entry_above_the_checklist(self):
+    # #469 (the #468 mockup A): under the checklist, which comes first.
+    def test_visits_page_has_the_entry_under_the_checklist(self):
         self.assertIn(
             ("/family/visits/deadlines", "clipboard", "期限試算", "輸入日期，算出期限"),
             test_family_zone.ENTRY.findall(self.main),
         )
-        self.assertLess(self.main.index("/family/visits/deadlines"), self.main.index("陪診清單"))
+        self.assertLess(self.main.index("陪診清單"), self.main.index("/family/visits/deadlines"))
 
 
 class Form25ChapterLinkTests(TestCase):

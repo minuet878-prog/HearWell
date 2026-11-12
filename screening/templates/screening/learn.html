@@ -3,44 +3,31 @@
 {% block title %}了解｜聽伴{% endblock %}
 
 {% block body %}
-{# #269 (spec #268): the 了解 tab's entry, cards grouped like the home page's 「您還可以」. #}
-<h1 class="h3 mt-2">了解</h1>
+{# #269 (spec #268): the 了解 tab's entry. #469 (the #468 mockup A): one list of rows (E), the same as the family zone's and the catalogue's, without group titles. #}
 {# #366: card titles wrap into even lines, never one character alone on the last. #}
-<div class="more-group">
-    <h2 class="more-group-title">助聽器</h2>
-    <ul class="list-unstyled text-balance">
-        <li><a class="link-card action-card" href="{% url 'guide' %}">
-            {% include "screening/action_icon.html" with icon="guide" %}
-            <span class="link-card-body">
-                <span class="link-card-title">了解助聽器選配與補助</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
-</div>
-<div class="more-group">
-    <h2 class="more-group-title">溝通與照顧</h2>
-    <ul class="list-unstyled text-balance">
-        <li><a class="link-card action-card" href="{% url 'family_guide' %}">
-            {% include "screening/action_icon.html" with icon="family" %}
-            <span class="link-card-body">
-                <span class="link-card-title">家人專區：溝通與陪伴</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
-</div>
-{# #397 (spec #396): the Q&A assistant, #373's entry 1. #}
-<div class="more-group">
-    <h2 class="more-group-title">有問題想問</h2>
-    <ul class="list-unstyled text-balance">
-        <li><a class="link-card action-card" href="{% url 'qa_home' %}">
-            {% include "screening/action_icon.html" with icon="question" %}
-            <span class="link-card-body">
-                <span class="link-card-title">問答小助手：常見問題一次查</span>
-            </span>
-            <span class="link-card-arrow" aria-hidden="true">›</span>
-        </a></li>
-    </ul>
-</div>
+<h1 class="h3 mt-2">了解</h1>
+<ul class="list-unstyled text-balance">
+    <li><a class="link-card action-card" href="{% url 'guide' %}">
+        {% include "screening/action_icon.html" with icon="guide" %}
+        <span class="link-card-body">
+            <span class="link-card-title">了解助聽器選配與補助</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+    <li><a class="link-card action-card" href="{% url 'family_guide' %}">
+        {% include "screening/action_icon.html" with icon="family" %}
+        <span class="link-card-body">
+            <span class="link-card-title">家人專區：溝通與陪伴</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+    {# #397 (spec #396): the Q&A assistant, #373's entry 1. #}
+    <li><a class="link-card action-card" href="{% url 'qa_home' %}">
+        {% include "screening/action_icon.html" with icon="question" %}
+        <span class="link-card-body">
+            <span class="link-card-title">問答小助手：常見問題一次查</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
 {% endblock %}

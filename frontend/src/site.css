@@ -4676,14 +4676,6 @@
     display: inline-block;
   }
 
-  /* The assistant's 找不到？打字問 and an answer's 沒回答到您的問題？: a flat block on the pale
-     blue of 建議您下一步 (ADR 0022: not white, so only its field and button look tappable). */
-  .qa-ask {
-    padding: 1.25rem 1rem;
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft);
-  }
-
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
      a thin line between them; each link row is a clickable card (.link-card). */
   .settings-group {
@@ -5222,6 +5214,120 @@
 
   .result-details-body .score-bar {
     margin-top: 0.5rem;
+  }
+}
+
+/* #469 learn, family zone and Q&A assistant (the #468 mockup): list rows (E), long content and
+   sources folded into rows like a result page's 看完整說明, the red 馬上就醫 box never folded. */
+@layer components {
+  /* A fold among a list's rows: the row above already draws the line between them. */
+  li + li > .result-details {
+    border-top: 0;
+  }
+
+  /* A fold row's line under its title, as a list row's (T1). */
+  .result-details-note {
+    display: block;
+    color: var(--color-muted);
+    font-weight: 400;
+  }
+
+  /* 點選看說明's 可以試的說法, 下一步 and the like: bold labels in the heading colour, not section
+     titles, so a page keeps one big title. */
+  .part-label {
+    margin: 1rem 0 0.25rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* 陪診清單 (the #468 mockup A): each item a row with a thin line under it and a 26px box. */
+  .family-visits fieldset .visit-check {
+    min-height: 3.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .family-visits fieldset .visit-check input {
+    width: 1.625rem;
+    height: 1.625rem;
+  }
+
+  /* The Q&A assistant's urgent answer: the whole red 馬上就醫 box is its one link, its title in
+     the warning red with the family page's icon, a red arrow at its end. Colour changes only. */
+  .family-urgent-link {
+    container-type: inline-size;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-body);
+    text-decoration: none;
+  }
+
+  .family-urgent-link .link-card-body > h2 {
+    margin-bottom: 0.25rem;
+    color: var(--color-severe);
+  }
+
+  /* The icon sits in the title's first line, so at large text sizes the title wraps under it. */
+  .family-urgent-link h2 .topic-icon {
+    display: inline-block;
+    margin-right: 0.375rem;
+    vertical-align: -0.25em;
+  }
+
+  /* As an action card: at large text sizes the words take the whole width and the arrow drops
+     to the end of a row of its own. */
+  @container (max-width: 15rem) {
+    .family-urgent-link .link-card-body {
+      flex: 1 0 100%;
+    }
+
+    .family-urgent-link .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  .family-urgent-link .link-card-body > span {
+    color: var(--color-body);
+  }
+
+  .family-urgent-link .topic-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-severe);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .family-urgent-link .link-card-arrow {
+    color: var(--color-severe);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .family-urgent-link:hover {
+      background-color: var(--color-severe-bg-deep);
+      color: var(--color-body);
+    }
+  }
+
+  .family-urgent-link:active {
+    background-color: var(--color-severe-bg-deep);
+  }
+
+  .family-urgent-link:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* 依主題找 (the #468 mockup A): each topic tile framed (G), so a tile reads as one thing to
+     tap; the frame is 3.1:1 on white. */
+  .qa-topics .qa-topic.link-card {
+    border: 1.5px solid var(--color-line-strong);
+    border-radius: 1.125rem;
+    padding: 0.875rem;
   }
 }
 

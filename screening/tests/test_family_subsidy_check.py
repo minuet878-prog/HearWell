@@ -466,9 +466,9 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
         result = self._result(main)
         self.assertIn(CAN_APPLY, result)
         self.assertRegex(main, r"<h2[^>]*>檢核結果</h2>")
-        self.assertRegex(result, r"<h3[^>]*>提醒</h3>")
-        self.assertRegex(result, r"<h3[^>]*>下一步</h3>")
-        self.assertNotRegex(result, r"<h3[^>]*>還缺</h3>")
+        self.assertIn('<p class="part-label">提醒</p>', result)
+        self.assertIn('<p class="part-label">下一步</p>', result)
+        self.assertNotIn(">還缺</p>", result)
         self.assertIn("一定要先拿到核定通知再買", result)
         self.assertIn("到戶籍所在地的公所申請", result)
         self.assertRegex(result, r'<a [^>]*href="/guide/form-9"')
@@ -477,7 +477,7 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
         main = self._main(self._post(**_answers(certificate=rules.NEITHER)))
         result = self._result(main)
         self.assertIn(SEE_BELOW, result)
-        self.assertRegex(result, r"<h3[^>]*>還缺</h3>")
+        self.assertIn('<p class="part-label">還缺</p>', result)
         self.assertIn("才能申請這項補助", result)
         self.assertRegex(
             result, r'<a [^>]*href="/guide/assessment#apply-title"[^>]*>怎麼申請鑑定</a>'
@@ -486,9 +486,13 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
             result, r'<a [^>]*href="/guide/form-9#without-certificate"[^>]*>沒有身障證明時</a>'
         )
 
+    # #469 (the #468 mockup): the sources follow the folded questions.
     def test_the_result_foot_has_the_form_9_link_sources_and_checked_date(self):
-        result = self._result(self._main(self._post(**_answers(progress=rules.UNSURE))))
-        self.assertRegex(result, r'<a [^>]*href="/guide/form-9"[^>]*>看九號表的流程</a>')
+        main = self._main(self._post(**_answers(progress=rules.UNSURE)))
+        self.assertRegex(
+            self._result(main), r'<a [^>]*href="/guide/form-9"[^>]*>看九號表的流程</a>'
+        )
+        result = main[main.index("改答案，再檢核一次") :]
         self.assertIn("內容查核於 2026/10/23。", result)
         for url in (
             "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060",
@@ -641,13 +645,14 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
 
 
 class SubsidyCheckEntriesTests(TestCase):
-    def test_visits_page_has_a_card_above_the_checklist(self):
+    # #469 (the #468 mockup A): under the checklist, which comes first.
+    def test_visits_page_has_a_card_under_the_checklist(self):
         main = test_family_zone._main(self.client.get(reverse("family_visits")).content.decode())
         self.assertIn(
             ("/family/visits/subsidy", "clipboard", "補助檢核", "回答幾題，看還缺什麼"),
             test_family_zone.ENTRY.findall(main),
         )
-        self.assertLess(main.index("/family/visits/subsidy"), main.index('id="checklist-title"'))
+        self.assertLess(main.index('id="checklist-title"'), main.index("/family/visits/subsidy"))
 
     def test_the_form_9_chapter_links_to_it_after_its_first_paragraph(self):
         main = test_family_zone._main(
