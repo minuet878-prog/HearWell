@@ -1,8 +1,10 @@
-"""#261 (spec #257): 建議您下一步 and the grouped cards on the returning user's home page."""
+"""#261 (spec #257): the reason for every 目前這一站, on the home page's 現在這一步 card since
+#459 (ADR 0042), and the records the result pages' 建議您下一步 tests (test_result_next_step)
+set up. The rest of the home page is test_home_journey's."""
 
 import re
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -11,10 +13,8 @@ from django.utils import timezone
 
 from screening.fitting_route import fitting_state
 from screening.models import (
-    AidAndSubsidy,
     Answer,
     Category,
-    GuideChapterView,
     Question,
     Questionnaire,
     ReportShare,
@@ -39,33 +39,18 @@ TYPES_AND_PRICES = "因為：可以看看助聽器的種類與價格，比較之
 AFTER_FITTING = "因為：記下開始戴的日期，才算得出什麼時候要做使用效益驗證。"
 PAYOUT = "因為：驗證做完了，接下來看補助什麼時候發、怎麼發。"
 
-RECORD = ("/audiograms/new", "記錄醫院的聽力圖")
-PRINT = ("/report", "印聽力報告給醫師看")
-FAMILY = ("/share", "分享報告給家人")
-GUIDE = ("/guide", "了解助聽器選配與補助")
-ADD_HOME = ("/add_to_home", "加到手機主畫面")
-
 NEXT_STEP = re.compile(
     r'<div class="next-step">\s*<p class="next-step-label">([^<]*)</p>.*?'
-    # h3 on the home page, h2 on a result page (#304, test_result_next_step).
-    r'<h[23] class="next-step-title">([^<]*)</h[23]>\s*</div>\s*'
+    r'<h2 class="next-step-title">([^<]*)</h2>\s*</div>\s*'
     r'<p class="next-step-because">([^<]*)</p>\s*'
     r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
-    re.S,
-)
-GROUP = re.compile(
-    r'<div class="more-group"([^>]*)>\s*<h3 class="more-group-title">([^<]*)</h3>(.*?)</ul>',
-    re.S,
-)
-CARD = re.compile(
-    r'<li><a class="link-card action-card" href="([^"]*)">\s*'
-    r'<span class="action-card-icon" aria-hidden="true" data-icon="([^"]*)">(.*?)</span>\s*'
-    r'<span class="link-card-body">\s*<span class="link-card-title">([^<]*)</span>\s*</span>',
     re.S,
 )
 
 
 class HomeNextStepTests(TestCase):
+    """Records that make a 建議您下一步, for test_result_next_step and the tests below."""
+
     @classmethod
     def setUpTestData(cls):
         cls.hhie_s = Questionnaire.objects.create(questionnaire_name="HHIE-S", code=hhie_s.CODE)
@@ -93,92 +78,16 @@ class HomeNextStepTests(TestCase):
             Answer(submission=submission, question=question, score=0) for question in self.questions
         )
 
-    def section(self):
-        content = self.client.get(reverse("index")).content.decode()
-        found = re.search(
-            r'<section[^>]*aria-labelledby="more-title".*?</section>', content, re.DOTALL
-        )
-        self.assertIsNotNone(found, "no 您還可以 section")
-        return found.group(0)
-
-    def next_step(self, section=None):
-        """(title, because, button href, button text) of the 建議您下一步 card."""
-        found = NEXT_STEP.findall(section or self.section())
+    def next_step(self, page):
+        """(title, because, button href, button text) of a page's 建議您下一步 box."""
+        found = NEXT_STEP.findall(page)
         self.assertEqual(len(found), 1, "not one 建議您下一步 card")
         label, *rest = found[0]
         self.assertEqual(label, "建議您下一步")
         return tuple(rest)
 
-    def groups(self, section=None):
-        """[(group title, [(href, card title)])] in page order."""
-        return [
-            (title, [(href, card_title) for href, _, _, card_title in CARD.findall(cards)])
-            for _, title, cards in GROUP.findall(section or self.section())
-        ]
-
-    def test_without_an_audiogram_it_suggests_recording_one(self):
-        # Acceptance 1.
-        self.answer()
-        self.assertEqual(
-            self.next_step(), ("記錄醫院的聽力圖", NO_AUDIOGRAM, "/audiograms/new", "去記錄")
-        )
-
-    def test_a_stop_on_the_guide_suggests_my_guide_saying_why(self):
-        # Acceptance 2, with spec #291 acceptance 21: the stops records reach in #292.
-        for stop, wearing, ears, read, because in (
-            ("before-you-go", False, (30, 20), (), BEFORE_YOU_GO),
-            ("assessment", False, (55, 55), ("before-you-go",), ASSESSMENT),
-            ("after-fitting", True, None, (), AFTER_FITTING),
-        ):
-            with self.subTest(stop=stop):
-                self.user.audiograms.all().delete()
-                self.user.guide_views.all().delete()
-                self.answer(wearing=wearing)
-                if ears:
-                    self.make(*((pta,) * 4 for pta in ears))
-                for chapter in read:
-                    GuideChapterView.objects.create(user=self.user, chapter=chapter)
-                self.assertEqual(
-                    self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
-                )
-
-    def test_an_audiogram_missing_a_frequency_suggests_editing_it(self):
-        # Acceptance 3; the 記錄醫院的聽力圖 card stays in its group, for another audiogram.
-        self.answer()
-        audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
-        audiogram.points.filter(ear="left", frequency=4000).delete()
-        section = self.section()
-        edit = reverse("audiogram_edit", args=[audiogram.pk])
-        self.assertEqual(
-            self.next_step(section), ("修改這張聽力圖", TOO_LITTLE_DATA, edit, "修改這張聽力圖")
-        )
-        self.assertEqual(self.groups(section)[0], ("聽力圖", [RECORD]))
-
-    def test_without_a_stop_and_never_shared_it_suggests_sharing(self):
-        # Acceptance 4: both ears within 25 dB HL, so no 目前這一站. Another account's link
-        # does not count for this one.
-        self.answer()
-        self.make((20, 20, 20, 20), (20, 20, 20, 20))
-        ReportShare.objects.create(user=consented_user(username="someone_else"))
-        self.assertEqual(self.next_step(), ("分享報告給家人", SHARE, "/share", "去分享"))
-
-    def test_without_a_stop_any_link_ever_shared_suggests_printing(self):
-        # Acceptance 4: an expired or revoked link counts as shared.
-        self.answer()
-        self.make((20, 20, 20, 20), (20, 20, 20, 20))
-        for ended in (
-            {"expires_at": timezone.now() - timedelta(days=1)},
-            {"revoked_at": timezone.now()},
-        ):
-            with self.subTest(ended=list(ended)):
-                self.user.report_shares.all().delete()
-                ReportShare.objects.create(user=self.user, **ended)
-                self.assertEqual(
-                    self.next_step(), ("印聽力報告給醫師看", REPORT, "/report", "去印報告")
-                )
-
     def suggest(self, suggestion):
-        """Records that make the home page suggest `suggestion` (a card title)."""
+        """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
         self.answer()
         if suggestion == "記錄醫院的聽力圖":
             return
@@ -192,119 +101,12 @@ class HomeNextStepTests(TestCase):
             if suggestion == "印聽力報告給醫師看":
                 ReportShare.objects.create(user=self.user, revoked_at=timezone.now())
 
-    def test_the_suggested_card_leaves_its_group_and_an_empty_group_has_no_title(self):
-        # Acceptance 5.
-        for suggestion, groups in (
-            (
-                "記錄醫院的聽力圖",
-                [("給別人看", [PRINT, FAMILY]), ("了解", [GUIDE]), ("方便使用", [ADD_HOME])],
-            ),
-            (
-                "修改這張聽力圖",
-                [
-                    ("聽力圖", [RECORD]),
-                    ("給別人看", [PRINT, FAMILY]),
-                    ("了解", [GUIDE]),
-                    ("方便使用", [ADD_HOME]),
-                ],
-            ),
-            (
-                "了解助聽器選配與補助",
-                [("聽力圖", [RECORD]), ("給別人看", [PRINT, FAMILY]), ("方便使用", [ADD_HOME])],
-            ),
-            (
-                "分享報告給家人",
-                [
-                    ("聽力圖", [RECORD]),
-                    ("給別人看", [PRINT]),
-                    ("了解", [GUIDE]),
-                    ("方便使用", [ADD_HOME]),
-                ],
-            ),
-            (
-                "印聽力報告給醫師看",
-                [
-                    ("聽力圖", [RECORD]),
-                    ("給別人看", [FAMILY]),
-                    ("了解", [GUIDE]),
-                    ("方便使用", [ADD_HOME]),
-                ],
-            ),
-        ):
-            with self.subTest(suggestion=suggestion):
-                self.user = consented_user(username=f"suggested {suggestion}")
-                self.client.force_login(self.user)
-                self.suggest(suggestion)
-                section = self.section()
-                self.assertEqual(self.next_step(section)[0], suggestion)
-                self.assertEqual(self.groups(section), groups)
-                # No title without cards: every group title is one the list above expects.
-                self.assertEqual(section.count('class="more-group-title"'), len(groups))
-
-    def test_every_small_card_has_an_icon(self):
-        # Acceptance 5: each card's icon tile draws something, the audiogram and
-        # add-to-home icons included, and is hidden from screen readers.
-        self.suggest("修改這張聽力圖")  # every small card shows
-        cards = CARD.findall(self.section())
-        self.assertEqual(
-            [(href, icon) for href, icon, _, _ in cards],
-            [
-                ("/audiograms/new", "audiogram"),
-                ("/report", "report"),
-                ("/share", "share"),
-                ("/guide", "guide"),
-                ("/add_to_home", "add-home"),
-            ],
-        )
-        for href, _, svg, _ in cards:
-            with self.subTest(card=href):
-                self.assertRegex(
-                    svg, r'^<svg viewBox="0 0 24 24" focusable="false"><(path|rect|circle)'
-                )
-
-    def test_the_suggestion_is_a_box_with_one_button_not_a_card_link(self):
-        # ADR 0006: only clickable cards lift, so the box itself is no link; its button is.
-        self.answer()
-        section = self.section()
-        box = section[
-            section.index('<div class="next-step">') : section.index('class="more-group"')
-        ]
-        self.assertEqual(box.count("<a "), 1)
-        self.assertNotIn("link-card", box)
-        self.assertRegex(
-            box, r'<span class="action-card-icon" aria-hidden="true" data-icon="audiogram">'
-        )
-
-    def test_only_the_convenience_group_is_marked_for_hiding_in_the_app(self):
-        # Acceptance 6: pwa-nav.js hides [data-hide-in-app] in the home-screen app, so the
-        # whole group, its title too, goes there; the page itself hides nothing, so
-        # without JavaScript it shows.
-        self.answer()
-        section = self.section()
-        marked = [
-            title for attrs, title, _ in GROUP.findall(section) if attrs == " data-hide-in-app"
-        ]
-        self.assertEqual(marked, ["方便使用"])
-        self.assertEqual(section.count("data-hide-in-app"), 1)
-        self.assertNotRegex(section, r"\shidden[\s=>]")  # the HTML attribute, not aria-hidden
-
-    def test_a_new_user_s_home_has_no_suggestion_or_groups(self):
-        # Acceptance 7, with test_home's NewUserHomeTests and test_guide_home_entry's
-        # NewUserGuideEntryTests for the rest of the page.
-        for signed_in in (True, False):
-            with self.subTest(signed_in=signed_in):
-                if not signed_in:
-                    self.client.logout()
-                content = self.client.get(reverse("index")).content.decode()
-                self.assertIn("開始篩檢", content)
-                for part in ("建議您下一步", "next-step", "more-group", "您還可以"):
-                    self.assertNotIn(part, content)
-
 
 class EveryStopNextStepTests(TestCase):
     """#292 (spec #291 acceptance 21): a reason for every stop of the nine, so the home page
     never fails on one. Stops 4, 5, 6, 8 and 9 need answers the later tickets add, so the
-    route's stop is set here on the state the records give."""
+    route's stop is set here on the state the records give: an assessment suggested and not
+    fitted, so the 現在這一步 is step 3, the 目前這一站 (#459)."""
 
     def setUp(self):
         self.user = consented_user(username="every_stop_user")
@@ -319,18 +121,19 @@ class EveryStopNextStepTests(TestCase):
 
     setUpTestData = classmethod(HomeNextStepTests.setUpTestData.__func__)
     answer = HomeNextStepTests.answer
-    section = HomeNextStepTests.section
     next_step = HomeNextStepTests.next_step
 
     make = HomeNextStepTests.make
 
-    def at(self, stop, where="screening.main_flow.fitting_state"):
+    def at(self, stop):
         def state_at(user, today):
             return replace(fitting_state(user, today), stop=stop)
 
-        return patch(where, state_at)
+        return patch("screening.care_journey.fitting_state", state_at)
 
     def test_each_stop_on_the_guide_says_why(self):
+        # On the home page's card, without 「因為：」 (#458 D10).
+        self.make(test_guide_summary.PTA_55, test_guide_summary.PTA_55)
         for stop, because in (
             ("before-you-go", BEFORE_YOU_GO),
             ("assessment", ASSESSMENT),
@@ -341,8 +144,10 @@ class EveryStopNextStepTests(TestCase):
             ("payout", PAYOUT),
         ):
             with self.subTest(stop=stop), self.at(stop):
-                self.assertEqual(
-                    self.next_step(), ("了解助聽器選配與補助", because, "/guide", "看我的選配指引")
+                content = self.client.get(reverse("index")).content.decode()
+                self.assertIn(
+                    f'<p class="journey-card-because">{because.removeprefix("因為：")}</p>',
+                    content,
                 )
 
     def test_each_reworded_stop_says_why_on_a_result_page_too(self):
@@ -369,52 +174,6 @@ class EveryStopNextStepTests(TestCase):
             ),
             ("notice", ("分享報告給家人", SHARE, "/share", "去分享")),
         ):
-            with self.subTest(stop=stop), self.at(stop, "screening.care_journey.fitting_state"):
+            with self.subTest(stop=stop), self.at(stop):
                 content = self.client.get(reverse("result", args=[submission.pk])).content
                 self.assertEqual(self.next_step(content.decode()), expected)
-
-    def test_form_25_says_its_deadline(self):
-        # Fitted 2026/05/01 with 身障補助 at 中階型: form 25 is due by 2026/08/01.
-        AidAndSubsidy.objects.create(
-            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="mid"
-        )
-        with self.at("form-25"):
-            self.assertEqual(
-                self.next_step(),
-                (
-                    "了解助聽器選配與補助",
-                    "因為：您的助聽器要在 2026/08/01 前做使用效益驗證（二十五號表），"
-                    "才能核銷補助。",
-                    "/guide",
-                    "看我的選配指引",
-                ),
-            )
-
-    def test_form_25_done_says_the_payout_comes_next(self):
-        # #296 (spec #291 acceptance 16, 21): on the records alone, not a set stop.
-        AidAndSubsidy.objects.create(
-            user=self.user,
-            fitted_on=date(2026, 5, 1),
-            subsidy="disability",
-            level="mid",
-            form_25_done=True,
-        )
-        self.assertEqual(
-            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
-        )
-
-    def test_basic_at_the_payout_says_it_comes_next_without_form_25(self):
-        # 簡易型 passes form 25 by (#296): the reason does not say form 25 was done.
-        AidAndSubsidy.objects.create(
-            user=self.user, fitted_on=date(2026, 5, 1), subsidy="disability", level="basic"
-        )
-        self.assertEqual(
-            self.next_step(), ("了解助聽器選配與補助", PAYOUT, "/guide", "看我的選配指引")
-        )
-
-    def test_the_date_with_the_subsidy_unanswered_is_still_after_fitting(self):
-        # Spec #291 Q16: without the notice, 配戴之後 is done only once the subsidy is answered.
-        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 5, 1))
-        self.assertEqual(
-            self.next_step(), ("了解助聽器選配與補助", AFTER_FITTING, "/guide", "看我的選配指引")
-        )

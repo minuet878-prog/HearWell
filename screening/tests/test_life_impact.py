@@ -58,20 +58,20 @@ class GradedButNotLifeImpactTests(TestCase):
         self._submit(self.hhie_s, self.hhie_questions, 0, days_ago=200)
         self._submit(self.graded, [self.graded_question], 4, days_ago=10)
         response = self.client.get(reverse("index"))
-        self.assertContains(response, '<div class="result-banner result-banner-normal">')
+        # #459: the 上次結果 tile and 下次篩檢's 已到期 with its link (step 2 is the 現在這一步).
+        self.assertContains(response, '<a class="journey-tile result-banner-normal"')
         self.assertContains(response, "無／極輕微影響")
         self.assertNotContains(response, "假的重分級")
-        self.assertContains(response, "建議再做一次追蹤")
+        self.assertContains(response, '<span class="journey-tile-date">已到期</span>')
         retake = reverse("screening", args=[self.hhie_s.pk])
-        self.assertContains(response, f'href="{retake}">再做一次（大約 3 分鐘）</a>')
+        self.assertContains(response, f'href="{retake}">再做一次</a>')
 
     def test_home_has_no_retest_reminder_when_only_that_questionnaire_was_answered(self):
         self._submit(self.graded, [self.graded_question], 4, days_ago=200)
         response = self.client.get(reverse("index"))
-        self.assertContains(response, "歡迎回來")
-        self.assertNotContains(response, "建議再做一次追蹤")
-        self.assertNotContains(response, "下次建議")
-        self.assertNotContains(response, "再做一次（大約 3 分鐘）")
+        self.assertContains(response, "journey-steps")
+        self.assertNotContains(response, "已到期")
+        self.assertNotContains(response, "再做一次")
 
 
 class LevelColorTests(TestCase):

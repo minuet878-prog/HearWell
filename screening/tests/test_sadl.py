@@ -534,19 +534,20 @@ class SadlRecommendationTests(SadlTestCase):
     def test_home_page_shows_the_overall_score_for_a_sadl_only_history(self):
         sadl_submission(self.user, self.questionnaire)
         page = self.client.get(reverse("index"))
-        self.assertContains(page, "歡迎回來")
-        self.assertContains(page, "整體滿意度：4.0")
-        # Not a life-impact record (#166): no retest reminder of either phrasing.
-        self.assertNotContains(page, "距離上次的生活影響評估")
-        self.assertNotContains(page, "下次建議")
+        # #459: the 照顧旅程, whose 上次結果 tile is a life-impact record's only (spec #453 Q15).
+        self.assertContains(page, "journey-steps")
+        self.assertNotContains(page, "整體滿意度")
+        # Not a life-impact record (#166): no retest reminder.
+        self.assertContains(page, '<span class="journey-tile-date">還沒排</span>')
+        self.assertNotContains(page, "已到期")
         self.assertNotContains(page, "再做一次")
 
     def test_another_users_sadl_record_does_not_make_a_new_user_look_returning(self):
         other = consented_user(username="other_sadl_user", password="Test-pass-12345")
         sadl_submission(other, self.questionnaire)
         page = self.client.get(reverse("index"))
-        self.assertContains(page, "了解聽力對您生活的影響")
-        self.assertNotContains(page, "歡迎回來")
+        self.assertContains(page, "從一份問卷開始")  # the 空狀態首頁 (#459)
+        self.assertNotContains(page, "journey-steps")
 
 
 @override_settings(DEBUG=True)

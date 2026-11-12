@@ -153,10 +153,6 @@ class NewUserHomePromptTests(TestCase):
     def test_visitor_sees_the_prompt(self):
         self.assert_prompt_between_start_button_and_steps()
 
-    def test_signed_in_user_without_records_sees_the_prompt(self):
-        self.client.force_login(consented_user(username="prompt_no_records"))
-        self.assert_prompt_between_start_button_and_steps()
-
     def test_returning_user_keeps_only_the_card_in_their_list(self):
         user = consented_user(username="prompt_returning")
         questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")

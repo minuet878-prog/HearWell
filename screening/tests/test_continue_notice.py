@@ -83,7 +83,7 @@ class ContinueNoticeDataTests(TestCase):
         )
         self.client.force_login(self.user)
         response = self.client.get(reverse("index"))
-        self.assertContains(response, "welcome-band")
+        self.assertContains(response, "journey-steps")
         self.assertEqual(self._data(reverse("index")), self._expected())
 
     def test_screening_pages_list_them(self):

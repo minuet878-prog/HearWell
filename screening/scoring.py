@@ -145,8 +145,8 @@ def fitting_countdown_text(days):
     return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
 
 
-def retest_countdown_text(day, days):
-    return f"下次篩檢 {day:%Y/%m/%d}，還有 {days} 天。"
+# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
+RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
 
 
 # The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,

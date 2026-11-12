@@ -1,6 +1,5 @@
 """#304 (spec #297, ADR 0023): every result page shows the 建議您下一步; since #455 (ADR 0042)
-it is the 照顧旅程's 現在這一步. The old home page still suggests by home_more until #459, so
-the two may differ meanwhile."""
+it is the 照顧旅程's 現在這一步, as on the home page (#459)."""
 
 import re
 from io import StringIO
@@ -43,7 +42,6 @@ class ResultNextStepTests(TestCase):
     answer = test_home_next_step.HomeNextStepTests.answer
     make = test_home_next_step.HomeNextStepTests.make
     suggest = test_home_next_step.HomeNextStepTests.suggest
-    section = test_home_next_step.HomeNextStepTests.section
     next_step = test_home_next_step.HomeNextStepTests.next_step
 
     def sign_in(self, username):

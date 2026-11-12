@@ -580,11 +580,6 @@ class PageFlowTests(TestCase):
         start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
         self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
-    def test_home_order_for_logged_in_without_hint(self):
-        main = self._main(self.client.get(reverse("index")))
-        self._assert_in_order(main, self.HOME_ORDER)
-        self.assertNotIn(self.HINT, main)
-
     def test_home_has_no_missing_features(self):
         # HHIE-S is allowed since phase9_ui_refresh_4a_home.md (result preview, trust block).
         for logged_in in (True, False):
@@ -1167,13 +1162,10 @@ class HomeTests(TestCase):
 
     # 1
     def test_illustration_first_and_hidden(self):
-        for logged_in in (False, True):
-            if logged_in:
-                self.client.force_login(consented_user(username="hometester"))
-            with self.subTest(logged_in=logged_in):
-                main = self._main()
-                self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
-                self.assertLess(main.index("home-illustration"), main.index("<h1"))
+        # The visitor's home only: a signed-in user's has none since #459 (test_home_journey).
+        main = self._main()
+        self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
+        self.assertLess(main.index("home-illustration"), main.index("<h1"))
 
     # 3
     def test_step_cards(self):
