@@ -95,15 +95,22 @@ class GradedResult(Result):
 
     @cached_property
     def since_last(self):
-        # Against this questionnaire's record just before this one, even when a newer one exists
-        # (spec #453 acceptance 26); None for the first, or when either cannot be graded.
+        # Against this questionnaire's record just before this one worn the same way, even when
+        # a newer one exists (spec #453 acceptance 26; the owner on #461: worn against not worn
+        # is the wearing comparison's). The same rule as 我的紀錄's previous_same_wearing: no
+        # hearing aid status, no comparison. None also for the first, or when either cannot be
+        # graded.
         from screening.models import Submission
         from screening.scoring import UNKNOWN, level_change_text, result_since_last_text
 
         submission = self.submission
+        if submission.wearing_hearing_aid is None:
+            return None
         previous = (
             Submission.objects.filter(
-                user_id=submission.user_id, questionnaire_id=submission.questionnaire_id
+                user_id=submission.user_id,
+                questionnaire_id=submission.questionnaire_id,
+                wearing_hearing_aid=submission.wearing_hearing_aid,
             )
             .filter(
                 Q(created_at__lt=submission.created_at)
