@@ -6,7 +6,8 @@ from screening.models import purge_question_log
 class Command(BaseCommand):
     help = (
         "Count each question log entry over 90 days into its month's stats, then delete it "
-        "(#401; run on each deploy, since there is no scheduler)."
+        "(#401, #452; run every day at 02:30 on the VPS, and also when a question is saved or "
+        "the admin is opened)."
     )
 
     def handle(self, *args, **options):
