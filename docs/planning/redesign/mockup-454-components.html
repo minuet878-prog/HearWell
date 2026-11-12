@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#454 共用元件比較頁（第二版）</title>
+<style>
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --severe: #8f2a12; --severe-bg: #feece7;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); }
+  .group { margin: 44px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 900px; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .bad { color: #fff; background: #b02a37; border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .phone { background: #fff; border-radius: 28px; padding: 22px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--muted); line-height: 1; }
+  .blue { color: var(--primary) !important; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .t-sub { display: block; font-size: 16px; color: var(--muted); }
+  .grow { flex: 1; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---------- 1 type ---------- */
+  .ty1 h3 { font-size: 28px; color: var(--heading); margin: 0 0 10px; line-height: 1.3; }
+  .ty1 h4 { font-size: 22px; color: var(--heading); margin: 22px 0 6px; }
+  .ty2 h3 { font-size: 34px; color: var(--heading); margin: 0 0 10px; line-height: 1.25; letter-spacing: .02em; }
+  .ty2 h4 { font-size: 24px; color: var(--heading); margin: 24px 0 6px; }
+  .ty3 .eyebrow { display: block; font-size: 16px; font-weight: 700; color: var(--primary); letter-spacing: .05em; }
+  .ty3 h3 { font-size: 28px; color: var(--heading); margin: 2px 0 10px; line-height: 1.3; }
+  .ty3 h4 { font-size: 22px; color: var(--heading); margin: 22px 0 6px; }
+  .ty4 h3 { font-size: 28px; color: var(--heading); margin: 0 0 10px; line-height: 1.3; }
+  .ty4 h4 { font-size: 22px; color: var(--heading); margin: 24px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--line); }
+  .ty p { margin: 0 0 10px; }
+  .ty .src { font-size: 16px; color: var(--muted); }
+
+  /* ---------- 2 tappable ---------- */
+  .tap { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 14px 16px; margin-top: 10px; border-radius: 16px; }
+  .tA { border: 1.5px solid var(--line-strong); }
+  .tB { background: var(--surface); }
+  .tD { background: #fff; box-shadow: 0 2px 10px rgba(33,37,41,.12), 0 0 0 1px rgba(33,37,41,.04); }
+  .tF { background: var(--primary-soft); }
+  .listC { border-top: 1px solid var(--line); margin-top: 6px; }
+  .listC .tap { margin: 0; border-radius: 0; padding: 14px 2px; border-bottom: 1px solid var(--line); }
+  .icoE { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .gridG { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tileG { border: 1.5px solid var(--line-strong); border-radius: 18px; padding: 14px; min-height: 128px; display: flex; flex-direction: column; justify-content: space-between; }
+  .tileG .icoE { width: 40px; height: 40px; }
+  .tileG .t-title { margin-top: 8px; }
+
+  /* ---------- 3 buttons ---------- */
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; }
+  .r14 { border-radius: 14px; } .r8 { border-radius: 8px; } .pill { border-radius: 999px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .soft { background: var(--primary-soft); color: var(--primary); }
+  .grey { background: var(--surface); color: var(--heading); }
+  .solid-shadow { background: var(--primary); color: #fff; box-shadow: 0 4px 0 #122f55; }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* ---------- 4 hints ---------- */
+  .h { margin-top: 12px; }
+  .h1b { background: var(--primary-soft); border-radius: 16px; padding: 16px 18px; }
+  .h2b { display: flex; gap: 12px; }
+  .h3b { background: var(--surface); border-radius: 16px; padding: 16px 18px; }
+  .h4b { border: 1.5px solid var(--line-strong); border-radius: 16px; padding: 16px 18px; }
+  .h5b { background: var(--primary-soft); border-radius: 16px; padding: 14px 18px 16px; }
+  .h5b .tag { display: inline-block; font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .dot-i { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; margin-top: 2px; }
+  .em { display: flex; gap: 12px; background: var(--severe-bg); border-radius: 16px; padding: 16px 18px; margin-top: 12px; }
+  .em .dot-i { background: var(--severe); }
+  .em strong { color: var(--severe); }
+
+  /* ---------- 5 levels ---------- */
+  .lv { margin-top: 10px; border-radius: 16px; padding: 14px 18px; }
+  .lv .n { font-size: 40px; font-weight: 700; line-height: 1.1; }
+  .lv .n small { font-size: 20px; }
+  .lv .nm { font-weight: 700; }
+  .L1n { background: var(--normal-bg); color: var(--normal); } .L1m { background: var(--mild-bg); color: var(--mild); } .L1s { background: var(--severe-bg); color: var(--severe); }
+  .L2 { border-bottom: 1px solid var(--line); border-radius: 0; padding: 12px 2px; display: flex; align-items: center; gap: 14px; }
+  .L2 .n { color: var(--heading); }
+  .pillN, .pillM, .pillS { display: inline-block; border-radius: 999px; padding: 4px 14px; font-weight: 700; }
+  .pillN { background: var(--normal-bg); color: var(--normal); } .pillM { background: var(--mild-bg); color: var(--mild); } .pillS { background: var(--severe-bg); color: var(--severe); }
+  .L3 { padding: 10px 2px; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .L3n { color: var(--normal); } .L3m { color: var(--mild); } .L3s { color: var(--severe); }
+  .L4 { display: flex; gap: 14px; align-items: center; background: var(--surface); }
+  .L4 .sw { flex: none; width: 14px; align-self: stretch; border-radius: 7px; }
+  .L4 .n { color: var(--heading); }
+
+  /* ---------- 6 steps ---------- */
+  ol.st { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  ol.st li { counter-increment: s; display: flex; gap: 12px; margin-bottom: 14px; }
+  ol.st li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; }
+  .stA li::before { background: var(--surface); color: var(--heading); }
+  .stB li::before { background: var(--primary); color: #fff; }
+  .stC li { position: relative; padding-bottom: 6px; }
+  .stC li::before { background: #fff; color: var(--primary); border: 2px solid var(--primary); position: relative; z-index: 1; }
+  .stC li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: -14px; width: 2px; background: var(--line-strong); }
+
+  /* ---------- 7 tab bar ---------- */
+  .scr { padding: 0; height: 420px; }
+  .scr .page { padding: 20px 20px 0; }
+  .scr .page h3 { font-size: 28px; color: var(--heading); margin: 0 0 8px; }
+  .scr .page p { margin: 0 0 10px; }
+  .scr .photo { height: 120px; border-radius: 16px; margin: 10px 0; background: linear-gradient(120deg, #f6c3b3 0%, #f9dd96 35%, #3f9c6f 70%, #1f4e8c 100%); }
+  .scr .bluebtn { background: var(--primary); color: #fff; min-height: 56px; border-radius: 14px; display: grid; place-items: center; font-weight: 700; font-size: 20px; }
+  .scr .dark { background: #212529; color: #fff; border-radius: 16px; padding: 14px 18px; margin-top: 10px; }
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; }
+  .float { left: 12px; right: 12px; bottom: 14px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .full { left: 0; right: 0; bottom: 0; height: 86px; border-top: 1px solid rgba(33,37,41,.10); padding-bottom: 8px; }
+  .g88 { background: rgba(255,255,255,.88); }
+  .g80 { background: rgba(255,255,255,.80); }
+  .g72 { background: rgba(255,255,255,.72); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .solidw { background: #fff; }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  .tb.onD { color: #fff; font-weight: 700; background: var(--primary); }
+  .tb.onL { color: var(--primary); font-weight: 700; position: relative; }
+  .tb.onL::after { content: ""; position: absolute; bottom: 8px; width: 28px; height: 4px; border-radius: 2px; background: var(--primary); }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 4-4 5-4 9a3 3 0 0 1-5 1"/><path d="M10 10a2 2 0 0 1 4 0"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h3l2-5 4 10 3-7 2 2h4"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#454 共用元件比較頁（第二版）</h1>
+  <p class="lead">每組選一個（或寫「A 加 C 的某部分」），標「建議」的是我的推薦；標紅「不合格」的是對比不到 4.5:1，只供比較。手機寬 390px、內文 18px，字型實作時用網站的 Noto Sans TC。</p>
+
+  <!-- ===== 1 ===== -->
+  <section class="group">
+    <h2>1　標題與內文</h2>
+    <p class="q">背景純白，層級靠字級與粗細。四種標題做法：</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">T1　標準（28／22／18）<span class="rec">建議</span></p>
+        <div class="phone ty ty1"><h3>了解助聽器選配與補助</h3><p>從記錄聽力圖到領到補助，一共九站。</p><h4>補助等級與上限</h4><p>補助分四個等級，等級越高、補助越多。</p><p class="src">資料來源：社會及家庭署，查核於 2026/10/30</p></div>
+        <p class="note">最安靜，層級清楚；適合長文章。</p></div>
+      <div class="opt"><p class="opt-label">T2　大標題（34／24／18）</p>
+        <div class="phone ty ty2"><h3>了解助聽器選配與補助</h3><p>從記錄聽力圖到領到補助，一共九站。</p><h4>補助等級與上限</h4><p>補助分四個等級，等級越高、補助越多。</p><p class="src">資料來源：社會及家庭署，查核於 2026/10/30</p></div>
+        <p class="note">更有雜誌感、第一眼更醒目。代價：長標題在手機會斷成三行。</p></div>
+      <div class="opt"><p class="opt-label">T3　標題上加主色小眉標</p>
+        <div class="phone ty ty3"><span class="eyebrow">第 3 步・選配指引</span><h3>了解助聽器選配與補助</h3><p>從記錄聽力圖到領到補助，一共九站。</p><h4>補助等級與上限</h4><p>補助分四個等級，等級越高、補助越多。</p><p class="src">資料來源：社會及家庭署，查核於 2026/10/30</p></div>
+        <p class="note">告訴長輩「現在在哪裡」，定稿圖的「第 3 站・現在這一步」就是這種。代價：主色字不再只代表「能點」。</p></div>
+      <div class="opt"><p class="opt-label">T4　段落標題下加細線</p>
+        <div class="phone ty ty4"><h3>了解助聽器選配與補助</h3><p>從記錄聽力圖到領到補助，一共九站。</p><h4>補助等級與上限</h4><p>補助分四個等級，等級越高、補助越多。</p><p class="src">資料來源：社會及家庭署，查核於 2026/10/30</p></div>
+        <p class="note">段落分得最清楚，接近報紙。代價：多了一條條線。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 2 ===== -->
+  <section class="group">
+    <h2>2　白底上「能點」的樣子</h2>
+    <p class="q">同一組三個連結，七種畫法。每種都有「›」箭頭。外框 #8a94a3 對白底 3.1:1（介面元件邊界要 3:1）。</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">A　外框卡片</p><div class="phone">
+        <a class="tap tA"><span class="grow"><span class="t-title">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev">›</span></a>
+        <a class="tap tA"><span class="grow"><span class="t-title">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a>
+        <a class="tap tA"><span class="grow"><span class="t-title">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a></div>
+        <p class="note">最明顯能點。代價：卡片多時框又變多。</p></div>
+      <div class="opt"><p class="opt-label">B　淡灰底卡片</p><div class="phone">
+        <a class="tap tB"><span class="grow"><span class="t-title">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev">›</span></a>
+        <a class="tap tB"><span class="grow"><span class="t-title">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a>
+        <a class="tap tB"><span class="grow"><span class="t-title">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a></div>
+        <p class="note">像定稿圖的灰格。代價：跟不能點的資訊格長得一樣。</p></div>
+      <div class="opt"><p class="opt-label">C　清單列＋藍標題</p><div class="phone"><div class="listC">
+        <a class="tap"><span class="grow"><span class="t-title blue">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev blue">›</span></a>
+        <a class="tap"><span class="grow"><span class="t-title blue">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a>
+        <a class="tap"><span class="grow"><span class="t-title blue">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a></div></div>
+        <p class="note">最少框，像手機的設定頁。代價：可點的標題變藍。</p></div>
+      <div class="opt"><p class="opt-label">D　白卡＋陰影</p><div class="phone">
+        <a class="tap tD"><span class="grow"><span class="t-title">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev">›</span></a>
+        <a class="tap tD"><span class="grow"><span class="t-title">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a>
+        <a class="tap tD"><span class="grow"><span class="t-title">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev">›</span></a></div>
+        <p class="note">最接近現在。代價：白底上陰影很淡，邊界不到 3:1。</p></div>
+      <div class="opt"><p class="opt-label">E　圓形圖示＋清單列<span class="rec">建議</span></p><div class="phone"><div class="listC">
+        <a class="tap"><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev blue">›</span></a>
+        <a class="tap"><span class="icoE"><svg class="i"><use href="#i-wave"/></svg></span><span class="grow"><span class="t-title">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a>
+        <a class="tap"><span class="icoE"><svg class="i"><use href="#i-bell"/></svg></span><span class="grow"><span class="t-title">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a></div></div>
+        <p class="note">沒有框，靠淡藍圓形圖示＋藍箭頭看出能點；標題維持黑字。代價：每個連結都要配圖示。</p></div>
+      <div class="opt"><p class="opt-label">F　淡藍底卡片</p><div class="phone">
+        <a class="tap tF"><span class="grow"><span class="t-title">HHIE-S 聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span><span class="chev blue">›</span></a>
+        <a class="tap tF"><span class="grow"><span class="t-title">THI 耳鳴問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a>
+        <a class="tap tF"><span class="grow"><span class="t-title">SSQ12 吵雜環境問卷</span><span class="t-sub">還沒做過</span></span><span class="chev blue">›</span></a></div>
+        <p class="note">淡藍＝能點，比灰底好認。代價：提示框就不能也用淡藍。</p></div>
+      <div class="opt"><p class="opt-label">G　兩欄方塊（有圖示）</p><div class="phone"><div class="gridG">
+        <a class="tileG"><span class="icoE"><svg class="i"><use href="#i-ear"/></svg></span><span><span class="t-title">聽力生活問卷</span><span class="t-sub">上次 2026/09/26</span></span></a>
+        <a class="tileG"><span class="icoE"><svg class="i"><use href="#i-wave"/></svg></span><span><span class="t-title">耳鳴問卷</span><span class="t-sub">還沒做過</span></span></a>
+        <a class="tileG"><span class="icoE"><svg class="i"><use href="#i-bell"/></svg></span><span><span class="t-title">吵雜環境問卷</span><span class="t-sub">還沒做過</span></span></a></div></div>
+        <p class="note">適合入口頁（例如了解、家人專區）；長清單不適合。字放大 200% 時要改成一欄。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 3 ===== -->
+  <section class="group">
+    <h2>3　按鈕</h2>
+    <p class="q">實心主要按鈕一頁一顆，高 56px、字 20px 粗體。形狀和第二重要的按鈕怎麼畫：</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">S1　圓角方形＋藍框次要<span class="rec">建議</span></p><div class="phone"><a class="b r14 solid">去填九號表</a><a class="b r14 outline">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">穩重、清楚。</p></div>
+      <div class="opt"><p class="opt-label">S2　圓角方形＋淡藍底次要</p><div class="phone"><a class="b r14 solid">去填九號表</a><a class="b r14 soft">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">柔和。代價：淡藍底和提示框同色。</p></div>
+      <div class="opt"><p class="opt-label">S3　膠囊形＋藍框次要</p><div class="phone"><a class="b pill solid">去填九號表</a><a class="b pill outline">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">跟膠囊形分頁列同一個語言，比較活潑。</p></div>
+      <div class="opt"><p class="opt-label">S4　膠囊形＋灰底次要</p><div class="phone"><a class="b pill solid">去填九號表</a><a class="b pill grey">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">次要更低調。代價：灰底按鈕看起來像不能按。</p></div>
+      <div class="opt"><p class="opt-label">S5　有厚度的實心（下緣深色）</p><div class="phone"><a class="b r14 solid-shadow">去填九號表</a><a class="b r14 outline">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">像實體按鍵，最像「按得下去」。代價：比較不像乾淨白底的風格。</p></div>
+      <div class="opt"><p class="opt-label">S6　小圓角（8px）</p><div class="phone"><a class="b r8 solid">去填九號表</a><a class="b r8 outline">分享給家人</a><a class="tlink">印聽力報告</a></div><p class="note">最方正、最像公家網站。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 4 ===== -->
+  <section class="group">
+    <h2>4　提示框（不能點、要和內文分開的說明）</h2>
+    <p class="q">緊急就醫框每種都一樣：紅底＋驚嘆號（字句實作時沿用網站現有的）。</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">P1　淡藍底</p><div class="phone"><div class="h h1b"><span class="t-title">這是估計</span>沒戴助聽器時的情況；聽得到不等於聽得清楚。</div><div class="em"><span class="dot-i">!</span><span><strong>突然聽不到、耳朵流血？請盡快就醫</strong></span></div></div><p class="note">跟定稿圖「現在這一步」卡片同一種。代價：第 2 組選 F、第 3 組選 S2 時會撞色。</p></div>
+      <div class="opt"><p class="opt-label">P2　圖示＋文字、無底</p><div class="phone"><div class="h h2b"><span class="dot-i">i</span><span><span class="t-title">這是估計</span>沒戴助聽器時的情況；聽得到不等於聽得清楚。</span></div><div class="em"><span class="dot-i">!</span><span><strong>突然聽不到、耳朵流血？請盡快就醫</strong></span></div></div><p class="note">最少色塊。代價：長文裡容易被略過。</p></div>
+      <div class="opt"><p class="opt-label">P3　淡灰底<span class="rec">建議</span></p><div class="phone"><div class="h h3b"><span class="t-title">這是估計</span>沒戴助聽器時的情況；聽得到不等於聽得清楚。</div><div class="em"><span class="dot-i">!</span><span><strong>突然聽不到、耳朵流血？請盡快就醫</strong></span></div></div><p class="note">灰＝資訊、不能點，淡藍留給「現在這一步」和能點的東西，顏色分工最清楚。</p></div>
+      <div class="opt"><p class="opt-label">P4　細框、無底</p><div class="phone"><div class="h h4b"><span class="t-title">這是估計</span>沒戴助聽器時的情況；聽得到不等於聽得清楚。</div><div class="em"><span class="dot-i">!</span><span><strong>突然聽不到、耳朵流血？請盡快就醫</strong></span></div></div><p class="note">代價：框線容易讓人以為能點（第 2 組選 A 時尤其會混）。</p></div>
+      <div class="opt"><p class="opt-label">P5　淡藍底＋主色小標</p><div class="phone"><div class="h h5b"><span class="tag">小提醒</span><span class="t-title">這是估計</span>沒戴助聽器時的情況；聽得到不等於聽得清楚。</div><div class="em"><span class="dot-i">!</span><span><strong>突然聽不到、耳朵流血？請盡快就醫</strong></span></div></div><p class="note">用「小提醒」「注意」等標籤分類，長輩知道這段是什麼。代價：多一層字。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 5 ===== -->
+  <section class="group">
+    <h2>5　分數與分級</h2>
+    <p class="q">分級顏色照 ADR 0007，分級一定寫成文字。四種呈現：</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">L1　整塊分級色<span class="rec">建議</span></p><div class="phone">
+        <div class="lv L1n"><div class="n">6 <small>分</small></div><div class="nm">無／極輕微影響</div></div>
+        <div class="lv L1m"><div class="n">18 <small>分</small></div><div class="nm">輕度到中度影響</div></div>
+        <div class="lv L1s"><div class="n">28 <small>分</small></div><div class="nm">顯著影響</div></div></div>
+        <p class="note">定稿圖的做法，一眼看出好壞；字與底 7.3–7.5:1。</p></div>
+      <div class="opt"><p class="opt-label">L2　黑色大數字＋分級膠囊</p><div class="phone">
+        <div class="lv L2"><span class="n">6 <small>分</small></span><span class="pillN">無／極輕微影響</span></div>
+        <div class="lv L2"><span class="n">18 <small>分</small></span><span class="pillM">輕度到中度影響</span></div>
+        <div class="lv L2"><span class="n">28 <small>分</small></span><span class="pillS">顯著影響</span></div></div>
+        <p class="note">色塊最小、最乾淨；壞消息不會整片紅。</p></div>
+      <div class="opt"><p class="opt-label">L3　數字用分級色、無底</p><div class="phone">
+        <div class="lv L3 L3n"><div class="n">6 <small>分</small></div><div class="nm">無／極輕微影響</div></div>
+        <div class="lv L3 L3m"><div class="n">18 <small>分</small></div><div class="nm">輕度到中度影響</div></div>
+        <div class="lv L3 L3s"><div class="n">28 <small>分</small></div><div class="nm">顯著影響</div></div></div>
+        <p class="note">分級色字對白底 8.0–8.5:1。代價：深綠、深棕、深紅在長輩眼裡不好分。</p></div>
+      <div class="opt"><p class="opt-label">L4　灰底＋分級色條</p><div class="phone">
+        <div class="lv L4"><span class="sw" style="background:#3f9c6f"></span><span><span class="n">6 <small>分</small></span><br><span class="nm">無／極輕微影響</span></span></div>
+        <div class="lv L4"><span class="sw" style="background:#e2a92b"></span><span><span class="n">18 <small>分</small></span><br><span class="nm">輕度到中度影響</span></span></div>
+        <div class="lv L4"><span class="sw" style="background:#c4532f"></span><span><span class="n">28 <small>分</small></span><br><span class="nm">顯著影響</span></span></div></div>
+        <p class="note">代價：又回到需求說要減少的「左側色條」。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 6 ===== -->
+  <section class="group">
+    <h2>6　步驟編號</h2>
+    <div class="row">
+      <div class="opt"><p class="opt-label">N1　灰圓點</p><div class="phone"><ol class="st stA"><li>找聽力師做評估，拿到九號表</li><li>到公所送件</li><li>等核定公文</li></ol></div><p class="note">最安靜。</p></div>
+      <div class="opt"><p class="opt-label">N2　主色實心圓點</p><div class="phone"><ol class="st stB"><li>找聽力師做評估，拿到九號表</li><li>到公所送件</li><li>等核定公文</li></ol></div><p class="note">最醒目；代價：一頁很多藍點。</p></div>
+      <div class="opt"><p class="opt-label">N3　藍框圓點＋連接線<span class="rec">建議</span></p><div class="phone"><ol class="st stC"><li>找聽力師做評估，拿到九號表</li><li>到公所送件</li><li>等核定公文</li></ol></div><p class="note">看得出是「一條路」，跟照顧旅程、選配路線同一個樣子。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 7 ===== -->
+  <section class="group">
+    <h2>7　底部分頁列（毛玻璃）</h2>
+    <p class="q">內容真的捲到分頁列底下：漸層色塊、藍色按鈕、深色區塊從後面透出來。紅標「不合格」是最壞情況（深色內容在後面）灰字對比不到 4.5:1。往下捲隱藏的動作要在預覽網站試，這裡只看樣子。看不到模糊效果的話，請用 Safari 或 Chrome 打開這個檔案。</p>
+    <div class="row">
+      <div class="opt"><p class="opt-label">W1　浮動膠囊・88% 白<span class="rec">建議</span></p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">最壞對比 6.1:1。玻璃感含蓄，字最穩。</p></div>
+      <div class="opt"><p class="opt-label">W2　浮動膠囊・80% 白</p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar float glass g80"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">最壞對比 5.2:1。玻璃感明顯，仍合格。</p></div>
+      <div class="opt"><p class="opt-label">W3　浮動膠囊・72% 白<span class="bad">不合格</span></p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar float glass g72"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">最壞對比 4.3:1，最像 iOS 的玻璃，但字可能看不清。</p></div>
+      <div class="opt"><p class="opt-label">W4　浮動膠囊・80%・選中深藍</p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar float glass g80"><span class="tb onD"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">現在在哪一頁最明顯（白字深藍 8.3:1）。代價：多一個實心藍塊，跟「一頁一顆實心按鈕」搶。</p></div>
+      <div class="opt"><p class="opt-label">W5　浮動膠囊・80%・選中底線</p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar float glass g80"><span class="tb onL"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">最輕，選中只有藍字＋短底線。代價：選中不夠明顯。</p></div>
+      <div class="opt"><p class="opt-label">W6　滿版・88% 白</p>
+        <div class="phone scr"><div class="page"><h3>早安</h3><p>今天只要做一件事。</p><div class="photo"></div><div class="bluebtn">去填九號表</div><div class="dark">深色區塊：最壞情況</div><p>捲動中的內容……</p></div>
+          <nav class="bar full glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <p class="note">貼底、滿寬，最像 YouTube。代價：少了膠囊的輕巧感。</p></div>
+    </div>
+  </section>
+
+  <section class="group">
+    <h2>不用選、各版都一樣的</h2>
+    <table class="spec">
+      <tr><th>項目</th><th>做法</th></tr>
+      <tr><td>背景</td><td>純白；分級色照 ADR 0007；主色 #1f4e8c</td></tr>
+      <tr><td>文字顏色</td><td>標題 #212529（15.4:1）、內文 #343a40（11.5:1）、次要 #4a5460（7.7:1）</td></tr>
+      <tr><td>輸入框</td><td>沿用 #272：外框 4.7:1、高 56px，填錯變紅加驚嘆號</td></tr>
+      <tr><td>減少透明度</td><td>分頁列改實心白底</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>
