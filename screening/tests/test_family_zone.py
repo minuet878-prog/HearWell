@@ -582,6 +582,7 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>另一份加密的備份",
                 "<li>網站主機會留下連線紀錄",
                 "<li>您的資料會保存到您刪除帳號",
+                "<li>刪除的資料（包括刪除的帳號",
                 "<li>Vultr（網站主機與資料庫）",
             ),
             "83eebaa1aa43239c32d2d1e3a5e8a35adc299e66d90fff132e06c91d96c3b30a",

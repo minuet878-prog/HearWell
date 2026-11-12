@@ -532,6 +532,11 @@ class PrivacyPageT361Tests(TestCase):
         self.assertEqual(sizes, {("h4",)})
 
 
+BACKUP_DAYS = (
+    "刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄），在備份中最多再保留 10 天，之後自動清除。"
+)
+
+
 class VpsPrivacyTests(TestCase):
     """#452 (spec #450 acceptance 7-11, ADR 0042): the notice describes the VPS in Tokyo, the
     backup on the operator's computer and the 10 days, and asks everyone to agree to version 4."""
@@ -551,11 +556,17 @@ class VpsPrivacyTests(TestCase):
             "所以您的資料會傳到日本存放。",
             "另一份加密的備份存在營運者在台灣的電腦。",
             "網站主機會留下連線紀錄（包含 IP 位址），用來維持網站運作，保存 14 天後自動刪除。",
-            "刪除後，備份中的資料最多再保留 10 天，之後自動清除。",
-            "刪除帳號、超過 90 天的提問紀錄都一樣。",
+            BACKUP_DAYS,
         ):
             with self.subTest(words=words):
                 self.assertIn(words, storage)
+
+    def test_the_backup_days_come_after_the_90_days_they_refer_to(self):
+        # Self-review of #450: read before the 90 days, 「超過 90 天的提問紀錄」 means nothing yet.
+        storage = self._section("storage-title", "recipients-title")
+        self.assertGreater(
+            storage.index(BACKUP_DAYS), storage.index("提問紀錄保存 90 天後自動刪除")
+        )
 
     def test_the_old_hosts_and_6_hours_are_gone(self):
         response = self.client.get(reverse("privacy"))
