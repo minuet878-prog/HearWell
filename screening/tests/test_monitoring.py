@@ -288,6 +288,7 @@ print(json.dumps({"active": sentry_sdk.get_client().is_active()}))
     def _active(self, dsn):
         env = {**os.environ, "DEBUG": "False", "SECRET_KEY": get_random_secret_key()}
         env.setdefault("ALLOWED_HOSTS", "localhost")
+        env.setdefault("SECURE_HSTS_SECONDS", "3600")
         env.pop("SENTRY_DSN", None)
         if dsn is not None:
             env["SENTRY_DSN"] = dsn
