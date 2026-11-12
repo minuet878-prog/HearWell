@@ -149,15 +149,14 @@ class AccountSettingsTests(TestCase):
             "回答問題，大約 3 分鐘。",
             "內容由台灣執業",  # one line in a badge card since the brand refresh
         )
-        for logged_in in (True, False):
-            if not logged_in:
-                self.client.logout()
-            with self.subTest(logged_in=logged_in):
-                text = test_layout._text(self._main(reverse("index")))
-                positions = [text.index(part) for part in expected]
-                self.assertEqual(positions, sorted(positions))
-                self.assertNotIn("可達 10 年", text)
-                self.assertNotIn("結果僅供參考", text)
+        # The visitor's home: a signed-in user's is the 照顧旅程 or the 空狀態首頁 since #459
+        # (test_home_journey).
+        self.client.logout()
+        text = test_layout._text(self._main(reverse("index")))
+        positions = [text.index(part) for part in expected]
+        self.assertEqual(positions, sorted(positions))
+        self.assertNotIn("可達 10 年", text)
+        self.assertNotIn("結果僅供參考", text)
 
 
 class GroupedAccountSettingsTests(TestCase):
