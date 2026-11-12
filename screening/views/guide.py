@@ -259,6 +259,12 @@ def _route(state, edit=None, question=None):
     return [_route_stop(state, *stop, edit, question) for stop in stops]
 
 
+def here_stop(state):
+    """The 目前這一站 as the route shows it (title, url, button), or None without one; the
+    照顧旅程's card takes it (ADR 0042)."""
+    return next((stop for stop in _route(state) if stop.here), None)
+
+
 def _route_stop(state, slug, title, url, edit=None, question=None):
     marks, links, action, tested_on = [], [], None, None
     notes = list(ROUTE_REMINDERS.get(slug, ()))

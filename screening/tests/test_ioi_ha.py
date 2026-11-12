@@ -663,8 +663,9 @@ class IoiHaResultRedesignTests(TestCase):
             return [(int(level), re.sub(r"<[^>]+>", "", text).strip()) for level, text in headings]
 
         names = scoring.IOI_HA_ITEM_NAMES
-        # #304: the closing cards, under the 建議下一步 (IOI-HA means wearing them: 配戴之後).
-        closing = [(2, "了解助聽器選配與補助"), (2, "其他您可以做的")]
+        # #304: the closing cards, under the 建議下一步: IOI-HA means wearing them, so the
+        # 照顧旅程's step 3 at the route's 配戴之後 (#455).
+        closing = [(2, "配戴助聽器之後"), (2, "其他您可以做的")]
         cases = {
             "grouped, two below": (
                 self.TWO_BELOW_ONE_ABOVE,

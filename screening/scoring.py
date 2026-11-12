@@ -124,6 +124,31 @@ NEXT_STEP_REASONS = {
     "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
     "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",
 }
+# The 照顧旅程's five steps (ADR 0042), step 1 first.
+CARE_JOURNEY_STEPS = (
+    "填生活影響問卷",
+    "記錄聽力圖",
+    "了解助聽器選配與補助",
+    "戴滿 3 個月做效益問卷",
+    "半年後再篩檢",
+)
+# The 現在這一步 card's sentences off the route (#455): drafts the owner settles on review.
+LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
+LIFE_IMPACT_BUTTON = "去做問卷"
+IOI_HA_BUTTON = "做效益問卷"
+# Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
+TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
+IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+
+
+def fitting_countdown_text(days):
+    return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
+
+
+def retest_countdown_text(day, days):
+    return f"下次篩檢 {day:%Y/%m/%d}，還有 {days} 天。"
+
+
 # The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,
 # worn. The title takes the questionnaire's topic and name.
 AIDED_RETAKE_TITLE = "戴著助聽器再做一次「{topic}」（{name}）"
