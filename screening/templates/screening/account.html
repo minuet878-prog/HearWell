@@ -4,7 +4,7 @@
 
 {% block body %}
 {# Spec phase9_ui_refresh_3_structure.md 4.1: look only; deleting comes last, set apart. #}
-{# #195 (spec #183 stories 62-70): four groups; only the rows that go somewhere are links. #}
+{# #195 (spec #183 stories 62-70): groups of rows; only the rows that go somewhere are links. #}
 {# #303 (#298's pick, ADR 0022): the details are flat rows; each link row is a white card. #}
 <h1 class="h3 mt-4">帳號設定</h1>
 
@@ -28,8 +28,9 @@
     {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
 </section>
 
-<section class="mt-6" aria-labelledby="family-title">
-    <h2 id="family-title" class="h4">家人與手機</h2>
+{# #471 (mockup #470 account A): 家人與手機 and 資料與隱私 in one group, so the page has two section titles. #}
+<section class="mt-6" aria-labelledby="family-data-title">
+    <h2 id="family-data-title" class="h4">家人與資料</h2>
     {# pwa-nav.js hides [data-hide-in-app] in the home-screen app, as on the home page (#160). #}
     <ul class="list-unstyled">
         <li><a class="link-card action-card" href="{% url 'share_report' %}">
@@ -54,14 +55,8 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-    </ul>
-</section>
-
-<section class="mt-6" aria-labelledby="data-title">
-    <h2 id="data-title" class="h4">資料與隱私</h2>
-    <ul class="list-unstyled">
         {# A download, not another page: the icon says so and there is no arrow. #}
-        {# The whole card is one link, so it is a white card all the same (ADR 0022). #}
+        {# The whole card is one link, so it is a clickable card all the same. #}
         <li><a class="link-card action-card" href="{% url 'download_my_data' %}" download>
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></span>
             <span class="link-card-body">

@@ -26,19 +26,20 @@ CHAPTERS = (
 )
 BACK = "回到我的選配指引"
 # Shortened in the guide chapters tidy-up (2026-10-23, the owner's request): things to bring
-# as chips, the questions grouped under three labels.
+# as chips, the questions grouped under three labels. #467 (H2): the parts titled as questions,
+# the first question in sight before its group.
 BEFORE_YOU_GO = (
     "第一次去評估選配助聽器，先準備好下面這些，可以少跑一趟。",
-    "要帶的東西",
+    "要帶什麼去？",
     "醫院的聽力檢查報告（聽力圖）",
     "身分證",
     "身心障礙證明（有的話）",
     "現在用的助聽器（有的話）",
     "也可以在聽伴印出聽力報告一起帶去。",
     "要申請身障補助，一定要有身心障礙證明。",
-    "可以問聽力師的問題",
-    "適不適合我",
+    "可以問聽力師什麼？",
     "我適合哪一種助聽器？為什麼？",
+    "適不適合我",
     "可以先試戴嗎？試戴多久？要收費嗎？",
     "價格與保固",
     "價格包含哪些服務？之後回來調整要另外收費嗎？",
@@ -63,6 +64,15 @@ BEFORE_YOU_GO_SOURCES = (
 def text_of(response):
     """The page's visible text in <main>, tags removed, so wording can be matched as written."""
     content = response.content.decode()
+    main = content[content.index("<main") : content.index("</main>")]
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", main))
+
+
+def article_text(response):
+    """text_of without the key cards at a chapter's start (#467, H1): they repeat sentences of
+    the parts below, so the parts' wording is read in order after them."""
+    content = response.content.decode()
+    content = re.sub(r'<ul class="key-cards".*?</ul>', "", content, flags=re.S)
     main = content[content.index("<main") : content.index("</main>")]
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", main))
 
@@ -153,7 +163,7 @@ class GuideChapterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>去找聽力師之前\uff5c聽伴</title>")
         self.assertContains(response, '<h1 class="h3 mt-4">去找聽力師之前</h1>')
-        text = text_of(response)
+        text = article_text(response)
         positions = [text.index(sentence) for sentence in BEFORE_YOU_GO]
         self.assertEqual(positions, sorted(positions))
 
@@ -217,7 +227,7 @@ class ChapterTidyT367Tests(TestCase):
 
     def test_before_you_go_links_the_report_from_its_printing_sentence(self):
         bring = part(
-            self.client.get(reverse("guide_chapter", args=["before-you-go"])), "要帶的東西"
+            self.client.get(reverse("guide_chapter", args=["before-you-go"])), "要帶什麼去？"
         )
         self.assertIn(
             "<p>也可以在聽伴印出聽力報告一起帶去。"
@@ -225,34 +235,9 @@ class ChapterTidyT367Tests(TestCase):
             bring,
         )
 
-    def test_form_9_opens_with_a_jump_to_each_of_its_six_parts(self):
-        content = self.chapter("form-9")
-        nav = re.search(r'<nav aria-labelledby="page-jump-title">(.*?)</nav>', content, re.S)
-        self.assertIsNotNone(nav)
-        self.assertIn('<p id="page-jump-title" class="tint-subhead mb-2">本頁段落</p>', nav[1])
-        links = re.findall(r'<a [^>]*href="#([^"]+)">([^<]+)</a>', nav[1])
-        self.assertEqual(
-            links,
-            [
-                ("who-title", "誰可以申請"),
-                ("steps-title", "申請流程"),
-                ("issuer-title", "九號表找誰開"),
-                ("amount-title", "補助多少"),
-                ("reapply", "再次申請（換新機）"),
-                ("without-certificate", "沒有身障證明時"),
-            ],
-        )
-        for target, _ in links:
-            with self.subTest(target=target):
-                self.assertIn(f'id="{target}"', content)
-        # Under the lead, before the first part.
-        lead = content.index("「九號表」是買助聽器前要做的輔具評估報告書")
-        self.assertLess(lead, nav.start())
-        self.assertLess(nav.end(), content.index('<section class="section-box'))
-
     def test_form_25_tags_its_when_as_form_9_does(self):
         who_how = part(
-            self.client.get(reverse("guide_chapter", args=["form-25"])), "誰要做、怎麼做"
+            self.client.get(reverse("guide_chapter", args=["form-25"])), "誰要做？什麼時候做？"
         )
         self.assertIn(
             '<dd>配戴滿 1 個月後、3 個月內。<span class="step-when" aria-hidden="true">'

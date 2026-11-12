@@ -12,6 +12,9 @@ from screening.family_deadlines import (
     deadlines,
 )
 from screening.family_zone import (
+    COMMUNICATION_CHECKED_ON,
+    COMMUNICATION_SCENARIOS,
+    COMMUNICATION_SOURCES,
     HEARING_AID_CARE,
     HEARING_AID_CARE_REMINDERS,
     HEARING_AID_CHECKED_ON,
@@ -36,6 +39,20 @@ from screening.subsidy_check import (
     SUBSIDY_SOURCES,
     check,
 )
+
+
+def family_talk(request):
+    # #469 (the #468 mockup): the family guide's 怎麼跟聽損的家人說話 and its scenarios on a page
+    # of their own, the words as reviewed. Open without logging in, the same for everyone.
+    return render(
+        request,
+        "screening/family/talk.html",
+        {
+            "scenarios": COMMUNICATION_SCENARIOS,
+            "scenario_sources": COMMUNICATION_SOURCES,
+            "scenario_checked_on": COMMUNICATION_CHECKED_ON,
+        },
+    )
 
 
 def family_reluctant(request):

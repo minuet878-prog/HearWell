@@ -14,7 +14,7 @@ from screening.scoring import (
     compare_to_norm,
     since_last_text,
 )
-from screening.views.common import health_data_page
+from screening.views.common import RECENT_SHOWN, health_data_page, older_fold
 
 
 def _item_scores(submission):
@@ -87,8 +87,6 @@ def _trend_chart(records, since_last):
         change = f"這是第一筆{status}的紀錄。"
     statuses = {r.wearing_hearing_aid for r in records}
     return {
-        "latest": latest,
-        "status": status,
         "change": change,
         "legend": [
             {"shape": shape, "text": text}
@@ -172,11 +170,23 @@ def my_hearing(request):
                     (previous.wearing_hearing_aid, latest.wearing_hearing_aid)
                 ),
             }
+    trend_chart = _trend_chart(records, since_last) if current.definition.trend_chart else None
     return render(
         request,
         "screening/my_hearing.html",
         {
-            "submissions": records,
+            "submissions": records[:RECENT_SHOWN],
+            "older": older_fold(records, lambda s: timezone.localdate(s.created_at), "筆"),
+            # #465 (the #464 mockup 1A): 和上一次比 and the trend chart's 最近一次 as one block.
+            "score_block": (
+                {
+                    "latest": records[0],
+                    "status": TREND_STATUS_TEXT[records[0].wearing_hearing_aid],
+                    "change": trend_chart["change"] if trend_chart else None,
+                }
+                if since_last or trend_chart
+                else None
+            ),
             "same_day": same_day,
             "questionnaires": questionnaires,
             "current": current,
@@ -187,8 +197,6 @@ def my_hearing(request):
             .select_related("unaided__questionnaire", "aided__questionnaire")
             .first(),
             "ioi_ha_chart": _ioi_ha_chart(records) if current.code == IOI_HA else None,
-            "trend_chart": (
-                _trend_chart(records, since_last) if current.definition.trend_chart else None
-            ),
+            "trend_chart": trend_chart,
         },
     )

@@ -24,9 +24,9 @@ from screening.models import (
     User,
 )
 from screening.questionnaires import hhie_s
-from screening.scoring import classify, get_advice
+from screening.scoring import get_advice
 from screening.tests import test_answering, test_continue_notice, test_history
-from screening.tests.helpers import action_cards, consented_user, fake_definition, register
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class CopyTests(TestCase):
@@ -106,7 +106,7 @@ class CopyTests(TestCase):
     def test_login_title_in_chinese(self):
         self.client.logout()
         response = self.client.get(reverse("login"))
-        self.assertContains(response, '<h1 class="auth-hero-title">登入</h1>', html=True)
+        self.assertContains(response, '<h1 class="h3 mt-4">登入</h1>', html=True)
         self.assertNotContains(response, "Welcome")
 
     def test_sign_in_status_in_chinese(self):
@@ -467,8 +467,10 @@ class RedesignLayoutTests(TestCase):
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
         notice = [test_continue_notice.SCRIPT, wave, play_in_view, smooth, "<inline>"]
+        # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
+        journey_js = "screening/frontend/care-journey.js"
         expected = {
-            reverse("index"): [*every, logout_js, *notice],
+            reverse("index"): [*every, logout_js, notice[0], journey_js, *notice[1:]],
             reverse("questionnaire_list"): [*every, logout_js, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
@@ -507,20 +509,19 @@ class PageFlowTests(TestCase):
 
     # Spec #148 (ticket #150): a login button replaced the small hint for people not signed in.
     HINT = "我已經有帳號，登入"
-    # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1
-    # and spec #148 (ticket #150, the account step).
+    # As changed by phase9_ui_refresh_3_structure.md 4.4, phase9_ui_refresh_4a_home.md 4.1,
+    # spec #148 (ticket #150, the account step) and #471 (mockup #458 ⑪: the visitor sees the
+    # 空狀態首頁, the steps in its dashed box before the start button).
     HOME_ORDER = (
-        'class="home-illustration"',
-        "了解聽力對您生活的影響",
-        "聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。",
-        "開始篩檢",
+        "從一份問卷開始",
+        "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
+        "做完第一份問卷，這裡會排出您的照顧旅程",
         "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
-        "半年後再做，看分數變化。",
-        "結果長這樣",
-        "示意圖",
-        "內容由台灣執業",  # 「聽力師」 is kept on one line in its own span (pages tidy-up)
+        "開始篩檢",
+        HINT,
+        "內容由台灣執業聽力師設計與審定。",
     )
 
     @classmethod
@@ -574,16 +575,10 @@ class PageFlowTests(TestCase):
         self.client.logout()
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
-        self._assert_in_order(main, ("開始篩檢", self.HINT, "建立帳號，大約 1 分鐘。"))
         self.assertNotIn("7–10 年", main)
         # Spec #148 (ticket #150): straight to registering, then back to choosing a questionnaire.
         start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
         self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
-
-    def test_home_order_for_logged_in_without_hint(self):
-        main = self._main(self.client.get(reverse("index")))
-        self._assert_in_order(main, self.HOME_ORDER)
-        self.assertNotIn(self.HINT, main)
 
     def test_home_has_no_missing_features(self):
         # HHIE-S is allowed since phase9_ui_refresh_4a_home.md (result preview, trust block).
@@ -604,9 +599,8 @@ class PageFlowTests(TestCase):
                 "自行選擇問卷",
                 "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
-                # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
-                '<span class="card-tag">10 題</span>',
-                '<span class="card-tag">約 3 分鐘</span>',
+                # One line of muted words since #463 (tags since phase9 4b 4.1).
+                "<span>10 題・約 3 分鐘</span>",
             ),
         )
         self.assertRegex(
@@ -621,16 +615,15 @@ class PageFlowTests(TestCase):
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
-        self.assertIn('<span class="card-tag">3 題</span>', card)
+        self.assertIn("<span>3 題・約 4 分鐘</span>", card)
         self.assertIn("短問卷・共 3 題・", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
-        self.assertRegex(
-            page, r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>\s*<p>HHIE-S・共 10 題・大約 3 分鐘</p>"
-        )
+        title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
+        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")
@@ -662,8 +655,9 @@ class PageFlowTests(TestCase):
         return self._main(self.client.get(reverse("result", args=[submission.id])))
 
     def test_result_page_order(self):
-        # Ticket #157 (ADR 0010): numbered next steps, then the full advice, then the
-        # collapsed score detail, with the secondary buttons last.
+        # Ticket #157 (ADR 0010), #461 (the #460 mockup R1): the level block, step 1, the
+        # 建議下一步, then 看完整說明 with the other steps, the folded full advice and score
+        # detail, then the list rows.
         submission = self._submit([4, 4, 2, 2, 0, 0, 0, 0, 0, 0])  # 12
         day = timezone.localtime(submission.created_at).strftime("%Y/%m/%d")
         main = self._result(submission)
@@ -672,30 +666,35 @@ class PageFlowTests(TestCase):
             main,
             (
                 f"{day} 作答",
+                '總分 <span class="result-number">12</span> 分（滿分 40）',
                 "輕度到中度影響",
-                "總分 12 分（滿分 40）",
-                "接下來建議您",
                 steps[0]["text"],
+                "建議您下一步",
+                "<span>看完整說明</span>",
                 steps[1]["text"],
                 steps[2]["text"],
-                # Text-heavy pages tidy-up: the full advice waits behind its own dropdown.
                 "<summary>看完整建議</summary>",
                 get_advice("mild_to_moderate"),
                 "分數細節與作答明細",
                 "情緒分數：12",
                 "社交分數：0",
                 "助聽器：未記錄",
+                "分享給家人",
+                "印聽力報告給醫師看",
                 "看我的紀錄與趨勢",
-                "回首頁",
             ),
         )
 
     def test_result_next_step_links(self):
         main = self._result(self._submit([0] * 10))
         records = f"{reverse('my_hearing')}?questionnaire=hhie-s"
-        cards = [card[:2] for card in action_cards(main)]
-        self.assertIn((records, "看我的紀錄與趨勢"), cards)
-        self.assertIn((reverse("index"), "回首頁"), cards)
+        self.assertRegex(
+            main,
+            rf'(?s)<a class="link-card action-card" href="{re.escape(records)}">.*?'
+            r'<span class="link-card-title">看我的紀錄與趨勢</span>',
+        )
+        # 回首頁 went with the closing row (#461): the tab bar has 首頁.
+        self.assertNotIn("回首頁", main)
 
     def test_result_has_no_username_or_halfwidth_colon(self):
         main = self._result(self._submit([2] * 10))
@@ -741,7 +740,7 @@ class PageFlowTests(TestCase):
 
     def test_result_zero_score(self):
         main = self._result(self._submit([0] * 10))
-        self.assertIn("總分 0 分（滿分 40）", main)
+        self.assertIn('總分 <span class="result-number">0</span> 分（滿分 40）', main)
         self.assertIn("無／極輕微影響", main)
 
     def test_result_without_thresholds_has_no_max(self):
@@ -750,7 +749,7 @@ class PageFlowTests(TestCase):
         submission = self._submit([2] * 10, questionnaire=unknown)
         with self.assertLogs("screening.scoring", "ERROR"):
             main = self._result(submission)
-        self.assertIn("總分 20 分", main)
+        self.assertIn('總分 <span class="result-number">20</span> 分', main)
         self.assertNotIn("滿分", main)
 
     # IDOR (14) is covered by SubmissionResultAccessTests; one more for the redesigned page.
@@ -958,11 +957,13 @@ class PwaTests(TestCase):
                 main = content[content.index("<main") : content.index("</main>")]
                 positions = [main.index(part) for part in self.GUIDE_ORDER]
                 self.assertEqual(positions, sorted(positions))
-                steps = [ol.count("<li>") for ol in re.findall(r"<ol>(.*?)</ol>", main, re.DOTALL)]
+                # #471: each phone's steps as numbered dots (N3).
+                lists = re.findall(r'<ol class="step-list" role="list">(.*?)</ol>', main, re.S)
+                steps = [ol.count("<li>") for ol in lists]
                 self.assertEqual(steps, [4, 4])
 
-    # 23, as changed by the footer redesign: the guide is linked from the home page's "您還可以"
-    # (test_home) and the account page, no longer from the footer.
+    # 23, as changed by the footer redesign: the guide is linked from the home page
+    # (test_home_journey) and the account page, no longer from the footer.
     def test_footer_no_longer_links_to_guide(self):
         content = self.client.get(reverse("index")).content.decode()
         footer = content.split('<footer class="site-footer"', 1)[1]
@@ -1147,77 +1148,19 @@ class PwaNavTests(TestCase):
 
 
 class HomeTests(TestCase):
-    """Spec docs/specs/phase-09/phase9_ui_refresh_4a_home.md, acceptance 1-7."""
-
-    # Spec #148 (ticket #150) adds the account step in front.
-    STEPS = (
-        "建立帳號，大約 1 分鐘。",
-        "回答問題，大約 3 分鐘。",
-        "馬上看到結果分級和建議。",
-        "半年後再做，看分數變化。",
-    )
+    """Spec docs/specs/phase-09/phase9_ui_refresh_4a_home.md, acceptance 1-7, for the visitor's
+    home. #471 (mockup #458 ⑪) gave the visitor the 空狀態首頁 (test_home.NewUserHomeTests), so the
+    picture (1), the four step cards (3), the result preview (4) and the top band (7) went; the
+    audiologist line (6) stays, plain."""
 
     def _main(self):
         content = self.client.get(reverse("index")).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def _between(self, content, start, end):
-        begin = content.index(start)
-        return content[begin : content.index(end, begin)]
-
-    # 1
-    def test_illustration_first_and_hidden(self):
-        for logged_in in (False, True):
-            if logged_in:
-                self.client.force_login(consented_user(username="hometester"))
-            with self.subTest(logged_in=logged_in):
-                main = self._main()
-                self.assertRegex(main, r'<svg[^>]*class="home-illustration"[^>]*aria-hidden="true"')
-                self.assertLess(main.index("home-illustration"), main.index("<h1"))
-
-    # 3
-    def test_step_cards(self):
-        steps = self._between(self._main(), "step-cards", "</ol>")
-        cards = re.findall(r"<li[^>]*>(.*?)</li>", steps, re.S)
-        self.assertEqual(len(cards), 4)
-        for number, (card, text) in enumerate(zip(cards, self.STEPS, strict=True), start=1):
-            with self.subTest(step=number):
-                self.assertRegex(card, rf'class="step-number"[^>]*>{number}<')
-                self.assertRegex(card, r'class="step-icon"[^>]*aria-hidden="true"')
-                self.assertIn(text, card)
-
-    # 4
-    def test_result_preview_uses_real_scoring(self):
-        preview = self._between(self._main(), "result-preview", "</figure>")
-        classified = classify(18, "hhie-s")
-        self.assertIn("示意圖", preview)
-        self.assertIn("實際結果依您的回答而定。", preview)
-        self.assertIn(f"result-banner-{classified['level']}", preview)
-        self.assertIn(classified["text"], preview)
-        self.assertIn("HHIE-S 總分 18 分（滿分 40）", preview)
-        # Brand refresh round 4 ("結果頁會告訴您"): the title sits in the card, and three checks
-        # say what the result page tells you, instead of advice cut off mid-sentence.
-        self.assertRegex(
-            preview, r'<h2 class="h4 mb-0">結果長這樣</h2>\s*<span class="preview-tag">'
-        )
-        items = re.findall(r"<li>.*?</svg>\s*([^<]+?)\s*</li>", preview, re.S)
-        self.assertEqual(items, ["聽力對生活的影響程度", "分數落在哪一段", "接下來可以怎麼做"])
-        self.assertEqual(preview.count('aria-hidden="true"'), preview.count("<svg") + 1)
-        self.assertNotIn(get_advice(classified["level"])[:40], preview)
-        self.assertNotIn("……", preview)
-
-    # 5: superseded by ADR 0010 / ticket #159 (screening.tests.test_home.ReturningUserHomeTests).
-    # A returning user's home page now shows their own last result on purpose.
-
-    # 6, changed in the brand refresh (design picker round 3): the "由聽力師開發" block repeated
-    # the top's 國際標準量表 label, so it became one line in a badge card.
+    # 6, changed in the brand refresh (design picker round 3), and in #471 a plain grey line.
     def test_trust_block(self):
         main = self._main()
-        line = self._between(main, 'class="home-credential"', "</p>")
-        self.assertIn('<span class="home-credential-icon"><svg', line)
-        self.assertIn('aria-hidden="true"', line)
-        # 「聽力師」 sits in a no-wrap span (pages tidy-up); the sentence itself is unchanged.
-        self.assertIn("內容由台灣執業聽力師設計與審定。", re.sub(r"<[^>]+>", "", line))
+        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
         self.assertEqual(main.count("內容由台灣執業"), 1)
         gone_texts = (
             "由聽力師開發",
@@ -1230,18 +1173,6 @@ class HomeTests(TestCase):
         for gone in gone_texts:
             with self.subTest(gone=gone):
                 self.assertNotIn(gone, main)
-
-    # 7
-    def test_band_backgrounds(self):
-        main = self._main()
-        bands = re.findall(r'<section class="home-hero[^"]*">(.*?)</section>', main, re.S)
-        # The trust band became the one-line badge (brand refresh), so only the top is left, a
-        # flat block since ADR 0022.
-        self.assertEqual(len(bands), 1)
-        self.assertIn("home-illustration", bands[0])
-        for band in bands:
-            self.assertNotIn("step-cards", band)
-            self.assertNotIn("result-preview", band)
 
 
 class PageLoadingTests(TestCase):

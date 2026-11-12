@@ -1,44 +1,58 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Guide chapters tidy-up: the things to bring as a list with icons, the questions grouped. #}
+{# Guide chapters tidy-up: the things to bring as a list with icons, the questions grouped. #467 (the owner's pick H1 + H2): three key cards, then each part titled as a question (its id kept), one sentence in sight and the rest behind 看更多, word for word. The key cards' large lines and the questions are drafts. #}
 <p>第一次去評估選配助聽器，先準備好下面這些，可以少跑一趟。</p>
-<section class="section-box mb-6" aria-labelledby="bring-title">
-    <h2 id="bring-title" class="h4 section-box-title">要帶的東西</h2>
+<div>
+    <p id="key-points-title" class="tint-subhead mb-2">先知道三件事</p>
+    <ul class="key-cards" role="list" aria-labelledby="key-points-title">
+        <li class="key-card"><span class="key-card-big">帶聽力圖去</span><p>醫院的聽力檢查報告（聽力圖）</p><p>也可以在聽伴印出聽力報告一起帶去。</p></li>
+        <li class="key-card"><span class="key-card-big">先問能不能試戴</span><p>可以先試戴嗎？試戴多久？要收費嗎？</p></li>
+        <li class="key-card"><span class="key-card-big">先核定，再買</span><p>提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。</p></li>
+    </ul>
+</div>
+<section data-jump-box aria-labelledby="bring-title">
+    <h2 id="bring-title" class="h4">要帶什麼去？</h2>
     <ul class="icon-list" role="list">
         <li>{% include "screening/guide/icon.html" with icon="audiogram" %}醫院的聽力檢查報告（聽力圖）</li>
         <li>{% include "screening/guide/icon.html" with icon="id" %}身分證</li>
         <li>{% include "screening/guide/icon.html" with icon="certificate" %}身心障礙證明（有的話）</li>
         <li>{% include "screening/guide/icon.html" with icon="ear" %}現在用的助聽器（有的話）</li>
     </ul>
-    <p>也可以在聽伴印出聽力報告一起帶去。<a href="{% url 'health_report' %}">看／印聽力報告</a></p>
-    <p>要申請身障補助，一定要有身心障礙證明。</p>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <p>也可以在聽伴印出聽力報告一起帶去。<a href="{% url 'health_report' %}">看／印聽力報告</a></p>
+        <p>要申請身障補助，一定要有身心障礙證明。</p>
+    </details>
 </section>
-<section class="section-box mb-6" aria-labelledby="ask-title">
-    <h2 id="ask-title" class="h4 section-box-title">可以問聽力師的問題</h2>
-    <dl class="key-list">
-        <div>
-            <dt>適不適合我</dt>
-            <dd><ul class="mb-0">
-                <li>我適合哪一種助聽器？為什麼？</li>
-                <li>可以先試戴嗎？試戴多久？要收費嗎？</li>
-            </ul></dd>
-        </div>
-        <div>
-            <dt>價格與保固</dt>
-            <dd><ul class="mb-0">
-                <li>價格包含哪些服務？之後回來調整要另外收費嗎？</li>
-                <li>保固多久？包含哪些？</li>
-                <li>可以給我書面的報價單和保固內容嗎？</li>
-            </ul></dd>
-        </div>
-        <div>
-            <dt>補助</dt>
-            <dd><ul class="mb-0">
-                <li>這一台是補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？</li>
-                <li>可以幫我開九號表嗎？</li>
-            </ul></dd>
-        </div>
-    </dl>
+<section data-jump-box aria-labelledby="ask-title">
+    <h2 id="ask-title" class="h4">可以問聽力師什麼？</h2>
+    <p>我適合哪一種助聽器？為什麼？</p>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <dl class="key-list">
+            <div>
+                <dt>適不適合我</dt>
+                <dd><ul class="mb-0">
+                    <li>可以先試戴嗎？試戴多久？要收費嗎？</li>
+                </ul></dd>
+            </div>
+            <div>
+                <dt>價格與保固</dt>
+                <dd><ul class="mb-0">
+                    <li>價格包含哪些服務？之後回來調整要另外收費嗎？</li>
+                    <li>保固多久？包含哪些？</li>
+                    <li>可以給我書面的報價單和保固內容嗎？</li>
+                </ul></dd>
+            </div>
+            <div>
+                <dt>補助</dt>
+                <dd><ul class="mb-0">
+                    <li>這一台是補助的哪一個等級（簡易型、中階型、進階型、雙對側傳聲型）？</li>
+                    <li>可以幫我開九號表嗎？</li>
+                </ul></dd>
+            </div>
+        </dl>
+    </details>
 </section>
 <p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
 {% endblock %}

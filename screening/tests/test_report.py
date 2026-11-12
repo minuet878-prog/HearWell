@@ -250,9 +250,10 @@ class HealthReportTests(TestCase):
         content = self._content()
         self.assertIn('id="print-button"', content)
         self.assertIn("screening/print-button.js", content)
-        # The level is written out in a bordered label, not shown by colour alone.
+        # The level is written out in a bordered label, not shown by colour alone (#471: the
+        # site's level badge).
         self.assertIn(
-            '<span class="report-level report-level-mild_to_moderate">輕度到中度影響</span>',
+            '<span class="level-badge level-badge-mild_to_moderate">輕度到中度影響</span>',
             content,
         )
 
@@ -269,15 +270,14 @@ class HealthReportTests(TestCase):
 
     # 10
     def test_history_page_links_to_report(self):
-        # The report and sharing it, as two action cards under 「要給醫師或家人看？」.
+        # The report and sharing it; #465 (the #464 mockup 1A): the report is the page's solid
+        # button, sharing a row near the end.
         content = self.client.get(reverse("my_hearing")).content.decode()
-        section = content[content.index('aria-labelledby="for-doctor-title"') :]
-        self.assertEqual(
-            action_cards(section),
-            [
-                (self.url, "看／印聽力報告", "可以印出來或存成 PDF"),
-                (reverse("share_report"), "傳給家人看", "家人不用登入就能看"),
-            ],
+        self.assertIn(
+            f'class="btn btn-primary btn-lg w-full mt-4 mb-4" href="{self.url}">', content
+        )
+        self.assertIn(
+            (reverse("share_report"), "傳給家人看", "家人不用登入就能看"), action_cards(content)
         )
 
     # 11

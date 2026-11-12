@@ -15,7 +15,7 @@
   --color-primary: #1f4e8c;
   --color-primary-hover: #173b6a;
   --color-primary-active: #122f55;
-  --color-body: #495057;
+  --color-body: #343a40;
   --color-heading: #212529;
   --color-footer: #343a40;
   --color-normal: #14573c;
@@ -26,12 +26,7 @@
   --color-severe: #8f2a12;
   --color-severe-bg: #feece7;
   --color-severe-bg-deep: #f6c3b3;
-  /* The welcome-back gauge's arcs (ADR 0026): brighter than the level text colours, so the
-     three levels read as a dial; the level itself is written in text under it. */
-  --color-gauge-normal: #3f9c6f;
-  --color-gauge-mild: #e2a92b;
-  --color-gauge-severe: #c4532f;
-  --color-surface: #f1f3f5;
+  --color-surface: #f4f6f8;
   --color-brand-soft: #eef3fa;
   --color-brand-soft-deep: #d6e2f2;
   --color-brand-selected: #e8eef7;
@@ -47,7 +42,7 @@
   /* The phone's fixed bottom tab bar: about this tall, until back-to-top.js (#340) keeps its
      measured height here. */
   --tab-bar-height: 5rem;
-  --radius-button: 0.5rem;
+  --radius-button: 0.7778rem;
   --radius-badge: 1rem;
   --radius-tab: 1.5rem;
   --shadow-input-focus: 0 0 0 0.25rem rgba(31, 78, 140, 0.25);
@@ -66,34 +61,26 @@
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
   --radius-small: 0.25rem;
-  /* 2a shared shell (#120, #137): a warm page under white surfaces, three radius levels, and the
-     blue gradient's two ends for the header, buttons and navigation. */
-  --color-page: #faf7f2;
-  --color-footer-bg: #f3ede3;
-  --color-border-warm: #efe6d8;
-  /* #298's pick for a flat list (ADR 0022): the thin warm line left of each item. */
-  --color-line-warm: #d9cdb9;
-  /* A 並列區塊 (ADR 0024): pale beige a little deeper than the page (about 1.2:1), and the deeper
-     beige of the lines between the parts inside one. Text and links on it keep 4.5:1 or more. */
-  --color-tint: #ece3d4;
-  --color-tint-line: #c9bba3;
-  /* A 段落框 (ADR 0025): paler than a 並列區塊, its title in a deeper beige bar on top. Body
-     text 7.15:1 and links 7.27:1 on the box, the title 10.34:1 on its bar. */
-  --color-section: #f5efe5;
-  --color-section-title: #e0d2b8;
-  /* ADR 0024's larger subheads in flat content, against 1rem body text: a 並列區塊's title, and
-     a bold subhead inside one (or in a guide chapter). */
-  --text-block-title: 1.35rem;
+  /* The site-wide redesign (ADR 0043, #454's picks T1, E, S1, P3): a white page, thin grey
+     lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
+     secondary lines (7.5:1 on white), the strong line for edges that must show (3.1:1). */
+  --color-muted: #4a5460;
+  --color-line: #e3e7ec;
+  --color-line-strong: #8a94a3;
+  --text-page-title: 1.5556rem;
+  --text-section-title: 1.2222rem;
+  --text-button: 1.1111rem;
   --text-subhead: 1.2rem;
-  --shadow-warm: 0 0.25rem 0.75rem rgba(120, 90, 50, 0.08);
-  --shadow-warm-lifted: 0 0.5rem 1.25rem rgba(120, 90, 50, 0.16);
+  --spacing-button: 3.1111rem;
+  /* A clickable card under a mouse (ADR 0006): lifted on a soft neutral shadow. */
+  --shadow-lifted: 0 0.5rem 1.25rem rgba(33, 37, 41, 0.14);
   --radius-large: 1.5rem;
   --radius-medium: 0.75rem;
   --radius-pill: 999px;
+  /* The logo's pebble and the wordmark's 伴 (ADR 0039): a blue teal, still blue under
+     ADR 0007; white text keeps 5.5:1 on it. Nothing else uses the gradient (ADR 0043). */
   --color-gradient-start: #1f4e8c;
-  /* Brand refresh: a blue teal, still blue under ADR 0007; white text keeps 5.5:1 on it. */
   --color-gradient-end: #1d6f99;
-  --gradient-brand: linear-gradient(var(--color-gradient-start), var(--color-gradient-end));
   /* The logo: a bird with an ear for a wing, used as a mask so it takes the colour around it. */
   /* Its url%28 stays encoded: collectstatic would take a plain url( here for a file and break it. */
   --logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cmask id='bird'%3E%3Cpath fill='white' fill-rule='evenodd' d='M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z'/%3E%3Cpath fill='none' stroke='black' stroke-width='3.9' stroke-linecap='round' stroke-linejoin='round' transform='translate(28 33.5) scale(.9) translate(-28.5 -35)' d='M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2'/%3E%3C/mask%3E%3Crect width='64' height='64' mask='url%28%23bird%29'/%3E%3C/svg%3E");
@@ -114,7 +101,7 @@
     font-weight: 400;
     line-height: 1.5;
     color: var(--color-body);
-    background-color: var(--color-page);
+    background-color: #fff;
     -webkit-text-size-adjust: 100%;
   }
   @media print {
@@ -138,29 +125,24 @@
   h4, .h4 { font-size: calc(1.275rem + 0.3vw); }
   h5, .h5 { font-size: 1.25rem; }
   h6, .h6 { font-size: 1rem; }
-  /* Page titles (h1.h3) and the section titles on the page itself (h2.h4, or .heading-bar where
-     a title has its own size): a short brand-blue bar on the left ties them to the brand. A title
-     inside a card, the report's summary box (and the family's 「先看重點」 since #366) or a 段落框
-     has none; the box already frames it. */
-  h1.h3,
-  h2.h4:not(:where(.card, .report-summary, .family-highlights, .section-box) *),
-  .heading-bar {
-    padding-left: 0.75rem;
-    border-left: 0.3rem solid var(--color-primary);
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-  /* #357: on a phone a page title is about 29px, at least 4px above a section title (h2.h4).
-     At 200% text on a narrow phone a long Latin word breaks rather than widen the
-     page (as #204's wrap-anywhere). */
-  @media (max-width: 47.99em) {
-    h1.h3 { font-size: 1.6rem; overflow-wrap: anywhere; }
-  }
   @media (min-width: 1200px) {
     h1, .h1 { font-size: 2.5rem; }
     h2, .h2 { font-size: 2rem; }
     h3, .h3 { font-size: 1.75rem; }
     h4, .h4 { font-size: 1.5rem; }
+  }
+  /* T1 (#454, ADR 0043): a page title (h1.h3) 28px and a section title (.h4) 22px, bold in the
+     heading colour, at every width; no bar beside them, the size alone sets them apart. At 200%
+     text on a narrow phone a long Latin word breaks rather than widen the page (#204). */
+  h1.h3, .h4 {
+    color: var(--color-heading);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  h1.h3 { font-size: var(--text-page-title); }
+  .h4 { font-size: var(--text-section-title); }
+  @media (max-width: 47.99em) {
+    h1.h3 { overflow-wrap: anywhere; }
   }
   p { margin: 0 0 1rem; }
   ol, ul { padding-left: 2rem; }
@@ -229,20 +211,25 @@
    folded in (#125). Only the parts in use are carried over. A variant sets the --btn-* values;
    as before the migration, a plain .btn leaves its hover, active and disabled values unset. */
 @layer components {
+  /* S1 (#454, ADR 0043): a rounded square at least 56px tall, its words bold and centred however
+     many lines they take; a solid primary button, the second most important one framed in a 2px
+     blue line. A text link (.btn-link) only needs the 44px touch height. */
   .btn {
-    --btn-padding-x: 0.75rem;
+    --btn-padding-x: 1rem;
     --btn-padding-y: 0.375rem;
     --btn-font-size: 1rem;
     --btn-color: var(--color-body);
     --btn-bg: transparent;
     --btn-border-color: transparent;
     --btn-hover-border-color: transparent;
-    display: inline-block;
-    min-height: var(--spacing-touch);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--spacing-button);
     min-width: var(--spacing-touch);
     padding: var(--btn-padding-y) var(--btn-padding-x);
     font-size: var(--btn-font-size);
-    font-weight: 400;
+    font-weight: 700;
     line-height: 1.5;
     color: var(--btn-color);
     text-align: center;
@@ -250,18 +237,17 @@
     vertical-align: middle;
     cursor: pointer;
     user-select: none;
-    border: 1px solid var(--btn-border-color);
-    border-radius: var(--radius-pill);
+    border: 2px solid var(--btn-border-color);
+    border-radius: var(--radius-button);
     background-color: var(--btn-bg);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
       border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   }
   .btn-lg {
-    --btn-padding-x: 1rem;
+    --btn-padding-x: 1.25rem;
     --btn-padding-y: 0.5rem;
-    --btn-font-size: 1.25rem;
+    --btn-font-size: var(--text-button);
   }
-  /* The gradient (2a, #139, below) covers the border, so the border stays transparent. */
   .btn-primary {
     --btn-color: #fff;
     --btn-bg: var(--color-primary);
@@ -277,24 +263,27 @@
     --btn-disabled-bg: #fff;
     --btn-disabled-border-color: #8da2bf;
   }
+  /* #471 (mockup #470 D4): the level red, white words at 8.4:1; darker under a mouse and when
+     pressed, colour only. */
   .btn-danger {
     --btn-color: #fff;
-    --btn-bg: #dc3545;
-    --btn-border-color: #dc3545;
+    --btn-bg: var(--color-severe);
+    --btn-border-color: var(--color-severe);
     --btn-hover-color: #fff;
-    --btn-hover-bg: #bb2d3b;
-    --btn-hover-border-color: #b02a37;
-    --btn-focus-ring: rgba(225, 83, 97, 0.5);
+    --btn-hover-bg: #74220f;
+    --btn-hover-border-color: #74220f;
+    --btn-focus-ring: rgba(143, 42, 18, 0.5);
     --btn-active-color: #fff;
-    --btn-active-bg: #b02a37;
-    --btn-active-border-color: #a52834;
+    --btn-active-bg: #5c1b0c;
+    --btn-active-border-color: #5c1b0c;
     --btn-disabled-color: #fff;
-    --btn-disabled-bg: #dc3545;
-    --btn-disabled-border-color: #dc3545;
+    --btn-disabled-bg: var(--color-severe);
+    --btn-disabled-border-color: var(--color-severe);
   }
   /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);
+    --btn-bg: #fff;
     --btn-border-color: var(--color-primary);
     --btn-hover-color: #fff;
     --btn-hover-bg: var(--color-primary);
@@ -321,20 +310,6 @@
     --btn-disabled-bg: transparent;
     --btn-disabled-border-color: #6c757d;
   }
-  .btn-outline-danger {
-    --btn-color: #dc3545;
-    --btn-border-color: #dc3545;
-    --btn-hover-color: #fff;
-    --btn-hover-bg: #dc3545;
-    --btn-hover-border-color: #dc3545;
-    --btn-focus-ring: rgba(220, 53, 69, 0.5);
-    --btn-active-color: #fff;
-    --btn-active-bg: #dc3545;
-    --btn-active-border-color: #dc3545;
-    --btn-disabled-color: #dc3545;
-    --btn-disabled-bg: transparent;
-    --btn-disabled-border-color: #dc3545;
-  }
   /* Its focus ring kept the pre-migration framework blue, rgba(49, 132, 253, 0.5); the site
      never overrode it. */
   .btn-link {
@@ -345,6 +320,7 @@
     --btn-active-border-color: transparent;
     --btn-disabled-color: #6c757d;
     --btn-disabled-border-color: transparent;
+    min-height: var(--spacing-touch);
     text-decoration: underline;
   }
   .btn:hover, .btn:focus-visible {
@@ -368,27 +344,9 @@
     opacity: 0.65;
   }
 
-  /* 2a primary button, choice C in #136 (docs/verification/issue-136.md): the gradient, a glow
-     on hover, darker when pressed, white with a blue-grey edge when disabled. Colour only, never
-     movement (ADR 0006). The glow is soft and blurred so it never looks like the crisp keyboard
-     ring (owner's choice after #139 review); with both, the ring stays next to the button. */
-  .btn-primary {
-    --btn-glow: rgba(29, 111, 153, 0.45);
-    background-image: var(--gradient-brand);
-    background-origin: border-box;
-  }
-  .btn-primary:hover { box-shadow: 0 0 0.9rem 0.2rem var(--btn-glow); }
-  .btn-primary:active {
-    background-image: linear-gradient(var(--color-primary-hover), #185f83);
-    box-shadow: none;
-  }
-  .btn-primary:focus-visible:hover {
-    box-shadow: 0 0 0 0.25rem var(--btn-focus-ring), 0 0 0.9rem 0.45rem var(--btn-glow);
-  }
-  .btn-primary:focus-visible:active { box-shadow: 0 0 0 0.25rem var(--btn-focus-ring); }
+  /* The solid primary button: darker under a mouse and darker still when pressed, colour only
+     (ADR 0006); disabled it is white with a blue-grey edge. */
   .btn-primary:disabled, fieldset:disabled .btn-primary {
-    background-image: none;
-    box-shadow: inset 0 0 0 1px var(--btn-disabled-border-color);
     opacity: 1;
   }
 
@@ -519,9 +477,8 @@
     overflow-wrap: break-word;
     background-color: #fff;
     background-clip: border-box;
-    border: 1px solid var(--color-border-warm);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-large);
-    box-shadow: var(--shadow-warm);
   }
   .card-body { flex: 1 1 auto; padding: 1rem; }
   .table {
@@ -577,14 +534,14 @@
   .text-danger {
     color: var(--color-severe) !important;
   }
-  /* #272: a field's error (field_messages.html), and every error in the login and register card,
-     gets a warning mark, so it does not rest on the red alone. */
-  .field-error, .auth-card .text-danger {
+  /* #272: a field's error (field_messages.html), and the login and register error boxes (#471),
+     get a warning mark, so they do not rest on the red alone. */
+  .field-error, .error-box {
     display: flex;
     gap: 0.4rem;
     font-weight: 700;
   }
-  .field-error::before, .auth-card .text-danger::before {
+  .field-error::before, .error-box::before {
     --warning-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v6M12 16.5v.5'/%3E%3C/svg%3E");
     content: "";
     flex: none;
@@ -614,7 +571,7 @@
     position: relative;
     overflow: hidden;
     background-color: #fff;
-    border-bottom: 1px solid var(--color-border-warm);
+    border-bottom: 1px solid var(--color-line);
     color: var(--color-primary);
   }
 
@@ -926,37 +883,41 @@
     stroke-linejoin: round;
   }
 
+  /* W1 (#454, ADR 0043, without the frosted glass of ADR 0045, which is #457): the current page
+     is a pale blue pill with bold blue words, the others the heading colour (grey on a phone, as
+     W1); under a finger or a mouse colour only, never position (ADR 0006). */
+  .site-nav a[aria-current="page"] {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-selected);
+    font-weight: 700;
+  }
+
+  .site-nav a:active {
+    border-radius: var(--radius-tab);
+    background-color: var(--color-brand-soft);
+  }
+
+  .site-nav a[aria-current="page"]:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
   @media (min-width: 48em) {
-    /* Design picker round 2: white like the header, parted from it by a soft shadow along the
-       top; the padding keeps the current-page pill inside the bar instead of filling it. */
+    /* White like the header, a thin line under it; the padding keeps the current-page pill
+       inside the bar instead of filling it. */
     .site-nav {
       padding-block: 0.375rem;
-      border-bottom: 1px solid var(--color-border-strong);
-      box-shadow: inset 0 0.4rem 0.5rem -0.4rem rgba(20, 30, 50, 0.25);
+      border-bottom: 1px solid var(--color-line);
     }
 
     .site-nav ul {
       gap: 0.5rem;
     }
-
-    /* The current page is a gradient pill: shape as well as colour (#140). */
-    .site-nav a[aria-current="page"] {
-      border-radius: var(--radius-pill);
-      background-image: var(--gradient-brand);
-      color: #fff;
-    }
-
-    /* #328 (A3): pressed, an item turns a light blue pill, the current one's gradient deepens. */
-    .site-nav a:active {
-      border-radius: var(--radius-pill);
-      background-color: var(--color-brand-selected);
-    }
-
-    .site-nav a[aria-current="page"]:active {
-      background-image: linear-gradient(var(--color-primary-hover), #185f83);
-    }
   }
 
+  /* Phones: a floating white capsule over the foot of the screen. The nav itself is the fixed,
+     see-through strip around it, so its height (back-to-top.js, in-view.js) still counts the
+     gap under the capsule. The capsule's insets are in px, so at 200% text the tabs keep their
+     width for the words. */
   @media (max-width: 47.99em) {
     .site-nav {
       position: fixed;
@@ -964,12 +925,17 @@
       bottom: 0;
       left: 0;
       z-index: 1030;
-      border-top: 1px solid var(--color-border-strong);
-      padding-bottom: env(safe-area-inset-bottom);
+      padding: 0 12px calc(6px + env(safe-area-inset-bottom));
+      background-color: transparent;
+      pointer-events: none;
     }
 
     .site-nav ul {
-      padding: 0;
+      padding: 3px;
+      border-radius: 1.75rem;
+      background-color: #fff;
+      box-shadow: 0 0.375rem 1.5rem rgba(33, 37, 41, 0.16);
+      pointer-events: auto;
     }
 
     .site-nav li {
@@ -980,36 +946,56 @@
     .site-nav a {
       min-width: 0;
       flex-direction: column;
-      gap: 0.125rem;
-      padding: 0.375rem 0.25rem;
+      gap: 0;
+      padding: 0.25rem;
       font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--color-muted);
+    }
+  }
+
+  /* #457 translucent tab bar (ADR 0045, W1 of #454). On phones the capsule is frosted glass, 88%
+     white, where the browser can blur what scrolls behind it; solid white (above) where it
+     cannot, or with reduced transparency. Even over black the grey tabs keep 5.8:1; the current
+     tab's pale blue pill is solid. */
+  @media (max-width: 47.99em) {
+    @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+      /* The glass's light edge is drawn inside the shadow, not as a border, so the capsule is
+         no taller than the solid one (answers kept clear of it stay clear, #362). */
+      .site-nav ul {
+        background-color: rgba(255, 255, 255, 0.88);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 0.375rem 1.5rem rgba(33, 37, 41, 0.16);
+        -webkit-backdrop-filter: blur(18px) saturate(1.6);
+        backdrop-filter: blur(18px) saturate(1.6);
+      }
     }
 
-    /* Every icon gets the same pill room, so the current one can fill it without the bar
-       shifting; the current icon turns white in a gradient pill, its label bold blue (#140). */
-    .site-nav svg {
-      box-sizing: content-box;
-      padding: 0.125rem 0.75rem;
-      border-radius: var(--radius-pill);
+    @media (prefers-reduced-transparency: reduce) {
+      .site-nav ul {
+        background-color: #fff;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+    }
+  }
+
+  /* tab-bar.js marks the bar data-hidden while the page scrolls down: it slides below the screen,
+     its shadow too, and back. The one thing that moves without being a card (ADR 0045, an
+     exception to ADR 0006); with reduced motion it never goes. Wide screens keep it in the page. */
+  @media (max-width: 47.99em) and (prefers-reduced-motion: no-preference) {
+    .site-nav {
+      transition: transform 0.25s ease-out;
     }
 
-    .site-nav a[aria-current="page"] {
-      font-weight: 700;
+    .site-nav[data-hidden] {
+      transform: translateY(calc(100% + 1.5rem));
     }
 
-    .site-nav a[aria-current="page"] svg {
-      background-image: var(--gradient-brand);
-      stroke: #fff;
-    }
-
-    /* #328 (A3): under the finger the pill behind the icon lights up, the current one's
-       gradient deepens like a pressed primary button; colour only (ADR 0028). */
-    .site-nav a:active svg {
-      background-color: var(--color-brand-selected);
-    }
-
-    .site-nav a[aria-current="page"]:active svg {
-      background-image: linear-gradient(var(--color-primary-hover), #185f83);
+    /* Back to top follows the bar down while it is away, so no gap is left under it, and goes
+       back above it when it returns (the owner after #457). */
+    .site-nav[data-hidden] ~ .back-to-top {
+      transform: translateY(calc(var(--tab-bar-height) - 0.25rem));
     }
   }
 
@@ -1031,10 +1017,12 @@
     opacity: 1;
   }
 
-  /* A short fade in and out (spec #338); with reduced motion it simply appears and goes. */
+  /* A short fade in and out (spec #338), and the slide after the tab bar (#457); with reduced
+     motion it simply appears and goes. */
   @media (prefers-reduced-motion: no-preference) {
     .back-to-top {
-      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out;
+      transition: opacity 0.2s, visibility 0.2s, box-shadow 0.15s ease-in-out,
+        transform 0.25s ease-out;
     }
   }
 
@@ -1048,7 +1036,7 @@
     position: relative;
     margin-top: 5.5rem;
     padding: 1.5rem 0;
-    background-color: var(--color-footer-bg);
+    background-color: var(--color-surface);
     color: var(--color-footer);
     text-align: center;
   }
@@ -1091,7 +1079,7 @@
     height: 3.3rem;
     transform: translateX(-50%);
     border-radius: 3.25rem 3.25rem 0 0;
-    background-color: var(--color-footer-bg);
+    background-color: var(--color-surface);
   }
 
   .site-footer::after {
@@ -1225,32 +1213,37 @@
     color: var(--color-body);
   }
 
-  /* Clickable card: the whole card is one link, with an arrow to say so (spec 4.5). */
+  /* Clickable card, E (#454, ADR 0043): a row of a list, the whole row one link, parted from the
+     next by a thin line; a pale blue round icon in front (where it has one), the title in the
+     heading colour and a blue arrow at the end. The first row of a run, or of a list of them,
+     also has the line above it. */
   .link-card {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
-    padding: 1.1rem;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
+    gap: 0.75rem;
+    min-height: 4rem;
+    margin: 0;
+    padding: 0.875rem 0.25rem;
+    border-bottom: 1px solid var(--color-line);
     background-color: #fff;
     color: inherit;
     text-decoration: none;
-    box-shadow: var(--shadow-warm);
     transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
-      border-color 0.15s ease-out, background-color 0.15s ease-out;
+      background-color 0.15s ease-out;
+  }
+
+  .link-card:not(.link-card + .link-card, li + li > .link-card) {
+    border-top: 1px solid var(--color-line);
   }
 
   /* Only clickable cards move (#141, ADR 0006). Hover only where there is a mouse, so a tap
      never leaves a card looking hovered; a press sinks the card on every device. */
   @media (hover: hover) and (pointer: fine) {
     .link-card:hover {
-      border-color: var(--color-primary);
       background-color: var(--color-brand-soft);
       color: inherit;
       transform: translateY(-0.25rem);
-      box-shadow: var(--shadow-warm-lifted);
+      box-shadow: var(--shadow-lifted);
     }
 
     .link-card:hover .questionnaire-icon::after {
@@ -1259,24 +1252,22 @@
   }
 
   .link-card:active {
-    border-color: var(--color-primary);
     background-color: var(--color-brand-selected);
     color: inherit;
     transform: translateY(0.125rem);
     box-shadow: none;
   }
 
-  /* Keyboard focus never moves the card; the border turns blue beside the ring. */
+  /* Keyboard focus never moves the card. */
   .link-card:focus-visible {
-    border-color: var(--color-primary);
     outline: 0.25rem solid var(--color-primary);
-    outline-offset: 0.25rem;
+    outline-offset: 0.125rem;
   }
 
-  /* Reduced motion: colour changes only, so the shadow stays put as well. */
+  /* Reduced motion: colour changes only, so no shadow either. */
   @media (prefers-reduced-motion: reduce) {
     .link-card { transition: none; }
-    .link-card:hover, .link-card:active { transform: none; box-shadow: var(--shadow-warm); }
+    .link-card:hover, .link-card:active { transform: none; box-shadow: none; }
     .link-card:hover .questionnaire-icon::after { animation: none; }
   }
 
@@ -1288,34 +1279,39 @@
     min-width: 0;
   }
 
+  /* T1: what follows the title is the muted secondary text. */
+  .link-card-body > :not(.link-card-title) {
+    color: var(--color-muted);
+  }
+
   .link-card-title {
-    color: var(--color-primary);
-    font-size: 1.25rem;
+    color: var(--color-heading);
     font-weight: 700;
   }
 
   .link-card-arrow {
     color: var(--color-primary);
     font-size: 2rem;
+    font-weight: 700;
     line-height: 1;
   }
 
-  /* Action card: a link-card that leads somewhere else (report, share, home), with an icon
-     tile in front. The tile turns white while the card itself turns pale blue. */
+  /* Action card: a link-card that leads somewhere else (report, share, home), with its icon in a
+     pale blue circle in front. */
   .action-card-icon {
     display: flex;
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: var(--radius-medium);
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
     background-color: var(--color-brand-soft);
   }
 
   .action-card-icon svg {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
     fill: none;
     stroke: var(--color-primary);
     stroke-width: 2;
@@ -1323,12 +1319,13 @@
     stroke-linejoin: round;
   }
 
-  .link-card:active .action-card-icon {
+  /* The row turns pale blue under a mouse or a finger; the circle turns white to stay apart. */
+  .link-card:active :is(.action-card-icon, .questionnaire-icon) {
     background-color: #fff;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .link-card:hover .action-card-icon {
+    .link-card:hover :is(.action-card-icon, .questionnaire-icon) {
       background-color: #fff;
     }
   }
@@ -1359,79 +1356,17 @@
   }
 
   /* Login and register (owner's pick from the design comparison, 2026-10-23; see
-     docs/verification/auth-pages-banner.md): a brand-gradient banner, the form card laid over
-     its lower edge, and thicker fields with an icon inside. The thicker fields stay on these two
-     pages; the rest of the site keeps the plain .form-control for now. */
-  .auth-hero {
-    position: relative;
-    overflow: hidden;
-    padding: 1.75rem 1.25rem 4.5rem;
-    border-radius: var(--radius-large) var(--radius-large) 0 0;
-    background: var(--gradient-brand);
-    color: #fff;
-  }
-  .auth-hero-title {
-    margin: 0 0 0.35rem;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #fff;
-  }
-  .auth-hero p { margin: 0; color: #fff; }
-  .auth-hero .step-progress { margin: 0.75rem 0 0; }
-  .auth-hero .step-progress-text { color: #fff; }
-  .auth-hero .step-progress-segment { background-color: rgba(255, 255, 255, 0.35); }
-  .auth-hero .step-progress-segment.is-done { background-color: #fff; }
-  /* Still bars, like the header wave stopped: decoration only, nothing moves. They sit just
-     above the card and stay under the banner's padding, clear of the step bar. */
-  .auth-hero-bars {
-    position: absolute;
-    right: 1rem;
-    bottom: 3.25rem;
-    display: flex;
-    align-items: flex-end;
-    gap: 0.3rem;
-    opacity: 0.35;
-  }
-  .auth-hero-bars span {
-    width: 0.4rem;
-    border-radius: var(--radius-pill);
-    background-color: #fff;
-  }
-  .auth-hero-bars span:nth-child(1) { height: 0.4rem; }
-  .auth-hero-bars span:nth-child(2) { height: 0.7rem; }
-  .auth-hero-bars span:nth-child(3) { height: 1rem; }
-  .auth-hero-bars span:nth-child(4) { height: 0.55rem; }
-  .auth-hero-bars span:nth-child(5) { height: 0.85rem; }
-  .auth-hero-bars span:nth-child(6) { height: 1rem; }
-  .auth-hero-bars span:nth-child(7) { height: 0.7rem; }
-  .auth-hero-bars span:nth-child(8) { height: 0.4rem; }
-
-  /* #360 (spec #354): the consent page, step 2 after register, wears the register banner. No
-     card lies over its lower edge, so it is round all round and its bars sit lower; what follows
-     is flat on the page (ADR 0022). */
-  .consent-hero {
-    margin-bottom: 1.5rem;
-    padding-bottom: 2.75rem;
-    border-radius: var(--radius-large);
-  }
-  .consent-hero .auth-hero-bars { bottom: 1rem; }
-
-  .auth-card {
-    position: relative;
-    margin: -3rem 1rem 0;
-    padding: 1.25rem;
-    background-color: #fff;
-    border: 1px solid var(--color-border-warm);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-warm);
-  }
-  .auth-card label { font-weight: 700; color: var(--color-heading); }
+     docs/verification/auth-pages-banner.md): thicker fields with an icon inside. The thicker
+     fields stay on these two pages; the rest of the site keeps the plain .form-control. #471
+     (mockup #470 D1 B) took away the banner and the card laid over it: the form is on the white
+     page under a plain title. */
+  .auth-form label { font-weight: 700; color: var(--color-heading); }
   .auth-field:focus-within label { color: var(--color-primary); }
   .auth-field:has([aria-invalid="true"]) label { color: var(--color-severe); }
   /* Twice the width of the site's field edge (#272 gave every field its colour). */
-  .auth-card .form-control, .auth-card .input-group-text { border-width: 2px; }
-  .auth-card .input-group > :not(:first-child) { margin-left: -2px; }
-  .auth-card .form-control { min-height: 3.25rem; font-size: 1.25rem; }
+  .auth-form .form-control, .auth-form .input-group-text { border-width: 2px; }
+  .auth-form .input-group > :not(:first-child) { margin-left: -2px; }
+  .auth-form .form-control { min-height: 3.25rem; font-size: 1.25rem; }
   .auth-input { position: relative; }
   .auth-input > svg {
     position: absolute;
@@ -1477,10 +1412,10 @@
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
     text-align: center;
   }
-  .auth-alt p { margin-bottom: 0.5rem; color: var(--color-heading); }
+  .auth-alt p { margin-bottom: 1rem; color: var(--color-heading); }
 
   /* Answer choices: large horizontal buttons; the whole label is clickable. */
   div.choice-group {
@@ -1498,7 +1433,7 @@
     align-items: center;
     min-height: 3rem;
     padding: 0.5rem 0.5rem 0.5rem 1rem; /* the tick's room takes most of the right padding */
-    border: 2px solid var(--color-border);
+    border: 2px solid var(--choice-border, var(--color-border));
     border-radius: var(--radius-button);
     background-color: #fff;
     font-size: 1.25rem;
@@ -1569,202 +1504,6 @@
     overflow-wrap: anywhere;
   }
 
-  /* 和上一次比 (my_hearing; 2026-10-24 comparison page, option A): 上一次 → 最近一次 side by
-     side, each a 並列區塊 with its date and a score as large as the trend summary's; 最近一次 pale
-     blue in a brand-blue frame (ADR 0007: decoration is blue). The section is the container: at
-     200% text the two stack and the arrow points down. */
-  .since-last {
-    container-type: inline-size;
-  }
-
-  /* #364: in HHIA-S's summary box the pair has the box's inside width, so the box is what
-     decides when the two stack. */
-  .since-last .trend-summary {
-    container-type: inline-size;
-  }
-
-  .since-last-pair {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .since-last-cell {
-    flex: 1 1 0;
-    min-width: 0;
-    margin: 0;
-    padding: 0.6rem 0.75rem;
-    border: 2px solid transparent;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
-  }
-
-  .since-last-latest {
-    border-color: var(--color-primary);
-    background-color: var(--color-brand-soft);
-  }
-
-  .since-last-label,
-  .since-last-date,
-  .since-last-score {
-    display: block;
-  }
-
-  .since-last-label {
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .since-last-date {
-    font-size: 0.875rem;
-  }
-
-  .since-last-score {
-    margin-top: 0.25rem;
-    color: var(--color-heading);
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.1;
-  }
-
-  .since-last-unit {
-    font-size: 1rem;
-    font-weight: 500;
-  }
-
-  .since-last-arrow {
-    align-self: center;
-    color: var(--color-primary);
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-
-  @container (max-width: 15rem) {
-    .since-last-pair {
-      flex-direction: column;
-    }
-
-    .since-last-arrow {
-      align-self: flex-start;
-      margin-left: 1rem;
-      transform: rotate(90deg);
-    }
-  }
-
-  /* The blue summary box: the trend chart's (my_hearing), the latest score at a glance above
-     the chart, and aided vs unaided HHIE-S. Its left corners are square, so the thick line stays
-     straight instead of bending round them; the right corners keep the large radius (#357). */
-  .trend-summary, .aided-difference {
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-selected);
-    color: var(--color-heading);
-  }
-
-  .trend-summary {
-    padding: 1.25rem 1.5rem;
-    /* A date that still does not fit breaks rather than widening the page (#163). */
-    overflow-wrap: anywhere;
-  }
-
-  /* Narrow screens and larger text: less side padding, so the date fits on one line first. */
-  @media (max-width: 35em) {
-    .trend-summary {
-      padding-inline: 0.75rem;
-    }
-  }
-
-  .trend-summary-score strong {
-    font-size: 2rem;
-    color: var(--color-primary);
-  }
-
-  .trend-summary-score span {
-    font-weight: 700;
-  }
-
-  .home-illustration {
-    display: block;
-    width: 100%;
-    max-width: 20rem;
-    margin: 0 auto 1rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* The home page's top, first visit or 歡迎回來: a flat block on the page (ADR 0022, #298's
-     pick 「只靠標題」), framed by its title only; its buttons are the clickable things. */
-  .home-hero {
-    margin-bottom: 1.5rem;
-  }
-
-  .home-chips {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .home-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.875rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-brand-soft);
-    color: var(--color-primary);
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  .home-chip svg {
-    width: 1.125rem;
-    height: 1.125rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* The smiling elder: blue lines, a white face, grey hair, teal cheeks and sound. */
-  .home-hero .home-illustration {
-    max-width: 14rem;
-  }
-
-  .home-illustration .ill-solid {
-    fill: var(--color-primary);
-    stroke: none;
-  }
-
-  .home-illustration .ill-face {
-    fill: #fff;
-  }
-
-  .home-illustration .ill-hair {
-    stroke: var(--color-border-strong);
-    stroke-width: 9;
-  }
-
-  .home-illustration .ill-cheek {
-    fill: var(--color-gradient-end);
-    stroke: none;
-    opacity: 0.3;
-  }
-
-  .home-illustration .ill-accent {
-    stroke: var(--color-gradient-end);
-    stroke-width: 5;
-  }
-
-  .home-illustration .ill-faint {
-    opacity: 0.5;
-  }
-
   /* Start button: the logo before the words, and one ring sent out once (ADR 0006). The ring is
      its own layer, so the button itself never moves. */
   .btn-start {
@@ -1794,307 +1533,8 @@
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    .home-hero .home-illustration {
-      transform-origin: 50% 85%;
-      animation: home-sway 2.6s ease-in-out both;
-    }
-
     .btn-start::after {
       animation: start-ring 2s ease-out 1.2s both;
-    }
-  }
-
-  /* Welcome back, option D (ADR 0026): a blue greeting band with the smiling elder, and the result
-     box tucked under it. Neither is a link, so neither has a hover or press effect (ADR 0006). */
-  /* The title beside the elder; the date runs the band's full width under both, so it keeps to one
-     line on a phone and wraps on its own at large text sizes. */
-  .welcome-band {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: end;
-    gap: 0 0.75rem;
-    padding: 1.5rem 1rem 3rem;
-    border-radius: var(--radius-large);
-    /* Two faint rings, like sound spreading out, drawn in the background so nothing pokes out. */
-    background-image:
-      radial-gradient(circle at calc(100% - 3rem) 2rem, transparent 7.8rem,
-        rgba(255, 255, 255, 0.18) 7.8rem 8rem, transparent 8rem),
-      radial-gradient(circle at 2rem calc(100% + 1rem), transparent 4.8rem,
-        rgba(255, 255, 255, 0.18) 4.8rem 5rem, transparent 5rem),
-      var(--gradient-brand);
-    color: #fff;
-  }
-
-  .welcome-title {
-    min-width: 0;
-    margin: 0;
-    color: #fff;
-    font-size: 1.85rem;
-    font-weight: 700;
-  }
-
-  .welcome-date {
-    grid-column: 1 / -1;
-    margin: 0.35rem 0 0;
-  }
-
-  /* On the blue: a white body and sound, dark lines. */
-  .home-hero .welcome-band .home-illustration {
-    width: 6rem;
-    margin: 0;
-    stroke: var(--color-primary-active);
-  }
-
-  .welcome-band .home-illustration .ill-solid {
-    fill: #fff;
-    opacity: 0.9;
-  }
-
-  .welcome-band .home-illustration .ill-hair {
-    stroke: var(--color-border-subtle);
-  }
-
-  .welcome-band .home-illustration .ill-accent {
-    stroke: #fff;
-  }
-
-  /* At large text sizes the elder would leave the title a character or less: it gives way. */
-  .welcome {
-    container-type: inline-size;
-  }
-
-  @container (max-width: 14rem) {
-    .welcome-band {
-      grid-template-columns: 1fr;
-    }
-
-    .home-hero .welcome-band .home-illustration {
-      display: none;
-    }
-  }
-
-  .welcome .result-banner {
-    position: relative;
-    margin: -1.75rem 0.75rem 0;
-    border-radius: var(--radius-large);
-    text-align: center;
-  }
-
-  .welcome .result-banner > div:first-child {
-    font-weight: 700;
-    text-align: left;
-  }
-
-  .welcome-result-link {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.3rem;
-    min-height: var(--spacing-touch);
-    margin-top: 0.5rem;
-    border-top: 1px solid var(--color-border);
-    font-weight: 700;
-    text-decoration: none;
-  }
-
-  .welcome-reminder {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin: 1rem 0 0;
-    color: var(--color-heading);
-  }
-
-  .welcome-reminder svg {
-    flex: none;
-    width: 1.4rem;
-    height: 1.4rem;
-    margin-top: 0.15rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .welcome-reminder-due {
-    padding: 0.6rem 0.75rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
-    font-weight: 700;
-  }
-
-  /* Side by side when there is room, one under the other on a phone. */
-  .welcome-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 1rem;
-  }
-
-  .welcome-actions .btn {
-    flex: 1 1 14rem;
-  }
-
-  /* The gauge: the score bar's levels as arcs, the needle at the score (option D). */
-  .score-gauge {
-    display: block;
-    width: 13rem;
-    max-width: 100%;
-    margin: 0.25rem auto 0.35rem;
-  }
-
-  .score-gauge-arc {
-    fill: none;
-    stroke-width: 18;
-    stroke-dasharray: 1;
-  }
-
-  .score-gauge-arc-normal { stroke: var(--color-gauge-normal); }
-  .score-gauge-arc-mild_to_moderate { stroke: var(--color-gauge-mild); }
-  .score-gauge-arc-severe { stroke: var(--color-gauge-severe); }
-
-  .score-gauge-needle {
-    stroke: var(--color-heading);
-    stroke-width: 5;
-    stroke-linecap: round;
-    /* GAUGE_CENTRE in views/results.py, in the drawing's own units. */
-    transform-box: view-box;
-    transform-origin: 110px 105px;
-    transform: rotate(var(--angle));
-  }
-
-  .score-gauge-hub {
-    fill: var(--color-heading);
-  }
-
-  .score-gauge text {
-    fill: var(--color-body);
-    font-size: 1rem;
-    text-anchor: middle;
-  }
-
-  /* Once on arrival, about 2.6 seconds (ADR 0006): the elder sways (as above) and the sound
-     lights up twice; the arcs draw left to right, then the needle swings from 0 to the score and
-     stops without bouncing, bad news included. Reduced motion shows the end at once. */
-  @media (prefers-reduced-motion: no-preference) {
-    .welcome-band .ill-accent {
-      animation: welcome-sound 2.4s ease-in-out;
-    }
-
-    .score-gauge-arc {
-      animation: gauge-draw 0.45s ease-out 0.1s both;
-    }
-
-    .score-gauge-arc:nth-of-type(2) { animation-delay: 0.45s; }
-    .score-gauge-arc:nth-of-type(3) { animation-delay: 0.8s; }
-
-    .score-gauge-needle {
-      animation: gauge-needle 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) 1.1s both;
-    }
-  }
-
-  /* The audiologist line at the bottom (design picker round 3): a gradient shield before the
-     words, flat on the page since it is not a link (ADR 0022). */
-  .home-credential {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .home-credential-icon {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    background-image: var(--gradient-brand);
-  }
-
-  /* On a phone the line wraps into two even halves, not one word alone on the second line;
-     「聽力師」 stays whole unless it alone is wider than the card (keep-all, wrap anywhere). */
-  .home-credential-text {
-    text-wrap: balance;
-  }
-
-  .home-credential-icon svg {
-    width: 1.375rem;
-    height: 1.375rem;
-    fill: none;
-    stroke: #fff;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* 建議您下一步 on the returning user's home (#261, option Z): a pale blue box with a blue
-     border. Only its button is clickable, so the box has no hover or press effect (ADR 0006). */
-  .next-step {
-    margin-bottom: 1.5rem;
-    padding: 1.25rem;
-    border: 0.125rem solid var(--color-primary);
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft);
-  }
-
-  .next-step-label {
-    display: inline-block;
-    margin-bottom: 0.75rem;
-    padding: 0.125rem 0.75rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-primary);
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  /* With large text the title drops under the icon instead of squeezing into a narrow column. */
-  .next-step-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  /* #316: the box is not a link (only its button is), so nothing in it is white (ADR 0022): the
-     icon tile and the reason are a light blue a little deeper than the box. */
-  .next-step .action-card-icon {
-    background-color: var(--color-brand-soft-deep);
-  }
-
-  .next-step-title {
-    flex: 1 1 10rem;
-    margin: 0;
-    color: var(--color-heading);
-    font-size: 1.25rem;
-    font-weight: 700;
-  }
-
-  .next-step-because {
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft-deep);
-    overflow-wrap: anywhere;
-  }
-
-  /* At large text sizes the box and its reason give up most of their padding, so a line keeps a
-     few characters; 「（45%）。」 may not break off and would otherwise run past its box. */
-  .more-section,
-  .result-more {
-    container-type: inline-size;
-  }
-
-  @container (max-width: 14rem) {
-    .next-step {
-      padding: 0.75rem;
-    }
-
-    .next-step-because {
-      padding: 0.25rem 0.4rem;
     }
   }
 
@@ -2106,126 +1546,13 @@
     font-weight: 700;
   }
 
-  /* The login link under the start button: a full touch target, still a plain link. */
+  /* The login link under the start button: a full touch target, still a plain link; #471: at
+     the left edge, under the start button, as the text links below it. */
   .home-login {
     display: inline-flex;
     align-items: center;
     min-height: var(--spacing-touch);
-    padding: 0 0.75rem;
     font-size: 1.125rem;
-    font-weight: 700;
-  }
-
-  /* Four steps: two across when they fit (never 3 + 1), otherwise one per row. */
-  .step-cards {
-    list-style: none;
-    padding: 0;
-    margin-bottom: 1.5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
-    gap: 0.75rem;
-  }
-
-  /* Number, icon and words in one row (pages tidy-up); at large text sizes the words drop under
-     the number and icon instead of widening the page. Flat with a thin line (.line-list). */
-  .step-cards li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .step-number {
-    flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    color: #fff;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .step-cards li > span:last-child {
-    flex: 1 1 10rem;
-    min-width: 0;
-  }
-
-  .step-icon {
-    flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  /* A shrunken result, clearly marked as an example, with the result page's score bar since
-     design picker round 2. Not a link, so a flat block framed by its title (ADR 0022). */
-  .result-preview {
-    position: relative;
-    margin-bottom: 1.5rem;
-  }
-
-  /* What the result page tells you, instead of advice cut off mid-sentence. */
-  .result-preview-tells {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin: 1rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .result-preview-tells li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .result-preview-tells svg {
-    flex: none;
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .result-preview figcaption {
-    margin-top: 0.75rem;
-    color: var(--color-body);
-  }
-
-  .result-preview .result-level {
-    font-size: 1.5rem;
-  }
-
-  /* Round 4: the title and the 示意圖 tag share the card's top row. */
-  .result-preview-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .preview-tag {
-    flex: none;
-    padding: 0 0.5rem;
-    border-radius: var(--radius-badge);
-    background-color: var(--color-brand-soft);
-    color: var(--color-primary);
     font-weight: 700;
   }
 
@@ -2233,8 +1560,7 @@
   .ioi-note {
     margin: 0.5rem 0 0;
     padding: 0.5rem 0.75rem;
-    background-color: var(--color-brand-soft);
-    border-left: 0.25rem solid var(--color-primary);
+    background-color: var(--color-surface);
     border-radius: var(--radius-medium);
   }
 
@@ -2261,19 +1587,11 @@
     }
   }
 
-  /* Share page (#193): each step's heading starts with its number in the home page's
-     brand-gradient circle; inside the heading it keeps its size and the body font size. */
-  .share-step { display: flex; align-items: center; gap: 0.75rem; }
-  .share-step .step-number {
-    flex: none;
-    font-size: 1.125rem;
-  }
-
   /* Answer page: "第 n 題／共 N 題" above each question, inside the legend. */
   .question-progress {
     display: block;
     font-size: 1rem;
-    color: var(--color-body);
+    color: var(--color-muted);
   }
 
   /* React answer page (#326 B4): ✓ 已儲存 follows the progress on its line. Its box is there even
@@ -2359,60 +1677,28 @@
   }
 
   /* Questionnaire intros (screening/questionnaires/*_intro.html): the reviewed sentences, grouped
-     under small titles, each group led by a round icon named by data-icon. No inner div, so the
-     page's #answer-intro box stays one div deep. */
-  /* minmax(0, 1fr), not 1fr: a long run like 「HHIA-S，2026/10/23」 at double text size would
-     otherwise widen the column, and the page, past a 320px phone (CI on #247 after #248). */
+     under small titles at the body size (#462). No round icon in front: on a white page a pale
+     blue circle reads as something to tap (#463). No inner div, so the page's #answer-intro box
+     stays one div deep. A long run like 「HHIA-S，2026/10/23」 at double text size breaks rather
+     than widen a 320px phone (CI on #247 after #248). */
   .q-intro-row {
-    display: grid;
-    grid-template-columns: 2.25rem minmax(0, 1fr);
     overflow-wrap: anywhere;
-    column-gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-top: 1px solid var(--color-border-warm);
+    padding: 0.5rem 0;
   }
 
   .q-intro-row:first-child {
     padding-top: 0;
-    border-top: 0;
   }
 
   .q-intro-row > * {
-    grid-column: 2;
     margin-bottom: 0.25rem;
   }
 
-  .q-intro-row::before {
-    content: "";
-    grid-column: 1;
-    grid-row: 1 / span 4;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background: var(--color-brand-soft) no-repeat center / 1.25rem;
-  }
-
-  .q-intro-row[data-icon="purpose"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="who"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="how"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3h6v4H9zM6 5h12v16H6z'/%3E%3Cpath d='M9 13l2 2 4-4'/%3E%3C/svg%3E");
-  }
-
-  .q-intro-row[data-icon="note"]::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f4e8c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 8v5M12 16.5v.5'/%3E%3C/svg%3E");
-  }
-
   .q-intro-title {
-    margin: 0.3rem 0 0.25rem;
+    margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--color-heading);
   }
 
@@ -2437,23 +1723,23 @@
     text-decoration-line: underline;
   }
 
-  /* Register form: labels bold, each field's help in the body grey, at the body size (#357). */
+  /* Register form: labels bold, each field's help in the muted grey, at the body size (#357). */
   .register-form label {
     font-weight: 700;
     color: var(--color-heading);
   }
 
   .field-help {
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
+  /* A 提示框, P3 (#454, ADR 0043): pale grey, no frame and no line down its side. */
   .tip-box {
     margin: 0 0 1rem;
-    padding: 0.85rem 1rem;
-    border-left: 0.3rem solid var(--color-primary);
+    padding: 0.875rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -2468,11 +1754,11 @@
     line-height: 1.4;
   }
 
-  /* My guide's 選配路線 (#258): numbered stops on a line, the 目前這一站 in the brand blue with a
-     soft ring. Marks are blue or neutral, never the level colours (ADR 0007). The route is one
-     段落框 (#321, ADR 0025), so its joining line is the box's deeper beige. */
+  /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0043), the line blue as
+     far as the 目前這一站, which is a pale blue card beside it (the home page's 現在這一步).
+     Marks are words, never the level colours (ADR 0007). */
   .route {
-    --route-size: 2.5rem;
+    --route-size: 1.7778rem;
     container-type: inline-size;
     list-style: none;
     margin: 0;
@@ -2491,21 +1777,29 @@
     position: absolute;
     top: calc(var(--route-size) + 0.25rem);
     bottom: 0.25rem;
-    left: calc((var(--route-size) - 0.2rem) / 2);
-    width: 0.2rem;
+    left: calc((var(--route-size) - 2px) / 2);
+    width: 2px;
     border-radius: var(--radius-pill);
-    background-color: var(--color-border-warm);
+    background-color: var(--color-line-strong);
   }
 
-  /* #316: a pale blue circle with a blue number, like the chapters' .step-list-number; not white,
-     as the number is not tappable (ADR 0022). */
+  /* #467 I2: the way walked, up to the 目前這一站, is blue. */
+  .route-stop.is-walked::after {
+    z-index: 1;
+    background-color: var(--color-primary);
+    transform-origin: top;
+  }
+
+  /* A white circle in a 2px blue frame, like the chapters' .step-list-number; a done stop's holds
+     a blue tick (blue, not green, as on the home page: green is a level's colour). */
   .route-number {
     flex: none;
     width: var(--route-size);
     height: var(--route-size);
-    border: 0.15rem solid var(--color-primary);
+    margin-top: 0.3rem;
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: #fff;
     color: var(--color-primary);
     font-weight: 700;
     display: flex;
@@ -2513,65 +1807,28 @@
     justify-content: center;
   }
 
-  /* A stop's box is a 並列區塊 in the route's 段落框 (#321, ADR 0025): the deeper beige, no
-     frame; only the 目前這一站 restyles it. Its title is the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
   }
 
   .route-title {
+    color: var(--color-heading);
     font-weight: 700;
   }
 
   .route-marks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin: 0 0 0.25rem;
-  }
-
-  .route-mark {
-    padding: 0 0.6rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-brand-selected);
-    color: var(--color-primary);
-    font-size: 1rem;
-    font-weight: 700;
+    display: block;
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 400;
   }
 
   .route-note {
     margin: 0.25rem 0 0;
   }
 
-  .route-stop.is-here .route-number {
-    border-color: var(--color-primary);
-    background-color: var(--color-primary);
-    color: #fff;
-    box-shadow: 0 0 0 0.35rem rgba(31, 78, 140, 0.18);
-  }
-
-  .route-stop.is-here .route-box {
-    border: 0.125rem solid var(--color-primary);
-    background-color: var(--color-brand-soft);
-  }
-
-  .route-stop.is-here .route-mark:first-child {
-    background-color: var(--color-primary);
-    color: #fff;
-  }
-
-  /* #321: the neutral marks are the title bar's deeper beige, not white (white is what can be
-     tapped): the heading colour 10.34:1 on it, the body colour 5.48:1. */
-  .route-stop.is-below .route-mark {
-    background-color: var(--color-section-title);
-    color: var(--color-heading);
-  }
-
-  /* 不適用 (#293): a pale grey number, the 不適用 mark saying so in words; the text keeps its
+  /* 不適用 (#293): a pale grey circle, the 不適用 mark saying so in words; the text keeps its
      contrast. */
   .route-stop.is-na .route-number {
     border-color: var(--color-border);
@@ -2579,20 +1836,7 @@
     color: var(--color-body);
   }
 
-  .route-stop.is-na .route-mark {
-    background-color: var(--color-section-title);
-    color: var(--color-body);
-  }
-
-  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
-     the answer goes back to only: the success green (ADR 0007) with a white tick in place of its
-     number, drawn once in 0.45 s below; with reduced motion it is simply there. */
-  .route-stop.is-done-now .route-number {
-    border-color: var(--color-normal);
-    background-color: var(--color-normal);
-    color: #fff;
-  }
-
+  .route-check,
   .route-tick {
     width: 60%;
     height: 60%;
@@ -2613,14 +1857,14 @@
     flex-basis: 100%;
     margin: 0;
     padding-left: calc(var(--route-size) + 0.75rem);
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
-  /* #293: the answer in short under a stop, in the body grey, as the field help is. */
+  /* #293: the answer in short under a stop, in the muted grey, as the field help is. */
   .route-answer {
     margin: 0.5rem 0 0;
-    color: var(--color-body);
+    color: var(--color-muted);
     font-size: 1rem;
   }
 
@@ -2660,12 +1904,10 @@
     }
   }
 
+  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
+     the answer goes back to only: its tick draws once in 0.45 s, as the score gauge's arcs do;
+     with reduced motion it is simply there. */
   @media (prefers-reduced-motion: no-preference) {
-    .route-stop.is-here .route-number {
-      animation: route-ring 2.4s ease-in-out both;
-    }
-
-    /* The tick draws as the score gauge's arcs do. */
     .route-tick path {
       animation: gauge-draw 0.45s ease-out both;
     }
@@ -2791,68 +2033,27 @@
     overflow-wrap: anywhere;
   }
 
-  /* Guide chapters: each titled part a 段落框 (ADR 0025), the boxes apart by spacing; the
-     chapter's title, its lead and a tip of its own stay outside. Sources and the check date in
-     small print. */
+  /* Guide chapters: each titled part flat on the page (ADR 0043), the parts apart by spacing.
+     Sources and the check date in small print. */
   .guide-chapter > :not(h1) + * {
     margin-top: 2rem;
   }
 
-  /* #367 (spec #354): a chapter opening straight on a box (配戴之後) keeps its title off it. */
-  .guide-chapter > h1 + .section-box {
+  /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後), or on its key cards
+     (#467), keeps its title off it. */
+  .guide-chapter > h1 + :is(section, div) {
     margin-top: 1.5rem;
   }
 
-  /* A 段落框 (ADR 0025): a titled part of an article read in order, on a pale beige with no
-     shadow and no border, its title (.section-box-title, first in the box) in a deeper beige bar
-     across its top: bold, the heading colour, a 並列區塊's title size, no brand-blue bar; a long
-     title wraps in the bar. The pale warm lines inside (a list's dividers, a step list's or the
-     route's joining line) would vanish on the beige, so they take a 並列區塊's deeper line.
-     What can be tapped inside keeps its own look. On paper: a thin grey frame, the title bold
-     above a grey line. */
-  .section-box {
-    --color-border-warm: var(--color-tint-line);
-    padding: 0 1.25rem 1rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-section);
-  }
-
-  .section-box > :last-child {
-    margin-bottom: 0;
-  }
-
-  .section-box-title {
-    margin: 0 -1.25rem 1rem;
-    padding: 0.6rem 1.25rem;
-    border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-    background-color: var(--color-section-title);
-    color: var(--color-heading);
-    font-size: var(--text-block-title);
-    font-weight: 700;
-    line-height: 1.3;
-  }
-
-  /* A title the page moves the focus to (the route's, #321) shows a ring inside its bar, the
-     brand blue 5.6:1 on the bar's beige, so nothing around the box hides it. */
-  .section-box-title:focus {
+  /* A title the page moves the focus to (the route's, #321) shows a blue ring around it, 7.5:1 on
+     the white page. */
+  h2[tabindex="-1"]:focus {
     outline: 3px solid var(--color-primary);
-    outline-offset: -3px;
+    outline-offset: 2px;
   }
 
-  @media print {
-    .section-box {
-      border: 1px solid var(--color-border-strong);
-      background-color: transparent;
-    }
-
-    .section-box-title {
-      border-bottom: 1px solid var(--color-border-strong);
-      background-color: transparent;
-    }
-  }
-
-  /* #343 (ADR 0029): the box a jump lands on (a 段落框, a 並列區塊, a route stop, or the target
-     itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
+  /* #343 (ADR 0029): the part a jump lands on (a titled part marked data-jump-box, a route stop,
+     or the target itself; jump-highlight.js) lights up: a brand-blue outline with a pale blue glow, never a
      level colour (ADR 0007). A route stop lights its box, not its number. Held about 1.5
      seconds, then fading for 1.5; with reduced motion it simply shows, and goes when the script
      takes it off after 3 seconds. Only the look changes: the focus stays where it was.
@@ -2901,23 +2102,24 @@
     position: absolute;
     top: calc(var(--step-size) + 0.25rem);
     bottom: 0.25rem;
-    left: calc((var(--step-size) - 0.15rem) / 2);
-    width: 0.15rem;
+    left: calc((var(--step-size) - 2px) / 2);
+    width: 2px;
     border-radius: var(--radius-pill);
-    background-color: var(--color-border-warm);
+    background-color: var(--color-line-strong);
   }
 
   .step-list > li:last-child {
     padding-bottom: 0;
   }
 
+  /* N3 (#454, ADR 0043): a white circle in a 2px blue frame, joined to the next by a grey line. */
   .step-list-number {
     flex: none;
     width: var(--step-size);
     height: var(--step-size);
-    border: 0.125rem solid var(--color-primary);
+    border: 2px solid var(--color-primary);
     border-radius: 50%;
-    background-color: var(--color-brand-soft);
+    background-color: #fff;
     color: var(--color-primary);
     font-weight: 700;
     display: flex;
@@ -2984,8 +2186,8 @@
     grid-template-columns: subgrid;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-button);
-    background-color: var(--color-brand-soft);
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -3024,7 +2226,7 @@
   }
 
   /* Short things to bring or to expect, one per line after a decorative icon. No frame and no
-     white: white is for what can be tapped (ADR 0024, #313). */
+     white (ADR 0024, #313). */
   .icon-list {
     display: grid;
     gap: 0.5rem;
@@ -3060,7 +2262,7 @@
 
   .key-list > div {
     padding: 0.6rem 0;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   .key-list > div:first-child {
@@ -3106,8 +2308,10 @@
     white-space: nowrap;
   }
 
-  /* A questionnaire's source line under a result: small print, after the content. */
+  /* A questionnaire's source line under a result: small print in the muted grey (T1), after
+     the content. */
   .source-note {
+    color: var(--color-muted);
     font-size: 0.875rem;
   }
 
@@ -3141,10 +2345,10 @@
     display: none;
   }
 
-  /* Result page: level banner, same colours as the trend chart bands, framed in its text colour (#149). */
+  /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
+     the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
     padding: 1rem 1.25rem;
-    border: 2px solid currentColor;
     border-radius: var(--radius-medium);
   }
 
@@ -3188,9 +2392,8 @@
   /* Dropdowns, one look site-wide (dropdowns tidy-up, owner's pick B): on the page a white box
      with a chevron, first made for add_to_home's phones (#196); inside a card a line on top
      instead, so a box never sits in a box. The summary is the tap target; hover and press change
-     colour only, never position (ADR 0006). The answer page's "這份問卷在問什麼？" is the box with
-     a button (React) instead of a summary. */
-  .dropdown-box, .answer-about {
+     colour only, never position (ADR 0006). */
+  .dropdown-box {
     border: 0.125rem solid var(--color-border);
     border-radius: var(--radius-button);
     background-color: #fff;
@@ -3198,13 +2401,12 @@
 
   .dropdown-line {
     margin-top: 0.75rem;
-    border-top: 1px solid var(--color-border-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   /* Wraps so a long word ("Android") at double text size on a 320px phone pushes the chevron to
      a second line instead of widening the page. */
-  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary,
-  .answer-about > button {
+  .dropdown-box > summary, .dropdown-line > summary, .report-fold > summary {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -3233,8 +2435,7 @@
 
   /* A chevron at the right edge, in the text colour: down when closed, swapped (not turned) for
      an up one when open, so nothing moves (ADR 0006). */
-  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after,
-  .answer-about > button::after {
+  .dropdown-box > summary::after, .dropdown-line > summary::after, .report-fold > summary::after {
     content: "";
     flex: none;
     width: 1.25rem;
@@ -3246,20 +2447,8 @@
 
   .dropdown-box[open] > summary::after,
   .dropdown-line[open] > summary::after,
-  .report-fold[open] > summary::after,
-  .answer-about > button[aria-expanded="true"]::after {
+  .report-fold[open] > summary::after {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
-  }
-
-  .phone-choice-icon {
-    flex: none;
-    width: 1.75rem;
-    height: 1.75rem;
-    fill: none;
-    stroke: var(--color-primary);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
   }
 
   /* #361: under each phone choice, the makers it covers, in body text, so an older reader who
@@ -3270,17 +2459,17 @@
     font-weight: 400;
   }
 
-  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue and gains a
-     thick blue edge on its left, so a reader deep in its content still sees which one they are
-     in. Painted on the background, so nothing inside moves and a 並列區塊 keeps no shadow (ADR
-     0024); a line dropdown stays as it is. */
-  .dropdown-box[open], .dropdown-box[open] > summary,
-  .answer-about:has(> button[aria-expanded="true"]), .answer-about > button[aria-expanded="true"],
-  .report-fold[open] > summary, .report-fold[open] > .report-fold-body {
+  /* #328 (D1): open, a box dropdown or a report fold keeps its title bar light blue, and a box
+     dropdown gains a thick blue edge on its left, so a reader deep in its content still sees
+     which one they are in. Painted on the background, so nothing inside moves; a line dropdown
+     stays as it is. The report's folds are list rows since #471, with almost no inner space, so
+     the edge ran over their words and pictures: the owner had it taken off them (2026-11-12, no
+     side bars, ADR 0043). */
+  .dropdown-box[open], .dropdown-box[open] > summary {
     background-image: linear-gradient(to right, var(--color-primary) 0.3rem, transparent 0.3rem);
   }
 
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"],
+  .dropdown-box[open] > summary,
   .report-fold[open] > summary {
     background-color: var(--color-brand-soft);
   }
@@ -3293,21 +2482,19 @@
   }
 
   /* Inside the box the bar runs on into the content, so only its top corners are round. */
-  .dropdown-box[open] > summary, .answer-about > button[aria-expanded="true"] {
+  .dropdown-box[open] > summary {
     border-end-start-radius: 0;
     border-end-end-radius: 0;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover,
-    .answer-about > button:hover {
+    .dropdown-box > summary:hover, .dropdown-line > summary:hover, .report-fold > summary:hover {
       background-color: var(--color-brand-soft);
       color: var(--color-primary-hover);
     }
   }
 
-  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active,
-  .answer-about > button:active {
+  .dropdown-box > summary:active, .dropdown-line > summary:active, .report-fold > summary:active {
     background-color: var(--color-brand-selected);
     color: var(--color-primary-active);
   }
@@ -3327,14 +2514,11 @@
     margin-inline: 0;
   }
 
-  .answer-about > div > div {
-    margin: 0 1rem 1rem;
-  }
-
   /* my_hearing: one tab per questionnaire; each tab is a link to its own URL. */
   /* A grid of two (or more, on wider screens) so five questionnaires take three rows on a phone
      instead of five (text-heavy pages tidy-up); the topic on top, its code small underneath. At
-     double text size the columns drop to one rather than widen the page. */
+     double text size the columns drop to one rather than widen the page. #465 (the #464 mockup
+     D1 A): pale grey tiles, the current one the tab bar's pale blue pill in a 2px blue frame. */
   .history-tabs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
@@ -3348,13 +2532,12 @@
     justify-content: center;
     min-height: var(--spacing-touch);
     padding: 0.35rem 0.6rem;
-    border: 0.125rem solid var(--color-primary);
     border-radius: var(--radius-medium);
     font-size: 1rem;
     line-height: 1.3;
-    background-color: #fff;
-    color: var(--color-primary);
-    font-weight: 600;
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 500;
     text-decoration: none;
   }
 
@@ -3364,11 +2547,10 @@
   }
 
   .history-tabs a[aria-current="page"] {
-    border-color: transparent;
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    background-origin: border-box;
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
   /* #328 (A2, ADR 0028): the other tabs turn the dropdowns' title bar light blue under a mouse
@@ -3383,9 +2565,10 @@
     background-color: var(--color-brand-selected);
   }
 
-  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill, the
-     current one a gradient pill (shape as well as colour). At 200% text the two halves stack
-     instead of running off a phone. */
+  /* Questionnaires or audiograms on 我的紀錄 (#270, ADR 0019): two links in one pill. #465 (the
+     #464 mockup D1 A): a pale grey track, the current half the tab bar's pale blue pill with
+     bold blue words in a 2px blue frame, so it is not taken for a solid button. At 200% text the
+     two halves stack instead of running off a phone. */
   .records-switch {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
@@ -3393,7 +2576,7 @@
     margin: 0.5rem 0 1.5rem;
     padding: 0.25rem;
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-surface);
   }
 
   .records-switch a {
@@ -3403,18 +2586,19 @@
     min-height: var(--spacing-touch);
     padding: 0.25rem 1rem;
     border-radius: var(--radius-tab);
-    color: var(--color-primary);
-    font-weight: 700;
+    color: var(--color-muted);
+    font-weight: 500;
     text-decoration: none;
   }
 
   .records-switch a[aria-current="page"] {
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
-  /* #328 (A2): the other half sits on the light blue track, so it turns lighter under a mouse
+  /* #328 (A2): the other half sits on the pale grey track, so it turns pale blue under a mouse
      and deeper while pressed, either way apart from the track; colour only. */
   @media (hover: hover) and (pointer: fine) {
     .records-switch a:not([aria-current]):hover {
@@ -3443,12 +2627,6 @@
 
   :is(.records-switch a[aria-current="page"], .ear-switch a[aria-current="true"]) {
     view-transition-name: switch-pill;
-  }
-
-  /* Aided vs unaided HHIE-S, in the blue summary box. */
-  .aided-difference {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
   }
 
   /* Legend under both charts. */
@@ -3527,25 +2705,8 @@
     background-color: var(--color-severe-bg-deep);
   }
 
-  /* A 並列區塊 (ADR 0024): one of several complete units of the same kind side by side, on a
-     pale beige with no shadow and no border, so it sinks where a tappable white card floats.
-     Only something tappable or usable inside it may be white. .tint-rows puts a deeper beige
-     line between its parts (the result page's advice); .tint-block-title is the block's title.
-     .tint-subhead is a bold subhead, in a 並列區塊 (a family guide tip's point) or in flat
-     content (a guide chapter's lead). Both are in the heading colour, not link blue. */
-  .tint-block {
-    padding: 1rem 1.25rem;
-    border-radius: var(--radius-medium);
-    background-color: var(--color-tint);
-  }
-
-  /* An outline button in a 並列區塊 is filled white (#311): white is what can be tapped, and its
-     words keep 4.5:1 there, where the danger red on the beige alone is 3.6:1. */
-  .tint-block :is(.btn-outline-primary, .btn-outline-danger) {
-    --btn-bg: #fff;
-  }
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
-     seconds, whether pressed, hovered or not. After the white fill above, which it replaces.
+     seconds, whether pressed, hovered or not.
      #330 (B1): the same green for ✓ 已送出 and ✓ 已存檔, held 0.6 seconds while the button
      stays disabled, so its disabled colours are the green too. */
   .btn.is-copied, .btn.is-sent {
@@ -3576,20 +2737,16 @@
     stroke-linejoin: round;
   }
 
-  .tint-rows > * + * {
+  /* A thin grey line between the parts of a group (the result page's advice, a family topic's
+     tips). */
+  .divided-rows > * + * {
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid var(--color-tint-line);
+    border-top: 1px solid var(--color-line);
   }
 
-  .tint-block-title {
-    margin: 0 0 0.5rem;
-    color: var(--color-heading);
-    font-size: var(--text-block-title);
-    font-weight: 700;
-    line-height: 1.3;
-  }
-
+  /* A bold subhead in the heading colour, not link blue: a family guide tip's point, a guide
+     chapter's lead (ADR 0024). */
   .tint-subhead {
     margin: 0 0 0.25rem;
     color: var(--color-heading);
@@ -3598,74 +2755,8 @@
     line-height: 1.4;
   }
 
-  /* A list of 平面區塊 (ADR 0022, #298's pick 「左側細線」): each item sits on the page with only
-     a thin warm line on its left, no white and no shadow. The home page's steps; .line-block is
-     one such block on its own (THI's support message). The list itself is unstyled by its own
-     class (.step-cards). */
-  .line-list > *,
-  .line-block {
-    padding: 0.1em 0 0.1em 0.7em;
-    border-left: 0.18em solid var(--color-line-warm);
-  }
-
-  /* Numbered "接下來建議您" steps on the result page (ticket #157), one .tint-block of
-     .tint-rows (#309): each step has its number in a pale circle and its links as text under the
-     words, so the steps read as one list instead of being pushed apart by large buttons (result
-     page tidy-up, option B). Still an <ol>, so screen readers announce the count. */
-  .next-steps {
-    container-type: inline-size;
-    margin: 0.5rem 0 0;
-    list-style: none;
-    counter-reset: next-step;
-  }
-
-  /* #363: HHIA-S's limits, still small type, stand apart from the steps above them. */
-  .next-steps + .source-note {
-    margin-top: 0.75rem;
-  }
-
-  .next-steps li {
-    display: grid;
-    grid-template-columns: 2.25rem 1fr;
-    column-gap: 0.75rem;
-    counter-increment: next-step;
-  }
-
-  .next-steps li::before {
-    content: counter(next-step);
-    grid-row: 1 / span 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background-color: var(--color-brand-soft);
-    color: var(--color-primary);
-    font-weight: 700;
-  }
-
-  .next-steps li > span {
-    grid-column: 2;
-  }
-
-  /* At large text sizes the number sits above the words instead of squeezing them into a
-     column a few characters wide (the width is in rem, so it grows with the text). */
-  @container (max-width: 15rem) {
-    .next-steps li {
-      grid-template-columns: 1fr;
-    }
-
-    .next-steps li::before {
-      grid-row: auto;
-      margin-bottom: 0.5rem;
-    }
-
-    .next-steps li > span {
-      grid-column: 1;
-    }
-  }
-
+  /* A result page's step links (ticket #157), as text under the step's words (result page
+     tidy-up, option B); since #461 the steps are paragraphs, not a numbered list. */
   .next-steps-links {
     display: flex;
     flex-wrap: wrap;
@@ -3783,99 +2874,6 @@
     color: var(--color-body);
   }
 
-  /* SSQ12-TW's 0–10 position bar (ticket #188): blue only, as SSQ12 has no levels (ADR 0007), and
-     no animation (ADR 0006). Not the score position bar above: there are no thresholds. Each
-     mark and label is placed by --average and shifted by it in proportion, so 0 and 10 sit
-     flush inside the bar, as .score-bar-marker does. */
-  .ssq-average strong {
-    font-size: 2rem;
-    color: var(--color-primary);
-  }
-
-  .ssq-bar {
-    margin: 1rem 0 0;
-    font-size: 1rem;
-    line-height: 1.3;
-  }
-
-  .ssq-bar-labels {
-    position: relative;
-    height: 1.5rem;
-  }
-
-  .ssq-bar-label {
-    position: absolute;
-    top: 0.125rem;
-    left: calc(var(--average) * 10%);
-    transform: translateX(calc(var(--average) * -10%));
-    white-space: nowrap;
-    color: var(--color-body);
-  }
-
-  .ssq-bar-label-latest {
-    color: var(--color-heading);
-    font-weight: 700;
-  }
-
-  .ssq-bar-track {
-    position: relative;
-    height: 1.5rem;
-  }
-
-  .ssq-bar-track::before,
-  .ssq-bar-fill {
-    position: absolute;
-    top: 0.375rem;
-    left: 0;
-    height: 0.75rem;
-    border-radius: var(--radius-pill);
-  }
-
-  .ssq-bar-track::before {
-    content: "";
-    right: 0;
-    background-color: var(--color-border-subtle);
-  }
-
-  .ssq-bar-fill {
-    width: calc(var(--average) * 10%);
-    background-color: var(--color-primary);
-  }
-
-  .ssq-bar-latest,
-  .ssq-bar-previous {
-    position: absolute;
-    left: calc(var(--average) * 10%);
-    box-sizing: border-box;
-  }
-
-  .ssq-bar-latest {
-    top: 0;
-    width: 1.5rem;
-    height: 1.5rem;
-    border: 0.1875rem solid #fff;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    transform: translateX(calc(var(--average) * -10%));
-  }
-
-  /* The previous record: a hollow diamond, told apart from this one by shape as well as colour. */
-  .ssq-bar-previous {
-    top: 0.25rem;
-    width: 1rem;
-    height: 1rem;
-    border: 0.1875rem solid var(--color-body);
-    background-color: #fff;
-    transform: translateX(calc(var(--average) * -10%)) rotate(45deg);
-  }
-
-  .ssq-bar-ends {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.25rem;
-    color: var(--color-body);
-  }
-
   /* "Loading" or "cannot show" in the middle of the chart's empty box. */
   .trend-plot-message {
     display: flex;
@@ -3982,8 +2980,8 @@
     overflow-wrap: anywhere;
   }
 
-  /* IOI-HA result (#187): one .tint-block per item, its name a .tint-block-title (#310); nothing
-     here is a link, so no hover (ADR 0006). */
+  /* IOI-HA result (#187): one titled block per item (#310); nothing here is a link, so no hover
+     (ADR 0006). */
   .ioi-below,
   .ioi-others {
     margin-bottom: 1.5rem;
@@ -4032,13 +3030,13 @@
     color: var(--color-body);
   }
 
-  /* An empty cell is clear with a thin deeper beige frame, not white, so it never looks like
-     something to tap (#310); the norm's grey cells keep their own fill. */
+  /* An empty cell is clear with a thin grey frame that shows on white (3.1:1, #310); the norm's
+     grey cells keep their own fill. */
   .ioi-cell {
     display: grid;
     place-items: center;
     height: 1.5rem;
-    border: 1px solid var(--color-tint-line);
+    border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-small);
   }
 
@@ -4054,7 +3052,7 @@
   .chart-canvas,
   .audiogram-chart,
   .ioi-chart {
-    border: 1px solid var(--color-border-warm);
+    border: 1px solid var(--color-line);
     border-radius: var(--radius-small);
     background-color: #fff;
   }
@@ -4095,7 +3093,7 @@
     margin-bottom: 1rem;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-section);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -4162,21 +3160,6 @@
     gap: 0.5rem;
   }
 
-  /* #201: both ears' degrees side by side, each kept whole when they wrap. The line is a whole
-     45px at the 18px base, so the chart below starts on a whole pixel and draws as before. */
-  .audiogram-summary p {
-    line-height: 2.5rem;
-  }
-
-  .audiogram-summary-ear {
-    display: inline-block;
-    margin-right: 1.5rem;
-  }
-
-  .audiogram-summary .level-badge {
-    vertical-align: middle;
-  }
-
   /* Edit and delete under the result: quiet, centred text links, still a full touch target. */
   .quiet-links {
     display: flex;
@@ -4195,23 +3178,6 @@
 
   .quiet-links .quiet-link-danger {
     color: var(--color-severe);
-  }
-
-  /* min(): at 200% text 14rem is wider than a phone, so a card never asks for more than the row. */
-  .ear-results {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
-    gap: 0.75rem;
-  }
-
-  /* Each ear's result is a .tint-block (並列區塊, ADR 0024, #311) under a line in its ear's
-     colour. */
-  .ear-result.ear-right {
-    border-top: 0.375rem solid var(--color-ear-right);
-  }
-
-  .ear-result.ear-left {
-    border-top: 0.375rem solid var(--color-ear-left);
   }
 
   /* Drag readout over the chart; rem so it grows with the user's font size. */
@@ -4430,7 +3396,7 @@
     .scroll-hint { display: none; }
   }
 
-  /* Right and left ear: two links in one pill; the current ear is the brand gradient (#202).
+  /* Right and left ear: two links in one pill (#202), the same as 我的紀錄's switch (#465).
      The speech banana page has buttons instead, since it stays on the page (#441). */
   .ear-switch {
     display: grid;
@@ -4438,7 +3404,7 @@
     margin-bottom: 1rem;
     padding: 0.25rem;
     border-radius: var(--radius-tab);
-    background-color: var(--color-brand-selected);
+    background-color: var(--color-surface);
   }
 
   .ear-switch :is(a, button) {
@@ -4447,15 +3413,16 @@
     justify-content: center;
     min-height: var(--spacing-touch);
     border-radius: var(--radius-tab);
-    color: var(--color-primary);
-    font-weight: 700;
+    color: var(--color-muted);
+    font-weight: 500;
     text-decoration: none;
   }
 
   .ear-switch :is(a[aria-current="true"], button[aria-pressed="true"]) {
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
-    color: #fff;
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
   }
 
   .ear-switch button:focus-visible {
@@ -4517,70 +3484,22 @@
     overflow-wrap: anywhere;
   }
 
-  /* The level is written out in a box, never shown by colour alone. */
-  .report-level {
-    font-weight: 700;
-    border: 2px solid currentColor;
-    border-radius: var(--radius-small);
-    padding: 0 0.4rem;
-  }
-
   .report-disclaimer {
     border-top: 1px solid var(--color-input-border);
     padding-top: 0.5rem;
     margin-top: 1.5rem;
   }
 
-  /* The report on screen (pages tidy-up): the summary in the brand-blue card, levels in the
-     site's coloured labels, scores as tags, the answers in the dropdown box, the handwriting line
-     on paper only. Each part's questionnaire, the audiogram and a kept comparison are flat blocks
-     framed by their titles and spacing (ADR 0022, #303). Screen only: the printed report stays as
-     it was (the print block below undoes the box). */
+  /* The report on screen (pages tidy-up): scores as tags, the answers in the dropdown box, the
+     handwriting line on paper only. #471 (mockup #470 B): each part's row says its summary line,
+     so the summary itself is for paper; levels are the site's level badges (L1 colours). */
   @media screen {
-    /* #366: the family's 「先看重點」 in the same box. */
-    .health-report .report-summary, .family-highlights {
-      border: 0.125rem solid var(--color-primary);
-      border-radius: var(--radius-large);
-      background-color: #fff;
-      padding: 1rem;
-    }
-
-    /* The family's copy says the same in its 「先看重點」 card; the summary is for paper. */
-    .health-report:has(.family-highlights) .report-summary {
+    .health-report .report-summary {
       display: none;
     }
 
     .report-handwrite {
       display: none;
-    }
-
-    /* A whole label moves to the next line rather than splitting (it wraps inside only when it
-       alone is wider than the line). */
-    .health-report .report-level {
-      display: inline-block;
-      max-width: 100%;
-      border-radius: var(--radius-badge);
-      padding: 0 0.5rem;
-    }
-
-    .report-level-normal {
-      background-color: var(--color-normal-bg);
-      color: var(--color-normal);
-    }
-
-    .report-level-mild_to_moderate {
-      background-color: var(--color-mild-bg);
-      color: var(--color-mild);
-    }
-
-    .report-level-severe {
-      background-color: var(--color-severe-bg);
-      color: var(--color-severe);
-    }
-
-    .report-level-unknown {
-      background-color: var(--color-surface);
-      color: var(--color-heading);
     }
 
     .report-score {
@@ -4642,10 +3561,10 @@
     }
   }
 
-  /* Family guide (#240): each topic's tips are one .tint-block of .tint-rows under the topic's
-     title (#312, ADR 0024), each tip's point a .tint-subhead on its own line; the urgent topic
-     framed in the brand blue (ADR 0007) with grey lines between its tips and 119 in large type;
-     the sources at the end. */
+  /* Family guide (#240): each topic's tips a list with lines between them (.divided-rows) under
+     the topic's title (#312), each tip's point a .tint-subhead on its own line; the urgent topic
+     on the 緊急就醫 red (ADR 0043) with grey lines between its tips and 119 in large type; the
+     sources at the end. */
   .family-guide section > h2 {
     display: flex;
     align-items: center;
@@ -4665,6 +3584,7 @@
 
   .family-guide .tips {
     margin: 0;
+    padding: 0;
     list-style: none;
   }
 
@@ -4672,12 +3592,18 @@
     display: block;
   }
 
-  /* The 馬上就醫 box. Not under .family-guide: the Q&A assistant's home page pins its urgent
-     answer in it too (#397, the owner's call). */
+  /* The 馬上就醫 box (P3, ADR 0043): pale red with no frame, its title in the warning red. Not
+     under .family-guide: the Q&A assistant's home page pins its urgent answer in it too (#397). */
   .card.family-urgent {
-    border: 0.125rem solid var(--color-primary);
-    background-color: var(--color-brand-soft);
-    box-shadow: none;
+    border: 0;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+  }
+
+  .family-urgent > h2,
+  .family-urgent > h2 .topic-icon {
+    color: var(--color-severe);
+    stroke: var(--color-severe);
   }
 
   .family-guide .family-urgent .tips {
@@ -4698,13 +3624,12 @@
     padding-bottom: 0;
   }
 
-  /* #316: not white (white means tappable, ADR 0022) but a light blue a little deeper than the
-     urgent box, so the 119 line still stands out. */
+  /* #316: white on the pale red, so the 119 line still stands out. */
   .family-guide .urgent-call {
     margin-bottom: 0;
     padding: 0.875rem;
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft-deep);
+    border-radius: var(--radius-medium);
+    background-color: #fff;
     color: var(--color-heading);
   }
 
@@ -4793,10 +3718,6 @@
   }
 
   @container (max-width: 15rem) {
-    .pick-explain .tint-block {
-      padding-inline: 0.5rem;
-    }
-
     .pick-explain .link-card {
       gap: 0.25rem;
       padding: 0.5rem;
@@ -4863,7 +3784,7 @@
   .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
   .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
 
-  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a white tile a topic, the
+  /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a tile a topic, the
      .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
      row holds fewer, down to one, and a tile never gets wider than its row. */
   .qa-topics {
@@ -4875,12 +3796,13 @@
     list-style: none;
   }
 
-  .qa-topic {
+  /* Tiles side by side: each keeps the line above it, as the first row of a list does. */
+  .qa-topics .qa-topic.link-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.75rem;
     height: 100%;
-    margin-bottom: 0;
+    border-top: 1px solid var(--color-line);
   }
 
   /* A topic name's phrase stays on one line when it fits; the name breaks between phrases. */
@@ -4888,16 +3810,8 @@
     display: inline-block;
   }
 
-  /* The assistant's 找不到？打字問 and an answer's 沒回答到您的問題？: a flat block on the pale
-     blue of 建議您下一步 (ADR 0022: not white, so only its field and button look tappable). */
-  .qa-ask {
-    padding: 1.25rem 1rem;
-    border-radius: var(--radius-large);
-    background-color: var(--color-brand-soft);
-  }
-
   /* Account settings (#195; #303, #298's pick, ADR 0022): the account details are flat rows with
-     a thin line between them; each link row is a white card of its own (.link-card). */
+     a thin line between them; each link row is a clickable card (.link-card). */
   .settings-group {
     margin: 0;
   }
@@ -4914,7 +3828,7 @@
   }
 
   .settings-group > * + * {
-    border-top: 1px solid var(--color-line-warm);
+    border-top: 1px solid var(--color-line);
   }
 
   .settings-row dd {
@@ -4941,6 +3855,10 @@
     color: var(--color-severe);
   }
 
+  .settings-card-danger .action-card-icon {
+    background-color: var(--color-severe-bg);
+  }
+
   .settings-card-danger .action-card-icon svg {
     stroke: var(--color-severe);
   }
@@ -4955,13 +3873,11 @@
   }
 
   /* Questionnaire list (spec phase9_ui_refresh_4b_questionnaire_cards.md 4.1); the continue
-     notice on the home and screening pages (#337) is framed the same way. Like the blue summary
-     boxes, the left corners are square so the thick line stays straight (owner, 2026-10-25). */
+     notice on the home and screening pages (#337) is the same 提示框 (P3, ADR 0043). */
   .questionnaire-guide, .continue-notice {
-    padding: 0.75rem 1.25rem;
-    border-left: 0.375rem solid var(--color-primary);
-    border-radius: 0 var(--radius-large) var(--radius-large) 0;
-    background-color: var(--color-brand-soft);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
     color: var(--color-heading);
   }
 
@@ -4994,11 +3910,10 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: 3rem;
-    height: 3rem;
+    width: 2.6667rem;
+    height: 2.6667rem;
     border-radius: 50%;
-    background-color: var(--color-primary);
-    background-image: var(--gradient-brand);
+    background-color: var(--color-brand-soft);
   }
 
   /* The ring a hovered card's icon sends out once (#141); invisible at rest. */
@@ -5007,33 +3922,19 @@
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    box-shadow: 0 0 0 0.25rem rgba(29, 111, 153, 0.4);
+    box-shadow: 0 0 0 0.25rem rgba(31, 78, 140, 0.4);
     opacity: 0;
   }
 
-  /* White on the gradient circle: 5.37:1 at its lighter end (#140). */
+  /* E (#454): the brand blue on the pale blue circle, as the action cards' icons. */
   .questionnaire-icon svg {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
     fill: none;
-    stroke: #fff;
+    stroke: var(--color-primary);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  .card-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .card-tag {
-    padding: 0 0.5rem;
-    border-radius: var(--radius-badge);
-    background-color: var(--color-surface);
-    color: var(--color-footer);
-    font-weight: 600;
   }
 
   /* Audiogram list thumbnail (spec phase9_ui_refresh_4c_audiogram_thumbnails.md 4.1). */
@@ -5084,23 +3985,6 @@
     min-height: var(--spacing-touch);
   }
 
-  /* Keep questionnaire text usable when narrow screens and larger text leave no room beside icons. */
-  @media (max-width: 35em) {
-    .questionnaire-card,
-    .recommended-heading {
-      flex-wrap: wrap;
-    }
-
-    .questionnaire-card .link-card-body {
-      flex: 1 0 100%;
-      order: 1;
-    }
-
-    .questionnaire-card .link-card-arrow {
-      margin-left: auto;
-    }
-  }
-
   .comparison-items,
   .report-answers {
     overflow-wrap: anywhere;
@@ -5137,35 +4021,57 @@
     }
   }
 
-  /* #314 (ADR 0024): on screen the report folds by questionnaire. The summary row looks like
-     the site's dropdowns (a white box, grey edge, chevron) and says the questionnaire's name,
-     latest date and result; what opens below is a 並列區塊 on the tint. Its summary row already
-     names the questionnaire, so its own title waits for paper. On paper every fold opens and the
-     row and tint go: the report prints as it did before the folds. */
+  /* #314 (ADR 0024): on screen the report folds by part. #471 (mockup #470 B): each fold is a
+     list row (E), its icon, its title and the summary line under it in the muted grey, a blue
+     chevron at the end, a thin line under it; what opens below is flat. Its row already names
+     the part, so its own title waits for paper. On paper every fold opens and the row goes: the
+     report prints as it did before the folds. */
   .report-fold {
-    margin-top: 1rem;
+    border-bottom: 1px solid var(--color-line);
   }
 
   .report-fold > summary {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 0.25rem 0.75rem;
-    border: 0.125rem solid var(--color-border);
-    border-radius: var(--radius-button);
-    background-color: #fff;
+    container-type: inline-size;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    color: var(--color-heading);
+    font-weight: 400;
   }
 
   .report-fold > summary::after {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+  }
+
+  .report-fold-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .report-fold-title {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: inherit;
   }
 
   .report-fold-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1rem;
-    color: var(--color-body);
-    font-weight: 400;
+    color: var(--color-muted);
+  }
+
+  /* At large text sizes the words drop under the icon, the chevron staying on the icon's row,
+     as on an action card. */
+  @container (max-width: 11rem) {
+    .report-fold-text {
+      flex: 1 0 100%;
+      order: 1;
+    }
   }
 
   .report-fold-body {
@@ -5177,7 +4083,7 @@
       margin-top: 0;
     }
 
-    .report-fold-body > section:first-child > h3:first-child {
+    .report-fold-body > section:first-child > :is(h2, h3):first-child {
       display: none;
     }
   }
@@ -5240,7 +4146,7 @@
       }
 
       .health-report .table > tbody > tr + tr {
-        border-top: 1px solid var(--color-tint-line);
+        border-top: 1px solid var(--color-line);
       }
 
       /* The value goes beside its name, or whole onto the next line when it does not fit. */
@@ -5260,6 +4166,930 @@
         font-weight: 700;
       }
     }
+  }
+}
+
+/* #461 result pages (the #460 mockup R1): the score block, one sentence, the 建議下一步 and the
+   list rows with 看完整說明 folded among them. No reveal motion (ADR 0006). */
+@layer components {
+  /* The number largest, then the level, then the line against last time, all in the level's
+     text colour on its pale colour (L1, .result-banner). */
+  .result-score {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+  }
+
+  .result-banner .result-score {
+    color: inherit;
+  }
+
+  .result-number {
+    font-size: 2.6667rem;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .result-block-level {
+    margin: 0;
+    color: inherit;
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  /* A date like 2026/03/26 does not break by itself: at double text size it may anywhere. */
+  .result-since-last {
+    overflow-wrap: anywhere;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    font-weight: 500;
+  }
+
+  .result-since-last > p {
+    margin: 0;
+  }
+
+  /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
+  .result-summary {
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .result-summary > p {
+    margin: 0;
+  }
+
+  .result-summary-lead {
+    font-size: var(--text-section-title);
+    font-weight: 700;
+  }
+
+  .result-one-line {
+    margin: 1rem 0 0;
+    color: var(--color-heading);
+  }
+
+  /* Pale blue, no frame: the 現在這一步's card (ADR 0043); only its button is clickable. */
+  .result-next {
+    margin-top: 1.25rem;
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .result-next-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .result-next-title {
+    margin: 0.125rem 0 0.75rem;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  .result-list {
+    margin: 1.25rem 0 1.5rem;
+  }
+
+  /* 看完整說明 is a list row too (E): icon, title, arrow, a line above and below. */
+  .result-details {
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .result-list .result-details + .link-card {
+    border-top: 0;
+  }
+
+  .result-rows-note {
+    margin: 1rem 0 0.5rem;
+  }
+
+  /* Its own container, as an action card is: at large text sizes the words drop under the icon
+     and the arrow stays on the icon's row, the same as the rows below it. */
+  .result-details > summary {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    color: var(--color-heading);
+    list-style: none;
+  }
+
+  .result-details > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .result-details > summary > span:not([class]) {
+    flex: 1;
+  }
+
+  @container (max-width: 11rem) {
+    .result-details > summary > span:not([class]) {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .result-details-arrow {
+      margin-left: auto;
+    }
+  }
+
+  /* A blue chevron at the row's end, as the rows' arrows: down while folded, swapped (not
+     turned) for an up one when open, as the dropdowns' chevrons, so nothing moves (ADR 0006). */
+  .result-details-arrow {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .result-details[open] .result-details-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* A fold changes colour only, never position (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .result-details > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .result-details > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .result-details > summary:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  .result-details-body {
+    padding: 0 0.25rem 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .result-details-body .score-bar {
+    margin-top: 0.5rem;
+  }
+
+  /* #471 report, sharing and account pages (mockup #470, ADR 0043). */
+  /* The report's rows (B): a line over the first; the parts' own titles wait for paper. */
+  @media screen {
+    .report-rows {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--color-line);
+    }
+
+    .health-report .report-rows > .report-part {
+      margin-top: 0;
+    }
+
+    .report-rows > .report-part > h2 {
+      display: none;
+    }
+  }
+
+  /* Information with nothing to open (hearing aids, a kept comparison): the grey label over the
+     words in the heading colour, the rows' line rhythm without an icon or an arrow. */
+  .report-info {
+    display: flex;
+    flex-direction: column;
+    min-height: 4rem;
+    padding: 0.75rem 0.25rem;
+    border-bottom: 1px solid var(--color-line);
+    overflow-wrap: anywhere;
+  }
+
+  .report-info-label {
+    color: var(--color-muted);
+  }
+
+  .report-info-value {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* Text links in a row (S1), each a 44px touch target. */
+  .report-manage {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .report-manage a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* The family's 「先看重點」: the life-impact level in its whole level colour (L1), the
+     audiogram's ears in the grey of a block with no level of its own. */
+  .family-highlights {
+    margin-bottom: 1.5rem;
+  }
+
+  .family-level {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.625rem;
+    padding: 0.875rem 1.125rem;
+    border-radius: var(--radius-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .family-level > :not(.family-level-name) {
+    color: var(--color-heading);
+  }
+
+  .family-level-label {
+    font-weight: 700;
+  }
+
+  .family-level-name {
+    font-size: var(--text-section-title);
+    font-weight: 700;
+  }
+
+  .family-highlights > p {
+    margin-top: 0.625rem;
+  }
+
+  /* Share A: a step not reachable yet is pale, as the care journey's later steps; its words
+     keep their colour. Each step's name is a section title. */
+  .step-list-number.is-later {
+    border-color: var(--color-line-strong);
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+  }
+
+  .share-step-title {
+    margin: 0 0 0.375rem;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .dropdown-line > summary > .share-step-title {
+    margin: 0;
+  }
+
+  /* D4: what cancels a share or deletes is red; as a link, a red underlined word that is still a
+     44px touch target. Colour only under a mouse or a finger (ADR 0006). */
+  .danger-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-severe);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+    cursor: pointer;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .danger-link:hover {
+      text-decoration-thickness: 3px;
+    }
+  }
+
+  .danger-link:active {
+    background-color: var(--color-severe-bg);
+  }
+
+  /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
+     bold in the red, a warning mark before them; never by colour alone. */
+  .error-box {
+    margin: 0 0 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  /* A list row that opens (E): the privacy notice's sections and the phones on 加到主畫面. The
+     row's words in the heading colour, a blue chevron at its end, down while folded and swapped
+     (not turned) for an up one when open, so nothing moves (ADR 0006); a thin line under each
+     row and over the first. */
+  .fold-rows {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .fold-row {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .fold-row > summary {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 3.75rem;
+    padding: 0.75rem 0.25rem;
+    color: var(--color-heading);
+    font-weight: 700;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .fold-row > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .fold-row > summary::after {
+    content: "";
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-left: auto;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .fold-row[open] > summary::after {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .fold-row > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .fold-row > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  .fold-row > summary:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  .fold-row-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: inherit;
+  }
+
+  .fold-row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* At large text sizes the words drop under the icon, the chevron staying on the icon's row. */
+  @container (max-width: 11rem) {
+    .fold-row-text {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  .fold-row-body {
+    padding: 0 0.25rem 1rem;
+  }
+
+  .fold-row-body > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* The privacy notice's highlights in a 提示框: room for their bullets inside it. */
+  ul.tip-box {
+    padding-inline-start: 2.25rem;
+  }
+
+  /* A link inside a sentence in a 提示框 (deleting the account's 下載我的資料) keeps its negative
+     margin when it is the box's last element, so its line does not grow. */
+  .tip-box > .inline-link:last-child {
+    margin-bottom: -0.6rem;
+  }
+
+  /* On paper a level stays the plain bordered word it was before the badges. */
+  @media print {
+    .health-report .level-badge {
+      padding: 0 0.4rem;
+      border-radius: var(--radius-small);
+      background: none;
+      color: inherit;
+    }
+  }
+}
+
+/* #465 records and audiograms (the #464 mockup): 我的紀錄's score block, the folds drawn as list
+   rows (as #461's 看完整說明) and the audiogram page's two ear blocks. The audiogram input drops the
+   tab bar with #463's site-nav-tucked. */
+@layer components {
+  /* 1A: 最近一次 in the words' weight, the score largest, then the level and the line against
+     last time (.result-since-last), all in the latest level's colours (L1, .result-banner). */
+  .records-score > p {
+    margin: 0;
+  }
+
+  .records-score > p:first-child {
+    overflow-wrap: anywhere;
+    font-weight: 500;
+  }
+
+  /* A fold's title with a muted line under it, as a list row's (E). */
+  .result-details > summary .link-card-body > :not(.link-card-title) {
+    font-weight: 400;
+  }
+
+  @container (max-width: 11rem) {
+    .result-details > summary > .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+  }
+
+  /* Folds among list rows share the rows' lines: one line between two, never two. */
+  .link-card + .result-details,
+  .result-details + .result-details,
+  #speech-banana:not(:empty) + .speech-banana-read {
+    border-top: 0;
+  }
+
+  .result-details + .link-card {
+    border-top: 0;
+  }
+
+  /* 看以前的 N 筆／張: the folded records are list rows to the fold's edges. */
+  .result-details-body.records-fold-rows {
+    padding: 0;
+  }
+
+  /* The audiogram's value table runs to the fold's edges, as it ran to its box's (#204): at
+     200% text on a phone a frequency's select takes the whole row. */
+  .audiogram-table > fieldset.result-details-body {
+    padding-inline: 0;
+  }
+
+  /* The comparison's number tables keep their words whole and scroll in their own box (#204,
+     #344), as they did in a box dropdown: breaking anywhere would squeeze the dates instead. */
+  .result-details-body .scroll-box {
+    overflow-wrap: normal;
+  }
+
+  .result-details-body .tip-box {
+    margin-top: 1rem;
+  }
+
+  /* 3A: each ear a block in its degree's colours (L1), side by side; at 200% text one under the
+     other instead of widening a phone page. */
+  .audiogram-ear-blocks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .audiogram-ear-block > p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .audiogram-ear-block-label {
+    font-weight: 700;
+  }
+
+  /* The owner's pick after #463: a choice's edge is the fields' darker grey (4.7:1), on the
+     wearing comparison's two lists and the audiogram comparison's 換一張 lists too. */
+  .comparison-form, .compare-picker {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* 6: the comparison's first line larger and bold, on the page above the chart's frame. */
+  .compare-summary > p {
+    margin: 0 0 0.25rem;
+    overflow-wrap: anywhere;
+  }
+
+  .compare-summary-lead {
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+  }
+
+  .compare-summary + .audiogram-chart {
+    margin-top: 0.75rem;
+  }
+
+  .audiogram-ear-block-degree {
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+/* #467 hearing aid guide (the #466 mockup A, the owner's picks H1 + H2 and I1 + I2): the
+   route's rows that open in place and its 您在這裡 card, the route's entrance, the audiogram's
+   subheads, the chapters' key cards and folds, and source links tall enough to tap. */
+@layer components {
+  /* I1: every stop but the 目前這一站 is a row that opens in place to say what it is (the whole
+     row, a blue arrow at its end, down while folded and up when open, swapped not turned so
+     nothing moves); pressing it only changes colour (ADR 0028). */
+  .route-about > summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    padding: 0.35rem 0.25rem;
+    border-radius: var(--radius-small);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .route-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .route-row {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .route-about .result-details-arrow {
+    margin-top: 0.2rem;
+  }
+
+  .route-about[open] .result-details-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-about > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .route-about > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* What follows a row lines up with its title. */
+  .route-box:not(.route-card) > :is(.route-note, .route-answer) {
+    padding-inline-start: 0.25rem;
+  }
+
+  .route-about-body {
+    padding: 0.25rem 0.25rem 0.25rem;
+  }
+
+  .route-about-body p {
+    margin: 0;
+  }
+
+  .route-about-body a {
+    font-weight: 700;
+  }
+
+  /* 不適用: the title in the body grey, the circle pale (above); the words keep their contrast. */
+  .route-stop.is-na .route-title {
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0043),
+     its circle level with the card's first line and the line above reaching down to it. */
+  .route-card {
+    padding: 0.875rem 1rem 1rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .route-stop.is-here .route-number {
+    margin-top: 0.875rem;
+  }
+
+  .route-stop.is-here:not(:last-child)::after {
+    top: calc(var(--route-size) + 1.25rem);
+  }
+
+  .route-stop:has(+ .is-here)::after {
+    bottom: -0.75rem;
+  }
+
+  .route-here-label {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .route-card .route-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    font-size: var(--text-section-title);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .route-card .route-title > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .route-chevron {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-card .route-title:hover > span:first-child {
+      text-decoration: underline;
+    }
+  }
+
+  /* A stop question's choices in the fields' edge, 4.7:1 on white (the owner's decision of
+     2026-11-12, #463's --choice-border), on the route and at a chapter's foot. */
+  .stop-question {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* The current answer while changing it: a blue frame and tick on pale blue, as a chosen row
+     (E), so the page keeps its one solid button. */
+  .stop-answers .btn.is-current {
+    --btn-bg: var(--color-brand-selected);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .stop-answer-tick {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (guide.js), the done ticks draw
+     one by one, the blue line grows down to the 目前這一站 and its circle's ring lights once,
+     about 2 seconds wherever that stop is (--route-here is how far it is); held until that stop
+     is in view (ADR 0029). Otherwise, and with reduced motion, the end at once. Longhands, not
+     the animation shorthand: that would set the play state back to running and so outrank the
+     hold until in view. */
+  @media (prefers-reduced-motion: no-preference) {
+    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-check path,
+    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-stop::after {
+      animation-play-state: paused;
+    }
+
+    .route-plays .route-stop.is-walked .route-check path {
+      stroke-dasharray: 1;
+      animation-name: gauge-draw;
+      animation-duration: 0.35s;
+      animation-timing-function: ease-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-walked::after {
+      animation-name: route-line;
+      animation-duration: calc(1.2s / var(--route-here));
+      animation-timing-function: linear;
+      animation-delay: calc((var(--route-step) + 0.2) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-here .route-number {
+      animation-name: route-ring;
+      animation-duration: 0.7s;
+      animation-timing-function: ease-in-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+  }
+
+  /* What the latest audiogram says: one title, the old boxes' titles as bold subheads (the #466
+     mockup A). */
+  .guide-hearing > section {
+    margin-top: 1.5rem;
+  }
+
+  .guide-hearing-subhead {
+    margin: 0 0 0.5rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .guide-hearing .result-details {
+    margin-top: 1rem;
+  }
+
+  .guide-hearing .result-details-body .guide-hearing-subhead {
+    margin-top: 1rem;
+  }
+
+  /* H1: three key cards at a chapter's start, a large line then the chapter's own words, on the
+     提示框's pale grey (P3): not clickable, so no arrow and no blue. */
+  .key-cards {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .key-card {
+    padding: 0.75rem 1rem 0.875rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .key-card-big {
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .key-card p {
+    margin: 0;
+  }
+
+  /* H2: a part's question title, one sentence in sight, the rest behind a 看更多 row (a line
+     dropdown). The folds come open in the page; guide.js folds them, but the one a jump lands
+     on, and till then their contents wait unseen (chapter.html), so nothing shows and shrinks. */
+  :root.guide-folds-pending [data-guide-fold] > :not(summary) {
+    display: none;
+  }
+
+  .guide-chapter section > .dropdown-line,
+  .guide-chapter section > .dropdown-box {
+    margin-top: 0.5rem;
+  }
+
+  /* Source links in small print, yet 44px tall to tap: padding the line box does not grow by. */
+  .guide-source a,
+  .guide-sources li > a {
+    display: inline-block;
+    padding-block: 0.6rem;
+    margin-block: -0.6rem;
+  }
+
+  .guide-sources li {
+    padding-block: 0.6rem;
+  }
+}
+
+/* #469 learn, family zone and Q&A assistant (the #468 mockup): list rows (E), long content and
+   sources folded into rows like a result page's 看完整說明, the red 馬上就醫 box never folded. */
+@layer components {
+  /* A fold among a list's rows: the row above already draws the line between them. */
+  li + li > .result-details {
+    border-top: 0;
+  }
+
+  /* The family zone's choices (點選看說明, 補助檢核) take the fields' edge, 4.7:1 on white, as
+     the answer pages' do (#463, the owner's call 2026-11-12). */
+  .family-guide {
+    --choice-border: var(--color-input-border);
+  }
+
+  /* A fold row's line under its title, as a list row's (T1). */
+  .result-details-note {
+    display: block;
+    color: var(--color-muted);
+    font-weight: 400;
+  }
+
+  /* 點選看說明's 可以試的說法, 下一步 and the like: bold labels in the heading colour, not section
+     titles, so a page keeps one big title. */
+  .part-label {
+    margin: 1rem 0 0.25rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  /* 陪診清單 (the #468 mockup A): each item a row with a thin line under it and a 26px box. */
+  .family-visits fieldset .visit-check {
+    min-height: 3.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .family-visits fieldset .visit-check input {
+    width: 1.625rem;
+    height: 1.625rem;
+  }
+
+  /* The Q&A assistant's urgent answer: the whole red 馬上就醫 box is its one link, its title in
+     the warning red with the family page's icon, a red arrow at its end. Colour changes only. */
+  .family-urgent-link {
+    container-type: inline-size;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-body);
+    text-decoration: none;
+  }
+
+  .family-urgent-link .link-card-body > h2 {
+    margin-bottom: 0.25rem;
+    color: var(--color-severe);
+  }
+
+  /* The icon sits in the title's first line, so at large text sizes the title wraps under it. */
+  .family-urgent-link h2 .topic-icon {
+    display: inline-block;
+    margin-right: 0.375rem;
+    vertical-align: -0.25em;
+  }
+
+  /* As an action card: at large text sizes the words take the whole width and the arrow drops
+     to the end of a row of its own. */
+  @container (max-width: 15rem) {
+    .family-urgent-link .link-card-body {
+      flex: 1 0 100%;
+    }
+
+    .family-urgent-link .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  .family-urgent-link .link-card-body > span {
+    color: var(--color-body);
+  }
+
+  .family-urgent-link .topic-icon {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    fill: none;
+    stroke: var(--color-severe);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .family-urgent-link .link-card-arrow {
+    color: var(--color-severe);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .family-urgent-link:hover {
+      background-color: var(--color-severe-bg-deep);
+      color: var(--color-body);
+    }
+  }
+
+  .family-urgent-link:active {
+    background-color: var(--color-severe-bg-deep);
+  }
+
+  .family-urgent-link:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* 依主題找 (the #468 mockup A): each topic tile framed (G), so a tile reads as one thing to
+     tap; the frame is 3.1:1 on white. */
+  .qa-topics .qa-topic.link-card {
+    border: 1.5px solid var(--color-line-strong);
+    border-radius: 1.125rem;
+    padding: 0.875rem;
   }
 }
 
@@ -5289,12 +5119,6 @@
   to { opacity: 0; transform: scale(1.6); }
 }
 
-/* First-visit home (brand refresh): the picture sways once, the start button rings once. */
-@keyframes home-sway {
-  25% { transform: rotate(-3deg); }
-  75% { transform: rotate(3deg); }
-}
-
 /* Answer page (#326 C3): a segment just answered fills from the left; its size never changes. */
 @keyframes progress-fill {
   from { background-size: 0% 100%; }
@@ -5304,11 +5128,6 @@
 /* Answer page (#326 C4): another question's text fades in. */
 @keyframes question-fade {
   from { opacity: 0; }
-}
-
-/* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
-@keyframes route-ring {
-  50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
 }
 
 /* Answer page (#326 B4): ✓ 已儲存 stays, then fades in its last 0.3 s. */
@@ -5334,18 +5153,9 @@
   to { box-shadow: 0 0 0 1rem rgba(29, 111, 153, 0); }
 }
 
-/* Welcome back (ADR 0026): the elder's sound lights up twice, the gauge draws and its needle swings. */
-@keyframes welcome-sound {
-  0%, 50% { opacity: 0.2; }
-  25%, 75% { opacity: 1; }
-}
-
+/* A line drawing itself, as the 選配路線's tick. */
 @keyframes gauge-draw {
   from { stroke-dashoffset: 1; }
-}
-
-@keyframes gauge-needle {
-  from { transform: rotate(0deg); }
 }
 
 /* Waiting (ADR 0027): a piece slides across its track; spinner; shown only after 0.3 s. With a 35%
@@ -5361,4 +5171,710 @@
 
 @keyframes loading-appear {
   to { visibility: visible; }
+}
+
+/* #459 care journey home (ADR 0044, mockup #458): the two tiles on top, the 照顧旅程 as N3 dots
+   on a line with the 現在這一步 a pale blue card beside it, the row of text links, and the
+   空狀態首頁's dashed preview. */
+@layer components {
+  /* Side by side on a phone, one under the other once the text is large (#458 D1). */
+  .journey-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
+    gap: 0.75rem;
+    margin: 1rem 0 1.75rem;
+  }
+
+  /* 上次結果 is a link in its level's pale colour (L1, from .result-banner-*); grey is
+     information, not a link (P3). */
+  .journey-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0.75rem 0.875rem 0.875rem;
+    border-radius: var(--radius-medium);
+    overflow-wrap: anywhere;
+    text-decoration: none;
+  }
+
+  .journey-tile-info {
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .journey-tile-label {
+    font-weight: 700;
+  }
+
+  a.journey-tile .journey-tile-label {
+    padding-right: 1.75rem;
+  }
+
+  .journey-tile-info .journey-tile-label,
+  .journey-tile-small {
+    color: var(--color-muted);
+  }
+
+  /* The score a size above the next screening's day (#453 Q13). */
+  .journey-tile-score {
+    font-size: 2.2222rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .journey-tile-score small {
+    font-size: var(--text-button);
+  }
+
+  .journey-tile-level {
+    font-weight: 700;
+  }
+
+  .journey-tile-arrow {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    color: var(--color-primary);
+    font-size: 1.6667rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .journey-tile-date {
+    margin-top: 0.4rem;
+    font-size: 1.4444rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .journey-tile-link {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* Only clickable cards move (ADR 0006), as the E rows do. */
+  a.journey-tile {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    a.journey-tile:hover {
+      color: inherit;
+      transform: translateY(-0.25rem);
+      box-shadow: var(--shadow-lifted);
+    }
+  }
+
+  a.journey-tile:active {
+    transform: translateY(0.125rem);
+    box-shadow: none;
+  }
+
+  a.journey-tile:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    a.journey-tile { transition: none; }
+    a.journey-tile:hover, a.journey-tile:active { transform: none; box-shadow: none; }
+  }
+
+  .journey {
+    margin-bottom: 1rem;
+  }
+
+  .journey-head {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    column-gap: 1rem;
+  }
+
+  .journey-head .h4 {
+    margin: 0;
+  }
+
+  .journey-count {
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+  }
+
+  .journey-steps {
+    --journey-dot: 2rem;
+    container-type: inline-size;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .journey-step {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+  }
+
+  .journey-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--journey-dot) + 0.125rem);
+    bottom: 0.125rem;
+    left: calc((var(--journey-dot) - 2px) / 2);
+    width: 2px;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-line-strong);
+  }
+
+  /* N3: a white circle in a 2px blue frame, a blue tick once done (#458 D3, not the level
+     green); the steps after only pale the circle, their words keep the muted grey. */
+  .journey-dot {
+    flex: none;
+    width: var(--journey-dot);
+    height: var(--journey-dot);
+    border: 2px solid var(--color-primary);
+    border-radius: 50%;
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .journey-dot svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .journey-step:is(.is-later, .is-not-needed) .journey-dot {
+    border-color: var(--color-line-strong);
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+  }
+
+  .journey-step-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.625rem;
+    min-width: 0;
+    padding-top: 0.1rem;
+  }
+
+  .journey-step:is(.is-later, .is-not-needed) .journey-step-body,
+  .journey-when {
+    color: var(--color-muted);
+  }
+
+  /* The 現在這一步: its dot level with the card's first line, the line on from under it and the
+     line above reaching down to it. */
+  .journey-step.is-current .journey-dot {
+    margin-top: 0.875rem;
+  }
+
+  .journey-step.is-current:not(:last-child)::after {
+    top: calc(var(--journey-dot) + 1rem);
+  }
+
+  .journey-step:has(+ .is-current)::after {
+    bottom: -0.75rem;
+  }
+
+  /* #459 I2: the line is blue as far as the 現在這一步, the way walked. */
+  .journey-step.is-walked::after {
+    z-index: 1;
+    background-color: var(--color-primary);
+    transform-origin: top;
+  }
+
+  /* I1: every step but the 現在這一步 opens in place to say what it is; the row is the toggle,
+     its arrow turning down when open. Pressing only changes colour (ADR 0028). */
+  .journey-about {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .journey-about > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    margin-top: -0.375rem;
+    padding: 0 0.25rem;
+    border-radius: var(--radius-small);
+    color: inherit;
+    font-weight: 400;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .journey-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .journey-about > summary .journey-step-body {
+    flex: 1;
+    padding-top: 0;
+  }
+
+  .journey-about > summary:active {
+    background-color: var(--color-brand-soft);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .journey-about > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .journey-about-arrow {
+    flex: none;
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    transform: rotate(90deg);
+  }
+
+  .journey-about[open] .journey-about-arrow {
+    transform: rotate(-90deg);
+  }
+
+  .journey-about-body {
+    padding: 0.25rem 0.25rem 0.5rem;
+  }
+
+  .journey-about-body p {
+    margin: 0 0 0.25rem;
+  }
+
+  .journey-about-body a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (care-journey.js), the ticks
+     draw one by one, the blue line grows down to the 現在這一步 and its dot's ring lights once,
+     each step half a second after the one before; held until in view (ADR 0029). Otherwise, and
+     with reduced motion, the end at once. Longhands, not the animation shorthand: that would
+     set the play state back to running and so outrank the hold until in view. */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Held, as in-view.js holds any, until the 現在這一步 (data-play-in-view) is in view: the
+       whole list is taller than half a phone's screen and would wait for a scroll, yet the way
+       walked ends at that card. */
+    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+      .journey-dot path,
+    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+      .journey-step::after {
+      animation-play-state: paused;
+    }
+
+    .journey-plays .journey-step.is-done .journey-dot path {
+      stroke-dasharray: 1;
+      animation-name: gauge-draw;
+      animation-duration: 0.35s;
+      animation-timing-function: ease-out;
+      animation-delay: calc(var(--journey-step) * 0.5s);
+      animation-fill-mode: both;
+    }
+
+    .journey-plays .journey-step.is-walked::after {
+      animation-name: journey-line;
+      animation-duration: 0.45s;
+      animation-timing-function: linear;
+      animation-delay: calc(var(--journey-step) * 0.5s + 0.1s);
+      animation-fill-mode: both;
+    }
+
+    .journey-plays .journey-step.is-current .journey-dot {
+      animation-name: journey-ring;
+      animation-duration: 0.9s;
+      animation-timing-function: ease-in-out;
+      animation-delay: calc(var(--journey-step) * 0.5s + 0.05s);
+      animation-fill-mode: both;
+    }
+  }
+
+  .journey-card {
+    flex: 1;
+    min-width: 0;
+    padding: 0.875rem 1rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-brand-soft);
+  }
+
+  .journey-card-label {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  .journey-card-title {
+    margin: 0 0 0.375rem;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .journey-card-because {
+    margin: 0;
+  }
+
+  .journey-card .btn {
+    margin-top: 0.75rem;
+  }
+
+  .journey-card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    margin-top: 0.25rem;
+    font-weight: 700;
+  }
+
+  /* At large text sizes the card drops under its dot instead of shrinking to a few characters a
+     line; the joining line would cross it, so it goes. */
+  @container (max-width: 15rem) {
+    .journey-step {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .journey-step:not(:last-child)::after {
+      display: none;
+    }
+
+    .journey-step.is-current .journey-dot {
+      margin-top: 0;
+    }
+  }
+
+  /* Text links in a row (S1), each a 44px touch target, wrapping as they need. */
+  .home-links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1.5rem;
+    margin: 0.5rem 0 1rem;
+    padding: 0.375rem 0 0;
+    border-top: 1px solid var(--color-line);
+    list-style: none;
+  }
+
+  .home-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+    text-underline-offset: 0.25em;
+  }
+
+  /* A preview of what comes, not a link: a dashed line on white (#458 A). */
+  .empty-preview {
+    margin-bottom: 1.25rem;
+    padding: 0.875rem 1rem 0.25rem;
+    border: 2px dashed var(--color-line-strong);
+    border-radius: var(--radius-medium);
+  }
+
+  .empty-preview-title {
+    margin: 0 0 0.75rem;
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .empty-credit {
+    color: var(--color-muted);
+  }
+}
+
+@keyframes journey-line {
+  from { transform: scaleY(0); }
+}
+
+@keyframes journey-ring {
+  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
+}
+
+/* #463 screening and answering (the #462 mockup): the catalogue's 推薦 in a pale blue block and
+   its questionnaires as list rows (E), the wizard's 看其他問卷 a row that folds open, and the
+   answer page without the phone's tab bar, its intro folded under the buttons. */
+@layer components {
+  /* A single thing to tap in a colour block (ADR 0043): pale blue, no frame; only its button,
+     or its rows when it recommends two, can be pressed. */
+  .recommended-block {
+    padding: 1rem 1.125rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .recommended-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .recommended-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .recommended-label + .recommended-heading {
+    margin-top: 0.5rem;
+  }
+
+  /* On the pale blue the icon's circle is white, so it stays apart. */
+  .recommended-block .questionnaire-icon {
+    background-color: #fff;
+  }
+
+  .recommended-title {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-heading);
+    font-size: var(--text-section-title);
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .recommended-code {
+    display: block;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .recommended-facts {
+    margin: 0.5rem 0 0;
+    color: var(--color-muted);
+  }
+
+  .recommended-why {
+    margin: 0.625rem 0 0;
+  }
+
+  .recommended-block .btn {
+    width: 100%;
+    margin-top: 0.75rem;
+  }
+
+  /* Two recommended: rows inside the block, their lines a pale shade of the brand blue. */
+  .recommended-list {
+    margin-top: 0.625rem;
+  }
+
+  .recommended-list .link-card {
+    border-color: rgba(31, 78, 140, 0.18);
+    background-color: transparent;
+  }
+
+  .recommended-list .link-card:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  #catalogue-all {
+    margin-top: 2rem;
+  }
+
+  /* A questionnaire row keeps its icon beside the words, as every row (E); at large text sizes
+     the words drop under the icon instead of shrinking to a character a line, the arrow staying
+     on the icon's row (as .action-card). */
+  .questionnaire-card {
+    container-type: inline-size;
+    flex-wrap: wrap;
+  }
+
+  @container (max-width: 11rem) {
+    .questionnaire-card .link-card-body {
+      flex: 1 0 100%;
+      order: 1;
+    }
+
+    .questionnaire-card .link-card-arrow {
+      margin-left: auto;
+    }
+  }
+
+  /* The wizard's 看其他問卷 and the answer page's 這份問卷在問什麼？: a list row (E) that folds
+     open, a blue chevron at its end, down while folded and swapped (not turned) for an up one when
+     open, so nothing moves (ADR 0006). */
+  .questionnaire-fold, .answer-about {
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .questionnaire-fold > summary, .answer-about > button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.875rem 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--color-heading);
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .questionnaire-fold > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .questionnaire-fold > summary > span:not([class]), .answer-about-title {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .questionnaire-fold-arrow, .answer-about-arrow {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  .questionnaire-fold[open] .questionnaire-fold-arrow,
+  .answer-about > button[aria-expanded="true"] .answer-about-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  /* Colour only, never position (ADR 0006). */
+  @media (hover: hover) and (pointer: fine) {
+    .questionnaire-fold > summary:hover, .answer-about > button:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .questionnaire-fold > summary:active, .answer-about > button:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* On the pale blue the icon's circle turns white to stay apart, as on a row (E). */
+  @media (hover: hover) and (pointer: fine) {
+    :is(.questionnaire-fold > summary, .answer-about > button):hover .action-card-icon {
+      background-color: #fff;
+    }
+  }
+
+  :is(.questionnaire-fold > summary, .answer-about > button):active .action-card-icon {
+    background-color: #fff;
+  }
+
+  .questionnaire-fold > summary:focus-visible, .answer-about > button:focus-visible {
+    outline: 0.25rem solid var(--color-primary);
+    outline-offset: 0.125rem;
+  }
+
+  /* Open, the catalogue's rows follow under the row's own line. */
+  .questionnaire-fold[open] > .link-card:first-of-type {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .answer-about {
+    margin-top: 1rem;
+  }
+
+  .answer-about-body {
+    padding: 0 0.25rem 1rem;
+  }
+
+  .answer-about-body .source-note, .answer-about-body .q-intro-source {
+    margin-top: 0.75rem;
+  }
+
+  /* Without JavaScript the intro and its source stay above the questions, apart from them. */
+  #answer-intro {
+    margin-bottom: 2rem;
+  }
+
+  /* The answer page's line under its title: the code, count and minutes in the muted grey. */
+  .answer-meta {
+    color: var(--color-muted);
+  }
+
+  /* IOI-HA's norm basis on item 1: a 提示框 (P3), the question straight after it (#362). */
+  .answer-norm {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+  }
+
+  .answer-norm > p {
+    margin: 0;
+  }
+
+  .answer-norm > p + p {
+    margin-top: 0.25rem;
+  }
+
+  /* 接著答 and 重新開始, one above the other, each the whole width. */
+  .answer-resume-title {
+    margin-top: 1.25rem;
+  }
+
+  .answer-resume {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* Answer and wizard choices: the fields' edge (#272), 4.7:1 on white where the shared light
+     grey had 1.5:1, and 10px apart as the #462 mockup draws them, so IOI-HA's five choices and
+     下一題 come closer to the first screen. */
+  .answer-app, #answer-form, .wizard-form {
+    --choice-border: var(--color-input-border);
+  }
+
+  :is(.answer-app, #answer-form, .wizard-form) div.choice-group {
+    gap: 0.625rem;
+  }
+
+  /* While answering a phone shows no tab bar (#462 5B): 下一題 stays in the first screen, and 聽伴
+     at the top left leads out; wide screens keep their top bar. Nothing to keep clear of, so the
+     page's end and back to top need no room for it. */
+  @media (max-width: 47.99em) {
+    .site-nav-tucked {
+      display: none;
+    }
+
+    :root:has(.site-nav-tucked) {
+      --tab-bar-height: 0px;
+    }
+  }
+}
+
+@keyframes route-line {
+  from { transform: scaleY(0); }
+}
+
+@keyframes route-ring {
+  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
 }

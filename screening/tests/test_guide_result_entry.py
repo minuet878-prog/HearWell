@@ -58,9 +58,8 @@ class GuideResultEntryTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def _items(self, main):
-        start = main.index('<ol class="next-steps')
-        return main[start : main.index("</ol>", start)].split("<li>")[1:]
+    # Each step's (words, links under them): step 1 under the level, the rest folded (#461).
+    _steps = test_result_next_steps.ResultNextStepsTests._steps
 
     def test_the_check_step_links_to_the_guide_after_its_own_link(self):
         # Since the result page tidy-up some check steps have no link of their own, only the guide.
@@ -68,17 +67,17 @@ class GuideResultEntryTests(TestCase):
             for level, index in levels.items():
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(code, test_result_next_steps.TOTALS[level])
-                    item = self._items(main)[index]
+                    words, links = self._steps(main)[index]
                     text, action = test_result_next_steps.STEPS[code][level][index]
-                    self.assertIn(f"<span>{text}</span>", item)
-                    self.assertIn(GUIDE_LINK, item)
+                    self.assertEqual(words, text)
+                    self.assertIn(GUIDE_LINK, links)
                     if action is None:
-                        self.assertEqual(item.count("<a "), 1)
+                        self.assertEqual(links.count("<a "), 1)
                     else:
                         label, url = action
                         own = f'href="{url}">{label}</a>'
-                        self.assertIn(own, item)
-                        self.assertLess(item.index(own), item.index(GUIDE_LINK))
+                        self.assertIn(own, links)
+                        self.assertLess(links.index(own), links.index(GUIDE_LINK))
                     self.assertEqual(main.count(GUIDE_LINK), 1)
 
     def test_steps_without_the_guide_link_are_unchanged(self):
@@ -87,14 +86,15 @@ class GuideResultEntryTests(TestCase):
                 with self.subTest(questionnaire=code, level=level):
                     main = self._main(code, test_result_next_steps.TOTALS[level])
                     expected = test_result_next_steps.STEPS[code][level]
-                    for index, (item, (text, action)) in enumerate(
-                        zip(self._items(main), expected, strict=True)
+                    for index, ((words, links), (text, action)) in enumerate(
+                        zip(self._steps(main), expected, strict=True)
                     ):
                         if index == guide_index:
                             continue
-                        self.assertIn(f"<span>{text}</span>", item)
-                        self.assertNotIn('href="/guide"', item)
-                        self.assertEqual(item.count("<a "), 0 if action is None else 1)
+                        links = links or ""
+                        self.assertEqual(words, text)
+                        self.assertNotIn('href="/guide"', links)
+                        self.assertEqual(links.count("<a "), 0 if action is None else 1)
 
     def test_thi_is_not_a_life_impact_questionnaire_and_gets_no_guide_link(self):
         for total in (10, 30, 50, 70, 90):

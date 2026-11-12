@@ -32,7 +32,7 @@ STAGES = {
 }
 STAGE_LINKS = {
     "剛開始戴": [],
-    "戴了不習慣": [("/family#talk-title", "怎麼跟聽損的家人說話")],
+    "戴了不習慣": [("/family/talk", "怎麼跟聽損的家人說話")],
     "不想再戴": [
         ("/family#urgent-title", "什麼時候要馬上就醫"),
         ("/family/reluctant", "長輩不肯去怎麼說"),
@@ -80,7 +80,7 @@ class FamilyAdjustingTests(TestCase):
         for label, lines in STAGES.items():
             with self.subTest(label=label):
                 groups = re.findall(
-                    r"<h3[^>]*>([^<]+)</h3>\s*<ul[^>]*>(.*?)</ul>", options[label], re.S
+                    r'<p class="part-label">([^<]+)</p>\s*<ul[^>]*>(.*?)</ul>', options[label], re.S
                 )
                 self.assertEqual(
                     [(title, re.findall(r"<li>([^<]+)</li>", items)) for title, items in groups],
@@ -101,9 +101,9 @@ class FamilyAdjustingTests(TestCase):
                 )
 
     def test_those_links_land_where_they_say(self):
-        self.assertRegex(
-            self.client.get("/family").content.decode(),
-            r'<h2 id="talk-title"[^>]*>(<svg.*?</svg>)?怎麼跟聽損的家人說話</h2>',
+        # #469: 怎麼跟聽損的家人說話 has a page of its own.
+        self.assertContains(
+            self.client.get("/family/talk"), "怎麼跟聽損的家人說話</h1>", status_code=200
         )
         self.assertContains(
             self.client.get("/family/reluctant"), "長輩不肯去怎麼說</h1>", status_code=200
@@ -153,15 +153,11 @@ class FamilyAdjustingTests(TestCase):
     # Acceptance 32: 陪伴配戴助聽器 on /family, tip by tip, with nothing of this ticket's added.
     def test_family_page_keeps_its_wording_on_wearing_hearing_aids(self):
         content = self.client.get("/family").content.decode()
-        start = content.index('<h2 id="aid-title"')
-        section = content[start : content.index("</section>", start)]
-        self.assertIn("</svg>陪伴配戴助聽器</h2>", section)
-        self.assertEqual(
-            re.findall(
-                r'<li><strong class="tip-point tint-subhead">([^<]+)</strong>([^<]+)</li>', section
-            ),
-            list(test_family_guide.TIPS["aid-title"]),
-        )
+        # #469: folded in the zone's list, its row's title the section's name.
+        start = content.index('<details id="aid-title"')
+        section = content[start : content.index("</details>", start)]
+        self.assertIn(">陪伴配戴助聽器</span>", section)
+        self.assertEqual(test_family_guide.tips(section), test_family_guide.TIPS["aid-title"])
         self.assertEqual(section.count("<li>"), len(test_family_guide.TIPS["aid-title"]))
         self.assertNotIn(YOU_CAN_DO, content)
 

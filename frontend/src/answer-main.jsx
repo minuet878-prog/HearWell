@@ -9,6 +9,11 @@ const container = document.getElementById("answer-app");
 const fallback = document.getElementById("answer-form");
 // The questionnaire's intro: React shows it per step (#153), so the page's copy goes once React is in.
 const intro = document.getElementById("answer-intro");
+// IOI-HA's norm basis (#463): a template of its own for item 1, where the fold leaves out the
+// intro's copy of it, so it is not said twice.
+const norm = document.getElementById("answer-norm");
+const introWithoutNorm = intro?.cloneNode(true);
+introWithoutNorm?.querySelector("[data-intro-norm]")?.remove();
 // Why 沒戴 is already chosen (#154): the Django form's sentence, there only when preselected.
 const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
@@ -28,6 +33,8 @@ if (container && fallback) {
       csrfToken={fallback.querySelector("[name=csrfmiddlewaretoken]").value}
       minutes={Number(container.dataset.minutes)}
       introHtml={intro.innerHTML}
+      normHtml={norm?.innerHTML}
+      introWithoutNormHtml={introWithoutNorm?.innerHTML}
       preselectUnaided={"preselectUnaided" in container.dataset}
       unaidedHint={hint?.textContent}
       alwaysAided={"alwaysAided" in container.dataset}

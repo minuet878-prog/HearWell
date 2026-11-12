@@ -1,6 +1,7 @@
 """Health report groups adult results into three parts (#90)."""
 
 import re
+from collections import Counter
 from dataclasses import replace
 from datetime import datetime
 from html.parser import HTMLParser
@@ -90,6 +91,8 @@ class _Folds(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "details" and self.details_depth:
             self.details_depth -= 1
+        elif tag == "h2" and self.in_summary:
+            self.folds[-1]["summary"] += " "  # #471: the row's title, then its summary line
         elif tag == "summary":
             self.in_summary = False
         elif tag == "section":
@@ -224,7 +227,8 @@ class ReportPartsTests(TestCase):
                     self.assertEqual(life[life.index(questionnaire) + 1], comparison)
 
     # #314: on screen each questionnaire is one fold, closed, its summary row saying its name,
-    # latest date and result; its kept comparison folds with it. Owner and family alike.
+    # latest date and result; its kept comparison folds with it. Owner and family alike. #471
+    # (mockup #470 B): the row says the summary's own line under a level 2 title.
     def test_each_questionnaire_is_a_closed_fold_with_its_summary_row(self):
         hhie_unaided = self.on(self.record(self.hhie, wearing=False, score=4), 1)  # 40
         hhie_aided = self.on(self.record(self.hhie, wearing=True, score=2), 2)  # 20
@@ -254,24 +258,28 @@ class ReportPartsTests(TestCase):
         expected = [
             (
                 "report-life-impact",
-                "HHIA-S 最近一次 2026/10/04 0 分 無／極輕微影響",
+                "HHIA-S（2026/10/04） 0 分，無／極輕微影響，助聽器：有戴",
                 ["report-hhia-s", "report-comparison-hhia-s"],
             ),
             (
                 "report-life-impact",
-                "HHIE-S 最近一次 2026/10/02 20 分 輕度到中度影響",
+                "HHIE-S（2026/10/02） 20 分，輕度到中度影響，助聽器：有戴",
                 ["report-hhie-s", "report-difference"],
             ),
-            ("report-tinnitus", "THI 最近一次 2026/10/05 50 分 中度障礙", ["report-thi"]),
+            (
+                "report-tinnitus",
+                "THI（2026/10/05） 50 分，中度障礙，助聽器：未記錄",
+                ["report-thi"],
+            ),
             (
                 "report-listening",
-                "SSQ12-TW 最近一次 2026/10/07 平均 6.0 分",
+                "SSQ12-TW（2026/10/07） 平均 6.0 分",
                 ["report-ssq12", "report-comparison-ssq12-tw"],
             ),
-            ("report-satisfaction", "SADL 最近一次 2026/10/08 整體滿意度 4.0", ["report-sadl"]),
+            ("report-satisfaction", "SADL（2026/10/08） 整體滿意度 4.0", ["report-sadl"]),
             (
                 "report-hearing-aid-outcome",
-                "IOI-HA 助聽器效益 最近一次 2026/10/09 7 項中 1 項低於常模、1 項高於常模",
+                "IOI-HA（2026/10/09） 7 項中 1 項低於常模、1 項高於常模",
                 ["report-ioi-ha"],
             ),
         ]
@@ -286,7 +294,7 @@ class ReportPartsTests(TestCase):
                     )
                     for fold in folds:
                         self.assertFalse(fold["open"], fold["summary"])
-                        self.assertEqual(fold["headings"], [3], fold["summary"])
+                        self.assertEqual(fold["headings"], [2], fold["summary"])
 
     # #314 (spec #308 acceptance 6): with no average, SSQ12-TW's summary row says why instead.
     # Owner and family alike.
@@ -298,7 +306,7 @@ class ReportPartsTests(TestCase):
             with self.subTest(report=name):
                 self.assertEqual(
                     [fold["summary"] for fold in _folds(response)],
-                    ["SSQ12-TW 最近一次 2026/10/06 未計算：包含不適用題目"],
+                    ["SSQ12-TW（2026/10/06） 未計算：包含不適用題目"],
                 )
 
     def test_parts_are_level_two_and_their_contents_level_three(self):
@@ -315,15 +323,17 @@ class ReportPartsTests(TestCase):
                     sections[0] for _, sections in outline.headings if len(sections) == 1
                 }
                 self.assertLessEqual(set(PARTS), part_titles)
-                # #314: a part's own title is level 2; every heading after it in the part (each
-                # questionnaire's summary row and the titles inside its fold) is level 3.
+                # #314: a part's own title is level 2 and the titles inside its folds level 3.
+                # #471 (mockup #470 B): on screen the part's title gives way to its rows, each
+                # row's title level 2 too; on paper the rows give way to the part's title.
+                rows = Counter(fold["part"] for fold in _folds(response))
                 for part in PARTS:
                     levels = [
                         level for level, sections in outline.headings if sections[:1] == (part,)
                     ]
-                    self.assertEqual(levels[0], 2, part)
-                    self.assertGreater(len(levels), 1, part)
-                    self.assertEqual(set(levels[1:]), {3}, part)
+                    self.assertEqual(levels[: 1 + rows[part]], [2] * (1 + rows[part]), part)
+                    self.assertGreater(len(levels), 1 + rows[part], part)
+                    self.assertEqual(set(levels[1 + rows[part] :]), {3}, part)
 
     def test_parts_without_records_are_left_out(self):
         self.record(self.hhie, wearing=False)
@@ -334,14 +344,18 @@ class ReportPartsTests(TestCase):
             for part in ("report-listening", "report-hearing-aid-outcome"):
                 self.assertNotContains(page, f'id="{part}"')
 
-    # #366 (spec #354): the owner's 更換或移除 buttons sit right under the summary box they
-    # change, on screen only; the family's copy has none.
-    def test_comparison_buttons_sit_right_under_the_summary_t366(self):
+    # #366 (spec #354): the owner's 更換或移除 buttons sit right under what they change, on
+    # screen only; the family's copy has none. #471 (mockup #470 B): text links right under the
+    # kept comparisons' rows, which say on screen what the summary says on paper.
+    def test_comparison_links_sit_right_under_the_comparison_rows_t366(self):
         self.save_pair(self.hhie)
         self.save_pair(self.hhia)
         owner = self.client.get("/report").content.decode()
         under = re.search(
-            r'<section id="report-summary".*?</section>\s*<nav ([^>]*)>(.*?)</nav>', owner, re.S
+            r'報告保留比較（HHIE-S）</span><span class="report-info-value">[^<]*</span></div>'
+            r"\s*</div>\s*<nav ([^>]*)>(.*?)</nav>",
+            owner,
+            re.S,
         )
         self.assertIsNotNone(under)
         self.assertIn('aria-label="管理報告比較"', under.group(1))

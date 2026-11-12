@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>步驟流程互動比較頁</title>
+<style>
+  /* ---- tokens and base: copied from #454 (mockup-454-components.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 44px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; max-width: 100%; }
+  .opt-label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 44px; font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; }
+  .no { color: #fff; background: #b02a37; border-radius: 999px; font-size: 14px; padding: 2px 10px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.55; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* annotation controls (not part of the design) */
+  .ctrl { position: sticky; top: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 20px; max-width: 1100px; margin: 18px 0 0; padding: 6px 16px; background: #fff; border: 2px dashed var(--annot); border-radius: 14px; }
+  .ctrl label { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; color: var(--heading); cursor: pointer; }
+  .ctrl input { width: 24px; height: 24px; accent-color: var(--annot); }
+  .ctrl .state { font-size: 15px; color: var(--muted); }
+  .replay { margin-left: auto; min-height: 44px; padding: 0 14px; border: 2px solid var(--annot); border-radius: 10px; background: #fff; color: var(--annot); font-size: 16px; font-weight: 700; cursor: pointer; }
+  .replay:focus-visible { outline: 3px solid var(--annot); outline-offset: 2px; }
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { position: relative; outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; }
+  .newc-tag { position: absolute; right: 0; top: -18px; font-size: 12px; line-height: 1.3; color: #fff; background: var(--annot); padding: 1px 6px; border-radius: 4px; z-index: 3; font-weight: 700; }
+
+  /* phone */
+  .phone { background: #fff; border-radius: 28px; padding: 22px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+  .grow { flex: 1; min-width: 0; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .h1 { font-size: 28px; color: var(--heading); margin: 6px 0 18px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 0 0 10px; line-height: 1.35; font-weight: 700; }
+  .brand { margin: 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .muted { color: var(--muted); }
+
+  /* S1 buttons and text links */
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .links { display: flex; flex-wrap: wrap; column-gap: 22px; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
+
+  /* P3 hint */
+  .hint { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 4px 0 14px; color: var(--heading); }
+
+  /* home tiles (#458): L1 and P3 grey */
+  .L1m { background: var(--mild-bg); color: var(--mild); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { position: relative; border-radius: 16px; padding: 14px 14px 14px 16px; display: flex; flex-direction: column; min-height: 132px; }
+  .tile-info { background: var(--surface); color: var(--heading); }
+  .tl-label { font-size: 18px; font-weight: 700; }
+  .tile-info .tl-label { color: var(--muted); }
+  .tl-score { font-size: 40px; font-weight: 700; line-height: 1.15; margin-top: 2px; }
+  .tl-score small { font-size: 20px; }
+  .tl-level { font-weight: 700; }
+  .tl-chev { position: absolute; right: 14px; top: 12px; font-size: 30px; }
+  .tl-date { font-size: 26px; font-weight: 700; line-height: 1.25; margin-top: 8px; }
+  .tl-small { color: var(--muted); margin-top: 2px; }
+
+  /* W1 tab bar and the first-screen line */
+  .screen { padding: 0; min-height: 900px; }
+  .screen .pg { padding: 18px 20px 120px; }
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; bottom: 14px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 4; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+
+  /* ---- N3: blue-ringed dots and the joining line (照顧旅程 #458, 選配路線 #466) ---- */
+  .jr-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .jr-head .h2 { margin: 0; }
+  .jr-count { font-size: 20px; font-weight: 700; color: var(--heading); }
+  .pbar { height: 8px; border-radius: 4px; background: var(--line); margin: 8px 0 20px; overflow: hidden; }
+  .pbar span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+  ol.jr { list-style: none; margin: 0; padding: 0; }
+  ol.jr > li { position: relative; display: flex; gap: 12px; padding-bottom: 18px; }
+  ol.jr > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  ol.jr > li:has(+ .j-cur)::after { bottom: -14px; } /* reach the lowered dot of 現在這一步 */
+  .dot { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; position: relative; z-index: 1; background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .dot-later { background: var(--surface); color: var(--muted); border-color: var(--line-strong); }
+  .ck { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .ck path { stroke-dasharray: 1; }
+  .jb { display: flex; flex-wrap: wrap; column-gap: 10px; align-items: baseline; padding-top: 2px; }
+  .jt { color: var(--body); }
+  .j-later .jt { color: var(--muted); }
+  .when { color: var(--muted); }
+  .j-cur .dot { margin-top: 14px; }
+  ol.jr > li.j-cur:not(:last-child)::after { top: 48px; }
+  .card { flex: 1; min-width: 0; background: var(--primary-soft); border-radius: 16px; padding: 14px 16px 16px; }
+  .cur-label { margin: 0; font-weight: 700; color: var(--muted); }
+  .cur-title { margin: 0 0 6px; font-size: 22px; line-height: 1.35; color: var(--heading); font-weight: 700; }
+  .cur-because { margin: 0; }
+  /* the blue line already walked (I2): drawn over the grey one */
+  .seg { position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--primary); z-index: 1; transform-origin: top; } /* over the grey ::after, under the dot */
+  li:has(+ .j-cur) > .seg, li:has(+ .r-here) > .seg { bottom: -14px; }
+
+  /* 選配路線 (#466) */
+  ol.route { list-style: none; margin: 0; padding: 0; }
+  ol.route > li { position: relative; display: flex; gap: 12px; padding-bottom: 14px; }
+  ol.route > li:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 0; width: 2px; background: var(--line-strong); }
+  ol.route > li:has(+ .r-here)::after { bottom: -14px; }
+  .rb { flex: 1; min-width: 0; }
+  .r-link { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: -6px; font-weight: 700; color: var(--heading); }
+  .r-note { margin: -6px 0 0; color: var(--muted); }
+  .r-here .dot { margin-top: 14px; box-shadow: 0 0 0 5px var(--primary-sel); }
+  ol.route > li.r-here:not(:last-child)::after { top: 48px; }
+  .r-here .cur-title { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; }
+  ol.route > li.has-gap { padding-bottom: 36px; }
+  .r-gap { position: absolute; left: 44px; bottom: -4px; font-size: 16px; color: var(--muted); margin: 0; }
+
+  /* chapter steps (#466 申請流程) */
+  .st-b { flex: 1; min-width: 0; padding-top: 2px; }
+  .st-t { display: block; font-weight: 700; color: var(--heading); }
+  .st-when { display: block; color: var(--muted); font-weight: 700; }
+  .src { font-size: 16px; color: var(--muted); margin: 0; }
+
+  /* ---- I1: tap a step to open it ---- */
+  .jx { flex: 1; min-width: 0; }
+  .jbtn { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin-top: -6px; padding: 0 4px; border: 0; border-radius: 10px; background: none; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .jbtn .grow { display: flex; flex-wrap: wrap; column-gap: 10px; align-items: baseline; }
+  .jbtn .chev { transform: rotate(90deg); }
+  .jbtn[aria-expanded="true"] .chev { transform: rotate(-90deg); }
+  .jbtn:active { background: var(--primary-soft); } /* ADR 0028: pressing shows a colour, no movement */
+  @media (hover: hover) { .jbtn:hover { background: var(--primary-soft); } }
+  .jbtn:focus-visible, .dbtn:focus-visible, .cbtn:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+  .jpanel { padding: 2px 4px 2px; }
+  .jpanel p { margin: 0 0 2px; }
+
+  /* ---- I3: a row of dots ---- */
+  .dscroll { overflow-x: auto; margin: 0 -4px; padding: 4px; }
+  .dots { position: relative; display: flex; justify-content: space-between; }
+  .dots::before { content: ""; position: absolute; left: 24px; right: 24px; top: 23px; height: 2px; background: var(--line-strong); }
+  .dbtn { position: relative; z-index: 1; flex: none; width: 48px; height: 48px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 14px; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .dbtn[aria-selected="true"] { background: var(--primary-sel); box-shadow: inset 0 0 0 2px var(--primary); }
+  .dbtn:active { background: var(--primary-soft); }
+  .dbtn .dot.here { box-shadow: 0 0 0 4px var(--primary-sel); }
+  .dlabels { display: flex; justify-content: space-between; }
+  .dlabels span { flex: none; width: 48px; text-align: center; font-size: 16px; font-weight: 700; color: var(--primary); line-height: 1.4; min-height: 22px; }
+  .nine .dots { justify-content: flex-start; width: max-content; }
+  .nine .dbtn, .nine .dlabels span { width: 44px; }
+  .nine .dots::before { left: 22px; right: 22px; top: 21px; }
+  .nine .dbtn { height: 44px; }
+  .nine .dlabels { justify-content: flex-start; width: max-content; }
+  .pane { margin-top: 10px; }
+  .pane-k { margin: 0; font-weight: 700; color: var(--muted); }
+  .pane .h3 { margin: 0 0 4px; font-size: 22px; line-height: 1.35; color: var(--heading); font-weight: 700; }
+  .pane p { margin: 0 0 4px; }
+
+  /* ---- I4: tick it yourself ---- */
+  ol.chk { list-style: none; margin: 0; padding: 0; }
+  ol.chk > li { position: relative; display: flex; gap: 8px; padding-bottom: 18px; }
+  ol.chk > li:not(:last-child)::after { content: ""; position: absolute; left: 21px; top: 40px; bottom: -4px; width: 2px; background: var(--line-strong); }
+  .cbtn { flex: none; width: 44px; height: 44px; margin-top: -6px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; position: relative; z-index: 1; }
+  .cbtn:active .dot { background: var(--primary-soft); }
+  .cbtn .ck { display: none; }
+  .cbtn[aria-pressed="true"] .num { display: none; }
+  .cbtn[aria-pressed="true"] .ck { display: block; }
+  .done-word { display: block; color: var(--primary); font-weight: 700; }
+  .done-word[hidden] { display: none; }
+
+  /* ---- motion ---- */
+  @keyframes seg-draw { from { transform: scaleY(0); } }
+  @keyframes tick-draw { from { stroke-dashoffset: 1; } }
+  @keyframes ring-once { 50% { box-shadow: 0 0 0 12px rgba(31, 78, 140, .22); } }
+  .play .seg { animation: seg-draw var(--d, .45s) linear var(--t, 0s) both; }
+  .play .ck.draw path { animation: tick-draw .35s ease-out var(--t, 0s) both; }
+  .play .ring { animation: ring-once .9s ease-in-out var(--t, 0s) both; }
+  /* ADR 0029: hold the first frame until it is in view */
+  .play:not([data-in-view]) *, .play:not([data-in-view]) *::before, .play:not([data-in-view]) *::after { animation-play-state: paused !important; }
+  .play.reset * { animation: none !important; }
+  .cbtn[aria-pressed="true"] .ck path { animation: tick-draw .45s ease-out both; }
+  /* reduced motion, real or simulated: the last frame at once */
+  html.sim-rm *, html.sim-rm *::before, html.sim-rm *::after { animation: none !important; transition: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; width: 100%; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  .tablewrap { overflow-x: auto; max-width: 100%; }
+  .ok { color: var(--normal); font-weight: 700; }
+  .ex { color: #9a3412; font-weight: 700; }
+  .decide { background: #fff; border-radius: 16px; padding: 18px 24px; max-width: 1100px; }
+  .decide ol { margin: 0; padding-left: 1.3em; }
+  .decide li { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>步驟流程互動比較頁（照顧旅程、選配路線、申請流程）</h1>
+  <p class="lead">回答「這些 1-2-3 的流程能不能更有互動感」。這頁可以實際點：每支手機都能操作，會動的旁邊有「重播」。案例都一樣：照顧旅程第 1、2 步完成、現在第 3 步，目前這一站是九號表。元件只用 T1、E、S1、P3、L1、N3、W1；紫色虛線框是新元件或草稿字句，紫色按鈕是看圖用的，不是設計的一部分。</p>
+  <div class="ctrl" role="group" aria-label="看圖用的控制">
+    <label><input type="checkbox" id="sim-rm"> 模擬「減少動態效果」</label>
+    <span class="state" id="rm-state" aria-live="polite"></span>
+  </div>
+
+  <!-- ===== A: care journey ===== -->
+  <section class="group">
+    <h2>一　照顧旅程（首頁）：四種做法</h2>
+    <p class="q">同一個案例：填生活影響問卷 2026/09/26 完成、記錄聽力圖 2026/09/01 完成、現在第 3 步（目前這一站是九號表）。現在這一步的卡片照本人最後的精簡：只留站名、一句為什麼、按鈕。</p>
+    <div class="row">
+
+      <!-- I1 -->
+      <div class="opt"><p class="opt-label">I1　點一下展開</p>
+        <div class="phone">
+          <div class="jr-head"><h3 class="h2">照顧旅程</h3><span class="jr-count">2 / 5</span></div>
+          <div class="pbar"><span style="width:40%"></span></div>
+          <ol class="jr" data-accordion>
+            <li><span class="dot"><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span>
+              <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i1-p1"><span class="grow"><span class="jt">填生活影響問卷</span><span class="when">2026/09/26</span></span><span class="sr-only">，已完成</span><span class="chev" aria-hidden="true">›</span></button>
+                <div class="jpanel" id="i1-p1" hidden><p>先做一份生活影響問卷，了解聽力對您生活的影響。</p><p class="muted">上次結果：輕度到中度影響</p><a class="tlink draft" href="#">看上次結果</a></div></div></li>
+            <li><span class="dot"><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span>
+              <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i1-p2"><span class="grow"><span class="jt">記錄聽力圖</span><span class="when">2026/09/01</span></span><span class="sr-only">，已完成</span><span class="chev" aria-hidden="true">›</span></button>
+                <div class="jpanel" id="i1-p2" hidden><p>選配指引要用聽力圖才能整理下一步。</p><a class="tlink" href="#">看我的選配指引</a></div></div></li>
+            <li class="j-cur"><span class="dot">3</span><div class="card"><h4 class="cur-title">九號表：申請助聽器補助</h4><p class="cur-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p><a class="b solid" href="#">看九號表的流程</a></div></li>
+            <li class="j-later"><span class="dot dot-later">4</span>
+              <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i1-p4"><span class="grow"><span class="jt">戴滿 3 個月做效益問卷</span></span><span class="chev" aria-hidden="true">›</span></button>
+                <div class="jpanel" id="i1-p4" hidden><p class="draft">買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。</p></div></div></li>
+            <li class="j-later"><span class="dot dot-later">5</span>
+              <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i1-p5"><span class="grow"><span class="jt">半年後再篩檢</span></span><span class="chev" aria-hidden="true">›</span></button>
+                <div class="jpanel" id="i1-p5" hidden><p>時間到了，這裡會出現「再做一次」的按鈕。</p><p class="muted">下次篩檢 2027/03/26・還有 134 天</p></div></div></li>
+          </ol>
+        </div>
+        <div class="note">
+          <p><b>好處：</b>每一步都點得開，就地看到在說什麼、去哪裡，不用離開首頁；完成的步也能回頭看。現在這一步的卡片一直開著，不參加「一次只開一個」，全頁仍只有一顆實心按鈕。</p>
+          <p><b>代價：</b>首頁多四個能點的列，跟「今天只要做一件事」搶一點注意；第 4 步展開的那句是新字（紫框）。</p>
+          <p><b>ADR：</b>完全不動（箭頭直接換方向、內容直接出現），按下只變色 → <span class="ok">符合 0006、0028</span>；沒有進場動畫，0029 不相關。鍵盤：Tab 到列、Enter／空白鍵開關，報讀器會唸「已展開／已收合」。</p>
+        </div>
+      </div>
+
+      <!-- I2 -->
+      <div class="opt"><p class="opt-label">I2　進場畫出進度 <button class="replay" type="button" data-replay="i2">重播</button></p>
+        <div class="phone">
+          <div class="jr-head"><h3 class="h2">照顧旅程</h3><span class="jr-count">2 / 5</span></div>
+          <div class="pbar"><span style="width:40%"></span></div>
+          <div class="newc"><span class="newc-tag">新：走過的線是藍色</span><ol class="jr play" id="i2" data-play-in-view>
+            <li><span class="seg" style="--t:.1s"></span><span class="dot"><svg class="ck draw" style="--t:0s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span><div class="jb"><span class="jt">填生活影響問卷</span><span class="when">2026/09/26</span></div></li>
+            <li><span class="seg" style="--t:.55s;--d:.5s"></span><span class="dot"><svg class="ck draw" style="--t:.5s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span><div class="jb"><span class="jt">記錄聽力圖</span><span class="when">2026/09/01</span></div></li>
+            <li class="j-cur"><span class="dot ring" style="--t:1.05s">3</span><div class="card"><h4 class="cur-title">九號表：申請助聽器補助</h4><p class="cur-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p><a class="b solid" href="#">看九號表的流程</a></div></li>
+            <li class="j-later"><span class="dot dot-later">4</span><div class="jb"><span class="jt">戴滿 3 個月做效益問卷</span></div></li>
+            <li class="j-later"><span class="dot dot-later">5</span><div class="jb"><span class="jt">半年後再篩檢</span></div></li>
+          </ol></div>
+        </div>
+        <div class="note">
+          <p>順序：第 1 步的勾 → 藍線往下長到第 2 步 → 第 2 步的勾 → 藍線長到第 3 步 → 第 3 步圓點的光圈亮一次。全長約 1.95 秒；捲到整個進畫面才播；字和卡片從頭就在。</p>
+          <p><b>好處：</b>不用操作，一眼「看到」自己走到哪，進度感最強。</p>
+          <p><b>代價：</b>每次回首頁都播會變吵；走過的線改藍是新樣子（上面的進度條就有點重複）。</p>
+          <p><b>ADR：</b>只播一次、2 秒內、減少動態直接停在最後 → <span class="ok">符合 0006</span>；捲到才播 → <span class="ok">符合 0029</span>；光圈沿用選配路線現有的「目前這一站」光圈。<span class="ex">要例外：</span>勾和線是畫面自己畫的，0028 的勾只在本人按了才畫 → 要像 0029「儀表條從 0 填滿」那樣補一條例外。</p>
+        </div>
+      </div>
+
+      <!-- I3 -->
+      <div class="opt"><p class="opt-label">I3　橫向小圓點進度條</p>
+        <div class="phone">
+          <div class="jr-head"><h3 class="h2">照顧旅程</h3><span class="jr-count">2 / 5</span></div>
+          <div class="newc" style="margin-top:22px"><span class="newc-tag">新元件：橫向圓點，點了換下面的內容</span>
+            <div data-dots="journey" data-id="i3"></div>
+          </div>
+        </div>
+        <div class="note">
+          <p><b>好處：</b>一排看到全程和現在的位置；下面只放一步，字大、不擠。觸控目標 48×48。左右方向鍵可換步。</p>
+          <p><b>代價：</b>一次只看得到一步的名字，其他步要點灰圓點才知道是什麼，長輩不太會主動去點；「選中」（藍框淡藍底）和「現在」（圓點下的字）兩種標記要分得清。九站放不下，見第二組。</p>
+          <p><b>ADR：</b>切換只變色、內容直接換、不淡入 → <span class="ok">符合 0006、0028</span>。</p>
+        </div>
+      </div>
+
+      <!-- I5 -->
+      <div class="opt"><p class="opt-label">I5　組合建議：I1＋I2<span class="rec">建議</span> <button class="replay" type="button" data-replay="i5">重播</button></p>
+        <div class="phone screen"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1"><span class="draft">早安，</span>今天只要做一件事</h1>
+          <div class="tiles"><a class="tile L1m" href="#"><span class="tl-label">上次結果</span><span class="tl-score">18 <small>分</small></span><span class="tl-level">輕度到中度影響</span><span class="chev tl-chev">›</span></a><div class="tile tile-info"><span class="tl-label">下次篩檢</span><span class="tl-date">2027/03/26</span><span class="tl-small">還有 134 天</span></div></div>
+          <section style="margin-top:28px">
+            <div class="jr-head"><h2 class="h2">照顧旅程</h2><span class="jr-count">2 / 5</span></div>
+            <div class="pbar"><span style="width:40%"></span></div>
+            <ol class="jr play" id="i5" data-play-in-view data-accordion>
+              <li><span class="seg" style="--t:.1s"></span><span class="dot"><svg class="ck draw" style="--t:0s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span>
+                <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i5-p1"><span class="grow"><span class="jt">填生活影響問卷</span><span class="when">2026/09/26</span></span><span class="sr-only">，已完成</span><span class="chev" aria-hidden="true">›</span></button>
+                  <div class="jpanel" id="i5-p1" hidden><p>先做一份生活影響問卷，了解聽力對您生活的影響。</p><p class="muted">上次結果：輕度到中度影響</p><a class="tlink draft" href="#">看上次結果</a></div></div></li>
+              <li><span class="seg" style="--t:.55s;--d:.5s"></span><span class="dot"><svg class="ck draw" style="--t:.5s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span>
+                <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i5-p2"><span class="grow"><span class="jt">記錄聽力圖</span><span class="when">2026/09/01</span></span><span class="sr-only">，已完成</span><span class="chev" aria-hidden="true">›</span></button>
+                  <div class="jpanel" id="i5-p2" hidden><p>選配指引要用聽力圖才能整理下一步。</p><a class="tlink" href="#">看我的選配指引</a></div></div></li>
+              <li class="j-cur"><span class="dot ring" style="--t:1.05s">3</span><div class="card"><h3 class="cur-title">九號表：申請助聽器補助</h3><p class="cur-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p><a class="b solid" href="#">看九號表的流程</a></div></li>
+              <li class="j-later"><span class="dot dot-later">4</span>
+                <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i5-p4"><span class="grow"><span class="jt">戴滿 3 個月做效益問卷</span></span><span class="chev" aria-hidden="true">›</span></button>
+                  <div class="jpanel" id="i5-p4" hidden><p class="draft">買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。</p></div></div></li>
+              <li class="j-later"><span class="dot dot-later">5</span>
+                <div class="jx"><button class="jbtn" type="button" aria-expanded="false" aria-controls="i5-p5"><span class="grow"><span class="jt">半年後再篩檢</span></span><span class="chev" aria-hidden="true">›</span></button>
+                  <div class="jpanel" id="i5-p5" hidden><p>時間到了，這裡會出現「再做一次」的按鈕。</p><p class="muted">下次篩檢 2027/03/26・還有 134 天</p></div></div></li>
+            </ol>
+          </section>
+          <div class="links"><a class="tlink" href="#">印聽力報告</a><a class="tlink" href="#">分享給家人</a><a class="tlink" href="#">加到手機主畫面</a></div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88" aria-label="示意的分頁列"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note">
+          <p><b>為什麼這樣組：</b>I2 給「一進來就看到走到哪」的感覺，I1 讓好奇的人點開看每一步，兩者都不動版面結構、不加第二顆實心按鈕。I3 會把其他步的名字藏起來，九站也放不下；I4 是「本人去辦的事」，放首頁會跟第 4 題（不畫可勾的方框）衝突。</p>
+          <p><b>建議播放時機：</b>同一個瀏覽器分頁只在第一次進首頁時播（跟頁首聲波一樣，ADR 0006），之後回首頁直接停在最後的樣子；見下方「要本人決定」第 2 項。</p>
+          <p><b>ADR：</b>I1 部分完全符合；I2 部分同左，要補 0028 的例外。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== B: fitting route ===== -->
+  <section class="group">
+    <h2>二　套用到我的選配指引：九站選配路線</h2>
+    <p class="q">案例乙：前三站已完成（回答了有身障證明），您在這裡是第 4 站九號表。路線每站本來就是整行可點、連到那一章，所以 I1「點一下展開」不適合放在這裡（點下去到底是展開還是換頁會混），這裡只示範 I2 和 I3。</p>
+    <div class="row">
+
+      <div class="opt"><p class="opt-label">I2 套用・九站 <button class="replay" type="button" data-replay="i2r">重播</button></p>
+        <div class="phone">
+          <h3 class="h2">選配與補助，一步一步看</h3>
+          <ol class="route play" id="i2r" data-play-in-view>
+            <li><span class="seg" style="--t:.1s;--d:.3s"></span><span class="dot"><svg class="ck draw" style="--t:0s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span><div class="rb"><a class="r-link" href="#"><span class="grow">記錄聽力圖</span><span class="chev">›</span></a><p class="r-note">已完成・2026/09/01 的聽力圖</p></div></li>
+            <li><span class="seg" style="--t:.4s;--d:.3s"></span><span class="dot"><svg class="ck draw" style="--t:.35s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span><div class="rb"><a class="r-link" href="#"><span class="grow">去找聽力師之前</span><span class="chev">›</span></a><p class="r-note">已完成</p></div></li>
+            <li><span class="seg" style="--t:.7s;--d:.35s"></span><span class="dot"><svg class="ck draw" style="--t:.65s" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span><div class="rb"><a class="r-link" href="#"><span class="grow">身障鑑定與鑑定醫院</span><span class="chev">›</span></a><p class="r-note">已完成</p></div></li>
+            <li class="r-here"><span class="dot ring" style="--t:1.05s">4</span><div class="card"><p class="cur-label">您在這裡</p><a class="cur-title" href="#"><span class="grow">九號表：申請助聽器補助</span><span class="chev">›</span></a><a class="b solid" href="#">看九號表的流程</a></div></li>
+            <li><span class="dot">5</span><div class="rb"><a class="r-link" href="#"><span class="grow">等待核定公文</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">6</span><div class="rb"><a class="r-link" href="#"><span class="grow">助聽器的種類與價格</span><span class="chev">›</span></a><p class="r-note">收到核定通知後 6 個月內要買。</p></div></li>
+            <li class="has-gap"><span class="dot">7</span><div class="rb"><a class="r-link" href="#"><span class="grow">配戴助聽器之後</span><span class="chev">›</span></a></div><p class="r-gap">至少 1 個月</p></li>
+            <li><span class="dot">8</span><div class="rb"><a class="r-link" href="#"><span class="grow">二十五號表：使用效益驗證</span><span class="chev">›</span></a></div></li>
+            <li><span class="dot">9</span><div class="rb"><a class="r-link" href="#"><span class="grow">等待補助發放</span><span class="chev">›</span></a></div></li>
+          </ol>
+        </div>
+        <div class="note">
+          <p>三站的勾依序打上、藍線長到第 4 站，第 4 站光圈亮一次，全長約 1.95 秒。</p>
+          <p><b>好處：</b>選配路線很長，畫出來的線讓人一眼看出「已經走了三站」。光圈本來就有（現在網站的「目前這一站」一進來就亮一次），只是多了線和勾。</p>
+          <p><b>ADR：</b>光圈 <span class="ok">已符合 0006、0029</span>；畫線和自動畫勾 <span class="ex">要例外</span>（同 I2）。0028 的「回答後回到路線、那一站勾畫出來」照舊，兩者不要同時播。</p>
+        </div>
+      </div>
+
+      <div class="opt"><p class="opt-label">I3 套用・九站<span class="no">太擠</span></p>
+        <div class="phone">
+          <h3 class="h2">選配與補助，一步一步看</h3>
+          <div class="newc" style="margin-top:22px"><span class="newc-tag">新元件：橫向圓點（九站）</span>
+            <div data-dots="route" data-id="i3r"></div>
+          </div>
+        </div>
+        <div class="note">
+          <p><b>為什麼太擠：</b>每個圓點至少 44px，九個是 396px，手機可用寬只有約 350px，只能左右捲，第 9 站被藏在右邊；圓點之間沒有空隙，手抖容易點錯；九站的名字一個都看不到。200% 字級時更糟。</p>
+          <p><b>結論：</b>五步的照顧旅程勉強可以，九站的選配路線不建議用 I3。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== C: application steps ===== -->
+  <section class="group">
+    <h2>三　套用到章節：九號表的申請流程</h2>
+    <p class="q">九號表那一章的「申請流程」，字句照 #466 文章式設計圖。註：實際是六步（前三步、「重要」提醒、後三步），不是五步，這裡照實際畫。</p>
+    <div class="row">
+
+      <div class="opt"><p class="opt-label">I4　自己打勾（＝產品地圖 O）<button class="replay" type="button" data-reset="i4">清掉打勾</button></p>
+        <div class="phone">
+          <h3 class="h2">申請流程</h3>
+          <p class="hint draft">辦完一步，點左邊的圓圈打勾。</p>
+          <div id="i4">
+            <div class="newc"><span class="newc-tag" style="top:-22px">新元件：圓圈可以點、打勾</span><ol class="chk">
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 1 步 做評估，拿到九號表：辦完了"><span class="dot"><span class="num">1</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">做評估，拿到九號表</span>找聽力師或縣市輔具中心。九號表 3 個月內有效。<span class="st-when" aria-hidden="true">3 個月內有效</span><span class="done-word draft" hidden>已辦完</span></span></li>
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 2 步 到公所申請：辦完了"><span class="dot"><span class="num">2</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">到公所申請</span>帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。<span class="done-word draft" hidden>已辦完</span></span></li>
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 3 步 等核定通知：辦完了"><span class="dot"><span class="num">3</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">等核定通知</span>主管機關收到評估報告後，10 天內會核定。<span class="st-when" aria-hidden="true">10 天內核定</span><span class="done-word draft" hidden>已辦完</span></span></li>
+            </ol></div>
+            <p class="hint">重要：一定要先拿到核定通知再買，沒核定就先買的不補助。</p>
+            <ol class="chk">
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 4 步 購買並請款：辦完了"><span class="dot"><span class="num">4</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">購買並請款</span>收到核定通知後 6 個月內。<span class="st-when" aria-hidden="true">6 個月內</span><span class="done-word draft" hidden>已辦完</span></span></li>
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 5 步 使用效益驗證：辦完了"><span class="dot"><span class="num">5</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">使用效益驗證</span>買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<a class="tlink" href="#">看二十五號表</a><span class="st-when" aria-hidden="true">配戴 1–3 個月內</span><span class="done-word draft" hidden>已辦完</span></span></li>
+              <li><button class="cbtn" type="button" aria-pressed="false" aria-label="第 6 步 核銷：辦完了"><span class="dot"><span class="num">6</span><svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg></span></button><span class="st-b"><span class="st-t">核銷</span>帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。<span class="st-when" aria-hidden="true">1 個月內撥款</span><span class="done-word draft" hidden>已辦完</span></span></li>
+            </ol>
+          </div>
+          <p class="src">來源：<a>身心障礙者輔具費用補助辦法</a>、<a>身心障礙者輔具費用補助基準表</a></p>
+          <p class="sr-only" aria-live="polite" id="i4-live"></p>
+        </div>
+        <div class="note">
+          <p><b>這就是產品地圖的 O「每站的待辦打勾」。</b>跟拷問第 4 題的關係：第 4 題定的是<b>首頁照顧旅程</b>的卡片「只寫目前這一站一件事、不畫可勾的方框」，這裡不推翻它；O 只放在<b>章節的申請流程</b>這類「本人要自己去公所、醫院辦的事」，首頁照第 4 題不變。</p>
+          <p>點圓圈：數字換成勾、勾畫出來一次（0.45 秒）、下面寫「已辦完」（不是只靠圖示）；再點一次取消。藍框藍勾，跟首頁完成的步同一個樣子（不用綠色，避免跟分級綠混）。</p>
+          <p><b>資料存哪裡：待決定。</b>這個示意版只存在頁面記憶體，重新整理就不見。選項見下方「要本人決定」第 3 項。</p>
+          <p><b>代價：</b>圓圈本來是編號，看不出能點，要多一句說明（紫框草稿）；打勾不會推動選配路線或照顧旅程（那些照舊由回答和紀錄決定），長輩可能以為勾了就算完成那一站。</p>
+          <p><b>ADR：</b>本人自己按、只播一次、減少動態直接出現勾 → 跟 <span class="ok">0028 的第三種例外同類</span>，但 0028 只寫「選配路線完成一站」，<span class="ex">要補一句擴到章節的申請流程</span>。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== summary ===== -->
+  <section class="group">
+    <h2>四　跟動態規則（ADR 0006、0028、0029）的關係</h2>
+    <div class="tablewrap"><table class="spec">
+      <tr><th>做法</th><th>誰觸發</th><th>會動的東西</th><th>0006 只播一次、可關</th><th>0028 按鈕只變色＋三種例外</th><th>0029 捲到才播</th><th>要不要例外</th></tr>
+      <tr><td>I1 點一下展開</td><td>本人點</td><td>沒有（直接開合，按下變色）</td><td class="ok">符合</td><td class="ok">符合</td><td>不相關</td><td class="ok">不用</td></tr>
+      <tr><td>I2 進場畫出進度</td><td>畫面自己播</td><td>藍線長出來、勾畫出來、光圈亮一次（約 1.95 秒）</td><td class="ok">符合（2 秒內、減少動態不動）</td><td class="ex">勾自己畫出來不是本人按的</td><td class="ok">符合（已接上）</td><td class="ex">要：0028 補「進度線與勾，進場時畫一次」</td></tr>
+      <tr><td>I3 橫向圓點</td><td>本人點</td><td>沒有（選中變色、內容直接換）</td><td class="ok">符合</td><td class="ok">符合</td><td>不相關</td><td class="ok">不用（但九站太擠）</td></tr>
+      <tr><td>I4 自己打勾</td><td>本人點</td><td>勾畫出來一次（0.45 秒）</td><td class="ok">符合</td><td class="ex">同類例外，但目前只寫選配路線</td><td>不相關</td><td class="ex">要：0028 擴到申請流程（小修）</td></tr>
+    </table></div>
+  </section>
+
+  <section class="group">
+    <h2>五　要本人決定</h2>
+    <div class="decide"><ol>
+      <li><b>首頁照顧旅程用哪個：</b>I5（I1＋I2，建議）／只用 I1（完全不用改 ADR，但沒有「會動」的感覺）／只用 I2（不用點，但每一步看不到說明）／I3（不建議：藏起其他步的名字）。</li>
+      <li><b>I2 什麼時候播：</b>每次進首頁都播（最簡單，會變吵）／同一分頁只播第一次（建議，跟頁首聲波一樣）／只有進度變了才播（最貼切，但要記住上次看到第幾步，存在瀏覽器）。</li>
+      <li><b>I4 打勾存哪裡：</b>瀏覽器暫存（建議先這樣試：不用新資料表，但換手機、清資料就不見，家人用另一支手機看不到）／存在帳號（換手機還在、家人分享看得到，但要新資料表，下載我的資料、刪除帳號都要帶到）。也可以先不做 I4。</li>
+      <li><b>走過的線改藍色（I2）：</b>要（建議，進度一眼看得出來；上方的進度條可以考慮拿掉）／不要（線維持灰，只畫勾和光圈）。</li>
+    </ol></div>
+  </section>
+</div>
+
+<script>
+  // ---- reduced motion: real setting preset, the box simulates it ----
+  const root = document.documentElement;
+  const sim = document.getElementById("sim-rm");
+  const rmState = document.getElementById("rm-state");
+  const realReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  function syncReduce() {
+    root.classList.toggle("sim-rm", sim.checked);
+    rmState.textContent = realReduce.matches
+      ? "（這台電腦本來就開了減少動態效果：不管勾不勾都不會動）"
+      : sim.checked ? "現在：不動，直接是最後的樣子。按「重播」也不會動。" : "現在：正常播放。";
+  }
+  sim.checked = realReduce.matches;
+  sim.addEventListener("change", syncReduce);
+  syncReduce();
+
+  // ---- I1: one open at a time; 現在這一步's card is not part of it ----
+  document.querySelectorAll("[data-accordion]").forEach((list) => {
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest(".jbtn");
+      if (!button) return;
+      const wasOpen = button.getAttribute("aria-expanded") === "true";
+      list.querySelectorAll(".jbtn").forEach((other) => {
+        other.setAttribute("aria-expanded", "false");
+        document.getElementById(other.getAttribute("aria-controls")).hidden = true;
+      });
+      if (!wasOpen) {
+        button.setAttribute("aria-expanded", "true");
+        document.getElementById(button.getAttribute("aria-controls")).hidden = false;
+      }
+    });
+  });
+
+  // ---- play in view, as frontend/src/in-view.js (ADR 0029) ----
+  function isInView(rect, viewportHeight) {
+    const shown = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+    return (rect.top >= 0 && rect.bottom <= viewportHeight) || shown >= viewportHeight / 2;
+  }
+  let waiting = [...document.querySelectorAll("[data-play-in-view]")];
+  function checkInView() {
+    waiting = waiting.filter((element) => {
+      if (!isInView(element.getBoundingClientRect(), window.innerHeight)) return true;
+      element.setAttribute("data-in-view", "");
+      return false;
+    });
+    if (waiting.length === 0) {
+      window.removeEventListener("scroll", checkInView);
+      window.removeEventListener("resize", checkInView);
+    }
+  }
+  window.addEventListener("scroll", checkInView, { passive: true });
+  window.addEventListener("resize", checkInView);
+  checkInView();
+
+  // ---- annotation: replay and reset ----
+  document.querySelectorAll("[data-replay]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = document.getElementById(button.dataset.replay);
+      target.classList.add("reset");
+      void target.offsetWidth; // restart the animations
+      target.classList.remove("reset");
+      target.setAttribute("data-in-view", "");
+    });
+  });
+
+  // ---- I3: a row of dots that switches the step below ----
+  const tick = '<svg class="ck" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="1" d="M5 12l5 5 9-10"/></svg>';
+  const DOTS = {
+    journey: {
+      label: "照顧旅程五步", current: 3, here: "現在",
+      steps: [
+        { state: "done", title: "填生活影響問卷", meta: "已完成・2026/09/26", body: "先做一份生活影響問卷，了解聽力對您生活的影響。", link: '<a class="tlink draft" href="#">看上次結果</a>' },
+        { state: "done", title: "記錄聽力圖", meta: "已完成・2026/09/01", body: "選配指引要用聽力圖才能整理下一步。", link: '<a class="tlink" href="#">看我的選配指引</a>' },
+        { state: "cur", title: "九號表：申請助聽器補助", body: "您已經有身障證明，可以準備申請九號表的助聽器補助。", button: "看九號表的流程" },
+        { state: "later", title: "戴滿 3 個月做效益問卷", body: '<span class="draft">買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。</span>' },
+        { state: "later", title: "半年後再篩檢", body: "時間到了，這裡會出現「再做一次」的按鈕。", meta2: "下次篩檢 2027/03/26・還有 134 天" },
+      ],
+    },
+    route: {
+      label: "選配路線九站", current: 4, here: "這裡", nine: true,
+      steps: [
+        { state: "done", title: "記錄聽力圖", meta: "已完成・2026/09/01 的聽力圖", route: true },
+        { state: "done", title: "去找聽力師之前", meta: "已完成", route: true },
+        { state: "done", title: "身障鑑定與鑑定醫院", meta: "已完成", route: true },
+        { state: "cur", title: "九號表：申請助聽器補助", label: "您在這裡", button: "看九號表的流程", route: true },
+        { state: "later", title: "等待核定公文", route: true },
+        { state: "later", title: "助聽器的種類與價格", meta: "收到核定通知後 6 個月內要買。", route: true },
+        { state: "later", title: "配戴助聽器之後", route: true },
+        { state: "later", title: "二十五號表：使用效益驗證", route: true },
+        { state: "later", title: "等待補助發放", route: true },
+      ],
+    },
+  };
+
+  function paneHtml(step, n, total) {
+    const where = `第 ${n} ${step.route ? "站" : "步"}，共 ${total} ${step.route ? "站" : "步"}`;
+    if (step.state === "cur") {
+      return `<p class="pane-k">${where}・${step.label || "現在這一步"}</p><div class="card" style="margin-top:6px"><p class="h3" style="margin:0 0 6px">${step.title}</p>${step.body ? `<p class="cur-because">${step.body}</p>` : ""}<a class="b solid" href="#">${step.button}</a></div>`;
+    }
+    const title = step.route
+      ? `<a class="r-link h3" href="#" style="margin:0"><span class="grow">${step.title}</span><span class="chev">›</span></a>`
+      : `<p class="h3">${step.title}</p>`;
+    return `<p class="pane-k">${where}${step.state === "later" && !step.route ? "・還沒到" : ""}</p>${title}`
+      + (step.meta ? `<p class="muted">${step.meta}</p>` : "")
+      + (step.body ? `<p>${step.body}</p>` : "")
+      + (step.meta2 ? `<p class="muted">${step.meta2}</p>` : "")
+      + (step.link || "");
+  }
+
+  document.querySelectorAll("[data-dots]").forEach((host) => {
+    const data = DOTS[host.dataset.dots];
+    const id = host.dataset.id;
+    const total = data.steps.length;
+    const buttons = data.steps.map((step, i) => {
+      const n = i + 1;
+      const state = step.state === "done" ? "已完成" : step.state === "cur" ? data.here === "這裡" ? "您在這裡" : "現在這一步" : "還沒到";
+      const dot = step.state === "done" ? `<span class="dot">${tick}</span>`
+        : step.state === "cur" ? `<span class="dot here">${n}</span>`
+        : `<span class="dot dot-later">${n}</span>`;
+      return `<button class="dbtn" type="button" role="tab" id="${id}-t${n}" aria-controls="${id}-panel" aria-selected="false" tabindex="-1" aria-label="第 ${n} ${step.route ? "站" : "步"} ${step.title}，${state}">${dot}</button>`;
+    }).join("");
+    const labels = data.steps.map((step) => `<span aria-hidden="true">${step.state === "cur" ? data.here : ""}</span>`).join("");
+    host.innerHTML = `<div class="${data.nine ? "dscroll nine" : ""}"><div class="dots" role="tablist" aria-label="${data.label}">${buttons}</div><div class="dlabels">${labels}</div></div><div class="pane" role="tabpanel" id="${id}-panel" aria-live="polite"></div>`;
+    const tabs = [...host.querySelectorAll(".dbtn")];
+    const panel = host.querySelector(".pane");
+    function select(i, focus) {
+      tabs.forEach((tab, j) => {
+        tab.setAttribute("aria-selected", String(i === j));
+        tab.tabIndex = i === j ? 0 : -1;
+      });
+      panel.setAttribute("aria-labelledby", tabs[i].id);
+      panel.innerHTML = paneHtml(data.steps[i], i + 1, total);
+      if (focus) tabs[i].focus();
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => select(i, false));
+      tab.addEventListener("keydown", (event) => {
+        const keys = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: total - 1 };
+        if (!(event.key in keys)) return;
+        event.preventDefault();
+        select((keys[event.key] + total) % total, true);
+      });
+    });
+    select(data.current - 1, false);
+  });
+
+  // ---- I4: tick it yourself (kept in this page's memory only) ----
+  const live = document.getElementById("i4-live");
+  const i4 = document.getElementById("i4");
+  i4.addEventListener("click", (event) => {
+    const button = event.target.closest(".cbtn");
+    if (!button) return;
+    const done = button.getAttribute("aria-pressed") !== "true";
+    button.setAttribute("aria-pressed", String(done));
+    button.closest("li").querySelector(".done-word").hidden = !done;
+    const name = button.closest("li").querySelector(".st-t").textContent;
+    live.textContent = done ? `${name}：已辦完` : `${name}：取消打勾`;
+  });
+  document.querySelector('[data-reset="i4"]').addEventListener("click", () => {
+    i4.querySelectorAll(".cbtn").forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+      button.closest("li").querySelector(".done-word").hidden = true;
+    });
+    live.textContent = "已清掉全部打勾";
+  });
+</script>
+</body>
+</html>

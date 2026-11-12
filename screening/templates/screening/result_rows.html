@@ -1,0 +1,39 @@
+{# #461 (the #460 mockup R1): the list rows under 看完整說明. Sharing or printing leaves the list while the box above suggests it; this questionnaire's records and the page's own extras follow (回首頁 went: the tab bar has it). #}
+{% if next_step.suggested != "share" %}
+<a class="link-card action-card" href="{% url 'share_report' %}">
+    {% include "screening/action_icon.html" with icon="share" %}
+    <span class="link-card-body"><span class="link-card-title">分享給家人</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}
+{% if next_step.suggested != "print" %}
+<a class="link-card action-card" href="{% url 'health_report' %}">
+    {% include "screening/action_icon.html" with icon="report" %}
+    <span class="link-card-body"><span class="link-card-title">印聽力報告給醫師看</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}
+<a class="link-card action-card" href="{% url 'my_hearing' %}?questionnaire={{ submission.questionnaire.code }}">
+    {% include "screening/action_icon.html" with icon="records" %}
+    <span class="link-card-body"><span class="link-card-title">{% if submission.questionnaire.definition.trend_chart %}看我的紀錄與趨勢{% else %}看我的紀錄{% endif %}</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% if show_comparison %}
+<a class="link-card action-card" href="{% url 'hhi_comparison' submission.questionnaire_id %}">
+    {% include "screening/action_icon.html" with icon="compare" %}
+    <span class="link-card-body"><span class="link-card-title">比較戴與不戴助聽器</span></span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}
+{% if optional_ssq12 %}
+<p class="result-rows-note">您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
+{# #363: the name's inline-block moves to a line of its own whole rather than breaking at its hyphen, and breaks only when wider than the row (200% text). #}
+<a class="link-card action-card" href="{% url 'screening' optional_ssq12.pk %}">
+    {% include "screening/action_icon.html" with icon="clipboard" %}
+    <span class="link-card-body">
+        <span class="link-card-title">了解日常聆聽能力<span class="inline-block">（SSQ12-TW）</span></span>
+        <span>選填，12 題</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endif %}

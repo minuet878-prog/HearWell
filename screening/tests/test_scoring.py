@@ -210,7 +210,10 @@ class HistoryScorePathTests(TestCase):
         with CaptureQueriesContext(connection) as ctx:
             response = self.client.get(reverse("my_hearing"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["submissions"]), expected_rows)
+        # #465: the newest three listed, the rest under 看以前的 N 筆.
+        older = response.context["older"]
+        rows = len(response.context["submissions"]) + (len(older["rows"]) if older else 0)
+        self.assertEqual(rows, expected_rows)
         return len(ctx.captured_queries)
 
     def test_query_count_does_not_grow_with_submissions(self):
@@ -230,7 +233,7 @@ class HistoryScorePathTests(TestCase):
         result = self.client.get(reverse("result", args=[submission.id]))
         self.assertContains(history, "總分：26")
         self.assertContains(history, "顯著影響")
-        self.assertContains(result, "總分 26 分")
+        self.assertContains(result, '總分 <span class="result-number">26</span> 分')
         self.assertContains(result, "情緒分數：20")
         self.assertContains(result, "社交分數：6")
         self.assertContains(result, "顯著影響")

@@ -108,6 +108,9 @@ describe("React entry", () => {
     await startReact();
     await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
     expect(intro().hidden).toBe(true);
+    // Folded under 這份問卷在問什麼？ (#463).
+    expect(app().textContent).not.toContain("本問卷的目的在幫助您了解自己的聽力。");
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "這份問卷在問什麼？").click());
     expect(app().textContent).toContain("本問卷的目的在幫助您了解自己的聽力。");
     act(() => app().querySelector("input[type=radio]").click());
     act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "下一題").click());
@@ -144,6 +147,22 @@ describe("React entry", () => {
     await waitFor(() => expect(fetch.mock.calls.some(([, o]) => o?.method === "POST")).toBe(true));
     const [, post] = fetch.mock.calls.find(([, o]) => o?.method === "POST");
     expect(JSON.parse(post.body).norm_token).toBe("signed-token");
+  });
+
+  it("hands IOI-HA's norm basis over for item 1, and the intro without it (#463)", async () => {
+    app().dataset.skipWearing = "";
+    intro().innerHTML = '<p>本量表適合已配戴助聽器的人。</p><section data-intro-norm><p>本次常模依據：HHIE-S。</p></section>';
+    intro().insertAdjacentHTML("afterend", '<template id="answer-norm"><p>本次常模依據：HHIE-S。</p></template>');
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("第1題的完整題目文字"));
+    expect(app().querySelector(".answer-norm").textContent).toBe("本次常模依據：HHIE-S。");
+    act(() => [...app().querySelectorAll("button")].find((b) => b.textContent === "這份問卷在問什麼？").click());
+    const fold = document.getElementById("answer-intro-text");
+    expect(fold.textContent).toBe("本量表適合已配戴助聽器的人。");
+    // The page's own copy keeps its norm section, for the fold from item 2 on.
+    expect(intro().querySelector("[data-intro-norm]")).not.toBeNull();
   });
 
   it("brings the form back at once when loading fails (acceptance 3)", async () => {

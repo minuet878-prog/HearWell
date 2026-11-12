@@ -421,7 +421,7 @@ describe("steps", () => {
     forward();
     expect(progress()).toBe("第 2 步／共 4 步：標右耳");
     expect(screen.getByText("報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）")).toBeTruthy();
-    expect([...document.querySelectorAll(".audiogram-howto li")].map((li) => li.textContent)).toEqual([
+    expect([...document.querySelectorAll(".audiogram-howto .step-list-body")].map((li) => li.textContent)).toEqual([
       "選下面的符號",
       "在圖上按住不動一下，等數值出現，再上下拖到報告上的位置",
       "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
@@ -782,5 +782,54 @@ describe("field names (#354)", () => {
     }
     expect(names).toContain("檢查日期");
     expect(names.filter((name) => /[：:]$/.test(name))).toEqual([]);
+  });
+});
+
+// #465 (the #464 mockup 5A, 5B): the input's layout; marking itself is unchanged.
+describe("layout (#465)", () => {
+  const howto = () => document.querySelector(".audiogram-howto");
+  const renderEdit = () =>
+    render(<AudiogramApp today={TODAY} csrfToken="csrf-token" navigate={navigate} audiogramId={7} initialTestedOn="2026-01-10" />);
+
+  it("shows how to mark on a new audiogram's first ear, folded under 怎麼標記 on the second", () => {
+    renderRight();
+    expect(howto().closest("details")).toBeNull();
+    forward();
+    const fold = howto().closest("details");
+    expect(fold.open).toBe(false);
+    expect(fold.querySelector("summary .link-card-title").textContent).toBe("怎麼標記");
+    expect(fold.textContent).toContain("報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）");
+  });
+
+  it("folds how to mark on both ears while editing", () => {
+    renderEdit();
+    forward();
+    expect(howto().closest("details").open).toBe(false);
+    forward();
+    expect(howto().closest("details").open).toBe(false);
+  });
+
+  it("says the no-response line at the body size, not 16px", () => {
+    renderRight();
+    expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。").className).not.toContain("text-base");
+  });
+
+  it("puts 存檔 and 上一步 before the folded value table on the confirm step", () => {
+    renderApp();
+    forward();
+    forward();
+    forward();
+    const table = document.querySelector("details.audiogram-table");
+    for (const name of ["存檔", "上一步"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("folds the value table as a list row", () => {
+    renderRight();
+    const table = document.querySelector("details.audiogram-table");
+    expect(table.classList.contains("result-details")).toBe(true);
+    expect(table.querySelector("summary .link-card-title").textContent).toBe("用數值輸入（鍵盤或螢幕閱讀器）");
   });
 });

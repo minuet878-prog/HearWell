@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import AudiogramChart from "./AudiogramChart.jsx";
+import FoldSummary from "./FoldSummary.jsx";
 import { CHART, DB_MIN, x, y } from "./audiogram.js";
 
 const PRIMARY = "#1f4e8c";
@@ -154,7 +155,7 @@ export default function SpeechBananaApp({ data }) {
           onTap={(at) => setSelected(nearestGroup(at))}
         />
       </div>
-      <p className="mb-4">黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
+      {/* #465 (the #464 mockup 4): the result right under the chart, so a tap needs no looking down for it. */}
       <div className="speech-banana-result" role="status">
         {group ? (
           <>
@@ -172,9 +173,10 @@ export default function SpeechBananaApp({ data }) {
           <p>點圖上的注音，看那一群。</p>
         )}
       </div>
-      <details className="dropdown-box mb-4">
-        <summary>用清單選</summary>
-        <div className="speech-banana-picks">
+      <p>黃色是語言香蕉區，是說話聲通常落在的範圍。斜線蓋住的部分和虛線框的注音，這一耳沒戴助聽器時可能不容易聽到。</p>
+      <details className="result-details">
+        <FoldSummary icon="table" title="用清單選" />
+        <div className="result-details-body speech-banana-picks">
           {data.groups.map((g, i) => (
             <button
               key={groupName(g)}

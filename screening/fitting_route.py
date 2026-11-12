@@ -69,6 +69,9 @@ class FittingState:
     stop: str | None  # one of STOPS; None when no stop applies
     today: date  # the day the route is judged on, for its dated rules
     aid: AidAndSubsidy | None  # the user's 助聽器與補助資料, None before they answer any
+    # Q7: within the normal range, not wearing hearing aids, the route waits until the user
+    # starts on a stop; the 照顧旅程's 目前不需要 is the same (ADR 0044).
+    waiting: bool
 
     @property
     def fitted(self):
@@ -146,7 +149,8 @@ def fitting_state(user, today):
     done -= not_applicable  # a stop is never both: 不適用 wins (#291 review)
     # Q7: within the normal range, the route waits until the user starts on a stop.
     started = bool(viewed) or (aid is not None and not aid.unanswered)
-    stop = _stop(wearing, done | not_applicable, fitting is False and not started)
+    waiting = not wearing and fitting is False and not started
+    stop = _stop(wearing, done | not_applicable, waiting)
     return FittingState(
         latest,
         audiogram,
@@ -158,6 +162,7 @@ def fitting_state(user, today):
         stop,
         today,
         aid,
+        waiting,
     )
 
 

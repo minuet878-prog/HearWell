@@ -9,21 +9,18 @@
 {% endblock %}
 
 {% block body %}
-{# Brand banner with the form card over it (owner's pick, 2026-10-23; docs/verification/auth-pages-banner.md). #}
+{# #471 (mockup #470 D1 B): the title on the white page; the step bar on white as on the answer page. #}
 <div class="narrow-form">
-    <div class="auth-hero">
-        <h1 class="auth-hero-title">註冊</h1>
-        <p>建立帳號，篩檢結果會幫您存起來。</p>
-        {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
-        {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
-        {% include "screening/auth_hero_bars.html" %}
-    </div>
-    <div class="auth-card">
+    <h1 class="h3 mt-4">註冊</h1>
+    <p class="text-(--color-muted)">建立帳號，篩檢結果會幫您存起來。</p>
+    {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
+    {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
+    <div class="auth-form">
         <form class="register-form" method="post" action="{% url 'register' %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">
             {% for error in form.non_field_errors %}
-            <p class="text-danger">{{ error }}</p>
+            <p class="error-box" role="alert">{{ error }}</p>
             {% endfor %}
             {% for field in form %}
             {% if field.name != "roc_birth_year" %}

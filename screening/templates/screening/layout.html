@@ -22,7 +22,7 @@
     <script type="module" src="{% static 'screening/frontend/page-loading.js' %}"></script>
     {# #334: the pill of 問卷｜聽力圖 and 右耳｜左耳 slides; every other change of page skips the transition. #}
     <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
-    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, and the line over a table that scrolls sideways. #}
+    {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, the line over a table that scrolls sideways, and the phone's tab bar making way while scrolling down (#457). #}
     <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
@@ -82,9 +82,9 @@
         </div>
     </header>
 
-    {# One nav for all widths: top bar on wide screens, fixed bottom tab bar on phones (site.css). #}
+    {# One nav for all widths: top bar on wide screens, fixed bottom tab bar on phones (site.css). nav_class: site-nav-tucked leaves the phone's tab bar out (the answer page, #463). #}
     {% with page=request.resolver_match.url_name %}
-    <nav aria-label="主要導覽" class="site-nav">
+    <nav aria-label="主要導覽" class="site-nav{% block nav_class %}{% endblock %}">
         <ul class="container px-0">
             <li>
                 <a href="{% url 'index' %}"{% if page == "index" %} aria-current="page"{% endif %}>
@@ -132,7 +132,7 @@
         {% block body %}{% endblock %}
     </main>
     </div>
-    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). "加到手機主畫面" lives on the home page (the first-time card or "您還可以") and the account page; icons are decorative, the words carry the meaning. #}
+    {# Site-wide footer (spec phase9_ui_refresh_1_shared.md 4.3). "加到手機主畫面" lives on the home page (the first-time card or the row of links) and the account page; icons are decorative, the words carry the meaning. #}
     <footer class="site-footer">
         <div class="container">
             <ul class="site-footer-links">

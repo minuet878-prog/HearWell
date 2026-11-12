@@ -4,42 +4,52 @@
 <h1 class="h3 mt-2">比較戴與不戴助聽器</h1>
 <p class="mt-2">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</p>
 <p>選一次沒戴、一次有戴時填的同一份問卷。</p>
+{# #465 (the #464 mockup 7): one solid button a state. Opened with nothing in the report, the form's 查看比較; once a pair is looked at (opened with one in the report, that one), it comes first, with the button to put it in the report when it is not there yet, and the form folds under 換別的兩筆 (a draft) with an outlined button. #}
+{% if preview %}
+{% if preview_is_saved %}
+<section aria-labelledby="saved-title" class="mt-6" data-jump-box>
+    <h2 id="saved-title" class="h4">聽力報告裡的組合</h2>
+    {% include "screening/comparisons/saved.html" %}
+</section>
+{% else %}
+{# Pages tidy-up: the pair on screen being the one in the report shows once, as the saved card. #}
+<section aria-labelledby="preview-title" class="mt-6" data-jump-box>
+    <h2 id="preview-title" class="h4">目前查看的兩筆</h2>
+    {% include preview.questionnaire.definition.comparison.card_template with comparison=preview %}
+    <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
+        {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">
+        <button class="btn btn-primary btn-lg w-full" name="action" value="save">{% if saved %}改放這一組到報告{% else %}放進聽力報告{% endif %}</button>
+    </form>
+</section>
+{% endif %}
+<div class="mt-6">
+    {% if saved and not preview_is_saved %}
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="report" title="聽力報告裡的組合" subtitle=saved.summary %}
+        <div class="result-details-body">{% include "screening/comparisons/saved.html" %}</div>
+    </details>
+    {% endif %}
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="swap" title="換別的兩筆" %}
+        <div class="result-details-body">{% include "screening/comparisons/form.html" with button="btn btn-outline-primary btn-lg" %}</div>
+    </details>
+</div>
+{% else %}
 {% if form.errors %}
 <div id="comparison-errors" class="text-danger mb-4" role="alert" tabindex="-1" autofocus>
     <p>請重新確認選擇的兩筆紀錄。</p>
     {% for field in form %}{% if field.errors %}<p><a href="#{{ field.auto_id }}_0">{{ field.label }}</a>：{{ field.errors }}</p>{% endif %}{% endfor %}
 </div>
 {% endif %}
-{# Radio cards and a submit button: works without JavaScript (#190). #}
-<form method="get" action="{% url 'hhi_comparison' questionnaire.pk %}">
-    {% for field in form %}
-    <fieldset class="mb-6"{% if field.errors %} aria-describedby="{{ field.auto_id }}_error"{% endif %}>
-        <legend class="font-bold text-xl/normal">{{ field.label }}</legend>
-        {% include "screening/field_messages.html" %}
-        {{ field }}
-    </fieldset>
-    {% endfor %}
-    <button class="btn btn-primary btn-lg" name="action" value="preview">查看比較</button>
-</form>
-{# Pages tidy-up: the pair on screen being the one in the report shows once, as the saved card. #}
-{% if preview and not preview_is_saved %}
-<section aria-labelledby="preview-title" class="mt-6 tint-block">
-    <h2 id="preview-title" class="tint-block-title">目前查看的兩筆</h2>
-    {% include preview.questionnaire.definition.comparison.card_template with comparison=preview %}
-    <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">
-        {% csrf_token %}<input type="hidden" name="unaided" value="{{ preview.unaided.pk }}"><input type="hidden" name="aided" value="{{ preview.aided.pk }}">
-        <button class="btn btn-primary btn-lg" name="action" value="save">{% if saved %}改放這一組到報告{% else %}放進聽力報告{% endif %}</button>
-    </form>
-</section>
-{% endif %}
+{% include "screening/comparisons/form.html" with button="btn btn-primary btn-lg w-full" %}
 {% if saved %}
-<section aria-labelledby="saved-title" class="mt-6 tint-block">
-    <h2 id="saved-title" class="tint-block-title">聽力報告裡的組合</h2>
-    {% if preview_is_saved %}<p class="tip-box">這一組已經在聽力報告裡</p>{% endif %}
-    {% include saved.questionnaire.definition.comparison.card_template with comparison=saved %}
-    <p>新增紀錄不會自動換掉這一組。各問卷分開保留，從報告移除不會刪除作答。</p>
-    <form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-lg" name="action" value="remove">從報告移除</button></form>
-</section>
+<div class="mt-6">
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="report" title="聽力報告裡的組合" subtitle=saved.summary %}
+        <div class="result-details-body">{% include "screening/comparisons/saved.html" %}</div>
+    </details>
+</div>
 {% endif %}
-<p class="mt-6"><a class="btn btn-outline-primary btn-lg" href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">回我的紀錄</a></p>
+{% endif %}
+<p class="quiet-links mt-6"><a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}">回我的紀錄</a></p>
 {% endblock %}

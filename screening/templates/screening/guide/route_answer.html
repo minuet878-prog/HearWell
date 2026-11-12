@@ -1,0 +1,3 @@
+{# #293: a route stop's answer in short; 修改 opens the question again, without JavaScript. Then its questions, under the 您在這裡 card's button (#467). On the route the card's button is the page's solid one, so a question's own save button is outlined. #}
+{% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" class="tap-link" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
+{% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug on_route=True %}{% endfor %}

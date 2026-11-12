@@ -23,19 +23,31 @@ def retest_next_text(day):
 
 
 LOWER_IS_BETTER = "分數越低越好"
-HIGHER_IS_BETTER = "分數越高越好"
 
 
-def since_last_text(difference, better=LOWER_IS_BETTER, day=None, score=None):
-    # 「和上一次比」: numbers and direction only, no verdict (ADR 0010, ADR 0013). 我的紀錄's
-    # life-impact tabs (ticket #162) use the defaults; SSQ12-TW's result page (ticket #188) also
-    # names the previous record by its Taipei day and score, and there a higher score is better.
+def since_last_text(difference):
+    # 「和上一次比」 on 我的紀錄's life-impact tabs (ticket #162): numbers and direction only, no
+    # verdict (ADR 0010, ADR 0013).
     if difference == 0:
         return "和上一次一樣"
-    previous = f"（{day:%Y/%m/%d}，{score} 分）" if day else ""
     if difference < 0:
-        return f"比上一次{previous}少 {-difference} 分（{better}）"
-    return f"比上一次{previous}多 {difference} 分（{better}）"
+        return f"比上一次少 {-difference} 分（{LOWER_IS_BETTER}）"
+    return f"比上一次多 {difference} 分（{LOWER_IS_BETTER}）"
+
+
+def result_since_last_text(day, previous_total, difference):
+    # A graded result page's line against the record before it (#461, spec #453 acceptance 23):
+    # that record's Taipei day and total and the difference, never better or worse (ADR 0017).
+    # The same total is the #460 mockup's draft.
+    if difference == 0:
+        return f"上次 {day:%Y/%m/%d} 也是 {previous_total} 分，這次一樣"
+    change = "少" if difference < 0 else "多"
+    return f"上次 {day:%Y/%m/%d} 是 {previous_total} 分，這次{change} {abs(difference)} 分"
+
+
+def level_change_text(previous_level, level):
+    # Under that line when the level changed (spec #453 acceptance 24, the #460 mockup's words).
+    return f"分級從「{previous_level}」變成「{level}」"
 
 
 UNKNOWN = {"text": "無法判讀", "level": "unknown", "color": "unknown"}
@@ -120,10 +132,41 @@ NEXT_STEP_REASONS = {
     "after-fitting": "記下開始戴的日期，才算得出什麼時候要做使用效益驗證。",
     "form-25": "您的助聽器要在 {deadline:%Y/%m/%d} 前做使用效益驗證（二十五號表），才能核銷補助。",
     "payout": "驗證做完了，接下來看補助什麼時候發、怎麼發。",
-    # without a 目前這一站
-    "share": "讓家人也知道您的聽力狀況，家人不用登入就能看。",
-    "print": "看診時把報告帶給醫師，一張紙看完所有紀錄。",
 }
+# The 照顧旅程's five steps (ADR 0044), step 1 first.
+CARE_JOURNEY_STEPS = (
+    "填生活影響問卷",
+    "記錄聽力圖",
+    "了解助聽器選配與補助",
+    "戴滿 3 個月做效益問卷",
+    "半年後再篩檢",
+)
+# The 現在這一步 card's sentences off the route (#455): drafts the owner settles on review.
+LIFE_IMPACT_BECAUSE = "先做一份生活影響問卷，了解聽力對您生活的影響。"
+LIFE_IMPACT_BUTTON = "去做問卷"
+IOI_HA_BUTTON = "做效益問卷"
+# Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
+TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
+IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
+
+
+def fitting_countdown_text(days):
+    return f"再 {days} 天滿 3 個月，到時候做使用效益問卷（IOI-HA）。"
+
+
+# Step 5's card while counting down (#458 D8): the 下次篩檢 tile already says the day.
+RETEST_COUNTDOWN_TEXT = "時間到了，這裡會出現「再做一次」的按鈕。"
+# What each step is, said when it is opened on the home page (#459 I1): drafts the owner
+# settles on review, step 1 first.
+CARE_JOURNEY_ABOUT = (
+    LIFE_IMPACT_BECAUSE,
+    "選配指引要用聽力圖才能整理下一步。",
+    "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+    "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
+    RETEST_COUNTDOWN_TEXT,
+)
+
+
 # The wizard's first 「也可以做」 card next to IOI-HA (F1): the life-impact questionnaire again,
 # worn. The title takes the questionnaire's topic and name.
 AIDED_RETAKE_TITLE = "戴著助聽器再做一次「{topic}」（{name}）"

@@ -1,0 +1,2 @@
+{# #461: the row that opens a result page's 看完整說明, drawn like the list rows under it (E). #469: the family zone's and the Q&A assistant's folds use it too, with their own title, icon and line under the title. #}
+<summary>{% include "screening/action_icon.html" with icon=icon|default:"info" %}<span>{% if note %}<span class="link-card-title block">{{ title }}</span><span class="result-details-note">{{ note }}</span>{% else %}{{ title|default:"看完整說明" }}{% endif %}</span><span class="result-details-arrow" aria-hidden="true"></span></summary>

@@ -53,11 +53,6 @@ AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
 VISITS_NOTE = "要帶什麼、想問什麼、補助還缺什麼、期限到哪天"
 HEARING_AIDS_NOTE = "怪怪的怎麼辦、怎麼陪他適應、日常保養"
-# (href, title) of each card in a part of a page, in page order.
-CARD = re.compile(
-    r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
-    re.S,
-)
 # (href, icon or nothing, title, the line under it or nothing) of each of the zone's entries.
 ENTRY = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">\s*'
@@ -106,29 +101,21 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(response.status_code, 200)
         return _main(response.content.decode())
 
-    def assert_family_card_under_the_guide_card(self):
+    def test_visitor_has_the_family_link_after_the_guide_s(self):
+        # #471 (mockup #458 ⑪): the visitor's home is the 空狀態首頁, its ways in text links
+        # after the start and login buttons, as for a signed-in user without records.
         main = self._home()
-        self.assertEqual(
-            CARD.findall(main),
-            [
-                (reverse("add_to_home"), "把聽伴加到手機主畫面"),
-                (reverse("guide"), "了解助聽器選配與補助"),
-                (self.url, FAMILY_CARD),
-            ],
-        )
-        # The main buttons keep their place above the cards.
-        self.assertLess(main.index("開始篩檢"), main.index("了解助聽器選配與補助"))
-        self.assertLess(main.index(FAMILY_CARD), main.index("結果長這樣"))
-
-    def test_visitor_sees_the_family_card_under_the_guide_card(self):
-        self.assert_family_card_under_the_guide_card()
-        main = self._home()
+        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
         self.assertLess(main.index("開始篩檢"), main.index("我已經有帳號，登入"))
         self.assertLess(main.index("我已經有帳號，登入"), main.index("了解助聽器選配與補助"))
+        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
 
-    def test_new_user_without_records_sees_the_family_card(self):
+    def test_new_user_without_records_has_a_family_link(self):
+        # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
         self.client.force_login(consented_user(username="zone_new"))
-        self.assert_family_card_under_the_guide_card()
+        main = self._home()
+        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
+        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
 
     def test_returning_user_home_has_no_family_card_and_the_same_tabs(self):
         user = consented_user(username="zone_returning")
@@ -138,8 +125,9 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         response = self.client.get(reverse("index"))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn("您還可以", content)  # really the returning user's page
+        self.assertIn("journey-steps", content)  # really the returning user's page
         self.assertNotIn(FAMILY_CARD, content)
+        self.assertNotIn(f'href="{self.url}">我是家人', content)
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r"<span>([^<]+)</span>", nav),
@@ -163,14 +151,16 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(
             ENTRY.findall(self._entries(content)),
             [
-                ("#talk-title", "family", "怎麼跟他說話", TALK_NOTE),
+                ("/family/talk", "family", "怎麼跟他說話", TALK_NOTE),
                 ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
                 ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),
                 ("/family/hearing-aids", "ear", "助聽器", HEARING_AIDS_NOTE),
-                ("#aid-title", "ear", "陪伴配戴助聽器", AID_NOTE),
-                ("#urgent-title", "", "什麼時候要馬上就醫", ""),
             ],
         )
+        # #469 (the #468 mockup A): 陪伴配戴助聽器 folds open in the last row (its words:
+        # test_family_redesign); the urgent box is never folded and has no row.
+        self.assertIn('<details id="aid-title"', self._entries(content))
+        self.assertIn(AID_NOTE, self._entries(content))
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),
@@ -192,11 +182,10 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
     def test_old_anchors_land_on_their_original_sections_with_the_reviewed_words(self):
         content = self._zone()
         self.assertIn(INTRO, content)
-        for anchor, heading in (
-            ("talk-title", "怎麼跟聽損的家人說話"),
-            ("aid-title", "陪伴配戴助聽器"),
-            ("urgent-title", "什麼時候要馬上就醫"),
-        ):
+        # #469: talk-title went with its tips to family_talk (test_family_redesign); 陪伴配戴助聽器
+        # is a fold's row.
+        self.assertRegex(content, r'(?s)<details id="aid-title"[^>]*>.*?陪伴配戴助聽器</span>')
+        for anchor, heading in (("urgent-title", "什麼時候要馬上就醫"),):
             with self.subTest(anchor=anchor):
                 self.assertEqual(content.count(f'id="{anchor}"'), 1)
                 self.assertRegex(content, rf'<h2 id="{anchor}"[^>]*>(<svg.*?</svg>)?{heading}</h2>')
@@ -214,7 +203,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         pages = {
             "了解": (reverse("learn"), LEARN_CARD),
             "頁尾": (reverse("privacy"), FOOTER_LINK),
-            "分享報告": (reverse("shared_report", args=[share.token]), "怎麼跟聽損的家人說話"),
+            "分享報告": (reverse("shared_report", args=[share.token]), "陪伴配戴助聽器"),
         }
         for name, (url, words) in pages.items():
             with self.subTest(page=name):
@@ -336,11 +325,11 @@ class FamilyContentDefinitionTests(TestCase):
 
 
 class FamilyScenarioTests(TestCase):
-    """#428 (spec #426): the scenarios on /family, as the server sends them. What the script does
-    with them is in pick-explain.test.js and e2e.main_flow.FamilyScenarioTest."""
+    """#428 (spec #426): the scenarios, as the server sends them; on /family/talk since #469. What
+    the script does with them is in pick-explain.test.js and e2e.main_flow.FamilyScenarioTest."""
 
     def setUp(self):
-        self.url = reverse("family_guide")
+        self.url = reverse("family_talk")
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.content = response.content.decode()
@@ -348,20 +337,20 @@ class FamilyScenarioTests(TestCase):
         self.section = self.content[start : self.content.index("</section>", start)]
 
     def _sources(self):
-        start = self.content.index('id="sources-title"')
-        return self.content[start : self.content.index("</section>", start)]
+        start = self.content.index('<details class="result-details family-sources">')
+        return self.content[start : self.content.index("</details>", start)]
 
     def _fieldsets(self):
         return re.findall(r"<fieldset.*?</fieldset>", self.section, re.S)
 
-    def test_section_sits_between_the_talk_and_aid_sections(self):
+    def test_section_sits_between_the_talk_tips_and_the_disclaimer(self):
         self.assertRegex(
             self.section,
             r'<h2 id="scenarios-title"[^>]*>(<svg.*?</svg>)?遇到這些情況，您會怎麼做？</h2>',
         )
         positions = [
-            self.content.index(f'id="{anchor}"')
-            for anchor in ("talk-title", "scenarios-title", "aid-title")
+            self.content.index(marker)
+            for marker in ("耐心，也讓他參與", 'id="scenarios-title"', "這些是一般性的建議")
         ]
         self.assertEqual(positions, sorted(positions))
 
@@ -401,16 +390,17 @@ class FamilyScenarioTests(TestCase):
     def test_script_loads_deferred(self):
         self.assertRegex(self.content, r'<script defer src="[^"]*screening/pick-explain\.js')
 
-    # Today's scenarios have no subheads; one that did would sit at h3, under this section's h2.
-    def test_a_scenario_subhead_would_be_an_h3(self):
+    # Today's scenarios have no subheads; one that did would be a bold label, not a section title
+    # (#469, the #468 mockup).
+    def test_a_scenario_subhead_would_be_a_label(self):
         scenario = COMMUNICATION_SCENARIOS[0]
         option = replace(scenario.options[0], try_saying=("一句話",))
         with patch(
-            "screening.views.home.COMMUNICATION_SCENARIOS",
+            "screening.views.family.COMMUNICATION_SCENARIOS",
             (replace(scenario, options=(option,)),),
         ):
             content = self.client.get(self.url).content.decode()
-        self.assertIn(">可以試的說法</h3>", content)
+        self.assertIn('<p class="part-label">可以試的說法</p>', content)
 
     # Nothing is scored and nothing is sent: no form to submit, no verdict on the page.
     def test_no_form_score_or_verdict(self):
@@ -422,7 +412,7 @@ class FamilyScenarioTests(TestCase):
     def test_sources_and_checked_date_under_the_page_sources(self):
         sources = self._sources()
         start = sources.index("<h3>遇到這些情況，您會怎麼做？</h3>")
-        group = sources[start : sources.index("<h3>", start + 1)]
+        group = sources[start:]
         self.assertIn(
             '<a href="https://www.asha.org/about/press-room/articles/'
             'tips-for-communicating-with-someone-who-has-hearing-loss/">'
@@ -434,7 +424,9 @@ class FamilyScenarioTests(TestCase):
             'communication-tips/">美國聽損協會（HLAA）〈Communication Tips〉</a>',
             group,
         )
-        self.assertIn("情境題內容查核於 2026/11/06。", group)
+        # #469: the check date stays outside the 出處 fold.
+        self.assertIn("情境題內容查核於 2026/11/06。", self.content[self.content.index(sources) :])
+        self.assertNotIn("情境題內容查核於", sources)
 
     def test_visitor_and_signed_in_user_get_the_same_section(self):
         self.client.force_login(consented_user(username="scenario_user"))
@@ -498,9 +490,9 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
             with self.subTest(option=option.label):
                 self.assertIn(f">{option.label}</strong>", item)
                 self.assertIn(option.explanation, item)
-                self.assertIn(">可以試的說法</h2>", item)
-                self.assertIn(">容易有反效果的說法</h2>", item)
-                self.assertIn(">下一步</h2>", item)
+                self.assertIn(">可以試的說法</p>", item)
+                self.assertIn(">容易有反效果的說法</p>", item)
+                self.assertIn(">下一步</p>", item)
                 for words in option.try_saying + option.avoid_saying:
                     self.assertIn(f"<li>{words}</li>", item)
 
@@ -526,7 +518,7 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
 
     def test_foot_has_sources_checked_date_and_the_way_back(self):
         foot = self.main[self.main.index("</fieldset>") :]
-        self.assertIn('id="sources-title"', foot)
+        self.assertIn('<details class="result-details family-sources">', foot)
         for title, url in RELUCTANT_SOURCES:
             with self.subTest(url=url):
                 self.assertIn(f'<a href="{url}">{title}</a>', foot)
@@ -556,20 +548,24 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
 class ReviewedPagesTests(SimpleTestCase):
     """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
     sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
-    is of that page on main before the batch, without those lines. Failing here means reviewed
-    words changed: have the owner review them before updating the digest."""
+    is of that page on main before the batch, without those lines (updated by #456, which only
+    took the 段落框 classes off its tags; by #467, which moved the reviewed words into the
+    H1 + H2 layout and added draft key cards and question titles for the owner to review; and by
+    #471, which only folded the privacy notice's sections into rows and took off its folded list
+    of them, mockup #470 privacy B). Failing here means reviewed words changed: have the owner
+    review them before updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "fe8567ae4df1c53a7c60abef2304fdd91c465c684e3b7d3d4ed0b7c4be064528",
+            "f3b4562acb75242808d6ba7ae3d762711d07535e2610c11c526e7397516c30c6",
         ),
         (
             "guide/form_25.html",
             ("<p>想算出可以做的日期？",),
-            "de444faf25a4fcb23e718c9d5e6ce1f9b617cd1112003bf9cefc0d407a6bc473",
+            "6fcf398c884e87c620884ec6f5ada0bbe08fa004ef266b71c60da07c46c25414",
         ),
         # #452 (spec #450) rewrote where the data is kept and who keeps it; without those lines
         # the page hashes the same before and after #452, and the owner reviews them at acceptance.
@@ -585,7 +581,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>刪除的資料（包括刪除的帳號",
                 "<li>Vultr（網站主機與資料庫）",
             ),
-            "83eebaa1aa43239c32d2d1e3a5e8a35adc299e66d90fff132e06c91d96c3b30a",
+            # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
+            # list; the visible words are the same as main's apart from that list's title.
+            "17467e7e5a55fcc7356b4f4c930b87314054faf270f5800c5b1cfa97f2de536e",
         ),
     )
 

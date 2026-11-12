@@ -2,8 +2,11 @@
 // dialog, where people can print or save as PDF.
 document.getElementById("print-button")?.addEventListener("click", () => window.print());
 
-// #314: the report's questionnaire folds open on paper too, and close again as they were.
-const reportDetails = [...document.querySelectorAll(".report-answers, .report-fold")];
+// #314: the report's questionnaire folds open on paper too, and close again as they were. #469:
+// so do the family zone's folded sources (陪診清單, 補助檢核, 期限試算).
+const reportDetails = [
+  ...document.querySelectorAll(".report-answers, .report-fold, .family-sources"),
+];
 let openAnswers = [];
 window.addEventListener("beforeprint", () => {
   openAnswers = reportDetails.filter((details) => details.open);

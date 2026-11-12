@@ -1,0 +1,9 @@
+{# #467 (H2): the folds come open in the page, so without JavaScript every part shows in full; guide.js folds them all but the one a jump lands on. Till then their contents wait unseen, so they do not show and then shrink; if it has not run in 3 seconds, they show. #469: the family zone's 陪伴配戴助聽器 too. #}
+{% load static %}
+<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
+<script>
+    document.documentElement.classList.add("guide-folds-pending");
+    window.guideFoldsFallback = setTimeout(function () {
+        document.documentElement.classList.remove("guide-folds-pending");
+    }, 3000);
+</script>

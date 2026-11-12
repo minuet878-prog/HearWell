@@ -2,7 +2,6 @@
 
 import re
 from datetime import date, datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from django.test import TestCase
@@ -24,7 +23,6 @@ WONT_SEE = "不會看到：使用者名稱、出生年"
 LATEST_NOTICE = "連結有效期間，家人看到的是您最新的報告，之後新增的紀錄也會看到。"
 CREATE_BUTTON = "我知道了，產生連結"
 TAIPEI = ZoneInfo("Asia/Taipei")
-SITE_CSS = Path(__file__).resolve().parents[2] / "frontend" / "src" / "site.css"
 
 
 def _hhie_s_questionnaire():
@@ -72,7 +70,8 @@ class SharePageTests(TestCase):
             with self.subTest(item=item):
                 self.assertIn(f"<li>{item}</li>", step_one)
         self.assertIn(WONT_SEE, step_one)
-        self.assertIn(LATEST_NOTICE, step_one)
+        # #471 (mockup #470 share A): the notice moved under the steps (test_report_redesign).
+        self.assertIn(LATEST_NOTICE, content)
 
     def test_signed_out_is_sent_to_login(self):
         self.client.logout()
@@ -142,8 +141,10 @@ class SharePageTests(TestCase):
             re.S,
         )
         self.assertIsNotNone(cancel)
-        self.assertIn('class="btn btn-outline-danger btn-lg"', cancel.group(1))
-        self.assertIn(">取消分享</button>", cancel.group(1))
+        # #471 (D4): a red text link, test_report_redesign.ShareStepsTests.
+        self.assertIn(
+            '<button class="danger-link" type="submit">取消分享</button>', cancel.group(1)
+        )
         self.assertNotIn(CREATE_BUTTON, content)
 
     def test_active_link_shows_how_often_and_when_last_opened(self):
@@ -222,16 +223,14 @@ class SharePageEntryTests(TestCase):
         self.client.force_login(self.user)
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=30)
 
-    def test_report_has_one_button_to_the_share_page_instead_of_the_block(self):
+    def test_report_has_one_row_to_the_share_page_instead_of_the_block(self):
         content = self.client.get(reverse("health_report")).content.decode()
-        button = re.search(r'<a[^>]*href="/share"[^>]*>分享報告給家人</a>', content)
-        self.assertIsNotNone(button)
-        self.assertIn("btn", button.group(0))
-        self.assertLess(button.start(), content.index('id="report-summary"'))
-        # Beside the print button, in the row the printout leaves out.
-        row = re.search(r'<p class="no-print[^"]*">(.*?)</p>', content, re.S)
-        self.assertIn(button.group(0), row.group(1))
-        self.assertIn('id="print-button"', row.group(1))
+        # #471 (mockup #470 B): a list row after the report, kept off paper.
+        rows = re.search(r'<ul class="list-unstyled no-print[^"]*">(.*?)</ul>', content, re.S)
+        self.assertIsNotNone(rows)
+        self.assertIn('href="/share" id="report-share"', rows.group(1))
+        self.assertIn("分享報告給家人</span>", rows.group(1))
+        self.assertGreater(rows.start(), content.index('id="report-summary"'))
         for old in ("產生分享連結", "確認產生", "share-button.js"):
             with self.subTest(old=old):
                 self.assertNotIn(old, content)
@@ -245,25 +244,6 @@ class SharePageEntryTests(TestCase):
 
     def test_home_share_card_goes_to_the_share_page(self):
         content = self.client.get(reverse("index")).content.decode()
-        # #261: an action card, its icon before the title.
-        self.assertRegex(
-            content,
-            r'(?s)<a class="link-card action-card" href="/share">\s*<span class="action-card-icon"'
-            r'.*?</span>\s*<span class="link-card-body">\s*'
-            r'<span class="link-card-title">分享報告給家人</span>',
-        )
+        # #459: a text link under the 照顧旅程 (spec #453 Q10).
+        self.assertIn('<li><a href="/share">分享給家人</a></li>', content)
         self.assertNotIn("#report-share", content)
-
-
-class ShareStepCircleStyleTests(TestCase):
-    """The share page reuses the home page's .step-number circle without changing it."""
-
-    def test_share_page_adds_its_differences_only_under_share_step(self):
-        css = SITE_CSS.read_text(encoding="utf-8")
-        selectors = [
-            selector.strip()
-            for selector in re.findall(r"([^{}]*)\{[^{}]*\}", css)
-            if ".step-number" in selector
-        ]
-        # One global rule (the home page's), and the share page's own rule nests under it.
-        self.assertEqual(selectors, [".step-number", ".share-step .step-number"])

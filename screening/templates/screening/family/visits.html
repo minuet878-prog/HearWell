@@ -12,8 +12,34 @@
 <article class="family-guide family-visits wrap-anywhere">
 <h1 class="h3 mt-4">陪診與代辦</h1>
 
-{# #431, #432 (spec #426): the zone's tools for doing the paperwork, above the checklist. #}
-<nav class="no-print" aria-label="專區內容">
+<section class="mb-6" aria-labelledby="checklist-title">
+    <h2 id="checklist-title" class="h4">陪診清單</h2>
+    <p class="no-print">勾選不會留下，可以列印帶去。</p>
+    <fieldset class="mb-6">
+        <legend class="font-bold">要帶的東西</legend>
+        {% for item in bring %}
+        <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ item }}</span></label>
+        {% endfor %}
+    </fieldset>
+    {# #469 (the #468 mockup A): the page's one solid button in the first screen; on paper the whole list prints. #}
+    <p class="mb-6 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
+    <fieldset>
+        <legend class="font-bold">想問聽力師的問題</legend>
+        {% for category, questions in question_groups %}
+        <fieldset class="mb-4">
+            <legend class="visit-category">{{ category }}</legend>
+            {% for question in questions %}
+            <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ question }}</span></label>
+            {% endfor %}
+        </fieldset>
+        {% endfor %}
+    </fieldset>
+</section>
+
+<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print tap-link" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+
+{# #431, #432 (spec #426): the zone's tools for doing the paperwork; #469 (the #468 mockup A) moved them under the checklist. #}
+<nav class="no-print mb-4" aria-label="專區內容">
     <ul class="list-unstyled">
         <li><a class="link-card action-card" href="{% url 'family_subsidy_check' %}">
             {% include "screening/action_icon.html" with icon="clipboard" %}
@@ -33,32 +59,6 @@
         </a></li>
     </ul>
 </nav>
-
-<section class="mb-6" aria-labelledby="checklist-title">
-    <h2 id="checklist-title" class="h4">陪診清單</h2>
-    <p class="no-print">勾選不會留下，可以列印帶去。</p>
-    <fieldset class="mb-6">
-        <legend class="font-bold">要帶的東西</legend>
-        {% for item in bring %}
-        <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ item }}</span></label>
-        {% endfor %}
-    </fieldset>
-    <fieldset>
-        <legend class="font-bold">想問聽力師的問題</legend>
-        {% for category, questions in question_groups %}
-        <fieldset class="mb-4">
-            <legend class="visit-category">{{ category }}</legend>
-            {% for question in questions %}
-            <label class="visit-check"><input type="checkbox" autocomplete="off"><span>{{ question }}</span></label>
-            {% endfor %}
-        </fieldset>
-        {% endfor %}
-    </fieldset>
-</section>
-
-<p class="tip-box">提醒：要申請身障補助，一定要先拿到核定通知再買，沒核定就先買的不補助。<a class="no-print tap-link" href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
-
-<p class="mb-3 no-print"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
 
 <p class="mb-6 no-print"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'family_guide' %}">回到家人專區</a></p>
 

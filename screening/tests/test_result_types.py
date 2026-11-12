@@ -117,16 +117,14 @@ class GradedResultTests(ResultTestCase):
         self.assertContains(page, '<div class="result-banner result-banner-mild_to_moderate">')
         self.assertContains(
             page,
-            '<h2 class="result-level mb-0" aria-describedby="result-score">輕度到中度影響</h2>',
+            '<h2 class="result-block-level" aria-describedby="result-score">輕度到中度影響</h2>',
         )
-        self.assertContains(page, "總分 16 分（滿分 40）")
+        self.assertContains(page, '總分 <span class="result-number">16</span> 分（滿分 40）')
         self.assertContains(page, '<p class="mb-1">情緒分數：12　社交分數：4</p>')
         self.assertContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["advice"])
         self.assertEqual(context["optional_ssq12"].code, ssq12_tw.CODE)  # unaided HHIE-S
-        # #409: no summary of its own (the home page draws a life-impact level itself); its
-        # row of 我的紀錄 shows the total, the hearing aid status and the level badge.
-        self.assertIsNone(record.result.summary_template)
+        # #409: its row of 我的紀錄 shows the total, the hearing aid status and the level badge.
         self.assertEqual(record.result.row_template, "screening/record_rows/graded.html")
         row = render_to_string(record.result.row_template, {"submission": record})
         self.assertIn("總分：16　助聽器：沒戴", row)
@@ -160,7 +158,7 @@ class GradedResultTests(ResultTestCase):
         context = self.assert_page(record, "screening/result.html")
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))
-        self.assertContains(page, "總分 4 分（滿分 100）")
+        self.assertContains(page, '總分 <span class="result-number">4</span> 分（滿分 100）')
         self.assertNotContains(page, "情緒分數")  # result.subscores is None: no subscores shown
         self.assertNotContains(page, "情緒與社交分項僅供參考")
         self.assertTrue(context["support_message"])
@@ -206,8 +204,7 @@ class AverageResultTests(ResultTestCase):
         record = submission_with_answers(self.user, ssq12_tw.CODE, [6] * 12)
         context = self.assert_page(record, "screening/ssq12_result.html")
         self.assertEqual(len(context["answers"]), 12)
-        self.assertEqual(record.result.summary_template, "screening/summaries/average.html")
-        summary = render_to_string(record.result.summary_template, {"submission": record})
+        summary = render_to_string("screening/summaries/average.html", {"submission": record})
         self.assertEqual(summary, "整體平均：6.0／10")
         self.assertEqual(record.result.row_template, "screening/record_rows/average.html")
         row = render_to_string(record.result.row_template, {"submission": record})
@@ -270,8 +267,7 @@ class NormResultTests(ResultTestCase):
         self.assertEqual([item["name"] for item in context["below"]], ["使用時間"])
         self.assertEqual(len(context["others"]), 6)
         # #409: the summary reads the record's own norm summary; callers pass the record alone.
-        self.assertEqual(record.result.summary_template, "screening/summaries/norm.html")
-        summary = render_to_string(record.result.summary_template, {"submission": record})
+        summary = render_to_string("screening/summaries/norm.html", {"submission": record})
         self.assertEqual(summary, "7 項中 1 項低於常模、1 項高於常模")
         self.assertEqual(record.result.row_template, "screening/record_rows/norm.html")
         row = render_to_string(record.result.row_template, {"submission": record})
@@ -332,8 +328,7 @@ class SubscaleResultTests(ResultTestCase):
     def test_result_page_and_summary(self):
         record = submission_with_answers(self.user, sadl.CODE, [4] * 15, wearing_hearing_aid=True)
         self.assert_page(record, "screening/sadl_result.html")
-        self.assertEqual(record.result.summary_template, "screening/summaries/subscale.html")
-        summary = render_to_string(record.result.summary_template, {"submission": record})
+        summary = render_to_string("screening/summaries/subscale.html", {"submission": record})
         self.assertEqual(summary, "整體滿意度：4.0")
         self.assertEqual(record.result.row_template, "screening/record_rows/subscale.html")
         row = render_to_string(record.result.row_template, {"submission": record})
@@ -374,7 +369,6 @@ class ResultQueryTests(ResultTestCase):
                     "unavailable_reason",
                     "satisfaction",
                     "norm_group",
-                    "summary_template",
                     "row_template",
                 ):
                     getattr(result, name)
@@ -438,10 +432,8 @@ class DefinitionResultTypeTests(TestCase):
 
 
 class SummaryTemplateTests(ResultTestCase):
-    """#389: the home page's last result and each row of 我的紀錄 draw the record's summary
-    template. The expected HTML is each page as rendered before the change, spaces aside."""
-
-    ARROW = '<span aria-hidden="true">\u203a</span>'  # the links' arrow (U+203A)
+    """#389: each row of 我的紀錄 draws the record's row template. The expected HTML is each page
+    as rendered before the change, spaces aside."""
 
     SADL_NOT_APPLICABLE = [4] * 15
     SADL_NOT_APPLICABLE[10] = None
@@ -465,86 +457,18 @@ class SummaryTemplateTests(ResultTestCase):
         Submission.objects.filter(pk=submission.pk).update(created_at=created)
         return submission
 
-    def home_banner(self, user):
-        self.client.force_login(user)
-        html = self.client.get(reverse("index")).content.decode()
-        return re.search(
-            r'<div class="result-banner result-banner-.*?看這次結果'
-            + re.escape(self.ARROW)
-            + r"</a>\s*</div>",
-            html,
-            re.S,
-        ).group(0)
-
     def my_hearing(self, code):
         self.client.force_login(self.user)
         html = self.client.get(reverse("my_hearing"), {"questionnaire": code}).content.decode()
         rows = re.findall(r'<a class="link-card" href="[^"]*">.*?</a>', html, re.S)
-        since_last = re.search(r'<section id="since-last".*?</section>', html, re.S)
-        return rows, since_last and since_last.group(0)
-
-    def test_home_shows_a_life_impact_last_result_with_its_gauge_and_level(self):
-        user = consented_user(username="home_hhie_s")
-        record = self.record(user, *self.RECORDS[0])
-        self.assertHTMLEqual(
-            self.home_banner(user),
-            '<div class="result-banner result-banner-mild_to_moderate"><div>上次結果</div>'
-            '<svg class="score-gauge" viewBox="0 0 220 130" aria-hidden="true" focusable="false"'
-            ' data-play-in-view style="--angle: 90.00deg">'
-            '<path class="score-gauge-arc score-gauge-arc-normal" pathLength="1"'
-            ' d="M30.00 105.00A80 80 0 0 1 44.55 59.00"/>'
-            '<path class="score-gauge-arc score-gauge-arc-mild_to_moderate" pathLength="1"'
-            ' d="M46.03 56.97A80 80 0 0 1 133.52 28.54"/>'
-            '<path class="score-gauge-arc score-gauge-arc-severe" pathLength="1"'
-            ' d="M135.91 29.31A80 80 0 0 1 190.00 105.00"/>'
-            '<line class="score-gauge-needle" x1="110" y1="105" x2="52" y2="105"/>'
-            '<circle class="score-gauge-hub" cx="110" cy="105" r="7"/>'
-            '<text x="30" y="126">0</text><text x="190" y="126">40</text></svg>'
-            '<h2 class="result-level mb-0">輕度到中度影響</h2>'
-            "<div>HHIE-S 總分 20 分（滿分 40）</div>"
-            f'<a class="welcome-result-link" href="{reverse("result", args=[record.pk])}">'
-            f"看這次結果{self.ARROW}</a></div>",
+        # #465 (the #464 mockup 1A): 和上一次比 is in the tab's one score block.
+        since_last = re.search(
+            r'<div class="result-banner[^"]*records-score">(?:(?!</div>).)*'
+            r'<div class="result-since-last" id="since-last">.*?</div>\s*</div>',
+            html,
+            re.S,
         )
-
-    def test_home_shows_another_last_result_by_its_type(self):
-        # THI is graded but not life impact: its topic only, no summary.
-        for index, summary in (
-            (2, '<h2 class="result-level mb-0">耳鳴對生活的影響（THI）</h2>'),
-            (
-                4,
-                '<h2 class="result-level mb-0">日常聆聽能力（SSQ12-TW）</h2>'
-                "<div>未計算：包含不適用題目</div>",
-            ),
-            (
-                5,
-                '<h2 class="result-level mb-0">日常聆聽能力（SSQ12-TW）</h2>'
-                "<div>整體平均：5.0／10</div>",
-            ),
-            (
-                6,
-                '<h2 class="result-level mb-0">助聽器使用成效（IOI-HA）</h2>'
-                "<div>未分組，無法和常模比較</div>",
-            ),
-            (
-                7,
-                '<h2 class="result-level mb-0">助聽器使用成效（IOI-HA）</h2>'
-                "<div>7 項中 0 項低於常模、0 項高於常模</div>",
-            ),
-            (
-                8,
-                '<h2 class="result-level mb-0">助聽器滿意度（SADL）</h2><div>整體滿意度：4.0</div>',
-            ),
-        ):
-            with self.subTest(record=self.RECORDS[index][:2]):
-                user = consented_user(username=f"home_{index}")
-                record = self.record(user, *self.RECORDS[index])
-                self.assertHTMLEqual(
-                    self.home_banner(user),
-                    '<div class="result-banner result-banner-unknown"><div>上次結果</div>'
-                    f"{summary}"
-                    f'<a class="welcome-result-link" href="{reverse("result", args=[record.pk])}">'
-                    f"看這次結果{self.ARROW}</a></div>",
-                )
+        return rows, since_last and since_last.group(0)
 
     def test_my_hearing_rows_and_since_last_by_type(self):
         records = [self.record(self.user, *fields) for fields in self.RECORDS]
@@ -558,24 +482,14 @@ class SummaryTemplateTests(ResultTestCase):
             )
 
         def since_last(previous, latest, text):
-            def cell(label, date, score, newest=""):
-                return (
-                    f'<p class="since-last-cell{newest}"><span class="since-last-label">{label}'
-                    '</span><span class="since-last-date"><span class="visually-hidden">（</span>'
-                    f'{date}<span class="visually-hidden">）：</span></span>'
-                    f'<span class="since-last-score">{score}<span class="since-last-unit"> 分'
-                    "</span></span></p>"
-                )
-
+            (previous_date, previous_score), (date, score, status, colour, level) = previous, latest
             return (
-                '<section id="since-last" class="since-last mb-6 wrap-anywhere"'
-                ' aria-labelledby="since-last-title">'
-                '<h2 id="since-last-title" class="h4">和上一次比</h2>'
-                f'<div class="since-last-pair">{cell("上一次", *previous)}'
-                '<span class="since-last-arrow" aria-hidden="true">→</span>'
-                f"{cell('最近一次', *latest, newest=' since-last-latest')}</div>"
-                f'<p class="mb-0 text-subhead text-heading"><strong>{text}</strong></p>'
-                "</section>"
+                f'<div class="result-banner result-banner-{colour} records-score">'
+                f"<p>最近一次（{date}，{status}）</p>"
+                f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
+                f'<p class="result-block-level">{level}</p>'
+                f'<div class="result-since-last" id="since-last"><p>{text}</p>'
+                f"<p>上一次（{previous_date}）：{previous_score} 分</p></div></div>"
             )
 
         def badge(level, text):
@@ -598,7 +512,9 @@ class SummaryTemplateTests(ResultTestCase):
                     ),
                 ],
                 since_last(
-                    ("2026/03/01", 20), ("2026/04/01", 40), "比上一次多 20 分（分數越低越好）"
+                    ("2026/03/01", 20),
+                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
+                    "比上一次多 20 分（分數越低越好）",
                 ),
             ),
             (
@@ -617,7 +533,9 @@ class SummaryTemplateTests(ResultTestCase):
                     ),
                 ],
                 since_last(
-                    ("2026/03/02", 50), ("2026/04/02", 100), "比上一次多 50 分（分數越低越好）"
+                    ("2026/03/02", 50),
+                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
+                    "比上一次多 50 分（分數越低越好）",
                 ),
             ),
             (
@@ -664,10 +582,14 @@ class SummaryTemplateTests(ResultTestCase):
         type_check = re.compile(
             r"{%\s*(?:el)?if\b[^%]*\b(?:averaged|satisfaction|norm_group|ioi_ha|classified)\b"
         )
-        # #409: the home page includes the summary, 我的紀錄 the row, neither with a place.
+        # #409: 我的紀錄 includes the row, without a place. (#459: the home page no longer shows
+        # a record of another type, so it includes no summary.)
         for name, include in (
-            ("screening/index.html", "{% include result.summary_template %}"),
-            ("screening/my_hearing.html", "{% include submission.result.row_template %}"),
+            ("screening/my_hearing.html", '{% include "screening/records_submission_row.html" %}'),
+            (
+                "screening/records_submission_row.html",
+                "{% include submission.result.row_template %}",
+            ),
         ):
             with self.subTest(template=name):
                 source = get_template(name).template.source
@@ -721,18 +643,6 @@ class SummaryTemplateTests(ResultTestCase):
                 )
                 with self.assertNumQueries(12):  # the same count as main
                     self.client.get(reverse("my_hearing"), {"questionnaire": code})
-
-    def test_home_takes_the_same_queries_for_each_last_result_type(self):
-        # Counts measured before the change; SADL's was 25, a query per answer's question, until
-        # its satisfaction loaded the answers with their questions in one (#407).
-        for index, queries in ((0, 9), (2, 9), (4, 9), (6, 10), (8, 10)):
-            code, scores, fields, (year, month, day) = self.RECORDS[index]
-            user = consented_user(username=f"home_queries_{index}")
-            for older in range(2):
-                self.record(user, code, scores, fields, (year, month, day + older))
-            self.client.force_login(user)
-            with self.subTest(code=code), self.assertNumQueries(queries):
-                self.client.get(reverse("index"))
 
 
 class ResultPageDataTests(ResultTestCase):
@@ -1000,10 +910,11 @@ class ApiFieldsTests(ResultTestCase):
         for html in self.report_pages():
             for line in (
                 # 重點: each type's latest record.
-                '<li>HHIE-S（2026/01/02）：0 分，<span class="report-level '
-                'report-level-normal">無／極輕微影響</span>，助聽器：有戴</li>',
-                '<li>THI（2026/01/04）：50 分，<span class="report-level '
-                'report-level-mild_to_moderate">中度障礙</span>，助聽器：未記錄</li>',
+                # #471: the level in the site's level badge.
+                '<li>HHIE-S（2026/01/02）：0 分，<span class="level-badge '
+                'level-badge-normal">無／極輕微影響</span>，助聽器：有戴</li>',
+                '<li>THI（2026/01/04）：50 分，<span class="level-badge '
+                'level-badge-mild_to_moderate">中度障礙</span>，助聽器：未記錄</li>',
                 "<li>日常聆聽能力（SSQ12-TW，2026/01/06）：未計算：包含不適用題目</li>",
                 # The average part's summary line (#409: summaries/average.html).
                 "<p>未計算：包含不適用題目</p>",

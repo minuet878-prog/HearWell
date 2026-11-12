@@ -3,22 +3,30 @@
 {% block body %}
 {% with satisfaction=submission.result.satisfaction %}
 {% include "screening/result_header.html" %}
-{# Text-heavy pages tidy-up: SADL has no levels, so the blue summary box SSQ12-TW uses (ADR 0007). #}
-<section class="trend-summary mb-6" aria-label="整體滿意度">
-    <p class="ssq-average">整體滿意度：<strong>{{ satisfaction.overall }}</strong> 分（滿分 7）</p>
-    <p class="mb-0">{{ submission.questionnaire.definition.result_note }}</p>
-</section>
-<h2 class="h4">四個面向</h2>
-<ul class="list-unstyled">{% for subscale in satisfaction.subscales %}
-    <li class="tint-block mb-3">
-        <div class="score-card-head"><h3 class="tint-block-title mb-0">{{ subscale.name }}</h3><span class="score-chip">{{ subscale.score }} 分</span></div>
-        <p class="mb-0">{{ subscale.explanation }}</p>
-    </li>{% endfor %}
-</ul>
-{% if satisfaction.not_applicable %}
-<p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
-{% endif %}
+{# #461 (the #460 mockup R1): no levels, so a pale grey block instead of a level's colour (ADR 0007); how to read it is the one sentence. #}
+<div class="result-summary">
+    <p class="result-score">整體滿意度：<span class="result-number">{{ satisfaction.overall }}</span> 分（滿分 7）</p>
+</div>
+<p class="result-one-line">{{ submission.questionnaire.definition.result_note }}</p>
+{% include "screening/result_next.html" %}
+<div class="result-list">
+<details class="result-details">
+    {% include "screening/result_details_summary.html" %}
+    <div class="result-details-body">
+        <h2 class="h4">四個面向</h2>
+        <ul class="list-unstyled">{% for subscale in satisfaction.subscales %}
+            <li class="mb-3">
+                <div class="score-card-head"><h3 class="h4 mb-0">{{ subscale.name }}</h3><span class="score-chip">{{ subscale.score }} 分</span></div>
+                <p class="mb-0">{{ subscale.explanation }}</p>
+            </li>{% endfor %}
+        </ul>
+        {% if satisfaction.not_applicable %}
+        <p>第 {% for number in satisfaction.not_applicable %}{{ number }}{% if not forloop.last %}、{% endif %}{% endfor %} 題選了「不適用」，沒有算進分數。</p>
+        {% endif %}
+    </div>
+</details>
+{% include "screening/result_rows.html" %}
+</div>
 {% endwith %}
-{% include "screening/result_actions.html" with questionnaire=submission.questionnaire %}
 {% include submission.questionnaire.definition.source_template %}
 {% endblock %}

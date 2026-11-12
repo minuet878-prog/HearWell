@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import Answer, Category, Question, Questionnaire, Submission
-from screening.tests.helpers import action_cards, consented_user, fake_definition, register
+from screening.tests.helpers import consented_user, fake_definition, register
 
 
 class TrendChartPageTests(TestCase):
@@ -274,11 +274,15 @@ class HistoryTabsTests(TestCase):
 
     # Aided difference (10-14)
     def _difference(self, main):
+        # #465: the 配戴狀態比較 fold under the records (the #464 mockup 1A).
         match = re.search(
-            r'<section[^>]*class="aided-difference[^"]*"[^>]*>(.*?)</section>', main, re.DOTALL
+            r'<details class="result-details">\s*<summary>'
+            r"(?:(?!</details>).)*?配戴狀態比較.*?</details>",
+            main,
+            re.DOTALL,
         )
         return (
-            None if match is None else re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", match.group(1)))
+            None if match is None else re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", match.group(0)))
         )
 
     def _retain(self, unaided, aided):
@@ -327,19 +331,23 @@ class HistoryTabsTests(TestCase):
         self.assertNotIn("少了 16 分", main)
         self.assertNotContains(self.client.get("/report"), 'id="report-difference"')
 
-    def test_difference_lives_in_the_for_doctor_card(self):
-        # Ticket #161: moved to the bottom, alongside the health report button.
+    def test_difference_folds_at_the_bottom_after_share(self):
+        # Ticket #161: at the bottom, after the health report; #465 (the #464 mockup 1A): a fold
+        # after the share row, its 「要給醫師或家人看？」 title gone.
         self._hhie_s(28, False, days_ago=2)
         self._hhie_s(12, True, days_ago=1)
         main = self._main_html(self.client.get(self.url))
-        self.assertLess(main.index("要給醫師或家人看"), main.index("配戴狀態比較"))
         self.assertLess(main.index("聽力報告"), main.index("配戴狀態比較"))
-        # Acceptance 4: the entry reads 「比較戴與不戴助聽器」, inside the bottom card.
-        card = main[main.index('aria-labelledby="for-doctor-title"') :]
+        self.assertLess(main.index("傳給家人看"), main.index("配戴狀態比較"))
+        # Acceptance 4: the entry reads 「比較戴與不戴助聽器」, inside the fold.
         self.assertIn(
             f'href="{reverse("hhi_comparison", args=[self.hhie_s.pk])}">比較戴與不戴助聽器</a>',
-            card,
+            self._difference_html(main),
         )
+
+    def _difference_html(self, main):
+        start = main.index("配戴狀態比較")
+        return main[start : main.index("</details>", start)]
 
     def test_difference_hidden_without_both_statuses(self):
         # Ticket #161: only shown when this questionnaire has both an aided and unaided record.
@@ -403,8 +411,11 @@ class HistoryTabsTests(TestCase):
     def test_ioi_ha_result_links_to_ioi_ha_tab(self):
         submission = self._ioi_ha((3,) * 7, "ungrouped", days_ago=1)
         main = self._main_html(self.client.get(reverse("result", args=[submission.id])))
-        self.assertIn(
-            (self._tab_url("ioi-ha"), "看我的紀錄", "每一次的結果都在這裡"), action_cards(main)
+        # A list row with its title alone (#461).
+        self.assertRegex(
+            main,
+            rf'(?s)<a class="link-card action-card" href="{re.escape(self._tab_url("ioi-ha"))}">.*?'
+            r'<span class="link-card-title">看我的紀錄</span>',
         )
 
     # Accessibility (19)
@@ -495,18 +506,21 @@ class HistoryTabsTests(TestCase):
     def _texts(self, html):
         return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", item)).strip() for item in html]
 
-    def _summary(self, trend):
-        box = re.search(r'class="trend-summary[^"]*">(.*?)</div>', trend, re.DOTALL).group(1)
-        return self._texts(re.findall(r"<p[^>]*>(.*?)</p>", box, re.DOTALL))
+    def _summary(self):
+        # #465 (the #464 mockup 1A): the trend chart's 最近一次 is the score block above it now,
+        # with 和上一次比 in it: its lines, top to bottom.
+        main = self._main_html(self.client.get(self._tab_url("hhie-s")))
+        start = main.index("records-score")
+        block = main[start : main.index('<h2 id="trend-title"', start)]
+        return self._texts(re.findall(r"<p[^>]*>(.*?)</p>", block, re.DOTALL))
 
     def _legend(self, trend):
         legend = re.search(r'class="trend-legend">(.*?)</ul>', trend, re.DOTALL).group(1)
         return re.findall(r"<li>(.*?)</li>", legend, re.DOTALL)
 
     def _since_last_text(self, main):
-        # Its text as read out: the side-by-side records keep their brackets hidden on screen.
-        html = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
-        return re.sub(r"<[^>]+>", "", html)
+        html = re.search(r'<div class="result-since-last" id="since-last">(.*?)</div>', main, re.S)
+        return re.sub(r"<[^>]+>", "", html.group(1))
 
     def test_trend_summary_leaves_the_comparison_to_since_last(self):
         # phase9_ui_refresh_2_data.md acceptance 5 (unaided 26, 24, 20 and aided 14, 10), now
@@ -517,12 +531,17 @@ class HistoryTabsTests(TestCase):
         self._hhie_s(20, False, days_ago=5)
         latest = self._hhie_s(10, True, days_ago=1)
         main = self._main_html(self.client.get(self._tab_url("hhie-s")))
-        trend = self._trend()
         self.assertEqual(
-            self._summary(trend),
-            [f"最近一次（{self._date(latest)}，有戴助聽器）", "10 分 輕度到中度影響"],
+            self._summary(),
+            [
+                f"最近一次（{self._date(latest)}，有戴助聽器）",
+                "10 分",
+                "輕度到中度影響",
+                "比上一次少 4 分（分數越低越好）",
+                f"上一次（{self._date(aided)}）：14 分",
+            ],
         )
-        self.assertIn("<strong>10 分</strong>", trend)
+        self.assertIn('<span class="result-number">10</span> 分', main)
         since_last = self._since_last_text(main)
         self.assertIn(f"上一次（{self._date(aided)}）：14 分", since_last)
         self.assertIn("比上一次少 4 分（分數越低越好）", since_last)
@@ -530,10 +549,12 @@ class HistoryTabsTests(TestCase):
     def test_trend_summary_has_no_comparison_line_down_to_0(self):
         self._hhie_s(12, False, days_ago=10)
         self._hhie_s(18, False, days_ago=5)
-        self.assertEqual(len(self._summary(self._trend())), 2)
+        self.assertEqual(self._summary()[3], "比上一次多 6 分（分數越低越好）")
         self._hhie_s(0, False, days_ago=1)
-        summary = self._summary(self._trend())
-        self.assertEqual(summary[1:], ["0 分 無／極輕微影響"])
+        summary = self._summary()
+        self.assertEqual(
+            summary[1:4], ["0 分", "無／極輕微影響", "比上一次少 18 分（分數越低越好）"]
+        )
 
     def test_since_last_finds_the_previous_status_before_the_charts_five_days(self):
         # Acceptance 17: the chart draws five days, the comparison looks further back.
@@ -550,10 +571,11 @@ class HistoryTabsTests(TestCase):
     def test_trend_summary_with_one_record_and_a_score_of_0(self):
         latest = self._hhie_s(0, False, days_ago=1)
         self.assertEqual(
-            self._summary(self._trend()),
+            self._summary(),
             [
                 f"最近一次（{self._date(latest)}，沒戴助聽器）",
-                "0 分 無／極輕微影響",
+                "0 分",
+                "無／極輕微影響",
                 "再做一次篩檢，就能看到分數的變化。",
             ],
         )
@@ -562,20 +584,20 @@ class HistoryTabsTests(TestCase):
         # Acceptance 6: only the other status came before.
         self._hhie_s(12, False, days_ago=5)
         self._hhie_s(10, True, days_ago=3)
-        self.assertEqual(self._summary(self._trend())[2], "這是第一筆有戴助聽器的紀錄。")
+        self.assertEqual(self._summary()[3], "這是第一筆有戴助聽器的紀錄。")
         # And the other way round, for another user.
         self._hhie_s(10, True, days_ago=3, user=self.other)
         self._hhie_s(20, False, days_ago=1, user=self.other)
         self.client.force_login(self.other)
-        self.assertEqual(self._summary(self._trend())[2], "這是第一筆沒戴助聽器的紀錄。")
+        self.assertEqual(self._summary()[3], "這是第一筆沒戴助聽器的紀錄。")
 
     def test_trend_summary_does_not_compare_an_unrecorded_record(self):
         # Acceptance 7.
         self._hhie_s(12, False, days_ago=5)
         latest = self._hhie_s(14, None, days_ago=1)
-        summary = self._summary(self._trend())
+        summary = self._summary()
         self.assertEqual(summary[0], f"最近一次（{self._date(latest)}，助聽器未記錄）")
-        self.assertEqual(summary[2], "這筆沒有記錄助聽器，不和其他紀錄比較。")
+        self.assertEqual(summary[3], "這筆沒有記錄助聽器，不和其他紀錄比較。")
 
     def test_trend_legend_lists_only_the_statuses_that_appear(self):
         self._hhie_s(10, False, days_ago=3)
@@ -616,7 +638,6 @@ class HistoryTabsTests(TestCase):
         order = [
             "<h2",
             self.NOTE,
-            'class="trend-summary',
             'class="chart-canvas"',
             'id="trend-plot"',
         ]
@@ -733,7 +754,7 @@ class HistoryRetestTests(TestCase):
         retake = self._retake_url(self.hhie_s)
         # The home page's button text (decision 2026-10-22).
         self.assertIn(
-            f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次（大約 3 分鐘）</a>',
+            f'<a class="btn btn-primary btn-lg w-full" href="{retake}">再做一次（大約 3 分鐘）</a>',
             reminder,
         )
         # At the top: right under the page title, before any record.
@@ -754,12 +775,12 @@ class HistoryRetestTests(TestCase):
         self.assertIn("<p>距離上次的生活影響評估已經滿 6 個月，建議再做一次追蹤。</p>", reminder)
         retake = self._retake_url(self.hhie_s)
         self.assertIn(
-            f'<a class="btn btn-primary btn-lg" href="{retake}">再做一次（大約 3 分鐘）</a>',
+            f'<a class="btn btn-primary btn-lg w-full" href="{retake}">再做一次（大約 3 分鐘）</a>',
             reminder,
         )
-        # At the top: right under the page title, above the tabs and the IOI-HA record.
-        self.assertLess(main.index("<h1"), main.index('id="retest-reminder"'))
-        self.assertLess(main.index('id="retest-reminder"'), main.index('aria-label="問卷"'))
+        # At the top: #465 (the #464 mockup, the busiest 我的紀錄) right under the tabs, above
+        # the IOI-HA record.
+        self.assertLess(main.index('aria-label="問卷"'), main.index('id="retest-reminder"'))
         self.assertLess(main.index('id="retest-reminder"'), main.index('class="link-card"'))
 
     def test_no_reminder_before_six_months(self):
@@ -771,10 +792,12 @@ class HistoryRetestTests(TestCase):
         self.assertNotIn(self._retake_url(self.hhie_s), main)
 
     def _since_last_lines(self, main):
-        match = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S)
+        # #465 (the #464 mockup 1A): 和上一次比 is in the score block, under its 最近一次 line.
+        match = re.search(r'<div class="result-since-last" id="since-last">(.*?)</div>', main, re.S)
         if match is None:
             return None
-        lines = re.findall(r"<(?:h2|p)[^>]*>(.*?)</(?:h2|p)>", match.group(1), re.S)
+        latest = re.search(r'records-score">\s*<p>(.*?)</p>', main, re.S).group(1)
+        lines = [latest, *re.findall(r"<p[^>]*>(.*?)</p>", match.group(1), re.S)]
         return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", line)).strip() for line in lines]
 
     def test_since_last_says_how_many_points_fewer(self):
@@ -784,62 +807,31 @@ class HistoryRetestTests(TestCase):
         self.assertEqual(
             self._since_last_lines(main),
             [
-                "和上一次比",
-                "上一次（2026/09/12）：16 分",
-                "最近一次（2026/10/12）：12 分",
+                "最近一次（2026/10/12，沒戴助聽器）",
                 "比上一次少 4 分（分數越低越好）",
+                "上一次（2026/09/12）：16 分",
             ],
         )
         # Above the trend chart.
         self.assertLess(main.index('id="since-last"'), main.index('id="trend-chart"'))
 
-    def test_since_last_sets_the_two_records_side_by_side(self):
-        # 2026-10-24 comparison page, option A: 上一次 → 最近一次, each with its date and a large
-        # score; the lines above still read the same, the brackets only hidden on screen.
-        self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=40)  # 16, 2026/09/12
-        self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, 2026/10/12
-        main = self._fetch_main_html()
-        pair = re.search(r'<div class="since-last-pair">(.*?)</div>', main, re.S).group(1)
-        cells = re.findall(r'<p class="since-last-cell([^"]*)">(.*?)</p>', pair, re.S)
-        self.assertEqual([extra for extra, _ in cells], ["", " since-last-latest"])
-        for (_, cell), label, day, score in zip(
-            cells, ("上一次", "最近一次"), ("2026/09/12", "2026/10/12"), ("16", "12"), strict=True
-        ):
-            with self.subTest(label):
-                self.assertIn(f'<span class="since-last-label">{label}</span>', cell)
-                self.assertIn(
-                    '<span class="since-last-date"><span class="visually-hidden">（</span>'
-                    f'{day}<span class="visually-hidden">）：</span></span>',
-                    cell,
-                )
-                self.assertIn(
-                    f'<span class="since-last-score">{score}'
-                    '<span class="since-last-unit"> 分</span></span>',
-                    cell,
-                )
-        # The arrow between them is only drawn: screen readers hear the two lines.
-        self.assertIn('<span class="since-last-arrow" aria-hidden="true">→</span>', pair)
-
     def test_since_last_dates_have_their_time_on_the_same_day(self):
         self._submit("hhie-s", [4, 4, 4, 4] + [0] * 6, days_ago=10)  # 16
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 12, the same day
-        days = re.findall(
-            r'<span class="since-last-date">(.*?)</span></span>', self._fetch_main_html()
-        )
-        self.assertEqual(len(days), 2)
-        for day in days:
-            self.assertRegex(day, r"\d{4}/\d\d/\d\d \d\d:\d\d<span")
+        latest, _, previous = self._since_last_lines(self._fetch_main_html())
+        self.assertRegex(latest, r"^最近一次（\d{4}/\d\d/\d\d \d\d:\d\d，")
+        self.assertRegex(previous, r"^上一次（\d{4}/\d\d/\d\d \d\d:\d\d）")
 
     def test_since_last_says_the_same(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [2] * 6 + [0] * 4, days_ago=10)  # 12, answered differently
-        self.assertEqual(self._since_last_lines(self._fetch_main_html())[3], "和上一次一樣")
+        self.assertEqual(self._since_last_lines(self._fetch_main_html())[1], "和上一次一樣")
 
     def test_since_last_says_how_many_points_more(self):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=40)  # 12
         self._submit("hhie-s", [4, 4, 4, 4, 4, 2] + [0] * 4, days_ago=10)  # 22
         self.assertEqual(
-            self._since_last_lines(self._fetch_main_html())[3], "比上一次多 10 分（分數越低越好）"
+            self._since_last_lines(self._fetch_main_html())[1], "比上一次多 10 分（分數越低越好）"
         )
 
     def test_no_since_last_with_one_record(self):
@@ -871,7 +863,7 @@ class HistoryRetestTests(TestCase):
         self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
         main = self._fetch_main_html()
         self.assertNotIn('id="trend-chart"', main)
-        self.assertEqual(self._since_last_lines(main)[3], "比上一次少 6 分（分數越低越好）")
+        self.assertEqual(self._since_last_lines(main)[1], "比上一次少 6 分（分數越低越好）")
         self.assertLess(main.index('id="since-last"'), main.index('class="link-card"'))
 
     def test_other_questionnaires_do_not_compare(self):
@@ -887,16 +879,15 @@ class HistoryRetestTests(TestCase):
         self._submit("hhie-s", [4, 4, 4] + [0] * 7, days_ago=10)  # 沒戴 12, 2026/10/12
         main = self._fetch_main_html()
         self.assertEqual(
-            self._since_last_lines(main)[1:],
+            self._since_last_lines(main),
             [
-                "上一次（2026/09/12）：16 分",
-                "最近一次（2026/10/12）：12 分",
+                "最近一次（2026/10/12，沒戴助聽器）",
                 "比上一次少 4 分（分數越低越好）",
+                "上一次（2026/09/12）：16 分",
             ],
         )
-        # The trend summary leaves the comparison to 「和上一次比」, so it is said once.
-        summary = re.search(r'class="trend-summary[^"]*">(.*?)</div>', main, re.S).group(1)
-        self.assertEqual(len(re.findall(r"<p[^>]*>", summary)), 2)
+        # One block says it, so it is said once.
+        self.assertEqual(main.count("比上一次少 4 分"), 1)
         self.assertNotIn("上一次沒戴助聽器", main)
 
     def test_no_since_last_when_the_newest_status_is_unrecorded(self):
@@ -925,11 +916,11 @@ class HistoryRetestTests(TestCase):
         main = self._fetch_main_html()
         self.assertIsNotNone(self._reminder(main))
         self.assertEqual(
-            self._since_last_lines(main)[1:],
+            self._since_last_lines(main),
             [
-                "上一次（2026/03/23）：16 分",
-                "最近一次（2026/04/22）：12 分",
+                "最近一次（2026/04/22，沒戴助聽器）",
                 "比上一次少 4 分（分數越低越好）",
+                "上一次（2026/03/23）：16 分",
             ],
         )
         # And the other way round: their one record, none of this user's.
@@ -1056,7 +1047,8 @@ class MyRecordsTidyT364Tests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         main = self._main("hhie-s")
-        box = re.search(r'<section class="aided-difference[^>]*>(.*?)</section>', main, re.S)
+        start = main.index("配戴狀態比較")
+        box = re.search(r"(.*?)</details>", main[start:], re.S)
         lines = re.findall(r"<(?:p|li)[^>]*>(.*?)</(?:p|li)>", box.group(1), re.S)
         self.assertEqual(
             lines[:3],
@@ -1064,29 +1056,19 @@ class MyRecordsTidyT364Tests(TestCase):
         )
         self.assertRegex(box.group(1), r'<ul class="list-none p-0" role="list">\s*<li>未配戴')
 
-    def _since_last(self, main):
-        return re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S).group(1)
-
-    def test_hhia_s_since_last_sits_in_a_summary_box(self):
-        # Acceptance 4: HHIA-S has no trend chart, so 「和上一次比」 is its summary box: the two
-        # records and the change inside the blue box, the title above it, outside.
+    def test_hhia_s_and_hhie_s_say_since_last_in_the_one_score_block(self):
+        # Acceptance 4, #465 (the #464 mockup 1A): with or without a trend chart, 和上一次比 is
+        # in the one score block, never a second box.
         self._submit("hhia-s", [4] * 5 + [0] * 5, days_ago=40)  # 20
         self._submit("hhia-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)  # 14
-        since_last = self._since_last(self._main("hhia-s"))
-        box = re.fullmatch(
-            r'\s*<h2[^>]*>和上一次比</h2>\s*<div class="trend-summary">(.*)</div>\s*',
-            since_last,
-            re.S,
-        ).group(1)
-        self.assertIn('<div class="since-last-pair">', box)
-        self.assertEqual(box.count('class="since-last-cell'), 2)
-        self.assertIn("比上一次少 6 分（分數越低越好）", box)
-
-    def test_hhie_s_since_last_stays_out_of_a_box(self):
-        # HHIE-S already has the trend chart's summary box right below: one blue box, not two.
         self._submit("hhie-s", [4] * 5 + [0] * 5, days_ago=40)
         self._submit("hhie-s", [4, 4, 4, 2] + [0] * 6, days_ago=10)
-        self.assertNotIn("trend-summary", self._since_last(self._main("hhie-s")))
+        for code in ("hhia-s", "hhie-s"):
+            with self.subTest(code):
+                main = self._main(code)
+                self.assertEqual(main.count("records-score"), 1)
+                block = main[main.index("records-score") :]
+                self.assertIn("比上一次少 6 分（分數越低越好）", block[: block.index("</div>")])
 
     def test_ioi_ha_frame_holds_only_the_chart_and_its_legend(self):
         # Acceptance 5 (ADR 0022, like the trend chart): the title, the latest record, the norm

@@ -70,21 +70,26 @@ class GuideRouteTests(TestCase):
         self.assertEqual([s for s, t in tags.items() if HERE in t], [slug])
 
     def assert_link(self, markup, href, text):
-        self.assertRegex(markup, rf'<a [^>]*href="{re.escape(href)}"[^>]*>{re.escape(text)}</a>')
+        # #467: the 您在這裡 card's title link holds its words in a span, beside its arrow.
+        link = rf'<a [^>]*href="{re.escape(href)}"[^>]*>(<span>)?{re.escape(text)}<'
+        self.assertRegex(markup, link)
 
+    # #467 (I1): each stop opens to say what it is, its link on inside, named by the stop.
     def test_nine_stops_in_order_each_linked(self):
         self.client.logout()
         stops = self.stops()
         self.assertEqual([slug for slug, _ in stops], [slug for slug, _ in STOPS])
         for (slug, markup), (_, title) in zip(stops, STOPS, strict=True):
             if slug == "audiogram":
-                href = reverse("audiogram_new")
+                href, wording = reverse("audiogram_new"), "記錄醫院的聽力圖"
             elif slug in WAITS:
                 href = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
+                wording = "看申請流程"
             else:
-                href = reverse("guide_chapter", args=[slug])
+                href, wording = reverse("guide_chapter", args=[slug]), "看這一章"
             with self.subTest(stop=slug):
-                self.assert_link(markup, href, title)
+                self.assert_link(markup, href, wording)
+                self.assertIn(f'<span class="visually-hidden">：{title}</span></a>', markup)
 
     def test_each_stop_takes_the_focus_its_address_points_to(self):
         # Back from an answer at /guide#stop-<slug>, the focus lands on that stop.

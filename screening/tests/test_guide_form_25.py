@@ -13,8 +13,8 @@ from screening.tests.helpers import register
 # owner's request): labelled facts, the things to bring as chips.
 FORM_25 = (
     "「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。",
-    # #319 (ADR 0025): the five facts under a title of their own, in its 段落框.
-    "誰要做、怎麼做",
+    # #319 (ADR 0025): the five facts under a title of their own; a question since #467 (H2).
+    "誰要做？什麼時候做？",
     "誰要做",
     "買中階型、進階型或雙對側傳聲型的人。簡易型不需要。",
     "什麼時候",
@@ -45,7 +45,7 @@ FORM_25_SOURCES = (
 
 # Verification-flow batch F3, reviewed in the chat on 2026-10-23.
 PREPARE = (
-    "用聽伴準備驗證回診",
+    "回診前，聽伴可以幫什麼？",
     "驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：",
     "戴著再做一次聽力對生活的影響（HHIE-S 或 HHIA-S），和沒戴時的結果比較",
     "助聽器使用成效（IOI-HA）",
@@ -56,8 +56,8 @@ PREPARE = (
 
 
 def inline_text(response):
-    """Like test_guide.text_of, but links inside a sentence leave no space around them."""
-    content = response.content.decode()
+    """Like test_guide.article_text, but links inside a sentence leave no space around them."""
+    content = re.sub(r'<ul class="key-cards".*?</ul>', "", response.content.decode(), flags=re.S)
     main = content[content.index("<main") : content.index("</main>")]
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", main))
 
@@ -82,17 +82,21 @@ class Form25ChapterTests(TestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<h1 class="h3 mt-4">二十五號表：使用效益驗證</h1>')
-        text = test_guide.text_of(response)
-        positions = [text.index(sentence) for sentence in FORM_25]
-        self.assertEqual(positions, sorted(positions))
+        text = test_guide.article_text(response)
+        # Each found after the one before: the question title holds 誰要做 and 什麼時候 too.
+        at = 0
+        for sentence in FORM_25:
+            with self.subTest(sentence=sentence):
+                at = text.index(sentence, at) + len(sentence)
 
     def test_footer_has_the_check_date_and_official_sources(self):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026/10/22", FORM_25_SOURCES)
 
-    # #319: the five facts are a part titled 誰要做、怎麼做, read out as a region by that name.
+    # #319: the five facts are a part titled 誰要做？什麼時候做？ (#467), read out as a region by
+    # that name.
     def test_the_five_facts_are_a_titled_part(self):
-        part = test_guide.part(self.client.get(self.url), "誰要做、怎麼做")
+        part = test_guide.part(self.client.get(self.url), "誰要做？什麼時候做？")
         for label in ("誰要做", "什麼時候", "找誰開", "驗證做什麼", "核銷要帶"):
             with self.subTest(label=label):
                 self.assertIn(f"<dt>{label}</dt>", part)
@@ -121,8 +125,8 @@ class Form25ChapterTests(TestCase):
 # shortened in the guide chapters tidy-up (2026-10-23, the owner's request): each point's gist
 # as a label.
 AFTER_FITTING = (
-    # #319 (ADR 0025): the four points under a title of their own, in its 段落框.
-    "剛開始戴助聽器",
+    # #319 (ADR 0025): the four points under a title of their own; a question since #467 (H2).
+    "剛開始戴，會怎麼樣？",
     "剛開始不習慣是正常的",
     "前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。",
     "每天戴，慢慢拉長",
@@ -131,7 +135,7 @@ AFTER_FITTING = (
     "太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。",
     "不會跟以前完全一樣",
     "在吵雜的餐廳、多人聊天時，還是可能聽不清楚。",
-    "記錄配戴的效果",
+    "怎麼記錄戴了之後的感受？",
     "戴一段時間後，可以用聽伴的問卷記錄感受，印出聽力報告給聽力師看。",
     # F4 (verification-flow batch): the two life-impact questionnaires named and linked.
     "也可以戴著助聽器再做一次生活影響問卷（HHIE-S 或 HHIA-S），和沒戴時比較。",
@@ -173,9 +177,10 @@ class AfterFittingChapterTests(TestCase):
         response = self.client.get(self.url)
         test_guide.assert_footer(self, response, "2026/10/22", AFTER_FITTING_SOURCES)
 
-    # #319: the four points are a part titled 剛開始戴助聽器, read out as a region by that name.
+    # #319: the four points are a part titled 剛開始戴，會怎麼樣？ (#467), read out as a region by
+    # that name.
     def test_the_four_points_are_a_titled_part(self):
-        part = test_guide.part(self.client.get(self.url), "剛開始戴助聽器")
+        part = test_guide.part(self.client.get(self.url), "剛開始戴，會怎麼樣？")
         for label in (
             "剛開始不習慣是正常的",
             "每天戴，慢慢拉長",

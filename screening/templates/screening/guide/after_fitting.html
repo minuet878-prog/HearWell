@@ -1,36 +1,52 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Guide chapters tidy-up: each point's gist as its label, the rest in one short sentence. #}
-<section class="section-box mb-6" aria-labelledby="first-weeks-title">
-    <h2 id="first-weeks-title" class="h4 section-box-title">剛開始戴助聽器</h2>
-<dl class="key-list">
-    <div>
-        <dt>剛開始不習慣是正常的</dt>
-        <dd>前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。</dd>
-    </div>
-    <div>
-        <dt>每天戴，慢慢拉長</dt>
-        <dd>照聽力師的建議，從安靜的地方、短時間開始。</dd>
-    </div>
-    <div>
-        <dt>不舒服就回去調整</dt>
-        <dd>太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。</dd>
-    </div>
-    <div>
-        <dt>不會跟以前完全一樣</dt>
-        <dd>在吵雜的餐廳、多人聊天時，還是可能聽不清楚。</dd>
-    </div>
-</dl>
-</section>
-<section class="section-box mb-6" aria-labelledby="record-title">
-    <h2 id="record-title" class="h4 section-box-title">記錄配戴的效果</h2>
-    <p>戴一段時間後，可以用聽伴的問卷記錄感受，印出聽力報告給聽力師看。</p>
-    <ul>
-        {% for questionnaire in follow_ups %}
-        <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）：{{ questionnaire.definition.audience }}</a></li>
-        {% endfor %}
+{# Guide chapters tidy-up: each point's gist as its label, the rest in one short sentence. #467 (the owner's pick H1 + H2): three key cards, then each part titled as a question (its id kept for the route's link in), one sentence in sight and the rest behind 看更多, word for word. The key cards' large lines and the questions are drafts. #}
+<div>
+    <p id="key-points-title" class="tint-subhead mb-2">先知道三件事</p>
+    <ul class="key-cards" role="list" aria-labelledby="key-points-title">
+        <li class="key-card"><span class="key-card-big">不習慣是正常的</span><p>前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。</p></li>
+        <li class="key-card"><span class="key-card-big">每天戴，慢慢拉長</span><p>照聽力師的建議，從安靜的地方、短時間開始。</p></li>
+        <li class="key-card"><span class="key-card-big">不舒服就回去調整</span><p>太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。</p></li>
     </ul>
-    <p>也可以戴著助聽器再做一次生活影響問卷（{% include "screening/guide/life_impact_links.html" %}），和沒戴時比較。</p>
+</div>
+<section data-jump-box aria-labelledby="first-weeks-title">
+    <h2 id="first-weeks-title" class="h4">剛開始戴，會怎麼樣？</h2>
+    <dl class="key-list">
+        <div>
+            <dt>剛開始不習慣是正常的</dt>
+            <dd>前幾週可能覺得自己的聲音怪怪的、環境很吵，大腦需要時間重新適應聲音。</dd>
+        </div>
+    </dl>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <dl class="key-list">
+            <div>
+                <dt>每天戴，慢慢拉長</dt>
+                <dd>照聽力師的建議，從安靜的地方、短時間開始。</dd>
+            </div>
+            <div>
+                <dt>不舒服就回去調整</dt>
+                <dd>太吵、太小聲或不舒服，都可以請聽力師調整，不用勉強忍耐。記下哪些場合聽不清楚，回診時告訴聽力師。</dd>
+            </div>
+            <div>
+                <dt>不會跟以前完全一樣</dt>
+                <dd>在吵雜的餐廳、多人聊天時，還是可能聽不清楚。</dd>
+            </div>
+        </dl>
+    </details>
+</section>
+<section data-jump-box aria-labelledby="record-title">
+    <h2 id="record-title" class="h4">怎麼記錄戴了之後的感受？</h2>
+    <p>戴一段時間後，可以用聽伴的問卷記錄感受，印出聽力報告給聽力師看。</p>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <ul>
+            {% for questionnaire in follow_ups %}
+            <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）：{{ questionnaire.definition.audience }}</a></li>
+            {% endfor %}
+        </ul>
+        <p>也可以戴著助聽器再做一次生活影響問卷（{% include "screening/guide/life_impact_links.html" %}），和沒戴時比較。</p>
+    </details>
 </section>
 {% endblock %}
 {% block checked_on %}2026/10/22{% endblock %}

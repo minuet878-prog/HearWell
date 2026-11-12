@@ -142,11 +142,13 @@ class SharedReportHighlightsTests(TestCase):
         self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=2)  # 26, 顯著影響
         self._audiogram(self.user, date(2026, 9, 28), right_air=(40, 45, 50, 45), left_air=(30,))
         card = _card(self._shared(), "family-highlights")
+        # #471 (mockup #470 group 3): the life-impact level is a block in its level colour (L1);
+        # the ears keep their badges.
+        self.assertRegex(card, r'<div class="family-level result-banner-severe">.*?顯著影響</span>')
         badges = re.findall(r'<span class="level-badge ([^"]*)">([^<]*)</span>', card)
         self.assertEqual(
             badges,
             [
-                ("level-badge-severe", "顯著影響"),
                 ("level-badge-mild_to_moderate", "中度"),
                 ("level-badge-unknown", "資料不足，無法判讀"),
             ],
@@ -169,11 +171,16 @@ class SharedReportHighlightsTests(TestCase):
         family = self._shared()
 
         def body(content):
-            start = content.index('<section id="report-audiogram"')
-            return content[start : content.index('<p class="report-disclaimer">')]
+            # #471: the rows, from the audiogram's to the kept comparison's; the owner's report
+            # goes on with its links to change the comparison and to share.
+            start = content.index('<div class="report-rows">')
+            end = content.find('<nav class="no-print report-manage"')
+            if end == -1:
+                end = content.index('<p class="report-disclaimer">')
+            return content[start:end].rstrip()
 
         self.assertEqual(body(family), body(owner))
-        self.assertEqual(len(re.findall(r"<details[^>]*>\s*<summary><h3", family)), 2)
+        self.assertEqual(family.count('<details class="report-fold">'), 3)
 
     # Acceptance 16 (ticket #194 acceptance 4)
     def test_help_cards_link_to_the_three_family_guide_sections(self):
@@ -181,29 +188,29 @@ class SharedReportHighlightsTests(TestCase):
         help_card = _card(self._shared(), "family-help")
         self.assertIn("您可以怎麼幫忙", _text(help_card))
         links = re.findall(
-            r'<a class="link-card" href="([^"]+)">.*?class="link-card-title">([^<]+)<',
+            r'<a class="link-card action-card" href="([^"]+)">.*?class="link-card-title">([^<]+)<',
             help_card,
             re.S,
         )
         self.assertEqual(
             links,
             [
-                ("/family#talk-title", "怎麼跟聽損的家人說話"),
+                ("/family/talk", "怎麼跟聽損的家人說話"),
                 ("/family#aid-title", "陪伴配戴助聽器"),
                 ("/family#urgent-title", "什麼時候要馬上就醫"),
             ],
         )
+        # #469: 怎麼跟聽損的家人說話 has a page of its own; 陪伴配戴助聽器 folds in the zone's list.
+        talk = self.client.get(reverse("family_talk")).content.decode()
+        self.assertRegex(talk, r"<h1[^>]*>怎麼跟聽損的家人說話</h1>")
         guide = self.client.get(reverse("family_guide")).content.decode()
-        for anchor, title in (
-            ("talk-title", "怎麼跟聽損的家人說話"),
-            ("aid-title", "陪伴配戴助聽器"),
-            ("urgent-title", "什麼時候要馬上就醫"),
-        ):
-            with self.subTest(anchor=anchor):
-                # #240 put a decorative icon before each title.
-                self.assertRegex(
-                    guide, rf'id="{anchor}"[^>]*>(<svg [^>]*aria-hidden="true".*?</svg>)?{title}<'
-                )
+        self.assertRegex(guide, r'(?s)<details id="aid-title"[^>]*>.*?>陪伴配戴助聽器</span>')
+        # #240 put a decorative icon before the title.
+        self.assertRegex(
+            guide,
+            r'id="urgent-title"[^>]*>(<svg [^>]*aria-hidden="true".*?</svg>)?'
+            r"什麼時候要馬上就醫<",
+        )
 
     def test_help_links_carry_no_share_token_and_the_page_sends_no_referrer(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
@@ -247,8 +254,8 @@ class SharedReportHighlightsTests(TestCase):
         for card_id in ("family-highlights", "family-help"):
             with self.subTest(card=card_id):
                 self.assertRegex(content, rf'<section id="{card_id}" class="[^"]*\bno-print\b')
-        self.assertIn('<h1 class="h3 mt-4">聽伴聽力報告</h1>', content)
-        self.assertRegex(content, r'<p class="font-bold">這是家人分享給您的報告，連結有效到 ')
+        self.assertIn('<h1 class="h3 mt-2">聽伴聽力報告</h1>', content)
+        self.assertRegex(content, r'<p class="font-bold[^"]*">這是家人分享給您的報告，連結有效到 ')
 
     def test_expired_or_cancelled_links_still_show_nothing(self):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)

@@ -328,14 +328,19 @@ class WearingComparisonEntryTests(TestCase):
 
     def entries(self, questionnaire, result):
         """How many 「比較戴與不戴助聽器」 links its 我的紀錄 tab and a result page show."""
-        button = (
-            f'href="{reverse("hhi_comparison", args=[questionnaire.pk])}">比較戴與不戴助聽器</a>'
+        href = f'href="{reverse("hhi_comparison", args=[questionnaire.pk])}"'
+        # A button on 我的紀錄, a list row on a result page (#461).
+        records = self.main(f"{reverse('my_hearing')}?questionnaire={questionnaire.code}")
+        result_page = self.main(reverse("result", args=[result.pk]))
+        row = re.compile(
+            rf'<a class="link-card action-card" {href}>.*?'
+            r'<span class="link-card-title">比較戴與不戴助聽器</span>',
+            re.S,
         )
-        pages = {
-            "我的紀錄": f"{reverse('my_hearing')}?questionnaire={questionnaire.code}",
-            "結果頁": reverse("result", args=[result.pk]),
+        return {
+            "我的紀錄": records.count(f"{href}>比較戴與不戴助聽器</a>"),
+            "結果頁": len(row.findall(result_page)),
         }
-        return {name: self.main(url).count(button) for name, url in pages.items()}
 
     def test_entry_shows_only_once_a_questionnaire_has_both_wearing_statuses(self):
         hhie_s = self.record(self.hhie_s, False, 2)
@@ -365,7 +370,11 @@ class WearingComparisonEntryTests(TestCase):
         ssq12 = self.record(self.ssq12, False, 6)
         main = self.main(reverse("result", args=[ssq12.pk]))
         self.assertNotIn("選擇問卷", main)
-        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main)
+        # Without a life-impact record or an age, the 建議下一步 box (#455, the 照顧旅程's step
+        # 1) opens the catalogue: that is not the page's own button.
+        box = re.search(r'<div class="result-next">.*?</a>\s*</div>', main, re.S).group(0)
+        self.assertIn(f'href="{reverse("questionnaire_list")}"', box)
+        self.assertNotIn(f'href="{reverse("questionnaire_list")}"', main.replace(box, ""))
 
 
 def preview_text(page):

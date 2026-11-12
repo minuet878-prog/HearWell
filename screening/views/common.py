@@ -18,3 +18,21 @@ def health_data_page(view):
     view = never_cache(view)
     view.health_data_page = True
     return view
+
+
+# #465 (the #464 mockup 8A, 8E): 我的紀錄 lists the newest this many records of a tab, or
+# audiograms, and folds the older ones under 「看以前的 N 筆／張」.
+RECENT_SHOWN = 3
+
+
+def older_fold(rows, day, unit):
+    """The rows past the newest RECENT_SHOWN (rows: newest first), the fold's title (a draft)
+    and the first to last day folded; None when nothing is folded. day: a row's date."""
+    older = rows[RECENT_SHOWN:]
+    if not older:
+        return None
+    return {
+        "rows": older,
+        "title": f"看以前的 {len(older)} {unit}",
+        "dates": f"{day(older[-1]):%Y/%m/%d} 到 {day(older[0]):%Y/%m/%d}",
+    }

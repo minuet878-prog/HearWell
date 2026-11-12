@@ -11,7 +11,7 @@ from django.utils import timezone
 from screening import scoring
 from screening.models import Answer, Category, Question, Questionnaire, Submission
 from screening.questionnaires import ioi_ha
-from screening.tests.helpers import action_cards, consented_user
+from screening.tests.helpers import consented_user
 
 
 class IoiHaTests(TestCase):
@@ -357,14 +357,13 @@ class IoiHaTests(TestCase):
         self.assertRegex(
             main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*助聽器使用成效（IOI-HA）'
         )
-        # Count and time are tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
-        for audience, tags in (
-            ("適合已配戴助聽器的人。", ("7 題", "約 2 分鐘")),
-            ("適合 65 歲以上的長輩。", ("10 題", "約 3 分鐘")),
+        # Count and time in one line of muted words since #463.
+        for audience, facts in (
+            ("適合已配戴助聽器的人。", "7 題・約 2 分鐘"),
+            ("適合 65 歲以上的長輩。", "10 題・約 3 分鐘"),
         ):
             self.assertIn(audience, main)
-            for tag in tags:
-                self.assertIn(f'<span class="card-tag">{tag}</span>', main)
+            self.assertIn(f"<span>{facts}</span>", main)
 
     # Spec phase9_ui_refresh_4d_ioi_ha_items.md, acceptance 1-6b.
     # 5 is test_other_users_result_is_404; each _post() makes a new submission with its own page.
@@ -502,23 +501,26 @@ class IoiHaResultRedesignTests(TestCase):
         return ["B" * bool(band) + "*" * ("ioi-dot" in inside) or "-" for band, inside in cells]
 
     def _summary(self, main):
-        # The blue summary box SSQ12-TW and SADL open with (ADR 0007: no level colour).
-        match = re.search(r'<div class="trend-summary[^"]*">(.*?)</div>', main, re.S)
+        # The pale grey block the pages that are not graded open with (#461, ADR 0007).
+        match = re.search(r'<div class="result-summary">(.*?)</div>', main, re.S)
         return match.group(1) if match else ""
 
-    def test_the_opening_conclusion_is_in_the_blue_summary_box(self):
-        # #363 (spec #354): the conclusion reads as the result; the legend stays outside.
+    def test_the_opening_conclusion_is_in_the_grey_block_and_the_basis_is_folded(self):
+        # #363 (spec #354): the conclusion reads as the result. #461 (the #460 mockup R1): what
+        # it is compared with, and the legend, wait behind 看完整說明.
         grouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE))
-        summary = self._summary(grouped)
-        for text in (
+        self.assertEqual(
+            re.sub(r"<[^>]+>", "", self._summary(grouped)).strip(),
             "7 項中，有 2 項比一般使用者低",
+        )
+        fold = grouped[grouped.index('<details class="result-details">') :]
+        for text in (
             "比較對象：一般助聽器使用者中，中間一半的人（常模）",
             "分組依據：2026/10/01 沒戴助聽器時填的 HHIE-S，24 分。",
+            "trend-legend",
         ):
             with self.subTest(text=text):
-                self.assertIn(text, summary)
-        self.assertNotIn("trend-legend", summary)
-        self.assertLess(grouped.index("trend-summary"), grouped.index("trend-legend"))
+                self.assertIn(text, fold)
         Answer.objects.all().delete()
         Submission.objects.all().delete()
         ungrouped = self._main(self._result(self.TWO_BELOW_ONE_ABOVE, grouped=False))
@@ -663,33 +665,34 @@ class IoiHaResultRedesignTests(TestCase):
             return [(int(level), re.sub(r"<[^>]+>", "", text).strip()) for level, text in headings]
 
         names = scoring.IOI_HA_ITEM_NAMES
-        # #304: the closing cards, under the 建議下一步 (IOI-HA means wearing them: 配戴之後).
-        closing = [(2, "了解助聽器選配與補助"), (2, "其他您可以做的")]
+        # #304: the 建議下一步, IOI-HA meaning wearing them, so the 照顧旅程's step 3 at the
+        # route's 配戴之後 (#455); since #461 above 看完整說明, which holds the items.
+        start = [(1, "助聽器使用成效"), (2, "配戴助聽器之後")]
         cases = {
             "grouped, two below": (
                 self.TWO_BELOW_ONE_ABOVE,
                 True,
-                [(1, "助聽器使用成效"), (2, "比一般使用者低的 2 項")]
+                start
+                + [(2, "比一般使用者低的 2 項")]
                 + [(3, names[n]) for n in (1, 6)]
                 + [(2, "其他 5 項")]
                 + [(3, names[n]) for n in (2, 3, 4, 5, 7)]
-                + [(2, "可以帶去跟聽力師討論")]
-                + closing,
+                + [(2, "可以帶去跟聽力師討論")],
             ),
             "grouped, none below": (
                 (3,) * 7,
                 True,
-                [(1, "助聽器使用成效"), (2, "其他 7 項")]
+                start
+                + [(2, "其他 7 項")]
                 + [(3, names[n]) for n in range(1, 8)]
-                + [(2, "可以帶去跟聽力師討論")]
-                + closing,
+                + [(2, "可以帶去跟聽力師討論")],
             ),
             "ungrouped": (
                 self.TWO_BELOW_ONE_ABOVE,
                 False,
                 # Nothing to take to the audiologist without norms: no 「接下來」 (result pages
-                # tidy-up), the closing row of buttons is enough.
-                [(1, "助聽器使用成效")] + [(2, names[n]) for n in range(1, 8)] + closing,
+                # tidy-up), the list rows are enough.
+                start + [(2, names[n]) for n in range(1, 8)],
             ),
         }
         for case, (scores, grouped, expected) in cases.items():
@@ -698,9 +701,9 @@ class IoiHaResultRedesignTests(TestCase):
                 Submission.objects.all().delete()
                 self.assertEqual(outline(self._main(self._result(scores, grouped))), expected)
 
-    def test_next_steps_only_when_grouped_with_the_links_in_the_closing_row(self):
-        # Result pages tidy-up: the report and records links moved to the row every result page
-        # ends with (test_result_pages), so 「接下來」 is only the advice, shown when grouped.
+    def test_next_steps_only_when_grouped_with_the_links_in_the_list_rows(self):
+        # Result pages tidy-up: the report and records links moved to the rows every result page
+        # has (test_result_pages_redesign), so 「接下來」 is only the advice, shown when grouped.
         main = self._main(self._result((3,) * 7, grouped=False))
         self.assertNotIn("ioi-next-title", main)
         self.assertNotIn(IoiHaTests.ADVICE, main)
@@ -710,8 +713,10 @@ class IoiHaResultRedesignTests(TestCase):
         next_steps = self._next(main)
         self.assertIn(IoiHaTests.ADVICE, next_steps)
         self.assertNotIn("<a ", next_steps)
-        self.assertIn(
-            (reverse("health_report"), "看／印聽力報告", "可以印出來或存成 PDF"), action_cards(main)
+        self.assertRegex(
+            main,
+            rf'(?s)<a class="link-card action-card" href="{reverse("health_report")}">.*?'
+            r'<span class="link-card-title">印聽力報告給醫師看</span>',
         )
 
 

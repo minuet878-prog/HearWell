@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import AudiogramChart from "./AudiogramChart.jsx";
+import FoldSummary from "./FoldSummary.jsx";
 import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
 import { newReceiptKey } from "./receipt-key.js";
 
@@ -15,6 +16,11 @@ const STEPS = ["檢查日期", "標右耳", "標左耳", "確認存檔"];
 const STEP_EAR = { 2: "right", 3: "left" };
 const EAR_STEP = { right: 2, left: 3 };
 const EAR_LABEL = { right: "右耳", left: "左耳" };
+const HOW_TO = [
+  "選下面的符號",
+  "在圖上按住不動一下，等數值出現，再上下拖到報告上的位置",
+  "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
+];
 const FORWARD = { 1: "下一步：標右耳", 2: "右耳標完了，換左耳", 3: "左耳標完了，確認存檔" };
 
 // "氣導 n 個、骨導 n 個" for one ear, with no total: a report rarely tests every frequency.
@@ -35,10 +41,10 @@ function levelOptions(conduction) {
 // in sync with the chart.
 function ValueTable({ points, symbols, onSet, onMask }) {
   return (
-    <details className="audiogram-table dropdown-box mb-4">
-      <summary>用數值輸入（鍵盤或螢幕閱讀器）</summary>
+    <details className="audiogram-table result-details mb-4">
+      <FoldSummary icon="table" title="用數值輸入（鍵盤或螢幕閱讀器）" />
       {symbols.map((symbol) => (
-        <fieldset key={symbol.key} className="mt-2">
+        <fieldset key={symbol.key} className="result-details-body mt-2">
           <legend className="text-xl/normal font-bold">{symbol.label}</legend>
           <div className="audiogram-table-grid">
             {frequenciesFor(symbol.conduction).map((frequency) => {
@@ -205,6 +211,22 @@ export default function AudiogramApp({
   const lastPoint = last && points[last];
   const lastLabel = lastPoint && `${SYMBOLS.find((s) => s.ear === lastPoint.ear && s.conduction === lastPoint.conduction).label} ${lastPoint.frequency} Hz`;
 
+  const howTo = (
+    <>
+      <p className="font-bold">報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）</p>
+      {/* N3 numbered circles joined by a line (#454), as a guide chapter's process. */}
+      <ol className="audiogram-howto step-list" role="list">
+        {HOW_TO.map((words, i) => (
+          <li key={words}>
+            <span className="step-list-number">{i + 1}</span>
+            <span className="step-list-body">{words}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mb-0">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
+    </>
+  );
+
   const errorList = errors.length > 0 && (
     <div role="alert" className="alert alert-danger">
       {errors.map((message) => (
@@ -237,15 +259,16 @@ export default function AudiogramApp({
         <>
           {/* Editing (pages tidy-up): said on the ear steps, where the saved marks are in sight. */}
           {audiogramId != null && <p className="tip-box">原本標的點已經放在圖上，照報告移動、刪除或補上，再按存檔。</p>}
-          <section className="mb-4">
-            <p className="font-bold">報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）</p>
-            <ol className="audiogram-howto">
-              <li>選下面的符號</li>
-              <li>在圖上按住不動一下，等數值出現，再上下拖到報告上的位置</li>
-              <li>放開就標好了；標錯就在那個點上按住一下再放開，可以刪除</li>
-            </ol>
-            <p className="text-base mb-0">報告上符號下面有箭頭（無反應），就往下拖出圖外。</p>
-          </section>
+          {/* #465 (the #464 mockup 5A, 5B): shown on a new audiogram's first ear, folded under
+              怎麼標記 on the second ear and while editing, so the chart comes up sooner. */}
+          {audiogramId == null && step === 2 ? (
+            <section className="mb-4">{howTo}</section>
+          ) : (
+            <details className="result-details mb-4">
+              <FoldSummary icon="info" title="怎麼標記" />
+              <div className="result-details-body">{howTo}</div>
+            </details>
+          )}
           <div className="audiogram-symbols" role="group" aria-label="要標記的符號">
             {earSymbols.map((s) => (
               <button
@@ -307,9 +330,8 @@ export default function AudiogramApp({
               <button type="button" className="btn btn-link" onClick={() => goTo(EAR_STEP[side])}>{`改${EAR_LABEL[side]}`}</button>
             </p>
           ))}
-          <ValueTable points={points} symbols={SYMBOLS} onSet={setFromTable} onMask={maskFromTable} />
           {errorList}
-          <button type="button" className={`btn btn-primary btn-lg w-full${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
+          <button type="button" className={`btn btn-primary btn-lg w-full mb-2${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
             {saved ? (
               <>
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
@@ -338,6 +360,12 @@ export default function AudiogramApp({
         <button type="button" className="btn btn-outline-primary btn-lg w-full" onClick={() => goTo(step - 1)}>
           上一步
         </button>
+      )}
+      {/* #465: on the confirm step 存檔 comes first, the folded table after it. */}
+      {step === 4 && (
+        <div className="mt-4">
+          <ValueTable points={points} symbols={SYMBOLS} onSet={setFromTable} onMask={maskFromTable} />
+        </div>
       )}
     </div>
   );

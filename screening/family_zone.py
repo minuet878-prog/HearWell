@@ -459,7 +459,7 @@ HEARING_AID_STAGES = PickExplain(
                     ),
                 ),
             ),
-            links=(("怎麼跟聽損的家人說話", "/family#talk-title"),),
+            links=(("怎麼跟聽損的家人說話", "/family/talk"),),
         ),
         Option(
             label="不想再戴",

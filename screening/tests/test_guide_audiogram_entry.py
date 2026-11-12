@@ -9,8 +9,9 @@ from screening.models import Audiogram, AudiogramPoint
 from screening.tests import test_audiogram
 from screening.tests.helpers import consented_user
 
-# Wording finalised in #220 (E3), written out so a changed template fails.
-GUIDE_LINK = '<a class="link-card action-card" href="/guide">'
+# Wording finalised in #220 (E3), written out so a changed template fails. #465 (the #464
+# mockup 3A, D4): the page's one solid button now.
+GUIDE_LINK = '<a class="btn btn-primary btn-lg w-full mt-4" href="/guide">看我的選配指引</a>'
 
 
 def ear(side, values):
@@ -35,8 +36,9 @@ class GuideAudiogramEntryTests(TestCase):
         # Right 26.25 dB HL, left 10: one side is enough.
         main = self._main([*ear("right", (25, 25, 25, 30)), *ear("left", (10, 10, 10, 10))])
         self.assertEqual(main.count(GUIDE_LINK), 1)
-        next_steps = main[main.index('aria-labelledby="next-title"') :]
-        self.assertIn(GUIDE_LINK, next_steps[: next_steps.index("</section>")])
+        # Right under the chart, before the other ways on.
+        self.assertLess(main.index('id="audiogram-chart"'), main.index(GUIDE_LINK))
+        self.assertLess(main.index(GUIDE_LINK), main.index("看／印聽力報告"))
 
     def test_both_ears_at_or_under_25_have_no_guide_link(self):
         # Right exactly 25 dB HL (not over), left 10.

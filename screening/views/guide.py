@@ -120,7 +120,12 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         context["wearing"] = state.wearing
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
-    context["route"] = _route(state, edit, question)
+    context["route"] = route = _route(state, edit, question)
+    # #467 (I2): the line is blue as far as the 目前這一站, and its entrance is paced by how far
+    # that is, so it takes about the same time wherever the stop is.
+    here = next((i for i, stop in enumerate(route) if stop.here), None)
+    context["route_here"] = here
+    context["route_pace"] = max(here or 0, 1)
     response = render(request, "screening/guide/index.html", context)
     if request.user.is_authenticated:
         # Shows this account's records (GLOSSARY 健康資料頁面): never cached.
@@ -179,6 +184,27 @@ class RouteStop:
     def not_applicable(self):
         return "不適用" in self.marks
 
+    @property
+    def done(self):
+        return "已完成" in self.marks
+
+    @property
+    def other_marks(self):
+        """The marks besides 您在這裡, which the 您在這裡 card says as its label (#467)."""
+        return tuple(mark for mark in self.marks if mark != "您在這裡")
+
+    @property
+    def about(self):
+        return ROUTE_ABOUT[self.slug][0]
+
+    @property
+    def about_link(self):
+        """The wording of the link under what the stop is about; none where 修改這張聽力圖 is
+        already the way on."""
+        if "資料不足" in self.marks:
+            return ""
+        return ROUTE_ABOUT[self.slug][1]
+
 
 # #293: each answer in short, under its stop.
 CERTIFICATE_ANSWERS = {
@@ -190,6 +216,31 @@ FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  #
 FORM_25_ANSWERS = {True: "二十五號表完成了", False: "二十五號表還沒完成"}  # #296
 # Said under the stop for everyone (#294, spec #291 Q12: the notice's date is not asked).
 ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買。",)}
+# #467 (I1, the owner's pick on the step interactions page): what each stop is about, said when
+# its row is opened, and the wording of its link on. Drafts for the owner to review.
+ROUTE_ABOUT = {
+    AUDIOGRAM: (
+        "把醫院給的聽力圖記下來，這裡就能整理要不要找聽力師評估，和有沒有達到身障鑑定門檻。",
+        "記錄醫院的聽力圖",
+    ),
+    "before-you-go": ("第一次去評估選配助聽器前，先看要帶什麼、可以問聽力師哪些問題。", "看這一章"),
+    "assessment": (
+        "要申請助聽器的身障補助，先要有身心障礙證明；這一章說明鑑定門檻、怎麼申請和鑑定醫院。",
+        "看這一章",
+    ),
+    "form-9": (
+        "九號表是買助聽器前要做的評估報告；有身障證明的人，帶著它到公所申請補助。",
+        "看這一章",
+    ),
+    "notice": ("到公所申請後，等主管機關核定；一定要先拿到核定通知再買。", "看申請流程"),
+    "types-and-prices": ("看助聽器有哪些外型、補助多少，和去哪裡買。", "看這一章"),
+    "after-fitting": ("剛開始戴要慢慢適應；也可以用聽伴的問卷記錄配戴的效果。", "看這一章"),
+    "form-25": (
+        "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月後、3 個月內要做使用效益驗證。",
+        "看這一章",
+    ),
+    "payout": ("帶購買憑證、保固書影本（和二十五號表）核銷，受理後 1 個月內撥款。", "看申請流程"),
+}
 # #296 (spec #291 acceptance 14): form 25 comes at least a month after the fitting date.
 FORM_25_GAP = "至少 1 個月"
 
@@ -257,6 +308,12 @@ def _route(state, edit=None, question=None):
             for slug, title, url in stops
         ]
     return [_route_stop(state, *stop, edit, question) for stop in stops]
+
+
+def here_stop(state):
+    """The 目前這一站 as the route shows it (title, url, button), or None without one; the
+    照顧旅程's card takes it (ADR 0044)."""
+    return next((stop for stop in _route(state) if stop.here), None)
 
 
 def _route_stop(state, slug, title, url, edit=None, question=None):
