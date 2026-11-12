@@ -157,12 +157,7 @@ class FamilyAdjustingTests(TestCase):
         start = content.index('<details id="aid-title"')
         section = content[start : content.index("</details>", start)]
         self.assertIn(">陪伴配戴助聽器</span>", section)
-        self.assertEqual(
-            re.findall(
-                r'<li><strong class="tip-point tint-subhead">([^<]+)</strong>([^<]+)</li>', section
-            ),
-            list(test_family_guide.TIPS["aid-title"]),
-        )
+        self.assertEqual(test_family_guide.tips(section), test_family_guide.TIPS["aid-title"])
         self.assertEqual(section.count("<li>"), len(test_family_guide.TIPS["aid-title"]))
         self.assertNotIn(YOU_CAN_DO, content)
 

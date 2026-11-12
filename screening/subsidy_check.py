@@ -121,9 +121,9 @@ SUBSIDY_SOURCES = VISIT_SOURCES  # the same two laws
 SUBSIDY_CHECKED_ON = date(2026, 10, 23)
 
 # Written out with their anchors; the page's tests open each one and look for its anchor.
-_APPLY_FOR_ASSESSMENT = Link("怎麼申請鑑定", "/guide/assessment#apply-title")
-_WITHOUT_CERTIFICATE = Link("沒有身障證明時", "/guide/form-9#without-certificate")
-_WHO_ISSUES_FORM_9 = Link("九號表找誰開", "/guide/form-9#issuer-title")
+_APPLY_FOR_ASSESSMENT = Link("要怎麼申請鑑定？", "/guide/assessment#apply-title")
+_WITHOUT_CERTIFICATE = Link("沒有身障證明怎麼辦？", "/guide/form-9#without-certificate")
+_WHO_ISSUES_FORM_9 = Link("九號表去哪裡開？", "/guide/form-9#issuer-title")
 _DEADLINES = Link("期限試算", "/family/visits/deadlines")
 _FORM_25 = Link("二十五號表", "/guide/form-25")
 

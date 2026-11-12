@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils.html import escape
 
+from screening import subsidy_check
 from screening.family_deadlines import DEADLINE_CHECKED_ON, DEADLINE_SOURCES
 from screening.family_zone import (
     COMMUNICATION_CHECKED_ON,
@@ -20,9 +21,10 @@ from screening.family_zone import (
     VISIT_SOURCES,
 )
 from screening.models import ReportShare, User
+from screening.qa_assistant import content as qa_content
 from screening.subsidy_check import SUBSIDY_CHECKED_ON, SUBSIDY_SOURCES
 from screening.tests.helpers import consented_user
-from screening.tests.test_family_guide import TIPS, TOPICS
+from screening.tests.test_family_guide import TIPS, TOPICS, tips
 from screening.tests.test_family_zone import (
     AID_NOTE,
     ENTRY,
@@ -163,7 +165,8 @@ class FamilyZoneHomeRedesignTests(TestCase):
 
     def test_aid_tips_folded_in_the_last_row_with_the_reviewed_words(self):
         fold = re.search(
-            r'<details id="aid-title" class="result-details" data-jump-box>(.*?)</details>',
+            r'<details id="aid-title" class="result-details" data-jump-box data-guide-fold open>'
+            r"(.*?)</details>",
             self._entries(),
             re.S,
         )
@@ -173,8 +176,7 @@ class FamilyZoneHomeRedesignTests(TestCase):
         self.assertEqual(
             re.findall(r'<span class="[^"]*">([^<]+)</span>', summary), ["陪伴配戴助聽器", AID_NOTE]
         )
-        found = re.findall(r'<li><strong class="tip-point[^"]*">([^<]+)</strong>([^<]+)</li>', body)
-        self.assertEqual(tuple(found), TIPS["aid-title"])
+        self.assertEqual(tips(body), TIPS["aid-title"])
         self.assertNotIn("<details", self.main[: self.main.index('aria-label="專區內容"')])
 
     def test_share_then_the_urgent_box_open_then_the_rest_in_order(self):
@@ -381,3 +383,72 @@ class DeadlinesRedesignTests(TestCase):
         main = _main(self.client.post(self.url, {"fitted_on": "2026-01-31"}).content.decode())
         self.assertEqual(_solid(main), ["列印或存成 PDF"])
         self.assertRegex(main, r'<button class="btn btn-outline-primary[^"]*"[^>]*>試算</button>')
+
+
+class GuideLinkWordsTests(TestCase):
+    """The owner's call (2026-11-12): a link into a guide chapter's part says that part's title,
+    the question #467 gave it, so the words match where the jump lands."""
+
+    # (where the link is, the link's address)
+    LINKS = (
+        ("補助檢核", "/guide/assessment#apply-title"),
+        ("補助檢核", "/guide/form-9#without-certificate"),
+        ("補助檢核", "/guide/form-9#issuer-title"),
+        ("問答小助手", "/guide/assessment#hospitals-title"),
+        ("問答小助手", "/guide/types-and-prices#sound-amplifier-title"),
+    )
+
+    def _title(self, address):
+        path, _, anchor = address.partition("#")
+        content = self.client.get(path).content.decode()
+        return re.search(rf'<h2 id="{anchor}"[^>]*>(.*?)</h2>', content, re.S).group(1)
+
+    def _words(self, where, address):
+        if where == "補助檢核":
+            links = [
+                value
+                for value in vars(subsidy_check).values()
+                if isinstance(value, subsidy_check.Link)
+            ]
+            return next(link.words for link in links if link.url == address)
+        for faq in qa_content.BY_CODE.values():
+            found = re.search(rf'<a href="{re.escape(address)}">「([^」]+)」</a>', faq.answer)
+            if found:
+                return found.group(1)
+        raise AssertionError(f"no answer links to {address}")
+
+    def test_each_link_says_the_title_it_lands_on(self):
+        for where, address in self.LINKS:
+            with self.subTest(where=where, address=address):
+                self.assertEqual(self._words(where, address), _text(self._title(address)))
+
+
+class AidTipPointsToTalkTests(TestCase):
+    """The owner's call (2026-11-12): with the talking tips on a page of their own, 陪伴配戴助聽器's
+    fourth tip names that page and links to it, instead of 「上面的說話方法」."""
+
+    def test_the_fourth_aid_tip_links_to_the_talk_page(self):
+        main = _main(self.client.get(reverse("family_guide")).content.decode())
+        fold = main[main.index('<details id="aid-title"') : main.index("</details>")]
+        self.assertNotIn("上面的說話方法", fold)
+        self.assertIn(
+            '<li><strong class="tip-point tint-subhead">助聽器不是「戴上就跟以前一樣」</strong>'
+            "在吵雜的餐廳、多人聊天時還是可能聽不清楚，"
+            f'<a class="tap-link" href="{reverse("family_talk")}">「怎麼跟他說話」</a>'
+            "裡的方法依然有用。</li>",
+            fold,
+        )
+
+
+class AidFoldOpensOnAJumpTests(TestCase):
+    """The owner's call (2026-11-12): 陪伴配戴助聽器 comes open from the server, so a page without
+    JavaScript shows its tips; guide.js (the chapters' fold script) folds it unless the jump is
+    to it. What the browser does: e2e.main_flow.LearnFamilyQaT469Test."""
+
+    def test_the_aid_fold_is_a_guide_fold_with_the_guide_script(self):
+        content = self.client.get(reverse("family_guide")).content.decode()
+        self.assertRegex(content, r'<details id="aid-title"[^>]*\sdata-guide-fold open>')
+        self.assertRegex(content, r'<script type="module" src="[^"]*/frontend/guide\.js">')
+        self.assertIn('classList.add("guide-folds-pending")', content)
+        # Only that fold: the sources stay folded.
+        self.assertEqual(content.count("data-guide-fold"), 1)

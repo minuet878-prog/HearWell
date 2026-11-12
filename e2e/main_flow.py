@@ -12408,7 +12408,7 @@ class FamilySubsidyCheckTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
             # #469: the groups are bold labels, not section titles.
             expect(self.main().get_by_text("還缺", exact=True)).to_be_visible()
             expect(self.main().get_by_text("才能申請這項補助")).to_be_visible()
-            expect(self.main().get_by_role("link", name="沒有身障證明時")).to_have_attribute(
+            expect(self.main().get_by_role("link", name="沒有身障證明怎麼辦？")).to_have_attribute(
                 "href", "/guide/form-9#without-certificate"
             )
             # Still missing a certificate: the step to apply, with its link, waits for it.
@@ -13673,6 +13673,30 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     self.assertGreater(choices.count(), 0)
                     for choice in choices.all():
                         self.assertEqual(self.style(choice, "borderTopColor"), "rgb(108, 117, 125)")
+
+    # The owner's call (2026-11-12): a jump to 陪伴配戴助聽器, as from the shared report, opens its
+    # fold, as the guide's chapters open the part a jump lands on; opened plainly, it stays
+    # folded; without JavaScript its tips show.
+    def test_a_jump_to_the_aid_row_opens_it(self):
+        share = ReportShare.objects.create(user=consented_user(username="t469_jump"))
+        tip = "剛開始不習慣是正常的"
+
+        def aid():
+            return self.main().locator("details#aid-title")
+
+        with self.saving_artifacts():
+            self.open(f"/shared/{share.token}/report", (390, 844), signed_in=False)
+            self.main().get_by_role("link", name="陪伴配戴助聽器").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/family#aid-title")
+            expect(aid()).to_have_attribute("open", "")
+            expect(aid().get_by_text(tip)).to_be_visible()
+
+            self.open("/family", (390, 844), signed_in=False)
+            expect(aid()).not_to_have_attribute("open", "")
+            expect(aid().get_by_text(tip)).to_be_hidden()
+
+            self.open("/family", (390, 844), signed_in=False, java_script_enabled=False)
+            expect(aid().get_by_text(tip)).to_be_visible()
 
     # The assistant's urgent answer: the whole red box is one link, big enough to tap.
     def test_the_urgent_box_is_one_link(self):

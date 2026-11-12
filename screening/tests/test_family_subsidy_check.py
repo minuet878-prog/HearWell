@@ -138,8 +138,8 @@ class SubsidyRulesTests(SimpleTestCase):
         self.assertEqual(
             _links(result.next_steps[:1]),
             [
-                ("怎麼申請鑑定", "/guide/assessment#apply-title"),
-                ("沒有身障證明時", "/guide/form-9#without-certificate"),
+                ("要怎麼申請鑑定？", "/guide/assessment#apply-title"),
+                ("沒有身障證明怎麼辦？", "/guide/form-9#without-certificate"),
             ],
         )
 
@@ -168,7 +168,9 @@ class SubsidyRulesTests(SimpleTestCase):
             _words(result.missing),
             ["九號表：找聽力師或縣市輔具中心做評估。九號表 3 個月內有效。"],
         )
-        self.assertEqual(_links(result.missing), [("九號表找誰開", "/guide/form-9#issuer-title")])
+        self.assertEqual(
+            _links(result.missing), [("九號表去哪裡開？", "/guide/form-9#issuer-title")]
+        )
 
     def test_waiting_for_the_notice_says_how_long_it_takes(self):
         result = check(_answers(progress=rules.APPLIED))
@@ -480,10 +482,11 @@ class SubsidyCheckPageTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertIn('<p class="part-label">還缺</p>', result)
         self.assertIn("才能申請這項補助", result)
         self.assertRegex(
-            result, r'<a [^>]*href="/guide/assessment#apply-title"[^>]*>怎麼申請鑑定</a>'
+            result, r'<a [^>]*href="/guide/assessment#apply-title"[^>]*>要怎麼申請鑑定？</a>'
         )
         self.assertRegex(
-            result, r'<a [^>]*href="/guide/form-9#without-certificate"[^>]*>沒有身障證明時</a>'
+            result,
+            r'<a [^>]*href="/guide/form-9#without-certificate"[^>]*>沒有身障證明怎麼辦？</a>',
         )
 
     # #469 (the #468 mockup): the sources follow the folded questions.

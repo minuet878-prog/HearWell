@@ -329,7 +329,7 @@ class QaReferralTests(TestCase):
         types = reverse("guide_chapter", args=["types-and-prices"])
         self.assertIn(f'<a href="{types}">「助聽器的種類與價格」</a>', answer)
         hospitals = f"{reverse('guide_chapter', args=['assessment'])}#hospitals-title"
-        self.assertIn(f'<a href="{hospitals}">「找鑑定醫院」</a>', answer)
+        self.assertIn(f'<a href="{hospitals}">「去哪家醫院鑑定？」</a>', answer)
 
     def test_sudden_hearing_loss_says_to_see_a_doctor_soon(self):
         answer = self.answer("sudden-hearing-loss")

@@ -84,7 +84,8 @@ TIPS = {
         ),
         (
             "助聽器不是「戴上就跟以前一樣」",
-            "在吵雜的餐廳、多人聊天時還是可能聽不清楚，上面的說話方法依然有用。",
+            # The owner (2026-11-12, #469): names the talk page, linked, for 「上面的說話方法」.
+            "在吵雜的餐廳、多人聊天時還是可能聽不清楚，「怎麼跟他說話」裡的方法依然有用。",
         ),
         (
             "幫忙注意日常保養",
@@ -96,6 +97,18 @@ TIPS = {
         ),
     ),
 }
+# (point, the rest of its words) of each tip in html; a link in the words counts by its words.
+TIP = re.compile(
+    r'<li>(?:<svg class="care-drawing".*?</svg>\s*)?'
+    r'<strong class="tip-point[^"]*">([^<]+)</strong>((?:[^<]|<a [^>]*>[^<]*</a>)+)</li>',
+    re.S,
+)
+
+
+def tips(html):
+    return tuple((point, re.sub(r"<[^>]+>", "", words)) for point, words in TIP.findall(html))
+
+
 # The shared report's help cards link to these (#194); #469 moved 怎麼跟聽損的家人說話 to its own
 # page (family_talk), where the talk tips and their sources are now.
 ANCHORS = ("aid-title", "urgent-title")
@@ -173,14 +186,8 @@ class FamilyGuideTests(TestCase):
     def test_each_tip_puts_its_point_above_the_rest(self):
         for name, anchor in (("family_talk", "talk-title"), ("family_guide", "aid-title")):
             content = self.client.get(reverse(name)).content.decode()
-            found = re.findall(
-                r'<li>(?:<svg class="care-drawing".*?</svg>\s*)?'
-                r'<strong class="tip-point[^"]*">([^<]+)</strong>([^<]+)</li>',
-                content,
-                re.S,
-            )
             with self.subTest(anchor=anchor):
-                self.assertEqual(tuple(found), TIPS[anchor])
+                self.assertEqual(tips(content), TIPS[anchor])
 
     # 3
     def test_user_without_consent_can_read_it(self):
