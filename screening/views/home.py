@@ -2,64 +2,62 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
+from screening.care_journey import care_journey
 from screening.family_zone import (
     COMMUNICATION_CHECKED_ON,
     COMMUNICATION_SCENARIOS,
     COMMUNICATION_SOURCES,
 )
-from screening.main_flow import NEW_USER_STATE, get_user_state, home_more
 from screening.questionnaires import hhie_s
 from screening.questionnaires.results import score_bar
 from screening.scoring import classify, max_score
 from screening.views.answering import continue_notice
-from screening.views.results import score_gauge
 
 # A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
 HOME_PREVIEW_SCORE = 18
 
 
+def greeting(hour):
+    """#458 D2: by the hour in Taiwan (TIME_ZONE); 晚安 runs past midnight until 5."""
+    if 5 <= hour < 12:
+        return "早安"
+    if 12 <= hour < 18:
+        return "午安"
+    return "晚安"
+
+
 def index(request):
-    preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
-    today = timezone.localdate()
-    user_state = (
-        get_user_state(request.user, today=today)
-        if request.user.is_authenticated
-        else NEW_USER_STATE
-    )
-    last = user_state.last_result
-    # Welcome back option D (ADR 0026): a life-impact result's gauge and top score.
-    last_gauge = last_max_score = None
-    if last and last.is_life_impact:
-        questionnaire = last.submission.questionnaire
-        result = last.submission.result
-        last_gauge = score_gauge(
-            score_bar(questionnaire.definition, result.total, result.level["level"])
+    user = request.user
+    if not user.is_authenticated:
+        preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
+        return render(
+            request,
+            "screening/index.html",
+            {
+                "preview_score": HOME_PREVIEW_SCORE,
+                "preview_color": preview["color"],
+                "preview_text": preview["text"],
+                "preview_max_score": max_score(hhie_s.CODE),
+                "preview_score_bar": score_bar(
+                    hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
+                ),
+            },
         )
-        last_max_score = max_score(questionnaire.code)
-    # #261: the returning user's 建議下一步 and the other cards; a new user's home is unchanged.
-    next_step, more_groups = (None, None) if user_state.is_new else home_more(request.user, today)
+    # #459 (ADR 0042): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
+    # 空狀態首頁.
+    has_records = user.submissions.defined().exists() or user.audiograms.exists()
+    journey = care_journey(user, timezone.localdate()) if has_records else None
     response = render(
         request,
         "screening/index.html",
         {
-            "preview_score": HOME_PREVIEW_SCORE,
-            "preview_color": preview["color"],
-            "preview_text": preview["text"],
-            "preview_max_score": max_score(hhie_s.CODE),
-            "preview_score_bar": score_bar(hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]),
-            "user_state": user_state,
-            "last_gauge": last_gauge,
-            "last_max_score": last_max_score,
-            "next_step": next_step,
-            "more_groups": more_groups,
-            "continue_notice": continue_notice(request.user)
-            if request.user.is_authenticated
-            else None,
+            "journey": journey,
+            "greeting": greeting(timezone.localtime().hour),
+            "continue_notice": continue_notice(user),
         },
     )
-    if request.user.is_authenticated:
-        # The home page shows this account's own records (ticket #159): never cached.
-        add_never_cache_headers(response)
+    # The home page shows this account's own records (ticket #159): never cached.
+    add_never_cache_headers(response)
     return response
 
 

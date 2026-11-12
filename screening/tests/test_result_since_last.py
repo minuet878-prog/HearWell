@@ -36,8 +36,8 @@ class SinceLastTests(TestCase):
         # Fresh from the database: the result and its scores are cached (AGENTS.md).
         return Submission.objects.get(pk=submission.pk)
 
-    def hhie_s(self, total, day):
-        return self.record("hhie-s", hhie_s_scores(total), day, wearing_hearing_aid=False)
+    def hhie_s(self, total, day, wearing=False):
+        return self.record("hhie-s", hhie_s_scores(total), day, wearing_hearing_aid=wearing)
 
     def test_a_lower_score_says_the_last_day_and_score_and_how_many_fewer(self):
         # Acceptance 23: numbers only, no 進步 or 退步.
@@ -109,8 +109,8 @@ class SinceLastTests(TestCase):
 
     def test_thi_is_compared_too(self):
         # THI is graded (five levels): 48 is 中度障礙, 42 is 中度障礙 as well (39-56).
-        self.record("thi", [2] * 24 + [0], (2026, 8, 10))
-        latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12))
+        self.record("thi", [2] * 24 + [0], (2026, 8, 10), wearing_hearing_aid=False)
+        latest = self.record("thi", [2] * 21 + [0] * 4, (2026, 11, 12), wearing_hearing_aid=False)
         self.assertEqual(
             latest.result.since_last,
             {"text": "上次 2026/08/10 是 48 分，這次少 6 分", "level_change": None},
@@ -127,8 +127,38 @@ class SinceLastTests(TestCase):
 
     def test_a_record_that_cannot_be_graded_has_no_comparison(self):
         # 無法判讀 (an out-of-range total) may be a data error: no numbers are compared with it.
-        self.record("hhie-s", [4] * 10, (2026, 3, 26))
-        out_of_range = self.record("hhie-s", [10] * 10, (2026, 5, 20))
+        self.record("hhie-s", [4] * 10, (2026, 3, 26), wearing_hearing_aid=False)
+        out_of_range = self.record("hhie-s", [10] * 10, (2026, 5, 20), wearing_hearing_aid=False)
         latest = self.hhie_s(14, (2026, 11, 12))
         self.assertIsNone(out_of_range.result.since_last)
+        self.assertIsNone(latest.result.since_last)
+
+    # The owner on #461 (2026-11-12): only against the last record worn the same way, as
+    # 我的紀錄's 「和上一次比」; worn against not worn is the wearing comparison's.
+    def test_a_record_worn_otherwise_is_not_compared(self):
+        self.hhie_s(18, (2026, 3, 26), wearing=False)
+        aided = self.hhie_s(8, (2026, 6, 1), wearing=True)
+        self.assertIsNone(aided.result.since_last)
+
+    def test_records_worn_otherwise_in_between_are_skipped(self):
+        self.hhie_s(18, (2026, 3, 26), wearing=False)
+        self.hhie_s(8, (2026, 6, 1), wearing=True)
+        self.hhie_s(20, (2026, 8, 1), wearing=False)
+        latest = self.hhie_s(6, (2026, 11, 12), wearing=True)
+        self.assertEqual(latest.result.since_last["text"], "上次 2026/06/01 是 8 分，這次少 2 分")
+
+    def test_an_old_record_is_compared_with_the_one_before_it_worn_the_same_way(self):
+        self.hhie_s(12, (2026, 1, 5), wearing=True)
+        self.hhie_s(18, (2026, 3, 26), wearing=False)
+        old = self.hhie_s(8, (2026, 6, 1), wearing=True)
+        self.hhie_s(6, (2026, 11, 12), wearing=True)
+        self.assertEqual(old.result.since_last["text"], "上次 2026/01/05 是 12 分，這次少 4 分")
+
+    def test_without_a_hearing_aid_status_there_is_no_comparison(self):
+        # As 我的紀錄 (Submission.previous_same_wearing): a record from before the question has
+        # no comparison, and is never the one compared with.
+        self.hhie_s(18, (2026, 3, 26), wearing=None)
+        unknown = self.hhie_s(14, (2026, 6, 1), wearing=None)
+        self.assertIsNone(unknown.result.since_last)
+        latest = self.hhie_s(10, (2026, 11, 12), wearing=False)
         self.assertIsNone(latest.result.since_last)

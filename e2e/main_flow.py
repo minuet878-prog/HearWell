@@ -1376,7 +1376,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.step3_retest()
             self.assert_fits_a_phone_at_double_text_size("result")
             self.page.goto(self.live_server_url)
-            expect(self.main()).to_contain_text("下次建議")
+            expect(self.main().locator(".journey-tiles")).to_contain_text("還有")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_screening_tab_shows_the_catalogue_with_last_dates(self):
@@ -1466,14 +1466,17 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(self.main().get_by_role("region", name="和上一次比")).to_have_count(0)
 
     def step2_home_shows_the_reminder(self):
+        # #459: no audiogram, so recording one is the 現在這一步 and the due retest is on top.
         self.page.goto(self.live_server_url)
-        expect(self.main().get_by_role("heading", name="歡迎回來")).to_be_visible()
-        expect(self.main()).to_contain_text(f"上次是 {self.old_date} 做的")
-        expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 40 分")
-        expect(self.main()).to_contain_text(self.REMINDER)
+        expect(self.main().get_by_role("heading", name="照顧旅程")).to_be_visible()
+        tiles = self.main().locator(".journey-tiles")
+        expect(tiles).to_contain_text("40 分")
+        expect(tiles).to_contain_text("已到期")
+        expect(self.main().locator(".journey-steps")).to_contain_text(self.old_date)
 
     def step3_retest(self):
-        self.main().get_by_role("link", name=self.RETEST_BUTTON, exact=True).click()
+        # The home page's 再做一次 on top (#459), my records' due reminder its own.
+        self.main().get_by_role("link", name=re.compile(r"^再做一次")).first.click()
         expect(self.page).to_have_url(re.compile(rf"/questionnaire/{self.hhie_s.pk}$"))
         self.answer("沒戴")
         self.next()
@@ -1524,10 +1527,11 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         # #461: the result page's 回首頁 went; the tab bar has 首頁.
         self.page.goto(f"{self.live_server_url}/")
         today = datetime.now(self.TAIPEI).date()
-        expect(self.main()).to_contain_text(f"上次是 {today:%Y/%m/%d} 做的")
-        expect(self.main().locator(".result-banner")).to_contain_text("HHIE-S 總分 20 分")
-        expect(self.main()).to_contain_text(f"下次建議 {six_months_after(today):%Y/%m/%d} 再做")
-        expect(self.main()).not_to_contain_text(self.REMINDER)
+        tiles = self.main().locator(".journey-tiles")
+        expect(tiles).to_contain_text("20 分")
+        expect(tiles).to_contain_text(f"{six_months_after(today):%Y/%m/%d}")
+        expect(tiles).not_to_contain_text("已到期")
+        expect(self.main().locator(".journey-steps")).to_contain_text(f"{today:%Y/%m/%d}")
 
     def step6_history_compares_with_last_time(self):
         today = f"{datetime.now(self.TAIPEI):%Y/%m/%d}"
@@ -3087,16 +3091,16 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
 
-    # #231: home card -> my guide (an audiogram reaching the threshold) -> the assessment
-    # chapter with a county chosen -> the form 9 chapter. #261: reaching the threshold makes
-    # the guide the 建議您下一步, so its button is the way in.
+    # #231: home -> my guide (an audiogram reaching the threshold) -> the assessment chapter
+    # with a county chosen -> the form 9 chapter. #459: the 照顧旅程's done step 2 opens (I1)
+    # to the way into my guide.
     def test_route_from_home_card_to_form_9(self):
         self.open(390)
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            more = self.page.get_by_role("region", name="您還可以")
-            expect(more.get_by_role("heading", level=3).first).to_have_text("了解助聽器選配與補助")
-            more.get_by_role("link", name="看我的選配指引").click()
+            journey = self.page.get_by_role("region", name="照顧旅程")
+            journey.locator(".journey-about summary").filter(has_text="記錄聽力圖").click()
+            journey.get_by_role("link", name="看我的選配指引").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
@@ -3577,15 +3581,16 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         self.assertAlmostEqual(line["x"], scale["x"], delta=0.5)
 
     # #261 acceptance 8: the home page's 建議您下一步 with its longest 「因為」 sentences, 390px
-    # wide at 200% text. The setUp user has read nothing, so it is 去找聽力師之前; read, the
-    # assessment (spec #291's reasons); within 25 and missing a frequency, nothing can tell.
+    # wide at 200% text; since #459 the 現在這一步's card. The setUp user has read nothing, so
+    # it is 去找聽力師之前; read, the assessment (spec #291's reasons); within 25 and missing a
+    # frequency, nothing can tell.
     def test_home_next_step_fits_a_phone_at_double_text_size(self):
         self.open(390, 640)
         points = AudiogramPoint.objects.filter(audiogram__user__username="guide_e2e")
         with self.saving_artifacts():
             for state, button in (
-                ("before you go", "看我的選配指引"),
-                ("assessment", "看我的選配指引"),
+                ("before you go", "去之前要準備什麼"),
+                ("assessment", "找鑑定醫院"),
                 ("too little data", "修改這張聽力圖"),
             ):
                 with self.subTest(state=state):
@@ -3596,8 +3601,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         points.update(db=20)
                         points.filter(ear="left", frequency=4000).delete()
                     self.page.goto(f"{self.live_server_url}/")
-                    more = self.page.get_by_role("region", name="您還可以")
-                    expect(more.get_by_role("link", name=button)).to_be_visible()
+                    card = self.main().locator(".journey-card")
+                    expect(card.get_by_role("link", name=button)).to_be_visible()
                     self.page.wait_for_load_state("load")
                     self.page.locator("html").evaluate(
                         "html => html.style.setProperty('font-size', '225%', 'important')"
@@ -3605,13 +3610,13 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 390, state)
 
-    # #261 self-review: the action cards (#256) shared by the home page's 您還可以 and the result
-    # pages, 320px wide at 200% text, keep room for four characters a line in their titles.
+    # #261 self-review: the action cards (#256) on the result pages, 320px wide at 200% text,
+    # keep room for four characters a line in their titles. The home page has none since #459.
     def test_action_card_titles_keep_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
         submission = Submission.objects.get(user__username="guide_e2e")
         with self.saving_artifacts():
-            for path in ("/", f"/submission/{submission.pk}"):
+            for path in (f"/submission/{submission.pk}",):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
                     titles = self.main().locator(".action-card .link-card-title")
@@ -3625,14 +3630,15 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
     # #261 self-review: the 建議您下一步 box at the same size; a reason ending in 「（45%）。」
     # once ran past its white box. This user is at 去找聽力師之前 (spec #291's reason). #461:
-    # the result page's box has no reason any more (the #460 mockup R1).
+    # the result page's box has no reason any more (the #460 mockup R1); #459: the home page
+    # says it on the 現在這一步's card.
     def test_next_step_reason_keeps_four_characters_a_line_at_double_text_size(self):
         self.open(320, 640)
         with self.saving_artifacts():
             for path in ("/",):
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
-                    reason = self.main().locator(".next-step-because")
+                    reason = self.main().locator(".journey-card-because")
                     expect(reason).to_contain_text(
                         "第一次去找聽力師前先準備好，看診時比較不會漏問。"
                     )
@@ -3926,10 +3932,11 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 }
             ]
         )
-        words = "我是家人：怎麼陪伴聽損的家人"
+        # #459: the 空狀態首頁's text link (mockup #458 A).
+        words = "我是家人"
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/")
-            card = self.main().get_by_role("link", name=words)
+            card = self.main().get_by_role("link", name=words, exact=True)
             self.assertGreaterEqual(card.bounding_box()["height"], 44)
             root = self.page.evaluate(
                 "parseFloat(getComputedStyle(document.documentElement).fontSize)"
@@ -4330,18 +4337,11 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
 
 class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
-    """Ticket #160 acceptance 2 and 3: the home page's "您還可以" in and out of the app."""
+    """Ticket #160 acceptance 2 and 3: what was the home page's "您還可以", since #459 a row of
+    text links under the 照顧旅程 (spec #453 acceptance 18), in and out of the app."""
 
     fixtures = ("questions_fixture.json",)
-    # #228 put the hearing-aid guide card before the one the app hides. #261: this user has no
-    # audiogram, so recording one is the 建議您下一步, not a card, and the cards are grouped.
-    CARDS = (
-        "印聽力報告給醫師看",
-        "分享報告給家人",
-        "了解助聽器選配與補助",
-        "加到手機主畫面",
-    )
-    GROUPS = ("給別人看", "了解", "方便使用")
+    LINKS = ("印聽力報告", "分享給家人", "加到手機主畫面")
 
     @classmethod
     def setUpClass(cls):
@@ -4383,19 +4383,14 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.page.goto(f"{self.live_server_url}/")
-        return self.page.get_by_role("region", name="您還可以").get_by_role("link")
-
-    def group_titles(self):
-        return self.page.get_by_role("region", name="您還可以").locator(".more-group-title")
+        return self.page.locator("main .home-links").get_by_role("link")
 
     def test_home_screen_app_hides_add_to_home(self):
-        cards = self.open_home(standalone=True)
+        links = self.open_home(standalone=True)
         with self.saving_artifacts():
-            # Role locators skip hidden elements, so the last card is gone. #261: its whole
-            # group goes, the 方便使用 title too.
-            expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS[:-1]))
+            # Role locators skip hidden elements, so the last link is gone.
+            expect(links).to_have_text(list(self.LINKS[:-1]))
             expect(self.page.locator("main [data-hide-in-app]")).to_be_hidden()
-            expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS[:-1]))
 
     # #195: the account page's "加到手機主畫面" row hides in the app the same way.
     def test_home_screen_app_hides_add_to_home_on_account_settings(self):
@@ -4410,10 +4405,9 @@ class MoreYouCanDoTest(SavesFailureArtifacts, StaticLiveServerTestCase):
     def test_browser_tab_and_no_javascript_show_every_card(self):
         for standalone, javascript in ((False, True), (True, False)):
             with self.subTest(standalone=standalone, javascript=javascript):
-                cards = self.open_home(standalone=standalone, javascript=javascript)
+                links = self.open_home(standalone=standalone, javascript=javascript)
                 with self.saving_artifacts():
-                    expect(cards.locator(".link-card-title")).to_have_text(list(self.CARDS))
-                    expect(self.group_titles().filter(visible=True)).to_have_text(list(self.GROUPS))
+                    expect(links).to_have_text(list(self.LINKS))
 
 
 class GettingOnTheHomeScreenTest(SavesFailureArtifacts, StaticLiveServerTestCase):
@@ -5702,40 +5696,71 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
                     self.page.goto(f"{self.live_server_url}{path}")
                     self.assert_wave_plays_and_settles(self.page)
 
-    # Welcome back option D (ADR 0026): the elder sways, its sound lights up, the gauge draws and
-    # the needle swings to the score, each once inside ADR 0006's four seconds; then the needle
-    # rests at the score. Reduced motion: nothing moves and the needle is already there.
-    WELCOME_ANIMATIONS = """() => document.getAnimations()
-        .filter(a => a.effect.target.closest('.welcome'))
+    # #459 I2 (ADR 0028's 2026-11-12 exception, replacing ADR 0026's welcome back): the
+    # 照顧旅程's ticks, blue line and ring play once in a tab, inside ADR 0006's four seconds,
+    # then rest at the end; a later visit in the tab and reduced motion show the end at once.
+    JOURNEY_ANIMATIONS = """() => document.getAnimations()
+        .filter(a => a.effect.target.closest('.journey-steps'))
         .map(a => ({ name: a.animationName, state: a.playState,
                      iterations: a.effect.getComputedTiming().iterations,
                      end: a.effect.getComputedTiming().endTime }))"""
+    JOURNEY_END = """() => {
+        const tick = document.querySelector('.journey-step.is-done .journey-dot path');
+        const line = getComputedStyle(document.querySelector('.journey-step.is-walked'), '::after');
+        const grown = ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(line.transform);
+        return [getComputedStyle(tick).strokeDashoffset, line.backgroundColor, grown];
+    }"""
 
-    def test_welcome_back_plays_once_and_rests_at_the_score(self):
-        self.submission(self.hhie_s, (2,) * 10)  # 20 of 40: the needle at 90 degrees
+    def test_care_journey_plays_once_a_tab_and_rests_at_the_end(self):
+        self.submission(self.hhie_s, (2,) * 10)  # step 1 done, step 2 the 現在這一步
+        end = ["0px", "rgb(31, 78, 140)", True]
         for motion in (True, False):
             with self.subTest(motion=motion):
-                self.open(motion=motion)
+                self.open(motion=motion, width=390)
                 with self.saving_artifacts():
                     self.page.goto(f"{self.live_server_url}/")
-                    needle = self.page.locator(".score-gauge-needle")
-                    expect(needle).to_be_attached()
-                    animations = self.page.evaluate(self.WELCOME_ANIMATIONS)
+                    expect(self.page.locator(".journey-step.is-walked")).to_have_count(1)
+                    animations = self.page.evaluate(self.JOURNEY_ANIMATIONS)
                     if not motion:
                         self.assertEqual(animations, [])
                     else:
                         self.assertEqual(
                             {a["name"] for a in animations},
-                            {"home-sway", "welcome-sound", "gauge-draw", "gauge-needle"},
+                            {"gauge-draw", "journey-line", "journey-ring"},
                         )
                         for animation in animations:
                             self.assertEqual(animation["iterations"], 1, animation)
                             self.assertLessEqual(animation["end"], 4000, animation)
-                        self.page.wait_for_timeout(4200)
-                        running = self.page.evaluate(self.WELCOME_ANIMATIONS)
+                        self.page.wait_for_timeout(2500)
+                        running = self.page.evaluate(self.JOURNEY_ANIMATIONS)
                         self.assertEqual([a for a in running if a["state"] == "running"], [])
-                    # rotate(90deg) as a matrix: cos 90 = 0, sin 90 = 1.
-                    self.assertEqual(self.style(needle, "transform"), "matrix(0, 1, -1, 0, 0, 0)")
+                    self.assertEqual(self.page.evaluate(self.JOURNEY_END), end)
+                    # Later in the same tab: the end at once.
+                    self.page.goto(f"{self.live_server_url}/")
+                    expect(self.page.locator(".journey-steps")).to_be_visible()
+                    self.assertEqual(self.page.evaluate(self.JOURNEY_ANIMATIONS), [])
+                    self.assertEqual(self.page.evaluate(self.JOURNEY_END), end)
+
+    # #459 I1: a step opens in place, one at a time; the 現在這一步's card stays as it is.
+    def test_care_journey_steps_open_one_at_a_time(self):
+        self.submission(self.hhie_s, (2,) * 10)
+        self.open(width=390)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            rows = self.page.locator(".journey-about > summary")
+            expect(rows).to_have_count(4)
+            self.assertGreaterEqual(rows.first.bounding_box()["height"], 44)
+            rows.nth(0).click()
+            expect(self.page.locator(".journey-about").nth(0)).to_contain_text("看上次結果")
+            expect(self.page.get_by_role("link", name="看上次結果")).to_be_visible()
+            rows.nth(2).click()
+            expect(self.page.get_by_role("link", name="看上次結果")).to_be_hidden()
+            expect(self.page.locator(".journey-about[open]")).to_have_count(1)
+            expect(self.page.locator(".journey-about").nth(2)).to_contain_text(
+                "買了助聽器、戴滿 3 個月後"
+            )
+            expect(self.page.locator(".journey-card")).to_be_visible()
+            expect(self.page.get_by_role("main").locator(".btn-primary")).to_have_count(1)
 
     def test_reduced_motion_keeps_the_header_still(self):
         self.open()  # reduced motion
@@ -6857,7 +6882,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     )
     # #316: what is not white inside a pale blue box (119's line, 建議您下一步's icon tile and
     # reason) is this deeper light blue, so it still stands out.
-    BLUE_DEEP = "rgb(214, 226, 242)"
     BLUE_SOFT = "rgb(238, 243, 250)"
     # Every colour of text in an element: its own and its descendants' that hold words directly.
     # Given true, text on a colour of its own inside the element (a filled button, a level badge,
@@ -7286,32 +7310,27 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_flat(self.main().get_by_role("figure"))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
 
-    # #299: 歡迎回來 is flat with its two buttons as before; 您還可以's cards are list rows
-    # (ADR 0041). Option D (ADR 0026): inside it, a blue greeting band.
-    def test_returning_home_welcome_is_flat_and_more_cards_are_list_rows(self):
+    # #459 (ADR 0042): the 現在這一步's card is pale blue, flat and not a link, its one button
+    # solid; 上次結果 is the tile to tap, in its level's pale colour with a blue arrow; what
+    # 您還可以 offered is a row of text links that look like links.
+    def test_journey_home_card_tiles_and_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.returning_home())
-            welcome = (
-                self.main()
-                .locator("section")
-                .filter(has=self.page.get_by_role("heading", name="歡迎回來"))
-            )
-            self.assert_flat(welcome)
-            band = welcome.locator(".welcome-band")
-            # The brand blue under the two faint rings (ADR 0041: no gradient).
-            self.assertEqual(self.style(band, "backgroundColor"), self.PRIMARY)
-            self.assertEqual(self.style(band, "boxShadow"), "none")
-            records = welcome.get_by_role("link", name="看我的紀錄與趨勢", exact=True)
-            self.assertEqual(self.style(records, "backgroundColor"), self.PRIMARY)
-            again = welcome.get_by_role("link", name="再做一次", exact=True)
-            self.assertEqual(self.style(again, "borderTopColor"), self.PRIMARY)
-            # ADR 0026: side by side on a wide screen.
-            self.assertEqual(records.bounding_box()["y"], again.bounding_box()["y"])
-            cards = self.page.get_by_role("region", name="您還可以").locator("a.link-card")
-            self.assertGreater(cards.count(), 0)
-            for card in cards.all():
-                with self.subTest(card=card.inner_text()):
-                    self.assert_list_row(card)
+            card = self.main().locator(".journey-card")
+            self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
+            self.assertEqual(self.style(card, "boxShadow"), "none")
+            self.assertEqual(self.style(card.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+            tile = self.main().locator("a.journey-tile")
+            self.assertEqual(self.style(tile, "boxShadow"), "none")
+            arrow = tile.locator(".journey-tile-arrow")
+            self.assertEqual(self.style(arrow, "color"), self.PRIMARY)
+            links = self.main().locator(".home-links").get_by_role("link")
+            self.assertEqual(links.count(), 3)
+            for link in links.all():
+                with self.subTest(link=link.inner_text()):
+                    self.assertEqual(self.style(link, "color"), self.PRIMARY)
+                    self.assertEqual(self.style(link, "textDecorationLine"), "underline")
+                    self.assertGreaterEqual(link.bounding_box()["height"], 44)
 
     # #309: the advice's links still look like links and the cards below are list rows. Since
     # #461 (the #460 mockup R1) step 1 is the sentence under the level and the others are behind
@@ -7342,39 +7361,17 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_unlined(self.main().get_by_text(THI_SUPPORT_MESSAGE, exact=True))
         self.assertGreater(links_seen, 0)
 
-    # #316: the 建議您下一步 box (returning home and every result page) has no white left: its icon
-    # tile and its 因為 line are a light blue deeper than the box; only its button is tappable.
+    # #316: the 建議您下一步 box on every result page (the home page's since #459 is the 照顧旅程,
+    # test_journey_home_card_tiles_and_links); #461 checks the box itself.
     def test_next_step_box_is_blue_with_only_its_button_to_tap(self):
         with self.saving_artifacts():
             for name, signed_in, path in (
-                *WHITE_CARD_PAGES_HOME_RESULT[1:],
+                *WHITE_CARD_PAGES_HOME_RESULT[2:],
                 ("SADL result", True, lambda test: test.result("sadl", 4)),
             ):
                 with self.subTest(page=name):
                     self.visit(signed_in, path)
-                    if name.endswith(" result"):
-                        self.assert_result_next_step_box()
-                        continue
-                    box = self.main().locator(".next-step")
-                    self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
-                    for part in (".action-card-icon", ".next-step-because"):
-                        self.assertEqual(
-                            self.style(box.locator(part), "backgroundColor"), self.BLUE_DEEP
-                        )
-                    because = box.get_by_text("因為：", exact=False)
-                    for colour in set(because.evaluate(self.TEXT_COLOURS)):
-                        with self.subTest(colour=colour):
-                            self.assertGreaterEqual(
-                                StyleInBrowserTest.lowest_contrast(colour, self.BLUE_DEEP), 4.5
-                            )
-                    stroke = self.style(box.locator(".action-card-icon svg"), "stroke")
-                    self.assertGreaterEqual(
-                        StyleInBrowserTest.lowest_contrast(stroke, self.BLUE_DEEP), 4.5
-                    )
-                    self.assertEqual(box.get_by_role("link").count(), 1)
-                    self.assertEqual(
-                        self.style(box.get_by_role("link"), "backgroundColor"), self.PRIMARY
-                    )
+                    self.assert_result_next_step_box()
 
     def assert_result_next_step_box(self):
         """#461 (the #460 mockup R1): pale blue, no frame, no reason, only its solid button to
@@ -7390,15 +7387,6 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #299: no sideways scrolling or cut text on a phone at 200% text, on both homes and every
     # questionnaire's result page.
-    # ADR 0026: at double text size on a phone the elder gives way to the title.
-    def test_welcome_back_elder_gives_way_at_double_text_size(self):
-        with self.saving_artifacts():
-            self.visit(True, lambda test: test.returning_home(), width=320)
-            elder = self.main().locator(".welcome-band .home-illustration")
-            expect(elder).to_be_visible()
-            self.assert_fits_uncut("home, returning")
-            expect(elder).to_be_hidden()
-
     def test_home_and_result_pages_fit_a_phone_at_double_text_size(self):
         results = tuple(page for page in WHITE_CARD_PAGES_RECORDS if page[0].endswith(" result"))
         with self.saving_artifacts():
@@ -8449,10 +8437,8 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     # phone width: calc(1.275rem + 0.3vw).
     def test_card_titles_and_questions_keep_their_size(self):
         with self.saving_artifacts():
-            for name, path in (
-                ("returning home", lambda test: test.returning_home()),
-                ("HHIE-S result", lambda test: test.result("hhie-s", 2)),
-            ):
+            # The home page has no tappable cards since #459 (the 照顧旅程).
+            for name, path in (("HHIE-S result", lambda test: test.result("hhie-s", 2)),):
                 with self.subTest(page=name):
                     self.visit(True, path, width=390)
                     titles = self.main().locator("a.link-card .link-card-title")
@@ -9030,17 +9016,21 @@ class ScrollHelpersOnAPhone(OnAPhone):
 
 class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
     """Spec #338 (ticket #341, ADR 0029): entrance animations play once they are in view; on a
-    phone, signed in as a returning user (the home's gauge) whose guide has a 目前這一站. Having
-    read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); HHIE-S at 20 of
-    40 puts the home gauge's needle at 90 degrees."""
+    phone, signed in as a returning user (the home's 照顧旅程, #459) whose guide has a 目前這一站.
+    Having read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); with
+    HHIE-S and the audiogram, the journey's steps 1 and 2 are done and step 3 is current."""
 
-    # Each animation's name and state, by what it moves: route-ring on the 目前這一站, gauge-draw
-    # and gauge-needle on the home's gauge, wave-jump and wave-sweep on the header.
+    # Each animation's name and state, by what it moves: route-ring on the 目前這一站; on the
+    # home's journey gauge-draw on the ticks, journey-line and journey-ring; wave-jump and
+    # wave-sweep on the header.
     ANIMATIONS = """(within) => document.getAnimations()
         .filter(a => a.effect.target.closest(within))
         .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
     STOP = '[aria-current="step"]'
-    GAUGE = ".score-gauge"
+    JOURNEY = ".journey-steps"
+    # The journey waits for its 現在這一步 (#459), and its first tick shows the end.
+    JOURNEY_HERE = '.journey-step[aria-current="step"]'
+    TICK = ".journey-step.is-done .journey-dot path"
     WAVE = ".site-wave"
 
     @classmethod
@@ -9135,21 +9125,20 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.assertEqual(self.animations(self.STOP), ended)
 
     # #338 acceptance 10 (this ticket's part): with reduced motion the route's ring and the
-    # home's gauge are their end look from the start, nothing playing or waiting to play.
+    # home's journey are their end look from the start, nothing playing or waiting to play.
     def test_reduced_motion_shows_the_end_at_once(self):
         self.open("/guide", motion="reduce")
         with self.saving_artifacts():
             expect(self.main().locator(self.STOP)).to_have_count(1)
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
             self.page.goto(f"{self.live_server_url}/")
-            needle = self.page.locator(".score-gauge-needle")
-            expect(needle).to_be_attached()
+            expect(self.page.locator(self.JOURNEY)).to_be_attached()
             self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
-            # At the score, 90 degrees: rotate(90deg) as a matrix.
-            expect(needle).to_have_css("transform", "matrix(0, 1, -1, 0, 0, 0)")
+            expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
 
     # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
-    # the ring below it and the gauge play on arrival, and the header wave on every page.
+    # the ring below it plays on arrival, and the header wave on every page. The home's journey
+    # plays only on a tab's first visit, which takes JavaScript to know (#459): it shows the end.
     def test_without_javascript_animations_play_on_arrival(self):
         self.open("/guide", javascript=False)
         with self.saving_artifacts():
@@ -9157,47 +9146,47 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.assert_plays_without_waiting(self.STOP)
             self.assert_plays_without_waiting(self.WAVE)
             self.page.goto(f"{self.live_server_url}/")
-            self.assert_plays_without_waiting(self.GAUGE)
+            self.assertEqual(self.animations(self.JOURNEY), [])
+            expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
             self.assert_plays_without_waiting(self.WAVE)
 
-    # #338 acceptance 12: at 200% text on a phone the returning user's gauge is below the screen
-    # and waits; the header wave, on screen, plays at once (on the tab's first page only).
-    def test_double_text_gauge_waits_and_header_wave_plays_at_once(self):
+    # #338 acceptance 12: at 200% text on a phone the returning user's journey, its 現在這一步
+    # below the screen, waits; the header wave, on screen, plays at once (on the tab's first
+    # page only).
+    def test_double_text_journey_waits_and_header_wave_plays_at_once(self):
         self.open("/", width=320, double=True)
         with self.saving_artifacts():
-            gauge = self.page.locator(self.GAUGE)
+            here = self.page.locator(self.JOURNEY_HERE)
             tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
-            box = gauge.bounding_box()
+            box = here.bounding_box()
             self.assertGreater(box["y"] + box["height"], tab_bar["y"])
+            self.assertEqual(self.states(self.JOURNEY), {"paused"})
+            # At 200% the steps stack and the joining line goes (as on the 選配路線).
             self.assertEqual(
-                {a["name"]: a["state"] for a in self.animations(self.GAUGE)},
-                {"gauge-draw": "paused", "gauge-needle": "paused"},
+                {a["name"] for a in self.animations(self.JOURNEY)},
+                {"gauge-draw", "journey-ring"},
             )
             self.assert_plays_without_waiting(self.WAVE)
-            # Not yet drawn: the needle still at 0, rotate(0deg) as a matrix.
-            expect(gauge.locator(".score-gauge-needle")).to_have_css(
-                "transform", "matrix(1, 0, 0, 1, 0, 0)"
-            )
+            # Not yet drawn: the tick still hidden.
+            expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "1px")
 
-            self.bring_into_view(self.GAUGE)
-            self.wait_until(self.GAUGE, "finished")
-            expect(gauge.locator(".score-gauge-needle")).to_have_css(
-                "transform", "matrix(0, 1, -1, 0, 0, 0)"
-            )
+            self.bring_into_view(self.JOURNEY_HERE)
+            self.wait_until(self.JOURNEY, "finished")
+            expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
             self.page.goto(f"{self.live_server_url}/questionnaire_list")
             self.assertEqual(self.animations(self.WAVE), [])
 
     # #338 review: the layout changing without a scroll (here the text going back to its usual
-    # size; a fold opening, a late font or a chart growing does the same) brings the gauge into
-    # view, and it plays.
-    def test_gauge_plays_when_the_layout_brings_it_into_view(self):
-        self.open("/", width=320, double=True)
+    # size; a fold opening, a late font or a chart growing does the same) brings the journey's
+    # 現在這一步 into view, and it plays.
+    def test_journey_plays_when_the_layout_brings_it_into_view(self):
+        self.open("/", width=320, height=1100, double=True)
         with self.saving_artifacts():
-            expect(self.page.locator(self.GAUGE)).to_be_attached()
+            expect(self.page.locator(self.JOURNEY)).to_be_attached()
             self.page.wait_for_timeout(300)
-            self.assertEqual(self.states(self.GAUGE), {"paused"})
+            self.assertEqual(self.states(self.JOURNEY), {"paused"})
             self.double_text(on=False)
-            self.wait_until(self.GAUGE, "finished")
+            self.wait_until(self.JOURNEY, "finished")
             self.assertEqual(self.page.evaluate("window.scrollY"), 0)
 
     # #338 review: when scroll-helpers.js never runs (here it fails to load), nothing waits for
