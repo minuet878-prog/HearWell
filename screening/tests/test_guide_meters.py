@@ -100,21 +100,28 @@ class GuideMetersTests(TestCase):
         """Each drawn bar's opening tag, by the ear or ratio it draws."""
         return re.findall(r'<[a-z]+ class="meter-bar[^"]*"[^>]*>', markup)
 
-    def test_meters_come_between_the_questionnaire_and_the_route(self):
+    # #467 (the #466 mockup A): the route first, then the questionnaire and the meters; the jump
+    # down to the route went with it.
+    def test_the_route_comes_before_the_questionnaire_and_the_meters(self):
         self.answer()
         self.make(RIGHT_48_75, LEFT_36_25)
         text = test_guide.text_of(self.client.get(reverse("guide")))
-        order = ["問卷結果", "要不要找聽力師評估", "身障鑑定門檻", JUMP, ROUTE_TITLE]
-        positions = [text.find(part) for part in order]
-        self.assertNotIn(-1, positions, dict(zip(order, positions, strict=True)))
-        self.assertEqual(positions, sorted(positions))
+        # Each found after the one before: the route's first stop says 要不要找聽力師評估 too.
+        at = 0
+        for part in [
+            ROUTE_TITLE,
+            "依您 2026/10/01 的聽力圖 問卷結果",
+            "要不要找聽力師評估",
+            "身障鑑定門檻",
+        ]:
+            with self.subTest(part=part):
+                at = text.index(part, at) + len(part)
 
     def test_each_ear_has_a_bar_with_its_number_and_the_normal_limit(self):
         self.make(RIGHT_48_75, LEFT_36_25)
         fitting = self.section("fitting-title")
         text = self.text(fitting)
         parts = [
-            "依您 2026/10/01 的聽力圖：",
             "右耳四頻平均 48.75 dB HL",
             "左耳四頻平均 36.25 dB HL",
             test_guide_summary.RECOMMENDS,
@@ -195,11 +202,11 @@ class GuideMetersTests(TestCase):
         self.assertIn("正常上限 25", spoken)
         self.assertIn("門檻 45%", spoken)
 
-    def test_the_jump_goes_to_the_route_title_which_takes_focus(self):
+    # #467: the route's title still takes the focus a link to it gives (回選配路線看下一站).
+    def test_the_route_title_takes_focus_and_there_is_no_jump_to_it(self):
         self.make(RIGHT_48_75, LEFT_36_25)
         page = self.page()
-        arrow = '<span aria-hidden="true"> ↓</span>'
-        self.assertRegex(page, rf'<a class="btn [^"]*" href="#contents-title">{JUMP}{arrow}</a>')
+        self.assertNotIn(JUMP, page)
         self.assertRegex(page, r'<h2 id="contents-title" [^>]*tabindex="-1"')
 
     def test_without_an_audiogram_there_are_no_meters_or_jump(self):
@@ -223,4 +230,7 @@ class GuideMetersTests(TestCase):
     def test_the_audiogram_date_is_the_latest(self):
         self.make(PTA_55, PTA_55, tested_on=date(2026, 3, 1))
         self.make(RIGHT_48_75, LEFT_36_25)
-        self.assertIn("依您 2026/10/01 的聽力圖：", self.text(self.section("fitting-title")))
+        self.assertIn(
+            '<h2 id="hearing-title" class="h4">依您 2026/10/01 的聽力圖</h2>', self.page()
+        )
+        self.assertNotIn("2026/03/01", self.page())

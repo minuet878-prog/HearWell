@@ -1,5 +1,5 @@
 {% load static %}
-{# #293: a 選配路線 stop's question, on the route and at the foot of its chapter. Each answer is a submit button, so one press sends it without JavaScript; the current answer is the filled one. #295: 配戴之後's date and choices are sent with one save button instead. #}
+{# #293: a 選配路線 stop's question, on the route and at the foot of its chapter. Each answer is a submit button, so one press sends it without JavaScript; the current answer is framed with a tick (#467). #295: 配戴之後's date and choices are sent with one save button instead. #}
 <form method="post" action="{% url 'route_answer' %}" class="stop-question">
     {% csrf_token %}
     <input type="hidden" name="stop" value="{{ stop }}">
@@ -25,7 +25,8 @@
         {% include "screening/field_messages.html" with help_class="field-help" %}
         <div class="stop-answers">
             {% for value, label in field.field.choices %}
-            <button type="submit" name="{{ field.html_name }}" value="{{ value }}" class="btn btn-lg {% if value == field.value %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ label }}</button>
+            {# #467: the current answer framed in blue with a tick on pale blue, not filled: the page's one solid button is elsewhere. #}
+            {% if value == field.value %}<button type="submit" name="{{ field.html_name }}" value="{{ value }}" class="btn btn-lg btn-outline-primary is-current" aria-pressed="true"><svg class="stop-answer-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{{ label }}</button>{% else %}<button type="submit" name="{{ field.html_name }}" value="{{ value }}" class="btn btn-lg btn-outline-primary">{{ label }}</button>{% endif %}
             {% endfor %}
         </div>
     </fieldset>
@@ -33,7 +34,7 @@
     {% endfor %}
     {% if question.save_label %}
     <div class="stop-answers">
-        <button type="submit" class="btn btn-primary btn-lg">{{ question.save_label }}</button>
+        <button type="submit" class="btn {% if on_route %}btn-outline-primary{% else %}btn-primary{% endif %} btn-lg">{{ question.save_label }}</button>
         {% if question.answered %}<button type="submit" name="{{ question.NOT_FITTED }}" value="1" class="btn btn-outline-primary btn-lg">還沒開始戴</button>{% endif %}
     </div>
     {% endif %}

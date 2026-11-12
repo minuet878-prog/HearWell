@@ -12,9 +12,10 @@ from screening.tests import test_guide
 
 # Wording finalised in #220 (B2–B14, B11a, B11b), shortened in the guide chapters tidy-up
 # (2026-10-23, the owner's request): the threshold as rows of numbers, the things to bring as chips.
+# #467 (H2): the parts titled as questions.
 ASSESSMENT = (
     "要申請助聽器的身障補助，先要有聽覺機能的身心障礙證明。證明要到鑑定醫院做身障鑑定。",
-    "鑑定門檻",
+    "聽力要到多少才達到門檻？",
     "雙耳整體障礙比率",
     "45.0% 以上：第 1 級（輕度）",
     "70.1% 以上：第 2 級",
@@ -24,12 +25,12 @@ ASSESSMENT = (
     "未滿 6 歲的孩子門檻不同，本頁不適用，請直接問鑑定醫院。",
     "比率怎麼算",
     "用 500、1000、2000、4000 Hz 的聽力平均計算。",
-    "鑑定時會做什麼",
+    "鑑定時要做哪些檢查？",
     "耳鼻喉科專科醫師會做這三項，必要時再加做其他檢查：",
     "純音聽力檢查",
     "語音聽力檢查",
     "鼓室圖",
-    "怎麼申請鑑定",
+    "要怎麼申請鑑定？",
     "到公所申請",
     "戶籍所在縣市的任一區（鄉、鎮、市）公所，也可以線上申請。要帶：",
     "身分證影本",
@@ -39,7 +40,7 @@ ASSESSMENT = (
     "檢查費用由政府或健保支付。",
     "拿到證明",
     "鑑定完成後大約 35 天。",
-    "找鑑定醫院",
+    "去哪家醫院鑑定？",
     "選擇您的縣市，列出可以做聽覺機能鑑定的醫院",
 )
 # Under the menu and any list, as the card's last line.
@@ -99,7 +100,7 @@ class AssessmentChapterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "<title>身障鑑定與鑑定醫院\uff5c聽伴</title>")
         self.assertContains(response, '<h1 class="h3 mt-4">身障鑑定與鑑定醫院</h1>')
-        text = test_guide.text_of(response)
+        text = test_guide.article_text(response)
         positions = [text.index(s) for s in (*ASSESSMENT, ROSTER_NOTE)]
         self.assertEqual(positions, sorted(positions))
         # #367 (spec #354): not on arrival, as if it were an error; only once 查詢 is pressed.

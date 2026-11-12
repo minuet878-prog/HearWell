@@ -1,51 +1,67 @@
 {% extends "screening/guide/chapter.html" %}
 {% block chapter %}
-{# Guide chapters tidy-up: who, when, by whom and what to bring as labelled facts. #}
+{# Guide chapters tidy-up: who, when, by whom and what to bring as labelled facts. #467 (the owner's pick H1 + H2): three key cards, then each part titled as a question (its id kept), one sentence in sight and the rest behind 看更多, word for word. The key cards' large lines and the questions are drafts. #}
 <p>「二十五號表」是配戴助聽器後的使用效益驗證報告書（格式編號 25），核銷補助時要附上。</p>
 <p>想算出可以做的日期？可以用<a class="tap-link" href="{% url 'family_deadlines' %}">期限試算</a>。</p>
-<section class="mb-6" data-jump-box aria-labelledby="who-how-title">
-    <h2 id="who-how-title" class="h4">誰要做、怎麼做</h2>
-<dl class="key-list">
-    <div>
-        <dt>誰要做</dt>
-        <dd>買中階型、進階型或雙對側傳聲型的人。簡易型不需要。</dd>
-    </div>
-    <div>
-        <dt>什麼時候</dt>
-        <dd>配戴滿 1 個月後、3 個月內。<span class="step-when" aria-hidden="true">配戴 1–3 個月內</span></dd>
-    </div>
-    <div>
-        <dt>找誰開</dt>
-        <dd>和九號表一樣，聽力師或輔具中心的評估人員。</dd>
-    </div>
-    <div>
-        <dt>驗證做什麼</dt>
-        <dd>聽力師核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。</dd>
-    </div>
-    <div>
-        <dt>核銷要帶</dt>
-        <dd>
-            <ul class="icon-list" role="list">
-                <li>{% include "screening/guide/icon.html" with icon="receipt" %}購買憑證</li>
-                <li>{% include "screening/guide/icon.html" with icon="document" %}保固書影本</li>
-                <li>{% include "screening/guide/icon.html" with icon="document" %}二十五號表</li>
-            </ul>
-            <p>保固書要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號。</p>
-        </dd>
-    </div>
-</dl>
-</section>
-<section class="mb-6" data-jump-box aria-labelledby="prepare-title">
-    <h2 id="prepare-title" class="h4">用聽伴準備驗證回診</h2>
-    <p>驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：</p>
-    <ul>
-        <li>戴著再做一次{{ life_impact.0.definition.topic }}（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較</li>
-        {% for questionnaire in follow_ups %}
-        <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</a></li>
-        {% endfor %}
+<div>
+    <p id="key-points-title" class="tint-subhead mb-2">先知道三件事</p>
+    <ul class="key-cards" role="list" aria-labelledby="key-points-title">
+        <li class="key-card"><span class="key-card-big">配戴 1–3 個月內</span><p>配戴滿 1 個月後、3 個月內。</p></li>
+        <li class="key-card"><span class="key-card-big">簡易型不需要</span><p>買中階型、進階型或雙對側傳聲型的人。簡易型不需要。</p></li>
+        <li class="key-card"><span class="key-card-big">保固書要有許可證字號</span><p>保固書要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號。</p></li>
     </ul>
-    <p>這些結果給聽力師參考，不能取代二十五號表的驗證。</p>
-    <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
+</div>
+<section data-jump-box aria-labelledby="who-how-title">
+    <h2 id="who-how-title" class="h4">誰要做？什麼時候做？</h2>
+    <dl class="key-list">
+        <div>
+            <dt>誰要做</dt>
+            <dd>買中階型、進階型或雙對側傳聲型的人。簡易型不需要。</dd>
+        </div>
+        <div>
+            <dt>什麼時候</dt>
+            <dd>配戴滿 1 個月後、3 個月內。<span class="step-when" aria-hidden="true">配戴 1–3 個月內</span></dd>
+        </div>
+    </dl>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <dl class="key-list">
+            <div>
+                <dt>找誰開</dt>
+                <dd>和九號表一樣，聽力師或輔具中心的評估人員。</dd>
+            </div>
+            <div>
+                <dt>驗證做什麼</dt>
+                <dd>聽力師核對保固書上的序號和廠牌型號，再用儀器測量或聽力測驗確認助聽器的效果。</dd>
+            </div>
+            <div>
+                <dt>核銷要帶</dt>
+                <dd>
+                    <ul class="icon-list" role="list">
+                        <li>{% include "screening/guide/icon.html" with icon="receipt" %}購買憑證</li>
+                        <li>{% include "screening/guide/icon.html" with icon="document" %}保固書影本</li>
+                        <li>{% include "screening/guide/icon.html" with icon="document" %}二十五號表</li>
+                    </ul>
+                    <p>保固書要有規格、型號、序號、保固期間、廠商資料和醫療器材許可證字號。</p>
+                </dd>
+            </div>
+        </dl>
+    </details>
+</section>
+<section data-jump-box aria-labelledby="prepare-title">
+    <h2 id="prepare-title" class="h4">回診前，聽伴可以幫什麼？</h2>
+    <p>驗證前，可以先戴著助聽器做這些問卷，再印出聽力報告帶去，讓聽力師了解您戴了之後的感受：</p>
+    <details class="dropdown-line" data-guide-fold open>
+        <summary>看更多</summary>
+        <ul>
+            <li>戴著再做一次{{ life_impact.0.definition.topic }}（{% include "screening/guide/life_impact_links.html" %}），和沒戴時的結果比較</li>
+            {% for questionnaire in follow_ups %}
+            <li><a href="{% url 'screening' questionnaire.id %}">{{ questionnaire.definition.topic }}（{{ questionnaire }}）</a></li>
+            {% endfor %}
+        </ul>
+        <p>這些結果給聽力師參考，不能取代二十五號表的驗證。</p>
+        <a class="btn btn-outline-primary btn-lg" href="{% url 'health_report' %}">看／印聽力報告</a>
+    </details>
 </section>
 {% endblock %}
 {% block checked_on %}2026/10/22{% endblock %}

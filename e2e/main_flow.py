@@ -117,6 +117,11 @@ def open_report_folds(page):
         fold.click()
 
 
+def open_guide_folds(page):
+    """#467 (H2): opens every 看更多 fold of a guide chapter, folded on arrival."""
+    page.evaluate("document.querySelectorAll('[data-guide-fold]').forEach(d => d.open = true)")
+
+
 class OnAPhone:
     """Finding things on a page and answering questions, shared by the main-flow routes."""
 
@@ -3104,15 +3109,19 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
             expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
-            # #260: the audiogram's date and numbers open the 選配 meter.
+            # #260: the audiogram's numbers open the 選配 meter; #467: its date is their title.
+            expect(
+                self.main().get_by_role("heading", name="依您 2026/10/01 的聽力圖")
+            ).to_be_visible()
             fitting = self.main().get_by_role("region", name="要不要找聽力師評估")
-            expect(fitting).to_contain_text("依您 2026/10/01 的聽力圖：")
             expect(fitting).to_contain_text("右耳四頻平均 55 dB HL")
             expect(fitting).to_contain_text("左耳四頻平均 55 dB HL")
             threshold = self.main().get_by_role("region", name="身障鑑定門檻")
             expect(threshold).to_contain_text(
                 "雙耳障礙比率約 45.0%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。"
             )
+            # #467: what to do about it waits behind 看完整說明.
+            threshold.get_by_text("看完整說明").click()
             threshold.get_by_role("link", name="找鑑定醫院").click()
 
             expect(self.main().get_by_role("heading", level=1)).to_have_text("身障鑑定與鑑定醫院")
@@ -3131,6 +3140,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
             # #367: the chapter's end leads back too; this is the one at its top.
             self.main().get_by_role("link", name="回到我的選配指引").first.click()
+            self.main().get_by_role("region", name="身障鑑定門檻").get_by_text("看完整說明").click()
             self.main().get_by_role("link", name="看九號表的流程").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
             expect(self.main().get_by_role("heading", level=1)).to_have_text(
@@ -3158,7 +3168,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/guide")
             types = self.main().locator('[data-stop="types-and-prices"]')
             expect(types.locator(".route-mark")).to_have_count(0)
-            types.get_by_role("link", name="助聽器的種類與價格").click()
+            # #467 (I1): the stop opens to say what it is, its link on inside.
+            types.locator("summary").click()
+            types.get_by_role("link", name=re.compile(r"^看這一章\s*：助聽器的種類與價格$")).click()
             expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器的種類與價格")
 
             self.page.goto(f"{self.live_server_url}/guide")
@@ -3470,9 +3482,14 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             for path in paths:
                 with self.subTest(path=path):
                     self.page.goto(f"{self.live_server_url}{path}")
+                    # #467 (I1): the route's stops open one at a time, so each is measured open.
                     for summary in self.main().locator("details > summary").all():
                         summary.click()
-                    expect(self.main().locator("details:not([open])")).to_have_count(0)
+                        if summary.evaluate("el => !!el.closest('.route')"):
+                            self.assert_fits_a_phone_at_double_text_size(path)
+                            self.double_text(False)
+                    others = self.main().locator("details:not([open]):not(.route-about)")
+                    expect(others).to_have_count(0)
                     self.assert_fits_a_phone_at_double_text_size(path)
             with self.subTest(path="/guide signed out"):
                 self.context.clear_cookies()
@@ -3501,6 +3518,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     frequency=4000, db=20,
                 )  # fmt: skip
                 self.page.goto(f"{self.live_server_url}/guide")
+                self.main().get_by_text("看完整說明").click()
                 expect(self.main().get_by_role("link", name="看沒有身障證明時")).to_have_count(2)
                 self.assert_fits_a_phone_at_double_text_size("/guide not reached")
             with self.subTest(state="no response"):
@@ -3650,9 +3668,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertGreaterEqual(room["chars"], 4, path)
                     self.assertLessEqual(room["overflow"], 0, path)
 
-    # #258: the 目前這一站's ring breathes only when motion is welcome. This user has read
+    # #258: the 目前這一站's ring lights only when motion is welcome. This user has read
     # nothing, so the stop is 去找聽力師之前 (spec #291). #341 (ADR 0029): it plays once the
-    # stop is in view, so the route is scrolled to first.
+    # stop is in view, so the route is scrolled to first. #467 (I2): on the tab's first visit
+    # with motion; the reduced visit first does not count as one.
     def test_current_stop_ring_moves_only_without_reduced_motion(self):
         self.open(390)
         with self.saving_artifacts():
@@ -3668,45 +3687,40 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     expect(number).to_have_css("animation-name", animation)
                     expect(number).to_have_css("animation-play-state", "running")
 
-    # #260: 看我的路線 jumps down to the route's heading and gives it the focus, so a screen
-    # reader goes on from there; smoothly, or straight there with reduced motion. #321 (#318
-    # acceptance 5): the focus ring shows: a solid line at least 2px wide, 3:1 or more on the
-    # white page (ADR 0041 took the 段落框's title bar off).
+    # #321 (#318 acceptance 5): the route's title, which takes the focus a link to it gives
+    # (回選配路線看下一站), shows a focus ring: a solid line at least 2px wide, 3:1 or more on the
+    # white page (ADR 0041 took the 段落框's title bar off). #467: 看我的路線, the jump down to it
+    # that this checked through, went with the route moving to the top.
     OUTLINE_AND_BAR = """(el) => {
         const style = getComputedStyle(el);
         return [style.outlineStyle, parseFloat(style.outlineWidth), style.outlineColor,
             parseFloat(style.outlineOffset), style.backgroundColor];
     }"""
 
-    def test_jump_to_the_route_lands_on_its_heading_with_focus(self):
+    def test_the_route_title_shows_a_focus_ring(self):
         self.open(390, 844)
         with self.saving_artifacts():
-            for motion in ("no-preference", "reduce"):
-                with self.subTest(motion=motion):
-                    self.page.emulate_media(reduced_motion=motion)
-                    self.page.goto(f"{self.live_server_url}/guide")
-                    heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
-                    expect(heading).not_to_be_in_viewport()
-                    self.main().get_by_role("link", name="看我的路線").click()
-                    expect(heading).to_be_focused()
-                    expect(heading).to_be_in_viewport()
-                    style, width, colour, offset, bar = heading.evaluate(self.OUTLINE_AND_BAR)
-                    # ADR 0041: no title bar; the ring sits just outside the title, on white.
-                    self.assertEqual(bar, WhiteCardRuleTest.CLEAR)
-                    self.assertEqual(style, "solid")
-                    self.assertGreaterEqual(width, 2)
-                    self.assertGreaterEqual(offset, 0)
-                    self.assertGreaterEqual(
-                        StyleInBrowserTest.lowest_contrast(colour, WhiteCardRuleTest.WHITE), 3
-                    )
+            self.page.goto(f"{self.live_server_url}/guide")
+            self.assertEqual(self.main().get_by_role("link", name="看我的路線").count(), 0)
+            heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
+            heading.focus()
+            expect(heading).to_be_focused()
+            style, width, colour, offset, bar = heading.evaluate(self.OUTLINE_AND_BAR)
+            self.assertEqual(bar, WhiteCardRuleTest.CLEAR)
+            self.assertEqual(style, "solid")
+            self.assertGreaterEqual(width, 2)
+            self.assertGreaterEqual(offset, 0)
+            self.assertGreaterEqual(
+                StyleInBrowserTest.lowest_contrast(colour, WhiteCardRuleTest.WHITE), 3
+            )
 
     # #218 acceptance 章節頁 5: my guide's links into form 9 land on their sections.
     def test_form_9_anchors_jump_to_their_sections(self):
         self.open(390, 640)
         with self.saving_artifacts():
             for anchor, heading in (
-                ("reapply", "再次申請（換新機）"),
-                ("without-certificate", "沒有身障證明時"),
+                ("reapply", "用了幾年可以換新的？"),
+                ("without-certificate", "沒有身障證明怎麼辦？"),
             ):
                 with self.subTest(anchor=anchor):
                     self.page.goto(f"{self.live_server_url}/guide/form-9#{anchor}")
@@ -3732,7 +3746,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                 polling=200,
             )
             # At the top, where the jump puts it, not just somewhere on screen.
-            heading = self.main().get_by_role("heading", name="再次申請（換新機）")
+            heading = self.main().get_by_role("heading", name="用了幾年可以換新的？")
             self.assertLess(abs(heading.bounding_box()["y"]), 10)
             # Jumps within the page, once loaded, still scroll smoothly.
             expect(self.page.locator("html")).to_have_css("scroll-behavior", "smooth")
@@ -3749,9 +3763,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
 class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#336 (spec #326 E5, acceptance 21 and 23): answering the 您在這裡 stop on the route so that
-    it is 已完成 turns its circle green with a white tick drawn once; a refresh shows the number."""
+    it is 已完成 draws its tick once; a refresh shows it as any done stop. #467: the tick is blue
+    in the white circle, as every done stop's (the #466 mockup; green is a level's colour)."""
 
-    GREEN = "rgb(20, 87, 60)"  # --color-normal
+    BLUE = "rgb(31, 78, 140)"  # --color-primary
     TICK_ANIMATIONS = (
         "p => p.getAnimations().map(a => [a.animationName, a.effect.getTiming().duration])"
     )
@@ -3807,8 +3822,9 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
 
                     expect(self.page).to_have_url(f"{self.live_server_url}/guide#stop-assessment")
                     number = self.main().locator('[data-stop="assessment"] .route-number')
-                    expect(number).to_have_css("background-color", self.GREEN)
-                    tick = number.locator("svg path")
+                    expect(number).to_have_css("background-color", WhiteCardRuleTest.WHITE)
+                    expect(number).to_have_css("color", self.BLUE)
+                    tick = number.locator(".route-tick path")
                     expect(tick).to_be_visible()
                     self.assertEqual(tick.evaluate(self.TICK_ANIMATIONS), animations)
                     if motion == "reduce":
@@ -3817,10 +3833,11 @@ class RouteCheckmarkTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                     here = self.main().locator('[aria-current="step"]')
                     expect(here).to_contain_text("九號表")
                     expect(here.locator(".route-number svg")).to_have_count(0)
-                    self.assertEqual(self.main().locator(".route-number svg").count(), 1)
+                    self.assertEqual(self.main().locator(".route-tick").count(), 1)
 
                     self.page.reload()
-                    expect(number.locator("svg")).to_have_count(0)
+                    expect(number.locator(".route-tick")).to_have_count(0)
+                    expect(number.locator(".route-check")).to_have_count(1)
                     expect(number).to_have_text("3")
                     expect(number).to_have_css("background-color", WhiteCardRuleTest.WHITE)
 
@@ -7395,12 +7412,18 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                     self.visit(signed_in, path, width=320)
                     self.assert_fits_uncut(name)
 
-    # #320 (#318 acceptance 2, 6, 7): my guide's status parts are titled parts flat on the page
-    # (ADR 0041), their bars (with the normal limit's and the threshold's lines), links and 怎麼算的
-    # dropdown as before; 看我的路線 is on the white page. #321: the route is one titled part too.
+    # #320 (#318 acceptance 2, 6, 7): my guide's status parts are flat on the page (ADR 0041),
+    # their bars (with the normal limit's and the threshold's lines) and links as before. #467
+    # (the #466 mockup A): one titled part, 依您 … 的聽力圖, the old parts' titles bold subheads
+    # in it at the body size; what to do about the threshold and 怎麼算的 behind 看完整說明.
+    # #321: the route is one titled part too.
     def test_guide_parts_and_route_are_titled_parts_with_their_links(self):
         with self.saving_artifacts():
             self.visit(True, lambda test: test.guide_with_records())
+            hearing = self.main().get_by_role("region", name="依您 2026/10/01 的聽力圖")
+            expect(self.assert_titled_part(hearing)).to_have_text("依您 2026/10/01 的聽力圖")
+            threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+            threshold.get_by_text("看完整說明").click()
             for name, link, scale in (
                 ("問卷結果", None, None),
                 ("要不要找聽力師評估", "去之前要準備什麼", "正常上限 25"),
@@ -7408,7 +7431,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             ):
                 with self.subTest(part=name):
                     part = self.main().get_by_role("region", name=name)
-                    title = self.assert_titled_part(part)
+                    self.assert_flat_part(part)
+                    title = part.get_by_role("heading").first
+                    self.assert_block_title(title, ratio=1)
                     expect(title).to_have_text(name)
                     if link:
                         expect(part.get_by_role("link", name=link, exact=True)).to_be_visible()
@@ -7417,21 +7442,19 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                         for line in part.locator(".meter-line").all():
                             expect(line).to_be_visible()
                             self.assertEqual(self.style(line, "backgroundColor"), self.HEADING)
-            threshold = self.main().get_by_role("region", name="身障鑑定門檻")
             worked = threshold.get_by_text("怎麼算的", exact=True)
-            self.assertEqual(self.style(worked, "color"), self.PRIMARY)
-            worked.click()
+            self.assertEqual(self.style(worked, "color"), self.HEADING)
             expect(threshold.get_by_text("3. 身障鑑定門檻是 45.0%。")).to_be_visible()
-            self.assert_on_white(self.main().get_by_role("link", name="看我的路線", exact=True))
             self.assert_route_box()
             done = self.main().locator(".route-stop").filter(has_text="已完成").first
+            done.locator("summary").click()
             expect(done.get_by_role("link").first).to_be_visible()
 
     # #321 (#318 acceptance 4): the 選配路線 is one titled part. Its stops have no frame and no
-    # fill of their own but the 目前這一站's pale blue box with its blue frame and filled blue
-    # number; the other numbers are white circles in a blue frame (N3, ADR 0041), a 不適用 one
-    # grey. The joining lines are the strong grey (3:1 on white), and every mark has a fill of
-    # its own, its words 4.5:1 or more on it.
+    # fill of their own but the 目前這一站's pale blue card (#467: no frame, as the home page's
+    # 現在這一步); the numbers are white circles in a blue frame (N3, ADR 0041), a 不適用 one
+    # grey. The joining lines are the strong grey (3:1 on white), blue as far as the 目前這一站
+    # (#467 I2), and the marks are words on the page (#467: no longer pills), 4.5:1 or more.
     PALE_GREY = "rgb(244, 246, 248)"
     GREY_LINE = "rgb(206, 212, 218)"
     JOINING_LINE = "(el) => getComputedStyle(el, '::after').backgroundColor"
@@ -7451,13 +7474,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         if here.count():
             box = here.locator(".route-box")
             self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
-            self.assert_every_side(box, Color=self.PRIMARY, Style="solid")
+            self.assert_every_side(box, Width="0px")
             self.assertEqual(self.style(box, "boxShadow"), "none")
-            number = here.locator(".route-number")
-            self.assertEqual(self.style(number, "backgroundColor"), self.PRIMARY)
         # N3: a stop's number is a white circle in a blue frame, like the chapters' numbered
-        # steps.
-        numbers = route.locator(".route-stop:not([aria-current], .is-na) .route-number")
+        # steps; the 目前這一站's too.
+        numbers = route.locator(".route-stop:not(.is-na) .route-number")
         self.assertGreater(numbers.count(), 1)
         for number in numbers.all():
             with self.subTest(stop=number.inner_text()):
@@ -7472,15 +7493,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         for stop in stops.all()[:-1]:
             with self.subTest(line_below=stop.get_attribute("data-stop")):
                 line = stop.evaluate(self.JOINING_LINE)
-                self.assertEqual(line, self.LINE_STRONG)
+                walked = "is-walked" in stop.get_attribute("class")
+                self.assertEqual(line, self.PRIMARY if walked else self.LINE_STRONG)
                 self.assertGreaterEqual(StyleInBrowserTest.lowest_contrast(line, self.WHITE), 3)
         for mark in route.locator(".route-mark").all():
             with self.subTest(mark=mark.inner_text()):
-                background = self.style(mark, "backgroundColor")
-                self.assertNotEqual(background, self.WHITE)
-                self.assertNotEqual(background, "rgba(0, 0, 0, 0)")
                 self.assertGreaterEqual(
-                    StyleInBrowserTest.lowest_contrast(self.style(mark, "color"), background), 4.5
+                    StyleInBrowserTest.lowest_contrast(self.style(mark, "color"), self.WHITE), 4.5
                 )
         return route
 
@@ -7517,6 +7536,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 for signed_in in (True, False):
                     with self.subTest(chapter=slug, signed_in=signed_in):
                         self.visit(signed_in, f"/guide/{slug}")
+                        open_guide_folds(self.page)
                         article = self.main().get_by_role("article")
                         self.assert_titled(article.get_by_role("heading", level=1))
                         parts = article.locator(":scope > section")
@@ -7526,9 +7546,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                         outside = article.locator(":scope > :not(section)")
                         for each in outside.all():
                             with self.subTest(outside=each.inner_text()[:10]):
-                                # #367: form 9's 本頁段落 jump stays outside the parts too.
+                                # #467 (H1): the key cards' block stays outside the parts too.
                                 tag = each.evaluate("el => el.tagName")
-                                self.assertIn(tag, ("H1", "P", "NAV"))
+                                self.assertIn(tag, ("H1", "P", "DIV"))
                         self.assert_flat(self.main().locator("footer"))
                         if parts.get_by_role("link").count():
                             linked.add(slug)
@@ -7570,15 +7590,21 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for slug, subheads in self.GUIDE_SUBHEADS:
                 with self.subTest(chapter=slug):
                     self.visit(False, f"/guide/{slug}?county={HearingAidGuideTest.COUNTY}")
+                    open_guide_folds(self.page)
                     article = self.main().get_by_role("article")
                     parts = article.locator(":scope > section").all()
                     boxes = [part.bounding_box() for part in parts]
                     for above, below in pairwise(boxes):
                         self.assertGreaterEqual(below["y"] - (above["y"] + above["height"]), 18)
-                    body = float(self.style(article.locator("p").first, "fontSize")[:-2])
+                    # #467: a part's text, not the key cards' label (a subhead itself).
+                    text_in_parts = article.locator(":scope > section p:not([class])").first
+                    body = float(self.style(text_in_parts, "fontSize")[:-2])
                     for text in subheads:
                         with self.subTest(subhead=text):
-                            subhead = article.get_by_text(text, exact=True)
+                            # #467: in the parts, not the key cards above them.
+                            subhead = article.locator(":scope > section").get_by_text(
+                                text, exact=True
+                            )
                             self.assertGreaterEqual(
                                 float(self.style(subhead, "fontSize")[:-2]), 1.2 * body - 0.01
                             )
@@ -7645,8 +7671,12 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_titled_part(self.main().get_by_role("region", name="問卷結果"))
             audiogram = self.main().get_by_role("region", name="聽力圖")
             expect(self.assert_titled_part(audiogram)).to_have_text("聽力圖")
+            # #467: the 您在這裡 card has the solid button, so this one is a link on white.
             record = audiogram.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
-            self.assertEqual(self.style(record, "backgroundColor"), self.PRIMARY)
+            self.assert_on_white(record)
+            here = self.main().locator(".route-stop[aria-current=step]")
+            button = here.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            self.assertEqual(self.style(button, "backgroundColor"), self.PRIMARY)
 
     # #319, #320, #321 (#318 acceptance 13): on a phone at 200% text a long part title wraps
     # inside its part, on my guide (with records, the route's title included) and in the six
@@ -7691,6 +7721,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for slug, texts in self.GUIDE_ICON_LISTS:
                 with self.subTest(chapter=slug):
                     self.visit(False, f"/guide/{slug}")
+                    open_guide_folds(self.page)
                     article = self.main().get_by_role("article")
                     for text in texts:
                         with self.subTest(item=text):
@@ -9017,8 +9048,15 @@ class ScrollHelpersOnAPhone(OnAPhone):
 class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveServerTestCase):
     """Spec #338 (ticket #341, ADR 0029): entrance animations play once they are in view; on a
     phone, signed in as a returning user (the home's 照顧旅程, #459) whose guide has a 目前這一站.
-    Having read nothing, the 目前這一站 is 去找聽力師之前 (as in HearingAidGuideTest); with
-    HHIE-S and the audiogram, the journey's steps 1 and 2 are done and step 3 is current."""
+    #467: the route is at the top of my guide now, so the 目前這一站 is further down it, below
+    the screen: 去找聽力師之前 read and no 身障補助, so it is 助聽器的種類與價格 (the sixth stop,
+    with no question). Its ring plays with the route's entrance, on the tab's first visit (I2).
+    With HHIE-S and the audiogram, the journey's steps 1 and 2 are done; step 3 is current."""
+
+    def setUp(self):
+        super().setUp()
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=self.user, certificate="no_subsidy")
 
     # Each animation's name and state, by what it moves: route-ring on the 目前這一站; on the
     # home's journey gauge-draw on the ticks, journey-line and journey-ring; wave-jump and
@@ -9098,7 +9136,7 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         self.open("/guide")
         with self.saving_artifacts():
             here = self.main().locator(self.STOP)
-            expect(here).to_contain_text("去找聽力師之前")
+            expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).not_to_be_in_viewport()
             self.assertEqual(
                 self.animations(self.STOP), [{"name": "route-ring", "state": "paused", "time": 0}]
@@ -9137,13 +9175,16 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             expect(self.page.locator(self.TICK).first).to_have_css("stroke-dashoffset", "0px")
 
     # #338 acceptance 11 (this ticket's part): without JavaScript nothing waits for the screen:
-    # the ring below it plays on arrival, and the header wave on every page. The home's journey
-    # plays only on a tab's first visit, which takes JavaScript to know (#459): it shows the end.
+    # the meters below it play on arrival, and the header wave on every page. The home's journey
+    # and the route's entrance play only on a tab's first visit, which takes JavaScript to know
+    # (#459, #467 I2): they show the end.
     def test_without_javascript_animations_play_on_arrival(self):
         self.open("/guide", javascript=False)
         with self.saving_artifacts():
-            expect(self.main().locator(self.STOP)).not_to_be_in_viewport()
-            self.assert_plays_without_waiting(self.STOP)
+            meter = 'section[aria-labelledby="fitting-title"] .meter'
+            expect(self.main().locator(meter)).not_to_be_in_viewport()
+            self.assert_plays_without_waiting(meter)
+            self.assertEqual(self.states(self.STOP), set())
             self.assert_plays_without_waiting(self.WAVE)
             self.page.goto(f"{self.live_server_url}/")
             self.assertEqual(self.animations(self.JOURNEY), [])
@@ -9224,8 +9265,17 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
             self.bring_into_view(self.STOP)
             self.wait_until(self.STOP, "finished")
 
+            # #467: a jump within the page (看我的路線 went with the route moving to the top).
             self.page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
-            self.main().get_by_role("link", name="看我的路線").click()
+            self.page.evaluate(
+                """() => {
+                    const link = document.createElement("a");
+                    link.href = "#contents-title";
+                    link.textContent = "jump";
+                    document.querySelector("main").append(link);
+                    link.click();
+                }"""
+            )
             route = self.main().locator('section[aria-labelledby="contents-title"]')
             expect(route).to_have_css("outline-color", "rgb(31, 78, 140)")
             expect(route).to_have_css("outline-style", "solid")
@@ -9612,18 +9662,16 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                 self.main().get_by_role("link", name="什麼時候要馬上就醫").click()
                 self.assert_lights(self.samples(), reduced=motion == "reduce", scrolled=True)
 
-    # Acceptance 15: 看我的路線 lights the route's 段落框, the focus still on its heading; a
-    # stop's 修改 lights that stop.
+    # Acceptance 15: a jump to the route lights its part (#467: from a chapter's 回選配路線看下一站,
+    # as 看我的路線 went with the route moving to the top); a stop's 修改 lights that stop.
     def test_route_and_its_stop_light(self):
         AidAndSubsidy.objects.create(user=self.user, certificate="yes")
-        self.open("/guide")
+        self.open("/guide/assessment")
         with self.saving_artifacts():
-            self.sample_this_page('section[aria-labelledby="contents-title"]')
-            self.main().get_by_role("link", name="看我的路線").click()
-            heading = self.main().get_by_role("heading", name="選配與補助，一步一步看")
-            expect(heading).to_be_focused()
-            self.assert_lights(self.samples(), scrolled=True)
-            expect(heading).to_be_focused()
+            self.sample_next_page('section[aria-labelledby="contents-title"]')
+            self.main().get_by_role("link", name="回選配路線看下一站").click()
+            expect(self.page).to_have_url(re.compile(r"/guide#contents-title$"))
+            self.assert_lights(self.samples())
 
             self.sample_next_page("#stop-assessment .route-box")
             self.main().get_by_role("link", name="修改身障鑑定與鑑定醫院的回答").click()
@@ -10653,6 +10701,7 @@ class FittingGuideT367Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
         for slug in ("assessment", "form-9", "types-and-prices"):
             with self.subTest(chapter=slug):
                 self.visit(False, f"/guide/{slug}", width=self.PHONE[0])
+                open_guide_folds(self.page)
                 groups = self.main().locator(".fact-rows")
                 expect(groups.first).to_be_visible()
                 for group in groups.all():
@@ -10671,27 +10720,13 @@ class FittingGuideT367Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServ
                     meaning = row.locator(":scope > :last-child").bounding_box()
                     self.assertGreaterEqual(meaning["y"], value["y"] + value["height"] - 1)
 
-    # Acceptance 7: form 9's jump to its six parts, two columns on a phone.
-    def test_form_9_jumps_to_its_parts_in_two_columns_on_a_phone(self):
-        self.visit(False, "/guide/form-9", width=self.PHONE[0])
-        jump = self.main().get_by_role("navigation", name="本頁段落")
-        boxes = self.boxes(jump.get_by_role("link"))
-        self.assertEqual(len(boxes), 6)
-        self.assertEqual(len({round(box["x"]) for box in boxes}), 2)
-        self.assertEqual(len({round(box["y"]) for box in boxes}), 3)
-        jump.get_by_role("link", name="補助多少").click()
-        expect(self.page).to_have_url(re.compile(r"/guide/form-9#amount-title$"))
-        expect(self.main().get_by_role("heading", name="補助多少")).to_be_in_viewport()
-        self.page.goto(f"{self.live_server_url}/guide/form-9")
-        self.assert_fits_a_phone_at_double_text_size("form 9 at 200%", width=self.PHONE[0])
-
-    # Acceptance 8: 1.5rem between 配戴之後's title and its first box.
+    # Acceptance 8: 1.5rem between 配戴之後's title and its first box (#467: the key cards).
     def test_after_fitting_keeps_its_title_off_the_first_box(self):
         for width in (self.PHONE[0], self.DESKTOP[0]):
             with self.subTest(width=width):
                 self.visit(False, "/guide/after-fitting", width=width)
                 title = self.main().get_by_role("heading", level=1).bounding_box()
-                box = self.main().locator("article > section").first.bounding_box()
+                box = self.main().locator("article > h1 + *").bounding_box()
                 self.assertAlmostEqual(box["y"] - (title["y"] + title["height"]), 27, delta=0.5)
 
 
@@ -13375,3 +13410,178 @@ class ScreeningAnsweringT463Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLi
                         for fold in self.main().locator("details > summary").all():
                             fold.click()
                     self.assert_fits_a_phone_at_double_text_size(path)
+
+
+class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#467 (the #466 mockup A, the owner's picks I1 + I2 and H1 + H2): the route's rows open one
+    at a time and its entrance plays once a tab; the chapters' folds open where a jump lands, and
+    without JavaScript every part shows."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # 55 dB in both ears and 去找聽力師之前 read: 記錄聽力圖 and it are done, 您在這裡 is the
+        # assessment, the third stop.
+        self.user = consented_user(username="guide_467")
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
+        AudiogramPoint.objects.bulk_create(
+            AudiogramPoint(audiogram=audiogram, ear=ear, conduction="air", frequency=f, db=55)
+            for ear in ("right", "left")
+            for f in (500, 1000, 2000, 4000)
+        )
+        GuideChapterView.objects.create(user=self.user, chapter="before-you-go")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width=390, height=844, javascript=True, motion="no-preference"):
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": height},
+            java_script_enabled=javascript,
+            reduced_motion=motion,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    ANIMATION = "el => getComputedStyle(el).animationName"
+    LINE_ANIMATION = "el => getComputedStyle(el, '::after').animationName"
+
+    # I2: the done ticks, the line walked and the ring play on the tab's first visit, once the
+    # 目前這一站 is in view; a second visit in the same tab and reduced motion show the end.
+    def test_the_route_entrance_plays_once_a_tab(self):
+        for motion in ("no-preference", "reduce"):
+            with self.subTest(motion=motion):
+                self.open(motion=motion)
+                with self.saving_artifacts():
+                    self.page.goto(f"{self.live_server_url}/guide")
+                    here = self.main().locator('[aria-current="step"]')
+                    expect(here).to_contain_text("身障鑑定與鑑定醫院")
+                    here.evaluate("el => el.scrollIntoView({block: 'center', behavior: 'instant'})")
+                    html = self.page.locator("html")
+                    first = self.main().locator('[data-stop="audiogram"]')
+                    tick = first.locator(".route-check path")
+                    if motion == "reduce":
+                        expect(html).not_to_have_class(re.compile(r"\broute-plays\b"))
+                        self.assertEqual(tick.evaluate(self.ANIMATION), "none")
+                        self.assertEqual(first.evaluate(self.LINE_ANIMATION), "none")
+                        continue
+                    expect(html).to_have_class(re.compile(r"\broute-plays\b"))
+                    self.assertEqual(tick.evaluate(self.ANIMATION), "gauge-draw")
+                    self.assertEqual(first.evaluate(self.LINE_ANIMATION), "route-line")
+                    number = here.locator(".route-number")
+                    self.assertEqual(number.evaluate(self.ANIMATION), "route-ring")
+                    expect(number).to_have_css("animation-play-state", "running")
+                    # The way walked is blue; on from the 目前這一站 it is grey.
+                    blue = "rgb(31, 78, 140)"
+                    line = "(el) => getComputedStyle(el, '::after').backgroundColor"
+                    self.assertEqual(first.evaluate(line), blue)
+                    self.assertNotEqual(here.evaluate(line), blue)
+
+                    self.page.reload()
+                    expect(here).to_be_visible()
+                    expect(html).not_to_have_class(re.compile(r"\broute-plays\b"))
+
+    # I1: a stop opens in place to say what it is, its link on inside; one at a time.
+    def test_route_stops_open_one_at_a_time(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            types = self.main().locator('[data-stop="types-and-prices"] details')
+            form_9 = self.main().locator('[data-stop="form-9"] details')
+            types.locator("summary").click()
+            expect(types).to_have_attribute("open", "")
+            expect(types.get_by_text("看助聽器有哪些外型、補助多少，和去哪裡買。")).to_be_visible()
+            form_9.locator("summary").click()
+            expect(form_9).to_have_attribute("open", "")
+            expect(types).not_to_have_attribute("open", "")
+            form_9.get_by_role("link", name=re.compile(r"^看這一章\s*：九號表")).click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text(
+                "九號表：申請助聽器補助"
+            )
+
+    # The page's one solid button is the 您在這裡 card's; the audiogram's long paragraphs wait
+    # behind 看完整說明.
+    def test_one_solid_button_and_the_full_explanation_folded(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide")
+            solid = self.main().locator(".btn-primary")
+            expect(solid).to_have_count(1)
+            expect(solid).to_have_text("找鑑定醫院")
+            expect(solid).to_be_in_viewport()
+            threshold = self.main().get_by_role("region", name="身障鑑定門檻")
+            certificate = threshold.get_by_text("身障補助要先有身心障礙證明", exact=False)
+            expect(certificate).to_be_hidden()
+            threshold.get_by_text("看完整說明").click()
+            expect(certificate).to_be_visible()
+            expect(threshold.get_by_text("怎麼算的", exact=True)).to_be_visible()
+
+    LINKED_PARTS = (
+        ("form-9", "steps-title", "做評估，拿到九號表"),
+        ("form-9", "issuer-title", "各縣市輔具中心"),
+        ("form-9", "reapply", "再次申請簡易型，不需要重新評估。"),
+        ("form-9", "without-certificate", "低收入戶老人配戴助聽器補助"),
+        ("assessment", "apply-title", "帶公所給的鑑定表，到鑑定醫院"),
+        ("types-and-prices", "sound-amplifier-title", "助聽器是醫療器材"),
+        ("after-fitting", "record-title", "也可以戴著助聽器再做一次生活影響問卷"),
+    )
+
+    # H2: a jump from the route, 補助檢核 or the assistant lands on its part open, the others
+    # folded; without JavaScript every part shows in full.
+    def test_a_jump_lands_on_its_part_open(self):
+        for javascript in (True, False):
+            self.open(javascript=javascript)
+            with self.saving_artifacts():
+                for slug, anchor, inside in self.LINKED_PARTS:
+                    with self.subTest(javascript=javascript, anchor=anchor):
+                        # A new page each time: within one page a later jump opens its part
+                        # and leaves the one open before.
+                        self.page.goto("about:blank")
+                        self.page.goto(f"{self.live_server_url}/guide/{slug}#{anchor}")
+                        heading = self.main().locator(f"#{anchor}")
+                        expect(heading).to_be_in_viewport()
+                        expect(self.main().get_by_text(inside).first).to_be_visible()
+                        folds = self.main().locator("[data-guide-fold]")
+                        opened = self.main().locator("[data-guide-fold][open]")
+                        if javascript:
+                            mine = self.main().locator(f"section:has(#{anchor}) [data-guide-fold]")
+                            expect(opened).to_have_count(mine.count())
+                        else:
+                            expect(opened).to_have_count(folds.count())
+
+    def test_a_chapter_opened_at_its_top_has_its_parts_folded(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            expect(self.main().locator("[data-guide-fold][open]")).to_have_count(0)
+            expect(self.main().locator(".key-card")).to_have_count(3)
+            expect(self.page.locator("html")).not_to_have_class(
+                re.compile(r"\bguide-folds-pending\b")
+            )
+
+    # Source links in small print are 44px tall to tap, in the parts and in the footer's list.
+    def test_source_links_are_tall_enough_to_tap(self):
+        self.open(javascript=False)
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            self.main().get_by_text("資料來源", exact=True).click()
+            links = self.main().locator(".guide-source a, .guide-sources li > a")
+            self.assertGreater(links.count(), 5)
+            for link in links.all():
+                with self.subTest(link=link.inner_text()):
+                    self.assertGreaterEqual(link.bounding_box()["height"], 44)
