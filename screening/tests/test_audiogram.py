@@ -1392,7 +1392,9 @@ class AudiogramComparePickerTests(TestCase):
         oldest, _, latest = self._three()
         main = self._main(self._get(a=latest.id, b=oldest.id))
         folded = re.search(
-            r"<details[^>]*>\s*<summary>看每個頻率的數字</summary>(.*?)</details>", main, re.S
+            r"<details[^>]*>\s*<summary>(?:(?!</summary>).)*看每個頻率的數字.*?</summary>(.*?)</details>",
+            main,
+            re.S,
         )
         self.assertIn('data-section="pta"', folded.group(1))
         self.assertIn("差值＝新 − 舊，正數＝要更大聲才聽得到", folded.group(1))  # noqa: RUF001
@@ -1414,35 +1416,38 @@ class AudiogramCompareSummaryTests(TestCase):
         new = self._make(new_points, tested_on=date(2026, 9, 10))
         main = self._main(self._get(a=new.id, b=old.id))
         self._summary_page = main
-        card = re.search(
-            r'<section class="audiogram-chart compare-summary"[^>]*>(.*?)</section>', main, re.S
-        )
+        card = re.search(r'<section class="compare-summary"[^>]*>(.*?)</section>', main, re.S)
         return test_layout._text(card.group(1)), card.group(1)
 
     def test_averages_difference_and_both_degrees(self):
-        text, card = self._summary(
+        text, _ = self._summary(
             _four(_air, "right", (30, 30, 30, 35)), _four(_air, "right", (35, 35, 35, 40))
         )
         self.assertIn("右耳四頻平均：舊 31.25 → 新 36.25 dB HL，多 5 dB", text)
         self.assertIn("程度：舊 輕度，新 輕度", text)
         for word in ("都還是", "變成", "變差", "變好", "高音"):
             self.assertNotIn(word, text)
-        # Pages tidy-up: how to read the numbers moved out of the card into one tip box after it.
+        # Pages tidy-up: how to read the numbers moved out of the card into one place after it;
+        # #465 (the #464 mockup 6): folded as a list row under the tip box's title.
         self.assertNotIn("機器、地點、耳機不同", text)
         self.assertNotIn("dB 數字越大", text)
         main = self._summary_page
-        tip = re.search(r'<section class="tip-box"[^>]*>(.*?)</section>', main, re.S)
-        self.assertIn("看懂這張比較", tip.group(1))
+        tip = re.search(
+            r'<details class="result-details">(?:(?!</details>).)*看懂這張比較.*?</details>',
+            main,
+            re.S,
+        )
+        self.assertIn("看懂這張比較", tip.group(0))
         for note in (
             "dB 數字越大，代表要越大聲才聽得到。",
             "機器、地點、耳機不同，數字本來就會差幾分貝。",
             "這只是數字的對照，不能取代聽力師的判讀。",
         ):
-            self.assertIn(note, tip.group(1))
+            self.assertIn(note, tip.group(0))
         self.assertLess(main.index("compare-summary"), tip.start())
-        # The chart sits in the card, under the summary.
-        self.assertIn('<div id="audiogram-chart"></div>', card)
-        self.assertLess(card.index("右耳四頻平均"), card.index('id="audiogram-chart"'))
+        # #465: the chart in its own frame right under the summary.
+        after = main[main.index("compare-summary") :]
+        self.assertLess(after.index("</section>"), after.index('id="audiogram-chart"'))
 
     def test_less_and_equal_averages(self):
         forty = _four(_air, "right", (40,) * 4)

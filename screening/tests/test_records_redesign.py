@@ -372,3 +372,23 @@ class WearingComparisonTests(Records):
         self.assertEqual(solid_buttons(main), [])
         self.assertIn("這一組已經在聽力報告裡", main)
         self.assertIsNotNone(fold_titled(main, "換別的兩筆"))
+
+
+class AudiogramCompareTests(Audiograms):
+    """The #464 mockup 6: the summary on the page, its notes folded, the way back a text link."""
+
+    def test_the_notes_fold_and_the_way_back_is_a_text_link(self):
+        old = self.make((30, 30, 30, 35), (30, 30, 30, 30))
+        new = self.make((35, 35, 35, 40), (30, 30, 30, 30))
+        main = self.main(reverse("audiogram_compare"), a=new.id, b=old.id)
+        self.assertIn(
+            "機器、地點、耳機不同，數字本來就會差幾分貝。", fold_titled(main, "看懂這張比較")
+        )
+        self.assertIn('data-section="pta"', fold_titled(main, "看每個頻率的數字"))
+        self.assertIn(
+            f'<p class="quiet-links"><a href="{reverse("audiogram_list")}">回聽力圖清單</a></p>',
+            main,
+        )
+        self.assertNotIn('class="tip-box"', main)
+        # Each folded 換一張 row keeps its own 比較, as before: the page shows none until one opens.
+        self.assertEqual(solid_buttons(main), ["比較", "比較"])

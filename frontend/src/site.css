@@ -4811,6 +4811,22 @@
     font-weight: 700;
   }
 
+  /* 6: the comparison's first line larger and bold, on the page above the chart's frame. */
+  .compare-summary > p {
+    margin: 0 0 0.25rem;
+    overflow-wrap: anywhere;
+  }
+
+  .compare-summary-lead {
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+  }
+
+  .compare-summary + .audiogram-chart {
+    margin-top: 0.75rem;
+  }
+
   .audiogram-ear-block-degree {
     font-size: var(--text-page-title);
     font-weight: 700;
