@@ -1,5 +1,16 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 {% block title %}{{ chapter.title }}｜聽伴{% endblock %}
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
+{# #467 (H2): the folds come open in the page, so without JavaScript every part shows in full; guide.js folds them all but the one a jump lands on. Till then their contents wait unseen, so they do not show and then shrink; if it has not run in 3 seconds, they show. #}
+<script>
+    document.documentElement.classList.add("guide-folds-pending");
+    window.guideFoldsFallback = setTimeout(function () {
+        document.documentElement.classList.remove("guide-folds-pending");
+    }, 3000);
+</script>
+{% endblock %}
 {% block body %}
 {# Every chapter's wording is finalised in #220; change it only after review (ADR 0013). #}
 <p class="mt-4 mb-0"><a href="{% url 'guide' %}">回到我的選配指引</a></p>
@@ -27,7 +38,7 @@
 <p class="mt-6 mb-0"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'guide' %}">回到我的選配指引</a></p>
 {% endif %}
 {# Sources behind a dropdown box (text-heavy pages tidy-up); the links are unchanged (#218 Q7). #}
-<footer class="mt-6 wrap-anywhere" aria-label="資料查核與來源">
+<footer class="mt-6 wrap-anywhere guide-sources" aria-label="資料查核與來源">
     <details class="dropdown-box mb-2">
         <summary>資料來源</summary>
         <ul>
