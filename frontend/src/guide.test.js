@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { openFoldsForJump, playRouteOnce, setUpRouteStops } from "./guide.js";
+import { openFoldsForJump, playRouteOnce } from "./guide.js";
 
-// #467: 我的選配指引's 選配路線 (the owner's pick I1 + I2, ADR 0028's 2026-11-12 exception) and
-// the chapters' folds (H2), which open where a jump lands.
+// #467: 我的選配指引's 選配路線 entrance (the owner's pick I2, ADR 0028's 2026-11-12 exception;
+// one at a time and once a tab are step-list.js's) and the chapters' folds (H2), which open where
+// a jump lands.
 
 function fakeWindow({ reduce = false, hash = "" } = {}) {
   window.sessionStorage.clear();
@@ -64,33 +65,6 @@ describe("playRouteOnce", () => {
     playRouteOnce(win);
     expect(plays()).toBe(false);
     expect(win.sessionStorage.length).toBe(0);
-  });
-});
-
-describe("setUpRouteStops", () => {
-  beforeEach(() => {
-    document.body.innerHTML = route();
-    setUpRouteStops(document);
-  });
-
-  const stops = () => [...document.querySelectorAll(".route-about")];
-  const open = (index) =>
-    new Promise((resolve) => {
-      stops()[index].addEventListener("toggle", resolve, { once: true });
-      stops()[index].open = true;
-    });
-  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
-
-  it("opens one stop at a time", async () => {
-    await open(0);
-    await open(2);
-    await settle();
-    expect(stops().map((stop) => stop.open)).toEqual([false, false, true]);
-  });
-
-  it("leaves the 您在這裡 card as it is", async () => {
-    await open(1);
-    expect(document.querySelector(".route-card").textContent).toBe("您在這裡");
   });
 });
 
