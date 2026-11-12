@@ -47,8 +47,11 @@ class RouteCheckmarkTests(TestCase):
         stops = dict(re.findall(STOP, page, re.S))
         self.assertNotIn(TICK, stops["form-9"])
         self.assertIn('data-stop="form-9" aria-current="step"', page)
-        # The circle is green with the tick, and its number is still there for screen readers.
-        self.assertRegex(page, r'<li class="route-stop is-done-now" data-stop="assessment"')
+        # The circle shows the tick, and its number is still there for screen readers.
+        # #467: done and on the way walked as well (the I2 entrance's classes).
+        self.assertRegex(
+            page, r'<li class="route-stop is-done is-walked is-done-now" data-stop="assessment"'
+        )
         self.assertRegex(
             stops["assessment"],
             r'<span class="route-number"><svg class="route-tick" aria-hidden="true" '

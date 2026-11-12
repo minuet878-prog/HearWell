@@ -7,22 +7,23 @@ from screening.tests import test_guide
 
 # Wording finalised in #220 (C2–C31; C31 names the New Taipei centre), shortened in the guide
 # chapters tidy-up (2026-10-23, the owner's request): step titles, the amounts as rows of numbers.
+# #467 (H1 + H2): the parts titled as questions, read after the key cards.
 FORM_9 = (
     "「九號表」是買助聽器前要做的輔具評估報告書（格式編號 9）。"
     "有身心障礙證明的人，帶著它向戶籍所在地的公所申請助聽器補助。",
-    "誰可以申請",
+    "我可以申請嗎？",
     "有聽覺機能身心障礙證明（第二類 b230、s260，或舊制 02）的人。輕度也可以，不限年齡。",
     "中度以上視覺障礙，而且好的那一耳聽力損失大於 40 dB 的人。",
     "最近一年在國內住超過 183 天。",
-    "申請流程",
+    "要怎麼辦？",
+    # #467 (H2): the sentence in sight, the six steps behind 看更多.
+    "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
     "做評估，拿到九號表",
     "找聽力師或縣市輔具中心。九號表 3 個月內有效。",
     "到公所申請",
     "帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。",
     "等核定通知",
     "主管機關收到評估報告後，10 天內會核定。",
-    # Between steps 3 and 4 since the step list (#259).
-    "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
     "購買並請款",
     "收到核定通知後 6 個月內。",
     "使用效益驗證",
@@ -30,11 +31,11 @@ FORM_9 = (
     "拿到二十五號表。 看二十五號表",
     "核銷",
     "帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。",
-    "九號表找誰開",
+    "九號表去哪裡開？",
     "聽力師或縣市輔具中心的評估人員都可以開，例如醫院耳鼻喉科的聽力師。",
     "各縣市輔具中心",
     "看各縣市輔具中心電話",
-    "補助多少",
+    "可以補助多少錢？",
     "補助上限，依助聽器等級",
     "2,000 元 簡易型，每只最多",
     "10,000 元 中階型，每只最多",
@@ -47,11 +48,11 @@ FORM_9 = (
     "滿 65 歲以後才第一次鑑定為輕度的人，申請進階型另有總額上限："
     "低收入戶 20,000 元、中低收入戶 15,000 元、一般戶 10,000 元。",
     "雙耳一起申請或分開申請，都算同一項。",
-    "再次申請（換新機）",
+    "用了幾年可以換新的？",
     "滿 4 年 可以再申請（最低使用年限）",
     "每 2 年 12 歲以下可以申請一次",
     "再次申請簡易型，不需要重新評估。",
-    "沒有身障證明時",
+    "沒有身障證明怎麼辦？",
     "不能申請上面的補助，但還有下面這些資源。",
     "低收入戶老人配戴助聽器補助",
     "5,500 元 每只最多，同一耳 4 年一次",
@@ -115,18 +116,16 @@ class Form9ChapterTests(TestCase):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<h1 class="h3 mt-4">九號表：申請助聽器補助</h1>')
-        text = test_guide.text_of(response)
-        # #367: the parts' titles are read in the 本頁段落 jump first; the order is the parts'.
-        parts = text.index(FORM_9[1], text.index("本頁段落") + len("本頁段落 ") + len(FORM_9[1]))
-        positions = [text.index(FORM_9[0]), *(text.index(s, parts) for s in FORM_9[1:])]
+        text = test_guide.article_text(response)
+        positions = [text.index(s) for s in FORM_9]
         self.assertEqual(positions, sorted(positions))
 
     def test_reapply_and_without_certificate_anchors_land_on_their_headings(self):
         content = self.client.get(self.url).content.decode()
         # Each part's title is a section title (T1, ADR 0041), without a top margin.
         for anchor, title in (
-            ("reapply", "再次申請（換新機）"),
-            ("without-certificate", "沒有身障證明時"),
+            ("reapply", "用了幾年可以換新的？"),
+            ("without-certificate", "沒有身障證明怎麼辦？"),
         ):
             with self.subTest(anchor=anchor):
                 heading = f'<h2 id="{anchor}" class="h4">{title}</h2>'
@@ -187,17 +186,18 @@ class Form9ChapterTests(TestCase):
         form_25 = reverse("guide_chapter", args=["form-25"])
         self.assertIn(f'<a href="{form_25}">看二十五號表</a>', steps)
 
-    def test_process_is_a_step_list_split_by_the_warning_after_step_3(self):
+    # #467 (H2): the warning is the sentence in sight, the six steps one list behind 看更多 (it
+    # was a list split by the warning after step 3, #259).
+    def test_process_is_the_warning_then_a_step_list_behind_more(self):
         content = self.client.get(self.url).content.decode()
         start = content.index('<h2 id="steps-title"')
         steps = content[start : content.index("</section>", start)]
-        first = steps.index('<ol class="step-list" role="list">')
-        second = steps.index('<ol class="step-list" role="list" start="4">')
         warning = steps.index("重要：一定要先拿到核定通知再買")
-        self.assertLess(steps.index("</ol>", first), warning)
-        self.assertLess(warning, second)
-        self.assertEqual(steps[first:warning].count("<li>"), 3)
-        self.assertEqual(steps[second:].count("<li>"), 3)
+        fold = steps.index("<summary>看更多</summary>")
+        first = steps.index('<ol class="step-list" role="list">')
+        self.assertLess(warning, fold)
+        self.assertLess(fold, first)
+        self.assertEqual(steps[first:].count("<li>"), 6)
         # The circles carry the numbers for screen readers too: the list's own markers are off.
         numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
         self.assertEqual(numbers, ["1", "2", "3", "4", "5", "6"])

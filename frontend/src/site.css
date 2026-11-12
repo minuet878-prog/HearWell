@@ -2186,10 +2186,11 @@
     line-height: 1.4;
   }
 
-  /* My guide's 選配路線 (#258): numbered stops on a line (N3, ADR 0041), the 目前這一站 in the
-     brand blue with a soft ring. Marks are blue or neutral, never the level colours (ADR 0007). */
+  /* My guide's 選配路線 (#258, #467): numbered stops on a line (N3, ADR 0041), the line blue as
+     far as the 目前這一站, which is a pale blue card beside it (the home page's 現在這一步).
+     Marks are words, never the level colours (ADR 0007). */
   .route {
-    --route-size: 2.5rem;
+    --route-size: 1.7778rem;
     container-type: inline-size;
     list-style: none;
     margin: 0;
@@ -2214,11 +2215,20 @@
     background-color: var(--color-line-strong);
   }
 
-  /* A white circle in a 2px blue frame, like the chapters' .step-list-number. */
+  /* #467 I2: the way walked, up to the 目前這一站, is blue. */
+  .route-stop.is-walked::after {
+    z-index: 1;
+    background-color: var(--color-primary);
+    transform-origin: top;
+  }
+
+  /* A white circle in a 2px blue frame, like the chapters' .step-list-number; a done stop's holds
+     a blue tick (blue, not green, as on the home page: green is a level's colour). */
   .route-number {
     flex: none;
     width: var(--route-size);
     height: var(--route-size);
+    margin-top: 0.3rem;
     border: 2px solid var(--color-primary);
     border-radius: 50%;
     background-color: #fff;
@@ -2229,63 +2239,28 @@
     justify-content: center;
   }
 
-  /* A stop's box is flat on the page; only the 目前這一站 frames it in pale blue. Its title is
-     the link. */
   .route-box {
     flex: 1 1 0;
     min-width: 0;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-medium);
   }
 
   .route-title {
+    color: var(--color-heading);
     font-weight: 700;
   }
 
   .route-marks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    margin: 0 0 0.25rem;
-  }
-
-  .route-mark {
-    padding: 0 0.6rem;
-    border-radius: var(--radius-pill);
-    background-color: var(--color-brand-selected);
-    color: var(--color-primary);
-    font-size: 1rem;
-    font-weight: 700;
+    display: block;
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 400;
   }
 
   .route-note {
     margin: 0.25rem 0 0;
   }
 
-  .route-stop.is-here .route-number {
-    border-color: var(--color-primary);
-    background-color: var(--color-primary);
-    color: #fff;
-    box-shadow: 0 0 0 0.35rem rgba(31, 78, 140, 0.18);
-  }
-
-  .route-stop.is-here .route-box {
-    border: 0.125rem solid var(--color-primary);
-    background-color: var(--color-brand-soft);
-  }
-
-  .route-stop.is-here .route-mark:first-child {
-    background-color: var(--color-primary);
-    color: #fff;
-  }
-
-  /* #321: the neutral marks are pale grey. */
-  .route-stop.is-below .route-mark {
-    background-color: var(--color-surface);
-    color: var(--color-heading);
-  }
-
-  /* 不適用 (#293): a pale grey number, the 不適用 mark saying so in words; the text keeps its
+  /* 不適用 (#293): a pale grey circle, the 不適用 mark saying so in words; the text keeps its
      contrast. */
   .route-stop.is-na .route-number {
     border-color: var(--color-border);
@@ -2293,20 +2268,7 @@
     color: var(--color-body);
   }
 
-  .route-stop.is-na .route-mark {
-    background-color: var(--color-surface);
-    color: var(--color-body);
-  }
-
-  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
-     the answer goes back to only: the success green (ADR 0007) with a white tick in place of its
-     number, drawn once in 0.45 s below; with reduced motion it is simply there. */
-  .route-stop.is-done-now .route-number {
-    border-color: var(--color-normal);
-    background-color: var(--color-normal);
-    color: #fff;
-  }
-
+  .route-check,
   .route-tick {
     width: 60%;
     height: 60%;
@@ -2374,12 +2336,10 @@
     }
   }
 
+  /* #336 (spec #326 E5, ADR 0028): the stop an answer on the route just made 已完成, on the page
+     the answer goes back to only: its tick draws once in 0.45 s, as the score gauge's arcs do;
+     with reduced motion it is simply there. */
   @media (prefers-reduced-motion: no-preference) {
-    .route-stop.is-here .route-number {
-      animation: route-ring 2.4s ease-in-out both;
-    }
-
-    /* The tick draws itself. */
     .route-tick path {
       animation: gauge-draw 0.45s ease-out both;
     }
@@ -2511,9 +2471,9 @@
     margin-top: 2rem;
   }
 
-  /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後) keeps its title off
-     it. */
-  .guide-chapter > h1 + section {
+  /* #367 (spec #354): a chapter opening straight on a titled part (配戴之後), or on its key cards
+     (#467), keeps its title off it. */
+  .guide-chapter > h1 + :is(section, div) {
     margin-top: 1.5rem;
   }
 
@@ -4881,12 +4841,279 @@
   }
 }
 
+/* #467 hearing aid guide (the #466 mockup A, the owner's picks H1 + H2 and I1 + I2): the
+   route's rows that open in place and its 您在這裡 card, the route's entrance, the audiogram's
+   subheads, the chapters' key cards and folds, and source links tall enough to tap. */
+@layer components {
+  /* I1: every stop but the 目前這一站 is a row that opens in place to say what it is (the whole
+     row, a blue arrow at its end, down while folded and up when open, swapped not turned so
+     nothing moves); pressing it only changes colour (ADR 0028). */
+  .route-about > summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    padding: 0.35rem 0.25rem;
+    border-radius: var(--radius-small);
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .route-about > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .route-row {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .route-about .result-details-arrow {
+    margin-top: 0.2rem;
+  }
+
+  .route-about[open] .result-details-arrow {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6-6 6 6'/%3E%3C/svg%3E");
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-about > summary:hover {
+      background-color: var(--color-brand-soft);
+    }
+  }
+
+  .route-about > summary:active {
+    background-color: var(--color-brand-selected);
+  }
+
+  /* What follows a row lines up with its title. */
+  .route-box:not(.route-card) > :is(.route-note, .route-answer) {
+    padding-inline-start: 0.25rem;
+  }
+
+  .route-about-body {
+    padding: 0.25rem 0.25rem 0.25rem;
+  }
+
+  .route-about-body p {
+    margin: 0;
+  }
+
+  .route-about-body a {
+    font-weight: 700;
+  }
+
+  /* 不適用: the title in the body grey, the circle pale (above); the words keep their contrast. */
+  .route-stop.is-na .route-title {
+    color: var(--color-body);
+    font-weight: 400;
+  }
+
+  /* The 目前這一站: a pale blue card beside the line, as the home page's 現在這一步 (ADR 0041),
+     its circle level with the card's first line and the line above reaching down to it. */
+  .route-card {
+    padding: 0.875rem 1rem 1rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-brand-soft);
+  }
+
+  .route-stop.is-here .route-number {
+    margin-top: 0.875rem;
+  }
+
+  .route-stop.is-here:not(:last-child)::after {
+    top: calc(var(--route-size) + 1.25rem);
+  }
+
+  .route-stop:has(+ .is-here)::after {
+    bottom: -0.75rem;
+  }
+
+  .route-here-label {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .route-card .route-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    font-size: var(--text-section-title);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+
+  .route-card .route-title > span:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .route-chevron {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    background-color: var(--color-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .route-card .route-title:hover > span:first-child {
+      text-decoration: underline;
+    }
+  }
+
+  /* The current answer while changing it: a blue frame and tick on pale blue, as a chosen row
+     (E), so the page keeps its one solid button. */
+  .stop-answers .btn.is-current {
+    --btn-bg: var(--color-brand-selected);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .stop-answer-tick {
+    flex: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* I2 (ADR 0028's 2026-11-12 exception): on a tab's first visit (guide.js), the done ticks draw
+     one by one, the blue line grows down to the 目前這一站 and its circle's ring lights once,
+     about 2 seconds wherever that stop is (--route-here is how far it is); held until that stop
+     is in view (ADR 0029). Otherwise, and with reduced motion, the end at once. Longhands, not
+     the animation shorthand: that would set the play state back to running and so outrank the
+     hold until in view. */
+  @media (prefers-reduced-motion: no-preference) {
+    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-check path,
+    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-stop::after {
+      animation-play-state: paused;
+    }
+
+    .route-plays .route-stop.is-walked .route-check path {
+      stroke-dasharray: 1;
+      animation-name: gauge-draw;
+      animation-duration: 0.35s;
+      animation-timing-function: ease-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-walked::after {
+      animation-name: route-line;
+      animation-duration: calc(1.2s / var(--route-here));
+      animation-timing-function: linear;
+      animation-delay: calc((var(--route-step) + 0.2) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+
+    .route-plays .route-stop.is-here .route-number {
+      animation-name: route-ring;
+      animation-duration: 0.7s;
+      animation-timing-function: ease-in-out;
+      animation-delay: calc(var(--route-step) * 1.5s / var(--route-here));
+      animation-fill-mode: both;
+    }
+  }
+
+  /* What the latest audiogram says: one title, the old boxes' titles as bold subheads (the #466
+     mockup A). */
+  .guide-hearing > section {
+    margin-top: 1.5rem;
+  }
+
+  .guide-hearing-subhead {
+    margin: 0 0 0.5rem;
+    color: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .guide-hearing .result-details {
+    margin-top: 1rem;
+  }
+
+  .guide-hearing .result-details-body .guide-hearing-subhead {
+    margin-top: 1rem;
+  }
+
+  /* H1: three key cards at a chapter's start, a large line then the chapter's own words, on the
+     提示框's pale grey (P3): not clickable, so no arrow and no blue. */
+  .key-cards {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .key-card {
+    padding: 0.75rem 1rem 0.875rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    overflow-wrap: anywhere;
+  }
+
+  .key-card-big {
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: var(--text-page-title);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .key-card p {
+    margin: 0;
+  }
+
+  /* H2: a part's question title, one sentence in sight, the rest behind a 看更多 row (a line
+     dropdown). The folds come open in the page; guide.js folds them, but the one a jump lands
+     on, and till then their contents wait unseen (chapter.html), so nothing shows and shrinks. */
+  :root.guide-folds-pending [data-guide-fold] > :not(summary) {
+    display: none;
+  }
+
+  .guide-chapter section > .dropdown-line,
+  .guide-chapter section > .dropdown-box {
+    margin-top: 0.5rem;
+  }
+
+  /* Source links in small print, yet 44px tall to tap: padding the line box does not grow by. */
+  .guide-source a,
+  .guide-sources li > a {
+    display: inline-block;
+    padding-block: 0.6rem;
+    margin-block: -0.6rem;
+  }
+
+  .guide-sources li {
+    padding-block: 0.6rem;
+  }
+}
+
 /* #469 learn, family zone and Q&A assistant (the #468 mockup): list rows (E), long content and
    sources folded into rows like a result page's 看完整說明, the red 馬上就醫 box never folded. */
 @layer components {
   /* A fold among a list's rows: the row above already draws the line between them. */
   li + li > .result-details {
     border-top: 0;
+  }
+
+  /* The family zone's choices (點選看說明, 補助檢核) take the fields' edge, 4.7:1 on white, as
+     the answer pages' do (#463, the owner's call 2026-11-12). */
+  .family-guide {
+    --choice-border: var(--color-input-border);
   }
 
   /* A fold row's line under its title, as a list row's (T1). */
@@ -5036,11 +5263,6 @@
 /* Answer page (#326 C4): another question's text fades in. */
 @keyframes question-fade {
   from { opacity: 0; }
-}
-
-/* My guide (#258): the 目前這一站's ring breathes once (ADR 0006), then stays. */
-@keyframes route-ring {
-  50% { box-shadow: 0 0 0 0.6rem rgba(31, 78, 140, 0.08); }
 }
 
 /* Answer page (#326 B4): ✓ 已儲存 stays, then fades in its last 0.3 s. */
@@ -5782,4 +6004,12 @@
       --tab-bar-height: 0px;
     }
   }
+}
+
+@keyframes route-line {
+  from { transform: scaleY(0); }
+}
+
+@keyframes route-ring {
+  50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
 }

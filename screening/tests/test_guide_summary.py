@@ -101,10 +101,9 @@ class GuideSummaryTests(TestCase):
         self.make(PTA_60, PTA_60, tested_on=date(2026, 3, 1))
         self.make(PTA_53_75, PTA_60, tested_on=date(2026, 10, 1))
         text = self.text()
-        # #260: the date and each ear's number open the 選配 meter.
-        self.assertIn(
-            "依您 2026/10/01 的聽力圖： 右耳四頻平均 53.75 dB HL 左耳四頻平均 60 dB HL", text
-        )
+        # #260: each ear's number opens the 選配 meter; since #467 the date is the title over it.
+        self.assertIn("依您 2026/10/01 的聽力圖 ", text)
+        self.assertIn("要不要找聽力師評估 右耳四頻平均 53.75 dB HL 左耳四頻平均 60 dB HL", text)
         self.assertNotIn("2026/03/01", text)
 
     def test_reached_says_so_and_points_to_assessment_first(self):
@@ -162,7 +161,8 @@ class GuideSummaryTests(TestCase):
     def test_how_it_was_worked_out(self):
         self.make(PTA_53_75, PTA_60)
         response = self.client.get(reverse("guide"))
-        self.assertContains(response, f"<summary>{HOW}</summary>")
+        # #467: a bold subhead inside 看完整說明 (it was a fold of its own).
+        self.assertContains(response, f'<h4 class="guide-hearing-subhead">{HOW}</h4>')
         text = test_guide.text_of(response)
         for sentence in (
             HOW_FORMULA,
@@ -437,9 +437,8 @@ class GuideSummaryStatesTests(TestCase):
         self.assertIn("no-store", response["Cache-Control"])
         text = test_guide.text_of(response)
         self.assertIn("您 2026/10/03 做的", text)
-        self.assertIn(
-            "依您 2026/10/01 的聽力圖： 右耳四頻平均 30 dB HL 左耳四頻平均 20 dB HL", text
-        )
+        self.assertIn("依您 2026/10/01 的聽力圖 ", text)
+        self.assertIn("右耳四頻平均 30 dB HL 左耳四頻平均 20 dB HL", text)
         self.assertIn(RECOMMENDS, text)
         self.assertNotIn(WEARING, text)
         self.assertNotIn("2026/10/09", text)

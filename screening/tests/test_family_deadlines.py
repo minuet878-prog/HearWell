@@ -412,7 +412,7 @@ class Form25ChapterLinkTests(TestCase):
     def test_a_line_after_the_opening_leads_to_the_calculator(self):
         text = re.sub(r"<[^>]+>", "", self.main)
         self.assertLess(text.index(self.OPENING), text.index(self.LINE))
-        self.assertLess(text.index(self.LINE), text.index("誰要做、怎麼做"))
+        self.assertLess(text.index(self.LINE), text.index("誰要做？什麼時候做？"))
         self.assertRegex(self.main, r'<a [^>]*href="/family/visits/deadlines"[^>]*>期限試算</a>')
 
     def test_the_line_does_not_say_your_family_member(self):
