@@ -1,0 +1,1 @@
+{# #471: the audiogram's line on the report, in its summary for paper and on its fold row on screen. #}{% for ear, label, result in ears %}{{ label }} {% if result.pta is None %}資料不足{% else %}{{ result.pta|stringformat:"g" }} dB HL {{ result.degree }}{% if result.type %}、{{ result.type }}{% endif %}{% endif %}{% if not forloop.last %}；{% endif %}{% endfor %}

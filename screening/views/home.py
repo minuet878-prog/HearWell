@@ -3,13 +3,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
 from screening.care_journey import care_journey
-from screening.questionnaires import hhie_s
-from screening.questionnaires.results import score_bar
-from screening.scoring import classify, max_score
 from screening.views.answering import continue_notice
-
-# A made-up HHIE-S total for the home page's result preview (spec phase9_ui_refresh_4a_home.md 4.2).
-HOME_PREVIEW_SCORE = 18
 
 
 def greeting(hour):
@@ -24,20 +18,9 @@ def greeting(hour):
 def index(request):
     user = request.user
     if not user.is_authenticated:
-        preview = classify(HOME_PREVIEW_SCORE, hhie_s.CODE)
-        return render(
-            request,
-            "screening/index.html",
-            {
-                "preview_score": HOME_PREVIEW_SCORE,
-                "preview_color": preview["color"],
-                "preview_text": preview["text"],
-                "preview_max_score": max_score(hhie_s.CODE),
-                "preview_score_bar": score_bar(
-                    hhie_s.DEFINITION, HOME_PREVIEW_SCORE, preview["level"]
-                ),
-            },
-        )
+        # #471 (mockup #458 ⑪): a visitor sees the 空狀態首頁; no one's records, so it may be
+        # cached.
+        return render(request, "screening/index.html")
     # #459 (ADR 0042): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
     has_records = user.submissions.defined().exists() or user.audiograms.exists()

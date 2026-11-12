@@ -113,8 +113,6 @@ class PrivacyHighlightsTests(TestCase):
 
     def test_highlights_on_top_match_the_consent_page(self):
         main = self._privacy_main()
-        # #361: the folded list of sections names them first; the sections come after it.
-        main = main[main.index("</details>") :]
         top = main[main.index("先看重點") : main.index("誰在蒐集")]
         self.assertEqual(self._list_items(top), list(HIGHLIGHTS))
         self.client.force_login(User.objects.create_user(username="highlights_reader"))
@@ -130,11 +128,9 @@ class PrivacyHighlightsTests(TestCase):
         ]
         self.assertEqual(files, ["consent_highlights.html"])
 
-    def test_full_text_stays_open_with_the_share_page_wording(self):
+    def test_the_sharing_section_has_the_share_page_wording(self):
         main = self._privacy_main()
-        # #361: only the list of sections on top folds (PrivacyPageT361Tests); the text is open.
-        self.assertEqual(main.count("<details"), 1)
-        main = main[main.index("</details>") :]
+        # #471 (mockup #470 privacy B): each section folds into a row (test_account_redesign).
         sharing = main[main.index("您主動分享時") : main.index("您可以要求什麼")]
         self.assertIn("在「分享報告給家人」頁產生分享連結後", test_layout._text(sharing))
         self.assertNotIn("「聽力報告」頁", sharing)
@@ -150,7 +146,6 @@ class PrivacyHighlightsTests(TestCase):
         # #292 (spec #291 acceptance 25): every answer on the route and the chapters read,
         # written in once for the whole feature (spec #291's draft).
         main = self._privacy_main()
-        main = main[main.index("</details>") :]
         collected = main[main.index("蒐集哪些資料") : main.index("存放在哪裡、保存多久")]
         # #361: the answers on the route are a list of their own (PrivacyPageT361Tests).
         self.assertIn(
@@ -234,22 +229,15 @@ class ConsentPageTests(TestCase):
         self.assertContains(response, "第 2 步／共 2 步：同意隱私權")
         self.assertEqual(step_bar(response), (2, 2))
 
-    # #360 (spec #354): the title and step in the register page's blue banner, the rest below it
-    # as flat blocks with no card (ADR 0022).
-    def test_title_and_step_sit_in_the_register_banner_and_the_rest_below(self):
+    # #360 (spec #354): the title and step as on the register page, the rest below them as flat
+    # blocks with no card (ADR 0022). #471 (mockup #470 D1 B): a plain title, no banner.
+    def test_title_and_step_on_top_and_the_rest_below(self):
         main = self.client.get(reverse("consent")).content.decode()
         main = main.split('id="main-content"', 1)[1].split("</main>", 1)[0]
-        start = main.index('<div class="auth-hero')
-        end, depth = start, 0
-        for tag in re.finditer(r"<(/?)div\b", main[start:]):
-            depth += -1 if tag.group(1) else 1
-            if depth == 0:
-                end = start + tag.end()
-                break
-        hero, below = main[start:end], main[end:]
-        self.assertIn('<h1 class="auth-hero-title">開始使用之前</h1>', hero)
-        self.assertIn("第 2 步／共 2 步：同意隱私權", hero)
-        self.assertIn('class="auth-hero-bars"', hero)
+        top, below = main.split("</div>\n</div>", 1)  # the step bar, then its box
+        self.assertIn('<h1 class="h3 mt-4">開始使用之前</h1>', top)
+        self.assertIn("第 2 步／共 2 步：同意隱私權", top)
+        self.assertNotIn("auth-hero", main)
         self.assertIn("聽伴會保存您的篩檢作答", below)
         self.assertIn(">我同意，開始篩檢</button>", below)
         self.assertNotIn("card", below)
@@ -465,8 +453,9 @@ class RevisionTests(TestCase):
 
 
 class PrivacyPageT361Tests(TestCase):
-    """#361 (spec #354): a folded list of the sections on top, links that say where they go, the
-    health data's answers as a list of their own, and the last heading like the others."""
+    """#361 (spec #354): links that say where they go, the health data's answers as a list of
+    their own, and the last heading like the others. Its folded list of the sections on top went
+    in #471, where the sections themselves fold into rows (test_account_redesign)."""
 
     def setUp(self):
         content = self.client.get(reverse("privacy")).content.decode()
@@ -474,23 +463,6 @@ class PrivacyPageT361Tests(TestCase):
 
     def _headings(self):
         return re.findall(r'<h2 id="([^"]+)" class="([^"]+)">(.*?)</h2>', self.main)
-
-    def test_folded_list_of_sections_on_top_jumps_to_each(self):
-        toc = re.search(
-            r"<details([^>]*)>\s*<summary>(.*?)</summary>(.*?)</details>", self.main, re.S
-        )
-        self.assertIsNotNone(toc)
-        attrs, summary, body = toc.groups()
-        self.assertEqual(summary, "這一頁的段落")
-        self.assertNotRegex(attrs, r"\bopen\b")
-        # On top: before the first section, right under the title and version line.
-        self.assertLess(self.main.index("<details"), self.main.index("<h2"))
-        links = re.findall(r'<a href="#([^"]+)">(.*?)</a>', body)
-        headings = self._headings()
-        self.assertEqual(len(headings), 13)  # #400 added the question log
-        self.assertEqual(links, [(anchor, words) for anchor, _, words in headings])
-        self.assertEqual(links[0], ("highlights-title", "先看重點"))
-        self.assertEqual(links[-1], ("contact-title", "有問題或要刪除資料？"))
 
     def test_links_say_where_they_go(self):
         download = re.search(
@@ -524,8 +496,10 @@ class PrivacyPageT361Tests(TestCase):
         )
 
     def test_every_section_heading_is_the_same_level(self):
-        sizes = {
-            tuple(c for c in classes.split() if c in ("h4", "h5", "heading-bar"))
-            for _, classes, _ in self._headings()
-        }
-        self.assertEqual(sizes, {("h4",)})
+        # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
+        # each kind alike; all are level 2.
+        classes = {anchor: kind for anchor, kind, _ in self._headings()}
+        self.assertEqual(len(classes), 13)  # #400 added the question log
+        open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
+        self.assertEqual(open_ones, {"h4"})
+        self.assertEqual(set(classes.values()), {"fold-row-title"})

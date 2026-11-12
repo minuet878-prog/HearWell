@@ -291,11 +291,12 @@ class QuestionLogPrivacyTests(TestCase):
         start = self.main.index('<h2 id="question-log-title"')
         return test_layout._text(self.main[start : self.main.index("<h2", start + 1)])
 
-    def test_a_section_on_the_question_log_listed_on_top(self):
+    def test_a_section_on_the_question_log(self):
+        # #471 (mockup #470 privacy B): a folded row of its own; the list of sections on top went.
         self.assertIn(
-            '<h2 id="question-log-title" class="h4 mt-6">問答小助手的提問紀錄</h2>', self.main
+            '<h2 id="question-log-title" class="fold-row-title">問答小助手的提問紀錄</h2>',
+            self.main,
         )
-        self.assertIn('<li><a href="#question-log-title">問答小助手的提問紀錄</a></li>', self.main)
         # Right after what is collected, so 會交給誰's 上面所有資料 covers it too.
         self.assertLess(
             self.main.index('<h2 id="collected-title"'),

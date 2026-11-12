@@ -13,47 +13,42 @@
 {# Spec phase8_c1_family_share.md 4.2: the owner's report without name or birth year. #}
 <article class="health-report">
 {# Ticket #194: the line and both blocks are for the screen only; the printed report is unchanged. #}
-<p class="no-print mt-4 mb-0">這是您的家人在聽伴自己作答與輸入的自我篩檢結果。</p>
-<h1 class="h3 mt-4">聽伴聽力報告</h1>
-<p class="font-bold">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
+<p class="no-print mt-4 mb-0 text-(--color-muted)">這是您的家人在聽伴自己作答與輸入的自我篩檢結果。</p>
+<h1 class="h3 mt-2">聽伴聽力報告</h1>
+<p class="font-bold text-heading">這是家人分享給您的報告，連結有效到 {{ share.expires_at|date:"Y/m/d" }}。</p>
 {% if life_impact or audiogram %}
-<section id="family-highlights" class="family-highlights mb-4 no-print" aria-labelledby="highlights-title">
+{# #471 (mockup #470 group 3): the life-impact level in its whole level colour (L1); the audiogram's two ears, which may differ, in a grey box with a label each. #}
+<section id="family-highlights" class="family-highlights no-print" aria-labelledby="highlights-title">
     <h2 id="highlights-title" class="h4">先看重點</h2>
-    <ul class="list-unstyled">
-        {% if life_impact %}{% with classified=life_impact.result.level %}
-        <li class="mb-2">
-            <span class="font-bold">{{ life_impact.questionnaire.definition.topic }}</span>
-            {% include "screening/level_badge.html" with text=classified.text color=classified.level %}
-            <br>{{ life_impact.created_at|date:"Y/m/d" }} 作答
-        </li>
-        {% endwith %}{% endif %}
-        {% if audiogram %}
-        <li class="mb-2">
-            <span class="font-bold">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</span>
-            <br>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}
-        </li>
-        {% endif %}
-    </ul>
-    <p class="mb-0">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
+    {% if life_impact %}{% with classified=life_impact.result.level %}
+    <div class="family-level result-banner-{{ classified.color }}"><span class="family-level-label">{{ life_impact.questionnaire.definition.topic }}</span><span class="family-level-name">{{ classified.text }}</span><span>{{ life_impact.created_at|date:"Y/m/d" }} 作答</span></div>
+    {% endwith %}{% endif %}
+    {% if audiogram %}
+    <div class="family-level result-banner-unknown"><span class="family-level-label">聽力圖（{{ audiogram.tested_on|date:"Y/m/d" }}）</span><span>{% for ear, label, result in ears %}{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}{% if not forloop.last %}　{% endif %}{% endfor %}</span></div>
+    {% endif %}
+    <p class="text-(--color-muted) mb-0">結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
 </section>
 {% endif %}
 {# Plain links to the public guide: no share token in them, and this page sends no referrer. #}
-<section id="family-help" class="mb-4 no-print" aria-labelledby="help-title">
+<section id="family-help" class="no-print" aria-labelledby="help-title">
     <h2 id="help-title" class="h4">您可以怎麼幫忙</h2>
     <ul class="list-unstyled mb-0">
-        <li><a class="link-card" href="{% url 'family_talk' %}">
+        <li><a class="link-card action-card" href="{% url 'family_talk' %}">
+            <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">怎麼跟聽損的家人說話</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        <li><a class="link-card" href="{% url 'family_guide' %}#aid-title">
+        <li><a class="link-card action-card" href="{% url 'family_guide' %}#aid-title">
+            <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M9 3a5 5 0 0 1 5 5v5a3 3 0 0 1-3 3H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M11 16v2a3 3 0 0 0 3 3h2"/><circle cx="10.5" cy="7.5" r="1"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">陪伴配戴助聽器</span>
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
-        <li><a class="link-card" href="{% url 'family_guide' %}#urgent-title">
+        <li><a class="link-card action-card" href="{% url 'family_guide' %}#urgent-title">
+            <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">什麼時候要馬上就醫</span>
             </span>
@@ -64,14 +59,14 @@
 {% if not has_records %}
 <p>這份報告目前沒有紀錄。</p>
 {% else %}
-<p class="no-print">
-    <button id="print-button" type="button" class="btn btn-primary btn-lg">列印或存成 PDF</button>
-</p>
+{# #471 (D5): the family reads the highlights first, so printing comes after them. #}
+<p class="no-print mt-6"><button id="print-button" type="button" class="btn btn-primary btn-lg w-full">列印或存成 PDF</button></p>
 <div class="report-meta">
     {% if owner.age is not None %}<span>年齡：{{ owner.age }} 歲</span>{% endif %}
     <span>產生日期：{{ today|date:"Y/m/d" }}</span>
 </div>
 {% include "screening/report_content.html" %}
+<p class="report-disclaimer">這是使用者在聽伴自己作答與輸入的結果，是自我篩檢結果，不是醫療診斷。</p>
 {% endif %}
 </article>
 {% endblock %}

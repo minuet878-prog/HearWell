@@ -1,5 +1,6 @@
 """Spec #148 batch 1, ticket #150: the visitor's home page. A signed-in user's home, the 照顧旅程
-or the 空狀態首頁, is test_home_journey's (#459)."""
+or the 空狀態首頁, is test_home_journey's (#459). #471 (mockup #458 ⑪ for a visitor): the visitor
+sees the 空狀態首頁 too, its first step 建立帳號."""
 
 import re
 
@@ -15,7 +16,6 @@ class NewUserHomeTests(TestCase):
         "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
-        "半年後再做，看分數變化。",
     )
     OLD_HINT = "第一次使用請先註冊，已有帳號請直接登入。"
 
@@ -36,52 +36,45 @@ class NewUserHomeTests(TestCase):
         return hrefs[0]
 
     def _steps(self, main):
-        steps = re.search(r'<ol class="step-cards.*?</ol>', main, re.DOTALL).group(0)
-        return re.findall(r"<span>([^<]+)</span>", steps)
+        steps = re.search(r'<div class="empty-preview">.*?</ol>', main, re.DOTALL).group(0)
+        return re.findall(r'<span class="step-list-body">([^<]+)</span>', steps)
 
-    def test_anonymous_sees_start_and_login_buttons_and_four_steps(self):
+    def test_anonymous_sees_start_and_login_buttons_and_three_steps(self):
         main = self._main()
         self.assertEqual(self._link(main, "開始篩檢"), self.start_url)
         self.assertEqual(self._link(main, "我已經有帳號，登入"), self.login_url)
         self.assertEqual(self._steps(main), list(self.STEPS))
         self.assertNotIn(self.OLD_HINT, main)
 
-    def test_hero_labels_sit_above_the_title(self):
+    def test_the_visitor_sees_the_empty_state_home(self):
         main = self._main()
-        hero = main[main.index('<section class="home-hero') : main.index("<h1")]
-        chips = re.findall(r'<span class="home-chip">.*?</svg>\s*([^<]+?)\s*</span>', hero, re.S)
-        self.assertEqual(chips, ["約 3 分鐘", "國際標準量表"])
-        self.assertEqual(hero.count('aria-hidden="true"'), hero.count("<svg"))
+        self.assertIn('<h1 class="h3">從一份問卷開始</h1>', main)
+        self.assertIn(
+            "<p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>", main
+        )
+        self.assertIn(
+            '<p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>', main
+        )
+        links = re.search(r'<ul class="home-links" role="list">(.*?)</ul>', main, re.S).group(1)
+        self.assertEqual(
+            re.findall(r'<li([^>]*)><a href="([^"]+)">([^<]+)</a></li>', links),
+            [
+                ("", reverse("guide"), "了解助聽器選配與補助"),
+                ("", reverse("family_guide"), "我是家人"),
+                (" data-hide-in-app", reverse("add_to_home"), "加到手機主畫面"),
+            ],
+        )
+        self.assertIn('<p class="empty-credit">內容由台灣執業聽力師設計與審定。</p>', main)
+        self.assertEqual(main.count("btn-primary"), 1)
+        for old in ("home-hero", "home-illustration", "result-preview", "結果長這樣"):
+            with self.subTest(old=old):
+                self.assertNotIn(old, main)
 
     def test_login_is_a_text_link_under_the_start_button(self):
         main = self._main()
         login = re.search(r"<a([^>]*)>\s*我已經有帳號，登入\s*</a>", main)
         self.assertNotIn("btn", login.group(1))
         self.assertLess(main.index(">開始篩檢<"), login.start())
-
-    def test_title_is_larger_and_the_picture_is_the_smiling_elder(self):
-        main = self._main()
-        self.assertRegex(main, r'<h1 class="[^"]*\btext-center\b[^"]*">了解聽力對您生活的影響</h1>')
-        start = main.index('class="home-illustration"')
-        picture = main[start : main.index("</svg>", start)]
-        for part in ("ill-face", "ill-hair", "ill-cheek", "ill-accent"):
-            self.assertIn(part, picture)
-
-    def test_result_preview_shows_the_result_page_score_bar(self):
-        # Design picker round 2: the example card carries the same bar as the result page,
-        # with HHIE-S's own thresholds and the made-up 18 points.
-        main = self._main()
-        preview = main[main.index('<figure class="result-preview">') : main.index("</figure>")]
-        self.assertIn('<div class="score-bar" aria-hidden="true">', preview)
-        for level, width in (("normal", 20), ("mild_to_moderate", 40), ("severe", 40)):
-            with self.subTest(level=level):
-                self.assertIn(
-                    f'class="score-bar-segment score-bar-segment-{level}" '
-                    f'style="width: {width}.00%"',
-                    preview,
-                )
-        self.assertIn('class="score-bar-marker" style="--position: 45.00%"', preview)
-        self.assertLess(preview.index("result-banner"), preview.index("score-bar"))
 
     # The logo and the one-time ring are drawn by CSS on btn-start and checked in e2e.
     def test_start_button_uses_the_btn_start_class(self):
@@ -140,15 +133,6 @@ class NewUserHomeTests(TestCase):
                     {"username": "tester", "password": self.PASSWORD, "next": url},
                 )
                 self.assertRedirects(response, url)
-
-    def test_result_preview_uses_the_result_page_level_style(self):
-        # 18 points on HHIE-S is mild to moderate; the result page draws its banner the same way.
-        self.assertInHTML(
-            '<div class="result-banner result-banner-mild_to_moderate">'
-            '<div class="result-level">輕度到中度影響</div>'
-            "<div>HHIE-S 總分 18 分（滿分 40）</div></div>",
-            self._main(),
-        )
 
     def test_anonymous_home_has_no_never_cache_header(self):
         response = self.client.get(reverse("index"))

@@ -142,12 +142,13 @@ class AccountSettingsTests(TestCase):
 
     # 12
     def test_home_order_and_text(self):
+        # #471 (mockup #458 ⑪): the visitor's home is the 空狀態首頁.
         expected = (
-            "了解聽力對您生活的影響",
-            "聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。",
-            "開始篩檢",
+            "從一份問卷開始",
+            "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
             "回答問題，大約 3 分鐘。",
-            "內容由台灣執業",  # one line in a badge card since the brand refresh
+            "開始篩檢",
+            "內容由台灣執業",
         )
         # The visitor's home: a signed-in user's is the 照顧旅程 or the 空狀態首頁 since #459
         # (test_home_journey).
@@ -181,12 +182,13 @@ class GroupedAccountSettingsTests(TestCase):
         self.assertIsNotNone(link)
         return test_layout._text(link.group(1))
 
-    def test_four_groups_in_order_under_the_same_title(self):
+    def test_groups_in_order_under_the_same_title(self):
         main = self._main()
         self.assertIn("帳號設定</h1>", main)
         headings = [test_layout._text(h) for h in re.findall(r"<h2[^>]*>(.*?)</h2>", main, re.S)]
         # #361: the red 刪除帳號 card has no heading of its own (AccountSettingsT361Tests).
-        self.assertEqual(headings, ["我的帳號", "家人與手機", "資料與隱私"])
+        # #471 (mockup #470 account A): 家人與手機 and 資料與隱私 became one group.
+        self.assertEqual(headings, ["我的帳號", "家人與資料"])
 
     def test_active_share_says_until_when_and_links_to_share_page(self):
         self._share(self.user)
@@ -216,7 +218,7 @@ class GroupedAccountSettingsTests(TestCase):
 
     def test_family_and_phone_group_links(self):
         main = self._main()
-        group = main[main.index("家人與手機") : main.index("資料與隱私")]
+        group = main[main.index("家人與資料") : main.index(reverse("delete_account"))]
         self.assertIn(f'href="{reverse("family_guide")}"', group)
         # Hidden in the home-screen app by pwa-nav.js, as on the home page (#160).
         add_to_home = re.search(rf'<li([^>]*)>\s*<a [^>]*href="{reverse("add_to_home")}"', group)
@@ -235,7 +237,7 @@ class GroupedAccountSettingsTests(TestCase):
 
     def test_account_rows_are_not_links(self):
         main = self._main()
-        group = main[main.index("我的帳號") : main.index("家人與手機")]
+        group = main[main.index("我的帳號") : main.index("家人與資料")]
         self.assertNotIn("<a ", group)
         for value in ("grouped_a", "a@example.com", "民國 44 年（1955）"):
             self.assertIn(value, test_layout._text(group))
@@ -262,7 +264,7 @@ class AccountSettingsT361Tests(TestCase):
 
     def _rows(self):
         main = self._main()
-        group = main[main.index("我的帳號") : main.index("家人與手機")]
+        group = main[main.index("我的帳號") : main.index("家人與資料")]
         return {
             test_layout._text(name): test_layout._text(value)
             for name, value in re.findall(r"<dt[^>]*>(.*?)</dt>(.*?)</div>", group, re.S)
@@ -270,7 +272,7 @@ class AccountSettingsT361Tests(TestCase):
 
     def _group(self):
         main = self._main()
-        return test_layout._text(main[main.index("我的帳號") : main.index("家人與手機")])
+        return test_layout._text(main[main.index("我的帳號") : main.index("家人與資料")])
 
     def test_a_blank_says_how_to_change_it_once_under_the_details(self):
         for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
@@ -300,4 +302,4 @@ class AccountSettingsT361Tests(TestCase):
         text = test_layout._text(self._main())
         self.assertEqual(text.count("刪除帳號"), 1)
         # Said once, on the red card that still comes last.
-        self.assertGreater(text.index("刪除帳號"), text.index("資料與隱私"))
+        self.assertGreater(text.index("刪除帳號"), text.index("隱私權說明"))

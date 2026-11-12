@@ -9,93 +9,7 @@
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
-{% if not user.is_authenticated %}
-{# The visitor's home; #471 redoes it. #}
-{# Layout per spec phase9_ui_refresh_4a_home.md 4.1, a flat block since ADR 0022; pictures are decorative, the words carry the meaning. #}
-<section class="home-hero mt-2">
-    <div class="home-chips">
-        <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>約 3 分鐘</span>
-        <span class="home-chip"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h5"/></svg>國際標準量表</span>
-    </div>
-    {% include "screening/home_illustration.html" %}
-    {# #360 (spec #354): bold in the heading colour, 31.5px on a phone and 40.5px on a wider screen. #}
-    <h1 class="text-[1.75rem] font-bold text-heading text-center md:text-[2.25rem]">了解聽力對您生活的影響</h1>
-    <p class="text-center">聽力變化很慢，自己常常沒發現。看看聽力對生活的影響。</p>
-    {% url 'questionnaire_list' as list_url %}
-    {# Spec #148: first-time visitors register first, then come back to choose a questionnaire. #}
-    <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
-    <p class="text-center mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
-</section>
-{# Phones only: the steps are done on a phone. pwa-nav.js hides [data-hide-in-app] in the home-screen app. #}
-<div class="mt-4 mb-4 md:hidden" data-hide-in-app>
-    <a class="link-card action-card" href="{% url 'add_to_home' %}">
-        {% include "screening/action_icon.html" with icon="add-home" %}
-        <span class="link-card-body">
-            <span class="link-card-title">把聽伴加到手機主畫面</span>
-            <span>下次點一下就能打開，不用輸入網址</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a>
-</div>
-<ol class="step-cards" role="list">
-    <li>
-        <span class="step-number">1</span>
-        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-        <span>建立帳號，大約 1 分鐘。</span>
-    </li>
-    <li>
-        <span class="step-number">2</span>
-        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></svg>
-        <span>回答問題，大約 3 分鐘。</span>
-    </li>
-    <li>
-        <span class="step-number">3</span>
-        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
-        <span>馬上看到結果分級和建議。</span>
-    </li>
-    <li>
-        <span class="step-number">4</span>
-        <svg class="step-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
-        <span>半年後再做，看分數變化。</span>
-    </li>
-</ol>
-{# Ticket #228, option B: the hearing-aid guide entry right after the steps. #}
-<ul class="list-unstyled mb-6">
-    <li><a class="link-card" href="{% url 'guide' %}">
-        <span class="link-card-body">
-            <span class="link-card-title">了解助聽器選配與補助</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
-    {# #427 (spec #426): the way into 家人專區 for someone who came for a relative. #}
-    <li><a class="link-card" href="{% url 'family_guide' %}">
-        <span class="link-card-body">
-            <span class="link-card-title">我是家人：怎麼陪伴聽損的家人</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a></li>
-</ul>
-{# Brand refresh round 4 ("結果頁會告訴您"): the title on top, three checks instead of cut-off advice. #}
-<figure class="result-preview">
-    <div class="result-preview-head">
-        <h2 class="h4 mb-0">結果長這樣</h2>
-        <span class="preview-tag">示意圖</span>
-    </div>
-    <div class="result-banner result-banner-{{ preview_color }}">
-        <div class="result-level">{{ preview_text }}</div>
-        <div>HHIE-S 總分 {{ preview_score }} 分（滿分 {{ preview_max_score }}）</div>
-    </div>
-    {% include "screening/score_bar.html" with bar=preview_score_bar %}
-    <ul class="result-preview-tells" role="list">
-        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>聽力對生活的影響程度</li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>分數落在哪一段</li>
-        <li><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l5 5 9-10"/></svg>接下來可以怎麼做</li>
-    </ul>
-    <figcaption>實際結果依您的回答而定。</figcaption>
-</figure>
-{# Brand refresh, design picker round 3: one line with a badge; the scales are in the top label. #}
-<p class="home-credential"><span class="home-credential-icon"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="home-credential-text">內容由台灣執業<span class="break-keep wrap-anywhere">聽力師</span>設計與審定。</span></p>
-{% elif journey %}
+{% if journey %}
 {# #459 (ADR 0042, mockup #458): the 照顧旅程, its 現在這一步 the one thing to do today. #}
 <h1 class="h3">{{ greeting }}，{% if journey.card.button %}今天只要做一件事{% else %}今天沒有要做的事{% endif %}</h1>
 {# 上次結果 is the latest life-impact record, its whole tile a link in its level's colour (L1); 下次篩檢 is grey, information only. Without a life-impact record both are grey and say not yet (#458 D6). #}
@@ -189,18 +103,30 @@
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
-{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. #}
+{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. #471 (mockup #458 ⑪ for a visitor): a visitor sees the same page, its first step making the account (spec #148: register first, then choose a questionnaire), and can log in instead. #}
 <h1 class="h3">從一份問卷開始</h1>
 <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
 <div class="empty-preview">
     <p class="empty-preview-title">做完第一份問卷，這裡會排出您的照顧旅程</p>
     <ol class="step-list" role="list">
+        {% if user.is_authenticated %}
         <li><span class="step-list-number">1</span><span class="step-list-body">回答問題，大約 3 分鐘</span></li>
         <li><span class="step-list-number">2</span><span class="step-list-body">馬上看到結果分級和建議</span></li>
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
+        {% else %}
+        <li><span class="step-list-number">1</span><span class="step-list-body">建立帳號，大約 1 分鐘。</span></li>
+        <li><span class="step-list-number">2</span><span class="step-list-body">回答問題，大約 3 分鐘。</span></li>
+        <li><span class="step-list-number">3</span><span class="step-list-body">馬上看到結果分級和建議。</span></li>
+        {% endif %}
     </ol>
 </div>
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'questionnaire_list' %}">開始篩檢</a>
+{% url 'questionnaire_list' as list_url %}
+{% if user.is_authenticated %}
+<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
+{% else %}
+<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
+<p class="mt-2 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
+{% endif %}
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>
     <li><a href="{% url 'family_guide' %}">我是家人</a></li>

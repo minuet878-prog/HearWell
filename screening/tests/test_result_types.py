@@ -906,10 +906,11 @@ class ApiFieldsTests(ResultTestCase):
         for html in self.report_pages():
             for line in (
                 # 重點: each type's latest record.
-                '<li>HHIE-S（2026/01/02）：0 分，<span class="report-level '
-                'report-level-normal">無／極輕微影響</span>，助聽器：有戴</li>',
-                '<li>THI（2026/01/04）：50 分，<span class="report-level '
-                'report-level-mild_to_moderate">中度障礙</span>，助聽器：未記錄</li>',
+                # #471: the level in the site's level badge.
+                '<li>HHIE-S（2026/01/02）：0 分，<span class="level-badge '
+                'level-badge-normal">無／極輕微影響</span>，助聽器：有戴</li>',
+                '<li>THI（2026/01/04）：50 分，<span class="level-badge '
+                'level-badge-mild_to_moderate">中度障礙</span>，助聽器：未記錄</li>',
                 "<li>日常聆聽能力（SSQ12-TW，2026/01/06）：未計算：包含不適用題目</li>",
                 # The average part's summary line (#409: summaries/average.html).
                 "<p>未計算：包含不適用題目</p>",

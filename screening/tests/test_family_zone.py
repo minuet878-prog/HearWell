@@ -53,11 +53,6 @@ AID_NOTE = "剛開始不習慣、回診和保養時可以怎麼陪"
 RELUCTANT_NOTE = "不想檢查、不想戴時可以試的說法"
 VISITS_NOTE = "要帶什麼、想問什麼、補助還缺什麼、期限到哪天"
 HEARING_AIDS_NOTE = "怪怪的怎麼辦、怎麼陪他適應、日常保養"
-# (href, title) of each card in a part of a page, in page order.
-CARD = re.compile(
-    r'<a class="link-card[^"]*" href="([^"]*)">.*?<span class="link-card-title">([^<]*)</span>',
-    re.S,
-)
 # (href, icon or nothing, title, the line under it or nothing) of each of the zone's entries.
 ENTRY = re.compile(
     r'<a class="link-card[^"]*" href="([^"]*)">\s*'
@@ -106,25 +101,14 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(response.status_code, 200)
         return _main(response.content.decode())
 
-    def assert_family_card_under_the_guide_card(self):
+    def test_visitor_has_the_family_link_after_the_guide_s(self):
+        # #471 (mockup #458 ⑪): the visitor's home is the 空狀態首頁, its ways in text links
+        # after the start and login buttons, as for a signed-in user without records.
         main = self._home()
-        self.assertEqual(
-            CARD.findall(main),
-            [
-                (reverse("add_to_home"), "把聽伴加到手機主畫面"),
-                (reverse("guide"), "了解助聽器選配與補助"),
-                (self.url, FAMILY_CARD),
-            ],
-        )
-        # The main buttons keep their place above the cards.
-        self.assertLess(main.index("開始篩檢"), main.index("了解助聽器選配與補助"))
-        self.assertLess(main.index(FAMILY_CARD), main.index("結果長這樣"))
-
-    def test_visitor_sees_the_family_card_under_the_guide_card(self):
-        self.assert_family_card_under_the_guide_card()
-        main = self._home()
+        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
         self.assertLess(main.index("開始篩檢"), main.index("我已經有帳號，登入"))
         self.assertLess(main.index("我已經有帳號，登入"), main.index("了解助聽器選配與補助"))
+        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
 
     def test_new_user_without_records_has_a_family_link(self):
         # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
@@ -565,10 +549,11 @@ class ReviewedPagesTests(SimpleTestCase):
     """Spec #426's second batch may add a line to the form 9 and form 25 chapters and change one
     sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
     is of that page on main before the batch, without those lines (updated by #456, which only
-    took the 段落框 classes off its tags, and by #467, which moved the reviewed words into the
-    H1 + H2 layout and added draft key cards and question titles for the owner to review).
-    Failing here means reviewed words changed: have the owner review them before updating the
-    digest."""
+    took the 段落框 classes off its tags; by #467, which moved the reviewed words into the
+    H1 + H2 layout and added draft key cards and question titles for the owner to review; and by
+    #471, which only folded the privacy notice's sections into rows and took off its folded list
+    of them, mockup #470 privacy B). Failing here means reviewed words changed: have the owner
+    review them before updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
@@ -585,7 +570,7 @@ class ReviewedPagesTests(SimpleTestCase):
         (
             "privacy.html",
             ('<p class="tip-box">本站只用登入',),
-            "1c81e5c234d4bcfd8e39a18434321068b7ea01c701ae6b4fe059575a32822453",
+            "28ec76b9781a82e8c12e70b54b9fe369c88e8d0a8fcd18be0e4e5162cba17723",
         ),
     )
 
