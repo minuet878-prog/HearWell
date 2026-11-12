@@ -15,7 +15,7 @@ from screening.audiogram import (
 )
 from screening.audiogram_thumbnail import thumbnail
 from screening.models import Ear
-from screening.views.common import health_data_page
+from screening.views.common import RECENT_SHOWN, health_data_page, older_fold
 
 
 @login_required
@@ -25,7 +25,15 @@ def audiogram_list(request):
     for audiogram in audiograms:
         # From the points already loaded with the list: no query per card.
         audiogram.thumbnail = thumbnail(audiogram.points.all())
-    return render(request, "screening/audiogram_list.html", {"audiograms": audiograms})
+    return render(
+        request,
+        "screening/audiogram_list.html",
+        {
+            "audiograms": audiograms,
+            "recent": audiograms[:RECENT_SHOWN],
+            "older": older_fold(audiograms, lambda a: a.tested_on, "張"),
+        },
+    )
 
 
 def _chart_points(points):

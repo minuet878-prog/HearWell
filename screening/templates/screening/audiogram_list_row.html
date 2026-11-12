@@ -1,0 +1,11 @@
+{# One audiogram of the list, shown or folded under 看以前的 N 張 (#465): its thumbnail (2A), date and both ears. #}
+{% with result=audiogram.interpretation %}
+<a class="link-card audiogram-card" href="{% url 'audiogram_detail' audiogram.id %}">
+    {% include "screening/audiogram_thumbnail.html" %}
+    <span class="link-card-body">
+        <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
+        {% include "screening/audiogram_ears.html" %}
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% endwith %}

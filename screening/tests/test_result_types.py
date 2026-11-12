@@ -461,7 +461,13 @@ class SummaryTemplateTests(ResultTestCase):
         self.client.force_login(self.user)
         html = self.client.get(reverse("my_hearing"), {"questionnaire": code}).content.decode()
         rows = re.findall(r'<a class="link-card" href="[^"]*">.*?</a>', html, re.S)
-        since_last = re.search(r'<section id="since-last".*?</section>', html, re.S)
+        # #465 (the #464 mockup 1A): 和上一次比 is in the tab's one score block.
+        since_last = re.search(
+            r'<div class="result-banner[^"]*records-score">(?:(?!</div>).)*'
+            r'<div class="result-since-last" id="since-last">.*?</div>\s*</div>',
+            html,
+            re.S,
+        )
         return rows, since_last and since_last.group(0)
 
     def test_my_hearing_rows_and_since_last_by_type(self):
@@ -476,24 +482,14 @@ class SummaryTemplateTests(ResultTestCase):
             )
 
         def since_last(previous, latest, text):
-            def cell(label, date, score, newest=""):
-                return (
-                    f'<p class="since-last-cell{newest}"><span class="since-last-label">{label}'
-                    '</span><span class="since-last-date"><span class="visually-hidden">（</span>'
-                    f'{date}<span class="visually-hidden">）：</span></span>'
-                    f'<span class="since-last-score">{score}<span class="since-last-unit"> 分'
-                    "</span></span></p>"
-                )
-
+            (previous_date, previous_score), (date, score, status, colour, level) = previous, latest
             return (
-                '<section id="since-last" class="since-last mb-6 wrap-anywhere"'
-                ' aria-labelledby="since-last-title">'
-                '<h2 id="since-last-title" class="h4">和上一次比</h2>'
-                f'<div class="since-last-pair">{cell("上一次", *previous)}'
-                '<span class="since-last-arrow" aria-hidden="true">→</span>'
-                f"{cell('最近一次', *latest, newest=' since-last-latest')}</div>"
-                f'<p class="mb-0 text-subhead text-heading"><strong>{text}</strong></p>'
-                "</section>"
+                f'<div class="result-banner result-banner-{colour} records-score">'
+                f"<p>最近一次（{date}，{status}）</p>"
+                f'<p class="result-score"><span class="result-number">{score}</span> 分</p>'
+                f'<p class="result-block-level">{level}</p>'
+                f'<div class="result-since-last" id="since-last"><p>{text}</p>'
+                f"<p>上一次（{previous_date}）：{previous_score} 分</p></div></div>"
             )
 
         def badge(level, text):
@@ -516,7 +512,9 @@ class SummaryTemplateTests(ResultTestCase):
                     ),
                 ],
                 since_last(
-                    ("2026/03/01", 20), ("2026/04/01", 40), "比上一次多 20 分（分數越低越好）"
+                    ("2026/03/01", 20),
+                    ("2026/04/01", 40, "沒戴助聽器", "severe", "顯著影響"),
+                    "比上一次多 20 分（分數越低越好）",
                 ),
             ),
             (
@@ -535,7 +533,9 @@ class SummaryTemplateTests(ResultTestCase):
                     ),
                 ],
                 since_last(
-                    ("2026/03/02", 50), ("2026/04/02", 100), "比上一次多 50 分（分數越低越好）"
+                    ("2026/03/02", 50),
+                    ("2026/04/02", 100, "助聽器未記錄", "severe", "極重度障礙"),
+                    "比上一次多 50 分（分數越低越好）",
                 ),
             ),
             (
@@ -585,7 +585,11 @@ class SummaryTemplateTests(ResultTestCase):
         # #409: 我的紀錄 includes the row, without a place. (#459: the home page no longer shows
         # a record of another type, so it includes no summary.)
         for name, include in (
-            ("screening/my_hearing.html", "{% include submission.result.row_template %}"),
+            ("screening/my_hearing.html", '{% include "screening/records_submission_row.html" %}'),
+            (
+                "screening/records_submission_row.html",
+                "{% include submission.result.row_template %}",
+            ),
         ):
             with self.subTest(template=name):
                 source = get_template(name).template.source

@@ -16,13 +16,6 @@
 {% block body %}
 <h1 class="h3 mt-2">我的紀錄</h1>
 {% include "screening/records_switch.html" with side="questionnaires" %}
-{# Ticket #162: the home page's retest reminder, shown here only once it is due. #}
-{% if user_state.retest_due %}
-<section id="retest-reminder" class="bg-brand-soft rounded-large p-6 mb-6">
-    <p>{{ user_state.reminder }}</p>
-    <a class="btn btn-primary btn-lg" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
-</section>
-{% endif %}
 {% if questionnaires|length > 1 %}
 {# Each tab is its own URL, so reload and the back button keep the tab. #}
 <nav class="history-tabs" aria-label="問卷">
@@ -31,22 +24,43 @@
     {% endfor %}
 </nav>
 {% endif %}
-{% if since_last %}
-<section id="since-last" class="since-last mb-6 wrap-anywhere" aria-labelledby="since-last-title">
-    <h2 id="since-last-title" class="h4">和上一次比</h2>
-    {# #364: without a trend chart (HHIA-S) this is the tab's summary, in the same blue box as #}
-    {# the trend chart's; with one (HHIE-S, THI) that box follows right below, so one is enough. #}
-    {% if not trend_chart %}<div class="trend-summary">{% endif %}
-    {# The two records side by side (2026-10-24 comparison page, option A). #}
-    <div class="since-last-pair">
-        {% include "screening/since_last_record.html" with label="上一次" record=since_last.previous %}
-        <span class="since-last-arrow" aria-hidden="true">→</span>
-        {% include "screening/since_last_record.html" with label="最近一次" record=since_last.latest newest=True %}
-    </div>
-    <p class="mb-0 text-subhead text-heading"><strong>{{ since_last.text }}</strong></p>
-    {% if since_last.wearing_change %}<p class="mt-1 mb-0">{{ since_last.wearing_change }}</p>{% endif %}
-    {% if not trend_chart %}</div>{% endif %}
+{# Ticket #162: the home page's retest reminder, shown here only once it is due; then its button is the page's one solid button (#465, the #464 mockup) and the report a list row. #}
+{% if user_state.retest_due %}
+<section id="retest-reminder" class="result-next mt-0 mb-6">
+    <p>{{ user_state.reminder }}</p>
+    <a class="btn btn-primary btn-lg w-full" href="{% url 'screening' user_state.retest_questionnaire.pk %}">{{ user_state.retest_button }}</a>
 </section>
+{% endif %}
+{% if score_block %}
+{# #465 (the #464 mockup 1A): 和上一次比 and the trend chart's 最近一次 in one block in the latest level's colour (L1), their words as they were. #}
+{% with latest=score_block.latest result=score_block.latest.result %}
+<div class="result-banner result-banner-{{ result.level.color }} records-score">
+    <p>最近一次（{{ latest.created_at|date:"Y/m/d" }}{% if latest.id in same_day %} {{ latest.created_at|date:"H:i" }}{% endif %}，{{ score_block.status }}）</p>
+    <p class="result-score"><span class="result-number">{{ result.total }}</span> 分</p>
+    <p class="result-block-level">{{ result.level.text }}</p>
+    {% if since_last or score_block.change %}
+    <div class="result-since-last"{% if since_last %} id="since-last"{% endif %}>
+        {% if since_last %}
+        <p>{{ since_last.text }}</p>
+        <p>上一次（{{ since_last.previous.created_at|date:"Y/m/d" }}{% if since_last.previous.id in same_day %} {{ since_last.previous.created_at|date:"H:i" }}{% endif %}）：{{ since_last.previous.result.total }} 分</p>
+        {% if since_last.wearing_change %}<p>{{ since_last.wearing_change }}</p>{% endif %}
+        {% else %}<p>{{ score_block.change }}</p>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endwith %}
+{% endif %}
+{% if user_state.retest_due %}
+<a class="link-card action-card mt-4" href="{% url 'health_report' %}">
+    {% include "screening/action_icon.html" with icon="report" %}
+    <span class="link-card-body">
+        <span class="link-card-title">看／印聽力報告</span>
+        <span>可以印出來或存成 PDF</span>
+    </span>
+    <span class="link-card-arrow" aria-hidden="true">›</span>
+</a>
+{% else %}
+<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'health_report' %}">看／印聽力報告</a>
 {% endif %}
 {% if ioi_ha_chart %}
 {% include "screening/ioi_ha_chart.html" with chart=ioi_ha_chart %}
@@ -57,28 +71,20 @@
 {% if submissions %}
 <h2 id="records-title" class="h4">每次的紀錄</h2>
 {% if current.definition.records_note %}<p>{{ current.definition.records_note }}</p>{% endif %}
+{% for submission in submissions %}{% include "screening/records_submission_row.html" %}{% endfor %}
+{% if older %}
+{# #465 (the #464 mockup 8A): the newest three above, the rest here. #}
+<details class="result-details">
+    {% include "screening/records_fold_summary.html" with icon="clock" title=older.title subtitle=older.dates %}
+    <div class="result-details-body records-fold-rows">
+        {% for submission in older.rows %}{% include "screening/records_submission_row.html" %}{% endfor %}
+    </div>
+</details>
 {% endif %}
-{% for submission in submissions %}
-<a class="link-card" href="{% url 'result' submission.id %}">
-    <span class="link-card-body">
-        <strong>{{ submission.created_at|date:"Y/m/d" }}{% if submission.id in same_day %} {{ submission.created_at|date:"H:i" }}{% endif %}</strong>
-        {% include submission.result.row_template %}
-    </span>
-    <span class="link-card-arrow" aria-hidden="true">›</span>
-</a>
-{% empty %}
+{% else %}
 <p>您還沒有做過篩檢紀錄</p>
-{% endfor %}
-<section class="mt-6" aria-labelledby="for-doctor-title">
-    <h2 id="for-doctor-title" class="h4">要給醫師或家人看？</h2>
-    <a class="link-card action-card" href="{% url 'health_report' %}">
-        {% include "screening/action_icon.html" with icon="report" %}
-        <span class="link-card-body">
-            <span class="link-card-title">看／印聽力報告</span>
-            <span>可以印出來或存成 PDF</span>
-        </span>
-        <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a>
+{% endif %}
+<div class="mt-6">
     <a class="link-card action-card" href="{% url 'share_report' %}">
         {% include "screening/action_icon.html" with icon="share" %}
         <span class="link-card-body">
@@ -88,13 +94,15 @@
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>
     {% if show_comparison %}
-    <section class="aided-difference mt-4" aria-labelledby="difference-title">
-        <h3 id="difference-title" class="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem]">配戴狀態比較</h3>
-        {% if saved_comparison %}
-        {% include current.definition.comparison.history_template with comparison=saved_comparison %}
-        {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
-        <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">比較戴與不戴助聽器</a>
-    </section>
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="compare" title="配戴狀態比較" subtitle=saved_comparison.summary %}
+        <div class="result-details-body">
+            {% if saved_comparison %}
+            {% include current.definition.comparison.history_template with comparison=saved_comparison %}
+            {% else %}<p>尚未保留比較組合，不會自動用最新兩筆配對。</p>{% endif %}
+            <a class="btn btn-outline-primary btn-lg" href="{% url 'hhi_comparison' current.pk %}">比較戴與不戴助聽器</a>
+        </div>
+    </details>
     {% endif %}
-</section>
+</div>
 {% endblock %}

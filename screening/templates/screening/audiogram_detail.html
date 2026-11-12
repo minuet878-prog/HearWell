@@ -10,58 +10,33 @@
 {% block body %}
 {# wrap-anywhere: at 200% text on a phone the date cannot break and would widen the page (#204). #}
 <h1 class="h3 mt-4 wrap-anywhere">{{ audiogram.tested_on|date:"Y/m/d" }} 檢查的聽力圖</h1>
-{# #201 (spec #183 stories 94-105): both ears at a glance, the chart right under them. #}
-<section class="audiogram-summary mb-4" aria-label="兩耳程度">
-    <p class="mb-0">{% for ear, label, result in ears %}<span class="audiogram-summary-ear">{{ label }}：{% include "screening/level_badge.html" with text=result.degree|default:"資料不足，無法判讀" color=result.degree|degree_level %}</span>{% endfor %}</p>
+{# #465 (the #464 mockup 3A): each ear a block in its degree's colour (L1, DEGREE_LEVELS) above the chart, with its four-frequency average; the rest waits in 看完整說明. #}
+<section class="audiogram-ear-blocks" aria-label="兩耳程度">
+    {% for ear, label, result in ears %}
+    <div class="result-banner result-banner-{{ result.degree|degree_level }} audiogram-ear-block" data-ear="{{ ear }}">
+        <p class="audiogram-ear-block-label">{{ label }}</p>
+        <p class="audiogram-ear-block-degree">{{ result.degree|default:"資料不足" }}</p>
+        <p>{% if result.pta is None %}無法判讀{% else %}四頻平均：<br>{{ result.pta|stringformat:"g" }} dB HL{% endif %}</p>
+    </div>
+    {% endfor %}
 </section>
 <div id="audiogram-chart" class="audiogram-chart"></div>
 {{ chart_points|json_script:"audiogram-points" }}
-<div class="ear-results">
-    {% for ear, label, result in ears %}
-    <section class="ear-result ear-{{ ear }}" data-ear="{{ ear }}">
-        <h2 class="h4">{{ label }}</h2>
-        {% if result.pta is None %}
-        <p class="mb-0">{% include "screening/level_badge.html" with text="資料不足" color="unknown" %}，無法判讀</p>
-        {% else %}
-        <p class="mb-1">四頻平均：{{ result.pta|stringformat:"g" }} dB HL</p>
-        <p class="mb-1">程度：{% include "screening/level_badge.html" with text=result.degree color=result.degree|degree_level %}</p>
-        <p class="mb-1">類型：{% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}</p>
-        {% if result.no_response %}<p class="mb-0">含無反應的頻率，實際聽力可能更差</p>{% endif %}
-        {% endif %}
-    </section>
-    {% endfor %}
-</div>
-<section class="tip-box mt-4" aria-labelledby="read-chart-title">
-    <h2 id="read-chart-title" class="tip-box-title">看懂這張圖</h2>
-    <p>紅色 O 是右耳，藍色 X 是左耳；兩耳一樣時會疊在一起。淺綠色是 25 dB 以內，屬於正常範圍。</p>
-    <p>dB 數字越大，代表要越大聲才聽得到。</p>
-    <p>四頻平均是 500、1000、2000、4000 Hz 的平均。這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
-</section>
-<details class="dropdown-box mb-4">
-    <summary>標記的數值</summary>
-    <table class="table">
-        <thead><tr><th scope="col">項目</th><th scope="col">頻率</th><th scope="col">聽閾</th></tr></thead>
-        <tbody>
-            {% for point in points %}
-            <tr>
-                <td>{{ point.get_ear_display }}{{ point.get_conduction_display }}</td>
-                <td>{{ point.frequency }} Hz</td>
-                <td>{% include "screening/audiogram_point_value.html" %}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</details>
-<section class="mb-4" aria-labelledby="next-title">
-    <h2 id="next-title" class="h4">接下來</h2>
-    <a class="link-card action-card" href="{% url 'health_report' %}">
-        {% include "screening/action_icon.html" with icon="report" %}
+{# #465 (D4 甲): the guide is the one solid button while recommends_fitting_assessment says so (either ear over 25 dB); otherwise the speech banana is. #}
+{% if fitting_guide %}
+<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'guide' %}">看我的選配指引</a>
+{% elif has_air_marks %}
+<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'audiogram_speech_banana' audiogram.id %}">看語言香蕉區</a>
+{% endif %}
+<div class="mt-6">
+    {% if has_air_marks and fitting_guide %}<a class="link-card action-card" href="{% url 'audiogram_speech_banana' audiogram.id %}">
+        {% include "screening/action_icon.html" with icon="ear" %}
         <span class="link-card-body">
-            <span class="link-card-title">看／印聽力報告</span>
-            <span>{% if latest_tested_on %}聽力報告放的是最新一張（{{ latest_tested_on|date:"Y/m/d" }}）{% else %}可以印出來或存成 PDF{% endif %}</span>
+            <span class="link-card-title">看語言香蕉區</span>
+            <span>看哪些說話聲可能不容易聽到</span>
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a>
+    </a>{% endif %}
     {% if compare_with %}<a class="link-card action-card" href="{% url 'audiogram_compare' %}?a={{ audiogram.id }}&amp;b={{ compare_with }}">
         {% include "screening/action_icon.html" with icon="compare" %}
         <span class="link-card-body">
@@ -70,17 +45,46 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a>{% endif %}
-    {% if has_air_marks %}<a class="link-card action-card" href="{% url 'audiogram_speech_banana' audiogram.id %}">
-        {% include "screening/action_icon.html" with icon="ear" %}
+    <a class="link-card action-card" href="{% url 'health_report' %}">
+        {% include "screening/action_icon.html" with icon="report" %}
         <span class="link-card-body">
-            <span class="link-card-title">看語言香蕉區</span>
-            <span>看哪些說話聲可能不容易聽到</span>
+            <span class="link-card-title">看／印聽力報告</span>
+            <span>{% if latest_tested_on %}聽力報告放的是最新一張（{{ latest_tested_on|date:"Y/m/d" }}）{% else %}可以印出來或存成 PDF{% endif %}</span>
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
-    </a>{% endif %}
-    {% if fitting_guide %}{% include "screening/audiogram_guide_card.html" %}{% endif %}
-</section>
-<p class="quiet-links"><a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a><a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a></p>
-{# #365: the way back, as on the compare page. #}
-<p><a class="btn btn-outline-primary" href="{% url 'audiogram_list' %}">回聽力圖清單</a></p>
+    </a>
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="info" title="看完整說明" %}
+        <div class="result-details-body">
+            {% for ear, label, result in ears %}{% if result.pta is not None %}
+            <p data-ear="{{ ear }}"><strong>{{ label }}</strong>　類型：{% if result.type %}<strong>{{ result.type }}</strong>{% else %}需要骨導資料才能判斷{% endif %}{% if result.no_response %}<br>含無反應的頻率，實際聽力可能更差{% endif %}</p>
+            {% endif %}{% endfor %}
+            <section class="tip-box" aria-labelledby="read-chart-title">
+                <h2 id="read-chart-title" class="tip-box-title">看懂這張圖</h2>
+                <p>紅色 O 是右耳，藍色 X 是左耳；兩耳一樣時會疊在一起。淺綠色是 25 dB 以內，屬於正常範圍。</p>
+                <p>dB 數字越大，代表要越大聲才聽得到。</p>
+                <p>四頻平均是 500、1000、2000、4000 Hz 的平均。這是依固定規則算出的參考結果，不能取代聽力師的判讀。</p>
+            </section>
+        </div>
+    </details>
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="table" title="標記的數值" %}
+        <div class="result-details-body">
+            <table class="table">
+                <thead><tr><th scope="col">項目</th><th scope="col">頻率</th><th scope="col">聽閾</th></tr></thead>
+                <tbody>
+                    {% for point in points %}
+                    <tr>
+                        <td>{{ point.get_ear_display }}{{ point.get_conduction_display }}</td>
+                        <td>{{ point.frequency }} Hz</td>
+                        <td>{% include "screening/audiogram_point_value.html" %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+{# #365: the way back, as on the compare page; #465: all three quiet text links (S1). #}
+<p class="quiet-links"><a href="{% url 'audiogram_edit' audiogram.id %}">修改這張</a><a class="quiet-link-danger" href="{% url 'audiogram_delete' audiogram.id %}">刪除這張</a><a href="{% url 'audiogram_list' %}">回聽力圖清單</a></p>
 {% endblock %}

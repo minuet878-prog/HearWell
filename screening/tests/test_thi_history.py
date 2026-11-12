@@ -65,12 +65,16 @@ class ThiHistoryTests(test_thi.ThiTestCase):
             "screening/frontend/trend-chart.js",
         )
 
+    def _block_lines(self, main):
+        # #465 (the #464 mockup 1A): 和上一次比 and the trend chart's 最近一次 in one block.
+        start = main.index("records-score")
+        block = main[start : main.index('id="trend-chart"', start)]
+        return [self._text(p) for p in re.findall(r"<p[^>]*>(.*?)</p>", block, re.S)]
+
     def _since_last_lines(self, main):
-        match = re.search(r'<section id="since-last"[^>]*>(.*?)</section>', main, re.S)
-        if match is None:
+        if 'id="since-last"' not in main:
             return None
-        lines = re.findall(r"<(?:h2|p)[^>]*>(.*?)</(?:h2|p)>", match.group(1), re.S)
-        return [self._text(line) for line in lines]
+        return self._block_lines(main)
 
     def test_since_last_compares_with_the_record_before_whatever_was_worn(self):
         self._record(52, False, (2026, 1, 15))
@@ -78,10 +82,11 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self.assertEqual(
             self._since_last_lines(self._main()),
             [
-                "和上一次比",
-                "上一次（2026/01/15）：52 分",
-                "最近一次（2026/07/15）：30 分",
+                "最近一次（2026/07/15，有戴助聽器）",
+                "30 分",
+                "輕度障礙",
                 "比上一次少 22 分（分數越低越好）",
+                "上一次（2026/01/15）：52 分",
                 "上次沒戴、這次有戴助聽器。",
             ],
         )
@@ -91,7 +96,11 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(36, False, (2026, 7, 15))
         self.assertEqual(
             self._since_last_lines(self._main())[3:],
-            ["比上一次多 6 分（分數越低越好）", "上次有戴、這次沒戴助聽器。"],
+            [
+                "比上一次多 6 分（分數越低越好）",
+                "上一次（2026/01/15）：30 分",
+                "上次有戴、這次沒戴助聽器。",
+            ],
         )
 
     def test_no_wearing_line_when_both_were_worn(self):
@@ -99,12 +108,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(30, True, (2026, 7, 15))
         main = self._main()
         self.assertEqual(
-            self._since_last_lines(main)[1:],
-            [
-                "上一次（2026/01/15）：52 分",
-                "最近一次（2026/07/15）：30 分",
-                "比上一次少 22 分（分數越低越好）",
-            ],
+            self._since_last_lines(main)[3:],
+            ["比上一次少 22 分（分數越低越好）", "上一次（2026/01/15）：52 分"],
         )
         self.assertNotIn("上次", main)
 
@@ -113,12 +118,12 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         main = self._main()
         self.assertIsNone(self._since_last_lines(main))
         self.assertNotIn("和上一次比", main)
-        summary = re.search(r'class="trend-summary[^"]*">(.*?)</div>', main, re.S).group(1)
         self.assertEqual(
-            [self._text(p) for p in re.findall(r"<p[^>]*>(.*?)</p>", summary, re.S)],
+            self._block_lines(main),
             [
                 "最近一次（2026/01/15，有戴助聽器）",
-                "52 分 中度障礙",
+                "52 分",
+                "中度障礙",
                 # THI is not a screening (GLOSSARY: 篩檢問卷 is not every questionnaire).
                 "再做一次，就能看到分數的變化。",
             ],
@@ -129,9 +134,8 @@ class ThiHistoryTests(test_thi.ThiTestCase):
         self._record(52, False, (2026, 1, 15))
         self._record(30, True, (2026, 7, 15))
         main = self._main()
-        since_last = re.search(r'<section id="since-last"([^>]*)>', main).group(1)
-        self.assertNotIn("aria-hidden", since_last)
-        self.assertNotIn("aria-hidden", re.search(r'class="trend-summary([^>]*)>', main).group(1))
+        block = main[main.index("records-score") : main.index('id="trend-chart"')]
+        self.assertNotIn("aria-hidden", block)
         self.assertLess(main.index("上次沒戴、這次有戴助聽器。"), main.index('id="trend-plot"'))
 
     def test_hhie_s_still_compares_records_worn_the_same_way(self):

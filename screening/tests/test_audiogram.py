@@ -338,9 +338,10 @@ class AudiogramPageTests(TestCase):
         return content[content.index("<main") : content.index("</main>")]
 
     def _ear_card(self, response, ear):
+        # #465 (the #464 mockup 3A): an ear's block above the chart and its line in 看完整說明.
         main = self._main(response)
-        match = re.search(rf'<section[^>]*data-ear="{ear}"[^>]*>(.*?)</section>', main, re.DOTALL)
-        return match.group(1)
+        parts = re.findall(rf'<(div|p)[^>]*data-ear="{ear}"[^>]*>(.*?)</\1>', main, re.DOTALL)
+        return " ".join(html for _, html in parts)
 
     # 新增頁
     def test_new_page_loads_react(self):
@@ -373,9 +374,9 @@ class AudiogramPageTests(TestCase):
     def test_detail_insufficient_and_missing_bone(self):
         points = [_air("right", f, 40) for f in (500, 1000, 4000)] + _four(_air, "left", (50,) * 4)
         response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
-        self.assertIn(
-            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "right")
-        )
+        right = self._ear_card(response, "right")
+        self.assertIn('class="audiogram-ear-block-degree">資料不足</p>', right)
+        self.assertIn("<p>無法判讀</p>", right)
         left = self._ear_card(response, "left")
         self.assertIn("中度", left)
         self.assertIn("需要骨導資料才能判斷", left)
@@ -399,7 +400,7 @@ class AudiogramPageTests(TestCase):
         points.append(_air("right", 4000, 120, no_response=True))
         response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
         right = self._ear_card(response, "right")
-        self.assertIn("四頻平均：105 dB HL", right)
+        self.assertIn("四頻平均：<br>105 dB HL", right)
         self.assertIn("極重度", right)
         self.assertIn("含無反應的頻率，實際聽力可能更差", right)
 
@@ -435,12 +436,10 @@ class AudiogramPageTests(TestCase):
         points = [_air(ear, f, 40) for ear in ("right", "left") for f in (250, 8000)]
         response = self.client.get(reverse("audiogram_detail", args=[self._make(points).id]))
         self.assertEqual(response.status_code, 200)
-        self.assertIn(
-            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "right")
-        )
-        self.assertIn(
-            'level-badge-unknown">資料不足</span>，無法判讀', self._ear_card(response, "left")
-        )
+        for ear in ("right", "left"):
+            card = self._ear_card(response, ear)
+            self.assertIn('class="audiogram-ear-block-degree">資料不足</p>', card)
+            self.assertIn("<p>無法判讀</p>", card)
 
     # 清單
     def test_list_newest_test_date_first(self):
@@ -569,23 +568,23 @@ class AudiogramResultPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return self._main(response)
 
-    def _section(self, main, attribute):
-        return re.search(rf"<section[^>]*{attribute}[^>]*>(.*?)</section>", main, re.S).group(1)
-
     def test_summary_card_lists_both_ears_and_the_chart_follows(self):
-        # Left ear: only three of the four average frequencies.
+        # Left ear: only three of the four average frequencies. #465 (the #464 mockup 3A): each
+        # ear a block in its degree's colours, the chart right under them.
         points = self.MILD_RIGHT + [_air("left", f, 50) for f in (500, 1000, 2000)]
         main = self._page(self._make(points))
-        summary = self._section(main, "audiogram-summary")
-        badge = r'\s*<span class="level-badge level-badge-{}">{}</span>'
-        self.assertRegex(summary, "右耳：" + badge.format("mild_to_moderate", "輕度"))
-        self.assertRegex(summary, "左耳：" + badge.format("unknown", "資料不足，無法判讀"))
+        summary = re.search(
+            r'<section class="audiogram-ear-blocks"[^>]*>(.*?)</section>', main, re.S
+        ).group(1)
+        block = r"result-banner-{}[^>]*>\s*<p[^>]*>{}</p>\s*<p[^>]*>{}</p>"
+        self.assertRegex(summary, block.format("mild_to_moderate", "右耳", "輕度"))
+        self.assertRegex(summary, block.format("unknown", "左耳", "資料不足"))
         self.assertNotIn("兩耳", summary)
         # The chart comes right after the summary, not folded away.
-        after = main[main.index("audiogram-summary") :]
-        self.assertLess(after.index('id="audiogram-chart"'), after.index("ear-results"))
+        after = main[main.index("audiogram-ear-blocks") :]
+        self.assertLess(after.index("</section>"), after.index('id="audiogram-chart"'))
         self.assertNotRegex(main, r"<details[^>]*>(?:(?!</details>).)*id=\"audiogram-chart\"")
-        self.assertIn("四頻平均：36.25 dB HL", self._section(main, 'data-ear="right"'))
+        self.assertIn("四頻平均：<br>36.25 dB HL", summary)
         self.assertIn("dB 數字越大，代表要越大聲才聽得到。", main)
 
     def test_one_small_note_says_which_four_and_that_it_is_a_reference(self):
@@ -1393,7 +1392,9 @@ class AudiogramComparePickerTests(TestCase):
         oldest, _, latest = self._three()
         main = self._main(self._get(a=latest.id, b=oldest.id))
         folded = re.search(
-            r"<details[^>]*>\s*<summary>看每個頻率的數字</summary>(.*?)</details>", main, re.S
+            r"<details[^>]*>\s*<summary>(?:(?!</summary>).)*看每個頻率的數字.*?</summary>(.*?)</details>",
+            main,
+            re.S,
         )
         self.assertIn('data-section="pta"', folded.group(1))
         self.assertIn("差值＝新 − 舊，正數＝要更大聲才聽得到", folded.group(1))  # noqa: RUF001
@@ -1415,35 +1416,38 @@ class AudiogramCompareSummaryTests(TestCase):
         new = self._make(new_points, tested_on=date(2026, 9, 10))
         main = self._main(self._get(a=new.id, b=old.id))
         self._summary_page = main
-        card = re.search(
-            r'<section class="audiogram-chart compare-summary"[^>]*>(.*?)</section>', main, re.S
-        )
+        card = re.search(r'<section class="compare-summary"[^>]*>(.*?)</section>', main, re.S)
         return test_layout._text(card.group(1)), card.group(1)
 
     def test_averages_difference_and_both_degrees(self):
-        text, card = self._summary(
+        text, _ = self._summary(
             _four(_air, "right", (30, 30, 30, 35)), _four(_air, "right", (35, 35, 35, 40))
         )
         self.assertIn("右耳四頻平均：舊 31.25 → 新 36.25 dB HL，多 5 dB", text)
         self.assertIn("程度：舊 輕度，新 輕度", text)
         for word in ("都還是", "變成", "變差", "變好", "高音"):
             self.assertNotIn(word, text)
-        # Pages tidy-up: how to read the numbers moved out of the card into one tip box after it.
+        # Pages tidy-up: how to read the numbers moved out of the card into one place after it;
+        # #465 (the #464 mockup 6): folded as a list row under the tip box's title.
         self.assertNotIn("機器、地點、耳機不同", text)
         self.assertNotIn("dB 數字越大", text)
         main = self._summary_page
-        tip = re.search(r'<section class="tip-box"[^>]*>(.*?)</section>', main, re.S)
-        self.assertIn("看懂這張比較", tip.group(1))
+        tip = re.search(
+            r'<details class="result-details">(?:(?!</details>).)*看懂這張比較.*?</details>',
+            main,
+            re.S,
+        )
+        self.assertIn("看懂這張比較", tip.group(0))
         for note in (
             "dB 數字越大，代表要越大聲才聽得到。",
             "機器、地點、耳機不同，數字本來就會差幾分貝。",
             "這只是數字的對照，不能取代聽力師的判讀。",
         ):
-            self.assertIn(note, tip.group(1))
+            self.assertIn(note, tip.group(0))
         self.assertLess(main.index("compare-summary"), tip.start())
-        # The chart sits in the card, under the summary.
-        self.assertIn('<div id="audiogram-chart"></div>', card)
-        self.assertLess(card.index("右耳四頻平均"), card.index('id="audiogram-chart"'))
+        # #465: the chart in its own frame right under the summary.
+        after = main[main.index("compare-summary") :]
+        self.assertLess(after.index("</section>"), after.index('id="audiogram-chart"'))
 
     def test_less_and_equal_averages(self):
         forty = _four(_air, "right", (40,) * 4)

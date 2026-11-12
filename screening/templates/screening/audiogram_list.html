@@ -11,27 +11,27 @@
 {% block body %}
 <h1 class="h3 mt-4">我的紀錄</h1>
 {% include "screening/records_switch.html" with side="audiograms" %}
-<p class="flex flex-wrap gap-2 items-center">
-    <a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">新增聽力圖</a>
-    {% if audiograms|length >= 2 %}
-    <a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
-    {% else %}
-    <button type="button" class="btn btn-outline-primary btn-lg" disabled aria-describedby="compare-needs-two">比較聽力圖</button>
-    <span id="compare-needs-two">要有兩張聽力圖才能比較</span>
+{# #465 (the #464 mockup 2A): adding is the page's one solid button, comparing the outlined one under it. #}
+<a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">新增聽力圖</a>
+{% if audiograms|length >= 2 %}
+<a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
+{% else %}
+<button type="button" class="btn btn-outline-primary btn-lg w-full mt-3" disabled aria-describedby="compare-needs-two">比較聽力圖</button>
+<p id="compare-needs-two" class="mt-2">要有兩張聽力圖才能比較</p>
+{% endif %}
+<div class="mt-6">
+    {% for audiogram in recent %}{% include "screening/audiogram_list_row.html" %}{% endfor %}
+    {% if older %}
+    {# #465 (the #464 mockup 8E): the newest three above, the rest here. #}
+    <details class="result-details">
+        {% include "screening/records_fold_summary.html" with icon="clock" title=older.title subtitle=older.dates %}
+        <div class="result-details-body records-fold-rows">
+            {% for audiogram in older.rows %}{% include "screening/audiogram_list_row.html" %}{% endfor %}
+        </div>
+    </details>
     {% endif %}
-</p>
-{% for audiogram in audiograms %}
-{% with result=audiogram.interpretation %}
-<a class="link-card audiogram-card" href="{% url 'audiogram_detail' audiogram.id %}">
-    {% include "screening/audiogram_thumbnail.html" %}
-    <span class="link-card-body">
-        <strong>{{ audiogram.tested_on|date:"Y/m/d" }}</strong>
-        {% include "screening/audiogram_ears.html" %}
-    </span>
-    <span class="link-card-arrow" aria-hidden="true">›</span>
-</a>
-{% endwith %}
-{% empty %}
+</div>
+{% if not audiograms %}
 <p>還沒有聽力圖。拿著醫院的聽力檢查報告，按上面的「新增聽力圖」把它描進來。</p>
-{% endfor %}
+{% endif %}
 {% endblock %}

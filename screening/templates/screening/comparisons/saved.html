@@ -1,0 +1,5 @@
+{# The pair in the report on the comparison page (#190): its card, what keeps it and the way to take it out. #}
+{% if preview_is_saved %}<p class="tip-box">這一組已經在聽力報告裡</p>{% endif %}
+{% include saved.questionnaire.definition.comparison.card_template with comparison=saved %}
+<p>新增紀錄不會自動換掉這一組。各問卷分開保留，從報告移除不會刪除作答。</p>
+<form method="post" action="{% url 'hhi_comparison' questionnaire.pk %}">{% csrf_token %}<button class="btn btn-outline-primary btn-lg" name="action" value="remove">從報告移除</button></form>
