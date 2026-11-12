@@ -112,7 +112,8 @@ def qa_search(request):
     codes = match(question)
     # #400 (ADR 0034): every typed question, anonymously, with the first question it matched.
     QuestionLog.objects.create(question=question, faq_code=codes[0] if codes else "")
-    # #401: there is no scheduler, so each new question also clears those past 90 days.
+    # #401: besides the VPS's daily 02:30 run (#452), each new question also clears those past
+    # 90 days.
     purge_question_log()
     request.session[RESULTS_SESSION_KEY] = codes[:MOST_RESULTS]
     return HttpResponseRedirect(reverse("qa_results"))

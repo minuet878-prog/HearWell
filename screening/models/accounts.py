@@ -15,7 +15,8 @@ from screening.models.submissions import Answer
 # and the backups keep deleted data up to 10 days (#452, ADR 0042).
 CONSENT_VERSION = 4
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
-# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014).
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); version 4 moved
+# it with the version (#452).
 PRIVACY_UPDATED_ON = date(2026, 11, 12)
 
 
