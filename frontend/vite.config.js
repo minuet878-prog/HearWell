@@ -32,6 +32,7 @@ export default defineConfig({
         "speech-banana": "src/speech-banana-main.jsx",
         "fitting-level": "src/fitting-level.js",
         "continue-notice": "src/continue-notice-main.js",
+        "care-journey": "src/care-journey-main.js",
         "guide": "src/guide-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },

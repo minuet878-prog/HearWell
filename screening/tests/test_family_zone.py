@@ -126,9 +126,12 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertLess(main.index("開始篩檢"), main.index("我已經有帳號，登入"))
         self.assertLess(main.index("我已經有帳號，登入"), main.index("了解助聽器選配與補助"))
 
-    def test_new_user_without_records_sees_the_family_card(self):
+    def test_new_user_without_records_has_a_family_link(self):
+        # #459: the 空狀態首頁 keeps the way in as a text link after the guide's (mockup #458 A).
         self.client.force_login(consented_user(username="zone_new"))
-        self.assert_family_card_under_the_guide_card()
+        main = self._home()
+        self.assertIn(f'<li><a href="{self.url}">我是家人</a></li>', main)
+        self.assertLess(main.index("了解助聽器選配與補助"), main.index("我是家人"))
 
     def test_returning_user_home_has_no_family_card_and_the_same_tabs(self):
         user = consented_user(username="zone_returning")
@@ -138,8 +141,9 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         response = self.client.get(reverse("index"))
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn("您還可以", content)  # really the returning user's page
+        self.assertIn("journey-steps", content)  # really the returning user's page
         self.assertNotIn(FAMILY_CARD, content)
+        self.assertNotIn(f'href="{self.url}">我是家人', content)
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r"<span>([^<]+)</span>", nav),
@@ -558,8 +562,9 @@ class ReviewedPagesTests(SimpleTestCase):
     sentence of the privacy notice; every other line stays as the owner reviewed it. Each digest
     is of that page on main before the batch, without those lines (updated by #456, which only
     took the 段落框 classes off its tags, and by #467, which moved the reviewed words into the
-    H1 + H2 layout and added draft key cards and question titles for the owner to review). Failing here means reviewed words changed: have the
-    owner review them before updating the digest."""
+    H1 + H2 layout and added draft key cards and question titles for the owner to review).
+    Failing here means reviewed words changed: have the owner review them before updating the
+    digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (

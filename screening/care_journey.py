@@ -6,12 +6,14 @@ from dataclasses import dataclass
 from datetime import date
 
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, add_months, fitting_state
-from screening.main_flow import HomeCard, NextStep, get_user_state, life_impact_questionnaire
+from screening.main_flow import get_user_state, life_impact_questionnaire
 from screening.models import Questionnaire, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import (
+    CARE_JOURNEY_ABOUT,
     CARE_JOURNEY_STEPS,
     IOI_HA_BUTTON,
     IOI_HA_DUE_BECAUSE,
@@ -19,10 +21,10 @@ from screening.scoring import (
     LIFE_IMPACT_BUTTON,
     NEXT_STEP_REASONS,
     RETEST_BUTTON_TEXT,
+    RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
     TYPES_AND_PRICES_BUTTON,
     fitting_countdown_text,
-    retest_countdown_text,
 )
 from screening.views.guide import here_stop
 
@@ -39,9 +41,28 @@ FITTING_MONTHS = 3  # IOI-HA once hearing aids are worn 3 months (spec #453 Q8)
 
 
 @dataclass(frozen=True)
+class HomeCard:
+    title: str
+    href: str
+    icon: str  # an action_icon.html icon
+
+
+@dataclass(frozen=True)
+class NextStep:
+    """A result page's 建議下一步 (result_next.html)."""
+
+    card: HomeCard
+    because: str
+    button: str
+    suggested: str | None  # "print" or "share" off the journey, so the page drops that card
+
+
+@dataclass(frozen=True)
 class JourneyStep:
     title: str
     state: str
+    done_on: date | None = None  # the day it was done, said beside a done step (#458 D7)
+    about: str = ""  # what the step is, said when it is opened (#459 I1)
 
 
 @dataclass(frozen=True)
@@ -58,13 +79,13 @@ class JourneyCard:
 
 @dataclass(frozen=True)
 class NextScreening:
-    """下次篩檢: the day and the days left, both None once due; due without a life-impact record
-    too (spec #453), then href opens one to do."""
+    """下次篩檢, from the latest life-impact record: the day and the days left, both None once
+    due."""
 
     on: date | None
     days_left: int | None
     due: bool
-    href: str  # 再做一次: the same life-impact questionnaire, or one to start with
+    href: str  # 再做一次: the same life-impact questionnaire
 
 
 @dataclass(frozen=True)
@@ -73,7 +94,9 @@ class CareJourney:
     current: int  # the 現在這一步, 1 to 5
     card: JourneyCard
     last_result: Submission | None  # the latest life-impact record, for 上次結果
-    next_screening: NextScreening
+    # None without a life-impact record: no day to count from, so the tile says it is not set
+    # (#458 D6) while step 5 asks for one (spec #453).
+    next_screening: NextScreening | None
 
     @property
     def progress(self):
@@ -86,17 +109,24 @@ def care_journey(user, today):
     main = get_user_state(user, today)
     life_impact = main.last_result if main.last_result and main.last_result.is_life_impact else None
     fitted_on = route.aid.fitted_on if route.fitted else None
-    done = {
-        1: life_impact is not None,
-        2: AUDIOGRAM in route.done,
-        3: fitted_on is not None,
-        # IOI-HA from the fitting date on, however soon (spec #453 Q8).
-        4: fitted_on is not None
-        and user.submissions.filter(
-            questionnaire__code=IOI_HA, created_at__date__gte=fitted_on
-        ).exists(),
-        5: False,  # never: a retest only moves the next one on
+    # IOI-HA from the fitting date on, however soon (spec #453 Q8); the latest gives the day.
+    ioi_ha = (
+        user.submissions.filter(questionnaire__code=IOI_HA, created_at__date__gte=fitted_on)
+        .order_by("-created_at")
+        .first()
+        if fitted_on is not None
+        else None
+    )
+    # Each step's day, None while it is not done; step 5 never is, a retest only moves the
+    # next one on.
+    done_on = {
+        1: _day(life_impact.submission) if life_impact else None,
+        2: route.audiogram.tested_on if AUDIOGRAM in route.done else None,
+        3: fitted_on,
+        4: _day(ioi_ha) if ioi_ha else None,
+        5: None,
     }
+    done = {number: day is not None for number, day in done_on.items()}
 
     def not_needed(number):
         return route.waiting and number in FITTING_STEPS
@@ -106,16 +136,25 @@ def care_journey(user, today):
         (n for n in range(first, LAST_STEP) if not done[n] and not not_needed(n)), LAST_STEP
     )
     steps = tuple(
-        JourneyStep(title, _state(number, current, done[number], not_needed(number)))
-        for number, title in enumerate(CARE_JOURNEY_STEPS, start=1)
+        JourneyStep(
+            title,
+            _state(number, current, done[number], not_needed(number)),
+            done_on[number],
+            about,
+        )
+        for number, (title, about) in enumerate(
+            zip(CARE_JOURNEY_STEPS, CARE_JOURNEY_ABOUT, strict=True), start=1
+        )
     )
     life_impact_href = _life_impact_href(user, main)
-    if main.retest_questionnaire is None or main.retest_due:
+    if life_impact is None:
+        next_screening = None
+    elif main.retest_due:
         next_screening = NextScreening(None, None, True, life_impact_href)
     else:
         on = main.next_suggested_date
         next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
-    card = _card(current, route, fitted_on, today, next_screening, life_impact is not None)
+    card = _card(current, route, fitted_on, today, next_screening, life_impact_href)
     return CareJourney(
         steps,
         current,
@@ -123,6 +162,10 @@ def care_journey(user, today):
         life_impact.submission if life_impact else None,
         next_screening,
     )
+
+
+def _day(submission):
+    return timezone.localtime(submission.created_at).date()
 
 
 def _state(number, current, done, not_needed):
@@ -144,13 +187,13 @@ def _life_impact_href(user, main):
     return reverse("screening", args=[questionnaire.pk])
 
 
-def _card(current, route, fitted_on, today, next_screening, has_life_impact):
+def _card(current, route, fitted_on, today, next_screening, life_impact_href):
     if current == 1:
         return JourneyCard(
             CARE_JOURNEY_STEPS[0],
             LIFE_IMPACT_BECAUSE,
             "clipboard",
-            button=(LIFE_IMPACT_BUTTON, next_screening.href),
+            button=(LIFE_IMPACT_BUTTON, life_impact_href),
         )
     if current in (2, 3) or (current == 4 and route.stop == "form-25"):
         return _route_card(route)
@@ -170,15 +213,14 @@ def _card(current, route, fitted_on, today, next_screening, has_life_impact):
             button=(IOI_HA_BUTTON, reverse("screening", args=[ioi_ha.pk])),
         )
     title = CARE_JOURNEY_STEPS[4]
+    if next_screening is None:
+        # Without a life-impact record step 5 is due: one to do first (spec #453).
+        button = (LIFE_IMPACT_BUTTON, life_impact_href)
+        return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
     if not next_screening.due:
-        because = retest_countdown_text(next_screening.on, next_screening.days_left)
-        return JourneyCard(title, because, "clipboard")
-    if has_life_impact:
-        button = (RETEST_BUTTON_TEXT, next_screening.href)
-        return JourneyCard(title, RETEST_DUE_TEXT, "clipboard", button=button)
-    # Without a life-impact record step 5 is due: one to do first (spec #453).
-    button = (LIFE_IMPACT_BUTTON, next_screening.href)
-    return JourneyCard(title, LIFE_IMPACT_BECAUSE, "clipboard", button=button)
+        return JourneyCard(title, RETEST_COUNTDOWN_TEXT, "clipboard")
+    button = (RETEST_BUTTON_TEXT, next_screening.href)
+    return JourneyCard(title, RETEST_DUE_TEXT, "clipboard", button=button)
 
 
 def _route_card(route):
