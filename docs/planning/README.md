@@ -13,6 +13,6 @@
 | 捲動輔助（回到頂端、捲到才播、跳轉亮框、還有內容提示） | [拷問決定](scroll-helpers/grill-decisions.md) | [#338](https://github.com/minuet878-prog/HearWell/issues/338) |
 | 家人專區（溝通情境題、陪診與代辦、助聽器） | [拷問決定](family-zone/grill-decisions.md) | [#426](https://github.com/minuet878-prog/HearWell/issues/426) |
 | 互動內容與聽力圖看語言香蕉區 | [拷問決定](speech-banana/grill-decisions.md)、[來源與讀值](speech-banana/research.md) | [#436](https://github.com/minuet878-prog/HearWell/issues/436) |
-| 全站改版（白底、少框、照顧旅程首頁） | [拷問決定](redesign/grill-decisions.md) | 待開 |
+| 全站改版（白底、少框、照顧旅程首頁） | [拷問決定](redesign/grill-decisions.md) | [#453](https://github.com/minuet878-prog/HearWell/issues/453) |
 
 此處保存需求討論與來源研究，正式工作票及驗收進度在 GitHub Issues。歸檔不代表新增功能已上線。
