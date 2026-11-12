@@ -216,13 +216,17 @@ class RealDefinitionsTests(TestCase):
         with mock.patch.dict(questionnaires.DEFINITIONS, {"hhia-s": changed}):
             url = reverse("screening", args=[self.questionnaires["hhia-s"].pk])
             content = self.client.get(url).content.decode()
-        who = re.search(r'data-icon="who">(.*?)</section>', content, re.S).group(1)
+        who = re.search(r'<section class="q-intro-row[^"]*">(.*?)</section>', content, re.S).group(
+            1
+        )
+        self.assertIn("適合誰", who)
         self.assertIn("<p>定義裡的適合對象。</p>", who)
         self.assertNotIn("若您持續使用原問卷追蹤", content)
 
-    def test_hhia_s_and_ssq12_sources_sit_under_the_answers(self):
-        # #362: out of the intro React shows above the question, after the form as IOI-HA's,
-        # at their size; SSQ12's 怎麼計分 sentence goes with its source.
+    def test_hhia_s_and_ssq12_sources_sit_in_the_folded_intro(self):
+        # #362 took them out of the intro React showed above the question; since #463 the intro
+        # is folded under the buttons, so they go back in with it (the #462 mockup), at their
+        # size; SSQ12's 怎麼計分 sentence goes with its source.
         moved = {
             "hhia-s": ("題目中譯來源：林克寰《助聽器選配與驗證》，第 165 頁",),
             "ssq12-tw": ("十二題都有分數才計算整體平均", "來源：婦聯聽覺健康基金會 SSQ12-TW"),
@@ -232,12 +236,12 @@ class RealDefinitionsTests(TestCase):
                 url = reverse("screening", args=[self.questionnaires[code].pk])
                 content = self.client.get(url).content.decode()
                 start = content.index('<div id="answer-intro">')
-                end = content.index("</form>", start)  # the answer form's, not the header's
+                end = content.index('id="answer-app"', start)
                 intro, below = content[start:end], content[end : content.index("</main>")]
                 for sentence in sentences:
-                    self.assertNotIn(sentence, intro)
-                    self.assertIn(sentence, below)
-                source = re.search(r'<p class="([^"]*)">[^<]*來源', below).group(1).split()
+                    self.assertIn(sentence, intro)
+                    self.assertNotIn(sentence, below)
+                source = re.search(r'<p class="([^"]*)">[^<]*來源', intro).group(1).split()
                 self.assertIn("q-intro-source", source)
         ssq12 = self.client.get(reverse("screening", args=[self.questionnaires["ssq12-tw"].pk]))
         self.assertNotContains(ssq12, "怎麼計分")

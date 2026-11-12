@@ -1,5 +1,10 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 {% block title %}我的選配指引｜聽伴{% endblock %}
+{% block extra_head %}
+{# #467: one route stop open at a time, and the route's entrance on the tab's first visit only. #}
+<script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
+{% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
 <h1 class="h3 mt-4">我的選配指引</h1>
@@ -14,29 +19,78 @@
 <p><a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
 {% endif %}
 {% endif %}
+{# #467 (the #466 mockup A): the route first, its 您在這裡 card holding the page's one solid button. #}
+<section class="mt-6" data-jump-box aria-labelledby="contents-title">
+    <h2 id="contents-title" class="h4" tabindex="-1">選配與補助，一步一步看</h2>
+    {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). N3 dots on a line, blue as far as the 目前這一站 (I2). Every other stop opens in place to say what it is, its link on inside (I1); guide.js keeps one open at a time. On a tab's first visit the done ticks, the line and the ring play once, when the 目前這一站 is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
+    <ol class="route" role="list" style="--route-here: {{ route_pace }}">
+        {% for stop in route %}
+        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.done %} is-done{% endif %}{% if route_here is not None and forloop.counter0 < route_here %} is-walked{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}{% if stop.slug == done_now %} is-done-now{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %} style="--route-step: {{ forloop.counter0 }}"{% if stop.here or stop.slug == done_now %} data-play-in-view{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
+            {# #336: the stop an answer here just made 已完成 is ticked once; every done stop shows a tick, its number kept for screen readers. #}
+            <span class="route-number">{% if stop.slug == done_now %}<svg class="route-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% elif stop.done %}<svg class="route-check" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% else %}{{ forloop.counter }}{% endif %}</span>
+            {% if stop.here %}
+            <div class="route-box route-card">
+                <p class="route-here-label"><span class="route-mark">您在這裡</span></p>
+                <a class="route-title" href="{{ stop.url }}"><span>{{ stop.title }}</span><span class="route-chevron" aria-hidden="true"></span></a>
+                {% if stop.other_marks %}<p class="route-marks">{% for mark in stop.other_marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
+                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
+                {% for wording, href in stop.links %}<p class="route-note"><a class="tap-link" href="{{ href }}">{{ wording }}</a></p>{% endfor %}
+                {# #467: the button above the question (the #367 order turned round); without records the start button above is the page's solid one, so this is a link. #}
+                {% if stop.action %}{% if has_records %}<a class="btn btn-primary btn-lg w-full mt-3" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% else %}<p class="route-note"><a class="tap-link" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a></p>{% endif %}{% endif %}
+                {% include "screening/guide/route_answer.html" %}
+            </div>
+            {% else %}
+            <div class="route-box">
+                <details class="route-about">
+                    <summary><span class="route-row"><span class="route-title">{{ stop.title }}</span>{% if stop.marks %}<span class="route-marks">{% for mark in stop.marks %}{% if not forloop.first %}・{% endif %}<span class="route-mark">{{ mark }}</span>{% endfor %}{% if stop.tested_on %}・{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖{% endif %}</span>{% endif %}</span><span class="result-details-arrow" aria-hidden="true"></span></summary>
+                    <div class="route-about-body">
+                        <p>{{ stop.about }}</p>
+                        {% if stop.about_link %}<a class="tap-link" href="{{ stop.url }}">{{ stop.about_link }}<span class="visually-hidden">：{{ stop.title }}</span></a>{% endif %}
+                    </div>
+                </details>
+                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
+                {% for wording, href in stop.links %}<p class="route-note"><a class="tap-link" href="{{ href }}">{{ wording }}</a></p>{% endfor %}
+                {% include "screening/guide/route_answer.html" %}
+            </div>
+            {% endif %}
+            {# #296: on the line on to the next stop, beside it. #}
+            {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+{% if latest and not audiogram %}
 {% if life_impact %}
-<section class="mt-6" data-jump-box aria-labelledby="questionnaire-title">
+<section class="mt-8" data-jump-box aria-labelledby="questionnaire-title">
     <h2 id="questionnaire-title" class="h4">問卷結果</h2>
-    <p class="mb-0">您 {{ life_impact.created_at|date:"Y/m/d" }} 做的{{ life_impact.questionnaire.definition.topic }}（{{ life_impact.questionnaire.questionnaire_name }}）：{{ life_impact.result.level.text }}。</p>
+    {% include "screening/guide/life_impact_result.html" %}
 </section>
 {% endif %}
-{% if latest and not audiogram %}
-<section class="mt-6" data-jump-box aria-labelledby="audiogram-title">
+<section class="mt-8" data-jump-box aria-labelledby="audiogram-title">
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
+    {# #467: the 您在這裡 card has the same button, so this one is a link. #}
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
-    <p class="mb-0"><a class="btn btn-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
+    <p class="mb-0"><a href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
 </section>
 {% endif %}
 {% if audiogram %}
 {% with date=audiogram.tested_on|date:"Y/m/d" %}
+{# #467: one title over what the latest audiogram says (draft), the old boxes' titles as bold subheads. #}
+<section class="mt-8 guide-hearing" data-jump-box aria-labelledby="hearing-title">
+<h2 id="hearing-title" class="h4">依您 {{ date }} 的聽力圖</h2>
+{% if life_impact %}
+<section aria-labelledby="questionnaire-title">
+    <h3 id="questionnaire-title" class="guide-hearing-subhead">問卷結果</h3>
+    {% include "screening/guide/life_impact_result.html" %}
+</section>
+{% endif %}
 {# The one judgement besides the threshold (ADR 0017): either ear over the normal limit. #}
 {# The bars only draw the numbers written beside them (#260), so screen readers skip them; the line labels are read, as the sentences may not say 25. #}
-<section class="mt-6" data-jump-box aria-labelledby="fitting-title">
-    <h2 id="fitting-title" class="h4">要不要找聽力師評估</h2>
+<section aria-labelledby="fitting-title">
+    <h3 id="fitting-title" class="guide-hearing-subhead">要不要找聽力師評估</h3>
     {% if threshold.right.pta is None and threshold.left.pta is None %}
     <p>依您 {{ date }} 的聽力圖：兩耳都資料不足，無法判讀。</p>
     {% else %}
-    <p>依您 {{ date }} 的聽力圖：</p>
     {# Both ears fill together once their box is in view (ADR 0029). #}
     <div class="meter" data-play-in-view>
         {% for label, side, ear in ears %}
@@ -59,8 +113,8 @@
     {% endif %}
 </section>
 {# Judges only by the b230 formula (ADR 0017): no level, and a lower bound never says 未達到. #}
-<section class="mt-6" data-jump-box aria-labelledby="threshold-title">
-    <h2 id="threshold-title" class="h4">身障鑑定門檻</h2>
+<section aria-labelledby="threshold-title">
+    <h3 id="threshold-title" class="guide-hearing-subhead">身障鑑定門檻</h3>
     <p>雙耳障礙比率達到 45% 以上，就達到身心障礙鑑定「聽覺機能」的門檻。</p>
     {% if threshold.ratio is not None %}
     {# A no-response point makes the ratio a lower bound, hatched from it to 100%. #}
@@ -75,60 +129,40 @@
     <p class="mb-0">兩耳都要有四頻平均，才能估算鑑定門檻。</p>
     {% elif threshold.status == "uncertain" %}
     <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率至少約 {{ threshold.ratio }}%。這張聽力圖有測不到反應的點，無法確定是否達到鑑定門檻，請以鑑定醫院為準。</p>
-    <p><a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
-    <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
     {% elif threshold.status == "reached" %}
     <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率約 {{ threshold.ratio }}%，達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
     {% if threshold.no_response %}<p>這張聽力圖有測不到反應的點，實際比率可能更高。</p>{% endif %}
-    <p>身障補助要先有身心障礙證明。請先到鑑定醫院申請身障鑑定，拿到證明後，才能申請九號表的助聽器補助。<a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
     {% else %}
     <p>依您 {{ date }} 的聽力圖估算，雙耳障礙比率約 {{ threshold.ratio }}%，未達到身障鑑定門檻（45%）。實際以鑑定醫院為準。</p>
-    <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
     {% endif %}
+    {# #467 (the #466 mockup A, R1's fold): what to do about it and how it is worked out, word for word. #}
     {% if threshold.status != "insufficient" %}
-    <p>如果您已經有身障證明，可以直接進行九號表。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
-    {% endif %}
-    {% if worked %}
-    <details class="dropdown-line mb-0">
-        <summary>怎麼算的</summary>
-        <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
-        <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>
-        {% if threshold.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
-        {% if threshold.capped %}<p>單耳比率超過 100% 的，以 100% 計。</p>{% endif %}
-        <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（{{ worked.better }} × 5 ＋ {{ worked.worse }}）÷ 6 ＝ {{ threshold.ratio }}%，四捨五入到小數一位。</p>
-        <p class="mb-0">3. 身障鑑定門檻是 45.0%。出處：<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a></p>
+    <details class="result-details">
+        {% include "screening/result_details_summary.html" %}
+        <div class="result-details-body">
+            {% if threshold.status == "uncertain" %}
+            <p><a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
+            <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
+            {% elif threshold.status == "reached" %}
+            <p>身障補助要先有身心障礙證明。請先到鑑定醫院申請身障鑑定，拿到證明後，才能申請九號表的助聽器補助。<a href="{% url 'guide_chapter' 'assessment' %}">找鑑定醫院</a></p>
+            {% else %}
+            <p>沒有身障證明的人，可能還有其他補助。<a href="{% url 'guide_chapter' 'form-9' %}#without-certificate">看沒有身障證明時</a></p>
+            {% endif %}
+            <p>如果您已經有身障證明，可以直接進行九號表。<a href="{% url 'guide_chapter' 'form-9' %}">看九號表的流程</a></p>
+            {% if worked %}
+            <h4 class="guide-hearing-subhead">怎麼算的</h4>
+            <p>這是身心障礙鑑定「聽覺機能」用的公式。四頻平均是氣導 500、1000、2000、4000 Hz 的平均。</p>
+            <p>1. 每一耳：（四頻平均 − 25）× 1.5%。{% for label, pta, ratio in worked.ears %}{{ label }}（{{ pta|stringformat:"g" }} − 25）× 1.5% ＝ {{ ratio }}%{% if forloop.last %}。{% else %}；{% endif %}{% endfor %}</p>
+            {% if threshold.zeroed %}<p>四頻平均低於 25 dB HL 的耳，以 0% 計。</p>{% endif %}
+            {% if threshold.capped %}<p>單耳比率超過 100% 的，以 100% 計。</p>{% endif %}
+            <p>2. 比率比較小的一耳是優耳：雙耳 ＝（優耳 × 5 ＋ 劣耳）÷ 6 ＝（{{ worked.better }} × 5 ＋ {{ worked.worse }}）÷ 6 ＝ {{ threshold.ratio }}%，四捨五入到小數一位。</p>
+            <p class="mb-0">3. 身障鑑定門檻是 45.0%。出處：<a class="tap-link" href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000399716&amp;lan=C">身心障礙者鑑定作業辦法附表二甲</a></p>
+            {% endif %}
+        </div>
     </details>
     {% endif %}
 </section>
-{# Down to the route on this page; the heading takes the focus, so reading goes on from there. #}
-<p class="mt-6 mb-0"><a class="btn btn-primary btn-lg w-full" href="#contents-title">看我的路線<span aria-hidden="true"> ↓</span></a></p>
+</section>
 {% endwith %}
 {% endif %}
-<section class="mt-6" data-jump-box aria-labelledby="contents-title">
-    <h2 id="contents-title" class="h4" tabindex="-1">選配與補助，一步一步看</h2>
-    {# #258: the 選配路線, its marks from the records (route-grill-decisions.md Q2–Q9). #}
-    <ol class="route" role="list">
-        {% for stop in route %}
-        <li class="route-stop{% if stop.here %} is-here{% endif %}{% if stop.below %} is-below{% endif %}{% if stop.not_applicable %} is-na{% endif %}{% if stop.slug == done_now %} is-done-now{% endif %}" data-stop="{{ stop.slug }}"{% if stop.here %} aria-current="step"{% endif %}{% if stop.here or stop.slug == done_now %} data-play-in-view{% endif %} id="stop-{{ stop.slug }}" tabindex="-1">
-            {# #336: the stop an answer here just made 已完成 is ticked once; its number stays for screen readers. #}
-            <span class="route-number">{% if stop.slug == done_now %}<svg class="route-tick" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">{{ forloop.counter }}</span>{% else %}{{ forloop.counter }}{% endif %}</span>
-            <div class="route-box">
-                {% if stop.marks %}<p class="route-marks">{% for mark in stop.marks %}<span class="route-mark">{{ mark }}</span>{% endfor %}</p>{% endif %}
-                <a class="route-title" href="{{ stop.url }}">{{ stop.title }}</a>
-                {% if stop.tested_on %}<p class="route-note">{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖</p>{% endif %}
-                {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
-                {% for wording, href in stop.links %}<p class="route-note"><a href="{{ href }}">{{ wording }}</a></p>{% endfor %}
-                {% if stop.action and not stop.questions %}<a class="btn btn-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
-                {# #293: the answer in short; 修改 opens the question again, without JavaScript. #}
-                {% if stop.answer %}<p class="route-answer">{{ stop.answer }}{% if stop.editable %} <a href="{% url 'guide' %}?edit={{ stop.slug }}#stop-{{ stop.slug }}" aria-label="修改{{ stop.title }}的回答">修改</a>{% endif %}</p>{% endif %}
-                {% url 'guide' as guide_url %}{% for question in stop.questions %}{% include "screening/guide/stop_question.html" with question=question stop=stop.slug next=guide_url|add:"#stop-"|add:stop.slug %}{% endfor %}
-                {# #367 (#258): with a question still open, the form comes first and the button is outlined under it. #}
-                {% if stop.action and stop.questions %}<a class="btn btn-outline-primary btn-lg w-full mt-2" href="{{ stop.action.1 }}">{{ stop.action.0 }}</a>{% endif %}
-            </div>
-            {# #296: on the line on to the next stop, beside it. #}
-            {% if stop.gap %}<p class="route-gap">{{ stop.gap }}</p>{% endif %}
-        </li>
-        {% endfor %}
-    </ol>
-</section>
 {% endblock %}

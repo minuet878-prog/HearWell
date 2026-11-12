@@ -599,9 +599,8 @@ class PageFlowTests(TestCase):
                 "自行選擇問卷",
                 "聽力對生活的影響（HHIE-S）",
                 "適合 65 歲以上的長輩。",
-                # Tags since phase9_ui_refresh_4b_questionnaire_cards.md 4.1.
-                '<span class="card-tag">10 題</span>',
-                '<span class="card-tag">約 3 分鐘</span>',
+                # One line of muted words since #463 (tags since phase9 4b 4.1).
+                "<span>10 題・約 3 分鐘</span>",
             ),
         )
         self.assertRegex(
@@ -616,16 +615,15 @@ class PageFlowTests(TestCase):
             page = self._main(self.client.get(reverse("screening", args=[self.short.id])))
         start = main.index("短問卷")
         card = main[start : main.index("</a>", start)]
-        self.assertIn('<span class="card-tag">3 題</span>', card)
+        self.assertIn("<span>3 題・約 4 分鐘</span>", card)
         self.assertIn("短問卷・共 3 題・", page)
         self.assertRegex(page, r"<legend[^>]*>(\s*<[^>]+>)*\s*第 3 題／共 3 題")
 
     # Answer page (6-7)
     def _assert_progress(self, page):
         # Answer page tidy-up: the topic is the title, the code and count one line under it.
-        self.assertRegex(
-            page, r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>\s*<p>HHIE-S・共 10 題・大約 3 分鐘</p>"
-        )
+        title = r"<h1[^>]*>\s*聽力對生活的影響\s*</h1>"
+        self.assertRegex(page, title + r"\s*<p[^>]*>HHIE-S・共 10 題・大約 3 分鐘</p>")
         for n in (1, 10):
             with self.subTest(question=n):
                 self.assertRegex(page, rf"<legend[^>]*>(\s*<[^>]+>)*\s*第 {n} 題／共 10 題")

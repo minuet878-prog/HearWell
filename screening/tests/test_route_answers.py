@@ -26,12 +26,7 @@ ANSWERS = (
 
 def buttons(markup):
     """Each answer button's (value, wording, filled) in order."""
-    found = re.findall(
-        r'<button type="submit" name="certificate" value="([^"]+)" class="btn btn-lg '
-        r'(btn-primary|btn-outline-primary)">([^<]+)</button>',
-        markup,
-    )
-    return [(value, wording, kind == "btn-primary") for value, kind, wording in found]
+    return answer_buttons(markup, "certificate")
 
 
 def offered(filled=None):
@@ -197,7 +192,7 @@ class RouteQuestionTests(TestCase):
         for slug in ("form-9", "notice", "form-25", "payout"):
             with self.subTest(stop=slug):
                 self.assertEqual(self.marks(slug), ["不適用"])
-                self.assertRegex(page, rf'<li class="route-stop is-na" data-stop="{slug}"')
+                self.assertRegex(page, rf'<li class="route-stop[^"]* is-na" data-stop="{slug}"')
         self.assertEqual(self.marks("types-and-prices"), ["您在這裡"])
         self.assertEqual(page.count("is-na"), 4)
 
@@ -443,13 +438,15 @@ class CertificateMigrationTests(TransactionTestCase):
 
 
 def answer_buttons(markup, name):
-    """Each answer button for the field name: (value, wording, filled) in order."""
+    """Each answer button for the field name: (value, wording, current) in order. #467: the
+    current answer is framed with a tick (it was the filled button)."""
     found = re.findall(
-        rf'<button type="submit" name="{name}" value="([^"]+)" class="btn btn-lg '
-        r'(btn-primary|btn-outline-primary)">([^<]+)</button>',
+        rf'<button type="submit" name="{name}" value="([^"]+)" '
+        r'class="btn btn-lg btn-outline-primary( is-current" aria-pressed="true)?">'
+        r'(?:<svg class="stop-answer-tick".*?</svg>)?([^<]+)</button>',
         markup,
     )
-    return [(value, wording, kind == "btn-primary") for value, kind, wording in found]
+    return [(value, wording, bool(current)) for value, current, wording in found]
 
 
 class Form9AndNoticeRouteTests(TestCase):
@@ -719,7 +716,10 @@ class FittingRouteTests(TestCase):
         self.assertIn(
             '<fieldset class="mb-4" data-fitting-level data-shown-with="disability"', stop
         )
-        self.assertIn('<button type="submit" class="btn btn-primary btn-lg">儲存</button>', stop)
+        # #467: outlined on the route, where the card's button above is the solid one.
+        self.assertIn(
+            '<button type="submit" class="btn btn-outline-primary btn-lg">儲存</button>', stop
+        )
         self.assertNotIn("還沒開始戴", stop)
 
     def with_the_notice(self, ears):
@@ -1026,8 +1026,8 @@ class Form25RouteTests(TestCase):
 
 
 class RouteActionT367Tests(TestCase):
-    """#367 (spec #354, #258): while the 目前這一站 still has a question open, its button is
-    outlined and comes after the question's form; without one it is the filled button above."""
+    """#467 (the #466 mockup A, in place of #367's order): the 目前這一站's button is the solid
+    one above its question's form, whether or not a question is open."""
 
     setUp = RouteQuestionTests.setUp
     make = RouteQuestionTests.make
@@ -1039,19 +1039,19 @@ class RouteActionT367Tests(TestCase):
         found = re.search(rf'<a class="btn ([^"]+)" href="[^"]+">{wording}</a>', markup)
         return found[1], found.start()
 
-    def test_with_its_question_open_the_button_is_outlined_under_the_form(self):
+    def test_with_its_question_open_the_button_is_solid_above_the_form(self):
         assessment = self.stop("assessment")
         self.assertIn("<form", assessment)
         kind, at = self.action(assessment, "找鑑定醫院")
-        self.assertEqual(kind, "btn-outline-primary btn-lg w-full mt-2")
-        self.assertGreater(at, assessment.index("</form>"))
+        self.assertEqual(kind, "btn-primary btn-lg w-full mt-3")
+        self.assertLess(at, assessment.index("<form"))
 
     def test_without_a_question_it_stays_the_filled_button(self):
         GuideChapterView.objects.filter(user=self.user).delete()
         before_you_go = self.stop("before-you-go")
         self.assertNotIn("<form", before_you_go)
         kind, _ = self.action(before_you_go, "去之前要準備什麼")
-        self.assertEqual(kind, "btn-primary btn-lg w-full mt-2")
+        self.assertEqual(kind, "btn-primary btn-lg w-full mt-3")
 
     def test_once_its_question_is_answered_the_stop_is_as_it_was(self):
         # The same stop, answered: no form and no outlined button are left under its answer; as
