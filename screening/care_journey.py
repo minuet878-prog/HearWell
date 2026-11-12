@@ -13,6 +13,7 @@ from screening.main_flow import get_user_state, life_impact_questionnaire
 from screening.models import Questionnaire, Submission
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import (
+    CARE_JOURNEY_ABOUT,
     CARE_JOURNEY_STEPS,
     IOI_HA_BUTTON,
     IOI_HA_DUE_BECAUSE,
@@ -61,6 +62,7 @@ class JourneyStep:
     title: str
     state: str
     done_on: date | None = None  # the day it was done, said beside a done step (#458 D7)
+    about: str = ""  # what the step is, said when it is opened (#459 I1)
 
 
 @dataclass(frozen=True)
@@ -135,9 +137,14 @@ def care_journey(user, today):
     )
     steps = tuple(
         JourneyStep(
-            title, _state(number, current, done[number], not_needed(number)), done_on[number]
+            title,
+            _state(number, current, done[number], not_needed(number)),
+            done_on[number],
+            about,
         )
-        for number, title in enumerate(CARE_JOURNEY_STEPS, start=1)
+        for number, (title, about) in enumerate(
+            zip(CARE_JOURNEY_STEPS, CARE_JOURNEY_ABOUT, strict=True), start=1
+        )
     )
     life_impact_href = _life_impact_href(user, main)
     if life_impact is None:

@@ -1,8 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}聽伴 聽力自我照護{% endblock %}
 
-{% block extra_head %}{% include "screening/continue_notice.html" %}{% endblock %}
+{% block extra_head %}{% include "screening/continue_notice.html" %}{% if journey %}
+{# #459 I1 + I2: one step open at a time, and the entrance on the tab's first visit only. #}
+<script type="module" src="{% static 'screening/frontend/care-journey.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
@@ -137,16 +140,16 @@
         <h2 id="journey-title" class="h4">照顧旅程</h2>
         <p class="journey-count"><span class="visually-hidden">進度 </span>{{ journey.progress }} / 5</p>
     </div>
-    <div class="journey-bar" aria-hidden="true"><span style="width: {% widthratio journey.progress 5 100 %}%"></span></div>
-    {# N3 dots on a line: done ones a blue tick and their day, the 現在這一步 a pale blue card beside the line, the rest pale. #}
+    {# N3 dots on a line, blue as far as the 現在這一步 (#459 I2): done ones a blue tick and their day, the 現在這一步 a pale blue card beside the line, always open, the rest pale. Every other step opens to say what it is (I1); care-journey.js keeps one open at a time. On a tab's first visit the ticks, the line and the ring play once, when the 現在這一步 is in view (ADR 0028's 2026-11-12 exception, ADR 0029). #}
     <ol class="journey-steps" role="list">
         {% for step in journey.steps %}
-        <li class="journey-step is-{{ step.state }}"{% if step.state == "current" %} aria-current="step"{% endif %}>
+        <li class="journey-step is-{{ step.state }}{% if forloop.counter < journey.current %} is-walked{% endif %}" style="--journey-step: {{ forloop.counter0 }}"{% if step.state == "current" %} aria-current="step" data-play-in-view{% endif %}>
             {% if step.state == "done" %}
-            <span class="journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="visually-hidden">已完成</span></span>
-            <span class="journey-step-body"><span>{{ step.title }}</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span></span>
-            {% elif step.state == "current" %}
+            <span class="journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+            {% else %}
             <span class="journey-dot">{{ forloop.counter }}</span>
+            {% endif %}
+            {% if step.state == "current" %}
             {% with card=journey.card %}
             <div class="journey-card">
                 <p class="journey-card-label">現在這一步</p>
@@ -160,8 +163,20 @@
             </div>
             {% endwith %}
             {% else %}
-            <span class="journey-dot">{{ forloop.counter }}</span>
-            <span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span>
+            <details class="journey-about">
+                <summary><span class="journey-step-body"><span>{{ step.title }}</span>{% if step.state == "done" %}<span class="visually-hidden">已完成</span> <span class="journey-when">{{ step.done_on|date:"Y/m/d" }}</span>{% elif step.state == "not-needed" %} <span class="journey-when">目前不需要</span>{% endif %}</span><span class="journey-about-arrow" aria-hidden="true">›</span></summary>
+                <div class="journey-about-body">
+                    <p>{{ step.about }}</p>
+                    {% if forloop.counter == 1 and journey.last_result %}
+                    <p class="journey-when">上次結果：{{ journey.last_result.result.level.text }}</p>
+                    <a href="{% url 'result' journey.last_result.id %}">看上次結果</a>
+                    {% elif forloop.counter == 2 or forloop.counter == 3 %}
+                    <a href="{% url 'guide' %}">看我的選配指引</a>
+                    {% elif forloop.counter == 5 and journey.next_screening and not journey.next_screening.due %}
+                    <p class="journey-when">下次篩檢 {{ journey.next_screening.on|date:"Y/m/d" }}・還有 {{ journey.next_screening.days_left }} 天</p>
+                    {% endif %}
+                </div>
+            </details>
             {% endif %}
         </li>
         {% endfor %}

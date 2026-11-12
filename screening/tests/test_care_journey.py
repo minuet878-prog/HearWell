@@ -378,3 +378,21 @@ class WithoutLifeImpactTilesTests(CareJourneyTestCase):
     def test_a_life_impact_record_gives_the_tile_its_day(self):
         self.answer(on=date(2026, 9, 26))
         self.assertIsNotNone(self.journey().next_screening)
+
+
+class StepAboutTests(CareJourneyTestCase):
+    """#459 I1 (the owner's pick on the step interactions page): each step opens to say what it
+    is; the 現在這一步's card says its own."""
+
+    def test_each_step_says_what_it_is(self):
+        self.answer()
+        self.assertEqual(
+            [step.about for step in self.journey().steps],
+            [
+                "先做一份生活影響問卷，了解聽力對您生活的影響。",
+                "選配指引要用聽力圖才能整理下一步。",
+                "照選配路線一站一站走，從找聽力師、申請補助到開始戴助聽器。",
+                "買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。",
+                "時間到了，這裡會出現「再做一次」的按鈕。",
+            ],
+        )

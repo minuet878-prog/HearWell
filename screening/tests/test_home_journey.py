@@ -111,15 +111,19 @@ class HomeJourneyTestCase(TestCase):
     def card(self, main):
         return self.part(main, "journey-card")
 
-    def steps(self, main):
-        """Each step's (state class, its words) in order."""
+    def items(self, main):
+        """Each step's (classes, its HTML) in order."""
         steps = self.part(main, "journey-steps")
-        return [
-            (state, self.text(body))
-            for state, body in re.findall(
-                r'<li class="journey-step is-([a-z-]+)"[^>]*>(.*?)</li>', steps, re.S
-            )
-        ]
+        return re.findall(r'<li class="journey-step ([^"]*)"[^>]*>(.*?)</li>', steps, re.S)
+
+    def steps(self, main):
+        """Each step's (state, its words): the 現在這一步's card, any other step's row."""
+        found = []
+        for classes, body in self.items(main):
+            summary = re.search(r"<summary>(.*?)</summary>", body, re.S)
+            words = self.text(summary.group(1) if summary else body)
+            found.append((classes.split()[0].removeprefix("is-"), words))
+        return found
 
 
 class EmptyStateHomeTests(HomeJourneyTestCase):
@@ -185,7 +189,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
                     "1 現在這一步 填生活影響問卷 "
                     "先做一份生活影響問卷，了解聽力對您生活的影響。 去做問卷",
                 ),
-                ("done", "已完成 記錄聽力圖 2026/09/01"),
+                ("done", "記錄聽力圖 已完成 2026/09/01"),
             ],
         )
 
@@ -247,10 +251,10 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertEqual(
             self.steps(main),
             [
-                ("done", "已完成 填生活影響問卷 2026/09/12"),
-                ("done", "已完成 記錄聽力圖 2026/09/01"),
-                ("not-needed", "3 了解助聽器選配與補助 目前不需要"),
-                ("not-needed", "4 戴滿 3 個月做效益問卷 目前不需要"),
+                ("done", "填生活影響問卷 已完成 2026/09/12"),
+                ("done", "記錄聽力圖 已完成 2026/09/01"),
+                ("not-needed", "了解助聽器選配與補助 目前不需要"),
+                ("not-needed", "戴滿 3 個月做效益問卷 目前不需要"),
                 ("current", "5 現在這一步 半年後再篩檢 時間到了，這裡會出現「再做一次」的按鈕。"),
             ],
         )
@@ -392,10 +396,10 @@ class JourneyHomeTests(HomeJourneyTestCase):
         self.assertEqual(
             [body for state, body in self.steps(self.main()) if state == "done"],
             [
-                "已完成 填生活影響問卷 2026/09/26",
-                "已完成 記錄聽力圖 2026/06/15",
-                "已完成 了解助聽器選配與補助 2026/07/01",
-                "已完成 戴滿 3 個月做效益問卷 2026/10/15",
+                "填生活影響問卷 已完成 2026/09/26",
+                "記錄聽力圖 已完成 2026/06/15",
+                "了解助聽器選配與補助 已完成 2026/07/01",
+                "戴滿 3 個月做效益問卷 已完成 2026/10/15",
             ],
         )
 
@@ -452,6 +456,75 @@ class JourneyHomeTests(HomeJourneyTestCase):
             self.answer(code=hhia_s.CODE, on=date(2026, 8, day))
         self.make(PTA_55, PTA_55, tested_on=date(2026, 8, 1))
         self.assertEqual(self.count_queries(), two)
+
+
+class StepInteractionTests(HomeJourneyTestCase):
+    """#459 I1 + I2 (the owner's pick on the step interactions page, ADR 0028's 2026-11-12
+    exception)."""
+
+    def step_3_with_two_done(self):
+        self.answer(on=date(2026, 9, 26), score=4)
+        self.make(PTA_55, PTA_55, tested_on=date(2026, 9, 1))
+
+    def test_every_step_but_the_current_one_opens_to_say_what_it_is(self):
+        # I1: native <details>, so it opens without JavaScript too; the card is no <details>.
+        self.step_3_with_two_done()
+        result = self.user.submissions.get().pk
+        items = self.items(self.main())
+        self.assertEqual(["<details" in body for _, body in items], [True, True, False, True, True])
+
+        def opened(index):
+            body = re.search(r'<div class="journey-about-body">(.*?)</div>', items[index][1], re.S)
+            return self.text(body.group(1)), re.findall(r'<a href="([^"]*)">', body.group(1))
+
+        self.assertEqual(
+            opened(0),
+            (
+                "先做一份生活影響問卷，了解聽力對您生活的影響。 "
+                "上次結果：無／極輕微影響 看上次結果",
+                [reverse("result", args=[result])],
+            ),
+        )
+        self.assertEqual(
+            opened(1), ("選配指引要用聽力圖才能整理下一步。 看我的選配指引", ["/guide"])
+        )
+        self.assertEqual(
+            opened(3),
+            ("買了助聽器、戴滿 3 個月後，做使用效益問卷（IOI-HA），看助聽器幫了多少。", []),
+        )
+        self.assertEqual(
+            opened(4),
+            (
+                "時間到了，這裡會出現「再做一次」的按鈕。 下次篩檢 2027/03/26・還有 134 天",
+                [],
+            ),
+        )
+        self.assertNotIn("<details open", self.main())
+
+    def test_the_line_is_blue_up_to_the_current_step_without_a_progress_bar(self):
+        # I2: the walked steps, numbered for the entrance's timing; 「2 / 5」 stays.
+        self.step_3_with_two_done()
+        main = self.main()
+        self.assertIn('<ol class="journey-steps" role="list" data-play-in-view>', main)
+        steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
+        self.assertEqual(
+            steps,
+            [
+                ("is-done is-walked", "0"),
+                ("is-done is-walked", "1"),
+                ("is-current", "2"),
+                ("is-later", "3"),
+                ("is-later", "4"),
+            ],
+        )
+        self.assertIn('<span class="visually-hidden">進度 </span>2 / 5</p>', main)
+        self.assertNotIn("journey-bar", main)
+
+    def test_only_the_journey_loads_its_script(self):
+        script = "screening/frontend/care-journey.js"
+        self.assertNotIn(script, self.client.get(reverse("index")).content.decode())
+        self.answer()
+        self.assertIn(script, self.client.get(reverse("index")).content.decode())
 
 
 class OneSolidButtonTests(HomeJourneyTestCase):
