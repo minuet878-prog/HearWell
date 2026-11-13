@@ -18,11 +18,14 @@ from screening.models.submissions import Answer
 # 6: the 重設密碼信 uses the email, Resend in the United States receives it, and the
 # forgot-password page keeps hashed IPs and emails for an hour (#526, spec #355).
 # 7: signing in with Google keeps Google's code (`sub`) and email as a 登入方式 (spec #505).
-CONSENT_VERSION = 7
+# 8: signing in with LINE keeps LINE's code as a 登入方式; version 7 was already live, so it is
+# one more (spec #506).
+CONSENT_VERSION = 8
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
 # cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5,
-# 6 and 7 moved it with the version (#452, spec #478, #526, spec #505). A guest's answers stay
-# in the browser (spec #492): nothing new is kept, so that sentence needed no version of its own.
+# 6, 7 and 8 moved it with the version (#452, spec #478, #526, spec #505, #506). A guest's
+# answers stay in the browser (spec #492): nothing new is kept, so that sentence needed no
+# version of its own.
 PRIVACY_UPDATED_ON = date(2026, 11, 14)
 
 

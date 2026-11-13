@@ -21,6 +21,7 @@ HIGHLIGHTS = (
     "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
     "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
     "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。",  # 6 (#526)
+    "用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。",  # 8 (#506)
     "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # 7 (#505)
     "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
     "您可以隨時要求查詢、更正或刪除您的資料。",
@@ -507,7 +508,8 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        self.assertEqual(len(classes), 15)  # #400 the question log, #526 忘記密碼時, #505 Google
+        # #400 the question log, #526 忘記密碼時, #505 Google, #506 LINE.
+        self.assertEqual(len(classes), 16)
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})

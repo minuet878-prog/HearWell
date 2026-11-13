@@ -609,12 +609,22 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>email：第一次用 Google",
                 "<p>我們不保留 Google",
                 "<p>您按「使用 Google 帳戶登入」",
-                "<li>登入方式：用 Google 登入時",
+                # Spec #506's 用 LINE 登入時 (consent version 8), and LINE in the 登入方式 line;
+                # the owner reviews them at acceptance. Its row's tags are in the digest.
+                "{# Spec #506 acceptance 27",
+                '<summary><h2 id="line-title"',
+                "<p>只拿 LINE 給您的代號",
+                "<li>代號：LINE",
+                "<li>email：LINE 不給",
+                "<p>我們拿到代號後",
+                "<p>您按「使用 LINE 帳號登入」",
+                "<li>登入方式：用 LINE 或 Google 登入時",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
-            # #526 and spec #505 added the tags of the 忘記密碼時 and 用 Google 登入時 rows.
-            "2a35523b567e184051525015de33f9998274b4dbf088889b9f19bb8782430cd9",
+            # #526 and spec #505, #506 added the tags of the 忘記密碼時, 用 Google 登入時 and
+            # 用 LINE 登入時 rows.
+            "d2e220de28fae17829ee65a178f5ef3efe421123f364790123d25f5b08977135",
         ),
     )
 

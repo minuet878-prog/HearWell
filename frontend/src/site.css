@@ -307,7 +307,8 @@
     border-width: 1px;
     font-weight: 600;
   }
-  .btn-google-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* Spec #506 (the #539 mockup D1 B): LINE's button is this same button, with LINE's icon. */
+  .btn-google-logo, .btn-line-logo { flex: none; width: 1.5rem; height: 1.5rem; }
   /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
   .auth-or {
     display: flex;
@@ -3982,13 +3983,14 @@
     stroke-linejoin: round;
   }
 
-  /* Google's G keeps its own colours, on white with a thin frame. */
-  .sign-in-method-icon:has(.btn-google-logo) {
+  /* Google's G and LINE's icon keep their own colours, on white with a thin frame (the #539
+     mockup 5). */
+  .sign-in-method-icon:has(.btn-google-logo, .btn-line-logo) {
     border: 1px solid var(--color-line);
     background-color: #fff;
   }
 
-  .sign-in-method-icon .btn-google-logo {
+  .sign-in-method-icon :is(.btn-google-logo, .btn-line-logo) {
     stroke: none;
   }
 

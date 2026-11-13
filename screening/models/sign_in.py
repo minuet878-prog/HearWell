@@ -14,6 +14,7 @@ class SignInMethod(models.Model):
     # not a row: it is the account's usable password or not. No token is kept.
     class Provider(models.TextChoices):
         GOOGLE = "google", "Google"
+        LINE = "line", "LINE"  # spec #506
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sign_in_methods"
