@@ -22,8 +22,8 @@
         {% endif %}
         {# Spec #505 (the #507 mockup D1 甲, W2): Google above the form; its errors in the same red box (W4-W6). #}
         {% if sign_in_error %}<div class="error-box" role="alert">{{ sign_in_error }}</div>{% endif %}
-        {% if google_sign_in %}
-        {% include "screening/google_button.html" with label="登入" %}
+        {% if google_sign_in or open_outside_url %}
+        {% if google_sign_in %}{% include "screening/google_button.html" with label="登入" %}{% else %}{% include "screening/line_open_outside.html" %}{% endif %}
         <p class="auth-or">或用帳號密碼</p>
         {% endif %}
         <form method="post" action="{% url 'login' %}">

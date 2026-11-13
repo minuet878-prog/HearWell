@@ -27,6 +27,7 @@ OPEN_PAGES = {
     "google_start",
     "google_callback",
     "google_name",
+    "google_same_email",
     "register",
     "logout",
     "download_my_data",
