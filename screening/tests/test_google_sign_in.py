@@ -6,8 +6,9 @@ from datetime import date, timedelta
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
-from django.db import DatabaseError
+from django.db import DatabaseError, connection
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -636,6 +637,28 @@ class SignInMethodDataTests(TestCase):
         self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.method.refresh_from_db()
         self.assertEqual(self.method.subject, "google-1")
+
+
+class SignInMethodAdminTests(TestCase):
+    """The admin's list of sign-in methods (CODING_STANDARDS.md 15): as many queries for many
+    rows as for two."""
+
+    def queries_for_the_list(self):
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(reverse("admin:screening_signinmethod_changelist"))
+        self.assertEqual(response.status_code, 200)
+        return len(queries)
+
+    def test_the_list_does_not_query_per_row(self):
+        self.client.force_login(User.objects.create_superuser(username="admin", password=PASSWORD))
+        for n in range(2):
+            user = User.objects.create_user(username=f"user_{n}")
+            SignInMethod.objects.create(user=user, provider="google", subject=f"google-{n}")
+        two = self.queries_for_the_list()
+        for n in range(2, 7):
+            user = User.objects.create_user(username=f"user_{n}")
+            SignInMethod.objects.create(user=user, provider="google", subject=f"google-{n}")
+        self.assertEqual(self.queries_for_the_list(), two)
 
 
 class PrivacyTests(TestCase):
