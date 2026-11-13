@@ -303,6 +303,21 @@ class FirstTimeTests(TestCase):
         self.assertEqual(User.objects.count(), 2)
         self.assertEqual(SignInMethod.objects.get().user.username, "陳阿蘭")
 
+    def test_an_email_up_to_the_accounts_254_characters(self):
+        # The account's email column holds 254 (cross-review of #506, Spec 7): one longer is
+        # the form's error, not a database error.
+        domain = f"{'b' * 63}.{'c' * 63}.{'d' * 57}.com"
+        longest = f"{'a' * 64}@{domain}"
+        self.assertEqual(len(longest), 254)
+        self._to_name_page()
+        self.assertContains(self.client.get(reverse("line_name")), 'maxlength="254"')
+        response = self._name(email=f"a{longest}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email", response.context["form"].errors)
+        self.assertEqual(User.objects.count(), 0)
+        self.assertRedirects(self._name(email=longest), reverse("consent"))
+        self.assertEqual(User.objects.get().email, longest)
+
     def test_an_email_in_lines_answer_is_never_used(self):
         # Only Google's email is ever taken from a provider (cross-review of #506, Spec 5): one
         # LINE sends anyway is not kept, nor taken to the same-email page.

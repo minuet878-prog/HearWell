@@ -148,6 +148,8 @@ class LineNameForm(GoogleNameForm):
     email = forms.EmailField(
         label="電子郵件（選填）",
         required=False,
+        # What the account's email column holds (cross-review of #506, Spec 7).
+        max_length=User._meta.get_field("email").max_length,
         help_text="LINE 帳號不見時，可以用這個信箱設密碼登入。不填也可以。",
         widget=forms.EmailInput(attrs={"autocomplete": "email"}),
     )
