@@ -65,9 +65,10 @@
 
 ## 來源紀錄
 
-（音檔放進 repo 時填）
+2026-11-13 放進 `screening/static/screening/simulator/`。本人選男聲 B、台北餐廳，聽過轉好的 5 個檔後同意放進 repo。Google Cloud 條款由本人請代理代讀（2026-11-13，[服務條款](https://cloud.google.com/terms/service-terms) 2026-04-02 版沒有針對 Text-to-Speech 的限制；[配額與限制頁](https://docs.cloud.google.com/text-to-speech/quotas)寫明產生的音檔可用在自己的應用程式或媒體）。
 
-| 檔案 | 來源 | 設定 | 產生或下載日期 | 授權 |
+| 檔案 | 來源 | 設定 | 日期 | 授權 |
 |---|---|---|---|---|
-| 第 1–4 句 | Google Cloud Text-to-Speech | | | 依 Google Cloud 服務條款，產生的音檔可用在自己的應用程式 |
-| 餐廳背景 | Freesound | | | CC0 1.0 |
+| `sentence-1.m4a`、`sentence-3.m4a` | Google Cloud Text-to-Speech，`cmn-TW-Wavenet-A`（女） | 由 `scripts/make_simulator_speech.py` 產生 LINEAR16 24 kHz 單聲道、語速 1.0；`afconvert` 轉 AAC 64 kbps | 2026-11-13 產生 | 依 Google Cloud 服務條款，產生的音檔可用在自己的應用程式 |
+| `sentence-2.m4a`、`sentence-4.m4a` | Google Cloud Text-to-Speech，`cmn-TW-Wavenet-B`（男） | 同上 | 2026-11-13 產生 | 同上 |
+| `restaurant.m4a` | Freesound「[Taiwan restaurant.wav](https://freesound.org/people/Martin.Sadoux/sounds/415516/)」，Martin.Sadoux，2012 年台北大安區 | 原檔 48 kHz／24-bit 立體聲 3:00；取第 152–162 秒（全檔音量最平穩、沒有突出人聲的 10 秒），轉單聲道 24 kHz、頭尾各 0.3 秒淡入淡出，`afconvert` 轉 AAC 64 kbps | 2026-11-13 下載 | CC0 1.0（公眾領域） |
