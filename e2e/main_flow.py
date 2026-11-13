@@ -9120,9 +9120,12 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         .filter(a => a.effect.target.closest(within))
         .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
     STOP = '[aria-current="step"]'
+    # #480: what waits to be in view is the card's top, the to-dos and question below it left out.
+    STOP_MARK = '[aria-current="step"] [data-play-in-view]'
     JOURNEY = ".journey-steps"
-    # The journey waits for its 現在這一步 (#459), and its first tick shows the end.
-    JOURNEY_HERE = '.journey-step[aria-current="step"]'
+    # The journey waits for its 現在這一步's one thing (#459, #480), and its first tick shows the
+    # end.
+    JOURNEY_HERE = '.journey-step[aria-current="step"] [data-play-in-view]'
     TICK = ".journey-step.is-done .journey-dot path"
     WAVE = ".site-wave"
 
@@ -9187,10 +9190,11 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
 
     # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
     # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
+    # #480: what has to be in view is the card's top (STOP_MARK), not the whole stop.
     def test_current_stop_ring_plays_once_in_view(self):
         self.open("/guide")
         with self.saving_artifacts():
-            here = self.main().locator(self.STOP)
+            here = self.main().locator(self.STOP_MARK)
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).not_to_be_in_viewport()
             self.assertEqual(

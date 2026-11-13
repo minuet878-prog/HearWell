@@ -217,6 +217,12 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         start = guide.index('<div class="route-box route-card">')
         return guide[start : guide.index('<li class="route-stop', start)]
 
+    def current_card(self, main):
+        """The 現在這一步's card with its to-dos, as far as the next step or the list's end."""
+        start = main.index('<div class="journey-card">')
+        ends = (main.find('<li class="journey-step', start), main.index("</ol>", start))
+        return main[start : min(end for end in ends if end != -1)]
+
     def words(self, html):
         """Each to-do's words as a screen reader reads them, by key."""
         return {key: self.text(body) for key, body in TODO_ITEM.findall(html)}
@@ -225,7 +231,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         # Spec #478 acceptance 1 and 27.
         self.answer()
         main = self.main()
-        card = self.part(main, "journey-card")
+        card = self.current_card(main)
         self.assertEqual(
             listed(card),
             [
@@ -246,7 +252,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         # Spec #478 acceptance 28, as far as #480 goes: the state in words; ticking a manual one
         # and saving it is #481's, so nothing in the list takes the focus or a press yet.
         self.answer()
-        todos = self.part(self.part(self.main(), "journey-card"), "todos")
+        todos = self.part(self.current_card(self.main()), "todos")
         self.assertEqual(
             self.words(todos),
             {
@@ -277,7 +283,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
     def test_home_and_my_guide_list_the_same_to_dos_for_form_9(self):
         # Spec #478 acceptance 2; on my guide the list sits between the button and the question.
         self.at_form_9()
-        home = listed(self.part(self.main(), "journey-card"))
+        home = listed(self.current_card(self.main()))
         here = self.here(self.guide())
         self.assertEqual(home, [("form-9-book", True, False), ("form-9-answer", False, False)])
         self.assertEqual(listed(here), home)
@@ -290,7 +296,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.at_form_9()
         main, guide = self.main(), self.guide()
         self.assertEqual(main.count('<div class="todos">'), 1)
-        self.assertIn('<div class="todos">', self.part(main, "journey-card"))
+        self.assertIn('<div class="todos">', self.current_card(main))
         self.assertEqual(guide.count('<div class="todos">'), 1)
         self.assertIn('<div class="todos">', self.here(guide))
 

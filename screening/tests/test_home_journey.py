@@ -512,8 +512,15 @@ class StepInteractionTests(HomeJourneyTestCase):
         # I2: the walked steps, numbered for the entrance's timing; 「2 / 5」 stays.
         self.step_3_with_two_done()
         main = self.main()
-        # Played once the 現在這一步 is in view (ADR 0029).
-        self.assertRegex(main, r'<li class="journey-step is-current"[^>]*data-play-in-view>')
+        # Played once the 現在這一步's one thing is in view (ADR 0029; #480 moved the mark there
+        # from the whole step, which the to-dos under it made too tall).
+        self.assertRegex(
+            main,
+            r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">3</span>\s*'
+            r'<div class="journey-card">\s*<div class="journey-card-main" '
+            r"data-play-in-view>",
+        )
+        self.assertEqual(main.count("data-play-in-view"), 1)
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,

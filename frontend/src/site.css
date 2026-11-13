@@ -4882,8 +4882,12 @@
      the animation shorthand: that would set the play state back to running and so outrank the
      hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
-    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-check path,
-    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-stop::after {
+    /* #480: the 目前這一站's mark is on its card's top, not the whole stop, which the to-dos and
+       the question under it made too tall to be in view on arrival; so the ring on its number,
+       outside the mark now, is held here too. */
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-number,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-check path,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-stop::after {
       animation-play-state: paused;
     }
 
@@ -5494,10 +5498,13 @@
   @media (prefers-reduced-motion: no-preference) {
     /* Held, as in-view.js holds any, until the 現在這一步 (data-play-in-view) is in view: the
        whole list is taller than half a phone's screen and would wait for a scroll, yet the way
-       walked ends at that card. */
-    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+       walked ends at that card. #480: the mark is on the card's one thing, not the whole step,
+       which the to-dos under it made too tall to be in view on arrival; so the ring on the dot,
+       outside the mark now, is held here too. */
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view])) .journey-dot,
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
       .journey-dot path,
-    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
       .journey-step::after {
       animation-play-state: paused;
     }
