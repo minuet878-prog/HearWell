@@ -12,6 +12,7 @@ For a view that needs it (#511):
 from urllib.parse import urlsplit
 
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.http import Http404, HttpResponseRedirect, QueryDict
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -86,6 +87,10 @@ def confirm_error(request):
 def came_back(request, identity):
     """The provider's callback for a confirm_identity trip: the code that came back must be one
     on this account (#505 acceptance 31); otherwise nothing is confirmed."""
+    # The callback is public: whoever started the trip may no longer be signed in (the account
+    # turned off meanwhile). Nothing to confirm then; the confirm page asks to log in first.
+    if not request.user.is_authenticated:
+        return redirect_to_login(identity.next)
     # The trip started on the confirm page, whose URL (its next) names the action.
     action = QueryDict(urlsplit(identity.next).query).get("action")
     if action in ACTIONS and request.user.sign_in_methods.for_identity(identity).exists():

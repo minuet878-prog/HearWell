@@ -308,6 +308,20 @@ class ConfirmPageTests(TestCase):
                 )
                 self.assertNotContains(self.client.get(reverse("delete_account")), "已確認是您本人")
 
+    def test_signed_out_during_the_trip_back_to_log_in_with_nothing_confirmed(self):
+        # The callback is a public URL: the account was turned off while at Google, so the
+        # session no longer signs anyone in when the trip comes back.
+        google = FakeGoogle(self.client)
+        start_confirming(self.client, google)
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        response = google.come_back(sub=OWN_SUB, email="own@example.com")
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={quote(CONFIRM_DELETE)}",
+            fetch_redirect_response=False,
+        )
+        self.assertNotIn(confirm_identity.CONFIRMED, self.client.session)
+
     def test_without_google_keys_there_is_no_google_button(self):
         with self.settings(GOOGLE_CLIENT_ID=""):
             response = self.client.get(reverse("delete_account"))
