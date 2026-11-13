@@ -231,7 +231,7 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
         # it says it ticks itself; the one that is a stop's whole end says the route moves on,
         # in the sentence the owner picked on 2026-11-14 (C, mockup-479-auto-todo-compare.html).
         lines = {
-            todo.key: (todo.then, todo.hint)
+            todo.key: (todo.outcome, todo.hint)
             for slug in ("before-you-go", "after-fitting")
             for todo in stop_todos(slug, fitting_state(self.user, TODAY), self.user)
             if not todo.manual
@@ -370,7 +370,9 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             {
                 "audiogram-test": "到醫院或診所做聽力檢查",
                 "audiogram-copy": "跟醫院或診所要一份聽力圖",
-                "audiogram-record": "把聽力圖記到聽伴，就會往下一站 不用自己勾，網站會知道",
+                "audiogram-record": (
+                    "把聽力圖記到聽伴，就會往下一站 ，未完成。 不用自己勾，網站會知道"
+                ),
             },
         )
 
@@ -384,7 +386,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         todos = self.part(self.current_card(self.main()), "todos")
         self.assertEqual(
             self.words(todos)["step-4-ioi-ha"],
-            "做完助聽器效益問卷，這一步就完成 不用自己勾，網站會知道",
+            "做完助聽器效益問卷，這一步就完成 ，未完成。 不用自己勾，網站會知道",
         )
 
     def test_a_done_automatic_to_do_is_a_tick_saying_so(self):
@@ -398,7 +400,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             [("after-fitting-adjust", True, False), ("after-fitting-date", False, True)],
         )
         self.assertEqual(
-            self.words(here)["after-fitting-date"], "記下開始配戴的日期 網站已幫您打勾"
+            self.words(here)["after-fitting-date"], "記下開始配戴的日期 ，已完成。 網站已幫您打勾"
         )
         self.assertIn(TICK, self.mark(here))
 
@@ -456,7 +458,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             self.assertEqual(listed(card)[-1], ("before-you-go-read", False, False))
             self.assertEqual(
                 self.words(card)["before-you-go-read"],
-                "看完「去找聽力師之前」這一章，就會往下一站 不用自己勾，網站會知道",
+                "看完「去找聽力師之前」這一章，就會往下一站 ，未完成。 不用自己勾，網站會知道",
             )
             self.assertIn(ARROW, self.mark(card))
             self.assertNotIn(TICK, self.mark(card))
@@ -477,7 +479,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
     def test_answering_form_9_done_moves_both_pages_on_to_the_notice(self):
         # Spec #478 acceptance 9 as aligned (2026-11-13): 回答九號表完成了 on the route, both
         # pages are at 等待核定公文. A part of a stop done shows ticked instead:
-        # test_a_done_automatic_to_do_is_a_ticked_ring_saying_so.
+        # test_a_done_automatic_to_do_is_a_tick_saying_so.
         self.at_form_9()
         self.client.post(reverse("route_answer"), {"stop": "form-9", "form_9_done": "True"})
         main, guide = self.main(), self.guide()

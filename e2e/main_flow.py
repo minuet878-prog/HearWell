@@ -3697,7 +3697,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     todos = card.locator(".todos")
                     # #481: a manual one's state is its checkbox's, not words.
                     expect(todos.get_by_role("listitem")).to_have_text(
-                        ["預約開九號表", "回答九號表完成了，就會往下一站不用自己勾，網站會知道"]
+                        [
+                            "預約開九號表",
+                            "回答九號表完成了，就會往下一站，未完成。不用自己勾，網站會知道",
+                        ]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
                     self.assertEqual(self.main().locator(".btn-primary").count(), 1)
@@ -3709,6 +3712,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(style(auto, "borderTopWidth"), "1px")
                     self.assertEqual(style(auto, "borderLeftWidth"), "0px")
                     self.assertEqual(style(auto.locator(".todo-mark"), "borderTopWidth"), "0px")
+                    self.assertEqual(style(auto.locator(".todo-mark"), "color"), "rgb(31, 78, 140)")
+                    self.assertEqual(style(auto.locator(".todo-sentence"), "fontWeight"), "700")
                     self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
                     # #481: what takes the press is the row's checkbox, as big as the row.
                     for row in todos.get_by_role("checkbox").all():
