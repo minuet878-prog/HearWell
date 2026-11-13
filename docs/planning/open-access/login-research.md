@@ -128,6 +128,25 @@
 
 ---
 
+## 8. Google 能不能要求重新驗證（#508 實作前查，給 #510 確認本人用）
+
+查詢日期 2026-11-13。結論：**Google 不支援「強迫重新輸入密碼」**；能做的只有讓他重選帳號，和事後看他多久以前在 Google 登入過。
+
+| 參數或欄位 | Google 支不支援 | 來源 |
+|---|---|---|
+| `max_age`（要求多少秒內登入過） | 不支援：授權參數表沒有這一項，discovery 文件也沒有 | 〔G1〕〔G9〕 |
+| `prompt=login`（強迫重新登入） | 不支援：`prompt` 只列 `none`、`consent`、`select_account` 三種 | 〔G1〕〔G2〕 |
+| `prompt=select_account` | 支援：一定跳出選帳號畫面，不會自動用目前登入的那個 | 〔G1〕〔G2〕 |
+| `login_hint` | 支援：可以帶 email 或 `sub`，先選好那個帳號（會略過選帳號畫面） | 〔G1〕 |
+| `auth_time`（上次在 Google 登入的時間） | 有條件：授權網址要帶 `claims={"id_token":{"auth_time":{"essential":true}}}`，而且要在 Google Auth Platform 的 Settings → Advanced Settings 勾「Session age claims」；應用程式要「已發布＋已驗證」才拿得到，預設關閉 | 〔G1〕〔G10〕 |
+| 重新驗證的要求 | Google 安全功能文件明寫不支援 Google 帳戶的 reauth 請求；建議自己看 `auth_time` 決定要不要另外加關卡 | 〔G10〕 |
+
+`auth_time` 是「這台裝置或瀏覽器上次登入 Google 帳戶的時間」〔G10〕，手機一直登入著的長輩通常是很久以前，拿它來擋（例如要求 5 分鐘內）會讓人過不了，又沒辦法叫 Google 重新問密碼。
+
+**給 #510 的建議**：確認本人時帶 `prompt=select_account`（讓他看見自己選的是哪個 Google，防「順手用了別人的」），不帶 `login_hint`（帶了會略過選帳號）；代號必須等於帳號上那一列。`auth_time` 等品牌驗證通過、有需要時再評估，先不靠它。規格「其他說明」寫的極限照舊：擋得住換成別的 Google，擋不住拿著本人已解鎖手機的人。
+
+---
+
 ## 要本人決定的事
 
 1. **做法**
@@ -172,6 +191,8 @@
 - 〔G6〕Google 品牌驗證：https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification
 - 〔G7〕Google 管理 OAuth 用戶端：https://support.google.com/cloud/answer/15549257
 - 〔G8〕Google OAuth 速率限制：https://support.google.com/cloud/answer/9028764
+- 〔G9〕Google discovery 文件：https://accounts.google.com/.well-known/openid-configuration
+- 〔G10〕Sign in with Google 安全功能（Security bundle，`auth_time`、Session age claims）：https://developers.google.com/identity/siwg/security-bundle
 - 〔L1〕LINE Login 網頁整合：https://developers.line.biz/en/docs/line-login/integrate-line-login/
 - 〔L2〕LINE PKCE：https://developers.line.biz/en/docs/line-login/integrate-pkce/
 - 〔L3〕LINE 驗證 ID token：https://developers.line.biz/en/docs/line-login/verify-id-token/
