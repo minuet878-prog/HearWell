@@ -204,6 +204,11 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # One proxy in front (implementation decision I2, from the VPS's Nginx settings, checked by
+    # the owner 2026-11-13): Nginx appends the connection's address to X-Forwarded-For with
+    # $proxy_add_x_forwarded_for, so the guest scoring limit takes the last address only; the
+    # ones before it come from the visitor and can be forged. Without the header, REMOTE_ADDR.
+    "NUM_PROXIES": 1,
 }
 
 SPECTACULAR_SETTINGS = {
