@@ -119,15 +119,23 @@ def _latest_life_impact(user):
     return latest.values_list("id", flat=True).first() or 0
 
 
-def stop_todos(slug, state):
-    """A route stop's 待辦, judged on state (a FittingState), its ticks the manual ones'."""
-    return _judged(STOP_TODOS.get(slug, ()), state, state.ticked, STOP_HINT)
+def _ticked(user, aid):
+    # The keys of user's 手動待辦 ticked in their current round (#481, #482): a tick of an
+    # earlier round is kept but not ticked now. Whether a stop is done never reads them (ADR 0047).
+    rounds = current_rounds(user, aid)
+    ticks = user.todo_ticks.values_list("key", "round")
+    return frozenset(key for key, number in ticks if rounds.get(key) == number)
 
 
-def step_todos(number, done, ticked):
-    """A 照顧旅程 step's own 待辦; done, whether the step is done; ticked, the keys of the
-    手動待辦 ticked (FittingState.ticked)."""
-    return _judged(STEP_TODOS.get(number, ()), done, ticked, STEP_HINT)
+def stop_todos(slug, state, user):
+    """A route stop's 待辦, judged on state (user's FittingState)."""
+    return _judged(STOP_TODOS.get(slug, ()), state, _ticked(user, state.aid), STOP_HINT)
+
+
+def step_todos(number, done, user, aid):
+    """A 照顧旅程 step's own 待辦; done, whether the step is done; aid, the user's
+    AidAndSubsidy, None before any."""
+    return _judged(STEP_TODOS.get(number, ()), done, _ticked(user, aid), STEP_HINT)
 
 
 def _judged(todos, subject, ticked, hint):
@@ -137,5 +145,7 @@ def _judged(todos, subject, ticked, hint):
             listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in ticked))
         else:
             done = bool(todo.rule(subject))
-            listed.append(JourneyTodo(todo.key, todo.text, False, done, DONE_HINT if done else hint))
+            listed.append(
+                JourneyTodo(todo.key, todo.text, False, done, DONE_HINT if done else hint)
+            )
     return tuple(listed)

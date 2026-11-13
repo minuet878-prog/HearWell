@@ -68,7 +68,7 @@ class Ticket480JourneyTodosTests(test_care_journey.CareJourneyTestCase):
         # Spec #478 acceptance 2: the card takes the 您在這裡 stop's list, not one of its own.
         self.at_form_9()
         card = self.journey().card
-        here = here_stop(fitting_state(self.user, TODAY))
+        here = here_stop(fitting_state(self.user, TODAY), self.user)
         self.assertEqual(here.slug, "form-9")
         self.assertEqual(
             kinds(card.todos), [("form-9-book", True, False), ("form-9-answer", False, False)]
@@ -117,7 +117,8 @@ class Ticket480JourneyTodosTests(test_care_journey.CareJourneyTestCase):
             kinds(journey.card.todos),
             [("form-25-book", True, False), ("form-25-answer", False, False)],
         )
-        self.assertEqual(journey.card.todos, here_stop(fitting_state(self.user, TODAY)).todos)
+        here = here_stop(fitting_state(self.user, TODAY), self.user)
+        self.assertEqual(journey.card.todos, here.todos)
 
     def test_step_5_lists_its_own_manual_to_do(self):
         # Within the normal range steps 3 and 4 are 目前不需要, so step 5 is current.
@@ -133,7 +134,8 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
     rule, so a stop's list is judged here as the 您在這裡 card would show it."""
 
     def todos(self, slug):
-        return {todo.key: todo.done for todo in stop_todos(slug, fitting_state(self.user, TODAY))}
+        state = fitting_state(self.user, TODAY)
+        return {todo.key: todo.done for todo in stop_todos(slug, state, self.user)}
 
     def test_reading_before_you_go_ticks_its_chapter_but_not_booking(self):
         # Spec #478 acceptance 8.
@@ -190,7 +192,7 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
         state = fitting_state(self.user, TODAY)
         self.assertEqual(state.stop, "after-fitting")
         self.assertEqual(
-            kinds(here_stop(state).todos),
+            kinds(here_stop(state, self.user).todos),
             [("after-fitting-date", False, True), ("after-fitting-adjust", True, False)],
         )
 
@@ -650,7 +652,7 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         """Whether each 手動待辦 of a stop is ticked, as the 您在這裡 stop would show them."""
         return {
             todo.key: todo.done
-            for todo in stop_todos(slug, fitting_state(self.user, TODAY))
+            for todo in stop_todos(slug, fitting_state(self.user, TODAY), self.user)
             if todo.manual
         }
 

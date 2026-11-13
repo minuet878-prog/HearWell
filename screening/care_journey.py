@@ -156,7 +156,9 @@ def care_journey(user, today):
     else:
         on = main.next_suggested_date
         next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
-    card = _card(current, done[current], route, fitted_on, today, next_screening, life_impact_href)
+    card = _card(
+        user, current, done[current], route, fitted_on, today, next_screening, life_impact_href
+    )
     return CareJourney(
         steps,
         current,
@@ -189,8 +191,8 @@ def _life_impact_href(user, main):
     return reverse("screening", args=[questionnaire.pk])
 
 
-def _card(current, done, route, fitted_on, today, next_screening, life_impact_href):
-    # done: whether the 現在這一步 is, for its own 待辦 (step 5 never is).
+def _card(user, current, done, route, fitted_on, today, next_screening, life_impact_href):
+    # done: whether the 現在這一步 is, for its own 待辦 (step 5 never is); user: route's.
     if current == 1:
         return JourneyCard(
             CARE_JOURNEY_STEPS[0],
@@ -199,12 +201,12 @@ def _card(current, done, route, fitted_on, today, next_screening, life_impact_hr
             button=(LIFE_IMPACT_BUTTON, life_impact_href),
         )
     if current in (2, 3) or (current == 4 and route.stop == "form-25"):
-        return _route_card(route)
+        return _route_card(route, user)
     if current == 4:
         # Not 等待補助發放, which the home page leaves to my guide (spec #453).
         three_months = add_months(fitted_on, FITTING_MONTHS)
         title = CARE_JOURNEY_STEPS[3]
-        todos = step_todos(4, done, route.ticked)
+        todos = step_todos(4, done, user, route.aid)
         if today < three_months:
             because = fitting_countdown_text((three_months - today).days)
             return JourneyCard(title, because, "clipboard", todos=todos)
@@ -217,7 +219,7 @@ def _card(current, done, route, fitted_on, today, next_screening, life_impact_hr
             todos=todos,
         )
     title = CARE_JOURNEY_STEPS[4]
-    todos = step_todos(5, done, route.ticked)
+    todos = step_todos(5, done, user, route.aid)
     if next_screening is None:
         # Without a life-impact record step 5 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
@@ -228,9 +230,9 @@ def _card(current, done, route, fitted_on, today, next_screening, life_impact_hr
     return JourneyCard(title, RETEST_DUE_TEXT, "clipboard", button=button, todos=todos)
 
 
-def _route_card(route):
+def _route_card(route, user):
     # The 目前這一站 with the route's own button and the home page's 「因為」 for it (#261).
-    stop = here_stop(route)
+    stop = here_stop(route, user)
     if stop.slug == AUDIOGRAM:
         reason = "edit" if route.insufficient else "record"
     else:
