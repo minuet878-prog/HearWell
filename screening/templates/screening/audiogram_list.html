@@ -6,8 +6,8 @@
 {% block extra_head %}
 {# Before the first paint: a slow page whose switch is not parsed yet skips the pill's slide (#334). #}
 <script src="{% static 'screening/switch-reveal.js' %}"></script>
-{# A slow phone painted before the switch was parsed, so the slide was skipped; the first paint now waits for the switch (Chrome 124+; other browsers keep the skip above). #}
-<link rel="expect" href="#records-switch" blocking="render">
+{# A slow phone painted before the switch was parsed, so the slide was skipped; the first paint now waits for the blue pill itself, as Chrome can let the paint through at the switch's opening tag (Chrome 124+; other browsers keep the skip above). #}
+<link rel="expect" href="#records-switch-current" blocking="render">
 {% endblock %}
 
 {% block body %}

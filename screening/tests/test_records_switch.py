@@ -43,7 +43,10 @@ class RecordsSwitchTests(TestCase):
         match = re.search(r'<nav[^>]*aria-label="紀錄種類"[^>]*>(.*?)</nav>', main, re.S)
         if match is None:
             return None
-        links = re.findall(r'<a href="([^"]*)"( aria-current="page")?>([^<]*)</a>', match.group(1))
+        links = re.findall(
+            r'<a href="([^"]*)"( aria-current="page" id="records-switch-current")?>([^<]*)</a>',
+            match.group(1),
+        )
         return [(href, text, bool(current)) for href, current, text in links]
 
     def _heading_then_switch(self, main):
@@ -75,16 +78,19 @@ class RecordsSwitchTests(TestCase):
         # The audiogram list's own buttons and cards stay below the switch.
         self.assertLess(main.index('aria-label="紀錄種類"'), main.index("新增聽力圖"))
 
-    def test_first_paint_waits_for_the_switch(self):
-        # A slow phone painted before the switch was parsed, so its pill never slid.
+    def test_first_paint_waits_for_the_blue_pill(self):
+        # A slow phone painted before the pill was parsed, so it never slid. Chrome can let the
+        # paint through at the switch's opening tag, so the wait is for the pill itself.
         self._submission()
         self._audiogram()
         for url in (QUESTIONNAIRES, reverse("audiogram_list")):
             with self.subTest(url=url):
                 content = self.client.get(url).content.decode()
                 head = content[: content.index("</head>")]
-                self.assertIn('<link rel="expect" href="#records-switch" blocking="render">', head)
-                self.assertIn('<nav id="records-switch" class="records-switch"', content)
+                self.assertIn(
+                    '<link rel="expect" href="#records-switch-current" blocking="render">', head
+                )
+                self.assertEqual(content.count('id="records-switch-current"'), 1)
 
     def test_other_audiogram_pages_have_no_switch(self):
         audiogram = self._audiogram()

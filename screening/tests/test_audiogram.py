@@ -1375,16 +1375,14 @@ class AudiogramComparePickerTests(TestCase):
         oldest, _, latest = self._three()
         response = self._get(a=latest.id, b=oldest.id)
         main = self._main(response)
-        # The id is what the head's <link rel="expect"> waits for before the first paint.
-        nav = re.search(
-            r'<nav id="ear-switch" class="ear-switch" aria-label="選耳朵">(.*?)</nav>', main, re.S
-        )
+        nav = re.search(r'<nav class="ear-switch" aria-label="選耳朵">(.*?)</nav>', main, re.S)
         links = re.findall(r"<a ([^>]*)>([^<]*)</a>", nav.group(1))
         self.assertEqual([text for _, text in links], ["右耳", "左耳"])
-        self.assertIn('aria-current="true"', links[0][0])
+        self.assertIn('aria-current="true" id="ear-switch-current"', links[0][0])
         self.assertIn("href=", links[1][0])
+        # The head's <link rel="expect"> holds the first paint until the current pill is parsed.
         head = response.content.decode().split("</head>")[0]
-        self.assertIn('<link rel="expect" href="#ear-switch" blocking="render">', head)
+        self.assertIn('<link rel="expect" href="#ear-switch-current" blocking="render">', head)
 
     def test_each_number_table_scrolls_in_a_named_focusable_box(self):
         # #204: at 200% text a four-column table is wider than a phone; only its box scrolls.
