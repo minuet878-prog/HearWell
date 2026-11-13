@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#539 LINE 登入（設計圖第一版）</title>
+<style>
+  /* ---- tokens and base: copied from #470 (docs/planning/redesign/mockup-470-account.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+    /* Google's light button (branding guidelines): fill, 1px stroke, text */
+    --g-fill: #ffffff; --g-stroke: #747775; --g-text: #1f1f1f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; max-width: 100%; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .q code, .spec code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; position: relative; }
+  .newc-tag { position: absolute; right: 0; top: -14px; font-size: 12px; font-weight: 700; color: #fff; background: var(--annot); padding: 0 6px; border-radius: 4px; line-height: 1.5; z-index: 3; }
+
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .pg { padding: 18px 20px 120px; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  .brand { margin: 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .h1 { font-size: 28px; color: var(--heading); margin: 14px 0 8px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 28px 0 8px; line-height: 1.35; font-weight: 700; }
+  .pg p { margin: 0 0 12px; }
+  .pg ul { margin: 0 0 12px; padding-left: 1.3em; }
+  .muted { color: var(--muted); }
+
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .solid-d { background: var(--severe); color: #fff; }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* Google button: light theme, standard 4-colour G on white, scaled up from 14px keeping the
+     ratio (allowed by the branding guidelines). Same height and corner as our .b buttons. */
+  .gbtn { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 56px; width: 100%; margin-top: 12px; padding: 0 16px; border-radius: 14px; background: var(--g-fill); color: var(--g-text); box-shadow: inset 0 0 0 1px var(--g-stroke); font-size: 20px; font-weight: 600; }
+  .gbtn .g { flex: none; width: 24px; height: 24px; }
+
+  .or { display: flex; align-items: center; gap: 12px; margin: 22px 0 14px; color: var(--muted); }
+  .or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
+  .field { margin: 0 0 18px; }
+  .lab { display: block; font-weight: 700; color: var(--heading); margin: 0 0 4px; }
+  .labrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 4px; }
+  .inp { position: relative; display: flex; align-items: center; min-height: 58px; border: 2px solid var(--line-strong); border-radius: 12px; padding: 0 14px 0 48px; font-size: 20px; color: var(--heading); background: #fff; }
+  .inp svg { position: absolute; left: 13px; width: 24px; height: 24px; fill: none; stroke: var(--body); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .inp.focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(31,78,140,.25); }
+  .inp.focus svg { stroke: var(--primary); }
+  .inp.plain { padding-left: 14px; }
+  .ig { display: flex; }
+  .ig span { display: grid; place-items: center; padding: 0 14px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--heading); min-height: 58px; }
+  .ig span:first-child { border-radius: 12px 0 0 12px; border-right: 0; }
+  .ig span:last-child { border-radius: 0 12px 12px 0; border-left: 0; }
+  .ig .inp { flex: 1; border-radius: 0; padding-left: 14px; }
+  .help { color: var(--muted); margin: 6px 0 0; }
+  .toggle { min-height: 44px; padding: 0 14px; border: 2px solid var(--primary); color: var(--primary); border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; font-size: 18px; }
+  .sp-t { margin: 0 0 6px; font-weight: 700; color: var(--heading); }
+  .sp-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+  .sp-bar span { flex: 1; height: 9px; border-radius: 999px; background: var(--line-strong); }
+  .sp-bar span.on { background: var(--primary); }
+
+  .h3b { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .h3b p { margin: 0 0 6px; }
+  .h3b p:last-child { margin: 0; }
+  .em { display: flex; gap: 12px; background: var(--severe-bg); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .dot-i { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--severe); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; margin-top: 2px; }
+
+  .info { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 6px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .info dt { color: var(--muted); flex-basis: 100%; }
+  .info dd { margin: 0; font-weight: 700; color: var(--heading); }
+  dl.infos { margin: 0; border-top: 1px solid var(--line); }
+  .method { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); min-height: 72px; flex-wrap: wrap; }
+  .method .grow { flex: 1; min-width: 160px; }
+  .m-title { display: block; font-weight: 700; color: var(--heading); }
+  .m-sub { display: block; color: var(--muted); }
+  .m-ico { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .m-ico.gw { background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
+  .m-ico .g { width: 24px; height: 24px; }
+  .mini-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; font-size: 18px; }
+  .mini-btn.outline { border: 2px solid var(--primary); color: var(--primary); }
+  .mini-btn.danger { color: var(--severe); text-decoration: underline; text-underline-offset: 4px; padding: 0 4px; }
+  .listE { border-top: 1px solid var(--line); margin: 14px 0 0; padding: 0; list-style: none; }
+  .tap { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .icoE { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+  .danger-t { color: var(--severe) !important; }
+  .icoD { background: var(--severe-bg); color: var(--severe); }
+
+  /* the save card (#492's 保存卡) is still being drawn in #493: a placeholder block here */
+  .savecard { background: var(--primary-soft); border-radius: 20px; padding: 18px 18px 20px; margin-top: 20px; }
+  .savecard h3 { margin: 0 0 6px; font-size: 22px; color: var(--heading); }
+  .lv { border-radius: 16px; padding: 14px 18px; margin-top: 10px; background: #fff4d6; color: #704800; }
+  .lv .nm { font-size: 22px; font-weight: 700; display: block; }
+  .lv .d { color: var(--heading); display: block; }
+
+  /* 200% text: text sizes doubled, widths unchanged (what iOS larger text does) */
+  .x2 .pg { font-size: 36px; line-height: 1.45; }
+  .x2 .brand { font-size: 44px; }
+  .x2 .h1 { font-size: 56px; }
+  .x2 .b, .x2 .gbtn { font-size: 40px; min-height: 0; padding: 12px 16px; }
+  .x2 .gbtn .g { width: 40px; height: 40px; }
+  .x2 .lab, .x2 .help, .x2 .or, .x2 .sp-t { font-size: 36px; }
+  .x2 .inp { font-size: 40px; min-height: 0; padding-top: 10px; padding-bottom: 10px; }
+  .x2 .ig span { min-height: 0; padding: 0 10px; }
+  .x2 .toggle { font-size: 36px; }
+  .x2 .tlink { font-size: 36px; }
+  .x2 .phone { min-height: 0; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+  @media (max-width: 700px) { table.spec { display: block; overflow-x: auto; } }
+  .sw { display: inline-grid; place-items: center; width: 30px; height: 26px; border-radius: 6px; border: 1px solid; margin-right: 8px; font-weight: 700; font-size: 15px; vertical-align: middle; }
+
+  /* LINE (#539). A: LINE's own button (developers.line.biz/en/docs/line-login/login-button/):
+     base #06C755, white text and bubble, an 8% black line between them; no colour change allowed.
+     B uses .gbtn with the LINE icon in place of the G. */
+  .lbtnA { display: flex; align-items: stretch; min-height: 56px; width: 100%; margin-top: 12px; border-radius: 14px; background: #06C755; color: #fff; font-size: 20px; font-weight: 700; overflow: hidden; }
+  .lbtnA-ico { flex: none; display: grid; place-items: center; width: 60px; border-right: 1px solid rgba(0,0,0,.08); }
+  .lbtnA .lb { width: 32px; height: 32px; }
+  .lbtnA-t { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 16px; text-align: center; }
+  .x2 .lbtnA { font-size: 40px; min-height: 0; }
+  .x2 .lbtnA-t { padding: 12px 16px; }
+  .x2 .lbtnA-ico { width: 80px; }
+  .x2 .lbtnA .lb { width: 48px; height: 48px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></symbol>
+  <symbol id="i-reg" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-safari" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+  <!-- standard 4-colour Google "G" (48x48). Implementation uses the file from Google's official download bundle. -->
+  <symbol id="g-logo" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol>
+  <!-- LINE icon, drawn here as a stand-in: the green square with the white speech bubble. Implementation uses the file from LINE's official download. -->
+  <symbol id="l-logo" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#06C755"/><path fill="#fff" d="M24 9.5c-9.1 0-16.5 6-16.5 13.4 0 6.6 5.9 12.2 13.8 13.2.5.1 1.3.4 1.5.9.2.4.1 1.1.1 1.6l-.2 1.4c-.1.4-.3 1.6 1.4.9 1.7-.7 9.1-5.4 12.4-9.2 2.3-2.5 3.4-5.1 3.4-7.8 0-7.4-7.4-13.4-16.5-13.4z"/><text x="24" y="26.6" font-size="8.6" font-weight="900" fill="#06C755" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">LINE</text></symbol>
+  <symbol id="l-bubble" viewBox="0 0 48 48"><path fill="#fff" d="M24 6c-10.5 0-19 6.9-19 15.4 0 7.6 6.8 14 15.9 15.2.6.1 1.5.4 1.7 1 .2.5.1 1.3.1 1.8l-.3 1.6c-.1.5-.4 1.8 1.6 1 2-.8 10.5-6.2 14.3-10.6 2.6-2.9 3.9-5.9 3.9-9C42.4 12.9 34.5 6 24 6z"/><text x="24" y="25" font-size="10" font-weight="900" fill="#06C755" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">LINE</text></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#539 LINE 登入・設計圖第一版</h1>
+  <p class="lead">規格 #506。接在已上線的 Google 登入（#507 選定的版式）上面多一家 LINE。手機寬 390px；紫色虛線橫線＝手機第一個畫面的底（844px）。紫色虛線框＝<b>草稿字句</b>（我擬的，請您逐句審，見最後的字句表）或<b>新元件</b>（框上有標）。其他字句都是網站現有的。</p>
+  <p class="lead"><b>最大的問題在 D1：LINE 官方按鈕規定綠底 #06C755 配白字，對比只有 2.3:1</b>，低於無障礙要求（一般字 4.5:1、大字 3:1），而且 LINE 規定不能改顏色（使用規範 4.3.2）。所以第 1 區並排兩種做法：A 照官方綠底按鈕；B 跟 Google 按鈕同一款白底灰框、左邊放 LINE 官方綠色圖示（規範 4.1 允許把圖示當「文字連結的圖示」用）。其餘畫面先用 B 畫，您選 A 的話照 A 換。</p>
+  <p class="lead">圖上的 LINE 圖示是示意，實作時用 LINE 官方下載包的檔案。案例：wang_ming 有帳號密碼與 Google；阿嬤 chen_lan 第一次用 LINE。</p>
+
+  <!-- ================= 1 登入頁 ================= -->
+  <section class="group">
+    <h2>1　登入頁：LINE 按鈕長什麼樣子</h2>
+    <p class="q">排法照規格：LINE 最上面、再來 Google、「或用帳號密碼」接原本的表單（#506 驗收 2）。兩家按鈕一樣大（Google 規定要跟其他第三方按鈕一樣醒目）。A、B 差在 LINE 按鈕本身。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">A　LINE 官方綠底按鈕</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <div class="newc" style="margin-top:12px"><span class="newc-tag">新元件 LINE 官方按鈕</span><a class="lbtnA" style="margin-top:0"><span class="lbtnA-ico"><svg class="lb"><use href="#l-bubble"/></svg></span><span class="lbtnA-t"><span class="draft">使用 LINE 帳號登入</span></span></a></div>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px"><a class="tlink">忘記密碼？</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>長輩一眼認得的 LINE 綠色。<b>代價</b>：白字在綠底上對比 <b>2.3:1</b>，看不清楚的人讀不到字；LINE 規定字不能斷成兩行，字放大 200% 時放不下（見第 2 區）。綠色實心按鈕也比藍色「登入」更搶眼。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　白底灰框＋LINE 圖示<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <a class="gbtn newc"><span class="newc-tag">新元件 LINE 按鈕</span><svg class="g"><use href="#l-logo"/></svg><span class="draft">使用 LINE 帳號登入</span></a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px"><a class="tlink">忘記密碼？</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>字是深色 #1f1f1f，對比 16.5:1；兩家按鈕同一款，藍色「登入」仍是這頁唯一的實心按鈕。綠色 LINE 圖示照樣認得出來。<b>代價</b>：LINE 規範沒寫可以自己做按鈕（只寫圖示可以當文字連結的圖示），LINE 有最後解釋權，萬一被要求改，要換成 A。LINE 登入頻道上線不用審查。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B・LINE 登入沒完成（錯誤訊息）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <div class="em"><span class="dot-i">!</span><span><b style="color:var(--severe)">沒有完成 LINE 登入，</b>可以再試一次，或用其他方式登入。</span></div>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg>使用 LINE 帳號登入</a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>跟 Google 的錯誤同一個紅底框、同一個位置。取消與 LINE 沒回應的字是規格原文（#506 驗收 13、14），所以沒有紫框。Google 那兩句目前寫「或用帳號密碼登入」，建議一起改成「或用其他方式登入」（W8）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B・從 LINE 裡打開</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg>使用 LINE 帳號登入</a>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+          <div class="h3b newc" style="margin-top:22px"><span class="newc-tag">搬到表單下面</span>
+            <p><b>想用 Google 登入？</b>LINE 裡面不能用 Google 登入，請改用 Safari 或 Chrome 打開這一頁。</p>
+            <p>在 LINE 裡做的篩檢結果不會跟著過去。</p>
+            <a class="b outline" style="margin-top:6px"><svg class="i" style="margin-right:8px"><use href="#i-safari"/></svg>用 Safari／Chrome 打開</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>在 LINE 裡沒有 Google（#506 驗收 3）。現在 LINE 裡就能用 LINE 登入，「用 Safari／Chrome 打開」的灰框變成少數人才需要，建議從表單上方搬到表單下面（D3）。<b>代價</b>：想用 Google 的人要往下捲才看得到。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 200% ================= -->
+  <section class="group">
+    <h2>2　字放大 200% 時</h2>
+    <p class="q">只放大字、寬度照舊 390px（iPhone「更大的字」就是這樣）。LINE 規範 4.3.3：按鈕上的字不能斷成兩行。</p>
+    <div class="row">
+      <div class="opt x2">
+        <p class="opt-label">A・200%</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <a class="lbtnA"><span class="lbtnA-ico"><svg class="lb"><use href="#l-bubble"/></svg></span><span class="lbtnA-t">使用 LINE 帳號登入</span></a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+        </div></div>
+        <div class="note"><p>字擠不下，斷成兩行，違反 LINE 規範；要守規範只能把字縮小，又違反長輩要的大字。</p></div>
+      </div>
+      <div class="opt x2">
+        <p class="opt-label">B・200%</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg>使用 LINE 帳號登入</a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+        </div></div>
+        <div class="note"><p>跟 Google 按鈕一樣自然斷行、不左右捲，字照樣清楚。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 註冊頁 ================= -->
+  <section class="group">
+    <h2>3　註冊頁</h2>
+    <p class="q">跟登入頁同一個排法。步驟條在兩家按鈕上方，因為用 LINE 也一樣是兩步：取名稱、同意。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">B・註冊頁</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">註冊</h1>
+          <p class="muted">建立帳號，篩檢結果會幫您存起來。</p>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p>
+          <div class="sp-bar"><span class="on"></span><span></span></div>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg><span class="draft">使用 LINE 帳號註冊</span></a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶註冊</a>
+          <p class="or">或填寫資料註冊</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <p class="muted">（下面照舊）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb on"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>按下去不管有沒有帳號都會處理好：用過 LINE 的人直接登入，不會多開帳號。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 取名稱頁 ================= -->
+  <section class="group">
+    <h2>4　取名稱頁（第一次用 LINE 的人）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>取一個使用者名稱</b>。LINE 不給 email，所以沒有 Google 版那一列「電子郵件（來自 Google）」，改成一個選填的電子郵件欄位（#506 驗收 5–8）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">取名稱頁</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">幫帳號取個名字</h1>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p>
+          <div class="sp-bar"><span class="on"></span><span></span></div>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>陳阿蘭</div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp plain">40</div><span>年</span></div></div>
+          <div class="field newc"><span class="newc-tag">新欄位</span><label class="lab draft">電子郵件（選填）</label><div class="inp"><svg><use href="#i-mail"/></svg></div><p class="help draft">LINE 帳號不見時，可以用這個信箱設密碼登入。不填也可以。</p></div>
+          <p>下一步請您閱讀並同意<a class="tlink" style="min-height:0;display:inline">隱私權說明</a>。</p>
+          <a class="b solid">下一步</a>
+          <div class="h3b" style="margin-top:20px"><p class="draft"><b>已經有帳號了嗎？</b>先用原本的方式登入，再到帳號設定新增 LINE 登入，紀錄才會在同一個帳號。</p></div>
+          <a class="tlink">用其他方式登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>出生年的說明照舊，這裡省略沒畫。「下一步」仍在第一個畫面內。email 的說明改寫了：#355 上線後，沒有密碼的帳號也能用「忘記密碼」寄信設密碼（ADR 0059），所以 email 實際的用途是「LINE 不見時還能登入」（W5）。灰框改成「原本的方式」，因為已經有帳號的人也可能是用 Google（W6）。</p></div>
+      </div>
+
+      <div class="opt x2">
+        <p class="opt-label">取名稱頁・200% 字級</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">幫帳號取個名字</h1>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>陳阿蘭</div></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp plain">40</div><span>年</span></div></div>
+          <div class="field"><label class="lab">電子郵件（選填）</label><div class="inp"><svg><use href="#i-mail"/></svg>&nbsp;</div><p class="help">LINE 帳號不見時，可以用這個信箱設密碼登入。不填也可以。</p></div>
+          <a class="b solid">下一步</a>
+        </div></div>
+        <div class="note"><p>欄位標題與說明照常斷行，不會左右捲。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 帳號設定 ================= -->
+  <section class="group">
+    <h2>5　帳號設定的「登入方式」：三列</h2>
+    <p class="q">照 Google 那一列的樣子多一列 LINE，順序跟登入頁不同：帳號密碼、Google、LINE（新的放最後，老使用者熟悉的位置不動）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">有密碼與 Google、還沒有 LINE</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">登入方式</h2>
+          <div style="border-top:1px solid var(--line)">
+            <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub">已設定</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub">2026/11/20 新增</span></span><a class="mini-btn danger">移除</a></div>
+            <div class="method newc"><span class="newc-tag">新的一列</span><span class="m-ico gw"><svg class="g"><use href="#l-logo"/></svg></span><span class="grow"><span class="m-title">LINE</span><span class="m-sub">還沒有新增</span></span><a class="mini-btn outline">新增</a></div>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:16px">新增或移除之前，會先請您確認是本人。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>「新增」的無障礙名稱是「新增 LINE 登入」。上下照現在的帳號設定（我的帳號、家人與資料），這裡省略。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">只有 LINE（用 LINE 註冊的阿嬤）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">登入方式</h2>
+          <div style="border-top:1px solid var(--line)">
+            <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub">沒有設定</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub">還沒有新增</span></span><a class="mini-btn outline">新增</a></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#l-logo"/></svg></span><span class="grow"><span class="m-title">LINE</span><span class="m-sub">註冊時使用</span></span></div>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:16px">這是您目前唯一的登入方式，所以不能移除。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>沒有「移除 LINE」（#506 驗收 18）。說明那句沿用 Google 那一份的字。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">只有 LINE・在 LINE 裡打開</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">登入方式</h2>
+          <div style="border-top:1px solid var(--line)">
+            <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub">沒有設定</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub">還沒有新增</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#l-logo"/></svg></span><span class="grow"><span class="m-title">LINE</span><span class="m-sub">註冊時使用</span></span></div>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:16px">這是您目前唯一的登入方式，所以不能移除。</p>
+          <div class="h3b"><p><b>想用 Google 登入？</b>LINE 裡面不能用 Google 登入，請改用 Safari 或 Chrome 打開這一頁。</p><a class="b outline" style="margin-top:6px"><svg class="i" style="margin-right:8px"><use href="#i-safari"/></svg>用 Safari／Chrome 打開</a></div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>跟現在一樣：在 LINE 裡 Google 那一列沒有「新增」，改放灰框。LINE 那一列在 LINE 裡照常可以新增或移除。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 確認本人、刪除帳號 ================= -->
+  <section class="group">
+    <h2>6　確認本人、刪除帳號</h2>
+    <p class="q">有密碼的人照舊輸入密碼，畫面不變。沒有密碼的人：帳號上有幾種登入方式就列幾顆按鈕，任選一家（#506 驗收 21）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">確認本人・沒有密碼、有 LINE 與 Google</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">先確認是您本人</h1>
+          <p>接下來要<b>移除 LINE 登入</b>。<span class="draft">請用您帳號上的其中一種方式再登入一次。</span></p>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg><span class="draft">使用 LINE 帳號確認</span></a>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶確認</a>
+          <a class="b outline">取消</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>兩顆按鈕順序跟登入頁一樣，LINE 在上。只有一種時那一句照舊寫「請用您帳號上的 LINE（或 Google）再登入一次。」在 LINE 裡打開時 Google 那顆不出現。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">刪除帳號・只有 LINE</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">刪除帳號</h1>
+          <p>刪除後，下面這些資料會全部消失，<b>無法復原</b>：</p>
+          <ul><li>您的帳號（使用者名稱、電子郵件、出生年）</li><li>問卷紀錄 1 筆（每一題的作答和分數）</li><li>同意紀錄</li><li>登入方式（LINE）</li></ul>
+          <p class="h3b">想留一份紀錄的話，請先<a class="tlink" style="min-height:0;display:inline">下載我的資料</a>。</p>
+          <p style="font-weight:700;color:var(--heading)">您的帳號沒有密碼，請用 LINE 確認是本人。</p>
+          <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg>使用 LINE 帳號確認</a>
+          <a class="b outline">取消</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>跟 Google 版同一個樣子，只換成 LINE（#506 驗收 20）。在 LINE 裡打開時，這顆按鈕照常出現，不用離開 LINE。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">用錯 LINE 回來</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">刪除帳號</h1>
+          <div class="em"><span class="dot-i">!</span><span><b style="color:var(--severe)">這不是您帳號上的 LINE。</b><span class="draft">請用註冊時那支手機上的 LINE 再試一次。</span></span></div>
+          <p class="muted">（下面照左邊那張）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>粗體那句是規格原文。後半句改寫了 Google 版的「請改用註冊時用的那個 Google 帳戶」：大多數人只有一個 LINE，用錯通常是拿了家人的手機（W10）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 7 保存卡 ================= -->
+  <section class="group">
+    <h2>7　保存卡加上 LINE</h2>
+    <p class="q">LINE 放在 Google 上面，跟登入頁一樣。在 LINE 裡做完篩檢的人，按 LINE 就能全程不離開 LINE 存好（#506 驗收 23）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">一般瀏覽器</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">HHIE-S 結果</h1>
+          <div class="lv"><span class="nm">輕度到中度影響</span><span class="d">總分 14 分（滿分 40）</span></div>
+          <div class="savecard">
+            <p class="muted" style="margin:0">建議您下一步</p>
+            <h3>註冊保存這次結果</h3>
+            <a class="b solid">註冊保存</a>
+            <a class="gbtn newc"><span class="newc-tag">加在這裡</span><svg class="g"><use href="#l-logo"/></svg><span class="draft">使用 LINE 帳號繼續</span></a>
+            <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶繼續</a>
+            <a class="b outline">登入保存</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>保存卡其他字照現在的樣子（依分級寫好處、還留幾天），這裡省略。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">在 LINE 裡做完篩檢</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">HHIE-S 結果</h1>
+          <div class="lv"><span class="nm">輕度到中度影響</span><span class="d">總分 14 分（滿分 40）</span></div>
+          <div class="savecard">
+            <p class="muted" style="margin:0">建議您下一步</p>
+            <h3>註冊保存這次結果</h3>
+            <a class="b solid">註冊保存</a>
+            <a class="gbtn"><svg class="g"><use href="#l-logo"/></svg>使用 LINE 帳號繼續</a>
+            <a class="b outline">登入保存</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>沒有 Google（跟現在一樣）。規格寫的是「用 LINE 保存」，我改成跟 Google 那顆一樣用「繼續」，因為按下去可能是註冊、也可能是登入（D2）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= decisions ================= -->
+  <section class="group">
+    <h2>要您決定的地方</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>我的建議</th></tr>
+      <tr><td>D1</td><td>LINE 按鈕的樣子</td><td>A 照 LINE 官方綠底白字：長輩最熟的樣子、完全照規範；白字對比 2.3:1，看不清楚的人讀不到；字放大 200% 時會斷行，違反規範。<br>B 白底灰框、左邊 LINE 官方綠色圖示、深色字（跟 Google 按鈕同一款）：對比 16.5:1、可以斷行；規範沒明寫可以這樣做，LINE 有權要求改回 A。</td><td><b>B</b>（無障礙是必需品；被要求時再換 A）</td></tr>
+      <tr><td>D2</td><td>LINE 按鈕的字</td><td>「使用 LINE 帳號登入／註冊／繼續／確認」：跟旁邊的 Google 按鈕同一個句型；LINE 在台灣自己用「帳號」。<br>「用 LINE 登入／用 LINE 保存」：規格裡的寫法，比較短。<br>LINE 官方的繁體中文建議字是「與LINE連動」：長輩看不懂「連動」，不建議。</td><td><b>使用 LINE 帳號…</b>（保存卡也用「繼續」）</td></tr>
+      <tr><td>D3</td><td>LINE 裡登入頁的「用 Safari／Chrome 打開」灰框</td><td>甲 留在表單上方（現在的位置）：想用 Google 的人馬上看到；LINE 按鈕和表單之間隔一大塊。<br>乙 搬到表單下面：LINE 裡的人大多直接按 LINE，畫面比較乾淨；想用 Google 的人要往下捲。</td><td><b>乙</b></td></tr>
+      <tr><td>D4</td><td>帳號設定三列的順序</td><td>A 帳號密碼、Google、LINE（新的放最後）：老使用者熟悉的位置不動。<br>B 跟登入頁一樣 LINE、Google、帳號密碼：全站一致；帳號密碼那一列換到最下面。</td><td><b>A</b></td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>草稿字句（請逐句審）</h2>
+    <p class="q">圖上紫框的字都在這裡。沒有紫框的是規格原文或網站現有的字。</p>
+    <table class="spec">
+      <tr><th>#</th><th>在哪</th><th>字句</th></tr>
+      <tr><td>W1</td><td>登入／註冊／保存卡／確認本人的 LINE 按鈕</td><td>使用 LINE 帳號登入／使用 LINE 帳號註冊／使用 LINE 帳號繼續／使用 LINE 帳號確認</td></tr>
+      <tr><td>W2</td><td>錯誤：在 LINE 按了取消（規格原文）</td><td>沒有完成 LINE 登入，可以再試一次，或用其他方式登入。</td></tr>
+      <tr><td>W3</td><td>錯誤：LINE 沒回應（規格原文）</td><td>LINE 暫時沒有回應，請稍後再試，或用其他方式登入。</td></tr>
+      <tr><td>W4</td><td>取名稱頁的 email 欄位</td><td>標題：電子郵件（選填）</td></tr>
+      <tr><td>W5</td><td>取名稱頁的 email 說明（改寫規格）</td><td>LINE 帳號不見時，可以用這個信箱設密碼登入。不填也可以。<br><span class="muted">規格原文：LINE 帳號不見時，用這個信箱確認是您本人。</span></td></tr>
+      <tr><td>W6</td><td>取名稱頁的灰框（改寫規格）</td><td><b>已經有帳號了嗎？</b>先用原本的方式登入，再到帳號設定新增 LINE 登入，紀錄才會在同一個帳號。連結：用其他方式登入<br><span class="muted">規格原文：先用帳號密碼登入。連結帶到登入頁。</span></td></tr>
+      <tr><td>W7</td><td>新增失敗：LINE 已用在別的帳號（規格原文）</td><td>這個 LINE 帳號已經用在另一個帳號。</td></tr>
+      <tr><td>W8</td><td>改現有的 Google 錯誤兩句</td><td>沒有完成 Google 登入。可以再試一次，<b>或用其他方式登入</b>。／Google 暫時沒有回應，請稍後再試，<b>或用其他方式登入</b>。<br><span class="muted">現在：……或用帳號密碼登入。</span></td></tr>
+      <tr><td>W9</td><td>確認本人頁，有兩種以上方式時</td><td>請用您帳號上的其中一種方式再登入一次。</td></tr>
+      <tr><td>W10</td><td>確認本人用錯 LINE</td><td><b>這不是您帳號上的 LINE。</b>（規格原文）請用註冊時那支手機上的 LINE 再試一次。</td></tr>
+      <tr><td>W11</td><td>新增、移除成功（綠色提示）</td><td>已新增 LINE 登入。下次可以直接用 LINE 登入。／已移除 LINE 登入。</td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>新用到的顏色組合與對比值</h2>
+    <p class="q">文字要 ≥4.5:1（大字 ≥3:1），元件邊界要 ≥3:1。其他組合沿用 #507 已驗過的值。</p>
+    <table class="spec">
+      <tr><th>組合</th><th>對比</th><th>要求</th><th>結果</th></tr>
+      <tr><td><span class="sw" style="background:#06C755;color:#fff;border-color:#06C755">字</span>A：LINE 官方按鈕白字／#06C755</td><td>2.3:1</td><td>≥4.5:1（20px 粗體算大字也要 ≥3:1）</td><td><b style="color:var(--severe)">不合格</b>，LINE 規定不能改色</td></tr>
+      <tr><td><span class="sw" style="background:#fff;color:#1f1f1f;border-color:#1f1f1f">字</span>B：LINE 按鈕字 #1f1f1f／白</td><td>16.5:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#fff;color:#747775;border-color:#747775">框</span>B：LINE 按鈕外框 #747775／白</td><td>4.5:1</td><td>≥3:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#fff;color:#06C755;border-color:#06C755">圖</span>B：LINE 綠色圖示／白</td><td>2.3:1</td><td>商標不計（WCAG 1.4.11 例外）</td><td>—</td></tr>
+    </table>
+    <p class="q" style="margin-top:12px">可點範圍：LINE 按鈕高 56px（跟 Google 一樣）、帳號設定的「新增」高 44px，都 ≥44×44px。字：按鈕 20px、內文 18px，16px 只用在註記。LINE 規範要求圖示周圍留白（隔離區），兩種做法都留了。</p>
+  </section>
+</div>
+</body>
+</html>
