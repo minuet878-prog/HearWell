@@ -1,7 +1,8 @@
-"""確認本人 (spec #505, ADR 0057): before deleting the account, or adding or removing a sign-in
-method, the account's owner shows it is them: with the password when the account has one,
-otherwise by signing in again with a provider already on the account, which must give back
-that account's code (`sub`). It holds for 5 minutes and for the one action it was asked for.
+"""確認本人 (spec #505, ADR 0057; LINE: spec #506 acceptance 19-21): before deleting the account,
+or adding or removing a sign-in method, the account's owner shows it is them: with the password
+when the account has one, otherwise by signing in again with any provider already on the account,
+which must give back that account's code (`sub`). It holds for 5 minutes and for the one action
+it was asked for.
 
 For a view that needs it (#511):
 
@@ -15,6 +16,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import Http404, HttpResponseRedirect, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -24,31 +26,38 @@ from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 from screening.forms import PasswordConfirmForm
-from screening.models import SignInMethod
-from screening.views.common import line_way_out
+from screening.models import SignInMethod, User
+from screening.views.common import line_way_out, provider_logo, works_here
+from screening.views.provider_words import WORDS
 
 # What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
-# leads back to. 移除 Google 登入 has none: the right password removes it on this page, in the same
-# request (the owner's call on the #505 review), so the password is sent once and only here. It
-# needs the password: Google is the only provider, and the only way in cannot be removed.
+# leads back to. 移除 Google／LINE 登入 has none: the right password removes it on this page, in
+# the same request (the owner's call on the #505 review), so the password is sent once and only
+# here; without a password the provider's callback removes it as it comes back (came_back).
 ACTIONS = {
     "delete_account": ("刪除帳號", "delete_account"),
     "add_google": ("新增 Google 登入", "google_add"),
     "remove_google": ("移除 Google 登入", None),
+    "add_line": ("新增 LINE 登入", "line_add"),
+    "remove_line": ("移除 LINE 登入", None),
 }
+# The provider each removing action removes.
+REMOVES = {"remove_google": "google", "remove_line": "line"}
 
 # Which action the owner last confirmed for, and when: {"action", "at" (a Unix time)}; taken out
 # by the action it is used for.
 CONFIRMED = "screening.identity_confirmed"
 CONFIRMED_SECONDS = 5 * 60  # #505 acceptance 29
 
-# A message for the confirm page (or the delete page), shown once.
+# A message for the confirm page (or the delete page), shown once; each provider's own are in
+# provider_words.WORDS.
 CONFIRM_ERROR = "screening.confirm_error"
-NOT_YOURS = "這不是您帳號上的 Google。請改用註冊時用的那個 Google 帳戶。"  # W16
 EXPIRED = "確認已經過期，請再確認一次。"  # W18
-# Cancelled, refused or Google down: no wording in the mockup (a draft for the owner to settle).
-NOT_CONFIRMED = "沒有完成 Google 確認，請再試一次。"
-REMOVED = "已移除 Google 登入。"
+
+# The providers to confirm with, in the order of their buttons: LINE above Google, the same
+# buttons in the same order as on the login page (the #539 mockup 6, #506 acceptance 2). Not
+# account settings' order (sign_in_methods.PROVIDERS, the newest last): on purpose.
+ORDER = ("line", "google")
 
 
 def _fresh(confirmed):
@@ -98,10 +107,19 @@ def came_back(request, identity):
         return redirect_to_login(identity.next)
     # The trip started on the confirm page, whose URL (its next) names the action.
     action = QueryDict(urlsplit(identity.next).query).get("action")
+    # The callback is open before agreeing, as signing in is; of these actions only deleting the
+    # account is (#505 acceptance 30). A newer privacy notice that went live during the trip is
+    # agreed to first, and nothing is written (cross-review of #506, Standards 2).
+    if action != "delete_account" and not request.user.has_consented():
+        return redirect_to_login(identity.next, reverse("consent"))
     if action in ACTIONS and request.user.sign_in_methods.for_identity(identity).exists():
+        # Removing has no page to go on to: it is done now, as the password does it (#506
+        # acceptance 19), checked again in case the account changed during the trip.
+        if action in REMOVES:
+            return _remove(request, REMOVES[action])
         _confirm(request, action)
     else:
-        request.session[CONFIRM_ERROR] = NOT_YOURS
+        request.session[CONFIRM_ERROR] = WORDS[identity.provider].not_yours
     # The confirm page, which goes on to the action's page once confirmed.
     return redirect(identity.next)
 
@@ -109,30 +127,62 @@ def came_back(request, identity):
 def trip_failed(request, flow, message):
     """A confirm_identity trip that ended without an identity goes back to its confirm page,
     with its own words."""
-    request.session[CONFIRM_ERROR] = NOT_CONFIRMED
+    request.session[CONFIRM_ERROR] = WORDS[flow["provider"]].not_confirmed
     return redirect(flow["next"])
 
 
 def providers(user):
-    """The providers on the account that can be signed in with again, to confirm with."""
-    return [
-        provider
-        for provider in user.sign_in_methods.values_list("provider", flat=True)
-        if oidc.enabled(provider)
-    ]
+    """The providers on the account that can be signed in with again, to confirm with; LINE
+    first."""
+    on_account = set(user.sign_in_methods.values_list("provider", flat=True))
+    return [provider for provider in ORDER if provider in on_account and oidc.enabled(provider)]
 
 
-def _google_to_remove(user):
-    """The account's Google sign-in, for 移除 Google 登入 (#505 acceptance 26-28): without the
-    Google keys or one on the account, 404; an admin account, or its only way in, 403."""
-    if not oidc.enabled("google"):
+def without_password(request):
+    """What the confirm and delete pages offer an account without a password (#506 acceptance
+    21): a button for each provider on the account, LINE first, and the providers' names for the
+    line above them. Inside LINE Google refuses to sign in, so its button is left out; when it is
+    the only one, a way out to Safari or Chrome takes its place (#511)."""
+    on_account = providers(request.user)
+    here = [provider for provider in on_account if works_here(request, provider)]
+    return {
+        "buttons": [
+            {
+                "provider": provider,
+                "logo": provider_logo(provider),
+                "words": WORDS[provider].confirm_button,
+            }
+            for provider in here
+        ],
+        "names": [SignInMethod.Provider(provider).label for provider in here or on_account],
+        # None of the account's providers works here: only Google, inside LINE.
+        "open_outside_url": line_way_out(request) if on_account and not here else "",
+    }
+
+
+def _to_remove(user, provider):
+    """The account's sign-in with this provider, for 移除 Google／LINE 登入 (#505 acceptance
+    26-28, #506 acceptance 18, 22): without the provider's keys or one on the account, 404; an
+    admin account, or its only way in, 403."""
+    if not oidc.enabled(provider):
         raise Http404
     if user.is_admin:
         raise PermissionDenied
-    method = get_object_or_404(SignInMethod, user=user, provider=SignInMethod.Provider.GOOGLE)
+    method = get_object_or_404(user.sign_in_methods, provider=provider)
     if not method.can_be_removed():
         raise PermissionDenied
     return method
+
+
+def _remove(request, provider):
+    # Checked again and removed with the account's row locked: two removals at once (two
+    # browsers, LINE and Google) take turns, so the second sees the first's and an account
+    # without a password always keeps a way in (cross-review of #506, Standards 1).
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        _to_remove(user, provider).delete()
+    messages.success(request, WORDS[provider].removed)
+    return HttpResponseRedirect(f"{reverse('account_settings')}#sign-in-methods")
 
 
 @never_cache
@@ -144,7 +194,8 @@ def confirm_identity(request):
         raise Http404
     words, page = ACTIONS[action]
     # Refused before the password is asked for, as on the POST that removes it.
-    google = _google_to_remove(request.user) if action == "remove_google" else None
+    if action in REMOVES:
+        _to_remove(request.user, REMOVES[action])
     # Back here already confirmed (from Google): on to the action's page.
     if page is not None and is_confirmed(request, action):
         return redirect(page)
@@ -153,14 +204,12 @@ def confirm_identity(request):
     if user.has_usable_password():
         form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
         if form.is_valid():
-            if google is not None:
-                google.delete()
-                messages.success(request, REMOVED)
-                return HttpResponseRedirect(f"{reverse('account_settings')}#sign-in-methods")
+            if action in REMOVES:
+                return _remove(request, REMOVES[action])
             _confirm(request, action)
             return redirect(page)
     elif request.method == "POST":
-        # No password: a provider on the account, asked to show its account chooser.
+        # No password: any provider on the account (Google asked to show its account chooser).
         provider = request.POST.get("provider")
         if provider in providers(user):
             return HttpResponseRedirect(
@@ -173,8 +222,7 @@ def confirm_identity(request):
             "action": action,
             "words": words,
             "form": form,
-            "providers": providers(user),
-            "open_outside_url": line_way_out(request),
             "confirm_error": confirm_error(request),
+            **without_password(request),
         },
     )

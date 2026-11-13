@@ -140,6 +140,21 @@ class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
         return user
 
 
+class LineNameForm(GoogleNameForm):
+    """Spec #506 acceptance 5-8 (the #539 mockup W4, W5): LINE gives no email, so one may be
+    typed, checked as registering checks it; an email already on an account is fine (LINE does
+    not know people by email)."""
+
+    email = forms.EmailField(
+        label="電子郵件（選填）",
+        required=False,
+        # What the account's email column holds (cross-review of #506, Spec 7).
+        max_length=User._meta.get_field("email").max_length,
+        help_text="LINE 帳號不見時，可以用這個信箱設密碼登入。不填也可以。",
+        widget=forms.EmailInput(attrs={"autocomplete": "email"}),
+    )
+
+
 # Spec #355: the 重設密碼信 is answered by mail to the owner's mailbox.
 HELP_ADDRESS = "hearwellweb@gmail.com"
 

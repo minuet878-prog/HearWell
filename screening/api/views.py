@@ -11,7 +11,6 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
-from screening import oidc
 from screening.api.permissions import GUEST_OR_CONSENTED
 from screening.api.serializers import (
     AudiogramCreateSerializer,
@@ -35,7 +34,7 @@ from screening.models import (
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import TREND_STATUS_TEXT
-from screening.views.common import is_line_in_app_browser
+from screening.views.common import works_here
 
 
 class QuestionnaireList(ListAPIView):
@@ -207,8 +206,10 @@ class GuestScore(GenericAPIView):
             "screening/graded_result.html",
             {
                 "submission": result.submission,
-                # The save card's Google button (#513), never inside LINE (#505 acceptance 3).
-                "google_save": oidc.enabled("google") and not is_line_in_app_browser(request),
+                # The save card's LINE button (#543), also inside LINE, and its Google button
+                # (#513), never inside LINE (#505 acceptance 3).
+                "line_save": works_here(request, "line"),
+                "google_save": works_here(request, "google"),
             }
             | result.page_context(),
         )

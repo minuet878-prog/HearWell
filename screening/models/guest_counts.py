@@ -26,7 +26,11 @@ class GuestMonth(models.Model):
 
 # The 保存 column of how an account was registered: the provider of the sign-in method it was
 # made with, or None, a password (Q13). A provider added to SignInMethod.Provider needs its own.
-SAVED_COLUMNS = {None: "saved_password", SignInMethod.Provider.GOOGLE: "saved_google"}
+SAVED_COLUMNS = {
+    None: "saved_password",
+    SignInMethod.Provider.GOOGLE: "saved_google",
+    SignInMethod.Provider.LINE: "saved_line",  # spec #506 acceptance 25
+}
 
 
 def count_guest_saved(user):

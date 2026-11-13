@@ -1,9 +1,9 @@
-"""A thin OpenID Connect client for signing in with Google (spec #505, ADR 0056).
+"""A thin OpenID Connect client for signing in with Google or LINE (spec #505, #506, ADR 0056).
 
 Python's own library only. begin() keeps what a trip needs in the session; finish() takes it out
-again on the way back (once used, gone) and checks it before and after the one call our server
-makes to the provider, exchange_code(), which is the only thing tests replace. Provider and
-purpose are parameters: LINE joins this flow in its own spec.
+again on the way back (once used, gone) and checks it before and after calling the provider.
+Every call our server makes to a provider goes through post_to_provider(), the only thing tests
+replace. Provider and purpose are parameters.
 """
 
 import base64
@@ -11,7 +11,9 @@ import hashlib
 import hmac
 import http.client
 import json
+import logging
 import secrets
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -20,24 +22,54 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class Provider:
+    name: str  # as the provider writes it, for log lines
     authorize_url: str
     token_url: str
     issuers: tuple
     scope: str
+    # Added to the authorize URL for 確認本人 and for adding a sign-in method: (name, value) pairs.
+    reauthenticate: tuple = ()
+    # Where the provider itself checks its ID token; empty when the token endpoint's ID token
+    # is read as it comes (Google).
+    verify_url: str = ""
+    # Where the access token it gave is revoked as soon as the ID token is read; empty when it is
+    # not (Google).
+    revoke_url: str = ""
 
 
-# Google's discovery document (https://accounts.google.com/.well-known/openid-configuration).
 PROVIDERS = {
+    # Google's discovery document (https://accounts.google.com/.well-known/openid-configuration).
     "google": Provider(
+        name="Google",
         authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
         token_url="https://oauth2.googleapis.com/token",
         # Google's ID tokens carry either form (developers.google.com/identity/openid-connect).
         issuers=("https://accounts.google.com", "accounts.google.com"),
         # The `sub` and the email only: no name, no picture (spec #505, Q2).
         scope="openid email",
+        # Google cannot be made to ask for the password again (no max_age, no prompt=login;
+        # login-research.md section 8): its account chooser at least shows which Google is used,
+        # to confirm with or to add. No login_hint, which would skip the chooser.
+        reauthenticate=(("prompt", "select_account"),),
+    ),
+    # LINE Login v2.1 (developers.line.biz/en/reference/line-login/, checked 2026-11-14).
+    "line": Provider(
+        name="LINE",
+        authorize_url="https://access.line.me/oauth2/v2.1/authorize",
+        token_url="https://api.line.me/oauth2/v2.1/token",
+        issuers=("https://access.line.me",),
+        # The `sub` only: no name, picture or email (spec #506).
+        scope="openid",
+        # Its ID token is signed with our channel secret (HS256): LINE checks it (spec #506).
+        verify_url="https://api.line.me/oauth2/v2.1/verify",
+        revoke_url="https://api.line.me/oauth2/v2.1/revoke",
+        # No reauthenticate: LINE could force a fresh login (prompt=login, max_age), but the owner
+        # chose not to (login-research.md section 10): elders need not remember their LINE password.
     ),
 }
 
@@ -45,7 +77,7 @@ PROVIDERS = {
 # "started_at" (a Unix time), "next"}. One at a time; a new trip replaces an unfinished one.
 FLOW = "screening.oidc_flow"
 FLOW_SECONDS = 10 * 60  # #505 acceptance 16
-TOKEN_TIMEOUT_SECONDS = 10
+PROVIDER_TIMEOUT_SECONDS = 10
 
 
 class SignInFailed(Exception):
@@ -53,11 +85,12 @@ class SignInFailed(Exception):
 
 
 class Cancelled(SignInFailed):
-    """The user said no on the provider's page (the callback carries `error`)."""
+    """The user said no on the provider's page (the callback's `error` is access_denied)."""
 
 
 class Unavailable(SignInFailed):
-    """The provider did not answer, or answered with an error, when we exchanged the code."""
+    """The provider did not answer, or answered with an error: when our server called it, or
+    on the callback (any `error` but access_denied)."""
 
 
 class Rejected(SignInFailed):
@@ -120,38 +153,44 @@ def begin(request, provider, purpose, next_url=""):
         "code_challenge_method": "S256",
     }
     if purpose in ("confirm_identity", "add_method"):
-        # Google cannot be made to ask for the password again (no max_age, no prompt=login;
-        # login-research.md section 8): its account chooser at least shows which Google is used,
-        # to confirm with or to add. No login_hint, which would skip the chooser.
-        query["prompt"] = "select_account"
+        query.update(PROVIDERS[provider].reauthenticate)
     return f"{PROVIDERS[provider].authorize_url}?{urlencode(query)}"
 
 
-def exchange_code(*, provider, code, code_verifier, redirect_uri):
-    """Our server's one call to the provider: the code for tokens, at its token endpoint.
-    Gives the token endpoint's JSON; raises Unavailable when there is no usable answer."""
-    body = urlencode(
-        {
-            "grant_type": "authorization_code",
-            "code": code,
-            "code_verifier": code_verifier,
-            "redirect_uri": redirect_uri,
-            "client_id": _setting(provider, "CLIENT_ID"),
-            "client_secret": _setting(provider, "CLIENT_SECRET"),
-        }
-    ).encode("ascii")
+def post_to_provider(url, fields):
+    """Our server's one way of calling a provider: a form POST of fields to url. Gives the JSON
+    answer, {} for an empty one (a 2xx), also when the provider refuses the request (HTTP 4xx):
+    a refusal always has an `error`, its JSON's or, when it has none (an empty body), the HTTP
+    status. Raises Unavailable when there is no usable answer: no connection, a timeout, a
+    server error (5xx), or an answer that is not a JSON object."""
     request = urllib.request.Request(
-        PROVIDERS[provider].token_url,
-        data=body,
+        url,
+        data=urlencode(fields).encode("ascii"),
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
     )
+    refused_with = None  # the HTTP status of a refusal
     try:
-        with urllib.request.urlopen(request, timeout=TOKEN_TIMEOUT_SECONDS) as response:
-            return json.loads(response.read())
+        try:
+            with urllib.request.urlopen(request, timeout=PROVIDER_TIMEOUT_SECONDS) as response:
+                body = response.read()
+        except urllib.error.HTTPError as error:
+            if error.code >= 500:
+                raise
+            refused_with = error.code
+            with error:
+                body = error.read()
+        answer = json.loads(body) if body else {}
     except (OSError, http.client.HTTPException, ValueError) as error:
-        # OSError covers URLError, HTTPError (an error answer, e.g. invalid_grant) and timeouts;
-        # HTTPException a connection cut while reading; ValueError an answer that is not JSON.
-        raise Unavailable(f"{provider} token endpoint: {type(error).__name__}") from error
+        # OSError covers URLError, a 5xx HTTPError and timeouts; HTTPException a connection cut
+        # while reading; ValueError an answer that is not JSON.
+        raise Unavailable(f"{url}: {type(error).__name__}") from error
+    if not isinstance(answer, dict):
+        raise Unavailable(f"{url}: not a JSON object")
+    if refused_with is not None:
+        # Only a 2xx says yes with nothing in it (LINE's revoke): a 4xx with nothing in it is a
+        # refusal all the same (cross-review of #506, Spec 9).
+        answer.setdefault("error", f"HTTP {refused_with}")
+    return answer
 
 
 def _claims(id_token):
@@ -165,6 +204,41 @@ def _claims(id_token):
     if not isinstance(claims, dict):
         raise Rejected("unreadable ID token")
     return claims
+
+
+def _verified_claims(provider, id_token, nonce):
+    """The ID token's claims as the provider's verify endpoint gives them (LINE: its ID token is
+    signed with our channel secret, which spec #506 leaves to LINE to check). An ID token it
+    refuses (expired, another nonce, not ours) is rejected, not the provider not answering."""
+    answer = post_to_provider(
+        PROVIDERS[provider].verify_url,
+        {"id_token": id_token, "client_id": _setting(provider, "CLIENT_ID"), "nonce": nonce},
+    )
+    if "error" in answer:
+        raise Rejected("the provider refused the ID token")
+    return answer
+
+
+def _revoke(provider, access_token):
+    """Ask the provider to revoke the access token it gave (spec #506 acceptance 9). One that
+    fails goes to error monitoring and signs in all the same."""
+    # The provider's name in the log line's template itself: error monitoring keeps only the
+    # template (config/monitoring.py), and the name is no one's data.
+    name = PROVIDERS[provider].name
+    try:
+        answer = post_to_provider(
+            PROVIDERS[provider].revoke_url,
+            {
+                "access_token": access_token,
+                "client_id": _setting(provider, "CLIENT_ID"),
+                "client_secret": _setting(provider, "CLIENT_SECRET"),
+            },
+        )
+    except Unavailable:
+        logger.exception(f"{name} access token not revoked: no answer")
+        return
+    if "error" in answer:
+        logger.error(f"{name} access token not revoked: refused")
 
 
 def _same(a, b):
@@ -185,23 +259,45 @@ def finish(request, provider):
     now = timezone.now().timestamp()
     if now - flow["started_at"] > FLOW_SECONDS:
         raise Rejected("trip too old")
-    # A cancel only once it is known to be this trip's, in time: anyone can send `error`.
+    # An error only once it is known to be this trip's, in time: anyone can send `error`. Only
+    # the user saying no is a cancel: Google sends access_denied, LINE ACCESS_DENIED; any other
+    # (LINE's SERVER_ERROR, ...) is the provider not answering (#505 acceptance 20, #506
+    # acceptance 14). Its text stays out of the exception, which goes to the logs: anyone with
+    # the state can write anything there (CODING_STANDARDS.md rule 4).
     if "error" in request.GET:
-        raise Cancelled(request.GET["error"])
+        if request.GET["error"].lower() == "access_denied":
+            raise Cancelled("the user said no")
+        raise Unavailable(f"{provider} callback: an error")
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")
-    tokens = exchange_code(
-        provider=provider,
-        code=code,
-        code_verifier=flow["code_verifier"],
-        redirect_uri=callback_url(provider),
+    # The code for tokens, at the provider's token endpoint.
+    tokens = post_to_provider(
+        PROVIDERS[provider].token_url,
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "code_verifier": flow["code_verifier"],
+            "redirect_uri": callback_url(provider),
+            "client_id": _setting(provider, "CLIENT_ID"),
+            "client_secret": _setting(provider, "CLIENT_SECRET"),
+        },
     )
-    # An answer without an ID token (an error in its JSON, even with HTTP 200) is the provider
-    # not answering, as an HTTP error is (#505 acceptance 20).
-    if not isinstance(tokens, dict) or "id_token" not in tokens:
-        raise Unavailable(f"{provider} token endpoint: no id_token")
-    claims = _claims(tokens["id_token"])
+    try:
+        # An answer without an ID token (an error in its JSON, whatever its HTTP status) is the
+        # provider not answering (#505 acceptance 20).
+        if "id_token" not in tokens:
+            raise Unavailable(f"{provider} token endpoint: no id_token")
+        if PROVIDERS[provider].verify_url:
+            claims = _verified_claims(provider, tokens["id_token"], flow["nonce"])
+        else:
+            claims = _claims(tokens["id_token"])
+    finally:
+        # Whatever the ID token turned out to be, or with none, an access token given is not
+        # kept (#506 acceptance 9).
+        if PROVIDERS[provider].revoke_url and "access_token" in tokens:
+            _revoke(provider, tokens["access_token"])
+    # The same checks for every provider, on LINE's verified answer too (#506 acceptance 12).
     if claims.get("iss") not in PROVIDERS[provider].issuers:
         raise Rejected("iss is not the provider")
     if claims.get("aud") != _setting(provider, "CLIENT_ID"):
@@ -214,13 +310,16 @@ def finish(request, provider):
     subject = claims.get("sub")
     if not isinstance(subject, str) or not subject:
         raise Rejected("no sub")
-    email = claims.get("email")
+    # An email only where we ask for one (Google's scope): one LINE sends anyway is not used
+    # (spec #506 acceptance 5; cross-review of #506, Spec 5).
+    asked_for_email = "email" in PROVIDERS[provider].scope.split()
+    email = claims.get("email") if asked_for_email else None
     return Identity(
         provider=provider,
         subject=subject,
         email=email if isinstance(email, str) else "",
         # Google sends true; some older answers send the string "true".
-        email_verified=claims.get("email_verified") in (True, "true"),
+        email_verified=asked_for_email and claims.get("email_verified") in (True, "true"),
         purpose=flow["purpose"],
         next=flow["next"],
     )

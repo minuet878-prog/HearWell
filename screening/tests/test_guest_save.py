@@ -15,7 +15,7 @@ from django.utils import timezone
 from screening import models
 from screening.models import Consent, Questionnaire, Submission, User
 from screening.questionnaires import hhia_s, hhie_s
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, google_on, line_on
 
 GUEST_SCORE = "/api/guest-scores/"
 SUBMISSIONS = "/api/submissions/"
@@ -313,6 +313,19 @@ class GuestAskRedirectTests(GuestSaveTestCase):
         for name in ("privacy", "account_settings", "delete_account", "family_guide"):
             with self.subTest(page=name):
                 response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "guest-ask.js")
+
+    @google_on
+    @line_on
+    def test_nor_the_confirm_identity_page_halfway_through(self):
+        # 確認本人 is a step in the middle of adding or removing a sign-in method or deleting the
+        # account: taken away to the question there, the add was lost (owner's acceptance of
+        # #506, 2026-11-14). The question waits for the page the step ends on.
+        self.client.force_login(consented_user(username="confirming"))
+        for action in ("add_google", "add_line", "delete_account"):
+            with self.subTest(action=action):
+                response = self.client.get(f"{reverse('confirm_identity')}?action={action}")
                 self.assertEqual(response.status_code, 200)
                 self.assertNotContains(response, "guest-ask.js")
 
