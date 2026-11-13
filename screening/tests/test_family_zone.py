@@ -582,6 +582,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>您的資料會保存到您刪除帳號",
                 "<li>刪除的資料（包括刪除的帳號",
                 "<li>Vultr（網站主機與資料庫）",
+                # Spec #478 named the to-do ticks (consent version 5); the owner reviews the
+                # line at acceptance.
+                "<li>照顧旅程的待辦打勾",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.

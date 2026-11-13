@@ -60,6 +60,20 @@ def action_cards(html):
     return ACTION_CARD.findall(html)
 
 
+# A 選配路線 stop on my guide: its slug and markup, as far as the stop's own end, not one of
+# the 您在這裡 card's to-dos (spec #478).
+ROUTE_STOP = re.compile(
+    r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+    r'(?=\s*(?:<li class="route-stop|</ol>))',
+    re.S,
+)
+
+
+def route_stops(html):
+    """Each 選配路線 stop's (slug, markup) on my guide, in page order."""
+    return ROUTE_STOP.findall(html)
+
+
 def step_bar(response):
     """(done, total) segments of the step progress bar on a page, or None without one."""
     content = response.content.decode()

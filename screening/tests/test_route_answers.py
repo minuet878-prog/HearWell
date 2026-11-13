@@ -8,8 +8,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening.models import AidAndSubsidy, GuideChapterView, User
-from screening.tests import test_guide, test_guide_summary
-from screening.tests.helpers import consented_user
+from screening.tests import test_guide, test_guide_summary, test_home_journey
+from screening.tests.helpers import consented_user, route_stops
 
 ROUTE_STOP = "/guide#stop-assessment"
 CHAPTER_CARD = "/guide/assessment#stop-question"
@@ -140,8 +140,8 @@ class RouteQuestionTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def stop(self, slug, query=""):
-        stop = r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
-        return dict(re.findall(stop, self.page(query), re.S))[slug]
+        # Without the to-dos, whose manual ones are forms too (#481): these are the questions'.
+        return test_home_journey.TODOS.sub("", dict(route_stops(self.page(query)))[slug])
 
     def marks(self, slug):
         return re.findall(r'<span class="route-mark">([^<]+)</span>', self.stop(slug))
