@@ -1374,7 +1374,10 @@ class AudiogramComparePickerTests(TestCase):
     def test_ears_are_pill_links(self):
         oldest, _, latest = self._three()
         main = self._main(self._get(a=latest.id, b=oldest.id))
-        nav = re.search(r'<nav class="ear-switch" aria-label="選耳朵">(.*?)</nav>', main, re.S)
+        # The id is what the head's <link rel="expect"> waits for before the first paint.
+        nav = re.search(
+            r'<nav id="ear-switch" class="ear-switch" aria-label="選耳朵">(.*?)</nav>', main, re.S
+        )
         links = re.findall(r"<a ([^>]*)>([^<]*)</a>", nav.group(1))
         self.assertEqual([text for _, text in links], ["右耳", "左耳"])
         self.assertIn('aria-current="true"', links[0][0])

@@ -6,6 +6,8 @@
 {% block extra_head %}
 {# Before the first paint: a slow page whose switch is not parsed yet skips the pill's slide (#334). #}
 <script src="{% static 'screening/switch-reveal.js' %}"></script>
+{# A slow phone painted before the switch was parsed, so the slide was skipped; the first paint now waits for the switch (Chrome 124+; other browsers keep the skip above). #}
+<link rel="expect" href="#records-switch" blocking="render">
 {% if current.definition.trend_chart %}
 <script type="module" src="{% static 'screening/frontend/trend-chart.js' %}"></script>
 {# Without JavaScript the chart never draws: keep its text, hide the box that would stay empty. #}

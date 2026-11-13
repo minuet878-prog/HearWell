@@ -6,6 +6,8 @@
 {% block extra_head %}
 {# Before the first paint: a slow page whose switch is not parsed yet skips the pill's slide (#334). #}
 <script src="{% static 'screening/switch-reveal.js' %}"></script>
+{# A slow phone painted before the switch was parsed, so the slide was skipped; the first paint now waits for the switch (Chrome 124+; other browsers keep the skip above). #}
+<link rel="expect" href="#ear-switch" blocking="render">
 {% if result %}<script type="module" src="{% static 'screening/frontend/audiogram-view.js' %}"></script>{% endif %}
 {% endblock %}
 
@@ -37,7 +39,7 @@
 {% if not result %}
 <p role="alert" class="alert alert-warning">請選兩張不同的聽力圖</p>
 {% else %}
-<nav class="ear-switch" aria-label="選耳朵">
+<nav id="ear-switch" class="ear-switch" aria-label="選耳朵">
     {% for value, label in ears %}
     <a href="?a={{ a }}&amp;b={{ b }}&amp;ear={{ value }}"{% if value == ear %} aria-current="true"{% endif %}>{{ label }}</a>
     {% endfor %}
