@@ -192,6 +192,17 @@
   .mini-dark .eq-ends { color: #fff; }
   .mini-dark .eqbar { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6); }
   .mini-dark .eqbar::before { background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.2) 6px 8px); }
+
+  /* ⓪-5 volume-meter blocks on white */
+  .meter-box { position: relative; padding: calc(.625 * var(--r)) calc(.75 * var(--r)) calc(.25 * var(--r)); border-radius: var(--r); background: #fff; }
+  .meter-box .eq-head { color: var(--heading); margin-bottom: calc(.375 * var(--r)) !important; }
+  .meter-box .eq-head b { color: var(--primary); text-decoration: none; }
+  .meter { display: flex; gap: calc(.4 * var(--r)); align-items: flex-end; }
+  .mcol { flex: 1; display: flex; flex-direction: column-reverse; gap: 3px; }
+  .mcol span { height: 8px; border-radius: 3px; background: var(--primary-sel); }
+  .mcol span.on { background: var(--primary); }
+  .meter-box .eq-ends { color: var(--muted); }
+  .wpanel { position: relative; padding: var(--r) var(--r) calc(.875 * var(--r)); border-radius: calc(1.5 * var(--r)); background: #fff; box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 </style>
 </head>
 <body>
@@ -529,6 +540,78 @@
           <div class="mini-dark lb"><p class="eq-head"><b>正常聽</b>：每一種聲音都聽得到</p><div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span></div><div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div></div>
         </div></div>
         <div class="note"><p><b>好處</b>：只換顏色，最少改動；正常聽時是六根淺藍，不再一片白。<b>代價</b>：跟原本一樣高（約 90px）；仍是直條。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ⓪-5 volume meter ============ -->
+  <section class="group">
+    <h2>⓪-5 直條改成一格一格的藍色方塊，白底（您 2026-11-13 說的）</h2>
+    <p class="q">照原本六根直條（左低右高），每根由 8 格疊起來，像音量表：藍色格是還聽得到的、淺灰藍格是聽不到的；高度照代表聽力圖算（100 減 dB HL，每格 12.5）。「背景用白色」有兩種範圍，都畫：<b>V1</b> 只有條那一塊白底、播放區仍是深藍；<b>V2</b> 整塊播放區都白底。每種左邊是剛打開（高頻下降），右邊是播放中切到正常聽（8 格全藍）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">V1　條白底，播放區深藍 <span class="rec">建議</span></p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="dark e1">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <div class="meter-box"><p class="eq-head"><b>高頻下降</b>：尖細的聲音大多聽不到</p><div class="meter" aria-hidden="true"><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span></span></div><div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>保留您選的 E1 深藍「機器」，條放在白色小螢幕上，像收音機的音量表；藍格在白底上 8.31:1，看得最清楚。<b>代價</b>：深藍裡又一塊白，層次多一層。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">V1 播放中，切到正常聽</p>
+        <div class="phone crop"><div class="pg"><div class="dark e1">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <div class="meter-box"><p class="eq-head"><b>正常聽</b>：每一種聲音都聽得到</p><div class="meter" aria-hidden="true"><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span></div><div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig pause"><svg><use href="#i-pause"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          </div></div></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">V2　整塊白底</p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="wpanel">
+            <div class="meter-box" style="padding:0"><p class="eq-head"><b>高頻下降</b>：尖細的聲音大多聽不到</p><div class="meter" aria-hidden="true"><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span></span></div><div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>整頁回到白底，只有播放鈕是實心藍，不用為 ADR 0043 寫例外。<b>代價</b>：沒有深藍那塊，「這頁是拿來聽的」的感覺變淡，跟 D1 很接近。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">V2 播放中，切到正常聽</p>
+        <div class="phone crop"><div class="pg"><div class="wpanel">
+            <div class="meter-box" style="padding:0"><p class="eq-head"><b>正常聽</b>：每一種聲音都聽得到</p><div class="meter" aria-hidden="true"><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span><span class="mcol"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></span></div><div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig pause"><svg><use href="#i-pause"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          </div></div></div>
       </div>
     </div>
   </section>
