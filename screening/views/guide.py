@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 from screening import assessment_hospitals, models
 from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
 from screening.forms import STOP_QUESTIONS
+from screening.journey_todos import stop_todos
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -171,6 +172,7 @@ class RouteStop:
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
     gap: str = ""  # said on the line on to the next stop (#296)
+    todos: tuple = ()  # the 您在這裡 stop's 待辦 (spec #478), the 照顧旅程's card takes them too
 
     @property
     def here(self):
@@ -400,6 +402,7 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         questions=shown,
         editable=editable,
         gap=gap,
+        todos=stop_todos(slug, state) if slug == state.stop else (),
     )
 
 

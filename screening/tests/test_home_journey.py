@@ -29,6 +29,8 @@ TODAY = date(2026, 11, 12)
 NORMAL = (20, 20, 20, 20)
 PTA_55 = test_guide_summary.PTA_55
 SOLID = re.compile(r'class="btn btn-primary\b')
+# The 現在這一步 card's 待辦 (spec #478), left to test_journey_todos: these check its one thing.
+TODOS = re.compile(r'<div class="todos">.*?</div>', re.S)
 
 
 class HomeJourneyTestCase(TestCase):
@@ -109,11 +111,11 @@ class HomeJourneyTestCase(TestCase):
         ]
 
     def card(self, main):
-        return self.part(main, "journey-card")
+        return TODOS.sub("", self.part(main, "journey-card"))
 
     def items(self, main):
         """Each step's (classes, its HTML) in order."""
-        steps = self.part(main, "journey-steps")
+        steps = TODOS.sub("", self.part(main, "journey-steps"))
         return re.findall(r'<li class="journey-step ([^"]*)"[^>]*>(.*?)</li>', steps, re.S)
 
     def steps(self, main):

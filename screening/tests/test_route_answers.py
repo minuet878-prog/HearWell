@@ -140,7 +140,11 @@ class RouteQuestionTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def stop(self, slug, query=""):
-        stop = r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+        stop = (
+            r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+            # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
+            r'(?=\s*(?:<li class="route-stop|</ol>))'
+        )
         return dict(re.findall(stop, self.page(query), re.S))[slug]
 
     def marks(self, slug):

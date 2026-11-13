@@ -56,7 +56,11 @@ class GuideRouteTests(TestCase):
 
     def stops(self):
         """Each stop's (slug, markup) in page order."""
-        stop = r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+        stop = (
+            r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+            # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
+            r'(?=\s*(?:<li class="route-stop|</ol>))'
+        )
         return re.findall(stop, self.page(), re.S)
 
     def stop(self, slug):
