@@ -39,16 +39,18 @@
 
 ## 自動測試
 
-提交 `a38d73b`，2026-11-13，本機：
+合併 `main`（#355 忘記密碼）之後，提交 `51896a4`，2026-11-14，本機：
 
 | 項目 | 結果 |
 |---|---|
-| Django 測試 | 2350 項通過 |
+| Django 測試 | 2404 項通過 |
 | 端對端測試（`--parallel 4`） | 422 項通過 |
-| 前端測試 | 540 項通過 |
+| 前端測試 | 542 項通過 |
 | 前端建置、`ruff check`、`ruff format --check`、`makemigrations --check` | 通過 |
 
-`SharedLayoutTest.test_icon_circle_stays_visible_on_hover`（問卷清單頁，不是這次改的）在 `--parallel 4` 時偶爾失敗：卡片背景有 0.15 秒變色動畫，讀色太早。單獨跑會過，這次整套也過了。
+合併前（`a38d73b`，2026-11-13）是 2350、422、540 項，也都通過。
+
+合併前偶爾失敗的 `SharedLayoutTest.test_icon_circle_stays_visible_on_hover`（不是這次改的）已由 #530 在 `main` 修好，合併後一起帶進來。
 
 ## 自審
 
