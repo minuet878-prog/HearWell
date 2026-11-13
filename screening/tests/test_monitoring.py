@@ -289,6 +289,9 @@ print(json.dumps({"active": sentry_sdk.get_client().is_active()}))
         env = {**os.environ, "DEBUG": "False", "SECRET_KEY": get_random_secret_key()}
         env.setdefault("ALLOWED_HOSTS", "localhost")
         env.setdefault("SECURE_HSTS_SECONDS", "3600")
+        # A made-up key: these tests never send an email (spec #355).
+        env.setdefault("RESEND_API_KEY", "re_test_only")
+        env.setdefault("DEFAULT_FROM_EMAIL", "noreply@tingpal.tw")
         env.pop("SENTRY_DSN", None)
         if dsn is not None:
             env["SENTRY_DSN"] = dsn

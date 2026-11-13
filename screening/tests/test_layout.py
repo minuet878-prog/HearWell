@@ -95,6 +95,7 @@ class LayoutTests(TestCase):
             reverse("index"),
             reverse("login"),
             reverse("register"),
+            reverse("password_reset"),
             reverse("privacy"),
             reverse("family_guide"),
             reverse("learn"),
