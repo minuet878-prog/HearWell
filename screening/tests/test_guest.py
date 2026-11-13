@@ -291,19 +291,20 @@ class GuestScoreTests(GuestTestCase):
                     self.guest_score(valid | {"just_finished": value}).status_code, 200
                 )
 
-    def test_the_21st_in_an_hour_from_one_address_gets_429(self):
+    def test_the_41st_in_an_hour_from_one_address_gets_429(self):
+        # 40, not the grill's 20 (implementation decision I1): one questionnaire scores twice.
         body = self.body(self.hhie_s, [0] * 10)
-        for _ in range(20):
+        for _ in range(40):
             self.assertEqual(self.guest_score(body).status_code, 200)
         response = self.guest_score(body)
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json(), {"detail": LIMIT})
         self.assertNotIn("scores", response.json())
-        # Another address still gets its own 20.
+        # Another address still gets its own 40.
         self.assertEqual(self.guest_score(body, REMOTE_ADDR="203.0.113.9").status_code, 200)
 
     def test_invalid_requests_count_too(self):
-        for _ in range(20):
+        for _ in range(40):
             self.assertEqual(self.guest_score({}).status_code, 400)
         self.assertEqual(self.guest_score(self.body(self.hhie_s, [0] * 10)).status_code, 429)
 
@@ -431,3 +432,66 @@ class GuestClearRowTests(GuestTestCase):
         self.assertEqual(page.status_code, 200)
         self.assertNotContains(page, "data-guest-clear")
         self.assertNotContains(page, self.CONFIRM)
+
+
+class GuestLimitBehindTheProxyTests(GuestTestCase):
+    """Implementation decision I2: behind the VPS's one Nginx, which appends the connection's
+    address to X-Forwarded-For, the limit counts the last address only."""
+
+    REAL = "198.51.100.7"
+
+    def use_up_the_hour(self, **extra):
+        body = self.body(self.hhie_s, [0] * 10)
+        for _ in range(40):
+            self.assertEqual(self.guest_score(body, **extra).status_code, 200)
+        return body
+
+    def test_counts_the_last_address_of_a_forged_header(self):
+        body = self.use_up_the_hour(HTTP_X_FORWARDED_FOR=f"1.2.3.4, {self.REAL}")
+        # The same connection without the forged part is the same source.
+        self.assertEqual(self.guest_score(body, REMOTE_ADDR=self.REAL).status_code, 429)
+        # Another real address behind the same forged first value is not.
+        response = self.guest_score(body, HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.9")
+        self.assertEqual(response.status_code, 200)
+
+    def test_changing_the_first_value_does_not_get_round_the_limit(self):
+        body = self.use_up_the_hour(HTTP_X_FORWARDED_FOR=f"1.2.3.4, {self.REAL}")
+        response = self.guest_score(body, HTTP_X_FORWARDED_FOR=f"5.6.7.8, {self.REAL}")
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.json(), {"detail": LIMIT})
+
+    def test_without_the_header_counts_the_connection(self):
+        body = self.use_up_the_hour(REMOTE_ADDR=self.REAL)
+        self.assertEqual(self.guest_score(body, REMOTE_ADDR=self.REAL).status_code, 429)
+        self.assertEqual(self.guest_score(body, REMOTE_ADDR="203.0.113.9").status_code, 200)
+
+
+class GuestFallbackTests(GuestTestCase):
+    """Implementation decision I3: the web form saves records, so a guest whose React page does
+    not load is asked to register instead (shown by the page's script, answer-main.test.jsx)."""
+
+    CANNOT_LOAD = "這個瀏覽器載不出免註冊作答，請註冊後再做。"
+
+    def test_a_guest_page_holds_the_register_note(self):
+        url = reverse("screening", args=[self.hhie_s.pk])
+        # After registering (and consenting), back to this questionnaire.
+        register = f"/register?next=%2Fquestionnaire%2F{self.hhie_s.pk}"
+        self.assertEqual(url, f"/questionnaire/{self.hhie_s.pk}")
+        response = self.client.get(url)
+        note = re.search(
+            r'<div id="answer-guest-fallback" role="alert" hidden>(.*?)</div>',
+            response.content.decode(),
+            re.S,
+        )
+        self.assertIsNotNone(note)
+        self.assertIn(self.CANNOT_LOAD, note.group(1))
+        self.assertIn(f'href="{register}">註冊新帳號</a>', note.group(1))
+        # React reads the same link for a browser that cannot keep the result (I4).
+        self.assertContains(response, f'data-register-url="{register}"')
+
+    def test_signed_in_the_form_comes_back_as_before(self):
+        self.client.force_login(self.user)
+        content = self.client.get(reverse("screening", args=[self.hhie_s.pk])).content.decode()
+        self.assertNotIn('id="answer-guest-fallback"', content)
+        self.assertNotIn(self.CANNOT_LOAD, content)
+        self.assertNotIn("data-register-url", content)

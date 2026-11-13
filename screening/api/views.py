@@ -168,10 +168,11 @@ class SubmissionList(ListAPIView):
 
 
 class GuestScoreThrottle(SimpleRateThrottle):
-    # Spec #492: 20 an hour from one connection source (DRF's get_ident), counted in the server's
-    # memory cache only, never in the database.
+    # Spec #492: 40 an hour from one connection source (DRF's get_ident), counted in the server's
+    # memory cache only, never in the database. 40, not the grill's 20 (implementation decision
+    # I1): one questionnaire scores twice, on the answer page and on the guest result page.
     scope = "guest_score"
-    rate = "20/hour"
+    rate = "40/hour"
 
     def get_cache_key(self, request, view):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
@@ -195,7 +196,7 @@ class GuestScore(GenericAPIView):
         responses={
             200: GuestScoreSerializer,
             400: OpenApiResponse(description="Invalid answers, or not HHIE-S or HHIA-S"),
-            429: OpenApiResponse(description="More than 20 in an hour from this address"),
+            429: OpenApiResponse(description="More than 40 in an hour from this address"),
         },
     )
     def post(self, request):

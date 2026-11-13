@@ -44,6 +44,16 @@ export function saveGuestResult(result) {
   }) ?? false;
 }
 
+// Implementation decision I4: asked before a guest starts answering. Writes and deletes a check
+// entry; any throw (private mode, blocked storage) means the result could not be kept.
+export function canKeepGuestResults() {
+  return attempt(() => {
+    localStorage.setItem(`${GUEST_PREFIX}check`, "1");
+    localStorage.removeItem(`${GUEST_PREFIX}check`);
+    return true;
+  }) ?? false;
+}
+
 export function clearGuestResult(code) {
   attempt(() => localStorage.removeItem(GUEST_PREFIX + code));
 }
