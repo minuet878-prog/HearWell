@@ -162,6 +162,19 @@
   .dark .reveal { position: relative; color: #fff; }
   /* D3: the drawing */
   .scene { display: block; width: 100%; height: auto; margin: 0 0 calc(.25 * var(--r)); border-radius: calc(1.5 * var(--r)); background: var(--primary-soft); }
+
+  /* E: D1 + D2 */
+  .dark .eq-head { position: relative; color: #fff; }
+  .dark .eq-head b { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+  .dark .eq { position: relative; }
+  .dark .eqbar { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6); }
+  .dark .eqbar::before { background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.2) 6px 8px); }
+  .dark .eqfill { background: #fff; }
+  .dark .eq-ends { position: relative; color: #fff; }
+  .dark .player { position: relative; }
+  .dark.e1 .rings { top: calc(12.4 * var(--r)); }
+  .dark.e2 .rings { top: calc(3.2 * var(--r)); }
+  .hint .hf { display: block; margin-top: calc(.25 * var(--r)); }
 </style>
 </head>
 <body>
@@ -187,6 +200,7 @@
 
   <div class="intro">
     <h2>這頁在比什麼、我建議哪個</h2>
+    <p><b>比 0-2（第 ⓪-2 組，最新）：</b>您選了 D1＋D2，合法有 E1（一整塊深藍，建議）與 E2（上淺下深）。家人專區入口放第一列、高頻下降加一句說明，已照您選的畫進去（說明在 E1、E2 的灰色提示框第一句）。選定後，第 ③ 組的狀態和第 ④ 組的 200% 照選定的重畫。</p>
     <p><b>比 0（第 ⓪ 組，新）：整體樣子。</b>照您說的「符合網站風格、又不要太像其他頁」，畫了三個方向：<b>D1 聲音條</b>、<b>D2 深藍播放器</b>、<b>D3 插圖對話</b>；第 ① 組 A 是只用網站現有元件的版本，留著對照。<b>建議 D1</b>：只有它在換程度、切正常聽時「看得到」少了哪些聲音，對家人最有說服力，又只用網站本來的藍與淡藍。<b>代價：</b>多一個要做、要測的元件。選定方向後，第 ③ 組的狀態和第 ④ 組的 200% 會照選定的方向重畫。</p>
     <p><b>比 1（第 ① 組）：</b>句子<b>一次一句的播放卡（A）</b>，還是<b>四句排成清單（B）</b>。</p>
     <p><b>建議 A</b>：「正常聽｜模擬」就在播放鈕正下方，播放中手指不用移遠就能來回切，這是整頁最重要的動作；程度、播放、切換都在第一個畫面裡。<b>代價：</b>要按「下一句」才看得到別的句子，一次只看得到一句。</p>
@@ -308,6 +322,101 @@
           <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
         </div></div>
         <div class="note"><p>六根條全滿；切回模擬時高音那幾根縮回去。程度膠囊保持選中高頻下降。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ⓪-2 D1 + D2 ============ -->
+  <section class="group">
+    <h2>⓪-2 D1＋D2 合在一起（您 2026-11-13 選的）</h2>
+    <p class="q">深藍播放器的「這是拿來聽的」，加上聲音條的「看得到少了哪些聲音」。合法有兩種：<b>E1</b> 聲音條也放進深藍那一塊；<b>E2</b> 聲音條留在淺藍卡、深藍只放播放與切換。程度膠囊、一次一句、正常聽｜模擬在播放下面，都照 D1。第四支是 E1 播放中切到正常聽。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">E1　一整塊深藍 <span class="rec">建議</span></p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="dark e1">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <p class="eq-head"><span class="draft"><b>高頻下降</b>：尖細的聲音大多聽不到</span></p>
+            <div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:85%"></span></span><span class="eqbar"><span class="eqfill" style="height:80%"></span></span><span class="eqbar"><span class="eqfill" style="height:75%"></span></span><span class="eqbar"><span class="eqfill" style="height:55%"></span></span><span class="eqbar"><span class="eqfill" style="height:35%"></span></span><span class="eqbar"><span class="eqfill" style="height:25%"></span></span></div>
+            <div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          </div>
+          <div class="hint">
+            <p><span class="draft">選的是高頻下降：檢查報告上的平均可能只寫「輕度」，可是尖細的聲音大多聽不到，所以最常「聽得到、聽不清楚」。</span></p>
+            <p>這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</p>
+            <p>聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</p>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>好處</b>：聽、看、切換全在同一塊「機器」上，眼睛不用在兩塊之間跳；條就在播放鈕正上方，按下播放時看得到的就是正在聽的。整頁只有這一塊是深藍，其他維持白底。</p>
+          <p><b>代價</b>：深藍面積大（約 520px 高，含顯示這句話），ADR 0043「白底、只有按鈕用實心藍」要為這頁寫一個例外；條改成白色，跟網站其他圖表的藍色條不同。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">E2　上淺下深</p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="eqp">
+            <p class="eq-head"><span class="draft"><b>高頻下降</b>：尖細的聲音大多聽不到</span></p>
+            <div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:85%"></span></span><span class="eqbar"><span class="eqfill" style="height:80%"></span></span><span class="eqbar"><span class="eqfill" style="height:75%"></span></span><span class="eqbar"><span class="eqfill" style="height:55%"></span></span><span class="eqbar"><span class="eqfill" style="height:35%"></span></span><span class="eqbar"><span class="eqfill" style="height:25%"></span></span></div>
+            <div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div>
+          </div>
+          <div class="dark e2" style="margin-top:12px">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          </div>
+          <div class="hint">
+            <p><span class="draft">選的是高頻下降：檢查報告上的平均可能只寫「輕度」，可是尖細的聲音大多聽不到，所以最常「聽得到、聽不清楚」。</span></p>
+            <p>這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</p>
+            <p>聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</p>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>好處</b>：深藍面積小一點（約 360px），條維持網站一般的藍色；「看」和「操作」分成兩塊，各自清楚。</p>
+          <p><b>代價</b>：兩塊之間多一段間距，「安靜｜餐廳」被擠到分頁列後面；仍要為深藍寫例外。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">E1 播放中，切到正常聽（只畫播放區）</p>
+        <div class="phone crop"><div class="pg">
+          <div class="dark e1">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <p class="eq-head"><span class="draft"><b>正常聽</b>：每一種聲音都聽得到</span></p>
+            <div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span></div>
+            <div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div>
+            <div class="player"><span class="pside">‹</span><span class="pbig pause"><svg><use href="#i-pause"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          </div>
+        </div></div>
+        <div class="note"><p>六根條全白；切回模擬時高音那幾根縮回去（減少動態效果時直接換）。</p></div>
       </div>
     </div>
   </section>
