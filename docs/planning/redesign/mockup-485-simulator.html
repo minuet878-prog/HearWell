@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#485 聽損模擬設計圖</title>
+<style>
+  /* ---- tokens: as #454 / #479, values from frontend/src/site.css ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 8px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .intro { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 16px; max-width: 1100px; }
+  .intro h2 { font-size: 24px; color: var(--heading); margin: 0 0 6px; }
+  .intro p { margin: 0 0 8px; }
+  .intro ol, .intro ul { margin: 0 0 8px; padding-left: 1.3em; }
+  .group { margin: 44px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  code { font-size: 14px; background: #f4f6f8; padding: 0 3px; border-radius: 4px; }
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .callout-tag { display: inline-block; color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 1px 10px; margin: 0 0 4px; font-weight: 700; line-height: 1.5; }
+
+  /* ---- the phone: lengths are calc(n * var(--r)), --r the site's rem (18px; 36px at 200% text) ---- */
+  .phone { --r: 18px; width: 390px; background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; font-size: var(--r); line-height: 1.5; color: var(--body); }
+  .phone.x2 { --r: 36px; }
+  .pg { padding: calc(.75 * var(--r)) calc(.75 * var(--r)) 120px; }
+  .crop .pg { padding-bottom: calc(.75 * var(--r)); }
+  .brand { margin: 0 0 calc(.5 * var(--r)); font-size: calc(1.2222 * var(--r)); font-weight: 700; color: var(--primary); }
+  .back { display: inline-flex; align-items: center; min-height: calc(2.75 * var(--r)); color: var(--primary); font-weight: 700; }
+  .h1 { margin: 0 0 calc(.5 * var(--r)); font-size: calc(1.5556 * var(--r)); line-height: 1.3; font-weight: 700; color: var(--heading); overflow-wrap: anywhere; }
+  .h4 { margin: calc(1.5 * var(--r)) 0 calc(.5 * var(--r)); font-size: calc(1.2222 * var(--r)); line-height: 1.3; font-weight: 700; color: var(--heading); }
+  .phone p { margin: 0 0 var(--r); }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 4; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; line-height: 1.4; }
+  .sec-label { display: block; margin: 0 0 calc(.375 * var(--r)); font-weight: 700; color: var(--heading); }
+
+  /* S1 buttons */
+  .btn { display: flex; align-items: center; justify-content: center; gap: calc(.5 * var(--r)); width: 100%; min-height: calc(3.1111 * var(--r)); padding: calc(.5 * var(--r)) calc(1.25 * var(--r)); border: 2px solid transparent; border-radius: calc(.7778 * var(--r)); font-size: calc(1.1111 * var(--r)); font-weight: 700; line-height: 1.5; text-align: center; overflow-wrap: anywhere; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border-color: var(--primary); }
+  .btn svg { flex: none; width: calc(1.2 * var(--r)); height: calc(1.2 * var(--r)); fill: currentColor; }
+
+  /* degree picker: tiles as the 我的紀錄 questionnaire tabs (.history-tabs) */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(calc(9 * var(--r)), 100%), 1fr)); gap: calc(.5 * var(--r)); margin: 0 0 var(--r); }
+  .tile { display: flex; flex-direction: column; justify-content: center; min-height: calc(2.75 * var(--r)); padding: calc(.5 * var(--r)) calc(.625 * var(--r)); border-radius: calc(.75 * var(--r)); background: var(--surface); color: var(--heading); line-height: 1.35; overflow-wrap: anywhere; }
+  .tile b { font-weight: 700; }
+  .tile span { color: var(--muted); }
+  .tile.on { background: var(--primary-sel); box-shadow: inset 0 0 0 2px var(--primary); color: var(--primary); }
+  .tile.on b::before { content: "✓ "; }
+
+  /* dropdown (option B of group ②), as the site's selects */
+  .select { display: flex; align-items: center; justify-content: space-between; min-height: calc(3.1111 * var(--r)); padding: 0 calc(.75 * var(--r)); border: 2px solid #6c757d; border-radius: calc(.75 * var(--r)); background: #fff; color: var(--heading); font-weight: 500; }
+  .select svg { width: calc(1.3 * var(--r)); height: calc(1.3 * var(--r)); fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .select-help { color: var(--muted); margin: calc(.375 * var(--r)) 0 var(--r) !important; }
+
+  /* two-choice switch, as 我的紀錄 問卷｜聽力圖 (.records-switch) */
+  .switch { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(6 * var(--r))), 1fr)); gap: calc(.25 * var(--r)); padding: calc(.25 * var(--r)); border-radius: calc(1.5 * var(--r)); background: var(--surface); margin: 0 0 calc(.75 * var(--r)); }
+  .switch span { display: flex; align-items: center; justify-content: center; min-height: calc(2.75 * var(--r)); padding: calc(.25 * var(--r)) var(--r); border-radius: calc(1.5 * var(--r)); color: var(--muted); font-weight: 500; text-align: center; }
+  .switch span.on { background: var(--primary-sel); box-shadow: inset 0 0 0 2px var(--primary); color: var(--primary); font-weight: 700; }
+  .card .switch { background: #fff; }
+
+  /* the player card (layout A): pale blue like the home 現在這一步 card */
+  .card { padding: calc(.875 * var(--r)) var(--r) var(--r); border-radius: calc(1.5 * var(--r)); background: var(--primary-soft); }
+  .card-label { margin: 0 0 calc(.5 * var(--r)) !important; color: var(--muted); font-weight: 700; }
+  .now { margin: calc(.5 * var(--r)) 0 calc(.75 * var(--r)) !important; color: var(--heading); text-align: center; }
+  .now b { color: var(--primary); }
+  .reveal { display: flex; align-items: center; gap: calc(.5 * var(--r)); min-height: calc(2.75 * var(--r)); color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+  .reveal svg { flex: none; width: calc(1.3 * var(--r)); height: calc(1.3 * var(--r)); fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .reveal.open svg { transform: rotate(180deg); }
+  .said { margin: 0 0 calc(.75 * var(--r)) !important; padding: calc(.625 * var(--r)) calc(.75 * var(--r)); border-radius: calc(.75 * var(--r)); background: #fff; color: var(--heading); font-size: calc(1.2222 * var(--r)); font-weight: 700; line-height: 1.45; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(7 * var(--r))), 1fr)); gap: calc(.5 * var(--r)); margin-top: calc(.25 * var(--r)); }
+  .pair .btn { min-height: calc(2.75 * var(--r)); font-size: var(--r); }
+
+  /* sentence list (layout B) */
+  ul.sents { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .sent { display: flex; flex-wrap: wrap; align-items: center; column-gap: calc(.75 * var(--r)); padding: calc(.5 * var(--r)) 0; border-bottom: 1px solid var(--line); }
+  .playc { flex: none; width: calc(2.75 * var(--r)); height: calc(2.75 * var(--r)); border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; }
+  .playc.outline-c { background: #fff; border: 2px solid var(--primary); color: var(--primary); }
+  .playc svg { width: 45%; height: 45%; fill: currentColor; }
+  .sent-body { flex: 1; min-width: 0; }
+  .sent-title { display: block; color: var(--heading); font-weight: 700; }
+  .sent .reveal { min-height: calc(2 * var(--r)); }
+
+  /* 提示框 */
+  .hint { margin: var(--r) 0 0; padding: calc(.75 * var(--r)) var(--r); border-radius: calc(.75 * var(--r)); background: var(--surface); }
+  .hint p { margin: 0 0 calc(.5 * var(--r)) !important; }
+  .hint p:last-child { margin-bottom: 0 !important; }
+
+  /* list rows (E), as 了解 and the family zone */
+  ul.rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .lrow { display: flex; align-items: center; gap: calc(.75 * var(--r)); min-height: calc(4 * var(--r)); padding: calc(.625 * var(--r)) 2px; border-bottom: 1px solid var(--line); }
+  .ico { flex: none; width: calc(2.6667 * var(--r)); height: calc(2.6667 * var(--r)); border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .ico svg { width: 55%; height: 55%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .t-sub { display: block; color: var(--muted); }
+  .chev { flex: none; font-size: calc(1.3333 * var(--r)); font-weight: 700; line-height: 1; color: var(--primary); }
+  .lrow.new { outline: 3px solid var(--annot); outline-offset: -3px; border-radius: 6px; }
+
+  /* W1 tab bar */
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; line-height: 1.3; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.spec td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .chart { background: #fff; border-radius: 14px; padding: 12px; max-width: 680px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4.2" height="15" rx="1"/><rect x="13.8" y="4.5" width="4.2" height="15" rx="1"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-ear" viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-5.5 1.6"/><path d="M10 9.5a2 2 0 0 1 4 0c0 1.2-1.2 1.6-1.2 2.8"/></symbol>
+  <symbol id="i-family" viewBox="0 0 24 24"><circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.2-6 5-6s5 2.7 5 6"/><path d="M14 20c0-2.6 1.3-4.6 3-4.6s3 2 3 4.6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-guide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#485 聽損模擬（設計圖）</h1>
+  <p class="lead">規格 #484、ADR 0052、第 3 階段拷問 Q11–Q12。手機寬 390px、內文 18px；顏色、字級、圓角照 <code>frontend/src/site.css</code>，選程度用「我的紀錄」問卷分頁的選取格、二選一用「問卷｜聽力圖」的藥丸，沒有新樣式。
+  <span class="draft">紫色虛線框</span>＝我擬的字句，請您審；<span class="callout-tag">紫色標籤</span>＝說明用，不是畫面的一部分。這是靜態圖，按鈕不會動；不同狀態分開畫在第 ③ 組。</p>
+
+  <div class="intro">
+    <h2>這頁在比什麼、我建議哪個</h2>
+    <p><b>比 1（第 ① 組）：</b>句子<b>一次一句的播放卡（A）</b>，還是<b>四句排成清單（B）</b>。</p>
+    <p><b>建議 A</b>：「正常聽｜模擬」就在播放鈕正下方，播放中手指不用移遠就能來回切，這是整頁最重要的動作；程度、播放、切換都在第一個畫面裡。<b>代價：</b>要按「下一句」才看得到別的句子，一次只看得到一句。</p>
+    <p><b>比 2（第 ② 組）：</b>程度用<b>四格選取格（建議）</b>還是<b>下拉框</b>。建議選取格：四種一眼看完、一按就換，播放中換程度也是一按；下拉框要按兩次，播放中不好換。<b>代價：</b>佔的高度多約 50px。</p>
+    <p><b>請您決定：</b>比 1、比 2；第 ⑥ 組的代表聽力圖、程度說明、四句話、預設程度、餐廳背景的訊噪比、其他字句（逐項審）；第 ⑤ 組家人專區入口放第幾列。</p>
+  </div>
+
+  <!-- ============ ① A and B ============ -->
+  <section class="group">
+    <h2>① 整頁：一次一句的播放卡（A）或四句清單（B）</h2>
+    <p class="q">都是剛打開、還沒按播放的樣子：預設高頻下降、模擬、安靜。紫色虛線「手機第一個畫面到這裡」是 844px 高的手機打開時看得到的範圍；分頁列畫在第一個畫面的底部。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　一次一句的播放卡 <span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1"><span class="draft">聽損模擬</span></h1>
+          <p><span class="draft">聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</span></p>
+          <span class="sec-label">程度</span>
+          <div class="tiles">
+            <span class="tile on"><b>高頻下降</b><span class="draft">聽得到、聽不清</span></span>
+            <span class="tile"><b>輕度</b><span class="draft">小聲就漏聽</span></span>
+            <span class="tile"><b>中度</b><span class="draft">常聽不完整</span></span>
+            <span class="tile"><b>中重度</b><span class="draft">不大聲聽不到</span></span>
+          </div>
+          <div class="card">
+            <p class="card-label">第 1 句，共 4 句・女聲</p>
+            <a class="btn solid"><svg><use href="#i-play"/></svg>播放</a>
+            <p class="now"><span class="draft">現在聽到：<b>高頻下降</b>的模擬</span></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch"><span class="on">安靜</span><span>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+            <div class="pair"><a class="btn outline">‹ 上一句</a><a class="btn outline">下一句 ›</a></div>
+          </div>
+          <div class="hint">
+            <p><span class="draft">這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</span></p>
+            <p><span class="draft">聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</span></p>
+          </div>
+          <h2 class="h4">接下來</h2>
+          <ul class="rows">
+            <li class="lrow"><span class="ico"><svg><use href="#i-chat"/></svg></span><span class="grow"><span class="t-title">怎麼跟他說話</span><span class="t-sub">情境題與溝通重點</span></span><span class="chev">›</span></li>
+            <li class="lrow"><span class="ico"><svg><use href="#i-guide"/></svg></span><span class="grow"><span class="t-title">了解助聽器選配與補助</span></span><span class="chev">›</span></li>
+          </ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>四個控制都在第一個畫面</b>：程度、播放、模擬｜正常聽、安靜｜餐廳（最下面的藥丸底在 713px，分頁列從 748px 開始）。「顯示這句話」「上一句／下一句」在分頁列後面，稍微往下捲分頁列就藏起來（ADR 0045）。</p>
+          <p>播放鈕是整頁唯一的實心按鈕。「現在聽到…」一行讓人確定耳朵聽到的是哪一種，切換時跟著變（第 ③ 組）。</p>
+          <p>卡片用首頁「現在這一步」的淡藍底：不是連結，裡面的按鈕才能按；藥丸放在卡片裡時軌道改白色，跟淡藍底分得開。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　四句排成清單</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <span class="sec-label">程度</span>
+          <div class="tiles">
+            <span class="tile on"><b>高頻下降</b><span>聽得到、聽不清</span></span>
+            <span class="tile"><b>輕度</b><span>小聲就漏聽</span></span>
+            <span class="tile"><b>中度</b><span>常聽不完整</span></span>
+            <span class="tile"><b>中重度</b><span>不大聲聽不到</span></span>
+          </div>
+          <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+          <div class="switch"><span class="on">安靜</span><span>餐廳</span></div>
+          <ul class="sents">
+            <li class="sent"><span class="playc"><svg><use href="#i-play"/></svg></span><span class="sent-body"><span class="sent-title">第 1 句・女聲</span><a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a></span></li>
+            <li class="sent"><span class="playc"><svg><use href="#i-play"/></svg></span><span class="sent-body"><span class="sent-title">第 2 句・男聲</span><a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a></span></li>
+            <li class="sent"><span class="playc"><svg><use href="#i-play"/></svg></span><span class="sent-body"><span class="sent-title">第 3 句・女聲</span><a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a></span></li>
+            <li class="sent"><span class="playc"><svg><use href="#i-play"/></svg></span><span class="sent-body"><span class="sent-title">第 4 句・男聲</span><a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a></span></li>
+          </ul>
+          <div class="hint">
+            <p>這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</p>
+            <p>聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</p>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>好處</b>：四句一眼看完，想聽哪句直接按，不用一句一句翻。</p>
+          <p><b>代價</b>：第 3、4 句在分頁列後面，要捲下去才按得到；捲下去之後「模擬｜正常聽」就在畫面外，播放中要比較得再捲回來。四顆圓形播放鈕是 49.5px，比 A 的大按鈕小。沒有「現在聽到…」那一行（四句共用一組切換，放哪一句旁邊都不對）。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ② degree picker ============ -->
+  <section class="group">
+    <h2>② 選程度：四格選取格（建議）或下拉框</h2>
+    <p class="q">只畫程度這一塊。選取格跟「我的紀錄」的問卷分頁同一個樣子：選中的淡藍底、藍框、藍字，前面加 ✓（不只靠顏色）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">選取格 <span class="rec">建議</span></p>
+        <div class="phone crop"><div class="pg">
+          <span class="sec-label">程度</span>
+          <div class="tiles">
+            <span class="tile on"><b>高頻下降</b><span>聽得到、聽不清</span></span>
+            <span class="tile"><b>輕度</b><span>小聲就漏聽</span></span>
+            <span class="tile"><b>中度</b><span>常聽不完整</span></span>
+            <span class="tile"><b>中重度</b><span>不大聲聽不到</span></span>
+          </div>
+        </div></div>
+        <div class="note"><p>高約 170px（每格一行說明，格高 67px）。播放中換程度一按就好。讀螢幕軟體念「程度，高頻下降，已選」。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">下拉框</p>
+        <div class="phone crop"><div class="pg">
+          <span class="sec-label">程度</span>
+          <div class="select">高頻下降<svg><use href="#i-down"/></svg></div>
+          <p class="select-help">聽得到、聽不清</p>
+        </div></div>
+        <div class="note"><p>高約 120px，省約 50px。<b>代價</b>：要按開、再選，播放中換程度兩個動作；四種程度看不到彼此的說明，不知道該選哪個。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ③ states ============ -->
+  <section class="group">
+    <h2>③ 播放卡的幾種狀態（照 A）</h2>
+    <p class="q">只畫卡片。播放中播放鈕變「暫停」，同一個位置、同一個大小；切換程度、模擬｜正常聽、安靜｜餐廳都不中斷，只改「現在聽到…」那一行。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">播放中（高頻下降、模擬）</p>
+        <div class="phone crop"><div class="pg"><div class="card">
+          <p class="card-label">第 1 句，共 4 句・女聲</p>
+          <a class="btn solid"><svg><use href="#i-pause"/></svg>暫停</a>
+          <p class="now">現在聽到：<b>高頻下降</b>的模擬</p>
+          <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+          <div class="switch"><span class="on">安靜</span><span>餐廳</span></div>
+          <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          <div class="pair"><a class="btn outline">‹ 上一句</a><a class="btn outline">下一句 ›</a></div>
+        </div></div></div>
+        <div class="note"><p>一句播完自動變回「播放」，不自動播下一句。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">播放中，切到正常聽</p>
+        <div class="phone crop"><div class="pg"><div class="card">
+          <p class="card-label">第 1 句，共 4 句・女聲</p>
+          <a class="btn solid"><svg><use href="#i-pause"/></svg>暫停</a>
+          <p class="now"><span class="draft">現在聽到：<b>正常聽</b>（沒有模擬）</span></p>
+          <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
+          <div class="switch"><span class="on">安靜</span><span>餐廳</span></div>
+          <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          <div class="pair"><a class="btn outline">‹ 上一句</a><a class="btn outline">下一句 ›</a></div>
+        </div></div></div>
+        <div class="note"><p>程度選取格保持選中高頻下降（再切回模擬時用它）；在正常聽時按任何一格程度，自動切回模擬（#484 驗收 9）。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">已顯示這句話、在餐廳</p>
+        <div class="phone crop"><div class="pg"><div class="card">
+          <p class="card-label">第 1 句，共 4 句・女聲</p>
+          <a class="btn solid"><svg><use href="#i-play"/></svg>播放</a>
+          <p class="now">現在聽到：<b>高頻下降</b>的模擬</p>
+          <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+          <div class="switch"><span>安靜</span><span class="on">餐廳</span></div>
+          <a class="reveal open"><svg><use href="#i-down"/></svg>收起這句話</a>
+          <p class="said">星期四下午三點去看醫生。</p>
+          <div class="pair"><a class="btn outline">‹ 上一句</a><a class="btn outline">下一句 ›</a></div>
+        </div></div></div>
+        <div class="note"><p>換下一句時這句話自動收起，先聽、再對照。第 1 句時「上一句」照樣能按、會跳到第 4 句（不讓按鈕變灰，長輩看不懂為什麼不能按）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ④ 200% ============ -->
+  <section class="group">
+    <h2>④ 字放大 200%（照 A）</h2>
+    <p class="q">內文 36px。程度改成一欄、二選一藥丸上下疊（跟「問卷｜聽力圖」放大時一樣），不左右捲。第一個畫面只看得到標題、開頭一句和第一格程度，要往下捲到播放卡。</p>
+    <div class="row">
+      <div class="opt">
+        <div class="phone x2"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <span class="sec-label">程度</span>
+          <div class="tiles">
+            <span class="tile on"><b>高頻下降</b><span>聽得到、聽不清</span></span>
+            <span class="tile"><b>輕度</b><span>小聲就漏聽</span></span>
+            <span class="tile"><b>中度</b><span>常聽不完整</span></span>
+            <span class="tile"><b>中重度</b><span>不大聲聽不到</span></span>
+          </div>
+          <div class="card">
+            <p class="card-label">第 1 句，共 4 句・女聲</p>
+            <a class="btn solid"><svg><use href="#i-play"/></svg>播放</a>
+            <p class="now">現在聽到：<b>高頻下降</b>的模擬</p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch"><span class="on">安靜</span><span>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+            <div class="pair"><a class="btn outline">‹ 上一句</a><a class="btn outline">下一句 ›</a></div>
+          </div>
+          <div class="hint">
+            <p>這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</p>
+            <p>聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</p>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        </div>
+        <div class="note"><p>播放鈕和「模擬｜正常聽」在同一個畫面看得到（相距約 380px）。<b>代價</b>：「安靜｜餐廳」和上一句／下一句要再往下捲。B 在 200% 時更長，四句之間各要捲。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ⑤ entries ============ -->
+  <section class="group">
+    <h2>⑤ 入口：「了解」與家人專區</h2>
+    <p class="q">都用現有的清單列（E），紫框是新增的那一列。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">「了解」：放第三列（家人專區後、問答小助手前）</p>
+        <div class="phone crop"><div class="pg">
+          <h1 class="h1">了解</h1>
+          <ul class="rows">
+            <li class="lrow"><span class="ico"><svg><use href="#i-guide"/></svg></span><span class="grow"><span class="t-title">了解助聽器選配與補助</span></span><span class="chev">›</span></li>
+            <li class="lrow"><span class="ico"><svg><use href="#i-family"/></svg></span><span class="grow"><span class="t-title">家人專區：溝通與陪伴</span></span><span class="chev">›</span></li>
+            <li class="lrow new"><span class="ico"><svg><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title"><span class="draft">聽損模擬：聽聽看他聽到的聲音</span></span></span><span class="chev">›</span></li>
+            <li class="lrow"><span class="ico"><svg><use href="#i-chat"/></svg></span><span class="grow"><span class="t-title">問答小助手：常見問題一次查</span></span><span class="chev">›</span></li>
+          </ul>
+        </div></div>
+        <div class="note"><p>「了解」的列只有標題、沒有副標，跟現在一樣。耳朵圖示是新的一個 <code>action_icon</code>。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">家人專區：放第一列 <span class="rec">建議</span></p>
+        <div class="phone crop"><div class="pg">
+          <h1 class="h1">家人專區</h1>
+          <p>家人有聽力困難時，日常對話常常要講好幾次…</p>
+          <ul class="rows">
+            <li class="lrow new"><span class="ico"><svg><use href="#i-ear"/></svg></span><span class="grow"><span class="t-title"><span class="draft">先聽聽看他聽到的聲音</span></span><span class="t-sub"><span class="draft">選程度，聽同一句話怎麼變</span></span></span><span class="chev">›</span></li>
+            <li class="lrow"><span class="ico"><svg><use href="#i-chat"/></svg></span><span class="grow"><span class="t-title">怎麼跟他說話</span><span class="t-sub">情境題與溝通重點</span></span><span class="chev">›</span></li>
+            <li class="lrow"><span class="ico"><svg><use href="#i-doc"/></svg></span><span class="grow"><span class="t-title">陪診與代辦</span><span class="t-sub">要帶什麼、想問什麼、補助還缺什麼、期限到哪天</span></span><span class="chev">›</span></li>
+          </ul>
+        </div></div>
+        <div class="note"><p><b>建議第一列</b>：先親耳聽過，再看「怎麼跟他說話」最有感。<b>代價</b>：其他列往下移一列。另一個做法是放最後一列，不動現有順序，但比較少人看到。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ⑥ content ============ -->
+  <section class="group">
+    <h2>⑥ 內容審定</h2>
+    <p class="q">全部是草稿，請逐項看。代表聽力圖決定每個頻率調小多少 dB（調小的量＝該頻率的 dB HL）；四頻平均用 500、1000、2000、4000 Hz，跟網站判斷聽力圖程度同一套（正常 ≤25、輕度 ≤40、中度 ≤55、中重度 ≤70）。</p>
+    <div class="row">
+      <div class="chart">
+        <svg viewBox="0 0 640 400" width="640" height="400" role="img" aria-label="四種程度的代表聽力圖" font-family="Noto Sans TC, PingFang TC, sans-serif" font-size="14">
+          <!-- y: -10..120 dB HL -> 30..370 ; x: 6 freqs -->
+          <g fill="#f4f6f8"><rect x="70" y="30" width="500" height="91.5"/></g>
+          <g font-size="13" fill="#4a5460">
+            <text x="580" y="80">正常</text>
+            <text x="580" y="146">輕度</text>
+            <text x="580" y="185">中度</text>
+            <text x="580" y="224">中重度</text>
+            <text x="580" y="270">重度</text>
+          </g>
+          <g stroke="#e3e7ec">
+            <line x1="70" y1="121.5" x2="570" y2="121.5"/><line x1="70" y1="160.7" x2="570" y2="160.7"/><line x1="70" y1="199.9" x2="570" y2="199.9"/><line x1="70" y1="239.2" x2="570" y2="239.2"/><line x1="70" y1="291.5" x2="570" y2="291.5"/>
+          </g>
+          <g stroke="#8a94a3"><line x1="70" y1="30" x2="70" y2="370"/><line x1="70" y1="370" x2="570" y2="370"/></g>
+          <g fill="#4a5460" text-anchor="end">
+            <text x="62" y="35">-10</text><text x="62" y="87">10</text><text x="62" y="140">30</text><text x="62" y="192">50</text><text x="62" y="244">70</text><text x="62" y="296">90</text><text x="62" y="349">110</text>
+          </g>
+          <g fill="#4a5460" text-anchor="middle">
+            <text x="100" y="390">250</text><text x="188" y="390">500</text><text x="276" y="390">1000</text><text x="364" y="390">2000</text><text x="452" y="390">4000</text><text x="540" y="390">8000</text>
+          </g>
+          <text x="16" y="200" fill="#4a5460" transform="rotate(-90 16 200)" text-anchor="middle">dB HL</text>
+          <!-- y(d) = 30 + (d + 10) * 340/130 -->
+          <polyline fill="none" stroke="#14573c" stroke-width="2.5" points="100,121.5 188,134.6 276,134.6 364,147.7 452,160.7 540,160.7"/>
+          <g fill="#14573c"><circle cx="100" cy="121.5" r="5"/><circle cx="188" cy="134.6" r="5"/><circle cx="276" cy="134.6" r="5"/><circle cx="364" cy="147.7" r="5"/><circle cx="452" cy="160.7" r="5"/><circle cx="540" cy="160.7" r="5"/></g>
+          <polyline fill="none" stroke="#704800" stroke-width="2.5" stroke-dasharray="7 4" points="100,160.7 188,173.8 276,186.9 364,199.9 452,213.0 540,226.1"/>
+          <g fill="#704800"><rect x="95" y="155.7" width="10" height="10"/><rect x="183" y="168.8" width="10" height="10"/><rect x="271" y="181.9" width="10" height="10"/><rect x="359" y="194.9" width="10" height="10"/><rect x="447" y="208" width="10" height="10"/><rect x="535" y="221.1" width="10" height="10"/></g>
+          <polyline fill="none" stroke="#8f2a12" stroke-width="2.5" stroke-dasharray="2 4" points="100,199.9 188,213.0 276,226.1 364,239.2 452,252.3 540,265.4"/>
+          <g fill="#8f2a12"><path d="M100 193.9l6 10h-12z"/><path d="M188 207l6 10h-12z"/><path d="M276 220.1l6 10h-12z"/><path d="M364 233.2l6 10h-12z"/><path d="M452 246.3l6 10h-12z"/><path d="M540 259.4l6 10h-12z"/></g>
+          <polyline fill="none" stroke="#1f4e8c" stroke-width="4" points="100,95.4 188,108.5 276,121.5 364,173.8 452,226.1 540,252.3"/>
+          <g fill="#fff" stroke="#1f4e8c" stroke-width="3"><circle cx="100" cy="95.4" r="6"/><circle cx="188" cy="108.5" r="6"/><circle cx="276" cy="121.5" r="6"/><circle cx="364" cy="173.8" r="6"/><circle cx="452" cy="226.1" r="6"/><circle cx="540" cy="252.3" r="6"/></g>
+        </svg>
+        <p class="note"><span style="color:#14573c">●— 輕度</span>　<span style="color:#704800">■- - 中度</span>　<span style="color:#8f2a12">▲·· 中重度</span>　<span style="color:#1f4e8c">○━ 高頻下降</span>。灰底是正常範圍（≤25 dB HL）。</p>
+      </div>
+    </div>
+
+    <h3>代表聽力圖與程度說明（dB HL）</h3>
+    <table class="spec">
+      <tr><th>程度</th><th>250</th><th>500</th><th>1000</th><th>2000</th><th>4000</th><th>8000</th><th>四頻平均</th><th>網站判斷</th><th>選取格上的說明（草稿，一行放得下）</th></tr>
+      <tr><td>高頻下降</td><td class="num">15</td><td class="num">20</td><td class="num">25</td><td class="num">45</td><td class="num">65</td><td class="num">75</td><td class="num">38.75</td><td>輕度</td><td>聽得到、聽不清</td></tr>
+      <tr><td>輕度</td><td class="num">25</td><td class="num">30</td><td class="num">30</td><td class="num">35</td><td class="num">40</td><td class="num">40</td><td class="num">33.75</td><td>輕度</td><td>小聲就漏聽</td></tr>
+      <tr><td>中度</td><td class="num">40</td><td class="num">45</td><td class="num">50</td><td class="num">55</td><td class="num">60</td><td class="num">65</td><td class="num">52.5</td><td>中度</td><td>常聽不完整</td></tr>
+      <tr><td>中重度</td><td class="num">55</td><td class="num">60</td><td class="num">65</td><td class="num">70</td><td class="num">75</td><td class="num">80</td><td class="num">67.5</td><td>中重度</td><td>不大聲聽不到</td></tr>
+    </table>
+    <div class="note" style="max-width:1100px">
+      <p><b>請注意高頻下降</b>：四頻平均 38.75，網站判斷只算「輕度」，可是 4000 Hz 以上掉到 65–75 dB，ㄙ、ㄒ、ㄘ、ㄈ幾乎聽不到。這正是要讓家人體會的「平均不重、卻聽不清楚」。選取格上我沒寫「輕度」以免混淆；要不要在頁面上點出這件事（例如加一句「平均只算輕度，卻最常聽不清楚字」），請您決定。</p>
+      <p>符合 #484 驗收 17：輕度、中度、中重度的四頻平均各落在自己的區間；高頻下降的 250–1000 Hz ≤25（正常範圍），4000 Hz 以上 ≥60。</p>
+    </div>
+
+    <h3>四句話</h3>
+    <table class="spec">
+      <tr><th>順序</th><th>聲音</th><th>句子（草稿）</th><th>為什麼挑</th></tr>
+      <tr><td>1</td><td>女</td><td>星期四下午三點去看醫生。</td><td>ㄒ、ㄑ、ㄙ、ㄕ：高頻聽損最先漏掉；約診時間是長輩最常聽錯的事</td></tr>
+      <tr><td>2</td><td>男</td><td>這個藥飯後吃，一天三次。</td><td>ㄓ、ㄈ、ㄔ、ㄘ；用藥是聽錯代價最高的一種</td></tr>
+      <tr><td>3</td><td>女</td><td>孫子說下禮拜六要回來吃飯。</td><td>ㄙ、ㄗ、ㄕ、ㄒ、ㄔ、ㄈ；家人最常講的話</td></tr>
+      <tr><td>4</td><td>男</td><td>謝謝你送的水果，很新鮮。</td><td>ㄒ、ㄙ、ㄕ；男聲低頻多，對比出女聲比較難聽清楚</td></tr>
+    </table>
+    <p class="note">女、男交替，第 1 句是女聲：高頻下降時女聲最難，打開第一句就聽得出差別。</p>
+
+    <h3>其他要決定的</h3>
+    <table class="spec">
+      <tr><th>項目</th><th>草稿</th><th>原因與代價</th></tr>
+      <tr><td>預設程度</td><td>高頻下降，排在第一格</td><td>最常見（老年性聽損），家人打開就聽得到「聽得到、聽不清楚」；選取格上寫不下「最常見」，排第一格、預設選它來表達。代價：程度不是照輕到重排；照輕到重排的話預設在第四格。</td></tr>
+      <tr><td>餐廳背景的訊噪比</td><td>+5 dB（說話聲比背景大 5 dB）</td><td>一般吵雜餐廳的情況，正常聽還聽得清楚、模擬時明顯變難。0 dB 更難、更像熱炒店，但正常聽也開始吃力，對比反而不清楚。</td></tr>
+      <tr><td>頁面標題</td><td>聽損模擬</td><td>一行放得下，省出高度讓播放卡留在第一個畫面；「了解」清單上的列名照寫「聽損模擬：聽聽看他聽到的聲音」。</td></tr>
+      <tr><td>開頭一句</td><td>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</td><td>「他」指家人，長輩自己打開也看得懂；只講怎麼用，限制放在下面的提示框。</td></tr>
+      <tr><td>狀態行</td><td>現在聽到：高頻下降的模擬／正常聽（沒有模擬）</td><td>讓人確定耳朵聽到哪一種。</td></tr>
+      <tr><td>限制說明</td><td>這是典型的程度，不是誰真正的聽力。模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。</td><td>#484 驗收 14。</td></tr>
+      <tr><td>聽不到聲音</td><td>聽不到聲音？先關掉手機的靜音、把音量調大；戴耳機聽最清楚。</td><td>#484 驗收 15；iPhone 的靜音開關可能擋住網頁聲音。</td></tr>
+      <tr><td>家人專區入口</td><td>先聽聽看他聽到的聲音／選程度，聽同一句話怎麼變</td><td>見第 ⑤ 組。</td></tr>
+      <tr><td>沒開 JavaScript</td><td>需要開啟 JavaScript 才能播放。（下面照樣列出四句話的文字）</td><td>#484 驗收 22；長輩很少遇到，不另畫。</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ ⑦ measured ============ -->
+  <section class="group">
+    <h2>⑦ 實測數值</h2>
+    <p class="q">顏色對比用 WCAG 公式算；大小照 <code>site.css</code> 的 rem（18px；200% 時 36px）。</p>
+    <table class="spec">
+      <tr><th>項目</th><th>390px、18px</th><th>200%（36px）</th><th>要求</th></tr>
+      <tr><td>播放鈕高度</td><td class="num">56px</td><td class="num">112px</td><td>≥44px</td></tr>
+      <tr><td>二選一藥丸每半邊高度</td><td class="num">49.5px</td><td class="num">99px</td><td>≥44px</td></tr>
+      <tr><td>程度選取格高度（最矮）</td><td class="num">≥49.5px（兩行字約 67px）</td><td class="num">≥99px</td><td>≥44px</td></tr>
+      <tr><td>上一句／下一句、顯示這句話</td><td class="num">49.5px</td><td class="num">99px</td><td>≥44px</td></tr>
+      <tr><td>最小的字</td><td class="num">18px（說明、狀態行）</td><td class="num">36px</td><td>≥18px（ADR 0031）</td></tr>
+      <tr><td>左右捲動</td><td>沒有</td><td>沒有（程度一欄、藥丸上下疊）</td><td>不左右捲</td></tr>
+    </table>
+    <table class="spec" style="margin-top:16px">
+      <tr><th>前景／背景</th><th>用在</th><th>對比</th></tr>
+      <tr><td>#1f4e8c／#ffffff</td><td>連結、播放卡外的藍字、白底上的外框按鈕</td><td class="num">8.31:1</td></tr>
+      <tr><td>#ffffff／#1f4e8c</td><td>實心播放鈕的字</td><td class="num">8.31:1</td></tr>
+      <tr><td>#1f4e8c／#e8eef7</td><td>選中的程度、選中的藥丸</td><td class="num">7.13:1</td></tr>
+      <tr><td>#1f4e8c／#eef3fa</td><td>播放卡裡的藍字（狀態行、顯示這句話）</td><td class="num">7.45:1</td></tr>
+      <tr><td>#4a5460／#f4f6f8</td><td>沒選的程度說明、沒選的藥丸、提示框</td><td class="num">7.11:1</td></tr>
+      <tr><td>#4a5460／#eef3fa</td><td>播放卡標籤「第 1 句，共 4 句」</td><td class="num">6.90:1</td></tr>
+      <tr><td>#212529／#f4f6f8</td><td>沒選的程度名稱</td><td class="num">14.24:1</td></tr>
+      <tr><td>#343a40／#ffffff</td><td>內文</td><td class="num">11.51:1</td></tr>
+    </table>
+    <p class="note">全部 ≥4.5:1。藥丸與選取格的選中狀態另有 2px 藍框和 ✓／粗體，不只靠顏色分辨。</p>
+  </section>
+</div>
+</body>
+</html>
