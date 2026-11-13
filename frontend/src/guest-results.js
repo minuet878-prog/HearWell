@@ -65,6 +65,35 @@ const day = (time) => {
   return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
 };
 
+// Nothing of the result left on the page, so the browser's cache of it shows none either.
+function emptyPage(root) {
+  root.querySelector("[data-guest-shown]").hidden = true;
+  root.querySelector("[data-guest-section]").innerHTML = "";
+}
+
+// #498 (the #493 mockup's E1): 清除這次結果 opens its question under it, with focus there and its
+// buttons in view; 不要 folds it back to the row, 清除 forgets only this questionnaire's result and
+// goes home (navigate replaces this page in the history, so going back skips it).
+function offerClearing(root, navigate) {
+  const { code, homeUrl } = root.dataset;
+  const row = root.querySelector("[data-guest-clear]");
+  const no = row.querySelector("[data-guest-clear-no]");
+  row.addEventListener("toggle", () => {
+    if (!row.open) return;
+    row.querySelector("[data-guest-clear-question]").focus();
+    no.scrollIntoView({ block: "nearest" });
+  });
+  no.addEventListener("click", () => {
+    row.open = false;
+    row.querySelector("summary").focus();
+  });
+  row.querySelector("[data-guest-clear-yes]").addEventListener("click", () => {
+    clearGuestResult(code);
+    emptyPage(root);
+    navigate(homeUrl);
+  });
+}
+
 // The guest result page (guest_result.html): the kept answers scored again by the server, which
 // draws the result page's section; without a result (none, expired, cleared) it goes home.
 export async function showGuestResult({
@@ -77,8 +106,7 @@ export async function showGuestResult({
   const result = loadGuestResult(code, now);
   if (result === null) {
     // Back from the browser's cache after it went: nothing of it stays on screen.
-    root.querySelector("[data-guest-shown]").hidden = true;
-    root.querySelector("[data-guest-section]").innerHTML = "";
+    emptyPage(root);
     return navigate(homeUrl);
   }
   const error = root.querySelector("[data-guest-error]");
@@ -106,6 +134,7 @@ export async function showGuestResult({
     root.querySelector("[data-guest-date]").textContent = day(result.finishedAt);
     root.querySelector("[data-guest-wearing]").textContent = body.wearing_text;
     root.querySelector("[data-guest-section]").innerHTML = body.html;
+    offerClearing(root, navigate);
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {

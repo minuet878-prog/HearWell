@@ -66,7 +66,7 @@
         </details>
     </div>
 </details>
-{% if submission.pk %}{% include "screening/result_rows.html" %}{% endif %}
+{% if submission.pk %}{% include "screening/result_rows.html" %}{% else %}{% include "screening/guest_clear.html" %}{% endif %}
 </div>
 {# HHIA-S's limits stay outside the fold, as the owner chose (text-heavy pages tidy-up). #}
 {% if submission.questionnaire.definition.result_note %}
