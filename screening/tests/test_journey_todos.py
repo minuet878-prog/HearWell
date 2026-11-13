@@ -329,6 +329,20 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.assertEqual(guide.count('<div class="todos">'), 1)
         self.assertIn('<div class="todos">', self.here(guide))
 
+    def test_steps_not_needed_list_no_to_dos(self):
+        # Spec #478 acceptance 6 for 目前不需要: within the normal range steps 3 and 4 open to
+        # say what they are, without step 4's own to-dos; step 5's card lists its own.
+        self.answer(on=date(2026, 9, 12))
+        self.make(NORMAL, NORMAL)
+        main = self.main()
+        not_needed = re.findall(r'<li class="journey-step is-not-needed.*?</li>', main, re.S)
+        self.assertEqual(len(not_needed), 2)
+        for step in not_needed:
+            self.assertIn("目前不需要", step)
+            self.assertNotIn('class="todo', step)
+        self.assertEqual(main.count('<div class="todos">'), 1)
+        self.assertEqual(listed(self.current_card(main)), [("step-5-calendar", True, False)])
+
     def test_step_1_s_card_has_no_list(self):
         # Spec #478 acceptance 3.
         self.make(PTA_55, PTA_55)
