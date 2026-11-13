@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import models
+from screening.care_journey import care_journey
 from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, current_rounds, stop_todos
 from screening.main_flow import get_user_state
@@ -31,11 +32,18 @@ from screening.models import (
     User,
 )
 from screening.questionnaires import hhia_s, ioi_ha, ssq12_tw, thi
+from screening.questionnaires.results import (
+    AverageResult,
+    GradedResult,
+    NormResult,
+    SubscaleResult,
+)
 from screening.tests import (
     test_account_deletion,
     test_care_journey,
     test_consent,
     test_home_journey,
+    test_result_next_step,
 )
 from screening.tests.helpers import consented_user
 from screening.views.guide import here_stop
@@ -274,6 +282,32 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         ends = (main.find('<li class="journey-step', start), main.index("</ol>", start))
         return main[start : min(end for end in ends if end != -1)]
 
+    def here_slug(self, guide):
+        """The 您在這裡 stop on my guide."""
+        return re.search(r'<li class="route-stop is-here[^"]*" data-stop="([^"]+)"', guide).group(1)
+
+    def card_title(self, card):
+        return re.search(r'<h3 class="journey-card-title">([^<]*)</h3>', card).group(1)
+
+    def current_number(self, main):
+        """The 現在這一步's number on the home page."""
+        found = re.search(
+            r'<li class="journey-step is-current[^>]*aria-current="step">\s*'
+            r'<span class="journey-dot">(\d)</span>',
+            main,
+        )
+        return int(found.group(1))
+
+    def about_bodies(self, main):
+        """(state, what opens under it) of each step but the 現在這一步, in order."""
+        found = []
+        for step in main.split('<li class="journey-step is-')[1:]:
+            state = step[: step.index('"')].split()[0]
+            if state != "current":
+                body = re.search(r'<div class="journey-about-body">(.*?)</div>', step, re.S)
+                found.append((state, body.group(1)))
+        return found
+
     def words(self, html):
         """Each to-do's words as a screen reader reads them, by key."""
         return {key: self.text(body) for key, body in TODO_ITEM.findall(html)}
@@ -341,6 +375,92 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         ring = re.search(r'<span class="todo-ring" aria-hidden="true">(.*?)</span>', here, re.S)
         self.assertIn("<svg", ring.group(1))
 
+    def test_step_4_s_home_card_lists_its_own_to_dos(self):
+        # Spec #478 acceptance 4: fitted 40 days ago, no 二十五號表 (paying otherwise).
+        self.answer()
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 10, 3), subsidy=Subsidy.OTHER
+        )
+        main = self.main()
+        card = self.current_card(main)
+        self.assertEqual(self.current_number(main), 4)
+        self.assertEqual(self.card_title(card), "戴滿 3 個月做效益問卷")
+        self.assertEqual(
+            listed(card), [("step-4-adjust", True, False), ("step-4-ioi-ha", False, False)]
+        )
+
+    def test_step_4_s_home_card_lists_form_25_s_to_dos(self):
+        # Spec #478 acceptance 5: fitted 2026/10/01 at 中階型 with 身障補助, form 25 not done;
+        # my guide's 您在這裡 is 二十五號表 with the same list.
+        self.answer()
+        AidAndSubsidy.objects.create(
+            user=self.user,
+            fitted_on=date(2026, 10, 1),
+            subsidy=Subsidy.DISABILITY,
+            level=AidLevel.MID,
+        )
+        main, guide = self.main(), self.guide()
+        card = self.current_card(main)
+        self.assertEqual(self.current_number(main), 4)
+        form_25 = [("form-25-book", True, False), ("form-25-answer", False, False)]
+        self.assertEqual(listed(card), form_25)
+        self.assertEqual(self.here_slug(guide), "form-25")
+        self.assertEqual(listed(self.here(guide)), form_25)
+
+    def test_steps_done_and_after_open_with_no_to_dos(self):
+        # Spec #478 acceptance 6: at form 9 steps 1 and 2 are done and 4 and 5 after; what each
+        # opens to has no to-do (目前不需要's: test_steps_not_needed_list_no_to_dos).
+        self.at_form_9()
+        bodies = self.about_bodies(self.main())
+        self.assertEqual([state for state, _ in bodies], ["done", "done", "later", "later"])
+        for state, body in bodies:
+            with self.subTest(state=state):
+                self.assertNotIn('class="todo', body)
+                self.assertNotIn("要做的事", body)
+
+    def test_before_reading_before_you_go_its_chapter_waits_in_an_empty_ring(self):
+        # Spec #478 acceptance 8 as aligned on 2026-11-13 (phase-2-grill-decisions.md).
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        main, guide = self.main(), self.guide()
+        self.assertEqual(self.here_slug(guide), "before-you-go")
+        for card in (self.current_card(main), self.here(guide)):
+            self.assertEqual(listed(card)[0], ("before-you-go-read", False, False))
+            self.assertEqual(
+                self.words(card)["before-you-go-read"],
+                "看完「去找聽力師之前」這一章 ，未完成。 做完就會往下一站",
+            )
+            ring = re.search(r'<span class="todo-ring" aria-hidden="true">(.*?)</span>', card, re.S)
+            self.assertEqual(ring.group(1), "")
+
+    def test_reading_before_you_go_moves_both_pages_on_without_its_to_do(self):
+        # Spec #478 acceptance 8 as aligned: the chapter read, both 您在這裡 are the next stop
+        # and the chapter's to-do is listed no more.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        self.client.get(reverse("guide_chapter", args=["before-you-go"]))
+        main, guide = self.main(), self.guide()
+        assessment = [("assessment-book", True, False), ("assessment-answer", False, False)]
+        self.assertEqual(self.here_slug(guide), "assessment")
+        self.assertEqual(listed(self.here(guide)), assessment)
+        self.assertEqual(listed(self.current_card(main)), assessment)
+        self.assertNotIn("before-you-go-read", main + guide)
+
+    def test_answering_form_9_done_moves_both_pages_on_to_the_notice(self):
+        # Spec #478 acceptance 9 as aligned (2026-11-13): 回答九號表完成了 on the route, both
+        # pages are at 等待核定公文. A part of a stop done shows ticked instead:
+        # test_a_done_automatic_to_do_is_a_ticked_ring_saying_so.
+        self.at_form_9()
+        self.client.post(reverse("route_answer"), {"stop": "form-9", "form_9_done": "True"})
+        main, guide = self.main(), self.guide()
+        notice = [("notice-answer", False, False)]
+        self.assertEqual(self.here_slug(guide), "notice")
+        self.assertEqual(listed(self.here(guide)), notice)
+        card = self.current_card(main)
+        self.assertEqual(self.card_title(card), "等待核定公文")
+        self.assertEqual(listed(card), notice)
+        self.assertNotIn("form-9-answer", main + guide)
+
     def test_home_and_my_guide_list_the_same_to_dos_for_form_9(self):
         # Spec #478 acceptance 2; on my guide the list sits between the button and the question.
         self.at_form_9()
@@ -389,6 +509,31 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.assertNotIn("要做的事", content)
 
 
+class Ticket480ResultPagesTests(TestCase):
+    """Spec #478 acceptance 7 on each kind of result page: graded (HHIE-S, HHIA-S, THI),
+    average (SSQ12), norm comparison (IOI-HA) and subscale (SADL)."""
+
+    fixtures = test_result_next_step.ResultNextStepTests.fixtures
+    setUpTestData = test_result_next_step.ResultNextStepTests.setUpTestData
+    sign_in = test_result_next_step.ResultNextStepTests.sign_in
+    answer_all = test_result_next_step.ResultNextStepTests.answer_all
+    result = test_result_next_step.ResultNextStepTests.result
+
+    def test_no_result_page_lists_to_dos(self):
+        self.sign_in("todo_result_pages")
+        submissions = self.answer_all()
+        kinds_of_result = {type(s.result) for s in submissions.values()}
+        self.assertEqual(kinds_of_result, {GradedResult, AverageResult, NormResult, SubscaleResult})
+        # The 現在這一步 has to-dos the home page lists, so none here is none to list.
+        self.assertNotEqual(care_journey(self.user, timezone.localdate()).card.todos, ())
+        for code, submission in submissions.items():
+            with self.subTest(code=code):
+                main = self.result(submission)
+                self.assertIn('<div class="result-next">', main)
+                for drawn in ('class="todos', 'class="todo ', "要做的事", "journey_todo_tick"):
+                    self.assertNotIn(drawn, main)
+
+
 class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
     """#481: a 手動待辦 ticked and unticked by its owner, kept, and shown alike on the home page
     and my guide; an automatic one never takes a tick."""
@@ -397,6 +542,9 @@ class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
     guide = Ticket480TodoPagesTests.guide
     here = Ticket480TodoPagesTests.here
     current_card = Ticket480TodoPagesTests.current_card
+    current_number = Ticket480TodoPagesTests.current_number
+    here_slug = Ticket480TodoPagesTests.here_slug
+    card_title = Ticket480TodoPagesTests.card_title
 
     def tick(self, key, ticked=True, next_url="/", **headers):
         data = {"todo": key, "ticked": "1" if ticked else "0", "next": next_url}
@@ -429,6 +577,27 @@ class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
         self.make(NORMAL, NORMAL)
         self.tick("step-5-calendar")
         self.assertEqual(listed(self.current_card(self.main())), [("step-5-calendar", True, True)])
+
+    def test_every_manual_to_do_ticked_leaves_the_home_page_at_form_9(self):
+        # Spec #478 acceptance 13: 預約開九號表 is form 9's one manual to-do.
+        self.at_form_9()
+        self.tick("form-9-book")
+        main = self.main()
+        self.assertEqual(self.current_number(main), 3)
+        card = self.current_card(main)
+        self.assertEqual(
+            listed(card), [("form-9-book", True, True), ("form-9-answer", False, False)]
+        )
+        self.assertEqual(self.here_slug(self.guide()), "form-9")
+
+    def test_none_ticked_form_9_done_moves_the_home_page_on(self):
+        # Spec #478 acceptance 14: no tick, 回答九號表完成了, the next stop.
+        self.at_form_9()
+        self.client.post(reverse("route_answer"), {"stop": "form-9", "form_9_done": "True"})
+        self.assertFalse(TodoTick.objects.exists())
+        card = self.current_card(self.main())
+        self.assertEqual(self.card_title(card), "等待核定公文")
+        self.assertEqual(listed(card), [("notice-answer", False, False)])
 
     def test_an_automatic_to_do_is_refused(self):
         # Spec #478 acceptance 10: ticked or unticked, nothing changes.
@@ -697,6 +866,11 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         self.at_form_25()
         manual = [todo.key for todos in STOP_TODOS.values() for todo in todos if not todo.rule]
         self.tick(*manual)
+        for slug, todos in STOP_TODOS.items():
+            with self.subTest(slug, before=True):
+                self.assertEqual(
+                    self.ticked(slug), {todo.key: True for todo in todos if not todo.rule}
+                )
         self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
         self.fit(date(2026, 10, 5), Subsidy.DISABILITY, AidLevel.MID)
         self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, False))
@@ -721,6 +895,8 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         self.fit(date(2026, 9, 25), Subsidy.DISABILITY, AidLevel.MID)
         self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
         self.assertEqual(self.ticked("before-you-go"), {"before-you-go-book": True})
+        self.client.post(reverse("route_answer"), {"stop": "form-25", "form_25_done": "True"})
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, True))
 
     def test_the_first_fitting_date_keeps_the_ticks(self):
         # 23: before any 助聽器與補助資料, and once some were answered without the date.
@@ -812,6 +988,7 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         ssq12 = Questionnaire.objects.create(questionnaire_name="SSQ12", code=ssq12_tw.CODE)
         self.questionnaires[ssq12_tw.CODE] = ssq12
         self.answer(code=thi.CODE, on=date(2026, 11, 10))
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
         self.answer(code=ssq12_tw.CODE, on=date(2026, 11, 11))
         self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
 
@@ -889,11 +1066,32 @@ class Ticket482RoundDataTests(test_home_journey.HomeJourneyTestCase):
     saying whether it is in the current round."""
 
     tick = Ticket481TickTests.tick
+    current_card = Ticket480TodoPagesTests.current_card
 
     def tick_at(self, key, hour, minute):
         moment = timezone.make_aware(datetime(2026, 11, 12, hour, minute))
         with patch("django.utils.timezone.now", return_value=moment):
             self.tick(key)
+
+    def test_a_retest_unticks_step_5_on_the_home_page_and_the_download_keeps_it(self):
+        # Spec #478 acceptance 19, the one retest seen both ways.
+        self.answer(on=date(2026, 9, 12))
+        self.make(NORMAL, NORMAL)
+        self.tick_at("step-5-calendar", 9, 0)
+        self.assertEqual(listed(self.current_card(self.main())), [("step-5-calendar", True, True)])
+        self.answer(on=date(2026, 11, 10))
+        self.assertEqual(listed(self.current_card(self.main())), [("step-5-calendar", True, False)])
+        data = json.loads(self.client.get(reverse("download_my_data")).content)
+        self.assertEqual(
+            data["journey_todos"],
+            [
+                {
+                    "todo": "把下次篩檢日期記在月曆或手機上",
+                    "ticked_at": "2026-11-12T09:00:00+08:00",
+                    "current_round": False,
+                }
+            ],
+        )
 
     def test_the_download_says_which_ticks_are_in_the_current_round(self):
         aid = AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 3))
