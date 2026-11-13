@@ -100,6 +100,18 @@ class LoginRequiredTests(TestCase):
                     fetch_redirect_response=False,
                 )
 
+    def test_a_form_s_address_still_takes_only_post(self):
+        # #552 acceptance 8: form_address took the place of require_http_methods(["POST"]).
+        self.client.force_login(consented_user(username="sender"))
+        for url in (
+            reverse("journey_todo_tick"),
+            reverse("route_answer"),
+            reverse("report_share_create"),
+            reverse("report_share_cancel", args=[1]),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 405)
+
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"
