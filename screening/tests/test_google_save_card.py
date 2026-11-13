@@ -5,6 +5,7 @@ asked first, and the monthly 保存 count split by how the saving account was re
 import json
 import uuid
 from datetime import date
+from unittest import mock
 from urllib.parse import parse_qsl, quote, urlsplit
 
 from django.core.cache import cache
@@ -14,6 +15,7 @@ from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 
 from screening.models import GuestMonth, SignInMethod, Submission, User
+from screening.models.sign_in import SignInMethodQuerySet
 from screening.tests import test_guest_save
 from screening.tests.helpers import GOOGLE_AUTHORIZE, FakeGoogle, consented_user, google_on
 from screening.tests.test_line_in_app_browser import LINE_ANDROID, LINE_IOS, SAFARI
@@ -146,6 +148,24 @@ class AccountThereAlreadyTests(GoogleSaveTestCase):
         self.client.post(consent, {"agree": "", "next": save})
         self.assertContains(self.client.get(save), test_guest_save.ASK_TITLE)
         self.assertFalse(Submission.objects.exists())
+
+    def test_one_look_decides_both_the_account_and_whether_to_ask(self):
+        # Codex review Spec 1: another session adds this Google to 阿明的帳號 while the callback
+        # runs. Whatever the callback saw when it looked, it never signs into that account with
+        # the save-straight-away way a brand-new account gets.
+        real = SignInMethodQuerySet.for_identity
+        looks = []
+
+        def bound_meanwhile(queryset, identity):
+            looks.append(identity)
+            if len(looks) == 2:
+                SignInMethod.objects.filter(user=self.account).update(subject="google-race")
+            return real(queryset, identity)
+
+        with mock.patch.object(SignInMethodQuerySet, "for_identity", bound_meanwhile):
+            response = self.from_the_card(sub="google-race", email="ming@example.com")
+        self.assertRedirects(response, reverse("google_name"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_an_admin_account_is_turned_away_as_from_the_login_page(self):
         self.account.is_staff = True

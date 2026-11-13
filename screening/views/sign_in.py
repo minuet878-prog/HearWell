@@ -117,13 +117,24 @@ def _save_card(request, identity):
     then the save page. An account Google already knows is asked first, naming it, as any login
     with guest results is (the Google this phone uses may be a family member's); only a new
     account is taken as the guest's own and saves straight away."""
-    known = SignInMethod.objects.for_identity(identity).exists()
+    # One look decides both: a second could find an account the first did not, and sign into it
+    # without asking (Codex review of #505, Spec 1).
+    method = _method(identity)
     save = reverse("guest_save")
-    return _sign_in(request, replace(identity, next=save if known else f"{save}?from=card"))
+    next_url = save if method is not None else f"{save}?from=card"
+    return _signed_in_as(request, replace(identity, next=next_url), method)
 
 
 def _sign_in(request, identity):
-    method = SignInMethod.objects.select_related("user").for_identity(identity).first()
+    return _signed_in_as(request, identity, _method(identity))
+
+
+def _method(identity):
+    """The sign-in method of who came back, with its account; None for a code never seen."""
+    return SignInMethod.objects.select_related("user").for_identity(identity).first()
+
+
+def _signed_in_as(request, identity, method):
     if method is not None:
         user = method.user
         # Admin accounts sign in with a password only (#505 acceptance 11, Q16); login() skips
