@@ -6,7 +6,7 @@ import html
 import re
 from contextlib import nullcontext
 from unittest import mock
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import parse_qsl, quote, urlsplit
 
 from django.test import TestCase
 from django.urls import reverse
@@ -24,7 +24,8 @@ later = test_confirm_identity.later
 LINE = test_line_in_app_browser.LINE_IOS
 
 ADD = "/account/sign-in-methods/google/add"
-REMOVE = "/account/sign-in-methods/google/remove"
+REMOVE = "/account/sign-in-methods/google/remove"  # before the #505 review: now 404
+REMOVE_BUTTON = '<input type="hidden" name="action" value="remove_google">'
 CONFIRM_ADD = "/account/confirm?action=add_google"
 CONFIRM_REMOVE = "/account/confirm?action=remove_google"
 
@@ -76,7 +77,7 @@ class GroupTests(TestCase):
         self.assertRegex(group, r"Google</span>\s*<span[^>]*>還沒有新增")
         self.assertIn(f'href="{ADD}" aria-label="新增 Google 登入">新增</a>', group)
         self.assertIn("新增或移除之前，會先請您確認是本人。", group)
-        self.assertNotIn(REMOVE, group)
+        self.assertNotIn(REMOVE_BUTTON, group)
         # Between 我的帳號 and 家人與資料 (D5).
         content = response.content.decode()
         self.assertLess(content.index("我的帳號"), content.index('id="sign-in-methods"'))
@@ -89,7 +90,7 @@ class GroupTests(TestCase):
         SignInMethod.objects.filter(pk=method.pk).update(created_at=added)
         group = self.settings_group(user)
         self.assertRegex(group, r"Google</span>\s*<span[^>]*>2026/11/20 新增")
-        self.assertIn(f'action="{REMOVE}"', group)
+        self.assertIn(REMOVE_BUTTON, group)
         self.assertIn(
             'class="danger-link" type="submit" aria-label="移除 Google 登入">移除<', group
         )
@@ -101,7 +102,7 @@ class GroupTests(TestCase):
         group = self.settings_group(google_only_user())
         self.assertRegex(group, r"帳號密碼</span>\s*<span[^>]*>沒有設定")
         self.assertRegex(group, r"Google</span>\s*<span[^>]*>註冊時使用")
-        self.assertNotIn(REMOVE, group)
+        self.assertNotIn(REMOVE_BUTTON, group)
         self.assertNotIn(ADD, group)
         self.assertIn("這是您目前唯一的登入方式，所以不能移除。", group)
 
@@ -134,12 +135,21 @@ class GroupTests(TestCase):
         user = password_user()
         add_google(user)
         group = self.settings_group(user, user_agent=LINE)
-        self.assertIn(REMOVE, group)
+        self.assertIn(REMOVE_BUTTON, group)
         self.assertNotIn("用 Safari／Chrome 打開", group)
 
 
-def confirm_with_password(test, confirm_url):
-    response = test.client.post(confirm_url, {"password": PASSWORD})
+def form_csrf_token(response):
+    """The CSRF token in a page's form, as a browser sends it back."""
+    return re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', response.content.decode())[1]
+
+
+def confirm_with_password(test, confirm_url, csrf=False):
+    data = {"password": PASSWORD}
+    if csrf:
+        # A client that checks CSRF: the token from the confirm page's form.
+        data["csrfmiddlewaretoken"] = form_csrf_token(test.client.get(confirm_url))
+    response = test.client.post(confirm_url, data)
     test.assertEqual(response.status_code, 302)
     return response
 
@@ -341,7 +351,8 @@ class AdminTests(TestCase):
     def test_removing_is_refused(self):
         # An admin should never have one; if one is there, removing is still not theirs to do.
         add_google(self.admin)
-        self.assertEqual(self.client.post(REMOVE).status_code, 403)
+        self.assertEqual(self.client.get(CONFIRM_REMOVE).status_code, 403)
+        self.assertEqual(self.client.post(CONFIRM_REMOVE, {"password": PASSWORD}).status_code, 403)
         self.assertTrue(self.admin.sign_in_methods.exists())
 
     def test_made_admin_during_the_trip_nothing_is_added(self):
@@ -357,29 +368,54 @@ class AdminTests(TestCase):
 
 @google_on
 class RemoveTests(TestCase):
-    """#505 acceptance 26, 27, 29: 移除 Google 登入."""
+    """#505 acceptance 26, 27 and the owner's call on the #505 review: 移除 Google 登入 asks for
+    the password on the confirm page, and the right password removes it in that same request."""
 
     def setUp(self):
         self.user = password_user(email="wang.ming@example.com")
         add_google(self.user, sub="google-own")
+        self.client = self.client_class(enforce_csrf_checks=True)
         self.client.force_login(self.user)
 
+    def send_password(self, password=PASSWORD):
+        """Type the password on the confirm page and press 確認, as the browser does: with the
+        CSRF token the page gave."""
+        token = form_csrf_token(self.client.get(CONFIRM_REMOVE))
+        return self.client.post(
+            CONFIRM_REMOVE, {"password": password, "csrfmiddlewaretoken": token}
+        )
+
+    def send_password_status(self):
+        """The status of a POST with the password and this site's CSRF token, for when the page
+        is refused and has no form to take the token from."""
+        self.client.get(reverse("account_settings"))
+        token = self.client.cookies["csrftoken"].value
+        return self.client.post(
+            CONFIRM_REMOVE, {"password": PASSWORD, "csrfmiddlewaretoken": token}
+        ).status_code
+
     # 26
-    def test_removing_after_the_password_and_google_no_longer_knows_it(self):
-        response = self.client.post(REMOVE)
-        self.assertRedirects(response, CONFIRM_REMOVE)
+    def test_the_settings_button_leads_to_the_confirm_page(self):
+        group = methods_group(self.client.get(reverse("account_settings")))
+        form = re.search(r'<form method="get" action="([^"]+)">(.*?)</form>', group, re.S)
+        self.assertEqual(form[1], reverse("confirm_identity"))
+        self.assertIn('<input type="hidden" name="action" value="remove_google">', form[2])
+        self.assertIn(
+            '<button class="danger-link" type="submit" aria-label="移除 Google 登入">移除</button>',
+            form[2],
+        )
+        page = self.client.get(CONFIRM_REMOVE)
         self.assertContains(
-            self.client.get(CONFIRM_REMOVE), "接下來要<strong>移除 Google 登入</strong>。"
+            page, "接下來要<strong>移除 Google 登入</strong>。請輸入 wang_ming 的密碼。"
         )
         self.assertTrue(self.user.sign_in_methods.exists())
-        # The right password removes it straight away: the browser takes the POST on (307).
-        response = self.client.post(CONFIRM_REMOVE, {"password": PASSWORD}, follow=True)
-        self.assertEqual(
-            response.redirect_chain, [(REMOVE, 307), (reverse("account_settings"), 302)]
-        )
-        self.assertEqual(
-            [str(message) for message in response.context["messages"]], ["已移除 Google 登入。"]
-        )
+
+    # 26
+    def test_the_right_password_removes_it_and_google_no_longer_knows_it(self):
+        response = self.send_password()
+        settings_group = f"{reverse('account_settings')}#sign-in-methods"
+        self.assertRedirects(response, settings_group, fetch_redirect_response=False)
+        self.assertEqual(messages_on(self.client), ["已移除 Google 登入。"])
         self.assertFalse(SignInMethod.objects.exists())
         # Signing in with that Google is now a code never seen: off to make a new account.
         self.client.logout()
@@ -389,76 +425,55 @@ class RemoveTests(TestCase):
         self.assertRedirects(response, reverse("google_name"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_a_link_cannot_remove_even_when_confirmed(self):
-        # A page elsewhere can make the browser GET any URL (an <img>), with this session.
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
-        self.assertEqual(self.client.get(REMOVE).status_code, 405)
-        self.assertTrue(self.user.sign_in_methods.exists())
-
-    def test_back_on_the_confirm_page_it_is_shown_not_sent_to_a_get(self):
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})  # the 307 not followed
-        response = self.client.get(CONFIRM_REMOVE)
-        self.assertContains(response, "接下來要<strong>移除 Google 登入</strong>。")
+    # 26, 32
+    def test_a_wrong_password_removes_nothing(self):
+        response = self.send_password("wrong")
+        self.assertContains(response, "密碼不正確")
         self.assertTrue(self.user.sign_in_methods.exists())
 
     def test_a_post_from_another_site_is_refused(self):
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
-        # The same session, posting without this site's CSRF token.
-        other_site = self.client_class(enforce_csrf_checks=True)
-        other_site.cookies = self.client.cookies
-        self.assertEqual(other_site.post(REMOVE).status_code, 403)
+        # The same session, posting the right password without this site's CSRF token.
+        response = self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
+        self.assertEqual(response.status_code, 403)
         self.assertTrue(self.user.sign_in_methods.exists())
 
-    def test_a_confirmation_for_another_action_does_not_remove(self):
-        # 確認本人 for 新增 is left unused: this account already has Google, so 新增 goes back.
-        confirm_with_password(self, CONFIRM_ADD)
-        self.assertRedirects(self.client.get(ADD), reverse("account_settings"))
-        self.assertRedirects(self.client.post(REMOVE), CONFIRM_REMOVE)
+    def test_opening_the_page_removes_nothing_even_after_confirming(self):
+        # A page elsewhere can make the browser GET any URL (an <img>), with this session.
+        confirm_with_password(self, CONFIRM_ADD, csrf=True)
+        self.assertContains(self.client.get(CONFIRM_REMOVE), "請輸入 wang_ming 的密碼")
         self.assertTrue(self.user.sign_in_methods.exists())
 
-    def test_the_settings_page_removes_with_a_form(self):
-        group = methods_group(self.client.get(reverse("account_settings")))
-        self.assertRegex(
-            group,
-            rf'<form method="post" action="{REMOVE}">\s*<input type="hidden" '
-            r'name="csrfmiddlewaretoken"[^>]*>\s*<button class="danger-link" type="submit" '
-            r'aria-label="移除 Google 登入">移除</button>',
-        )
+    def test_the_old_remove_address_is_gone(self):
+        self.assertEqual(self.client.get(REMOVE).status_code, 404)
 
     # 27
     def test_the_only_way_in_cannot_be_removed_even_when_sent_directly(self):
         user = google_only_user(username="lin_mei", sub="google-only")
         self.client.force_login(user)
-        test_confirm_identity.confirm_with_google(self, sub="google-only", action="remove_google")
-        self.assertEqual(self.client.post(REMOVE).status_code, 403)
-        self.assertEqual(self.client.get(REMOVE).status_code, 405)
+        self.assertEqual(self.client.get(CONFIRM_REMOVE).status_code, 403)
+        self.assertEqual(self.send_password_status(), 403)
         self.assertTrue(user.sign_in_methods.exists())
-
-    # 29
-    def test_after_5_minutes_confirm_again(self):
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
-        with later(5 * 60 + 1):
-            response = self.client.post(REMOVE)
-            self.assertRedirects(response, CONFIRM_REMOVE, fetch_redirect_response=False)
-        self.assertTrue(self.user.sign_in_methods.exists())
-
-    def test_without_confirming_nothing_is_removed(self):
-        self.assertRedirects(self.client.post(REMOVE), CONFIRM_REMOVE)
-        self.assertTrue(self.user.sign_in_methods.exists())
 
     def test_only_this_accounts_google(self):
         # Another account's Google is never this account's to remove.
         other = google_only_user(username="lin_mei", sub="google-other")
         SignInMethod.objects.filter(user=self.user).delete()
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
-        self.assertEqual(self.client.post(REMOVE).status_code, 404)
+        self.assertEqual(self.client.get(CONFIRM_REMOVE).status_code, 404)
+        self.assertEqual(self.send_password_status(), 404)
         self.assertTrue(other.sign_in_methods.exists())
 
     def test_without_google_keys_is_404(self):
-        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
         with self.settings(GOOGLE_CLIENT_ID=""):
-            self.assertEqual(self.client.post(REMOVE).status_code, 404)
+            self.assertEqual(self.client.get(CONFIRM_REMOVE).status_code, 404)
+            self.assertEqual(self.send_password_status(), 404)
         self.assertTrue(self.user.sign_in_methods.exists())
+
+    def test_logged_out_goes_to_log_in(self):
+        self.client.logout()
+        response = self.client.get(CONFIRM_REMOVE)
+        self.assertRedirects(
+            response, f"{reverse('login')}?next={quote(CONFIRM_REMOVE)}", target_status_code=200
+        )
 
 
 @google_on

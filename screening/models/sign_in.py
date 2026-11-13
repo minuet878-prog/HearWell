@@ -37,3 +37,11 @@ class SignInMethod(models.Model):
 
     def __str__(self):
         return f"{self.user} {self.get_provider_display()}"
+
+    def can_be_removed(self):
+        """Whether its account can still be signed into without it (#505 acceptance 27): a
+        usable password, or another sign-in method."""
+        return (
+            self.user.has_usable_password()
+            or self.user.sign_in_methods.exclude(pk=self.pk).exists()
+        )

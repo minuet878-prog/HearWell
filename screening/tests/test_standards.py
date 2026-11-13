@@ -434,7 +434,6 @@ NO_HEALTH_DATA = {
     "delete_account": "how many records would go, not their answers, scores or audiograms",
     "confirm_identity": "the password field or the Google button, and what comes next",
     "google_add": "answers with a redirect, to 確認本人 or to Google",
-    "google_remove": "answers with a redirect, to 確認本人 or back to account settings",
     "report_share_create": "POST only, answers with a redirect",
     "report_share_cancel": "POST only, answers with a redirect",
 }

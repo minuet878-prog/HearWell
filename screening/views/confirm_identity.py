@@ -11,10 +11,12 @@ For a view that needs it (#511):
 
 from urllib.parse import urlsplit
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseRedirect, QueryDict
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -22,15 +24,17 @@ from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 from screening.forms import PasswordConfirmForm
+from screening.models import SignInMethod
 from screening.views.common import line_way_out
 
-# What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15), the page it
-# leads back to, and whether that page acts on a POST only, so the password's POST is taken on
-# there (a 307) and the action is done without a second press.
+# What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
+# leads back to. 移除 Google 登入 has none: the right password removes it on this page, in the same
+# request (the owner's call on the #505 review), so the password is sent once and only here. It
+# needs the password: Google is the only provider, and the only way in cannot be removed.
 ACTIONS = {
-    "delete_account": ("刪除帳號", "delete_account", False),
-    "add_google": ("新增 Google 登入", "google_add", False),
-    "remove_google": ("移除 Google 登入", "google_remove", True),
+    "delete_account": ("刪除帳號", "delete_account"),
+    "add_google": ("新增 Google 登入", "google_add"),
+    "remove_google": ("移除 Google 登入", None),
 }
 
 # Which action the owner last confirmed for, and when: {"action", "at" (a Unix time)}; taken out
@@ -44,6 +48,7 @@ NOT_YOURS = "這不是您帳號上的 Google。請改用註冊時用的那個 Go
 EXPIRED = "確認已經過期，請再確認一次。"  # W18
 # Cancelled, refused or Google down: no wording in the mockup (a draft for the owner to settle).
 NOT_CONFIRMED = "沒有完成 Google 確認，請再試一次。"
+REMOVED = "已移除 Google 登入。"
 
 
 def _fresh(confirmed):
@@ -117,25 +122,43 @@ def providers(user):
     ]
 
 
+def _google_to_remove(user):
+    """The account's Google sign-in, for 移除 Google 登入 (#505 acceptance 26-28): without the
+    Google keys or one on the account, 404; an admin account, or its only way in, 403."""
+    if not oidc.enabled("google"):
+        raise Http404
+    if user.is_admin:
+        raise PermissionDenied
+    method = get_object_or_404(SignInMethod, user=user, provider=SignInMethod.Provider.GOOGLE)
+    if not method.can_be_removed():
+        raise PermissionDenied
+    return method
+
+
 @never_cache
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "POST"])  # the POST is the form's, with this site's CSRF token
 def confirm_identity(request):
     action = request.GET.get("action")
     if action not in ACTIONS:
         raise Http404
-    words, page, on_post = ACTIONS[action]
-    # Back here already confirmed (from Google): on to the action's page; one acting on a POST
-    # only is not opened with a GET, so the page is shown again instead.
-    if is_confirmed(request, action) and not on_post:
+    words, page = ACTIONS[action]
+    # Refused before the password is asked for, as on the POST that removes it.
+    google = _google_to_remove(request.user) if action == "remove_google" else None
+    # Back here already confirmed (from Google): on to the action's page.
+    if page is not None and is_confirmed(request, action):
         return redirect(page)
     user = request.user
     form = None
     if user.has_usable_password():
         form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
         if form.is_valid():
+            if google is not None:
+                google.delete()
+                messages.success(request, REMOVED)
+                return HttpResponseRedirect(f"{reverse('account_settings')}#sign-in-methods")
             _confirm(request, action)
-            return redirect(page, preserve_request=on_post)
+            return redirect(page)
     elif request.method == "POST":
         # No password: a provider on the account, asked to show its account chooser.
         provider = request.POST.get("provider")
