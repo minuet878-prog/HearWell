@@ -3634,7 +3634,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     todos = card.locator(".todos")
                     # #481: a manual one's state is its checkbox's, not words.
                     expect(todos.get_by_role("listitem")).to_have_text(
-                        ["預約開九號表", "回答九號表完成了，未完成。做完會自動打勾"]
+                        ["預約開九號表", "回答九號表完成了，未完成。做完就會往下一站"]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
                     self.assertEqual(self.main().locator(".btn-primary").count(), 1)

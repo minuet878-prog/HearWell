@@ -276,8 +276,20 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             {
                 "audiogram-test": "到醫院或診所做聽力檢查",
                 "audiogram-copy": "跟醫院或診所要一份聽力圖",
-                "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完會自動打勾",
+                "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完就會往下一站",
             },
+        )
+
+    def test_step_4_s_own_automatic_to_do_says_it_finishes_the_step(self):
+        # The owner on 2026-11-13: a stop's says it moves the route on, step 4's that the step is
+        # done (phase-2-grill-decisions.md); fitted 40 days ago, bought paying otherwise.
+        self.answer()
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 10, 3), subsidy=Subsidy.OTHER
+        )
+        todos = self.part(self.current_card(self.main()), "todos")
+        self.assertEqual(
+            self.words(todos)["step-4-ioi-ha"], "做完助聽器效益問卷 ，未完成。 做完這一步就完成"
         )
 
     def test_a_done_automatic_to_do_is_a_ticked_ring_saying_so(self):

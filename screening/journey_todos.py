@@ -16,6 +16,7 @@ class JourneyTodo:
     text: str
     manual: bool  # 手動待辦, ticked by the user; else 自動待辦, ticked from the records
     done: bool
+    hint: str = ""  # an 自動待辦's muted line under its words; a 手動待辦 has none
 
 
 @dataclass(frozen=True)
@@ -81,6 +82,13 @@ STEP_TODOS = {
 }
 
 
+# An 自動待辦's muted line, the owner's on 2026-11-13 (phase-2-grill-decisions.md): a stop's is
+# mostly the stop's own end, so done, the route moves on and the card never shows it ticked.
+DONE_HINT = "已自動打勾"
+STOP_HINT = "做完就會往下一站"
+STEP_HINT = "做完這一步就完成"
+
+
 # Every to-do's wording by its key, and which are 手動待辦, the only ones a tick is kept for (#481).
 _ALL_TODOS = tuple(todo for todos in (*STOP_TODOS.values(), *STEP_TODOS.values()) for todo in todos)
 TODO_TEXTS = {todo.key: todo.text for todo in _ALL_TODOS}
@@ -113,22 +121,21 @@ def _latest_life_impact(user):
 
 def stop_todos(slug, state):
     """A route stop's 待辦, judged on state (a FittingState), its ticks the manual ones'."""
-    return _judged(STOP_TODOS.get(slug, ()), state, state.ticked)
+    return _judged(STOP_TODOS.get(slug, ()), state, state.ticked, STOP_HINT)
 
 
 def step_todos(number, done, ticked):
     """A 照顧旅程 step's own 待辦; done, whether the step is done; ticked, the keys of the
     手動待辦 ticked (FittingState.ticked)."""
-    return _judged(STEP_TODOS.get(number, ()), done, ticked)
+    return _judged(STEP_TODOS.get(number, ()), done, ticked, STEP_HINT)
 
 
-def _judged(todos, subject, ticked):
-    return tuple(
-        JourneyTodo(
-            todo.key,
-            todo.text,
-            todo.rule is None,
-            todo.key in ticked if todo.rule is None else bool(todo.rule(subject)),
-        )
-        for todo in todos
-    )
+def _judged(todos, subject, ticked, hint):
+    listed = []
+    for todo in todos:
+        if todo.rule is None:
+            listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in ticked))
+        else:
+            done = bool(todo.rule(subject))
+            listed.append(JourneyTodo(todo.key, todo.text, False, done, DONE_HINT if done else hint))
+    return tuple(listed)
