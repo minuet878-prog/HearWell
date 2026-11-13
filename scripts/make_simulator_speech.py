@@ -6,7 +6,8 @@ never written anywhere.
 
 1. In the Google Cloud console, enable the Cloud Text-to-Speech API and create an API key
    restricted to that API.
-2. From the repository root run (the folder must not exist yet; it is outside the repository):
+2. From the repository root run (the folder is outside the repository; running again overwrites
+   its files):
        read -s GOOGLE_TTS_API_KEY && export GOOGLE_TTS_API_KEY
        python -I scripts/make_simulator_speech.py ~/Desktop/simulator-speech
 3. It writes one WAV per sentence and voice: the female sentences with cmn-TW-Wavenet-A, the male
@@ -20,6 +21,7 @@ import base64
 import json
 import os
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -46,8 +48,13 @@ def synthesize(key, text, voice):
         data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "X-Goog-Api-Key": key},
     )
-    with urllib.request.urlopen(request) as response:
-        return base64.b64decode(json.load(response)["audioContent"])
+    try:
+        with urllib.request.urlopen(request) as response:
+            return base64.b64decode(json.load(response)["audioContent"])
+    except urllib.error.HTTPError as error:
+        # Google says why in the body (API not enabled, billing, key restrictions); it never
+        # contains the key.
+        sys.exit(f"Google refused ({error.code}): {error.read().decode()}")
 
 
 def main():
@@ -57,7 +64,7 @@ def main():
     if not key:
         sys.exit("Set GOOGLE_TTS_API_KEY first (see the top of this file).")
     out = Path(sys.argv[1]).expanduser()
-    out.mkdir(parents=True)
+    out.mkdir(parents=True, exist_ok=True)
     for number, text, voices in SENTENCES:
         for voice in voices:
             path = out / f"{number}-{voice}.wav"
