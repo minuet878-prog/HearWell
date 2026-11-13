@@ -19,24 +19,12 @@ from screening import oidc
 from screening.models import SignInMethod
 from screening.views import confirm_identity
 from screening.views.common import line_way_out, provider_logo, works_here
+from screening.views.provider_words import WORDS
 
-# The rows after 帳號密碼, in this order (the #539 mockup D4: the newest last).
+# The rows after 帳號密碼, in this order: the newest last, so the rows long-time users know
+# stay where they were (the owner's pick, the #539 mockup D4 A). Not LINE first as on the
+# login page and the 確認本人 buttons (confirm_identity.ORDER): on purpose.
 PROVIDERS = ("google", "line")
-
-# Google: the #507 mockup W13, W14; LINE: the #539 mockup W7, W11. A trip that fails has no
-# wording in either mockup (drafts for the owner).
-TAKEN = {
-    "google": "這個 Google 帳號已經用在另一個聽伴帳號，所以沒有新增。",
-    "line": "這個 LINE 帳號已經用在另一個帳號。",
-}
-ADDED = {
-    "google": "已新增 Google 登入。下次可以直接用 Google 登入。",
-    "line": "已新增 LINE 登入。下次可以直接用 LINE 登入。",
-}
-NOT_ADDED = {
-    "google": "沒有完成新增 Google 登入，請再試一次。",
-    "line": "沒有完成新增 LINE 登入，請再試一次。",
-}
 
 
 def group(request):
@@ -114,7 +102,7 @@ def came_back(request, identity):
     if not user.is_authenticated or user.is_admin:
         raise PermissionDenied
     if SignInMethod.objects.for_identity(identity).exists():
-        messages.error(request, TAKEN[identity.provider])
+        messages.error(request, WORDS[identity.provider].taken)
         return redirect("account_settings")
     try:
         with transaction.atomic():
@@ -128,14 +116,14 @@ def came_back(request, identity):
         # Another account took this code after the check; any other clash is a real error.
         if not SignInMethod.objects.for_identity(identity).exists():
             raise
-        messages.error(request, TAKEN[identity.provider])
+        messages.error(request, WORDS[identity.provider].taken)
     else:
-        messages.success(request, ADDED[identity.provider])
+        messages.success(request, WORDS[identity.provider].added)
     return redirect("account_settings")
 
 
 def trip_failed(request, flow, message):
     """An add_method trip that ended without an identity goes back to account settings, with its
     own words."""
-    messages.error(request, NOT_ADDED[flow["provider"]])
+    messages.error(request, WORDS[flow["provider"]].not_added)
     return redirect("account_settings")
