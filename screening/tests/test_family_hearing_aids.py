@@ -200,9 +200,10 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
         self.assertRegex(self.main, r'<h2 id="problems-title"[^>]*>助聽器怪怪的</h2>')
         self.assertLess(self.main.index('href="#problems-title"'), self.main.index("<h2"))
 
+    # #502's acceptance 10: with 怎麼戴上、拿下's four, every source checked again on 2026/11/14.
     def test_foot_has_sources_and_checked_date(self):
         foot = self.main[self.main.index('<details class="result-details family-sources">') :]
-        self.assertIn("內容查核於 2026/11/06。", foot)
+        self.assertIn("內容查核於 2026/11/14。", foot)
         self.assertEqual(
             re.findall(r'<li><a href="([^"]+)">([^<]+)</a></li>', foot),
             [
@@ -234,6 +235,27 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
                     "az-departments-and-specialties/audiology-1/adult-services/"
                     "hearing-aid-troubleshooting-guide",
                     "Hampshire Hospitals：Hearing Aid Troubleshooting Guide（沒有標日期）",
+                ),
+                (
+                    "https://rnid.org.uk/information-and-support/hearing-aids/"
+                    "getting-used-to-hearing-aids/fitting-appointment/",
+                    "RNID：Your hearing aid fitting appointment（2026/06/03 更新）",
+                ),
+                (
+                    "https://www.cuh.nhs.uk/patient-information/"
+                    "hearing-aids-and-audiology-services-guide-earmould/",
+                    "Cambridge University Hospitals：Hearing aids and audiology services guide"
+                    " – earmould（2025/01/14 核定）",
+                ),
+                (
+                    "https://www.cuh.nhs.uk/patient-information/"
+                    "hearing-aid-and-audiology-services-guide-thin-tube/",
+                    "Cambridge University Hospitals：Hearing aid and audiology services guide"
+                    " – thin tube（2026/06/03 核定）",
+                ),
+                (
+                    "https://leaflets.ekhuft.nhs.uk/inserting-your-hearing-aid-with-lifetips/html",
+                    "East Kent Hospitals：Inserting your hearing aid with LifeTips（2024/10 審閱）",
                 ),
                 ("/guide/after-fitting", "聽伴選配指引「配戴之後」的審定內容"),
                 ("/family", "家人專區的審定內容"),
