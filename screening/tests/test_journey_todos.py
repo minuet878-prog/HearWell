@@ -9,11 +9,12 @@ from unittest.mock import patch
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.journey_todos import STOP_TODOS, stop_todos
+from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, stop_todos
 from screening.models import (
     FIRST_ROUND,
     AidAndSubsidy,
@@ -577,6 +578,23 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
                 },
             ],
         )
+
+    def test_the_download_s_queries_do_not_grow_with_the_ticks(self):
+        # CODING_STANDARDS 15: two ticks and many, the same queries.
+        for key in ("audiogram-test", "audiogram-copy"):
+            self.tick(key)
+        url = reverse("download_my_data")
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(url)
+        # Counted now: the ticks' requests below empty the log it reads.
+        queries = len(two)
+        many = sorted(MANUAL_KEYS - {"audiogram-test", "audiogram-copy"})
+        self.assertGreater(len(many), 5)
+        for key in many:
+            self.tick(key)
+        self.assertEqual(TodoTick.objects.filter(user=self.user).count(), len(MANUAL_KEYS))
+        with self.assertNumQueries(queries):
+            self.client.get(url)
 
     def test_deleting_the_account_takes_its_ticks(self):
         # 25: PROTECT, so delete_with_data deletes them first; another's stay.
