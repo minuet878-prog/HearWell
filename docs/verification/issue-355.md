@@ -118,7 +118,14 @@ Codex，基準 `main`，只看 diff、#355 和 `CODING_STANDARDS.md`。2026-11-1
 - 走過（伺服器輸出可對照）：登出 → 註冊測試帳號 tester → 同意 → 登出 → 登入頁「忘記密碼？」→ 輸入信箱 → 已寄出頁。伺服器輸出的信：主旨「聽伴 重設密碼」、寄件人「聽伴 <noreply@tingpal.tw>」、Reply-To hearwellweb@gmail.com，純文字版與 HTML 版都有使用者名稱、完整網址、「1 天內有效」、「不是您申請的請忽略」。點信裡的連結 → 設新密碼頁 → 第一次密碼不符規則被擋下 → 第二次設好 → 直接登入回首頁（「密碼改好了」）→ 登出 → 再點同一個連結 → 連結失效頁。
 - 本人問「設好密碼是不是該回登入頁再打一次」：確認拷問 Q8 的決定，**維持直接登入**，程式不改。
 
-## 上線後（#525 做完才能做）
+## 上線後（#525）
 
-- [ ] VPS `.env` 設好 `RESEND_API_KEY`、`DEFAULT_FROM_EMAIL`，跑過 `createcachetable`。
-- [ ] 從正式網站實際收一封重設密碼信：寄件名稱是「聽伴」、沒進垃圾信件匣、連結能設好新密碼。
+2026-11-14，本人完成 #525，代理用 `dig` 向 Gandi 三台名稱伺服器與 1.1.1.1 核對：
+
+- [x] Resend 網域 `tingpal.tw`，地區 North Virginia（us-east-1，跟隱私權說明「資料存放在美國」一致；`rsend` 指向的 MX 是 `feedback-smtp.us-east-1.amazonses.com`），點擊與開信追蹤都沒開。
+- [x] Gandi 加上 Resend 的三筆：TXT `resend._domainkey`（DKIM）、CNAME `send`、CNAME `rsend`（TTL 300）；Resend 顯示已驗證。Resend 現在給的是兩筆 CNAME，不是 MX＋TXT。
+- [x] 收緊：SPF `v=spf1 include:_mailcust.gandi.net ~all`（原本 `?all`）、DMARC `v=DMARC1; p=quarantine; pct=100;`（原本 `p=none`），各只有一筆；本人選 `~all`、`quarantine`、不收 DMARC 報告。
+- [x] 只能寄信、限定 `tingpal.tw` 的金鑰與 `DEFAULT_FROM_EMAIL=noreply@tingpal.tw` 寫進 VPS `.env`（用 `grep` 確認，沒有印出金鑰）；`check --deploy` 通過，migration 到 0034，跑過 `createcachetable`。
+- [x] 本人從正式網站用自己的信箱走一次忘記密碼：收到信、寄件人顯示「聽伴」、不在垃圾信件匣、連結能設好新密碼並直接登入，Gmail 原始郵件 SPF、DKIM、DMARC 都是 PASS。本人回覆「驗證沒問題了」。
+
+部署時發現：第一次部署後服務沒有真的重啟（`Active … since` 還是 9 小時前），正式站跑舊程式、讀新模板，`/forgot_password` 404、隱私權頁新舊版輪流出現。重新 `sudo systemctl restart hearwell` 後正常；VPS 部署筆記第 10 步補上「`since` 的時間要是剛剛」。這次部署一起帶進 #505（Google 登入，沒設金鑰所以關著，同意書第 7 版）。
