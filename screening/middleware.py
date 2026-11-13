@@ -16,7 +16,8 @@ from django.urls import reverse
 # reads nobody's records and its answers are the same for everyone (ADR 0032), and family send
 # each other its answer links (the owner's call for spec #396, 2026-10-27); typing a question
 # there is part of it (#399). The zone's page on how to talk with him came out of the family guide
-# with the same words (#469).
+# with the same words (#469). The forgot-password pages are part of signing in, like the login and
+# register pages (owner's acceptance of spec #355, 2026-11-14).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -24,6 +25,9 @@ OPEN_PAGES = {
     "add_to_home",
     "login",
     "register",
+    "password_reset",
+    "password_reset_sent",
+    "password_reset_confirm",
     "logout",
     "download_my_data",
     "delete_account",

@@ -325,6 +325,23 @@ class LinkOfAnAccountThatChangedTests(TestCase):
                 self.assertNotContains(response, 'type="password"')
 
 
+class SignedInBeforeAgreeingTests(TestCase):
+    """Owner's acceptance of #355 (2026-11-14): like the login and register pages, the reset
+    pages open for someone signed in who has not agreed to the latest consent yet."""
+
+    def test_the_reset_pages_open_without_the_consent_page_first(self):
+        self.client.force_login(User.objects.create_user(username="not_agreed"))
+        consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+        self.assertEqual(self.client.get(reverse("password_reset")).status_code, 200)
+        response = self.client.post(
+            reverse("password_reset"), {"email": "a@example.com"}, follow=True
+        )
+        self.assertEqual(response.redirect_chain, [(reverse("password_reset_sent"), 302)])
+        self.assertContains(response, "a@example.com")
+        response = self.client.get(_reset_link(mail.outbox[-1]), follow=True)
+        self.assertContains(response, 'name="new_password1"')
+
+
 class ResetPagesSiteWideTests(TestCase):
     """#527 (spec #355): the four pages pass the checks the login and register pages do: the
     title, one h1 in main, the skip link, the footer, and the 登入 tab marked (mockup #524)."""
