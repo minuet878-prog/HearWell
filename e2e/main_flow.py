@@ -3700,9 +3700,13 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             box = card.get_by_role("checkbox", name="預約開九號表")
             row = card.locator('[data-todo="form-9-book"]')
             expect(box).not_to_be_checked()
+            # The page's one tick drawing, hidden while unticked (the cross review on #478).
+            tick = row.locator(".todo-box svg")
+            expect(tick).to_be_hidden()
             self.page.evaluate("window.notReloaded = true")
             box.click()
             expect(box).to_be_checked()
+            expect(tick).to_be_visible()
             expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
             self.assertTrue(self.page.evaluate("window.notReloaded"))
             self.assertGreater(row.evaluate(animations), 0)  # the tick draws, ✓ 已儲存 fades

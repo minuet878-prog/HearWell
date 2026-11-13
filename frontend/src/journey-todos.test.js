@@ -14,7 +14,7 @@ function row(key, ticked) {
       <input type="hidden" name="ticked" value="${ticked ? "0" : "1"}">
       <input type="hidden" name="next" value="/">
       <button type="submit" class="todo-button" role="checkbox" aria-checked="${ticked}">
-        <span class="todo-box" aria-hidden="true">${ticked ? "<svg></svg>" : ""}</span>
+        <span class="todo-box" aria-hidden="true"><svg><path></path></svg></span>
         <span class="todo-text">預約開九號表</span>
       </button>
     </form>
@@ -83,9 +83,25 @@ describe("tickInPlace", () => {
     await press("form-9-other");
     expect(button("form-9-other").getAttribute("aria-checked")).toBe("false");
     expect(item("form-9-other").classList.contains("is-done")).toBe(false);
-    expect(item("form-9-other").querySelector(".todo-box svg")).toBeNull();
+    expect(item("form-9-other").querySelector(".todo-box svg").classList).not.toContain(
+      "todo-tick",
+    );
     expect(item("form-9-other").querySelector('[name="ticked"]').value).toBe("1");
     expect(saved()[0].closest("li")).toBe(item("form-9-other"));
+  });
+
+  it("shows the one tick the page drew, not one of its own (the cross review on #478)", async () => {
+    // journey_todos.html draws every box's tick, hidden by site.css while unticked, so a row
+    // just ticked looks as it does after a reload.
+    const drawn = item("form-9-book").querySelector(".todo-box svg");
+    answer({ ticked: true });
+    await press("form-9-book");
+    expect(item("form-9-book").querySelector(".todo-box").children).toHaveLength(1);
+    expect(item("form-9-book").querySelector(".todo-box svg")).toBe(drawn);
+    answer({ ticked: false });
+    await press("form-9-book");
+    expect(item("form-9-book").querySelector(".todo-box svg")).toBe(drawn);
+    expect(drawn.classList).not.toContain("todo-tick");
   });
 
   it("draws the tick once only on the row just ticked", async () => {

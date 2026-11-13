@@ -5687,6 +5687,11 @@
     background-color: var(--color-primary);
   }
 
+  /* The tick journey_todos.html draws in every box, shown once ticked. */
+  .todo-manual:not(.is-done) .todo-box svg {
+    display: none;
+  }
+
   /* 自動: no frame and no white, a ring (the muted grey, 6.9:1, as the line grey is 2.75:1 on
      the card), the journey's blue frame and tick once done, and a muted line under the words. */
   .todo-auto {
