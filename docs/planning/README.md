@@ -15,6 +15,6 @@
 | 互動內容與聽力圖看語言香蕉區 | [拷問決定](speech-banana/grill-decisions.md)、[來源與讀值](speech-banana/research.md) | [#436](https://github.com/minuet878-prog/HearWell/issues/436) |
 | 全站改版（白底、少框、照顧旅程首頁） | [拷問決定](redesign/grill-decisions.md) | [#453](https://github.com/minuet878-prog/HearWell/issues/453) |
 | 全站改版第 2 階段（待辦、便當格與聽力護照、故事卡片、家人模式） | [拷問決定](redesign/phase-2-grill-decisions.md) | 待辦 [#478](https://github.com/minuet878-prog/HearWell/issues/478)；其餘待開 |
-| 全站改版第 3 階段（情境日記、配戴與保養、聽損模擬、噪音計） | [拷問決定](redesign/phase-3-grill-decisions.md) | 待開 |
+| 全站改版第 3 階段（情境日記、配戴與保養、聽損模擬、噪音計） | [拷問決定](redesign/phase-3-grill-decisions.md) | 聽損模擬 [#484](https://github.com/minuet878-prog/HearWell/issues/484)；其餘待開 |
 
 此處保存需求討論與來源研究，正式工作票及驗收進度在 GitHub Issues。歸檔不代表新增功能已上線。
