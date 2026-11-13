@@ -175,8 +175,9 @@ class NotFinishedTests(GoogleSaveTestCase):
     """Cancelled at Google: as from the login page's button, nobody signed in, nothing saved."""
 
     def test_cancelled_back_to_the_login_page_with_its_words(self):
-        self.client.get(reverse("google_save_card"))
-        response = self.client.get(reverse("google_callback"), {"error": "access_denied"})
+        response = self.client.get(reverse("google_save_card"))
+        self.google.authorize = dict(parse_qsl(urlsplit(response["Location"]).query))
+        response = self.google.come_back(cancelled=True)
         self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
         self.assertContains(self.client.get(reverse("login")), "沒有完成 Google 登入。")
         self.assertNotIn("_auth_user_id", self.client.session)

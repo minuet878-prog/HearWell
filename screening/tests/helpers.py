@@ -153,11 +153,15 @@ class FakeGoogle:
         email="lin.mei@example.com",
         *,
         query=None,
+        cancelled=False,
         exchange=None,
         **claims,
     ):
         """GET our callback. query: the callback's query instead of Google's code and state.
+        cancelled: back as Google sends someone who said no (its error, this trip's state).
         exchange: what exchange_code does instead of returning the ID token (an exception)."""
+        if cancelled:
+            query = {"error": "access_denied", "state": self.authorize["state"]}
         if query is None:
             query = {"code": "auth-code", "state": self.authorize["state"]}
         token = {

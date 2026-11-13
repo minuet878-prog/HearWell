@@ -170,7 +170,9 @@ def _claims(id_token):
 
 
 def _same(a, b):
-    return isinstance(a, str) and isinstance(b, str) and hmac.compare_digest(a, b)
+    # As bytes: compare_digest refuses str with anything but ASCII, and the callback's state or
+    # the token's nonce can be anything.
+    return isinstance(a, str) and isinstance(b, str) and hmac.compare_digest(a.encode(), b.encode())
 
 
 def finish(request, provider):
@@ -178,8 +180,6 @@ def finish(request, provider):
     # Out of the session before anything else: a callback is used once (#505 acceptance 18),
     # whatever comes of it, and before login() changes the session.
     flow = request.session.pop(FLOW, None)
-    if "error" in request.GET:
-        raise Cancelled(request.GET.get("error", ""))
     if flow is None or flow["provider"] != provider:
         raise Rejected("no trip in the session")
     if not _same(request.GET.get("state"), flow["state"]):
@@ -187,6 +187,9 @@ def finish(request, provider):
     now = timezone.now().timestamp()
     if now - flow["started_at"] > FLOW_SECONDS:
         raise Rejected("trip too old")
+    # A cancel only once it is known to be this trip's, in time: anyone can send `error`.
+    if "error" in request.GET:
+        raise Cancelled(request.GET["error"])
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")

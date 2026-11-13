@@ -289,7 +289,7 @@ class ConfirmPageTests(TestCase):
 
     def test_a_trip_that_fails_comes_back_here_not_to_the_login_page(self):
         for name, come_back in (
-            ("cancelled", {"query": {"error": "access_denied"}}),
+            ("cancelled", {"cancelled": True}),
             ("google down", {"exchange": oidc.Unavailable("down")}),
             ("forged", {"nonce": "someone-else"}),
         ):

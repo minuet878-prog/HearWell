@@ -361,6 +361,9 @@ class CallbackSecurityTests(TestCase):
         forged = state[:-1] + ("A" if state[-1] != "A" else "B")
         self.assertRejected(self.google.come_back(query={"code": "auth-code", "state": forged}))
 
+    def test_a_state_that_is_not_ascii_is_rejected_not_a_server_error(self):
+        self.assertRejected(self.google.come_back(query={"code": "auth-code", "state": "中"}))
+
     def test_no_state_is_rejected_before_calling_google(self):
         self.assertRejected(self.google.come_back(query={"code": "auth-code"}))
 
@@ -395,6 +398,9 @@ class CallbackSecurityTests(TestCase):
     # 17
     def test_an_id_token_for_another_trip_is_rejected(self):
         self.assertRejected(self.google.come_back(sub="google-1", nonce="other"), exchanged=True)
+
+    def test_a_nonce_that_is_not_ascii_is_rejected_not_a_server_error(self):
+        self.assertRejected(self.google.come_back(sub="google-1", nonce="中"), exchanged=True)
 
     def test_an_id_token_without_a_nonce_is_rejected(self):
         self.assertRejected(self.google.come_back(sub="google-1", nonce=None), exchanged=True)
@@ -449,6 +455,36 @@ class CallbackSecurityTests(TestCase):
         )
         self.assertRejected(response, "沒有完成 Google 登入。可以再試一次，或用帳號密碼登入。")
         self.assertNotIn("screening.oidc_flow", self.client.session)
+
+    def test_a_cancel_is_believed_only_for_this_trip_in_time(self):
+        # The state and the trip's age are checked before `error` is read: a cancel that is not
+        # this trip's (forged, used up, too late) is a failed sign-in like any other callback.
+        for name, state, seconds_later in (
+            ("no state", None, 0),
+            ("another state", "forged", 0),
+            ("not ascii", "中", 0),
+            ("too late", "this trip's", 10 * 60 + 1),
+        ):
+            with self.subTest(name):
+                self.google.start()
+                query = {"error": "access_denied"}
+                if state is not None:
+                    query["state"] = (
+                        self.google.authorize["state"] if state == "this trip's" else state
+                    )
+                later = timezone.now() + timedelta(seconds=seconds_later)
+                with (
+                    mock.patch("django.utils.timezone.now", return_value=later),
+                    self.assertLogs("screening.views.sign_in", "ERROR"),
+                ):
+                    response = self.google.come_back(query=query)
+                self.assertRejected(response)
+
+    def test_a_cancel_already_used_is_not_believed_again(self):
+        query = {"error": "access_denied", "state": self.google.authorize["state"]}
+        self.google.come_back(query=query)
+        with self.assertLogs("screening.views.sign_in", "ERROR"):
+            self.assertRejected(self.google.come_back(query=query))
 
     # 20
     def test_google_not_answering_comes_back_to_login_and_goes_to_monitoring(self):

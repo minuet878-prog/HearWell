@@ -242,7 +242,7 @@ class AddTests(TestCase):
 
     def test_a_trip_that_fails_comes_back_to_account_settings(self):
         for name, come_back in (
-            ("cancelled", {"query": {"error": "access_denied"}}),
+            ("cancelled", {"cancelled": True}),
             ("google down", {"exchange": oidc.Unavailable("down")}),
             ("forged", {"nonce": "someone-else"}),
         ):
