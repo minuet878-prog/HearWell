@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import oidc
-from screening.models import SignInMethod, User
+from screening.models import Audiogram, SignInMethod, User
 from screening.models.sign_in import SignInMethodQuerySet
 from screening.tests import test_confirm_identity, test_line_in_app_browser
 from screening.tests.helpers import GOOGLE_AUTHORIZE, FakeGoogle, consented_user, google_on
@@ -200,6 +200,7 @@ class AddTests(TestCase):
 
     # 24
     def test_a_new_google_is_added_and_signs_into_the_same_account(self):
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=datetime.date(2026, 3, 4))
         self.start_adding()
         response = self.google.come_back(sub="google-new", email="other@gmail.com")
         self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
@@ -220,6 +221,9 @@ class AddTests(TestCase):
         self.google.come_back(sub="google-new", email="other@gmail.com")
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
         self.assertEqual(User.objects.count(), 1)
+        # The same records: the audiogram saved before opens.
+        page = self.client.get(reverse("audiogram_detail", args=[audiogram.pk]))
+        self.assertContains(page, "2026/03/04")
 
     # 25
     def test_a_google_on_another_account_is_not_added(self):

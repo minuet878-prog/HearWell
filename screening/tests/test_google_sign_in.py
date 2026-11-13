@@ -14,7 +14,18 @@ from django.utils import timezone
 
 from screening import models, oidc
 from screening.forms import GoogleNameForm
-from screening.models import Consent, SignInMethod, User
+from screening.models import (
+    Answer,
+    Audiogram,
+    AudiogramPoint,
+    Category,
+    Consent,
+    Question,
+    Questionnaire,
+    SignInMethod,
+    Submission,
+    User,
+)
 from screening.tests import test_consent
 from screening.tests.helpers import GOOGLE_CLIENT_ID, FakeGoogle, consented_user, google_on
 
@@ -572,15 +583,42 @@ class SignInMethodDataTests(TestCase):
         SignInMethod.objects.create(user=self.other, provider="google", subject="google-2")
         self.client.force_login(self.user)
 
+    def add_health_data(self):
+        """A record and an audiogram of the account's, as test_account_deletion fills them."""
+        questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
+        question = Question.objects.create(
+            questionnaire=questionnaire,
+            question_text="假題目一",
+            question_number=1,
+            category=Category.EMOTIONAL,
+        )
+        submission = Submission.objects.create(user=self.user, questionnaire=questionnaire)
+        Answer.objects.create(submission=submission, question=question, score=4)
+        audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 3, 4))
+        AudiogramPoint.objects.create(
+            audiogram=audiogram, ear="right", conduction="air", frequency=1000, db=35
+        )
+
+    def health_data(self):
+        return (
+            Submission.objects.filter(user_id=self.user.pk).count(),
+            Answer.objects.filter(submission__user_id=self.user.pk).count(),
+            Audiogram.objects.filter(user_id=self.user.pk).count(),
+            AudiogramPoint.objects.filter(audiogram__user_id=self.user.pk).count(),
+        )
+
     # 33
-    def test_deleting_the_account_deletes_its_sign_in_methods(self):
+    def test_deleting_the_account_deletes_its_sign_in_methods_with_its_records(self):
+        self.add_health_data()
         response = self.client.post(reverse("delete_account"), {"password": PASSWORD})
         self.assertRedirects(response, reverse("index"))
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
         self.assertFalse(SignInMethod.objects.filter(user_id=self.user.pk).exists())
+        self.assertEqual(self.health_data(), (0, 0, 0, 0))
         self.assertEqual(SignInMethod.objects.get().user, self.other)
 
     def test_a_failure_midway_deletes_nothing(self):
+        self.add_health_data()
         with (
             mock.patch.object(User, "delete", side_effect=DatabaseError),
             self.assertRaises(DatabaseError),
@@ -589,6 +627,16 @@ class SignInMethodDataTests(TestCase):
         self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
         self.assertTrue(SignInMethod.objects.filter(pk=self.method.pk).exists())
         self.assertTrue(self.user.consents.exists())
+        self.assertEqual(self.health_data(), (1, 1, 1, 1))
+
+    # 32
+    def test_a_wrong_password_on_the_delete_page_keeps_the_account(self):
+        self.add_health_data()
+        response = self.client.post(reverse("delete_account"), {"password": "wrong"})
+        self.assertContains(response, "密碼不正確")
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+        self.assertTrue(SignInMethod.objects.filter(pk=self.method.pk).exists())
+        self.assertEqual(self.health_data(), (1, 1, 1, 1))
 
     def test_after_deleting_the_same_google_is_a_new_code(self):
         self.client.post(reverse("delete_account"), {"password": PASSWORD})

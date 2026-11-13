@@ -16,6 +16,7 @@ from screening.tests.helpers import GOOGLE_AUTHORIZE, FakeGoogle, consented_user
 from screening.views import confirm_identity
 
 OWN_SUB = "google-own"
+NOT_YOURS = "這不是您帳號上的 Google。請改用註冊時用的那個 Google 帳戶。"  # W16
 
 
 def google_only_user(username="google_only", sub=OWN_SUB):
@@ -155,7 +156,7 @@ class WrongGoogleTests(TestCase):
         confirm_page = f"{reverse('confirm_identity')}?action=delete_account"
         self.assertRedirects(response, confirm_page, fetch_redirect_response=False)
         page = self.client.get(confirm_page)
-        self.assertContains(page, "這不是您帳號上的 Google。請改用註冊時用的那個 Google 帳戶。")
+        self.assertContains(page, NOT_YOURS)
         self.assertContains(page, "使用 Google 帳戶確認")
         # The delete page still asks for 確認本人, and pressing delete deletes nothing.
         self.assertNotContains(self.client.get(reverse("delete_account")), "已確認是您本人")
@@ -169,6 +170,25 @@ class WrongGoogleTests(TestCase):
     def test_a_google_never_seen(self):
         self.methods_before = [("google_only", OWN_SUB)]
         self.assert_nothing_confirmed(self.come_back_as("google-stranger"))
+
+    def test_a_wrong_google_confirms_nothing_for_adding(self):
+        google = FakeGoogle(self.client)
+        start_confirming(self.client, google, action="add_google")
+        response = google.come_back(sub="google-stranger", email="other@example.com")
+        confirm_add = f"{reverse('confirm_identity')}?action=add_google"
+        self.assertRedirects(response, confirm_add, fetch_redirect_response=False)
+        self.assertContains(self.client.get(confirm_add), NOT_YOURS)
+        self.assertNotIn(confirm_identity.CONFIRMED, self.client.session)
+        self.assertNotIn(oidc.FLOW, self.client.session)
+        self.assertEqual(list(SignInMethod.objects.values_list("subject", flat=True)), [OWN_SUB])
+
+    def test_no_google_confirmation_can_remove(self):
+        # Removing is done with the password on the confirm page itself; this account's Google
+        # is its only way in, so the page refuses before any trip to Google could start.
+        confirm_remove = f"{reverse('confirm_identity')}?action=remove_google"
+        self.assertEqual(self.client.post(confirm_remove, {"provider": "google"}).status_code, 403)
+        self.assertNotIn(oidc.FLOW, self.client.session)
+        self.assertEqual(list(SignInMethod.objects.values_list("subject", flat=True)), [OWN_SUB])
 
     def test_a_google_on_another_account(self):
         google_only_user(username="someone_else", sub="google-theirs")
