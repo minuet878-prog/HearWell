@@ -3864,6 +3864,8 @@
   .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
   .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
   .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
+  /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
+  .care-motion-play { margin-bottom: 0.5rem; }
 
   /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
      squeal sentence in a grey box between them, and a link under a step lined up with its words

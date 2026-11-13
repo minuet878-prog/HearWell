@@ -63,6 +63,8 @@ PROVIDERS = {
         # Its ID token is signed with our channel secret (HS256): LINE checks it (spec #506).
         verify_url="https://api.line.me/oauth2/v2.1/verify",
         revoke_url="https://api.line.me/oauth2/v2.1/revoke",
+        # No reauthenticate: LINE could force a fresh login (prompt=login, max_age), but the owner
+        # chose not to (login-research.md section 10): elders need not remember their LINE password.
     ),
 }
 

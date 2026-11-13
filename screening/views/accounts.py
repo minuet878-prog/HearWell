@@ -29,7 +29,7 @@ from screening.forms import (
 )
 from screening.models import User
 from screening.views import confirm_identity, sign_in_methods
-from screening.views.common import health_data_page, line_way_out, safe_next, sign_in_choices
+from screening.views.common import health_data_page, safe_next, sign_in_choices
 
 
 @require_http_methods(["POST"])
@@ -212,8 +212,8 @@ def delete_account(request):
         form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
         delete = form.is_valid()
     else:
-        # #505 acceptance 30: without a password, 確認本人 with the Google on the account first;
-        # a confirmation gone stale meanwhile sends the page back with W18.
+        # #505 acceptance 30, #506 acceptance 20: without a password, 確認本人 with a provider on
+        # the account first; a confirmation gone stale meanwhile sends the page back with W18.
         form = None
         delete = request.method == "POST" and confirm_identity.use_confirmation(
             request, "delete_account"
@@ -233,8 +233,7 @@ def delete_account(request):
             "confirmed": form is None and confirm_identity.is_confirmed(request, "delete_account"),
             "confirm_error": confirm_identity.confirm_error(request),
             "sign_in_methods": user.sign_in_methods.all(),
-            "providers": confirm_identity.providers(user),
-            "open_outside_url": line_way_out(request),
+            **confirm_identity.without_password(request),
             "submission_count": user.submissions.count(),
             "audiogram_count": user.audiograms.count(),
         },
