@@ -590,7 +590,7 @@ class VpsPrivacyTests(TestCase):
 
 
 # The highlight naming the 重設密碼信 (#526), on the privacy notice's top and the consent page.
-RESET_HIGHLIGHT = "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。"
+RESET_HIGHLIGHT = HIGHLIGHTS[2]
 # Its line under 會交給誰, word for word as the owner approved it on 2026-11-13, with 不會 in
 # <strong> as Sentry's.
 RESEND_RECIPIENT = (
