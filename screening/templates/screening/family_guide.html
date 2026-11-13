@@ -21,6 +21,15 @@
 {# #427 (spec #426): the zone's entries, comparison page option A. Only what is live has one. #469 (the #468 mockup A): list rows; 怎麼跟他說話 has a page of its own and 陪伴配戴助聽器 folds open in its row. #}
 <nav aria-label="專區內容">
     <ul class="list-unstyled family-entries">
+        {# #487 (the #485 mockup ⑤): first, so the family hears it before reading how to talk. #}
+        <li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
+            {% include "screening/action_icon.html" with icon="sound" %}
+            <span class="link-card-body">
+                <span class="link-card-title">先聽聽看他聽到的聲音</span>
+                <span>選程度，聽同一句話怎麼變</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
         <li><a class="link-card action-card" href="{% url 'family_talk' %}">
             {% include "screening/action_icon.html" with icon="family" %}
             <span class="link-card-body">

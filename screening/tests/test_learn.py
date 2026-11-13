@@ -44,6 +44,8 @@ class LearnPageTests(TestCase):
             [
                 (reverse("guide"), "guide", "了解助聽器選配與補助"),
                 (reverse("family_guide"), "family", "家人專區：溝通與陪伴"),
+                # #487: the hearing loss simulator, after the family zone.
+                (reverse("hearing_loss_simulator"), "sound", "聽損模擬：聽聽看他聽到的聲音"),
                 # #397 (spec #396): the Q&A assistant's entry.
                 (reverse("qa_home"), "question", "問答小助手：常見問題一次查"),
             ],
