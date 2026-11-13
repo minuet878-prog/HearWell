@@ -35,6 +35,27 @@ def _score_expressions():
     }
 
 
+def scores_from_answers(answers):
+    # _score_expressions() worked out on answers not saved (a guest's, #494): the same names and
+    # values, without a query. The two must agree: test_result_from_answers checks a result from
+    # these against the saved record's at each level.
+    numeric = [answer for answer in answers if answer.score is not None]
+
+    def total(category):
+        return sum(answer.score for answer in numeric if answer.question.category == category)
+
+    return {
+        "answer_count": len(answers),
+        "numeric_count": len(numeric),
+        "score_total": sum(answer.score for answer in numeric),
+        "score_emotional": total(Category.EMOTIONAL),
+        "score_social": total(Category.SOCIAL),
+        "subscore_answer_count": sum(
+            answer.question.category in (Category.EMOTIONAL, Category.SOCIAL) for answer in answers
+        ),
+    }
+
+
 class NormGroup(models.TextChoices):
     MILD_MODERATE = "mild_moderate", "輕度至中度"
     MODERATELY_SEVERE = "moderately_severe", "中重度以上"

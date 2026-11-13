@@ -34,5 +34,6 @@ from screening.models.submissions import (
     Submission,
     SubmissionQuerySet,
     _score_expressions,
+    scores_from_answers,
     shared_days,
 )
