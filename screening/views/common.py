@@ -1,3 +1,5 @@
+import re
+
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 
@@ -44,10 +46,39 @@ def older_fold(rows, day, unit):
 SIGN_IN_ERROR = "screening.sign_in_error"
 
 
+# LINE publishes no User-Agent format (looked up 2026-11-13; login-research.md section 9). LINE's
+# own LIFF SDK decides "is this LINE's browser" with exactly this pattern: @liff/util 2.32.0
+# (npm, published 2026-11-09), isLINEBrowser = /Line\/\d+\.\d+\.\d+/ (isLIFFBrowser adds " LIFF").
+# Strings seen in the wild, both covered:
+#   iOS (Classmethod, 2025-08-18): "... Mobile/15E148 Safari Line/15.12.1"
+#   Android (ua-parser-js 2.0.10 test data): "... Mobile Safari/537.36 Line/6.5.1/IAB"
+# It also matches the LIFF browser, where Google is just as blocked. Case-sensitive, as in LIFF.
+LINE_USER_AGENT = re.compile(r"Line/\d+\.\d+\.\d+")
+
+
+def is_line_in_app_browser(request):
+    """True when the page was opened inside LINE, where Google refuses to sign in (an embedded
+    web view, Google's disallowed_useragent). The login, register and save card pages and the
+    LINE spec (#506) all ask here."""
+    return bool(LINE_USER_AGENT.search(request.headers.get("user-agent", "")))
+
+
 def sign_in_choices(request):
     """What the login and register pages show above the password form: the Google button when
-    Google is set up, and the error a Google trip came back with (taken out, so said once)."""
+    Google is set up, or inside LINE a way out to Safari or Chrome instead, and the error a
+    Google trip came back with (taken out, so said once)."""
+    google = oidc.enabled("google")
+    in_line = is_line_in_app_browser(request)
     return {
-        "google_sign_in": oidc.enabled("google"),
+        "google_sign_in": google and not in_line,
+        "open_outside_url": open_outside_url(request) if google and in_line else "",
         "sign_in_error": request.session.pop(SIGN_IN_ERROR, ""),
     }
+
+
+def open_outside_url(request):
+    """This page again with LINE's openExternalBrowser=1, which makes LINE open it in Safari or
+    Chrome instead of its own browser (login-research.md L10); the page's own query is kept."""
+    query = request.GET.copy()
+    query["openExternalBrowser"] = "1"
+    return f"{request.path}?{query.urlencode()}"
