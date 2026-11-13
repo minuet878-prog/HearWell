@@ -35,6 +35,7 @@ export default defineConfig({
         "continue-notice": "src/continue-notice-main.js",
         "care-journey": "src/care-journey-main.js",
         "guide": "src/guide-main.js",
+        "guest-result": "src/guest-result-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

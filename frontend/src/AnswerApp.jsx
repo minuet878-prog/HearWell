@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
+import { saveGuestResult } from "./guest-results.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
@@ -47,6 +48,10 @@ export default function AnswerApp({
   skipWearing = false,
   // IOI-HA's signed norm basis from the page (ADR 0002), sent back with the answers.
   normToken,
+  // Without an account (spec #492, HHIE-S or HHIA-S): no draft is kept, and the answers are
+  // scored without saving, kept in this browser as the guest result of this questionnaire code.
+  guest = false,
+  questionnaireCode,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
@@ -107,7 +112,7 @@ export default function AnswerApp({
         return response.json();
       })
       .then((data) => {
-        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
+        const draft = !guest && loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
         setWearingQuestion(data.wearing_question);
         setQuestions(data.questions);
         if (draft) setSaved(draft);
@@ -141,7 +146,7 @@ export default function AnswerApp({
   }, []);
 
   useEffect(() => {
-    const kept = form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    const kept = !guest && form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
     if (kept && chose.current) {
       clearTimeout(savedTimer.current);
       setSavedFlash((n) => n + 1);
@@ -242,27 +247,47 @@ export default function AnswerApp({
     }
 
     setStatus({ type: "sending" });
+    const answers = questions.map((q) => ({ question: q.id, score: form.answers[q.id] }));
     let response = null;
     try {
-      response = await fetch("/api/submissions/", {
+      response = await fetch(guest ? "/api/guest-scores/" : "/api/submissions/", {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
           "X-CSRFToken": csrfToken,
-          "Idempotency-Key": form.key,
+          // A guest's receipt number goes with the guest result, for when it is saved (spec #492).
+          ...(guest ? {} : { "Idempotency-Key": form.key }),
         },
         body: JSON.stringify({
           questionnaire: questionnaireId,
           ...(skipWearing ? {} : { wearing_hearing_aid: form.wearing }),
           ...(normToken ? { norm_token: normToken } : {}),
-          answers: questions.map((q) => ({ question: q.id, score: form.answers[q.id] })),
+          answers,
+          ...(guest ? { just_finished: true } : {}),
         }),
       });
     } catch {
       // Network failure: the same receipt number is sent again next time.
     }
 
+    if (guest && response?.ok) {
+      const { scores, level } = await response.json();
+      finished.current = true;
+      saveGuestResult({
+        code: questionnaireCode,
+        questionnaireId,
+        answers,
+        wearing: form.wearing,
+        key: form.key,
+        finishedAt: Date.now(),
+        total: scores.total,
+        level,
+      });
+      setStatus({ type: "sent" });
+      setTimeout(() => navigate(`/guest/result/${questionnaireCode}`), SENT_FOR);
+      return;
+    }
     if (response?.ok) {
       const { id } = await response.json();
       finished.current = true;
@@ -277,6 +302,10 @@ export default function AnswerApp({
       setStatus({ type: "error", message: `送出的資料有誤：${messages.join("、")}` });
     } else if (response?.status === 403) {
       setStatus({ type: "expired" });
+    } else if (response?.status === 429) {
+      // A guest's 20 an hour (spec #492): the server's words; the answers stay on screen.
+      const body = await response.json().catch(() => ({}));
+      setStatus({ type: "error", message: body.detail ?? FAILED });
     } else if (response?.status === 409) {
       finished.current = true;
       clearDraft(questionnaireId);
@@ -434,11 +463,14 @@ export default function AnswerApp({
           )}
         </div>
       </div>
-      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
-      <p className="answer-autosave">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
-        答案會自動存在這支手機，中途離開也沒關係。
-      </p>
+      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only.
+          A guest keeps no draft, so not said (the #493 mockup's 16th line). */}
+      {!guest && (
+        <p className="answer-autosave">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
+          答案會自動存在這支手機，中途離開也沒關係。
+        </p>
+      )}
     </div>
   );
 }

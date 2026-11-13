@@ -40,6 +40,8 @@ if (container && fallback) {
       alwaysAided={"alwaysAided" in container.dataset}
       skipWearing={"skipWearing" in container.dataset}
       normToken={container.dataset.normToken}
+      guest={"guest" in container.dataset}
+      questionnaireCode={container.dataset.questionnaireCode}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {
