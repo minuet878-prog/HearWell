@@ -852,6 +852,12 @@ class PostToProviderTests(SimpleTestCase):
         answer = oidc.post_to_provider(self.serve(400, body), {})
         self.assertEqual(answer["error"], "invalid_request")
 
+    def test_a_refusal_without_a_body_is_still_a_refusal(self):
+        # Only a 2xx with nothing in it is an empty answer (LINE's revoke saying yes); a 4xx with
+        # nothing in it is the provider refusing (cross-review of #506, Spec 9).
+        answer = oidc.post_to_provider(self.serve(400, b""), {})
+        self.assertIn("error", answer)
+
     def test_no_usable_answer_is_unavailable(self):
         for name, status, body in (
             ("server error", 500, b'{"error": "server_error"}'),

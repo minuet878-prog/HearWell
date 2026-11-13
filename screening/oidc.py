@@ -159,14 +159,16 @@ def begin(request, provider, purpose, next_url=""):
 
 def post_to_provider(url, fields):
     """Our server's one way of calling a provider: a form POST of fields to url. Gives the JSON
-    answer, {} for an empty one, also when the provider refuses the request (HTTP 4xx, with an
-    `error` in its JSON); raises Unavailable when there is no usable answer: no connection, a
-    timeout, a server error (5xx), or an answer that is not a JSON object."""
+    answer, {} for an empty one (a 2xx), also when the provider refuses the request (HTTP 4xx):
+    a refusal always has an `error`, its JSON's or, when it has none (an empty body), the HTTP
+    status. Raises Unavailable when there is no usable answer: no connection, a timeout, a
+    server error (5xx), or an answer that is not a JSON object."""
     request = urllib.request.Request(
         url,
         data=urlencode(fields).encode("ascii"),
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
     )
+    refused_with = None  # the HTTP status of a refusal
     try:
         try:
             with urllib.request.urlopen(request, timeout=PROVIDER_TIMEOUT_SECONDS) as response:
@@ -174,6 +176,7 @@ def post_to_provider(url, fields):
         except urllib.error.HTTPError as error:
             if error.code >= 500:
                 raise
+            refused_with = error.code
             with error:
                 body = error.read()
         answer = json.loads(body) if body else {}
@@ -183,6 +186,10 @@ def post_to_provider(url, fields):
         raise Unavailable(f"{url}: {type(error).__name__}") from error
     if not isinstance(answer, dict):
         raise Unavailable(f"{url}: not a JSON object")
+    if refused_with is not None:
+        # Only a 2xx says yes with nothing in it (LINE's revoke): a 4xx with nothing in it is a
+        # refusal all the same (cross-review of #506, Spec 9).
+        answer.setdefault("error", f"HTTP {refused_with}")
     return answer
 
 
@@ -276,20 +283,20 @@ def finish(request, provider):
             "client_secret": _setting(provider, "CLIENT_SECRET"),
         },
     )
-    # An answer without an ID token (an error in its JSON, whatever its HTTP status) is the
-    # provider not answering (#505 acceptance 20).
-    if "id_token" not in tokens:
-        raise Unavailable(f"{provider} token endpoint: no id_token")
     try:
+        # An answer without an ID token (an error in its JSON, whatever its HTTP status) is the
+        # provider not answering (#505 acceptance 20).
+        if "id_token" not in tokens:
+            raise Unavailable(f"{provider} token endpoint: no id_token")
         if PROVIDERS[provider].verify_url:
             claims = _verified_claims(provider, tokens["id_token"], flow["nonce"])
         else:
             claims = _claims(tokens["id_token"])
     finally:
-        # Whatever the ID token turned out to be, the access token is not kept (#506
-        # acceptance 9).
-        if PROVIDERS[provider].revoke_url:
-            _revoke(provider, tokens.get("access_token", ""))
+        # Whatever the ID token turned out to be, or with none, an access token given is not
+        # kept (#506 acceptance 9).
+        if PROVIDERS[provider].revoke_url and "access_token" in tokens:
+            _revoke(provider, tokens["access_token"])
     # The same checks for every provider, on LINE's verified answer too (#506 acceptance 12).
     if claims.get("iss") not in PROVIDERS[provider].issuers:
         raise Rejected("iss is not the provider")
