@@ -43,8 +43,11 @@
 - 第 1 項的保存不管用哪種方式註冊都要能接上：同意之後就送出瀏覽器裡的訪客結果，
   之後 Google／LINE 只多一個入口，不用改保存流程。
 - 第 4 項的一個月從三項都上線後開始算，免得還沒有 LINE 登入時，保存次數偏低。
-- 拷問前先請本人用 iPhone（可以的話 Android 也試）從 LINE 裡打開 tingpal.tw，確認 Google 會不會被擋、
-  跳到 Safari／Chrome 後還看不看得到 LINE 裡的資料（[登入研究](login-research.md)第 3 節）。
+- 拷問前不實機測（網站還沒有第三方登入，測不到），照最壞情況設計（[登入研究](login-research.md)第 3 節）：
+  - 假設 Google 在 LINE 內建瀏覽器裡會被擋：在那裡不顯示 Google 按鈕，只放 LINE 和帳號密碼，
+    另外放「用 Safari／Chrome 打開」。
+  - 假設 LINE 跟 Safari／Chrome 的資料不共用：訪客結果頁寫清楚換瀏覽器就看不到這次結果。
+  - 驗收時由本人用 iPhone 從 LINE 裡實機走完一次登入，再確認這兩個假設。
 
 ---
 
