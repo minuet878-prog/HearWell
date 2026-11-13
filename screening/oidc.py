@@ -80,11 +80,12 @@ class SignInFailed(Exception):
 
 
 class Cancelled(SignInFailed):
-    """The user said no on the provider's page (the callback carries `error`)."""
+    """The user said no on the provider's page (the callback's `error` is access_denied)."""
 
 
 class Unavailable(SignInFailed):
-    """The provider did not answer, or answered with an error, when our server called it."""
+    """The provider did not answer, or answered with an error: when our server called it, or
+    on the callback (any `error` but access_denied)."""
 
 
 class Rejected(SignInFailed):
@@ -243,9 +244,15 @@ def finish(request, provider):
     now = timezone.now().timestamp()
     if now - flow["started_at"] > FLOW_SECONDS:
         raise Rejected("trip too old")
-    # A cancel only once it is known to be this trip's, in time: anyone can send `error`.
+    # An error only once it is known to be this trip's, in time: anyone can send `error`. Only
+    # the user saying no is a cancel: Google sends access_denied, LINE ACCESS_DENIED; any other
+    # (LINE's SERVER_ERROR, ...) is the provider not answering (#505 acceptance 20, #506
+    # acceptance 14).
     if "error" in request.GET:
-        raise Cancelled(request.GET["error"])
+        error = request.GET["error"]
+        if error.lower() == "access_denied":
+            raise Cancelled(error)
+        raise Unavailable(f"{provider} callback: {error}")
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")

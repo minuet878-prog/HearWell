@@ -562,6 +562,28 @@ class CallbackSecurityTests(TestCase):
             )
 
     # 14
+    def test_access_denied_in_any_case_is_a_cancel(self):
+        query = {"error": "access_denied", "state": self.line.authorize["state"]}
+        self.assertRejected(self.line.come_back(query=query), CANCELLED_WORDS)
+
+    def test_any_other_error_on_the_callback_is_line_not_answering(self):
+        # Only ACCESS_DENIED is the user pressing cancel; any other error LINE sends back is LINE
+        # not answering.
+        for error in ("SERVER_ERROR", "INVALID_REQUEST", "INTERACTION_REQUIRED"):
+            with self.subTest(error):
+                self.line.start()
+                query = {"error": error, "state": self.line.authorize["state"]}
+                with self.assertLogs("screening.views.sign_in", "ERROR"):
+                    response = self.line.come_back(query=query)
+                self.assertRejected(response, UNAVAILABLE_WORDS)
+        self.assertEqual(self.line.calls, [])
+
+    def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+            response = self.line.come_back(query={"error": "SERVER_ERROR", "state": "forged"})
+        self.assertRejected(response)
+        self.assertIn("LINE callback rejected", logs.output[0])
+
     def test_line_not_answering_comes_back_to_login_and_goes_to_monitoring(self):
         down = oidc.Unavailable("https://api.line.me/oauth2/v2.1/token: URLError")
         for name, come_back in (
