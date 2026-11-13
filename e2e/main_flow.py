@@ -206,7 +206,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def test_new_user_completes_hhie_s(self):
         with self.saving_artifacts():
-            self.step1_start_goes_to_register()
+            self.step1_open_register()
             self.step2_register()
             self.step3_choose_hhie_s()
             self.step4_answer_and_change_one()
@@ -217,7 +217,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     def test_new_user_answers_ioi_ha_on_react_after_an_unaided_hhie_s(self):
         """#245: the unaided HHIE-S just answered is IOI-HA's norm basis, told on item 1."""
         with self.saving_artifacts():
-            self.step1_start_goes_to_register()
+            self.step1_open_register()
             self.step2_register()
             self.step3_choose_hhie_s()
             self.step4_answer_and_change_one()
@@ -233,7 +233,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
     def test_show_password_with_javascript(self):
         """#155 (ticket #151): the 顯示 button shows the password, and hides it again."""
         with self.saving_artifacts():
-            self.step1_start_goes_to_register()
+            self.step1_open_register()
             password = self.page.get_by_label("密碼", exact=True)
             password.fill("Fake-pass-2468")
             toggle = self.main().locator('button.password-toggle[aria-controls="id_password1"]')
@@ -263,7 +263,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assert_fits_a_phone_at_double_text_size("login")
             self.page.goto(self.live_server_url)
             self.assert_fits_a_phone_at_double_text_size("home")
-            self.main().get_by_role("link", name="開始篩檢").click()
+            self.step1_open_register()
             self.assert_fits_a_phone_at_double_text_size("register")
             self.fill_register_form()
             self.main().get_by_role("button", name="註冊").click()
@@ -297,7 +297,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         """Issue #78: real React flow, original labels, focus and saved results."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_goes_to_register()
+            self.step1_open_register()
             self.step2_register()
             self.choose_self()
             self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
@@ -332,7 +332,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_goes_to_register()
+        self.step1_open_register()
         self.step2_register()
         self.choose_self()
         self.main().get_by_role("link", name=re.compile("HHIA-S")).click()
@@ -351,7 +351,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         """#79: range input, N/A, zero and draft restoration in a real browser."""
         call_command("seed_questionnaires", verbosity=0)
         with self.saving_artifacts():
-            self.step1_start_goes_to_register()
+            self.step1_open_register()
             self.step2_register()
             self.choose_self()
             self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
@@ -503,7 +503,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         self.context = self.browser.new_context(java_script_enabled=False)
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_goes_to_register()
+        self.step1_open_register()
         self.step2_register()
         self.choose_self()
         self.main().get_by_role("link", name=re.compile("SSQ12-TW")).click()
@@ -526,7 +526,7 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         )
         self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.step1_start_goes_to_register()
+        self.step1_open_register()
         # #151: without JavaScript the 顯示 button could not work, so none shows.
         expect(self.main().get_by_role("button", name=re.compile("顯示"))).to_have_count(0)
         self.step2_register()
@@ -615,11 +615,10 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 float(style(number, "fontSize")[:-2]), float(style(body, "fontSize")[:-2])
             )
 
-    def step1_start_goes_to_register(self):
-        # Spec #148 (ticket #150): first-time visitors register straight away.
-        self.page.goto(self.live_server_url)
-        self.main().get_by_role("link", name="開始篩檢").click()
-        expect(self.page).to_have_url(re.compile(r"/register\?next=/questionnaire_list$"))
+    def step1_open_register(self):
+        # Spec #148 (ticket #150) had 開始篩檢 register first; since #499 (spec #492) a visitor
+        # answers without an account (GuestHomeTest), so the register page with the list next.
+        self.page.goto(f"{self.live_server_url}/register?next=/questionnaire_list")
 
     def assert_step_bar(self, done, total):
         segments = self.main().locator(".step-progress-bar > .step-progress-segment")
@@ -7524,11 +7523,11 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
 
     # #299: the signed-out home's steps and audiologist line are flat; the steps without the thin
     # line on their left since ADR 0043. #471 (mockup #458 ⑪): three steps in the 空狀態首頁's
-    # dashed box, the result example gone.
+    # dashed box, the result example gone. #499: registering is the last step since.
     def test_first_visit_home_blocks_are_flat(self):
         with self.saving_artifacts():
             self.visit(False, "/")
-            for text in ("建立帳號", "回答問題", "馬上看到結果"):
+            for text in ("回答問題", "馬上看到結果", "想保存再註冊"):
                 with self.subTest(step=text):
                     self.assert_unlined(self.main().get_by_role("listitem").filter(has_text=text))
             self.assert_flat(self.main().locator("p").filter(has_text="設計與審定"))
@@ -14379,3 +14378,71 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.wait_for_load_state("load")
             self.assertNotIn("/guest/result/", self.page.url)
             expect(self.main()).not_to_contain_text("總分")
+
+
+class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#499 (#492 acceptance 1 and 21): 開始篩檢 on the logged-out home opens the wizard's age step;
+    after answering, the home shows that result on top, the whole tile a link to its page."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        # The browser's day is the site's (TIME_ZONE), as the tile's day is the browser's.
+        self.context = self.browser.new_context(
+            **self.playwright.devices["Pixel 7"], timezone_id="Asia/Taipei"
+        )
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_start_answers_first_and_the_home_shows_the_kept_result(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            expect(self.main().locator("#guest-home")).to_be_hidden()
+            self.main().get_by_role("link", name="開始篩檢").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
+            self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+                "65 歲以上", exact=True
+            ).check()
+            self.main().get_by_role("button", name="下一步").click()
+            # 常常 on items 1-3, 從未 on the rest: 12, 輕度到中度影響.
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("常常" if number <= 3 else "從未", number=number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
+
+            self.page.goto(f"{self.live_server_url}/")
+            tile = self.main().locator("#guest-home").get_by_role("link")
+            expect(tile).to_have_count(1)
+            today = timezone.localdate().strftime("%Y/%m/%d")
+            for text in (
+                "您有一份還沒保存的結果",
+                f"{today}・聽力對生活的影響",
+                "12 分",
+                "輕度到中度影響",
+                "還留 7 天，看結果並保存",
+            ):
+                with self.subTest(text=text):
+                    expect(tile).to_contain_text(text)
+            # On top, above the page's title, and inside a phone's width.
+            self.assertLess(tile.bounding_box()["y"], self.main().locator("h1").bounding_box()["y"])
+            self.assertLessEqual(self.page.evaluate("document.documentElement.scrollWidth"), 412)
+            tile.click()
+            expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
+            expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")

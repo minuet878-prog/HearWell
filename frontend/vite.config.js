@@ -37,6 +37,7 @@ export default defineConfig({
         "guide": "src/guide-main.js",
         "guest-result": "src/guest-result-main.js",
         "guest-save": "src/guest-save-main.js",
+        "guest-home": "src/guest-home-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

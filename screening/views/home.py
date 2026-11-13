@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
+from screening import questionnaires
 from screening.care_journey import care_journey
 from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS, current_rounds
 from screening.main_flow import get_user_state
@@ -27,8 +28,18 @@ def index(request):
     user = request.user
     if not user.is_authenticated:
         # #471 (mockup #458 ⑪): a visitor sees the 空狀態首頁; no one's records, so it may be
-        # cached.
-        return render(request, "screening/index.html")
+        # cached. #499: guest-home.js draws a guest result kept in the browser on top, from each
+        # guest questionnaire's topic and result page.
+        guest_questionnaires = {
+            code: {
+                "topic": questionnaires.get(code).topic,
+                "url": reverse("guest_result", args=[code]),
+            }
+            for code in questionnaires.for_guests()
+        }
+        return render(
+            request, "screening/index.html", {"guest_questionnaires": guest_questionnaires}
+        )
     # #459 (ADR 0044): the 照顧旅程 for anyone with a questionnaire or an audiogram, else the
     # 空狀態首頁.
     has_records = user.submissions.defined().exists() or user.audiograms.exists()

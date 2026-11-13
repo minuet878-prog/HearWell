@@ -449,7 +449,18 @@ class RedesignLayoutTests(TestCase):
         every = [pwa_js, loading_js, slide_js, scroll_js]
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [*every, wave, play_in_view, smooth])
+            # #499: the guest results kept in this browser, drawn from the inline questionnaires.
+            self.assertEqual(
+                scripts(reverse("index")),
+                [
+                    *every,
+                    "screening/frontend/guest-home.js",
+                    wave,
+                    play_in_view,
+                    smooth,
+                    "<inline>",
+                ],
+            )
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332).
         for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
@@ -516,9 +527,9 @@ class PageFlowTests(TestCase):
         "從一份問卷開始",
         "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
         "做完第一份問卷，這裡會排出您的照顧旅程",
-        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
+        "想保存再註冊，不註冊也看得到結果。",
         "開始篩檢",
         HINT,
         "內容由台灣執業聽力師設計與審定。",
@@ -576,8 +587,8 @@ class PageFlowTests(TestCase):
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
         self.assertNotIn("7–10 年", main)
-        # Spec #148 (ticket #150): straight to registering, then back to choosing a questionnaire.
-        start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
+        # #499 (spec #492): straight to a guest's wizard, no account first.
+        start = reverse("questionnaire_list")
         self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
     def test_home_has_no_missing_features(self):
