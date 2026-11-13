@@ -16,6 +16,7 @@ from django.urls.converters import IntConverter
 from screening import forms as screening_forms
 from screening import questionnaires
 from screening import urls as screening_urls
+from screening.models import Questionnaire
 from screening.views.common import health_data_page
 
 BASE_DIR = Path(settings.BASE_DIR)
@@ -486,6 +487,34 @@ class HealthDataPageTests(TestCase):
         views = [("shown", shown), ("marked", marked)]
         self.assertEqual(unmarked(views, {}), ["shown"])
         self.assertEqual(unmarked(views, {"shown": "why"}), [])
+
+
+# Health data pages open without an account (spec #492), each with why: the guest's answers or
+# result are on them, so they are never cached either, for anyone.
+OPEN_HEALTH_DATA = {
+    "questionnaire_list": "a guest's wizard: the age alone, then HHIE-S or HHIA-S",
+    "screening": "a guest answers HHIE-S or HHIA-S there, scored without saving",
+    "guest_result": "a guest's result, kept in the browser and drawn there",
+}
+
+
+class OpenHealthDataPageTests(TestCase):
+    """#492 acceptance 13: the health data pages open without an account are marked and never
+    cached, as the logged-in ones are."""
+
+    fixtures = ("questions_fixture.json",)  # HHIE-S
+
+    def test_every_open_health_data_page_is_marked_and_never_cached(self):
+        hhie_s = Questionnaire.objects.get(code=questionnaires.hhie_s.CODE)
+        args = {"screening": [hhie_s.pk], "guest_result": [hhie_s.code]}
+        views = {pattern.name: pattern.callback for pattern in screening_urls.urlpatterns}
+        client = Client()
+        for name in OPEN_HEALTH_DATA:
+            with self.subTest(page=name):
+                response = client.get(reverse(name, args=args.get(name, ())))
+                self.assertEqual(response.status_code, 200)  # open without an account
+                self.assertIn("no-store", response.get("Cache-Control", ""))
+                self.assertEqual(unmarked([(name, views[name])], {}), [])
 
 
 class MigrationsUpToDateTests(TestCase):

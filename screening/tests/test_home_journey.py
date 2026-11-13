@@ -165,16 +165,17 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
         Submission.objects.create(user=other, questionnaire=self.questionnaires[hhie_s.CODE])
         self.assertIn("從一份問卷開始", self.main())
 
-    def test_a_visitor_sees_it_with_making_the_account_first(self):
-        # #471 (mockup #458 ⑪ for a visitor): the same page, 建立帳號 its first step, a way to
-        # log in; a signed-in user has neither (test_home.NewUserHomeTests for the visitor's).
+    def test_a_visitor_sees_it_with_registering_to_keep_the_result(self):
+        # #471 (mockup #458 ⑪ for a visitor): the same page, with a way to log in; #499: its last
+        # step registering to keep the result. A signed-in user has neither (test_home for the
+        # visitor's).
         signed_in = self.main()
         self.client.logout()
         visitor = self.main()
         for main, signed_out in ((signed_in, False), (visitor, True)):
             with self.subTest(signed_out=signed_out):
                 self.assertIn("從一份問卷開始", main)
-                self.assertEqual("建立帳號，大約 1 分鐘。" in main, signed_out)
+                self.assertEqual("想保存再註冊，不註冊也看得到結果。" in main, signed_out)
                 self.assertEqual("我已經有帳號，登入" in main, signed_out)
 
 

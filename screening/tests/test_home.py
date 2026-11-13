@@ -1,27 +1,21 @@
 """Spec #148 batch 1, ticket #150: the visitor's home page. A signed-in user's home, the 照顧旅程
 or the 空狀態首頁, is test_home_journey's (#459). #471 (mockup #458 ⑪ for a visitor): the visitor
-sees the 空狀態首頁 too, its first step 建立帳號."""
+sees the 空狀態首頁 too. #499 (spec #492): its 開始篩檢 opens a guest's wizard, no account first,
+and a guest result kept in this browser is drawn on top by guest-home.js."""
 
+import json
 import re
 
 from django.test import TestCase
 from django.urls import reverse
 
+from screening.questionnaires import hhia_s, hhie_s
 from screening.tests.helpers import consented_user
 
 
-class NewUserHomeTests(TestCase):
-    PASSWORD = "Xk9#mPq2vLw"
-    STEPS = (
-        "建立帳號，大約 1 分鐘。",
-        "回答問題，大約 3 分鐘。",
-        "馬上看到結果分級和建議。",
-    )
-    OLD_HINT = "第一次使用請先註冊，已有帳號請直接登入。"
-
+class VisitorHomeTestCase(TestCase):
     def setUp(self):
         self.list_url = reverse("questionnaire_list")
-        self.start_url = f"{reverse('register')}?next={self.list_url}"
         self.login_url = f"{reverse('login')}?next={self.list_url}"
 
     def _main(self):
@@ -39,12 +33,74 @@ class NewUserHomeTests(TestCase):
         steps = re.search(r'<div class="empty-preview">.*?</ol>', main, re.DOTALL).group(0)
         return re.findall(r'<span class="step-list-body">([^<]+)</span>', steps)
 
-    def test_anonymous_sees_start_and_login_buttons_and_three_steps(self):
+
+class GuestHomeStartTests(VisitorHomeTestCase):
+    """#492 acceptance 1: without a guest result, 開始篩檢 opens the wizard's age step instead of
+    the register page; the three steps say so; 我已經有帳號，登入 as before."""
+
+    STEPS = (
+        "回答問題，大約 3 分鐘。",
+        "馬上看到結果分級和建議。",
+        "想保存再註冊，不註冊也看得到結果。",
+    )
+
+    def test_start_opens_the_wizards_age_step(self):
+        start = self._link(self._main(), "開始篩檢")
+        self.assertEqual(start, self.list_url)
+        page = self.client.get(start)
+        self.assertTemplateNotUsed(page, "screening/register.html")
+        self.assertContains(page, "您目前的實際年齡？")
+
+    def test_the_three_steps_and_the_login_link(self):
         main = self._main()
-        self.assertEqual(self._link(main, "開始篩檢"), self.start_url)
-        self.assertEqual(self._link(main, "我已經有帳號，登入"), self.login_url)
         self.assertEqual(self._steps(main), list(self.STEPS))
-        self.assertNotIn(self.OLD_HINT, main)
+        self.assertEqual(self._link(main, "我已經有帳號，登入"), self.login_url)
+
+
+class GuestHomeKeptResultTests(VisitorHomeTestCase):
+    """#492 acceptance 21, the server's part: an empty place on top and each guest questionnaire's
+    topic and result page, for guest-home.js to draw the kept results from (guest-home.test.js).
+    The page is the same for every visitor, so it may still be cached."""
+
+    def test_an_empty_place_on_top_and_the_guest_questionnaires(self):
+        main = self._main()
+        place = re.search(r'<div id="guest-home"([^>]*)></div>', main)
+        self.assertIn("hidden", place.group(1))
+        self.assertLess(place.start(), main.index('<h1 class="h3">從一份問卷開始</h1>'))
+        page = self.client.get(reverse("index")).content.decode()
+        data = re.search(
+            r'<script id="guest-home-data" type="application/json">(.*?)</script>', page
+        )
+        self.assertEqual(
+            json.loads(data.group(1)),
+            {
+                code: {"topic": "聽力對生活的影響", "url": f"/guest/result/{code}"}
+                for code in (hhie_s.CODE, hhia_s.CODE)
+            },
+        )
+        self.assertIn("screening/frontend/guest-home.js", page)
+
+    def test_the_same_page_for_every_visitor_and_still_cached(self):
+        first = self.client.get(reverse("index"))
+        self.client.cookies.clear()
+        second = self.client.get(reverse("index"))
+        self.assertEqual(first.content, second.content)
+        self.assertNotIn("no-store", first.get("Cache-Control", ""))
+
+    def test_signed_in_has_none(self):
+        self.client.force_login(consented_user(username="signedin"))
+        page = self.client.get(reverse("index")).content.decode()
+        for part in ('id="guest-home"', "guest-home-data", "guest-home.js"):
+            with self.subTest(part=part):
+                self.assertNotIn(part, page)
+
+
+class NewUserHomeTests(VisitorHomeTestCase):
+    PASSWORD = "Xk9#mPq2vLw"
+    OLD_HINT = "第一次使用請先註冊，已有帳號請直接登入。"
+
+    def test_the_old_hint_is_gone(self):
+        self.assertNotIn(self.OLD_HINT, self._main())
 
     def test_the_visitor_sees_the_empty_state_home(self):
         main = self._main()
@@ -99,31 +155,10 @@ class NewUserHomeTests(TestCase):
         )
         self.assertRedirects(response, self.list_url)
 
-    def test_start_registers_then_consents_then_chooses_a_questionnaire(self):
-        page = self.client.get(self._link(self._main(), "開始篩檢"))
-        self.assertTemplateUsed(page, "screening/register.html")
-        self.assertContains(
-            page, f'<input type="hidden" name="next" value="{self.list_url}">', html=True
-        )
-        response = self.client.post(
-            reverse("register"),
-            {
-                "username": "newcomer",
-                "email": "newcomer@example.com",
-                "password1": self.PASSWORD,
-                "password2": self.PASSWORD,
-                "next": self.list_url,
-            },
-        )
-        consent_url = f"{reverse('consent')}?next={self.list_url}"
-        self.assertRedirects(response, consent_url)
-        response = self.client.post(consent_url, {"agree": "1", "next": self.list_url})
-        # The wizard's first screen greets the new account (#152).
-        self.assertRedirects(response, f"{self.list_url}?from=consent")
-
     def test_other_protected_pages_still_go_to_login_and_back(self):
         consented_user(username="tester", password=self.PASSWORD)
-        for url in (self.list_url, reverse("my_hearing"), reverse("audiogram_list")):
+        # The list is a guest's wizard since spec #492 (test_guest).
+        for url in (reverse("my_hearing"), reverse("audiogram_list")):
             with self.subTest(url=url):
                 self.client.logout()
                 login_url = f"{reverse('login')}?next={url}"

@@ -3,6 +3,7 @@ from screening.questionnaires.definition import (
     GUIDE_ACTION,
     LIFE_IMPACT,
     RETEST_STEP,
+    SAVE_REASONS,
     Definition,
 )
 from screening.questionnaires.results import GradedResult
@@ -108,6 +109,8 @@ DEFINITION = Definition(
     intro_template="screening/questionnaires/hhie_s_intro.html",
     result=GradedResult,
     life_impact=True,
+    guest=True,
+    save_reasons=SAVE_REASONS,
     concern=LIFE_IMPACT,
     choices=choices,
     thresholds=THRESHOLDS,

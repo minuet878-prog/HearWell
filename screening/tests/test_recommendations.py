@@ -67,8 +67,11 @@ class RecommendationTests(TestCase):
                 else:
                     self.assertNotContains(page, "不必兩份都填")
 
-    def test_anonymous_users_still_need_login(self):
-        self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 302)
+    def test_anonymous_users_get_no_recommendation(self):
+        # Spec #492: without an account the wizard asks the age alone (test_guest).
+        response = self.client.get(reverse("questionnaire_list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "推薦您做這一份")
 
 
 class ConcernWizardTests(TestCase):

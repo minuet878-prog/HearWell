@@ -27,3 +27,8 @@ def get(code):
 def offered():
     # An unlisted questionnaire (ADR 0011) is only offered on a local DEBUG site.
     return [code for code, definition in DEFINITIONS.items() if definition.listed or settings.DEBUG]
+
+
+def for_guests():
+    # Answered without an account (spec #492): HHIE-S and HHIA-S.
+    return [code for code in offered() if DEFINITIONS[code].guest]

@@ -235,6 +235,9 @@ class SubmissionCreateSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="IOI-HA only: the answer page's data-norm-token; ignored for the others.",
     )
+    # True when the save page sends a guest result kept in the browser (spec #492), which #500
+    # counts; the answer page sends none.
+    from_guest = StrictBooleanField(required=False, default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -297,6 +300,47 @@ class SubmissionCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"answers": list(formset.non_form_errors())})
         attrs["formset"] = formset
         return attrs
+
+
+class GuestAnswersSerializer(SubmissionCreateSerializer):
+    """A guest's answers to score without saving (spec #492): HHIE-S or HHIA-S only, checked by
+    the same rules and in the same words as an account's submission."""
+
+    norm_token = None  # IOI-HA's, which a guest cannot answer
+    from_guest = None  # a guest's answers are not saved here
+    # True when the answer page sends the answers just answered; the guest result page sends
+    # them again with false. Counts the guests' completions (#500).
+    just_finished = StrictBooleanField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["questionnaire"].queryset = Questionnaire.objects.for_guests()
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Each answer as a (question, score) pair for from_answers(), the questions with their
+        # questionnaire loaded, so the result asks no more (#494).
+        questions = {question.id: question for question in attrs["questionnaire"].questions.all()}
+        attrs["question_scores"] = [
+            (questions[form.cleaned_data["question_id"].id], form.cleaned_data["score"])
+            for form in attrs["formset"]
+        ]
+        return attrs
+
+
+class GuestLevelSerializer(LevelSerializer):
+    color = serializers.CharField()  # one of the three level colours (Definition.level_colors)
+
+
+class GuestScoreSerializer(serializers.Serializer):
+    """A guest's result: its scores and level, and the result page's section drawn from them."""
+
+    questionnaire = QuestionnaireSummarySerializer()
+    wearing_hearing_aid = serializers.BooleanField()
+    wearing_text = serializers.CharField()  # as the result page's header says it
+    scores = ScoresSerializer(source="result")
+    level = GuestLevelSerializer(source="result.level")
+    html = serializers.CharField()  # graded_result.html
 
 
 class AudiogramPointSerializer(serializers.ModelSerializer):

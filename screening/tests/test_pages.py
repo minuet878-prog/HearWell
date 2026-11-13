@@ -447,9 +447,23 @@ class RedesignLayoutTests(TestCase):
         play_in_view = "<inline>"
         smooth = "<inline>"
         every = [pwa_js, loading_js, slide_js, scroll_js]
+        # Signed in, after logout.js: guest results kept here go to the save page's question
+        # (#497).
+        signed_in = [logout_js, "screening/frontend/guest-ask.js"]
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
-            self.assertEqual(scripts(reverse("index")), [*every, wave, play_in_view, smooth])
+            # #499: the guest results kept in this browser, drawn from the inline questionnaires.
+            self.assertEqual(
+                scripts(reverse("index")),
+                [
+                    *every,
+                    "screening/frontend/guest-home.js",
+                    wave,
+                    play_in_view,
+                    smooth,
+                    "<inline>",
+                ],
+            )
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332).
         for name, extra in (("login", []), ("register", ["screening/register-checks.js"])):
@@ -462,7 +476,7 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [*every, logout_js, reveal_js, wave, play_in_view, smooth],
+                [*every, *signed_in, reveal_js, wave, play_in_view, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
@@ -470,12 +484,12 @@ class RedesignLayoutTests(TestCase):
         # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
         journey_js = "screening/frontend/care-journey.js"
         expected = {
-            reverse("index"): [*every, logout_js, notice[0], journey_js, *notice[1:]],
-            reverse("questionnaire_list"): [*every, logout_js, *notice],
+            reverse("index"): [*every, *signed_in, notice[0], journey_js, *notice[1:]],
+            reverse("questionnaire_list"): [*every, *signed_in, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 *every,
-                logout_js,
+                *signed_in,
                 answer_js,
                 wave,
                 play_in_view,
@@ -484,14 +498,14 @@ class RedesignLayoutTests(TestCase):
             ],
             reverse("result", args=[self.submission.id]): [
                 *every,
-                logout_js,
+                *signed_in,
                 wave,
                 play_in_view,
                 smooth,
             ],
             reverse("my_hearing"): [
                 *every,
-                logout_js,
+                *signed_in,
                 reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,
@@ -516,9 +530,9 @@ class PageFlowTests(TestCase):
         "從一份問卷開始",
         "聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。",
         "做完第一份問卷，這裡會排出您的照顧旅程",
-        "建立帳號，大約 1 分鐘。",
         "回答問題，大約 3 分鐘。",
         "馬上看到結果分級和建議。",
+        "想保存再註冊，不註冊也看得到結果。",
         "開始篩檢",
         HINT,
         "內容由台灣執業聽力師設計與審定。",
@@ -576,8 +590,8 @@ class PageFlowTests(TestCase):
         main = self._main(self.client.get(reverse("index")))
         self._assert_in_order(main, self.HOME_ORDER)
         self.assertNotIn("7–10 年", main)
-        # Spec #148 (ticket #150): straight to registering, then back to choosing a questionnaire.
-        start = f"{reverse('register')}?next={reverse('questionnaire_list')}"
+        # #499 (spec #492): straight to a guest's wizard, no account first.
+        start = reverse("questionnaire_list")
         self.assertRegex(main, rf'<a[^>]*href="{re.escape(start)}"[^>]*>\s*開始篩檢')
 
     def test_home_has_no_missing_features(self):

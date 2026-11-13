@@ -2340,7 +2340,15 @@
     font-size: 1rem;
   }
 
-  .answer-autosave svg {
+  /* A guest's line under the questionnaire's name on the answer page (#495, the #493 mockup G2). */
+  .answer-guest-line {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .answer-autosave svg,
+  .answer-guest-line svg {
     flex: none;
     width: 1.1rem;
     height: 1.1rem;
@@ -4360,6 +4368,37 @@
 
   .result-details-body .score-bar {
     margin-top: 0.5rem;
+  }
+
+  /* #498 (the #493 mockup's E1): a guest's 清除這次結果 row is red, as 刪除帳號 is; its question
+     opens under it in the red's pale box. */
+  .guest-clear > summary {
+    color: var(--color-severe);
+  }
+
+  .guest-clear .result-details-arrow {
+    background-color: var(--color-severe);
+  }
+
+  .guest-clear .action-card-icon {
+    background-color: var(--color-severe-bg);
+  }
+
+  .guest-clear .action-card-icon svg {
+    stroke: var(--color-severe);
+  }
+
+  .guest-clear-confirm {
+    margin: 0 0 1rem;
+    padding: 1rem 1.125rem 1.125rem;
+    border-radius: 0.75rem;
+    background-color: var(--color-severe-bg);
+    color: var(--color-heading);
+  }
+
+  .guest-clear-question {
+    margin: 0 0 0.75rem;
+    font-weight: 700;
   }
 
   /* #471 report, sharing and account pages (mockup #470, ADR 0043). */

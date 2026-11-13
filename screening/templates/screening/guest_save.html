@@ -1,0 +1,33 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}保存這次結果｜聽伴{% endblock %}
+
+{% block extra_head %}<script type="module" src="{% static 'screening/frontend/guest-save.js' %}"></script>{% endblock %}
+
+{% block body %}
+{# Spec #492: guest-save.js sends the guest results kept in this browser to the records API, each with its receipt number, then goes to 我的紀錄; one that is not saved stays, named here. Not come from the save card, it asks first (#497, the #493 mockup's F2): 要 saves them, 不要 clears them all. #}
+<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-done-url="{% url 'my_hearing' %}" data-home-url="{% url 'index' %}"{% if asking %} data-asking{% endif %}>
+    {% if asking %}
+    <h1 class="h3 mt-4">要把這次結果存到這個帳號嗎？</h1>
+    <div data-guest-ask hidden>
+        <p data-guest-ask-lead></p>
+        <div class="flex flex-col gap-3 mb-4" data-guest-ask-list></div>
+        <div class="flex flex-col gap-2">
+            <button type="button" class="btn btn-primary btn-lg w-full" data-guest-ask-yes>要，存進這個帳號</button>
+            <button type="button" class="btn btn-outline-primary btn-lg w-full" data-guest-ask-no>不要，清掉這次結果</button>
+        </div>
+    </div>
+    {% else %}
+    <h1 class="h3 mt-4">保存這次結果</h1>
+    {% endif %}
+    <p data-guest-saving role="status" tabindex="-1"{% if asking %} hidden{% endif %}>正在保存，請稍候。</p>
+    <div data-guest-failed hidden>
+        <div class="text-xl/normal font-bold text-danger" role="alert" tabindex="-1" data-guest-failed-list></div>
+        <button type="button" class="btn btn-primary btn-lg w-full mt-3" data-guest-retry>再試一次</button>
+    </div>
+    {{ names|json_script:"guest-names" }}
+    {% if asking %}{{ topics|json_script:"guest-topics" }}{% endif %}
+    {% csrf_token %}
+</div>
+{% endblock %}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
+import { canKeepGuestResults, saveGuestResult } from "./guest-results.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
@@ -11,6 +12,8 @@ const HEARING_AID_CHOICES = [
   { value: true, label: "有戴" },
 ];
 const FAILED = "送出失敗，請再按一次送出";
+// I4: a guest whose result this browser cannot keep, before answering or when keeping it fails.
+const CANNOT_KEEP = "這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。";
 // #326 B4: how long ✓ 已儲存 stays beside the progress.
 const SAVED_FOR = 1500;
 // #330 (spec #326 B1): how long ✓ 已送出 stays before the result page opens.
@@ -47,10 +50,19 @@ export default function AnswerApp({
   skipWearing = false,
   // IOI-HA's signed norm basis from the page (ADR 0002), sent back with the answers.
   normToken,
+  // Without an account (spec #492, HHIE-S or HHIA-S): no draft is kept, and the answers are
+  // scored without saving, kept in this browser as the guest result of this questionnaire code.
+  guest = false,
+  questionnaireCode,
+  // Where a guest registers instead when this browser cannot keep the guest result (I4).
+  registerUrl,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
 }) {
+  // I4: a guest's result lives in this browser only, so a browser that cannot keep it (some
+  // private modes) is found out before anything is answered.
+  const [cannotKeep] = useState(() => guest && !canKeepGuestResults());
   const [questions, setQuestions] = useState(null);
   const [wearingQuestion, setWearingQuestion] = useState(null);
   const [saved, setSaved] = useState(null);
@@ -101,13 +113,18 @@ export default function AnswerApp({
   }
 
   useEffect(() => {
+    // Ready all the same: the page shows the note instead of the questions or the form.
+    if (cannotKeep) {
+      onReady();
+      return;
+    }
     fetch(`/api/questionnaires/${questionnaireId}/`, { headers: { Accept: "application/json" } })
       .then((response) => {
         if (!response.ok) throw new Error(`questionnaire ${response.status}`);
         return response.json();
       })
       .then((data) => {
-        const draft = loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
+        const draft = !guest && loadDraft({ questionnaireId, userId, questionIds: data.questions.map((q) => q.id), allowNotApplicable: data.questions.some((q) => q.choices.some((c) => c.value === null)) });
         setWearingQuestion(data.wearing_question);
         setQuestions(data.questions);
         if (draft) setSaved(draft);
@@ -141,7 +158,7 @@ export default function AnswerApp({
   }, []);
 
   useEffect(() => {
-    const kept = form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
+    const kept = !guest && form && hasAnything(form) && !finished.current && saveDraft({ ...form, userId, questionnaireId, savedAt: Date.now() });
     if (kept && chose.current) {
       clearTimeout(savedTimer.current);
       setSavedFlash((n) => n + 1);
@@ -156,6 +173,15 @@ export default function AnswerApp({
     if (moved.current) legend.current?.focus();
     moved.current = false;
   }, [form?.step, form === null]);
+
+  if (cannotKeep) {
+    return (
+      <div className="answer-app">
+        <p className="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold" role="alert">{CANNOT_KEEP}</p>
+        <a className="btn btn-primary btn-lg" href={registerUrl}>註冊新帳號</a>
+      </div>
+    );
+  }
 
   if (questions === null) return null;
 
@@ -242,27 +268,53 @@ export default function AnswerApp({
     }
 
     setStatus({ type: "sending" });
+    const answers = questions.map((q) => ({ question: q.id, score: form.answers[q.id] }));
     let response = null;
     try {
-      response = await fetch("/api/submissions/", {
+      response = await fetch(guest ? "/api/guest-scores/" : "/api/submissions/", {
         method: "POST",
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
           "X-CSRFToken": csrfToken,
-          "Idempotency-Key": form.key,
+          // A guest's receipt number goes with the guest result, for when it is saved (spec #492).
+          ...(guest ? {} : { "Idempotency-Key": form.key }),
         },
         body: JSON.stringify({
           questionnaire: questionnaireId,
           ...(skipWearing ? {} : { wearing_hearing_aid: form.wearing }),
           ...(normToken ? { norm_token: normToken } : {}),
-          answers: questions.map((q) => ({ question: q.id, score: form.answers[q.id] })),
+          answers,
+          ...(guest ? { just_finished: true } : {}),
         }),
       });
     } catch {
       // Network failure: the same receipt number is sent again next time.
     }
 
+    if (guest && response?.ok) {
+      const { scores, level } = await response.json();
+      const kept = saveGuestResult({
+        code: questionnaireCode,
+        questionnaireId,
+        answers,
+        wearing: form.wearing,
+        key: form.key,
+        finishedAt: Date.now(),
+        total: scores.total,
+        level,
+      });
+      // Self-review B1: not kept (storage full meanwhile), so its page would find nothing; the
+      // answers stay on screen.
+      if (!kept) {
+        setStatus({ type: "cannotKeep" });
+        return;
+      }
+      finished.current = true;
+      setStatus({ type: "sent" });
+      setTimeout(() => navigate(`/guest/result/${questionnaireCode}`), SENT_FOR);
+      return;
+    }
     if (response?.ok) {
       const { id } = await response.json();
       finished.current = true;
@@ -277,6 +329,10 @@ export default function AnswerApp({
       setStatus({ type: "error", message: `送出的資料有誤：${messages.join("、")}` });
     } else if (response?.status === 403) {
       setStatus({ type: "expired" });
+    } else if (response?.status === 429) {
+      // A guest's 40 an hour (spec #492): the server's words; the answers stay on screen.
+      const body = await response.json().catch(() => ({}));
+      setStatus({ type: "error", message: body.detail ?? FAILED });
     } else if (response?.status === 409) {
       finished.current = true;
       clearDraft(questionnaireId);
@@ -362,6 +418,12 @@ export default function AnswerApp({
       </fieldset>
 
       {status.type === "error" && <p className="text-xl/normal font-bold text-danger" role="alert">{status.message}</p>}
+      {status.type === "cannotKeep" && (
+        <div role="alert" className="mb-4">
+          <p className="text-xl/normal font-bold text-danger">{CANNOT_KEEP}</p>
+          <a className="btn btn-primary btn-lg" href={registerUrl}>註冊新帳號</a>
+        </div>
+      )}
       {status.type === "expired" && (
         <div role="alert" className="mb-4">
           <p className="text-xl/normal font-bold text-danger">登入已經過期，請重新登入</p>
@@ -434,11 +496,14 @@ export default function AnswerApp({
           )}
         </div>
       </div>
-      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only. */}
-      <p className="answer-autosave">
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
-        答案會自動存在這支手機，中途離開也沒關係。
-      </p>
+      {/* Shortened by the site owner (answer page tidy-up); draft.js keeps it in this browser only.
+          A guest keeps no draft, so not said (the #493 mockup's 16th line). */}
+      {!guest && (
+        <p className="answer-autosave">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></svg>
+          答案會自動存在這支手機，中途離開也沒關係。
+        </p>
+      )}
     </div>
   );
 }

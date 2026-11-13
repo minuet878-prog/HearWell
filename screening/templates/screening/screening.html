@@ -35,6 +35,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 <div>
     <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
+    {% if guest %}
+    {# Spec #492 (the #493 mockup G2): a guest's answers are scored, not saved. #}
+    <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>沒註冊時只計算、不儲存。<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
+    {% endif %}
     {# React reads the intro from here and folds it under 這份問卷在問什麼？ (#153, #463), the source with it; without JS it just stays. #}
     <div id="answer-intro">
     {% include questionnaire.definition.intro_template %}
@@ -48,19 +52,39 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     {% if use_react %}
     {# React version (one question per page); it hides the form below once the questions load. #}
     <p id="answer-loading" class="text-xl/normal font-bold loading-message" role="status"></p>
+    {% if guest %}
+    {# Implementation decision I3: the form below saves records, so a guest is asked to register instead of getting it back. #}
+    <div id="answer-guest-fallback" role="alert" hidden>
+        <p class="text-xl/normal font-bold">這個瀏覽器載不出免註冊作答，請註冊後再做。</p>
+        <a class="btn btn-primary btn-lg" href="{{ register_url }}">註冊新帳號</a>
+    </div>
+    {# Self-review P3: with JavaScript off nothing above runs, so the same note shows here and the form stays hidden. #}
+    <noscript>
+        <p class="text-xl/normal font-bold">這個瀏覽器載不出免註冊作答，請註冊後再做。</p>
+        <a class="btn btn-primary btn-lg" href="{{ register_url }}">註冊新帳號</a>
+    </noscript>
+    {% endif %}
     {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
     <script>
         document.documentElement.classList.add("answer-loading");
         document.getElementById("answer-loading").textContent = "題目載入中…";
-        // React not ready in 5 seconds (slow, or its file failed to load): give the form back.
+        // React not ready in 5 seconds (slow, or its file failed to load): give the form back,
+        // or to a guest the note asking to register (I3).
         setTimeout(function () {
+            // React already ready took the loading state away: nothing to give back.
+            if (!document.documentElement.classList.contains("answer-loading")) return;
             document.documentElement.classList.remove("answer-loading");
             document.getElementById("answer-loading").textContent = "";
+            var guest = document.getElementById("answer-guest-fallback");
+            if (guest) {
+                document.getElementById("answer-form").hidden = true;
+                guest.hidden = false;
+            }
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if guest %} data-guest data-questionnaire-code="{{ questionnaire.code }}" data-register-url="{{ register_url }}"{% endif %}{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
     {% endif %}
-    <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
+    <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST"{% if guest %} hidden{% endif %}>
         {% csrf_token %}
         {# Receipt number for this page: sending it twice saves once (spec phase6_web_double_submit.md). #}
         <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">

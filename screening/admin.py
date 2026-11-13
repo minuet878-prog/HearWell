@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 
 from .models import (
     Answer,
+    GuestMonth,
     Question,
     QuestionLog,
     QuestionLogMonth,
@@ -118,3 +119,14 @@ class QuestionLogMonthAdmin(ViewOnlyAdmin):
     @admin.display(description="月份", ordering="month")
     def month_label(self, stats):
         return str(stats)
+
+
+@admin.register(GuestMonth)
+class GuestMonthAdmin(ViewOnlyAdmin):
+    # Spec #492 (#500): the owner reads whether going without an account brings more people in.
+    list_display = ("month_label", "completed", "saved")
+    ordering = ("-month",)
+
+    @admin.display(description="月份", ordering="month")
+    def month_label(self, counts):
+        return str(counts)

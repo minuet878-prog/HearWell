@@ -2,23 +2,37 @@ import uuid
 
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch
+from django.template.loader import render_to_string
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import Throttled
 from rest_framework.generics import GenericAPIView, ListAPIView, RetrieveAPIView
 from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
 
+from screening.api.permissions import GUEST_OR_CONSENTED
 from screening.api.serializers import (
     AudiogramCreateSerializer,
     AudiogramSerializer,
+    GuestAnswersSerializer,
+    GuestScoreSerializer,
     QuestionnaireDetailSerializer,
     QuestionnaireSerializer,
     SubmissionCreateSerializer,
     SubmissionDetailSerializer,
     SubmissionSerializer,
 )
-from screening.models import Answer, Audiogram, AudiogramPoint, Question, Questionnaire
+from screening.models import (
+    Answer,
+    Audiogram,
+    AudiogramPoint,
+    Question,
+    Questionnaire,
+    count_guest,
+)
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
+from screening.scoring import TREND_STATUS_TEXT
 
 
 class QuestionnaireList(ListAPIView):
@@ -32,6 +46,8 @@ class QuestionnaireList(ListAPIView):
 
 class QuestionnaireDetail(RetrieveAPIView):
     serializer_class = QuestionnaireDetailSerializer
+
+    permission_classes = (GUEST_OR_CONSENTED,)
 
     def get_queryset(self):
         return Questionnaire.objects.defined().prefetch_related(
@@ -133,11 +149,74 @@ class SubmissionList(ListAPIView):
             created = False
         if not created and not _same_content(existing, data):
             return Response({"detail": "這個收據編號已經用過"}, status.HTTP_409_CONFLICT)
+        # A guest result newly saved counts (#500); sent again and found, it does not.
+        if created and data["from_guest"]:
+            count_guest("saved")
         # Same query and serializer as GET /api/submissions/{id}/, so the bodies match.
         submission = _own_submission_details(request, with_ioi_ha=True).get(pk=existing.pk)
         return Response(
             SubmissionDetailSerializer(submission).data,
             status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class GuestScoreThrottle(SimpleRateThrottle):
+    # Spec #492: 40 an hour from one connection source (DRF's get_ident), counted in the server's
+    # memory cache only, never in the database. 40, not the grill's 20 (implementation decision
+    # I1): one questionnaire scores twice, on the answer page and on the guest result page.
+    scope = "guest_score"
+    rate = "40/hour"
+
+    def get_cache_key(self, request, view):
+        return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
+
+
+GUEST_LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。"
+
+
+class GuestScore(GenericAPIView):
+    """Scores a guest's HHIE-S or HHIA-S answers without saving anything (spec #492, ADR 0055):
+    no account, no consent, nothing written."""
+
+    serializer_class = GuestAnswersSerializer
+    permission_classes = ()
+    throttle_classes = (GuestScoreThrottle,)
+
+    def throttled(self, request, wait):
+        raise Throttled(detail=GUEST_LIMIT)
+
+    @extend_schema(
+        responses={
+            200: GuestScoreSerializer,
+            400: OpenApiResponse(description="Invalid answers, or not HHIE-S or HHIA-S"),
+            429: OpenApiResponse(description="More than 40 in an hour from this address"),
+        },
+    )
+    def post(self, request):
+        serializer = GuestAnswersSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        questionnaire, wearing = data["questionnaire"], data["wearing_hearing_aid"]
+        result = questionnaire.definition.result.from_answers(
+            questionnaire, data["question_scores"], wearing
+        )
+        html = render_to_string(
+            "screening/graded_result.html",
+            {"submission": result.submission} | result.page_context(),
+        )
+        # The answer page's send counts; the guest result page sending them again does not.
+        if data["just_finished"]:
+            count_guest("completed")
+        return Response(
+            GuestScoreSerializer(
+                {
+                    "questionnaire": questionnaire,
+                    "wearing_hearing_aid": wearing,
+                    "wearing_text": TREND_STATUS_TEXT[wearing],
+                    "result": result,
+                    "html": html,
+                }
+            ).data
         )
 
 

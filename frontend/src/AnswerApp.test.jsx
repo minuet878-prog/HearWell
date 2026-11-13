@@ -1231,3 +1231,152 @@ describe("IOI-HA (#245)", () => {
     expect(radio("第1題選項2").checked).toBe(true);
   });
 });
+
+// #495 (spec #492): a guest answers HHIE-S or HHIA-S scored without saving; no draft is kept.
+describe("guest", () => {
+  const LIMIT = "剛才做了很多次，請過一小時再試。您的作答沒有不見。";
+  const SCORED = {
+    questionnaire: { code: "hhie-s", name: "HHIE-S" },
+    wearing_hearing_aid: true,
+    wearing_text: "有戴助聽器",
+    scores: { total: 40, emotional: 20, social: 20 },
+    level: { code: "severe", text: "顯著影響", color: "severe" },
+    html: "<div>結果</div>",
+  };
+  const renderGuest = () => renderApp({ guest: true, questionnaireCode: "hhie-s", userId: 0 });
+  const kept = () => Object.keys(localStorage);
+
+  it("asks the wearing question, keeps no draft and does not say it does", async () => {
+    mockApi([{ status: 200, body: SCORED }]);
+    await renderGuest();
+    expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
+    choose("沒戴");
+    next();
+    choose("有時");
+    expect(kept()).toEqual([]);
+    expect(screen.queryByText("✓ 已儲存")).toBeNull();
+    expect(screen.queryByText("答案會自動存在這支手機，中途離開也沒關係。")).toBeNull();
+    // Coming back asks nothing: there was nothing kept to continue.
+    cleanup();
+    await renderGuest();
+    expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+  });
+
+  it("sends the answers to the scoring-only endpoint, keeps the guest result and opens its page", async () => {
+    mockApi([{ status: 200, body: SCORED }]);
+    const finishedAt = Date.parse("2026-11-13T10:00:00+08:00");
+    vi.spyOn(Date, "now").mockReturnValue(finishedAt);
+    await renderGuest();
+    answerAll("常常", "有戴");
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/guest/result/hhie-s"));
+    expect(postCalls()).toHaveLength(1);
+    expect(postCalls()[0][0]).toBe("/api/guest-scores/");
+    const answers = QUESTIONS.map((q) => ({ question: q.id, score: 4 }));
+    expect(postBody()).toEqual({ questionnaire: 1, wearing_hearing_aid: true, answers, just_finished: true });
+    expect(postHeaders()["X-CSRFToken"]).toBe("csrf-token");
+    expect(postHeaders()).not.toHaveProperty("Idempotency-Key");
+    expect(kept()).toEqual(["hearwell:guest-result:hhie-s"]);
+    expect(JSON.parse(localStorage.getItem("hearwell:guest-result:hhie-s"))).toEqual({
+      code: "hhie-s",
+      questionnaireId: 1,
+      answers,
+      wearing: true,
+      key: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      finishedAt,
+      total: 40,
+      level: SCORED.level,
+    });
+  });
+
+  it("on 429 says the server's words and keeps the answers on screen", async () => {
+    mockApi([{ status: 429, body: { detail: LIMIT } }]);
+    await renderGuest();
+    answerAll();
+    submit();
+    expect((await screen.findByRole("alert")).textContent).toBe(LIMIT);
+    expect(radio("常常").checked).toBe(true);
+    expect(screen.queryByText("已送出")).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(kept()).toEqual([]);
+  });
+
+  it("shows the API's message on 400 as for an account", async () => {
+    mockApi([{ status: 400, body: { answers: ["有題目沒有作答"] } }]);
+    await renderGuest();
+    answerAll();
+    submit();
+    await screen.findByText("送出的資料有誤：有題目沒有作答");
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  // #492 acceptance 20: an account's draft in this browser is neither read nor cleared.
+  it("leaves an account's draft of the same questionnaire alone", async () => {
+    const draft = { userId: USER_ID, questionnaireId: 1, key: "k", wearing: false, answers: { 11: 4 }, step: 2, savedAt: Date.now() };
+    saveDraft(draft);
+    mockApi([{ status: 200, body: SCORED }]);
+    await renderGuest();
+    expect(screen.queryByRole("button", { name: "接著答" })).toBeNull();
+    answerAll();
+    submit();
+    await waitFor(() => expect(navigate).toHaveBeenCalled());
+    expect(JSON.parse(localStorage.getItem(DRAFT_KEY))).toEqual(draft);
+  });
+
+  // Implementation decision I4: checked before answering, so nobody answers for nothing.
+  it("asks to register, with no question, when the browser cannot keep the result", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    await renderApp({
+      guest: true, questionnaireCode: "hhie-s", userId: 0, registerUrl: "/register?next=%2Fquestionnaire%2F1",
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。");
+    expect(screen.getByRole("link", { name: "註冊新帳號" }).getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
+  });
+
+  // Self-review B1: the check passed, but keeping the result itself failed (storage full meanwhile).
+  it("stays on the answers and asks to register when the result cannot be kept after scoring", async () => {
+    mockApi([{ status: 200, body: SCORED }]);
+    const setItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
+      if (key === "hearwell:guest-result:hhie-s") throw new DOMException("full", "QuotaExceededError");
+      return setItem.call(this, key, value);
+    });
+    await renderApp({
+      guest: true, questionnaireCode: "hhie-s", userId: 0, registerUrl: "/register?next=%2Fquestionnaire%2F1",
+    });
+    answerAll();
+    submit();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。");
+    expect(screen.getByRole("link", { name: "註冊新帳號" }).getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+    expect(radio("常常").checked).toBe(true);
+    expect(screen.queryByText("已送出")).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("starts as usual when the browser can keep the result", async () => {
+    await renderGuest();
+    expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
+    expect(screen.queryByText(/這個瀏覽器不能暫存結果/)).toBeNull();
+    expect(kept()).toEqual([]);
+  });
+});
+
+// Signed in, nothing is checked: an account's answers are saved by the server (I4).
+describe("account and storage", () => {
+  it("answers as before when the browser cannot keep anything", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    await renderApp();
+    expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
+    expect(screen.queryByText(/這個瀏覽器不能暫存結果/)).toBeNull();
+  });
+});
