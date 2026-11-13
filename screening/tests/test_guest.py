@@ -462,3 +462,34 @@ class GuestLimitBehindTheProxyTests(GuestTestCase):
         body = self.use_up_the_hour(REMOTE_ADDR=self.REAL)
         self.assertEqual(self.guest_score(body, REMOTE_ADDR=self.REAL).status_code, 429)
         self.assertEqual(self.guest_score(body, REMOTE_ADDR="203.0.113.9").status_code, 200)
+
+
+class GuestFallbackTests(GuestTestCase):
+    """Implementation decision I3: the web form saves records, so a guest whose React page does
+    not load is asked to register instead (shown by the page's script, answer-main.test.jsx)."""
+
+    CANNOT_LOAD = "這個瀏覽器載不出免註冊作答，請註冊後再做。"
+
+    def test_a_guest_page_holds_the_register_note(self):
+        url = reverse("screening", args=[self.hhie_s.pk])
+        # After registering (and consenting), back to this questionnaire.
+        register = f"/register?next=%2Fquestionnaire%2F{self.hhie_s.pk}"
+        self.assertEqual(url, f"/questionnaire/{self.hhie_s.pk}")
+        response = self.client.get(url)
+        note = re.search(
+            r'<div id="answer-guest-fallback" role="alert" hidden>(.*?)</div>',
+            response.content.decode(),
+            re.S,
+        )
+        self.assertIsNotNone(note)
+        self.assertIn(self.CANNOT_LOAD, note.group(1))
+        self.assertIn(f'href="{register}">註冊新帳號</a>', note.group(1))
+        # React reads the same link for a browser that cannot keep the result (I4).
+        self.assertContains(response, f'data-register-url="{register}"')
+
+    def test_signed_in_the_form_comes_back_as_before(self):
+        self.client.force_login(self.user)
+        content = self.client.get(reverse("screening", args=[self.hhie_s.pk])).content.decode()
+        self.assertNotIn('id="answer-guest-fallback"', content)
+        self.assertNotIn(self.CANNOT_LOAD, content)
+        self.assertNotIn("data-register-url", content)

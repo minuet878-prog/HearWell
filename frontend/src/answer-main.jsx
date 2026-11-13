@@ -19,9 +19,20 @@ const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
 const page = document.documentElement.classList;
 
+// A guest's note asking to register (I3): the form saves records, so it is not given back to them.
+const guestNote = document.getElementById("answer-guest-fallback");
+
 const showForm = () => {
   page.remove("answer-loading");
   if (note) note.textContent = "";
+};
+
+const giveUp = () => {
+  if (guestNote) {
+    fallback.hidden = true;
+    guestNote.hidden = false;
+  }
+  showForm();
 };
 
 if (container && fallback) {
@@ -52,7 +63,7 @@ if (container && fallback) {
         intro.hidden = true;
         showForm();
       }}
-      onFail={showForm}
+      onFail={giveUp}
     />,
   );
 }
