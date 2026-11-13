@@ -447,6 +447,9 @@ class RedesignLayoutTests(TestCase):
         play_in_view = "<inline>"
         smooth = "<inline>"
         every = [pwa_js, loading_js, slide_js, scroll_js]
+        # Signed in, after logout.js: guest results kept here go to the save page's question
+        # (#497).
+        signed_in = [logout_js, "screening/frontend/guest-ask.js"]
         empty_user = consented_user(username="no_records")
         with self.subTest(url="index"):
             self.assertEqual(scripts(reverse("index")), [*every, wave, play_in_view, smooth])
@@ -462,7 +465,7 @@ class RedesignLayoutTests(TestCase):
         with self.subTest(url="my_hearing without records"):
             self.assertEqual(
                 scripts(reverse("my_hearing")),
-                [*every, logout_js, reveal_js, wave, play_in_view, smooth],
+                [*every, *signed_in, reveal_js, wave, play_in_view, smooth],
             )
         self.client.force_login(self.user)
         # The continue notice (#337): its script and, inline, the questionnaires it matches.
@@ -470,12 +473,12 @@ class RedesignLayoutTests(TestCase):
         # #459: the 照顧旅程's steps that open and its entrance on a tab's first visit.
         journey_js = "screening/frontend/care-journey.js"
         expected = {
-            reverse("index"): [*every, logout_js, notice[0], journey_js, *notice[1:]],
-            reverse("questionnaire_list"): [*every, logout_js, *notice],
+            reverse("index"): [*every, *signed_in, notice[0], journey_js, *notice[1:]],
+            reverse("questionnaire_list"): [*every, *signed_in, *notice],
             # The inline one hides the form before it is drawn (spec phase5_answer_flash.md).
             reverse("screening", args=[self.questionnaire.id]): [
                 *every,
-                logout_js,
+                *signed_in,
                 answer_js,
                 wave,
                 play_in_view,
@@ -484,14 +487,14 @@ class RedesignLayoutTests(TestCase):
             ],
             reverse("result", args=[self.submission.id]): [
                 *every,
-                logout_js,
+                *signed_in,
                 wave,
                 play_in_view,
                 smooth,
             ],
             reverse("my_hearing"): [
                 *every,
-                logout_js,
+                *signed_in,
                 reveal_js,
                 test_history.TrendChartPageTests.CHART_JS,
                 wave,

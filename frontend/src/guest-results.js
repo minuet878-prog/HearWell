@@ -216,3 +216,69 @@ export async function saveGuestResults({
     .querySelector("[data-guest-retry]")
     .addEventListener("click", () => saveGuestResults({ root, fetchSave, navigate }), { once: true });
 }
+
+// #497: on every page someone signed in opens (layout.html's guest-ask.js, not on the save page
+// itself), guest results kept here take them to the save page's question first.
+export function askAboutGuestResults({ askUrl, now = Date.now(), navigate = (url) => window.location.replace(url) }) {
+  if (loadGuestResults(now).length > 0) navigate(askUrl);
+}
+
+function span(className, text) {
+  const element = document.createElement("span");
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
+
+// One result as the question shows it (the #493 mockup's F2), in its level's colour: one alone by
+// its topic, score and level; two each with its questionnaire's name, score and level on a line.
+function askTile(result, alone, names, topics) {
+  const tile = document.createElement("div");
+  tile.className = `journey-tile result-banner-${result.level.color}`;
+  if (alone) {
+    const score = span("journey-tile-score", `${result.total} `);
+    score.append(Object.assign(document.createElement("small"), { textContent: "分" }));
+    tile.append(
+      span("journey-tile-label", `${day(result.finishedAt)}・${topics[result.code] ?? result.code}`),
+      score,
+      span("journey-tile-level", result.level.text),
+    );
+  } else {
+    tile.append(
+      span("journey-tile-label", `${day(result.finishedAt)}・${names[result.code] ?? result.code}`),
+      span("journey-tile-level", `${result.total} 分・${result.level.text}`),
+    );
+  }
+  return tile;
+}
+
+// The save page not come from the save card (#497, #492 acceptance 26, 27): 要，存進這個帳號 saves
+// them all as from the card; 不要，清掉這次結果 clears every guest result here, saving none, and
+// goes home. None here: home.
+export function askToSaveGuestResults({
+  root,
+  now = Date.now(),
+  fetchSave = (...args) => fetch(...args),
+  navigate = (url) => window.location.replace(url),
+}) {
+  const results = loadGuestResults(now);
+  if (results.length === 0) return navigate(root.dataset.homeUrl);
+  const names = JSON.parse(root.querySelector("#guest-names").textContent);
+  const topics = JSON.parse(root.querySelector("#guest-topics").textContent);
+  const ask = root.querySelector("[data-guest-ask]");
+  const count = results.length === 1 ? "一份" : ` ${results.length} 份`;
+  root.querySelector("[data-guest-ask-lead]").textContent =
+    `這支手機裡有${count}還沒保存的結果。如果是幫家人做的，請選「不要」。`;
+  root
+    .querySelector("[data-guest-ask-list]")
+    .replaceChildren(...results.map((result) => askTile(result, results.length === 1, names, topics)));
+  root.querySelector("[data-guest-ask-yes]").addEventListener("click", () => {
+    ask.hidden = true;
+    saveGuestResults({ root, now, fetchSave, navigate });
+  }, { once: true });
+  root.querySelector("[data-guest-ask-no]").addEventListener("click", () => {
+    for (const result of results) clearGuestResult(result.code);
+    navigate(root.dataset.homeUrl);
+  }, { once: true });
+  ask.hidden = false;
+}

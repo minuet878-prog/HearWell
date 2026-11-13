@@ -19,14 +19,20 @@ def guest_result(request, code):
 
 # The save page (spec #492): after registering or logging in, and agreeing (it is not one of the
 # consent's OPEN_PAGES), guest-save.js sends every guest result in this browser to the records
-# API. From the save card (?from=card) it saves straight away; the other ways in ask first (#497),
-# until then saving the same way.
+# API. From the save card (?from=card) it saves straight away; the other ways in (layout.html's
+# guest-ask.js brings them) ask first whether to keep them in this account (#497).
 @login_required
 @health_data_page
 def guest_save(request):
-    # Each guest questionnaire's name, to say which one was not saved.
+    guests = Questionnaire.objects.for_guests()
+    # Each guest questionnaire's name, to say which one was not saved or is asked about.
     names = {
-        guest.code: f"{guest.definition.topic}（{guest.questionnaire_name}）"
-        for guest in Questionnaire.objects.for_guests()
+        guest.code: f"{guest.definition.topic}（{guest.questionnaire_name}）" for guest in guests
     }
-    return render(request, "screening/guest_save.html", {"names": names})
+    # The question's tile names one result by its topic alone (the #493 mockup's F2).
+    topics = {guest.code: guest.definition.topic for guest in guests}
+    return render(
+        request,
+        "screening/guest_save.html",
+        {"names": names, "topics": topics, "asking": request.GET.get("from") != "card"},
+    )
