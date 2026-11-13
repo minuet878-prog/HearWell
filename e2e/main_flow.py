@@ -14380,6 +14380,50 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.main()).not_to_contain_text("總分")
 
 
+class GuestWithoutJavaScriptTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Self-review P3 (I3): with JavaScript off a guest's answer page shows no form, whose answers
+    would be lost at the login it leads to, but the note asking to register."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(java_script_enabled=False)
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_a_guest_is_asked_to_register_instead_of_given_the_form(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            # The script's copy of the note stays hidden; <noscript>'s shows (by role: Playwright's
+            # text matching skips <noscript>).
+            note = (
+                self.main()
+                .get_by_role("paragraph")
+                .filter(has_text="這個瀏覽器載不出免註冊作答，請註冊後再做。")
+            )
+            expect(note.filter(visible=True)).to_have_count(1)
+            expect(self.main().locator("#answer-form")).to_be_hidden()
+            expect(self.main().get_by_role("radio")).to_have_count(0)
+            self.main().get_by_role("link", name="註冊新帳號").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/register?next=%2Fquestionnaire%2F{self.hhie_s.pk}"
+            )
+
+
 class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """#499 (#492 acceptance 1 and 21): 開始篩檢 on the logged-out home opens the wizard's age step;
     after answering, the home shows that result on top, the whole tile a link to its page."""

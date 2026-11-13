@@ -58,6 +58,11 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         <p class="text-xl/normal font-bold">這個瀏覽器載不出免註冊作答，請註冊後再做。</p>
         <a class="btn btn-primary btn-lg" href="{{ register_url }}">註冊新帳號</a>
     </div>
+    {# Self-review P3: with JavaScript off nothing above runs, so the same note shows here and the form stays hidden. #}
+    <noscript>
+        <p class="text-xl/normal font-bold">這個瀏覽器載不出免註冊作答，請註冊後再做。</p>
+        <a class="btn btn-primary btn-lg" href="{{ register_url }}">註冊新帳號</a>
+    </noscript>
     {% endif %}
     {# Runs before the form is drawn, so the form never flashes up; module scripts run too late. #}
     <script>
@@ -77,7 +82,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
     </script>
     <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if guest %} data-guest data-questionnaire-code="{{ questionnaire.code }}" data-register-url="{{ register_url }}"{% endif %}{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
     {% endif %}
-    <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
+    <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST"{% if guest %} hidden{% endif %}>
         {% csrf_token %}
         {# Receipt number for this page: sending it twice saves once (spec phase6_web_double_submit.md). #}
         <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">

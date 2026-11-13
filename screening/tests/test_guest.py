@@ -489,9 +489,22 @@ class GuestFallbackTests(GuestTestCase):
         # React reads the same link for a browser that cannot keep the result (I4).
         self.assertContains(response, f'data-register-url="{register}"')
 
+    def test_without_javascript_a_guest_gets_the_note_not_the_form(self):
+        """Self-review P3: the form is hidden from the start, and <noscript> says the I3 note."""
+        response = self.client.get(reverse("screening", args=[self.hhie_s.pk]))
+        content = response.content.decode()
+        register = f"/register?next=%2Fquestionnaire%2F{self.hhie_s.pk}"
+        note = re.search(r"<noscript>(.*?)</noscript>", content, re.S)
+        self.assertIsNotNone(note)
+        self.assertIn(self.CANNOT_LOAD, note.group(1))
+        self.assertIn(f'href="{register}">註冊新帳號</a>', note.group(1))
+        self.assertRegex(content, r'<form id="answer-form"[^>]* hidden>')
+
     def test_signed_in_the_form_comes_back_as_before(self):
         self.client.force_login(self.user)
         content = self.client.get(reverse("screening", args=[self.hhie_s.pk])).content.decode()
+        self.assertNotIn("<noscript>", content)
+        self.assertNotRegex(content, r'<form id="answer-form"[^>]* hidden>')
         self.assertNotIn('id="answer-guest-fallback"', content)
         self.assertNotIn(self.CANNOT_LOAD, content)
         self.assertNotIn("data-register-url", content)
