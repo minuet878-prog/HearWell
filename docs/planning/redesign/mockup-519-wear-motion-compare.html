@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>佩戴步驟動畫比較</title>
+<style>
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7; --pull: #e7eef8;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --mark-right: #c62828; /* new: the red right-ear mark, drawings only */
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  .sheet { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 6px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .fixes { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1100px; }
+  .fixes h2 { font-size: 22px; color: var(--heading); margin: 0 0 6px; }
+  .fixes ul { margin: 6px 0 0; padding-left: 1.3em; }
+  .fixes li { margin-bottom: 6px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 28px; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; font-size: 20px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  code { font-size: 14px; background: #f4f6f8; padding: 0 3px; border-radius: 4px; }
+  .phone { --r: 18px; width: 390px; background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; font-size: var(--r); line-height: 1.5; color: var(--body); }
+  .phone.x2 { --r: 36px; }
+  .pg { padding: calc(1.1 * var(--r)) calc(1.1 * var(--r)) calc(1.5 * var(--r)); overflow-wrap: anywhere; }
+  .phone p { margin: 0 0 calc(.75 * var(--r)); }
+  ol.steps { list-style: none; margin: 0; padding: 0; }
+  ol.steps > li { padding: calc(.75 * var(--r)) 0; border-bottom: 1px solid var(--line); }
+  ol.steps > li.divider { padding: calc(.75 * var(--r)) 0 calc(.25 * var(--r)); font-weight: 700; color: var(--heading); font-size: calc(1.1111 * var(--r)); border-bottom: 0; }
+  .chk { display: flex; align-items: flex-start; gap: calc(.75 * var(--r)); min-height: calc(2.75 * var(--r)); padding-block: calc(.25 * var(--r)); }
+  .chk .box { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); margin-top: calc(.1 * var(--r)); border: 2px solid var(--line-strong); border-radius: 6px; background: #fff; }
+  .chk .box.on { background: var(--primary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 75% no-repeat; border-color: var(--primary); }
+  .chk > span { min-width: 0; }
+  .chk strong { display: block; color: var(--heading); }
+  .chk .box { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); margin-top: calc(.1 * var(--r)); border: 2px solid var(--line-strong); border-radius: 6px; background: #fff; }
+  .phone ol.steps > li { border-bottom: 0; }
+  /* the drawings: the care drawings' strokes (site.css .care-drawing) */
+  .care-drawing { display: block; width: 100%; max-width: calc(15 * var(--r)); height: auto; margin-bottom: calc(.5 * var(--r)); }
+  .care-drawing * { fill: none; stroke: var(--primary); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .care-drawing .soft { fill: var(--pull); }
+  .care-drawing .thin { stroke-width: 1.6; }
+  .care-drawing .thick { stroke-width: 4; }
+  .care-drawing .dot { fill: var(--primary); stroke: none; }
+  .care-drawing .tube { stroke-width: 8; }
+  .care-drawing .tube-in { stroke: var(--pull); stroke-width: 3.6; }
+  .care-drawing .mark-right { fill: var(--mark-right); stroke: none; }
+  .care-drawing .paper { fill: #fff; stroke: none; } /* new: the fingers' white, under their lines */
+  .care-drawing .part { fill: #b5c9e6; } /* new: the aids' deeper blue, apart from the white ear, as the NHS pictures */
+  .care-drawing .mark-left { fill: var(--primary); stroke: none; }
+  .care-drawing text { fill: var(--primary); stroke: none; font-weight: 700; } /* size: the font-size attribute, in viewBox units */
+
+  
+  .care-drawing { max-width: none; }
+
+  /* the player: no script, two radios restart the animation by swapping between two copies of it */
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; min-height: calc(2.75 * var(--r)); padding: 0 calc(1 * var(--r)); border-radius: calc(.78 * var(--r)); font-weight: 700; cursor: pointer; margin-bottom: calc(.5 * var(--r)); }
+  .btn.ghost { border: 2px solid var(--primary); color: var(--primary); background: #fff; }
+  .btn.solid { border: 2px solid var(--primary); color: #fff; background: var(--primary); }
+  .vh:focus-visible ~ .btn { outline: 3px solid var(--primary); outline-offset: 3px; }
+  .player .l-1, .player .l-2 { display: none; }
+  #a1:checked ~ .l-none, #a2:checked ~ .l-none, #b1:checked ~ .l-none, #b2:checked ~ .l-none { display: none; }
+  #a1:checked ~ .l-1, #b1:checked ~ .l-1 { display: inline-flex; }
+  #a2:checked ~ .l-2, #b2:checked ~ .l-2 { display: inline-flex; }
+  
+  @keyframes move-x {
+    0%, 15% { transform: translate(80px, -55px); }
+    70%, 100% { transform: translate(0, 0); }
+  }
+  @keyframes wire-x {
+    0%, 15% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C975 500 1000 535 1010 571"); }
+    70%, 100% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"); }
+  }
+  @keyframes move-y {
+    0%, 15% { transform: translate(80px, -55px); }
+    70%, 100% { transform: translate(0, 0); }
+  }
+  @keyframes wire-y {
+    0%, 15% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C975 500 1000 535 1010 571"); }
+    70%, 100% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"); }
+  }
+  @keyframes move-z {
+    0%, 15% { transform: translate(80px, -55px); }
+    70%, 100% { transform: translate(0, 0); }
+  }
+  @keyframes wire-z {
+    0%, 15% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C975 500 1000 535 1010 571"); }
+    70%, 100% { d: path("M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"); }
+  }
+  .player .mover, .player .wire { animation-duration: 2.4s; animation-iteration-count: 2; animation-timing-function: ease-in-out; animation-fill-mode: both; }
+  .auto .mover { animation-name: move-x; } .auto .wire { animation-name: wire-x; }
+  .auto .cue { display: none; }
+  #a1:checked ~ svg .mover, #b1:checked ~ svg .mover { animation-name: move-y; }
+  #a1:checked ~ svg .wire, #b1:checked ~ svg .wire { animation-name: wire-y; }
+  #a2:checked ~ svg .mover, #b2:checked ~ svg .mover { animation-name: move-z; }
+  #a2:checked ~ svg .wire, #b2:checked ~ svg .wire { animation-name: wire-z; }
+  #b1:checked ~ svg .cue, #b2:checked ~ svg .cue { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .player .mover, .player .wire { animation: none !important; }
+    .player .cue { display: inline !important; }
+    .player .btn { display: none !important; }
+  }
+
+  /* C: two frames side by side */
+  .frames { display: grid; grid-template-columns: 1fr 1fr; gap: calc(.5 * var(--r)); margin-bottom: calc(.5 * var(--r)); }
+  .frames figure { margin: 0; position: relative; }
+  .frames .care-drawing { margin: 0; }
+  .frames figcaption { font-size: var(--r); font-weight: 700; color: var(--heading); text-align: center; margin-top: calc(.25 * var(--r)); }
+  .frames .n { position: absolute; left: 4px; top: 4px; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border-radius: 50%; background: var(--primary); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: calc(.9 * var(--r)); }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>佩戴步驟怎麼「動起來」・比較頁</h1>
+  <p class="lead">拿已審定的「耳掛（耳塞和細線）・戴上 4. 推進耳塞」那張線條圖（#503）做三種版本，圖本身一筆都沒改，只讓手指和耳塞動起來。手機寬 390px、字 18px。這頁沒有 JavaScript，只用 CSS 動畫；按鈕按了會重播。</p>
+
+  <section class="fixes">
+    <h2>請您決定的事</h2>
+    <ul>
+      <li><b>選 A、B 或 C</b>（我建議 <b>B　按了才播</b>，原因在各版本下面）。</li>
+      <li><b>動作對不對</b>：從外面往耳道推進去的方向、距離、手指捏的位置，會不會誤導長輩。</li>
+      <li>選定後，我再列出 18 張裡哪幾張值得做成動畫（分左右、開機這類不用動）。</li>
+    </ul>
+  </section>
+
+  <div class="row">
+    <div class="opt">
+      <p class="opt-label">現況　審定的靜態圖（對照用）</p>
+      <div class="phone"><div class="pg"><ol class="steps"><li><svg class="care-drawing" viewBox="0 0 240 160" role="img" aria-label="手指捏住細線靠近耳塞的地方，把耳塞推進耳道" focusable="false"><g transform="translate(-76.80000000000001 -32.0) rotate(0) scale(0.21333333333333335)"><path d="M722 352C650 380 610 470 620 560C625 620 640 670 660 700C700 760 760 830 820 830C860 830 890 800 890 760"/><path d="M722 352C780 335 845 360 882 405C900 425 920 460 926 505"/><path d="M735 715C690 670 655 600 662 520C670 450 712 405 770 405C812 405 842 432 842 470C845 505 828 522 800 536C770 548 742 562 722 592C712 622 716 652 738 680"/><path d="M762 495C772 470 795 455 830 452"/><path d="M872 560C894 572 902 600 892 628C886 645 878 662 866 676C846 694 816 700 786 688"/><ellipse class="dot" cx="836" cy="628" rx="11" ry="17"/><path class="part" d="M580 352C610 295 675 248 745 236L760 240C764 258 762 274 758 288C700 308 650 362 622 430C603 490 600 560 620 598C608 606 592 604 580 594C558 570 556 476 568 418C572 390 575 368 580 352Z"/><rect class="thin" x="552" y="356" width="20" height="56" rx="8" transform="rotate(20 562 384)"/><path class="tube wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><path class="tube-in wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><g class="mover"><g transform="translate(846 628) rotate(0) scale(1)"><rect class="part" x="16" y="-15" width="70" height="30" rx="15"/><path class="thin" d="M58 -15V15"/><path class="part" d="M38 -36C14 -36 -6 -20 -6 0C-6 20 14 36 38 36C29 22 29 -22 38 -36Z"/><path class="thin" d="M8 -27C17 -12 17 12 8 27M22 -33C31 -14 31 14 22 33"/></g><path class="tube" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><path class="tube-in" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><g transform="translate(904 664) rotate(-10) scale(1)"><path class="paper" d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900Z"/><path d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900"/><path class="soft" d="M-39.44 51.0C-39.44 -3.4000000000000004 -20.4 -21.76 0 -21.76C20.4 -21.76 39.44 -3.4000000000000004 39.44 51.0C39.44 71.4 -39.44 71.4 -39.44 51.0Z"/><path class="thin" d="M-40.8 285.6C-13.600000000000001 299.20000000000005 13.600000000000001 299.20000000000005 40.8 285.6"/></g><g transform="translate(952 640) rotate(-35) scale(1)"><path class="paper" d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900Z"/><path d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900"/><path class="soft" d="M-34.22 44.25C-34.22 -2.95 -17.7 -18.88 0 -18.88C17.7 -18.88 34.22 -2.95 34.22 44.25C34.22 61.95 -34.22 61.95 -34.22 44.25Z"/><path class="thin" d="M-35.4 247.8C-11.8 259.6 11.8 259.6 35.4 247.8"/></g></g><g class="cue"><path d="M1060 500C1010 512 960 546 932 582"/><g transform="translate(925 592) rotate(125) scale(4.6875)"><path class="dot" d="M-12 -7L2 0L-12 7Z"/></g></g></g></svg><div class="chk"><span class="box"></span><span><strong>4. 推進耳塞</strong>捏住細線靠近耳塞的地方，把耳塞輕輕推進耳道，細線貼著頭的側邊。</span></div></li></ol></div></div>
+      <div class="note"><p>用箭頭表示方向。下面三個版本裡，手機設定「減少動態效果」的人都會看到這張。</p></div>
+    </div>
+    <div class="opt">
+      <p class="opt-label">A　自動播放</p>
+      <div class="phone"><div class="pg"><ol class="steps"><li><div class="player auto"><input type="radio" name="a" id="a1" class="vh"><input type="radio" name="a" id="a2" class="vh"><svg class="care-drawing" viewBox="0 0 240 160" role="img" aria-label="手指捏住細線靠近耳塞的地方，把耳塞推進耳道" focusable="false"><g transform="translate(-76.80000000000001 -32.0) rotate(0) scale(0.21333333333333335)"><path d="M722 352C650 380 610 470 620 560C625 620 640 670 660 700C700 760 760 830 820 830C860 830 890 800 890 760"/><path d="M722 352C780 335 845 360 882 405C900 425 920 460 926 505"/><path d="M735 715C690 670 655 600 662 520C670 450 712 405 770 405C812 405 842 432 842 470C845 505 828 522 800 536C770 548 742 562 722 592C712 622 716 652 738 680"/><path d="M762 495C772 470 795 455 830 452"/><path d="M872 560C894 572 902 600 892 628C886 645 878 662 866 676C846 694 816 700 786 688"/><ellipse class="dot" cx="836" cy="628" rx="11" ry="17"/><path class="part" d="M580 352C610 295 675 248 745 236L760 240C764 258 762 274 758 288C700 308 650 362 622 430C603 490 600 560 620 598C608 606 592 604 580 594C558 570 556 476 568 418C572 390 575 368 580 352Z"/><rect class="thin" x="552" y="356" width="20" height="56" rx="8" transform="rotate(20 562 384)"/><path class="tube wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><path class="tube-in wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><g class="mover"><g transform="translate(846 628) rotate(0) scale(1)"><rect class="part" x="16" y="-15" width="70" height="30" rx="15"/><path class="thin" d="M58 -15V15"/><path class="part" d="M38 -36C14 -36 -6 -20 -6 0C-6 20 14 36 38 36C29 22 29 -22 38 -36Z"/><path class="thin" d="M8 -27C17 -12 17 12 8 27M22 -33C31 -14 31 14 22 33"/></g><path class="tube" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><path class="tube-in" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><g transform="translate(904 664) rotate(-10) scale(1)"><path class="paper" d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900Z"/><path d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900"/><path class="soft" d="M-39.44 51.0C-39.44 -3.4000000000000004 -20.4 -21.76 0 -21.76C20.4 -21.76 39.44 -3.4000000000000004 39.44 51.0C39.44 71.4 -39.44 71.4 -39.44 51.0Z"/><path class="thin" d="M-40.8 285.6C-13.600000000000001 299.20000000000005 13.600000000000001 299.20000000000005 40.8 285.6"/></g><g transform="translate(952 640) rotate(-35) scale(1)"><path class="paper" d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900Z"/><path d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900"/><path class="soft" d="M-34.22 44.25C-34.22 -2.95 -17.7 -18.88 0 -18.88C17.7 -18.88 34.22 -2.95 34.22 44.25C34.22 61.95 -34.22 61.95 -34.22 44.25Z"/><path class="thin" d="M-35.4 247.8C-11.8 259.6 11.8 259.6 35.4 247.8"/></g></g><g class="cue"><path d="M1060 500C1010 512 960 546 932 582"/><g transform="translate(925 592) rotate(125) scale(4.6875)"><path class="dot" d="M-12 -7L2 0L-12 7Z"/></g></g></g></svg><label for="a1" class="btn ghost l-none">↺ 再看一次</label><label for="a2" class="btn ghost l-1">↺ 再看一次</label><label for="a1" class="btn ghost l-2">↺ 再看一次</label></div><div class="chk"><span class="box"></span><span><strong>4. 推進耳塞</strong>捏住細線靠近耳塞的地方，把耳塞輕輕推進耳道，細線貼著頭的側邊。</span></div></li></ol></div></div>
+      <div class="note">
+        <p><b>做法</b>：一滑到就播 2 次（共 4.8 秒）後停在戴好的樣子；按「再看一次」重播。播放時拿掉箭頭，動作本身就是方向。</p>
+        <p><b>好處</b>：不用按就看到動作。</p>
+        <p><b>代價</b>：一頁有好幾步都會動時，畫面一直在動，長輩容易分心、看不到字。控制在 5 秒內才不用另外做暫停鍵（無障礙標準 WCAG 2.2.2）。</p>
+      </div>
+    </div>
+    <div class="opt">
+      <p class="opt-label">B　按了才播<span class="rec">建議</span></p>
+      <div class="phone"><div class="pg"><ol class="steps"><li><div class="player tap"><input type="radio" name="b" id="b1" class="vh"><input type="radio" name="b" id="b2" class="vh"><svg class="care-drawing" viewBox="0 0 240 160" role="img" aria-label="手指捏住細線靠近耳塞的地方，把耳塞推進耳道" focusable="false"><g transform="translate(-76.80000000000001 -32.0) rotate(0) scale(0.21333333333333335)"><path d="M722 352C650 380 610 470 620 560C625 620 640 670 660 700C700 760 760 830 820 830C860 830 890 800 890 760"/><path d="M722 352C780 335 845 360 882 405C900 425 920 460 926 505"/><path d="M735 715C690 670 655 600 662 520C670 450 712 405 770 405C812 405 842 432 842 470C845 505 828 522 800 536C770 548 742 562 722 592C712 622 716 652 738 680"/><path d="M762 495C772 470 795 455 830 452"/><path d="M872 560C894 572 902 600 892 628C886 645 878 662 866 676C846 694 816 700 786 688"/><ellipse class="dot" cx="836" cy="628" rx="11" ry="17"/><path class="part" d="M580 352C610 295 675 248 745 236L760 240C764 258 762 274 758 288C700 308 650 362 622 430C603 490 600 560 620 598C608 606 592 604 580 594C558 570 556 476 568 418C572 390 575 368 580 352Z"/><rect class="thin" x="552" y="356" width="20" height="56" rx="8" transform="rotate(20 562 384)"/><path class="tube wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><path class="tube-in wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><g class="mover"><g transform="translate(846 628) rotate(0) scale(1)"><rect class="part" x="16" y="-15" width="70" height="30" rx="15"/><path class="thin" d="M58 -15V15"/><path class="part" d="M38 -36C14 -36 -6 -20 -6 0C-6 20 14 36 38 36C29 22 29 -22 38 -36Z"/><path class="thin" d="M8 -27C17 -12 17 12 8 27M22 -33C31 -14 31 14 22 33"/></g><path class="tube" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><path class="tube-in" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><g transform="translate(904 664) rotate(-10) scale(1)"><path class="paper" d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900Z"/><path d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900"/><path class="soft" d="M-39.44 51.0C-39.44 -3.4000000000000004 -20.4 -21.76 0 -21.76C20.4 -21.76 39.44 -3.4000000000000004 39.44 51.0C39.44 71.4 -39.44 71.4 -39.44 51.0Z"/><path class="thin" d="M-40.8 285.6C-13.600000000000001 299.20000000000005 13.600000000000001 299.20000000000005 40.8 285.6"/></g><g transform="translate(952 640) rotate(-35) scale(1)"><path class="paper" d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900Z"/><path d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900"/><path class="soft" d="M-34.22 44.25C-34.22 -2.95 -17.7 -18.88 0 -18.88C17.7 -18.88 34.22 -2.95 34.22 44.25C34.22 61.95 -34.22 61.95 -34.22 44.25Z"/><path class="thin" d="M-35.4 247.8C-11.8 259.6 11.8 259.6 35.4 247.8"/></g></g><g class="cue"><path d="M1060 500C1010 512 960 546 932 582"/><g transform="translate(925 592) rotate(125) scale(4.6875)"><path class="dot" d="M-12 -7L2 0L-12 7Z"/></g></g></g></svg><label for="b1" class="btn solid l-none">▶ 看動作</label><label for="b2" class="btn ghost l-1">↺ 再看一次</label><label for="b1" class="btn ghost l-2">↺ 再看一次</label></div><div class="chk"><span class="box"></span><span><strong>4. 推進耳塞</strong>捏住細線靠近耳塞的地方，把耳塞輕輕推進耳道，細線貼著頭的側邊。</span></div></li></ol></div></div>
+      <div class="note">
+        <p><b>做法</b>：平常是審定的靜態圖；按「看動作」播 2 次、停在戴好的樣子。</p>
+        <p><b>好處</b>：頁面安靜，想看的人才看；靜態圖照樣看得懂，動畫是加碼。一頁幾步都有動畫也不吵。</p>
+        <p><b>代價</b>：多一顆按鈕，每步高約多 50px；不按的人看不到動作。</p>
+      </div>
+    </div>
+    <div class="opt">
+      <p class="opt-label">C　分格（不動）</p>
+      <div class="phone"><div class="pg"><ol class="steps"><li><div class="frames"><figure><span class="n">1</span><svg class="care-drawing" viewBox="0 0 240 160" role="img" aria-label="手指捏住細線靠近耳塞的地方，耳塞對準耳道" focusable="false"><g transform="translate(-76.80000000000001 -32.0) rotate(0) scale(0.21333333333333335)"><path d="M722 352C650 380 610 470 620 560C625 620 640 670 660 700C700 760 760 830 820 830C860 830 890 800 890 760"/><path d="M722 352C780 335 845 360 882 405C900 425 920 460 926 505"/><path d="M735 715C690 670 655 600 662 520C670 450 712 405 770 405C812 405 842 432 842 470C845 505 828 522 800 536C770 548 742 562 722 592C712 622 716 652 738 680"/><path d="M762 495C772 470 795 455 830 452"/><path d="M872 560C894 572 902 600 892 628C886 645 878 662 866 676C846 694 816 700 786 688"/><ellipse class="dot" cx="836" cy="628" rx="11" ry="17"/><path class="part" d="M580 352C610 295 675 248 745 236L760 240C764 258 762 274 758 288C700 308 650 362 622 430C603 490 600 560 620 598C608 606 592 604 580 594C558 570 556 476 568 418C572 390 575 368 580 352Z"/><rect class="thin" x="552" y="356" width="20" height="56" rx="8" transform="rotate(20 562 384)"/><path class="tube wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C975 500 1000 535 1010 571"/><path class="tube-in wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C975 500 1000 535 1010 571"/><g class="mover" transform="translate(80 -55)"><g transform="translate(846 628) rotate(0) scale(1)"><rect class="part" x="16" y="-15" width="70" height="30" rx="15"/><path class="thin" d="M58 -15V15"/><path class="part" d="M38 -36C14 -36 -6 -20 -6 0C-6 20 14 36 38 36C29 22 29 -22 38 -36Z"/><path class="thin" d="M8 -27C17 -12 17 12 8 27M22 -33C31 -14 31 14 22 33"/></g><path class="tube" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><path class="tube-in" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><g transform="translate(904 664) rotate(-10) scale(1)"><path class="paper" d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900Z"/><path d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900"/><path class="soft" d="M-39.44 51.0C-39.44 -3.4000000000000004 -20.4 -21.76 0 -21.76C20.4 -21.76 39.44 -3.4000000000000004 39.44 51.0C39.44 71.4 -39.44 71.4 -39.44 51.0Z"/><path class="thin" d="M-40.8 285.6C-13.600000000000001 299.20000000000005 13.600000000000001 299.20000000000005 40.8 285.6"/></g><g transform="translate(952 640) rotate(-35) scale(1)"><path class="paper" d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900Z"/><path d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900"/><path class="soft" d="M-34.22 44.25C-34.22 -2.95 -17.7 -18.88 0 -18.88C17.7 -18.88 34.22 -2.95 34.22 44.25C34.22 61.95 -34.22 61.95 -34.22 44.25Z"/><path class="thin" d="M-35.4 247.8C-11.8 259.6 11.8 259.6 35.4 247.8"/></g></g></g></svg><figcaption>捏住、對準</figcaption></figure><figure><span class="n">2</span><svg class="care-drawing" viewBox="0 0 240 160" role="img" aria-label="把耳塞推進耳道" focusable="false"><g transform="translate(-76.80000000000001 -32.0) rotate(0) scale(0.21333333333333335)"><path d="M722 352C650 380 610 470 620 560C625 620 640 670 660 700C700 760 760 830 820 830C860 830 890 800 890 760"/><path d="M722 352C780 335 845 360 882 405C900 425 920 460 926 505"/><path d="M735 715C690 670 655 600 662 520C670 450 712 405 770 405C812 405 842 432 842 470C845 505 828 522 800 536C770 548 742 562 722 592C712 622 716 652 738 680"/><path d="M762 495C772 470 795 455 830 452"/><path d="M872 560C894 572 902 600 892 628C886 645 878 662 866 676C846 694 816 700 786 688"/><ellipse class="dot" cx="836" cy="628" rx="11" ry="17"/><path class="part" d="M580 352C610 295 675 248 745 236L760 240C764 258 762 274 758 288C700 308 650 362 622 430C603 490 600 560 620 598C608 606 592 604 580 594C558 570 556 476 568 418C572 390 575 368 580 352Z"/><rect class="thin" x="552" y="356" width="20" height="56" rx="8" transform="rotate(20 562 384)"/><path class="tube wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><path class="tube-in wire" d="M755 238C820 220 900 250 940 320C960 360 966 410 965 460C962 540 950 600 930 626"/><g class="mover"><g transform="translate(846 628) rotate(0) scale(1)"><rect class="part" x="16" y="-15" width="70" height="30" rx="15"/><path class="thin" d="M58 -15V15"/><path class="part" d="M38 -36C14 -36 -6 -20 -6 0C-6 20 14 36 38 36C29 22 29 -22 38 -36Z"/><path class="thin" d="M8 -27C17 -12 17 12 8 27M22 -33C31 -14 31 14 22 33"/></g><path class="tube" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><path class="tube-in" d="M860 644C846 690 806 722 758 726C728 728 708 716 696 698"/><g transform="translate(904 664) rotate(-10) scale(1)"><path class="paper" d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900Z"/><path d="M-68.0 900L-68.0 68.0C-68.0 -13.600000000000001 -34.0 -40.8 0 -40.8C34.0 -40.8 68.0 -13.600000000000001 68.0 68.0L68.0 900"/><path class="soft" d="M-39.44 51.0C-39.44 -3.4000000000000004 -20.4 -21.76 0 -21.76C20.4 -21.76 39.44 -3.4000000000000004 39.44 51.0C39.44 71.4 -39.44 71.4 -39.44 51.0Z"/><path class="thin" d="M-40.8 285.6C-13.600000000000001 299.20000000000005 13.600000000000001 299.20000000000005 40.8 285.6"/></g><g transform="translate(952 640) rotate(-35) scale(1)"><path class="paper" d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900Z"/><path d="M-59.0 900L-59.0 59.0C-59.0 -11.8 -29.5 -35.4 0 -35.4C29.5 -35.4 59.0 -11.8 59.0 59.0L59.0 900"/><path class="soft" d="M-34.22 44.25C-34.22 -2.95 -17.7 -18.88 0 -18.88C17.7 -18.88 34.22 -2.95 34.22 44.25C34.22 61.95 -34.22 61.95 -34.22 44.25Z"/><path class="thin" d="M-35.4 247.8C-11.8 259.6 11.8 259.6 35.4 247.8"/></g></g><g class="cue"><path d="M1060 500C1010 512 960 546 932 582"/><g transform="translate(925 592) rotate(125) scale(4.6875)"><path class="dot" d="M-12 -7L2 0L-12 7Z"/></g></g></g></svg><figcaption>推進去</figcaption></figure></div><div class="chk"><span class="box"></span><span><strong>4. 推進耳塞</strong>捏住細線靠近耳塞的地方，把耳塞輕輕推進耳道，細線貼著頭的側邊。</span></div></li></ol></div></div>
+      <div class="note">
+        <p><b>做法</b>：拆成「捏住、對準」「推進去」兩格，像連環圖。</p>
+        <p><b>好處</b>：不會動，最穩；可以印出來。</p>
+        <p><b>代價</b>：每格只剩一半寬，耳朵和手指變小、細節看不清；一步兩張圖，頁面變長。比較像現況的改良，不是動畫。</p>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
