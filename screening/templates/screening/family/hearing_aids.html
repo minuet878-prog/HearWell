@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <script defer src="{% static 'screening/pick-explain.js' %}"></script>
+<script type="module" src="{% static 'screening/frontend/wear-motion.js' %}"></script>
 {% endblock %}
 
 {% block body %}
@@ -27,6 +28,12 @@
             </span>
             <span class="link-card-arrow" aria-hidden="true">›</span>
         </a></li>
+        <li><a class="link-card" href="#wear-title">
+            <span class="link-card-body">
+                <span class="link-card-title">怎麼戴上、拿下</span>
+            </span>
+            <span class="link-card-arrow" aria-hidden="true">›</span>
+        </a></li>
         <li><a class="link-card" href="#care-title">
             <span class="link-card-body">
                 <span class="link-card-title">日常保養</span>
@@ -45,6 +52,13 @@
     <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
     {% include "screening/family/pick_explain.html" with pick=stages %}
     {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="tap-link" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
+</section>
+
+{# #504 (spec #502, the #503 mockup A): 日常保養's question and boxes, its steps in two titled groups. #}
+<section class="mb-6" data-jump-box aria-labelledby="wear-title">
+    <h2 id="wear-title" class="h4">怎麼戴上、拿下</h2>
+    <p>勾選不會留下，換外型也會清掉。</p>
+    {% include "screening/family/pick_explain.html" with pick=wear %}
 </section>
 
 {# #435: native checkboxes in no form, as on 陪診清單: a tick stays on this page in this browser until it reloads or another shape is picked; autocomplete="off" stops the browser putting ticks back. #}

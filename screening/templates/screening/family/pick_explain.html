@@ -19,7 +19,10 @@
             <p class="part-label">下一步</p>
             <ul class="list-unstyled mb-0">{% for words, url_name in option.next_steps %}<li><a class="link-card" href="{% url url_name %}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.links %}
             <ul class="list-unstyled mt-4 mb-0">{% for words, href in option.links %}<li><a class="link-card" href="{{ href }}"><span class="link-card-body"><span class="link-card-title">{{ words }}</span></span><span class="link-card-arrow" aria-hidden="true">›</span></a></li>{% endfor %}</ul>{% endif %}{% if option.steps %}
-            <ol class="care-steps divided-rows">{% for step in option.steps %}<li>{% with "screening/family/care_drawings/"|add:step.drawing|add:".html" as drawing %}{% include drawing %}{% endwith %}<label class="visit-check"><input type="checkbox" autocomplete="off"><span><strong class="block">{{ forloop.counter }}. {{ step.title }}（{{ step.frequency }}）</strong>{{ step.words }}</span></label></li>{% endfor %}</ol>{% endif %}{% if option.steps_note %}
+            <ol class="care-steps divided-rows">{% for step in option.steps %}{% include "screening/family/care_step.html" with number=forloop.counter %}{% endfor %}</ol>{% endif %}{% for group in option.step_groups %}
+            <h3 class="care-steps-title">{{ group.title }}</h3>
+            <ol class="care-steps divided-rows">{% for step in group.steps %}{% include "screening/family/care_step.html" with number=forloop.counter %}{% endfor %}</ol>{% if group.note %}
+            <p class="care-steps-note">{{ group.note.before }}<a class="tap-link" href="{{ group.note.link.href }}">{{ group.note.link.words }}</a>{{ group.note.after }}</p>{% endif %}{% endfor %}{% if option.steps_note %}
             <p class="mt-4 mb-0">{{ option.steps_note }}</p>{% endif %}</li>
         {% endfor %}
     </ul>

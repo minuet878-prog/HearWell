@@ -31,6 +31,7 @@ from screening.family_zone import (
     HEARING_AID_CARE_REMINDERS,
     HEARING_AID_PROBLEMS,
     HEARING_AID_STAGES,
+    HEARING_AID_WEAR,
     RELUCTANT_SITUATIONS,
     VISIT_BRING,
     VISIT_QUESTIONS,
@@ -53,13 +54,18 @@ from screening.models import (
     User,
 )
 from screening.questionnaires.thi import SUPPORT_MESSAGE as THI_SUPPORT_MESSAGE
+from screening.tests import test_line_in_app_browser
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
     GOOGLE_CLIENT_ID,
+    LINE_AUTHORIZE,
+    LINE_CHANNEL_ID,
+    LINE_ENDPOINTS,
     consented_user,
     fake_definition,
     google_on,
     id_token,
+    line_on,
     register,
 )
 
@@ -12112,7 +12118,7 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             expect(self.page).to_have_url(f"{self.live_server_url}/family#urgent-title")
 
             self.page.goto(f"{self.live_server_url}{self.PATH}")
-            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            expect(self.main().get_by_text("內容查核於 2026/11/14。")).to_be_visible()
             self.main().get_by_role("link", name="回到家人專區").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
 
@@ -12956,7 +12962,12 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     STORED = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
 
     def group(self):
-        return self.main().get_by_role("group", name=HEARING_AID_CARE.prompt)
+        # 怎麼戴上、拿下 (#504) asks the same question: find it under its own section's title.
+        return (
+            self.main()
+            .get_by_role("region", name="日常保養")
+            .get_by_role("group", name=HEARING_AID_CARE.prompt)
+        )
 
     def live(self):
         return self.group().locator('[aria-live="polite"]')
@@ -13224,6 +13235,203 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
                     self.assertLessEqual(box["x"] + box["width"], 320)
                     self.assertGreater(box["width"], 150)
                     self.assertAlmostEqual(box["height"] / box["width"], 160 / 240, delta=0.01)
+
+
+class FamilyWearTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#504 (spec #502): 怎麼戴上、拿下 in a real browser. It is 日常保養's question and boxes,
+    whose script and keyboard are tested in FamilyCareTest; this is what is new: a shape's two
+    groups, only its own, ticks cleared on a change, and a phone at 200% text."""
+
+    PATH = "/family/hearing-aids"
+
+    def group(self):
+        # 日常保養 asks the same question: find it under its own section's title.
+        return (
+            self.main()
+            .get_by_role("region", name="怎麼戴上、拿下")
+            .get_by_role("group", name=HEARING_AID_WEAR.prompt)
+        )
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def boxes(self):
+        return self.live().get_by_role("checkbox")
+
+    def assert_shows(self, chosen):
+        """The chosen shape's 戴上 and 拿下, each step with its box and drawing, and none of the
+        other shapes' steps. Some words are in more than one shape: count the chosen one's."""
+        steps = [step for group in chosen.step_groups for step in group.steps]
+        chosen_words = [step.words for step in steps]
+        for option in HEARING_AID_WEAR.options:
+            for group in option.step_groups:
+                for step in group.steps:
+                    with self.subTest(shape=option.label, words=step.words):
+                        shown = self.group().get_by_text(step.words).locator("visible=true")
+                        expect(shown).to_have_count(chosen_words.count(step.words))
+        expect(self.live().get_by_role("heading")).to_have_text(["戴上", "拿下"])
+        expect(self.boxes()).to_have_count(len(steps))
+        expect(self.live().locator("svg")).to_have_count(len(steps))
+
+    # Acceptance 5, 6 and 13: from the jump link, each shape in turn on a 390px phone at 200% text.
+    def test_a_shape_shows_only_its_steps_clears_ticks_on_a_change_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
+                "link", name="怎麼戴上、拿下"
+            ).click()
+            expect(self.page).to_have_url(re.compile("#wear-title$"))
+            expect(self.live()).to_have_text("")
+            expect(self.group().get_by_role("checkbox")).to_have_count(0)
+
+            previous = None
+            for option in HEARING_AID_WEAR.options:
+                with self.subTest(shape=option.label):
+                    self.double_text(on=False)
+                    if previous:
+                        for box in self.boxes().all():
+                            box.check()
+                    self.group().get_by_label(option.label).check()
+                    self.assert_shows(option)
+                    expect(self.live().locator("input[type=checkbox]:checked")).to_have_count(0)
+                    # At the usual text size and at 200%, as 日常保養's.
+                    self.assert_sizes()
+                    self.assert_fits_a_phone_at_double_text_size(
+                        f"{self.PATH}, {option.label}", width=390
+                    )
+                    self.assert_sizes()
+                    previous = option
+
+    def assert_sizes(self):
+        """Every box, choice and link at least 44px each way, every word at least 1rem, and every
+        drawing inside the page."""
+        rem = self.rem()
+        for target in (
+            *self.group().locator(".choice-group label").all(),
+            *self.live().locator("label").all(),
+            *self.live().get_by_role("link").all(),
+            # #519: 看動作 under the drawings that move.
+            *self.live().get_by_role("button").all(),
+        ):
+            box = target.bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertGreaterEqual(box["width"], 44)
+        for words in (
+            self.group().locator("legend"),
+            *self.live().get_by_role("heading").all(),
+            *self.live().locator("label > span").all(),
+            *self.live().locator("strong").all(),
+            *self.live().locator("p").all(),
+            *self.live().get_by_role("button").all(),
+        ):
+            self.assertGreaterEqual(self.font_size(words), rem)
+        for drawing in self.live().locator("svg").all():
+            box = drawing.bounding_box()
+            self.assertGreaterEqual(box["x"], 0)
+            self.assertLessEqual(box["x"] + box["width"], 390)
+
+
+class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#519 (tickets #521, #522): 看動作 under a 怎麼戴上、拿下 drawing in a real browser. Which
+    drawings carry a motion is test_wear_motion's; how the player counts is wear-motion.test.js's;
+    this is that it really moves on the page and stops where it should."""
+
+    PATH = "/family/hearing-aids"
+    SHAPE = "耳掛（耳塞和細線）"
+    TITLES = ("先掛機身", "推進耳塞", "塞好固定線", "拉出固定線", "拉出耳塞", "拿下機身")
+    # 推進耳塞's tube, dome and first arrow, and 先掛機身's first arrow (wear-motion-review.md's
+    # pieces 8, 10, 15 and 14).
+    TUBE = 8
+    DOME = 10
+    ARROW = 15
+    HOOK_ON_ARROW = 14
+    # Where a piece is on the page, so scrolling to the button does not count as moving.
+    WHERE = """el => {
+        const box = el.getBoundingClientRect();
+        return [box.x + scrollX, box.y + scrollY];
+    }"""
+
+    def live(self):
+        return (
+            self.main()
+            .get_by_role("region", name="怎麼戴上、拿下")
+            .get_by_role("group", name=HEARING_AID_WEAR.prompt)
+            .locator('[aria-live="polite"]')
+        )
+
+    def pick(self):
+        self.main().get_by_role("region", name="怎麼戴上、拿下").get_by_label(self.SHAPE).check()
+
+    # Acceptance 1, 3, 4, 10, 11 and 12 on 推進耳塞: pressed from the keyboard it starts outside
+    # the ear, moves, and stops on the reviewed drawing with its arrows gone; it plays again.
+    def test_push_in_plays_once_and_stops_on_the_reviewed_drawing(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.pick()
+            self.assertEqual(self.live().get_by_role("button").count(), len(self.TITLES))
+            for title in self.TITLES:
+                expect(self.live().get_by_role("button", name=f"看動作：{title}")).to_have_count(1)
+
+            # Found by its title: the button's name changes once it has played.
+            step = self.live().locator("li", has=self.page.get_by_text("4. 推進耳塞"))
+            button = step.get_by_role("button")
+            pieces = step.locator("svg > g > *")
+            dome, arrow = pieces.nth(self.DOME), pieces.nth(self.ARROW)
+            tube = pieces.nth(self.TUBE)
+            drawn = dome.evaluate(self.WHERE)
+            tube_drawn = tube.bounding_box()
+            expect(arrow).to_be_visible()
+
+            # From the step before's box, Tab reaches it.
+            before = self.live().locator("li", has=self.page.get_by_text("3. 先掛機身"))
+            before.get_by_role("checkbox").focus()
+            self.page.keyboard.press("Tab")
+            expect(button).to_be_focused()
+            self.page.keyboard.press("Enter")
+            start = dome.evaluate(self.WHERE)
+            self.assertNotEqual(start, drawn)
+            # Acceptance 7: the thin tube goes with the dome.
+            self.assertNotEqual(tube.bounding_box(), tube_drawn)
+            expect(arrow).to_be_hidden()
+            # On its way: neither where it started nor where it is drawn.
+            self.page.wait_for_function(
+                """([el, start, drawn]) => {
+                    const box = el.getBoundingClientRect();
+                    const [left, top] = [box.x + scrollX, box.y + scrollY];
+                    const at = ([x, y]) => Math.abs(left - x) < 0.5 && Math.abs(top - y) < 0.5;
+                    return !at(start) && !at(drawn);
+                }""",
+                arg=[dome.element_handle(), start, drawn],
+            )
+            expect(button).to_have_accessible_name("再看一次：推進耳塞")
+            for now, then in zip(dome.evaluate(self.WHERE), drawn, strict=True):
+                self.assertAlmostEqual(now, then, delta=0.5)
+            for side in ("width", "height"):
+                self.assertAlmostEqual(tube.bounding_box()[side], tube_drawn[side], delta=0.5)
+            expect(arrow).to_be_hidden()
+            expect(button).to_be_focused()
+            self.assertNotEqual(self.style(button, "boxShadow"), "none")
+
+            self.page.keyboard.press("Space")
+            self.assertEqual(dome.evaluate(self.WHERE), start)
+            expect(button).to_have_accessible_name("再看一次：推進耳塞")
+
+            box = button.bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertGreaterEqual(box["width"], 44)
+            self.assertGreaterEqual(self.font_size(button), self.rem())
+
+    # Acceptance 8: with reduced motion there is no button, and the drawings keep their arrows.
+    def test_reduced_motion_has_no_button(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.page.emulate_media(reduced_motion="reduce")
+            self.page.reload()
+            self.pick()
+            expect(self.live().locator("svg[data-motion]")).to_have_count(len(self.TITLES))
+            expect(self.live().get_by_role("button")).to_have_count(0)
+            first = self.live().locator("svg[data-motion]").first.locator("> g > *")
+            expect(first.nth(self.HOOK_ON_ARROW)).to_be_visible()
 
 
 class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -14683,15 +14891,19 @@ class GuestDeclineSaveTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assertFalse(Submission.objects.exists())
 
 
-@google_on
-class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#513 (spec #505 acceptance 35, 36): a guest finishes HHIE-S and presses the save card's
-    「使用 Google 帳戶繼續」. Google itself is played here: instead of going to Google, the browser
-    comes straight back to our callback as if the user had said yes there, and our server's one
-    call to Google (screening.oidc.exchange_code) returns the ID token Google would. The rest,
-    state, nonce and PKCE included, runs for real."""
+class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
+    """A guest finishes HHIE-S and presses the save card's 「使用 Google 帳戶繼續」 (#513, spec #505
+    acceptance 35, 36) or 「使用 LINE 帳號繼續」 (#543, spec #506 acceptance 23, 24). The provider
+    itself is played here: instead of going there, the browser comes straight back to our callback
+    as if the user had said yes, and our server's calls to the provider
+    (screening.oidc.post_to_provider) get the answers it would give. The rest, state, nonce and
+    PKCE included, runs for real. Each provider's class says which one and how it answers."""
 
     fixtures = ("questions_fixture.json",)
+    provider = ""  # "google" or "line"
+    authorize = ""  # the provider's authorize URL our server sends the browser to
+    button = ""  # the save card's button
+    user_agent = None  # the Pixel 7's own, unless given
 
     @classmethod
     def setUpClass(cls):
@@ -14707,31 +14919,105 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     def setUp(self):
         self.hhie_s = Questionnaire.objects.get(code="hhie-s")
-        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        phone = self.playwright.devices["Pixel 7"]
+        if self.user_agent:
+            phone = phone | {"user_agent": self.user_agent}
+        self.context = self.browser.new_context(**phone)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.nonce = None
-        self.sub = "google-e2e"
+        self.sub = f"{self.provider}-e2e"
+        self.username = f"e2e_{self.provider}"
         # Our button's own URL: page.route never sees where a redirect goes (Playwright's docs).
-        self.page.route(f"{self.live_server_url}/login/google/save-card", self.google_says_yes)
-        exchange = patch("screening.oidc.exchange_code", side_effect=self.token_response)
+        self.page.route(
+            f"{self.live_server_url}/login/{self.provider}/save-card", self.provider_says_yes
+        )
+        exchange = patch("screening.oidc.post_to_provider", side_effect=self.provider_answers)
         exchange.start()
         self.addCleanup(exchange.stop)
 
-    def google_says_yes(self, route):
-        # Our server's answer, its session cookie kept, but back to us instead of on to Google.
+    def provider_says_yes(self, route):
+        # Our server's answer, its session cookie kept, but back to us instead of on to the
+        # provider.
         response = route.fetch(max_redirects=0)
-        to_google = urlparse(response.headers["location"])
+        to_provider = urlparse(response.headers["location"])
         self.assertEqual(
-            f"{to_google.scheme}://{to_google.netloc}{to_google.path}", GOOGLE_AUTHORIZE
+            f"{to_provider.scheme}://{to_provider.netloc}{to_provider.path}", self.authorize
         )
-        query = dict(parse_qsl(to_google.query))
+        query = dict(parse_qsl(to_provider.query))
         self.nonce = query["nonce"]
-        callback = f"{self.live_server_url}/login/google/callback?code=e2e&state={query['state']}"
+        callback = (
+            f"{self.live_server_url}/login/{self.provider}/callback?code=e2e&state={query['state']}"
+        )
         route.fulfill(response=response, headers=response.headers | {"location": callback})
 
-    def token_response(self, **kwargs):
+    def provider_answers(self, url, fields):
+        raise NotImplementedError
+
+    def guest_results(self):
+        return self.page.evaluate(
+            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
+        )
+
+    def guest_finishes_then_saves(self):
+        # 有時 on every item: 20, 輕度到中度影響.
+        self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+        self.answer("沒戴")
+        self.next()
+        for number in range(1, QUESTION_COUNT + 1):
+            self.answer("有時", number)
+            if number < QUESTION_COUNT:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.main().get_by_text("總分 20 分")).to_be_visible()
+        card = self.main().locator(".result-next")
+        card.get_by_role("link", name=self.button).click()
+
+    def test_a_new_account_names_agrees_and_saves_without_being_asked(self):
+        with self.saving_artifacts():
+            self.guest_finishes_then_saves()
+            expect(self.page).to_have_url(f"{self.live_server_url}/login/{self.provider}/name")
+            self.main().get_by_label("使用者名稱").fill(self.username)
+            self.main().get_by_role("button", name="下一步").click()
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            record = Submission.objects.get(user__username=self.username)
+            self.assertEqual(record.result.total, 20)
+            self.assertEqual(self.guest_results(), [])
+
+    def test_an_account_there_already_is_asked_and_no_clears_it(self):
+        account = consented_user(username=f"{self.username}_had")
+        account.sign_in_methods.create(
+            provider=self.provider, subject=self.sub, used_to_register=True
+        )
+        with self.saving_artifacts():
+            self.guest_finishes_then_saves()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
+            expect(
+                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
+            ).to_be_visible()
+            expect(self.page.locator(".site-account")).to_contain_text(
+                f"目前登入：{self.username}_had"
+            )
+            self.assertFalse(Submission.objects.exists())
+            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
+            self.main().get_by_role("button", name="不要，清掉這次結果").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            self.assertEqual(self.guest_results(), [])
+            self.assertFalse(Submission.objects.exists())
+
+
+@google_on
+class GuestSaveWithGoogleTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
+    """#513: from the save card with Google, whose one call is to its token endpoint."""
+
+    provider = "google"
+    authorize = GOOGLE_AUTHORIZE
+    button = "使用 Google 帳戶繼續"
+
+    def provider_answers(self, url, fields):
         now = int(timezone.now().timestamp())
         claims = {
             "iss": "https://accounts.google.com",
@@ -14745,51 +15031,30 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         }
         return {"access_token": "never-kept", "id_token": id_token(**claims)}
 
-    def guest_results(self):
-        return self.page.evaluate(
-            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
-        )
 
-    def guest_finishes_then_google(self):
-        # 有時 on every item: 20, 輕度到中度影響.
-        self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
-        self.answer("沒戴")
-        self.next()
-        for number in range(1, QUESTION_COUNT + 1):
-            self.answer("有時", number)
-            if number < QUESTION_COUNT:
-                self.next()
-        self.main().get_by_role("button", name="送出").click()
-        expect(self.main().get_by_text("總分 20 分")).to_be_visible()
-        card = self.main().locator(".result-next")
-        card.get_by_role("link", name="使用 Google 帳戶繼續").click()
+@line_on
+class GuestSaveWithLineTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
+    """#543 (spec #506 acceptance 23, 24): from the save card with LINE, inside LINE's own browser
+    (no Google there). LINE is called three times: its token, verify and revoke endpoints."""
 
-    def test_a_new_account_names_agrees_and_saves_without_being_asked(self):
-        with self.saving_artifacts():
-            self.guest_finishes_then_google()
-            expect(self.page).to_have_url(f"{self.live_server_url}/login/google/name")
-            self.main().get_by_label("使用者名稱").fill("e2e_google")
-            self.main().get_by_role("button", name="下一步").click()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
-            record = Submission.objects.get(user__username="e2e_google")
-            self.assertEqual(record.result.total, 20)
-            self.assertEqual(self.guest_results(), [])
+    provider = "line"
+    authorize = LINE_AUTHORIZE
+    button = "使用 LINE 帳號繼續"
+    user_agent = test_line_in_app_browser.LINE_ANDROID
 
-    def test_an_account_there_already_is_asked_and_no_clears_it(self):
-        account = consented_user(username="e2e_google_had")
-        account.sign_in_methods.create(provider="google", subject=self.sub, used_to_register=True)
-        with self.saving_artifacts():
-            self.guest_finishes_then_google()
-            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
-            expect(
-                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
-            ).to_be_visible()
-            expect(self.page.locator(".site-account")).to_contain_text("目前登入：e2e_google_had")
-            self.assertFalse(Submission.objects.exists())
-            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
-            self.main().get_by_role("button", name="不要，清掉這次結果").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/")
-            self.assertEqual(self.guest_results(), [])
-            self.assertFalse(Submission.objects.exists())
+    def provider_answers(self, url, fields):
+        now = int(timezone.now().timestamp())
+        claims = {
+            "iss": "https://access.line.me",
+            "aud": LINE_CHANNEL_ID,
+            "sub": self.sub,
+            "iat": now,
+            "exp": now + 3600,
+            "nonce": self.nonce,
+        }
+        answers = {
+            "token": {"access_token": "never-kept", "id_token": "e2e-line-id-token"},
+            "verify": claims,
+            "revoke": {},
+        }
+        return answers[LINE_ENDPOINTS[url]]

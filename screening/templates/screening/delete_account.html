@@ -23,10 +23,10 @@
 <p class="tip-box">想留一份紀錄的話，請先<a class="inline-link" href="{% url 'download_my_data' %}" download>下載我的資料</a>。</p>
 {% if confirm_error %}<div class="error-box" role="alert">{{ confirm_error }}</div>{% endif %}
 {% if not form and not confirmed %}
-{# Spec #505 acceptance 30 (the #507 mockup W17): no password field; the red button comes after 確認本人. #}
-<p class="font-bold text-heading">您的帳號沒有密碼，請用 Google 確認是本人。</p>
+{# Spec #505 acceptance 30 (the #507 mockup W17), #506 acceptance 20 (the #539 mockup 6): no password field; the red button comes after 確認本人. #}
+{% if names %}<p class="font-bold text-heading">您的帳號沒有密碼，請用 {{ names|join:" 或 " }} 確認是本人。</p>{% endif %}
 <div class="max-w-form flex flex-col gap-4">
-    {% include "screening/google_confirm.html" with action="delete_account" %}
+    {% include "screening/confirm_buttons.html" with action="delete_account" %}
     <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'account_settings' %}">取消</a>
 </div>
 {% else %}

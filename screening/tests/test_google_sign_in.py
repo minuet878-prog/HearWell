@@ -1,13 +1,14 @@
 import base64
-import dataclasses
 import hashlib
 import json
+import threading
 from datetime import date, timedelta
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
 from django.db import DatabaseError, connection
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -492,7 +493,9 @@ class CallbackSecurityTests(TestCase):
         self.assertRejected(self.google.come_back(sub=None), exchanged=True)
 
     def test_an_unreadable_id_token_is_rejected(self):
-        with mock.patch("screening.oidc.exchange_code", return_value={"id_token": "not-a-token"}):
+        with mock.patch(
+            "screening.oidc.post_to_provider", return_value={"id_token": "not-a-token"}
+        ):
             response = self.client.get(
                 reverse("google_callback"),
                 {"code": "auth-code", "state": self.google.authorize["state"]},
@@ -517,7 +520,8 @@ class CallbackSecurityTests(TestCase):
         response = self.google.come_back(
             query={"error": "access_denied", "state": self.google.authorize["state"]}
         )
-        self.assertRejected(response, "沒有完成 Google 登入。可以再試一次，或用帳號密碼登入。")
+        # The #539 mockup W8: any other way, now that there is LINE too.
+        self.assertRejected(response, "沒有完成 Google 登入。可以再試一次，或用其他方式登入。")
         self.assertNotIn("screening.oidc_flow", self.client.session)
 
     def test_a_cancel_is_believed_only_for_this_trip_in_time(self):
@@ -557,9 +561,46 @@ class CallbackSecurityTests(TestCase):
                 sub="google-1", exchange=oidc.Unavailable("google token endpoint: URLError")
             )
         self.assertRejected(
-            response, "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。", exchanged=True
+            response, "Google 暫時沒有回應，請稍後再試，或用其他方式登入。", exchanged=True
         )
         self.assertIn("Google token exchange failed", logs.output[0])
+
+    def test_access_denied_in_any_case_is_a_cancel(self):
+        query = {"error": "ACCESS_DENIED", "state": self.google.authorize["state"]}
+        self.assertRejected(
+            self.google.come_back(query=query),
+            "沒有完成 Google 登入。可以再試一次，或用其他方式登入。",
+        )
+
+    def test_any_other_error_on_the_callback_is_google_not_answering(self):
+        # Only access_denied is the user saying no; any other error Google sends back is Google
+        # not answering (#505 acceptance 20).
+        for error in ("server_error", "temporarily_unavailable", "invalid_request"):
+            with self.subTest(error):
+                self.google.start()
+                query = {"error": error, "state": self.google.authorize["state"]}
+                with self.assertLogs("screening.views.sign_in", "ERROR"):
+                    response = self.google.come_back(query=query)
+                self.assertRejected(response, "Google 暫時沒有回應，請稍後再試，或用其他方式登入。")
+
+    def test_the_callbacks_error_text_never_reaches_the_logs(self):
+        # Anyone holding this trip's state can write anything into `error` (cross-review of
+        # #506, Standards 3): the log lines and their tracebacks are fixed words.
+        query = {
+            "error": "server_error lin.mei@example.com",
+            "state": self.google.authorize["state"],
+        }
+        with self.assertLogs("screening", "DEBUG") as logs:
+            self.google.come_back(query=query)
+        output = "\n".join(logs.output)
+        self.assertIn("Google token exchange failed", output)
+        self.assertNotIn("lin.mei", output)
+
+    def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+            response = self.google.come_back(query={"error": "server_error", "state": "forged"})
+        self.assertRejected(response)
+        self.assertIn("Google callback rejected", logs.output[0])
 
     def test_an_error_answer_from_google_is_google_not_answering(self):
         # Google's token endpoint answering 200 with no ID token: an error in its JSON, or none.
@@ -572,7 +613,7 @@ class CallbackSecurityTests(TestCase):
                 with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
                     response = self.google.come_back(sub="google-1", exchange=answer)
                 self.assertRejected(
-                    response, "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。", exchanged=True
+                    response, "Google 暫時沒有回應，請稍後再試，或用其他方式登入。", exchanged=True
                 )
                 self.assertIn("Google token exchange failed", logs.output[0])
                 self.google.exchanges.clear()
@@ -749,11 +790,10 @@ class PrivacyTests(TestCase):
         self.assertContains(response, "不保留 Google 給的任何權杖")
         self.assertContains(response, "登入完成後，不會再跟 Google 拿任何資料。")
 
-    def test_version_7_dated_the_day_it_changed(self):
-        # #526 (spec #355) took version 6 for the 重設密碼信 first.
-        self.assertEqual(models.CONSENT_VERSION, 7)
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
-        self.assertContains(self.client.get(reverse("privacy")), "第 7 版，2026/11/14 更新")
+    def test_a_version_after_6(self):
+        # #526 (spec #355) took version 6 for the 重設密碼信 first; Google's was 7, and LINE's
+        # (test_line_sign_in) is the one now.
+        self.assertGreater(models.CONSENT_VERSION, 6)
 
     # 39
     def test_who_agreed_to_version_6_agrees_again(self):
@@ -765,19 +805,70 @@ class PrivacyTests(TestCase):
         self.assertContains(self.client.get(test_consent._consent_url(url)), "Google")
 
 
-@google_on
-class ExchangeCodeTests(TestCase):
-    """#505 acceptance 20 at the real exchange_code: no answer from the token endpoint is
-    Unavailable, never a server error. Nothing listens on port 9 of this machine."""
+class PostToProviderTests(SimpleTestCase):
+    """#505 acceptance 20 and #506 acceptance 12, 14 at the real post_to_provider, against a
+    small server on this machine: what a provider answers is given back, no answer is
+    Unavailable, never a server error."""
 
-    def test_a_token_endpoint_that_does_not_answer_is_unavailable(self):
-        nowhere = dataclasses.replace(
-            oidc.PROVIDERS["google"], token_url="http://127.0.0.1:9/token"
+    def serve(self, status, body):
+        """A provider on this machine answering every POST with this status and body; the form
+        it was sent goes into self.received."""
+        self.received = []
+        test = self
+
+        class Provider(BaseHTTPRequestHandler):
+            def do_POST(self):
+                length = int(self.headers["Content-Length"])
+                test.received.append(dict(parse_qsl(self.rfile.read(length).decode())))
+                self.send_response(status)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Provider)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_port}/token"
+
+    def test_posts_the_form_and_gives_the_json(self):
+        url = self.serve(200, b'{"id_token": "x"}')
+        self.assertEqual(
+            oidc.post_to_provider(url, {"code": "c", "nonce": "中"}), {"id_token": "x"}
         )
-        with (
-            mock.patch.dict(oidc.PROVIDERS, {"google": nowhere}),
-            self.assertRaises(oidc.Unavailable),
+        self.assertEqual(self.received, [{"code": "c", "nonce": "中"}])
+
+    def test_an_empty_answer_is_an_empty_dict(self):
+        # LINE's revoke endpoint answers 200 with nothing in it.
+        self.assertEqual(oidc.post_to_provider(self.serve(200, b""), {}), {})
+
+    def test_a_refusal_gives_its_json(self):
+        # LINE's verify endpoint refusing an ID token: 400 with an error in its JSON.
+        body = b'{"error": "invalid_request", "error_description": "IdToken expired."}'
+        answer = oidc.post_to_provider(self.serve(400, body), {})
+        self.assertEqual(answer["error"], "invalid_request")
+
+    def test_a_refusal_without_a_body_is_still_a_refusal(self):
+        # Only a 2xx with nothing in it is an empty answer (LINE's revoke saying yes); a 4xx with
+        # nothing in it is the provider refusing (cross-review of #506, Spec 9).
+        answer = oidc.post_to_provider(self.serve(400, b""), {})
+        self.assertIn("error", answer)
+
+    def test_no_usable_answer_is_unavailable(self):
+        for name, status, body in (
+            ("server error", 500, b'{"error": "server_error"}'),
+            ("not json", 200, b"<html>"),
+            ("a refusal not in json", 400, b"Bad Request"),
+            ("not an object", 200, b"[]"),
         ):
-            oidc.exchange_code(
-                provider="google", code="c", code_verifier="v", redirect_uri="https://x/cb"
-            )
+            with self.subTest(name), self.assertRaises(oidc.Unavailable):
+                oidc.post_to_provider(self.serve(status, body), {})
+
+    def test_a_provider_that_does_not_answer_is_unavailable(self):
+        # Nothing listens on port 9 of this machine.
+        with self.assertRaises(oidc.Unavailable):
+            oidc.post_to_provider("http://127.0.0.1:9/token", {"code": "c"})

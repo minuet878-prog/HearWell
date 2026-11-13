@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from screening import oidc
+
 
 class SignInMethodQuerySet(models.QuerySet):
     def for_identity(self, identity):
@@ -14,6 +16,7 @@ class SignInMethod(models.Model):
     # not a row: it is the account's usable password or not. No token is kept.
     class Provider(models.TextChoices):
         GOOGLE = "google", "Google"
+        LINE = "line", "LINE"  # spec #506
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sign_in_methods"
@@ -40,8 +43,7 @@ class SignInMethod(models.Model):
 
     def can_be_removed(self):
         """Whether its account can still be signed into without it (#505 acceptance 27): a
-        usable password, or another sign-in method."""
-        return (
-            self.user.has_usable_password()
-            or self.user.sign_in_methods.exclude(pk=self.pk).exists()
-        )
+        usable password, or another sign-in method whose provider is on the site (its keys set;
+        without them it signs in nowhere)."""
+        others = self.user.sign_in_methods.exclude(pk=self.pk).values_list("provider", flat=True)
+        return self.user.has_usable_password() or any(map(oidc.enabled, others))

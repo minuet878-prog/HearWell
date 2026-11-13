@@ -1,0 +1,12 @@
+{# 確認本人 without a password by signing in again with a provider on the account: spec #505 (the #507 mockup D3), and with LINE spec #506 acceptance 20, 21 (the #539 mockup 6, W1): a button each, LINE first; a form, so the trip starts only from this site. Inside LINE Google refuses to sign in: its button is left out, and when it is the only one a way out to Safari or Chrome takes its place (#511). Needs buttons, open_outside_url (confirm_identity.without_password) and action (what is confirmed for, confirm_identity.ACTIONS). #}
+{% if open_outside_url %}{% include "screening/line_open_outside.html" %}{% elif buttons %}
+<form method="post" action="{% url 'confirm_identity' %}?action={{ action }}" class="flex flex-col gap-3">
+    {% csrf_token %}
+    {% for button in buttons %}
+    <button type="submit" name="provider" value="{{ button.provider }}" class="btn btn-lg btn-provider">
+        {% include button.logo %}
+        <span>{{ button.words }}</span>
+    </button>
+    {% endfor %}
+</form>
+{% endif %}

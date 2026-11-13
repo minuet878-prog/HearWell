@@ -42,7 +42,8 @@ def older_fold(rows, day, unit):
     }
 
 
-# Spec #505: why a Google trip did not end signed in, said once on the login or register page.
+# Spec #505, #506: why a Google or LINE trip did not end signed in, said once on the login or
+# register page.
 SIGN_IN_ERROR = "screening.sign_in_error"
 
 
@@ -63,14 +64,29 @@ def is_line_in_app_browser(request):
     return bool(LINE_USER_AGENT.search(request.headers.get("user-agent", "")))
 
 
+def works_here(request, provider):
+    """Whether a provider's button can be offered on this page: its keys are set, and it is not
+    Google inside LINE, where Google refuses to sign in (#505 acceptance 3); LINE works there as
+    anywhere. The one place this rule is written."""
+    if provider == "google" and is_line_in_app_browser(request):
+        return False
+    return oidc.enabled(provider)
+
+
+def provider_logo(provider):
+    """The template that draws a provider's icon, for a button or a row."""
+    return f"screening/{provider}_logo.html"
+
+
 def sign_in_choices(request):
-    """What the login and register pages show above the password form: the Google button when
-    Google is set up, or inside LINE a way out to Safari or Chrome instead, and the error a
-    Google trip came back with (taken out, so said once)."""
-    google = oidc.enabled("google")
+    """What the login and register pages show around the password form: above it the LINE and
+    the Google button, each when set up, but inside LINE no Google: a way out to Safari or Chrome
+    under the form instead (#506, the #539 mockup D3); and the error a trip came back with (taken
+    out, so said once)."""
     return {
-        "google_sign_in": google and not is_line_in_app_browser(request),
-        "open_outside_url": line_way_out(request) if google else "",
+        "line_sign_in": works_here(request, "line"),
+        "google_sign_in": works_here(request, "google"),
+        "open_outside_url": line_way_out(request) if oidc.enabled("google") else "",
         "sign_in_error": request.session.pop(SIGN_IN_ERROR, ""),
     }
 

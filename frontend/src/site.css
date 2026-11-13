@@ -60,6 +60,12 @@
   --color-ear-right-old: #e8a59d;
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
+  /* A hearing aid's right-ear mark in the 分左右 drawing (ADR 0058, 5.6:1 on white); its left mark
+     is the site blue. */
+  --color-aid-right: #c62828;
+  /* The aids' parts in the 怎麼戴上、拿下 drawings (#503): a deeper blue than the ear, the
+     lines on it 4.9:1. */
+  --color-aid-part: #b5c9e6;
   --radius-small: 0.25rem;
   /* The site-wide redesign (ADR 0043, #454's picks T1, E, S1, P3): a white page, thin grey
      lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
@@ -284,8 +290,9 @@
   }
   /* Spec #505 (the #507 mockup D4): Google's light button, its own colours (words #1f1f1f at
      16.5:1, the 1px frame #747775 at 4.5:1 on white), scaled up to our buttons' height and corner;
-     under a mouse and when pressed only the fill greys, as Google's own button does. */
-  .btn-google {
+     under a mouse and when pressed only the fill greys, as Google's own button does. Named for no
+     provider: LINE's button (#506) and the 確認本人 buttons are this same button. */
+  .btn-provider {
     --btn-color: #1f1f1f;
     --btn-bg: #fff;
     --btn-border-color: #747775;
@@ -301,7 +308,8 @@
     border-width: 1px;
     font-weight: 600;
   }
-  .btn-google-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* Spec #506 (the #539 mockup D1 B): LINE's button is this same button, with LINE's icon. */
+  .btn-google-logo, .btn-line-logo { flex: none; width: 1.5rem; height: 1.5rem; }
   /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
   .auth-or {
     display: flex;
@@ -3849,6 +3857,38 @@
   .care-drawing .tube { stroke-width: 8; }
   .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
   .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
+  /* 怎麼戴上、拿下 (#504, the #503 drawings): the fingertips white under their lines, the aids'
+     parts deeper blue, and 分左右's marks and words. The fingertips reach past the frame on
+     purpose: keep the drawing's overflow hidden. */
+  .care-drawing .paper { fill: #fff; stroke: none; }
+  .care-drawing .part { fill: var(--color-aid-part); }
+  .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
+  .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
+  .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
+  /* 看動作 (#519, the #520 mockup's B): wear-motion.js puts it under a drawing that moves. */
+  .care-motion-play { margin-bottom: 0.5rem; }
+
+  /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
+     squeal sentence in a grey box between them, and a link under a step lined up with its words
+     past the box. */
+  .care-steps-title {
+    margin: 1.1rem 0 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .care-steps-note {
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--color-surface);
+  }
+
+  .care-step-link {
+    margin-left: 2.25rem;
+  }
 
   /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a tile a topic, the
      .link-card look with its icon above its name. Two a row on a phone; at large text sizes a
@@ -3944,13 +3984,14 @@
     stroke-linejoin: round;
   }
 
-  /* Google's G keeps its own colours, on white with a thin frame. */
-  .sign-in-method-icon:has(.btn-google-logo) {
+  /* Google's G and LINE's icon keep their own colours, on white with a thin frame (the #539
+     mockup 5). */
+  .sign-in-method-icon:has(.btn-google-logo, .btn-line-logo) {
     border: 1px solid var(--color-line);
     background-color: #fff;
   }
 
-  .sign-in-method-icon .btn-google-logo {
+  .sign-in-method-icon :is(.btn-google-logo, .btn-line-logo) {
     stroke: none;
   }
 

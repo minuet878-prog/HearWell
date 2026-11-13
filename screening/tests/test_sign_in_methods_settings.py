@@ -8,7 +8,7 @@ from contextlib import nullcontext
 from unittest import mock
 from urllib.parse import parse_qsl, quote, urlsplit
 
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
@@ -242,6 +242,25 @@ class AddTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, "wang.ming@example.com")
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_the_same_account_adding_two_googles_at_once_keeps_the_first(self):
+        # Two browsers of this account each add a different Google (cross-review of #506,
+        # Standards 4): one Google per account, so the second is not added, not a server error.
+        other_client = Client()
+        other_client.force_login(self.user)
+        other_google = FakeGoogle(other_client)
+        self.start_adding()
+        response = other_client.post(CONFIRM_ADD, {"password": PASSWORD})
+        self.assertRedirects(response, ADD, fetch_redirect_response=False)
+        other_google.authorize = off_to_google(self, other_client.get(ADD))
+        self.google.come_back(sub="google-first", email="wang.ming@gmail.com")
+        response = other_google.come_back(sub="google-second", email="wang.ming2@gmail.com")
+        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
+        self.assertEqual(messages_on(other_client), ["沒有完成新增 Google 登入，請再試一次。"])
+        self.assertEqual(
+            list(self.user.sign_in_methods.values_list("provider", "subject")),
+            [("google", "google-first")],
+        )
 
     # 25
     def test_a_google_added_to_another_account_meanwhile_is_not_added(self):

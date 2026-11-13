@@ -17,8 +17,8 @@ from django.urls import reverse
 # each other its answer links (the owner's call for spec #396, 2026-10-27); typing a question
 # there is part of it (#399). The zone's page on how to talk with him came out of the family guide
 # with the same words (#469). The forgot-password pages are part of signing in, like the login and
-# register pages (owner's acceptance of spec #355, 2026-11-14); so is signing in or up with Google,
-# which makes nothing before the name page (spec #505).
+# register pages (owner's acceptance of spec #355, 2026-11-14); so is signing in or up with Google
+# or LINE, which makes nothing before the name page (spec #505, #506).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -29,6 +29,9 @@ OPEN_PAGES = {
     "google_callback",
     "google_name",
     "google_same_email",
+    "line_start",
+    "line_callback",
+    "line_name",
     "register",
     "password_reset",
     "password_reset_sent",

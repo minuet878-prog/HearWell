@@ -62,10 +62,23 @@ moved only the date (#400).
                 </li>
                 <li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>
                 <li>同意紀錄：您哪一天同意了哪一版說明。</li>
-                <li>登入方式：用 Google 登入時，Google 給您的代號、哪一天新增的，以及是不是註冊時用的（見下一段）。</li>
+                <li>登入方式：用 LINE 或 Google 登入時，LINE 或 Google 給您的代號、哪一天新增的，以及是不是註冊時用的（見下面兩段）。</li>
             </ul>
             {# Spec #492 (ADR 0055): a guest's answers and result stay in the browser; the server only scores them. #}
             <p>未註冊時只計算、不儲存，作答留在您的瀏覽器。</p>
+            </div>
+        </details>
+        {# Spec #506 acceptance 27 (ADR 0056, 0057): what signing in with LINE takes, and what it does not; above Google's, as its button is. #}
+        <details class="fold-row">
+            <summary><h2 id="line-title" class="fold-row-title">用 LINE 登入時</h2></summary>
+            <div class="fold-row-body">
+            <p>只拿 LINE 給您的代號，不拿您在 LINE 的名稱、大頭貼、email 和好友名單。</p>
+            <ul>
+                <li>代號：LINE 給這個網站的一串編號，用來認出下次登入的是同一個帳號。我們只看代號認人。</li>
+                <li>email：LINE 不給 email。第一次用 LINE 註冊時，您可以自己填一個（不填也可以），存成帳號的電子郵件。</li>
+            </ul>
+            <p>我們拿到代號後，馬上請 LINE 作廢它給的權杖（讓網站代替您向 LINE 拿資料的憑證），不保留任何權杖。登入完成後，不會再跟 LINE 拿任何資料。</p>
+            <p>您按「使用 LINE 帳號登入」時，LINE 會知道您要登入聽伴；LINE 怎麼處理這件事，依照 LINE 自己的隱私權政策。</p>
             </div>
         </details>
         {# Spec #505 acceptance 38 (ADR 0056, 0057): what signing in with Google takes, and what it does not. #}
