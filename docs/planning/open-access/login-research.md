@@ -49,6 +49,8 @@
 
 **重放舊回呼怎麼擋**：三層。(1) state 用一次就從 session 刪掉，同一個網址再打一次就找不到 state 而拒絕；(2) 授權碼依 OAuth 2.0 標準只能用一次、且要短效〔R1〕，對方會拒絕；(3) nonce 綁在這次的 session，舊 ID token 對不上。另外 Django `login()` 會換 session 代號，state 要在登入前就 pop 掉。
 
+**兩個回呼同時到（交叉審查 Spec 3，本人決定不修）**：同一個 session 的兩個請求幾乎同時到，可能都在對方存回 session 之前讀到 state，兩邊都去換 token。Django 的 session 沒有鎖，要擋住得另加資料庫層的一次性紀錄。不修的原因：Google 的授權碼本身只能換一次〔R1〕，兩邊最多一邊換成功，另一邊會被 Google 拒絕、走「Google 暫時沒有回應」，不會兩邊都登入。
+
 套件對照：allauth 的 state 存在 session、用一次就刪、10 分鐘過期、最多留 10 組〔A10〕；PKCE 要手動開；nonce 未看到。Authlib 有送 nonce 就一定驗〔A6〕。
 
 ---
