@@ -3669,8 +3669,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             card = self.main().locator(".journey-card")
             expect(card.locator(".btn-primary")).to_have_count(1)
             button, box = card.locator(".btn-primary").bounding_box(), card.bounding_box()
-            at = (button["x"] - box["x"], button["y"] - box["y"])
-            return at + (button["width"], button["height"]), card.locator(".todos").count()
+            at = (button["x"] - box["x"], button["y"] - box["y"], button["width"], button["height"])
+            return at, card.locator(".todos").count()
 
         self.open(390)
         user = User.objects.get(username="guide_e2e")
