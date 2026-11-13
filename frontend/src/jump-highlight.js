@@ -59,7 +59,15 @@ export function setUpJumpHighlight(win = window) {
     if (target && target.id !== "main-content") light(jumpBox(target));
   };
 
-  if (win.location.hash) jumpTo(win.location.hash);
+  // #531: when the browser scrolls to the # as the page opens is up to it (HTML's "try to scroll
+  // to the fragment"); by the page's load it has, so the wait starts then. A jump on the page
+  // before then stops this one, as any new jump does.
+  const opening = win.location.hash;
+  if (opening) {
+    const loaded = () => jumpTo(opening);
+    win.addEventListener("load", loaded, { once: true });
+    stop = () => win.removeEventListener("load", loaded);
+  }
 
   // A click, not the address changing: clicking the same link again changes nothing but lights
   // the box again.
