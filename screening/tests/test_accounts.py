@@ -83,6 +83,23 @@ class LoginRequiredTests(TestCase):
         expected_reversed_url = f"{login_url}?next={protected_url}"
         self.assertRedirects(response, expected_reversed_url)
 
+    def test_a_form_sent_signed_out_comes_back_to_its_page(self):
+        # Like the consent page (the 405 on tingpal.tw, 2026-11-13): signed out meanwhile, a
+        # form that takes only POST would be opened with GET after logging in.
+        sent = (
+            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
+            (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
+            (reverse("report_share_create"), {}, reverse("index")),
+            (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
+        )
+        for url, data, back in sent:
+            with self.subTest(url=url):
+                self.assertRedirects(
+                    self.client.post(url, data),
+                    f"{reverse('login')}?next={back}",
+                    fetch_redirect_response=False,
+                )
+
 
 class LoginNextTests(TestCase):
     NOTE = "請先登入，沒有帳號請按註冊。登入後會帶您回到剛剛的頁面。"

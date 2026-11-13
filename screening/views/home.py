@@ -1,10 +1,8 @@
-from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
-from django.views.decorators.http import require_http_methods
 
 from screening import questionnaires
 from screening.care_journey import care_journey
@@ -12,7 +10,7 @@ from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS, current_rounds
 from screening.main_flow import get_user_state
 from screening.models import AidAndSubsidy, TodoTick
 from screening.views.answering import continue_notice
-from screening.views.common import health_data_page, safe_next
+from screening.views.common import form_address, health_data_page, safe_next
 
 
 def greeting(hour):
@@ -58,8 +56,7 @@ def index(request):
     return response
 
 
-@login_required
-@require_http_methods(["POST"])
+@form_address
 @health_data_page
 def journey_todo_tick(request):
     # #481 (spec #478 acceptance 10–18): a 手動待辦 ticked (ticked=1) or unticked (0), on

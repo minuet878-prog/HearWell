@@ -1,6 +1,8 @@
 from django.contrib.auth.views import redirect_to_login
 from django.urls import reverse
 
+from screening.views.common import form_page
+
 # Pages a signed-in user may use before agreeing to the privacy notice
 # (spec phase7_consent_privacy.md, question 4). Every other page is blocked, so a new
 # page is covered without anyone remembering to add it.
@@ -77,4 +79,7 @@ class ConsentRequiredMiddleware:
         # (spec #505 acceptance 30), and deleting is open before agreeing.
         if match.url_name == "confirm_identity" and request.GET.get("action") == "delete_account":
             return None
+        # A form's address takes only POST, and coming back opens it with GET: its page instead.
+        if getattr(view_func, "form_address", False):
+            return redirect_to_login(form_page(request), reverse("consent"))
         return redirect_to_login(request.get_full_path(), reverse("consent"))

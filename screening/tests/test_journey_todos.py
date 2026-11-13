@@ -651,11 +651,11 @@ class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
 
     def test_signed_out_goes_to_login_writing_nothing(self):
         # Spec #478 acceptance 15.
+        # Back to the row's page after logging in, not to the tick's own address (POST only).
         self.client.logout()
-        url = reverse("journey_todo_tick")
         self.assertRedirects(
             self.tick("form-9-book"),
-            f"{reverse('login')}?next={url}",
+            f"{reverse('login')}?next=/",
             fetch_redirect_response=False,
         )
         self.assertFalse(TodoTick.objects.exists())

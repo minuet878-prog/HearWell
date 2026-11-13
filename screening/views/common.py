@@ -1,7 +1,11 @@
 import re
+from functools import wraps
 
+from django.contrib.auth.views import redirect_to_login
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 
@@ -14,6 +18,28 @@ def safe_next(request):
     ):
         return next_url
     return ""
+
+
+def form_address(view):
+    """A form's address, not a page: signed in and POST only (in place of login_required and
+    require_http_methods). The login and consent page send on to the page the form was on (its
+    next), else the home page, not here: coming back opens the address with GET, which is 405
+    (tingpal.tw, 2026-11-13: a tick on the home page before agreeing to the new version)."""
+    view = require_http_methods(["POST"])(view)
+
+    @wraps(view)
+    def signed_in_only(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(form_page(request))
+        return view(request, *args, **kwargs)
+
+    signed_in_only.form_address = True
+    return signed_in_only
+
+
+def form_page(request):
+    """The page a form_address's form was on, to come back to."""
+    return safe_next(request) or reverse("index")
 
 
 def health_data_page(view):

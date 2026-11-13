@@ -12,7 +12,7 @@ from screening.models import Answer, Questionnaire, User
 from screening.questionnaires.results import AverageResult, GradedResult, NormResult, SubscaleResult
 from screening.scoring import get_advice, max_score
 from screening.views.audiograms import audiogram_context
-from screening.views.common import health_data_page
+from screening.views.common import form_address, health_data_page
 
 REPORT_RECENT = 5  # history rows per questionnaire on the health report
 
@@ -103,8 +103,7 @@ def share_report(request):
     return render(request, "screening/share_report.html", context)
 
 
-@login_required
-@require_http_methods(["POST"])
+@form_address
 def report_share_create(request):
     # Spec phase8_c1_family_share.md: only after the explicit confirm, one live link at most.
     user = request.user
@@ -118,8 +117,7 @@ def report_share_create(request):
     return redirect("share_report")
 
 
-@login_required
-@require_http_methods(["POST"])
+@form_address
 def report_share_cancel(request, share_id):
     share = get_object_or_404(models.ReportShare.objects.active(), pk=share_id, user=request.user)
     share.revoked_at = timezone.now()
