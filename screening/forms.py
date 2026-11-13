@@ -1,9 +1,12 @@
+import unicodedata
 from datetime import date
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm, UserCreationForm
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
+from django.template import loader
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
@@ -97,6 +100,80 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+# Spec #355: the 重設密碼信 is answered by mail to the owner's mailbox.
+HELP_ADDRESS = "hearwellweb@gmail.com"
+
+
+def _same_email(typed, stored):
+    # Django's own check after its case-insensitive query: letters that only look alike after
+    # NFKC folding must still match, so a look-alike address cannot reach someone else's account.
+    return (
+        unicodedata.normalize("NFKC", typed).casefold()
+        == unicodedata.normalize("NFKC", stored).casefold()
+    )
+
+
+class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
+    """Spec #355: every ordinary account on the email gets a 重設密碼信, with or without a
+    password (one made with Google or LINE gains one); staff, superusers and inactive accounts
+    read as not registered, which the page says outright (ADR 0038)."""
+
+    email = forms.EmailField(
+        label="電子郵件",
+        max_length=254,
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "class": "form-control"}),
+    )
+
+    def get_users(self, email):
+        users = User.objects.filter(
+            email__iexact=email, is_active=True, is_staff=False, is_superuser=False
+        )
+        return [user for user in users if _same_email(email, user.email)]
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        if not self.get_users(email):
+            raise forms.ValidationError("這個信箱沒有註冊，請檢查有沒有打錯")
+        return email
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        # Django's, with replies going to the owner's mailbox.
+        subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
+        message = EmailMultiAlternatives(
+            subject,
+            loader.render_to_string(email_template_name, context),
+            from_email,
+            [to_email],
+            reply_to=[HELP_ADDRESS],
+        )
+        message.attach_alternative(
+            loader.render_to_string(html_email_template_name, context), "text/html"
+        )
+        message.send()
+
+
+class SetNewPasswordForm(NoLabelSuffix, SetPasswordForm):
+    """Spec #355: Django's 新密碼 and 新密碼確認 with the register page's rules and help."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-control"
+        self.fields["new_password1"].help_text = format_html(
+            "設定密碼時，請您注意：<ul>{}</ul>",
+            format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
+        )
+        self.fields["new_password2"].help_text = "請再輸入一次同樣的密碼。"
 
 
 def answer_choices(question):

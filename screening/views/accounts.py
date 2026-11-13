@@ -2,16 +2,23 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
 from django.contrib.auth import login, logout
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_http_methods
 
 from screening import models
-from screening.forms import ROC_OFFSET, DeleteAccountForm, RegisterForm
+from screening.forms import (
+    ROC_OFFSET,
+    DeleteAccountForm,
+    ForgotPasswordForm,
+    RegisterForm,
+    SetNewPasswordForm,
+)
 from screening.models import User
 from screening.views.common import health_data_page, safe_next
 
@@ -50,6 +57,47 @@ def register(request):
     else:
         form = RegisterForm()
     return render(request, "screening/register.html", {"form": form, "next": next_url})
+
+
+# Spec #355: the email typed on the forgot-password page, for the next page to show; kept in the
+# session so it never goes into an address.
+RESET_EMAIL = "screening.reset_email"
+
+
+class ForgotPasswordView(auth_views.PasswordResetView):
+    template_name = "screening/password_reset_form.html"
+    form_class = ForgotPasswordForm
+    subject_template_name = "screening/password_reset_subject.txt"
+    email_template_name = "screening/password_reset_email.txt"
+    html_email_template_name = "screening/password_reset_email.html"
+    success_url = reverse_lazy("password_reset_sent")
+
+    def form_valid(self, form):
+        self.request.session[RESET_EMAIL] = form.cleaned_data["email"]
+        return super().form_valid(form)
+
+
+@require_http_methods(["GET"])
+def password_reset_sent(request):
+    email = request.session.get(RESET_EMAIL)
+    if not email:
+        return redirect("password_reset")
+    return render(request, "screening/password_reset_sent.html", {"email": email})
+
+
+class SetNewPasswordView(auth_views.PasswordResetConfirmView):
+    """Spec #355: a valid link sets the password and signs in, then the consent page sends on
+    those who already agreed; an expired or used link shows its own words on the same address."""
+
+    template_name = "screening/password_reset_confirm.html"
+    form_class = SetNewPasswordForm
+    post_reset_login = True
+    success_url = reverse_lazy("consent")
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "密碼改好了")
+        return response
 
 
 def privacy(request):
