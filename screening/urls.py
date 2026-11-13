@@ -85,6 +85,7 @@ urlpatterns = [
     path("account/delete", accounts.delete_account, name="delete_account"),
     path("account/confirm", confirm_identity.confirm_identity, name="confirm_identity"),
     path("account/sign-in-methods/google/add", sign_in_methods.google_add, name="google_add"),
+    path("account/sign-in-methods/line/add", sign_in_methods.line_add, name="line_add"),
     path("submission/<int:submission_id>", results.submission_result, name="result"),
     path("audiograms", audiograms.audiogram_list, name="audiogram_list"),
     path("audiograms/new", audiograms.audiogram_new, name="audiogram_new"),
