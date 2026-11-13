@@ -114,8 +114,7 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         context["has_records"] = state.has_records
         context["latest"] = state.latest  # 問卷結果 without an audiogram asks for one
         # The same life-impact record the home page shows as the last result.
-        last = get_user_state(request.user, today=today).last_result
-        context["life_impact"] = last.submission if last and last.is_life_impact else None
+        context["life_impact"] = get_user_state(request.user, today=today).life_impact
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4), or
         # a fitting date is filled in (#287).
         context["wearing"] = state.wearing
