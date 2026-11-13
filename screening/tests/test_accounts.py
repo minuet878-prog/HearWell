@@ -505,6 +505,25 @@ class RegisterFormTests(TestCase):
                 self.assertFalse(User.objects.exists())
                 self.assertIn("這個欄位是必須的。", response.context["form"].errors[field])
 
+    def test_an_email_up_to_the_accounts_254_characters(self):
+        # The account's email column holds 254: one longer is the form's error on the page, not
+        # a database error when the account is saved.
+        domain = f"{'b' * 63}.{'c' * 63}.{'d' * 57}.com"
+        longest = f"{'a' * 64}@{domain}"
+        self.assertEqual(len(longest), 254)
+        content = self.client.get(self.url).content.decode()
+        field = re.search(r'<input[^>]*name="email"[^>]*>', content).group()
+        self.assertIn('maxlength="254"', field)
+        response = self._post(email=f"a{longest}")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.exists())
+        errors = response.context["form"].errors["email"]
+        self.assertTrue(any("254" in error for error in errors), errors)
+        for error in errors:
+            self.assertContains(response, error)
+        self.assertRedirects(self._post(email=longest), reverse("consent"))
+        self.assertEqual(User.objects.get().email, longest)
+
     def test_password_similar_to_username_rejected(self):
         response = self._post(
             username="hearwellsenior", password1="hearwellsenior1", password2="hearwellsenior1"

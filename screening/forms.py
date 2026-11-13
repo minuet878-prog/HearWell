@@ -66,7 +66,12 @@ class NoLabelSuffix:
 
 
 class RegisterForm(NoLabelSuffix, UserCreationForm):
-    email = forms.EmailField(label="電子郵件", help_text="忘記密碼時，用這個信箱確認是您本人。")
+    email = forms.EmailField(
+        label="電子郵件",
+        # What the account's email column holds: longer is the form's error, not a database one.
+        max_length=User._meta.get_field("email").max_length,
+        help_text="忘記密碼時，用這個信箱確認是您本人。",
+    )
     roc_birth_year = forms.CharField(
         label="出生年（選填）",
         required=False,
