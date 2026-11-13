@@ -25,6 +25,9 @@ class _Todo:
     # 自動待辦: whether it is done, of a FittingState for a stop's, of whether the step is done
     # for a step's; None for a 手動待辦.
     rule: Callable | None = None
+    # 自動待辦: whether done is its stop's or step's being done, or only a part of it, which the
+    # muted line says apart (the owner on 2026-11-13, phase-2-grill-decisions.md).
+    completes: bool = True
 
 
 def _stop_done(slug):
@@ -61,7 +64,9 @@ STOP_TODOS = {
     ),
     "after-fitting": (
         # The date alone, where the stop is done only with the subsidy answered too (#295).
-        _Todo("after-fitting-date", "記下開始配戴的日期", lambda state: state.fitted),
+        _Todo(
+            "after-fitting-date", "記下開始配戴的日期", lambda state: state.fitted, completes=False
+        ),
         _Todo("after-fitting-adjust", "配戴後第一次回去調整"),
     ),
     "form-25": (
@@ -81,11 +86,13 @@ STEP_TODOS = {
 }
 
 
-# An 自動待辦's muted line, the owner's on 2026-11-13 (phase-2-grill-decisions.md): a stop's is
-# mostly the stop's own end, so done, the route moves on and the card never shows it ticked.
+# An 自動待辦's muted line, the owner's on 2026-11-13 (phase-2-grill-decisions.md): one that is
+# its stop's or step's whole end says the route moves on or the step is done, as done the card
+# moves on and never shows it ticked; one that is only a part says it ticks itself.
 DONE_HINT = "已自動打勾"
 STOP_HINT = "做完就會往下一站"
 STEP_HINT = "做完這一步就完成"
+PART_HINT = "做完會自動打勾"
 
 
 # Every to-do's wording by its key, and which are 手動待辦, the only ones a tick is kept for (#481).
@@ -158,13 +165,13 @@ def step_todos(number, done, user, aid, life_impact):
 def _judged(todos, judged_on, manual_ticked, undone_hint):
     # judged_on: what each 自動待辦's rule reads, a stop's FittingState or whether a step is
     # done; manual_ticked: the keys of the 手動待辦 ticked now; undone_hint: the muted line
-    # under an 自動待辦 not done yet, STOP_HINT or STEP_HINT.
+    # under an 自動待辦 not done yet that completes its stop or step, STOP_HINT or STEP_HINT.
     listed = []
     for todo in todos:
         if todo.rule is None:
             listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in manual_ticked))
         else:
             done = bool(todo.rule(judged_on))
-            hint = DONE_HINT if done else undone_hint
+            hint = DONE_HINT if done else undone_hint if todo.completes else PART_HINT
             listed.append(JourneyTodo(todo.key, todo.text, False, done, hint))
     return tuple(listed)
