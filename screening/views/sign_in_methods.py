@@ -6,6 +6,7 @@ refused."""
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.cache import never_cache
@@ -76,10 +77,21 @@ def came_back(request, identity):
         raise PermissionDenied
     if SignInMethod.objects.for_identity(identity).exists():
         messages.error(request, TAKEN)
+        return redirect("account_settings")
+    try:
+        with transaction.atomic():
+            SignInMethod.objects.create(
+                user=user,
+                provider=identity.provider,
+                subject=identity.subject,
+                used_to_register=False,
+            )
+    except IntegrityError:
+        # Another account took this Google after the check; any other clash is a real error.
+        if not SignInMethod.objects.for_identity(identity).exists():
+            raise
+        messages.error(request, TAKEN)
     else:
-        SignInMethod.objects.create(
-            user=user, provider=identity.provider, subject=identity.subject, used_to_register=False
-        )
         messages.success(request, ADDED)
     return redirect("account_settings")
 

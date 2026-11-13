@@ -205,7 +205,13 @@ def google_name(request):
                     used_to_register=True,
                 )
         except IntegrityError:
-            # Someone else took this name after is_valid(); any other clash is a real error.
+            # Someone else took this name after is_valid(), or this Google got its account
+            # meanwhile (the page sent twice); any other clash is a real error.
+            if SignInMethod.objects.filter(
+                provider=pending["provider"], subject=pending["subject"]
+            ).exists():
+                del request.session[PENDING]
+                return _back_to("login", request, FAILED)
             if not User.objects.filter(username=form.cleaned_data["username"]).exists():
                 raise
             form.add_error("username", form.instance.unique_error_message(User, ["username"]))

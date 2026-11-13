@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import models, oidc
+from screening.forms import GoogleNameForm
 from screening.models import Consent, SignInMethod, User
 from screening.tests import test_consent
 from screening.tests.helpers import GOOGLE_CLIENT_ID, FakeGoogle, consented_user, google_on
@@ -168,6 +169,31 @@ class FirstTimeTests(TestCase):
             registering.context["form"].errors["username"],
         )
         self.assertEqual(User.objects.count(), 1)
+
+    def test_the_google_made_an_account_meanwhile_is_a_failed_sign_in_not_an_error(self):
+        # Codex review Spec 5: the name page sent twice, the first making the account between the
+        # second's check and its insert. The second makes nothing and says try again.
+        self._to_name_page()
+        real_is_valid = GoogleNameForm.is_valid
+
+        def first_send_made_it(form):
+            valid = real_is_valid(form)
+            first = User.objects.create_user(username="第一次送出")
+            SignInMethod.objects.create(user=first, provider="google", subject="google-new")
+            return valid
+
+        with mock.patch.object(GoogleNameForm, "is_valid", first_send_made_it):
+            response = self._name("第二次送出")
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertContains(self.client.get(reverse("login")), FAILED_WORDS)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(list(User.objects.values_list("username", flat=True)), ["第一次送出"])
+        # Google again now signs into the account the first send made.
+        self.google.start()
+        self.google.come_back(sub="google-new")
+        self.assertEqual(
+            int(self.client.session["_auth_user_id"]), User.objects.get(username="第一次送出").pk
+        )
 
     def test_a_name_differing_only_in_case_is_taken_too(self):
         User.objects.create_user(username="Ming", password="x")

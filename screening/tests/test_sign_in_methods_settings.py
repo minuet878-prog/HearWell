@@ -5,6 +5,7 @@ import datetime
 import html
 import re
 from contextlib import nullcontext
+from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
 from django.test import TestCase
@@ -13,6 +14,7 @@ from django.utils import timezone
 
 from screening import oidc
 from screening.models import SignInMethod, User
+from screening.models.sign_in import SignInMethodQuerySet
 from screening.tests import test_confirm_identity, test_line_in_app_browser
 from screening.tests.helpers import GOOGLE_AUTHORIZE, FakeGoogle, consented_user, google_on
 
@@ -226,6 +228,39 @@ class AddTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, "wang.ming@example.com")
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    # 25
+    def test_a_google_added_to_another_account_meanwhile_is_not_added(self):
+        # Codex review Spec 5: another account takes this Google between the check and the
+        # insert; the database refuses the second, and it gets the same words, not an error.
+        real = SignInMethodQuerySet.for_identity
+
+        class TakenRightAfterTheCheck:
+            def __init__(self, rows, subject):
+                self.rows = rows
+                self.subject = subject
+
+            def exists(self):
+                found = self.rows.exists()
+                if not User.objects.filter(username="lin_mei").exists():
+                    google_only_user(username="lin_mei", sub=self.subject)
+                return found
+
+        def for_identity(queryset, identity):
+            return TakenRightAfterTheCheck(real(queryset, identity), identity.subject)
+
+        self.start_adding()
+        with mock.patch.object(SignInMethodQuerySet, "for_identity", for_identity):
+            response = self.google.come_back(sub="google-race", email="lin.mei@gmail.com")
+        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
+        self.assertEqual(
+            messages_on(self.client), ["這個 Google 帳號已經用在另一個聽伴帳號，所以沒有新增。"]
+        )
+        self.assertFalse(self.user.sign_in_methods.exists())
+        self.assertEqual(
+            list(SignInMethod.objects.values_list("user__username", "subject")),
+            [("lin_mei", "google-race")],
+        )
 
     # 29
     def test_after_5_minutes_confirm_again(self):
