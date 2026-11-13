@@ -228,8 +228,13 @@ def _name_page(request, provider):
     if form.is_valid():
         try:
             with transaction.atomic():
-                # Google's email, or the one typed on LINE's name page ("" when left empty).
-                user = form.save(email=form.cleaned_data.get("email", pending["email"]))
+                # A name form asks for an email only when the provider gives none (LINE's): then
+                # the one typed ("" when left empty), otherwise the provider's (Google's).
+                if "email" in form.fields:
+                    email = form.cleaned_data["email"]
+                else:
+                    email = pending["email"]
+                user = form.save(email=email)
                 SignInMethod.objects.create(
                     user=user,
                     provider=pending["provider"],
