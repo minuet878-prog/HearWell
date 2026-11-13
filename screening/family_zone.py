@@ -6,6 +6,21 @@ from datetime import date
 
 
 @dataclass(frozen=True)
+class Link:
+    words: str
+    # A path#anchor on this site.
+    href: str
+
+
+@dataclass(frozen=True)
+class LinkedSentence:
+    # A sentence with a link inside it, cut where the link goes.
+    before: str
+    link: Link
+    after: str
+
+
+@dataclass(frozen=True)
 class CareStep:
     title: str
     words: str
@@ -14,8 +29,8 @@ class CareStep:
     drawing: str
     # How often, or when: shown in brackets after the title. Putting an aid in has none (#502).
     frequency: str = ""
-    # A link under the step's box: (words, path#anchor) (#502).
-    link: tuple = ()
+    # A link under the step's box (#502).
+    link: Link | None = None
 
 
 @dataclass(frozen=True)
@@ -23,9 +38,8 @@ class StepGroup:
     # Steps under a title of their own, numbered from 1 (#502: 戴上 and 拿下, the #503 mockup A).
     title: str
     steps: tuple
-    # A sentence under the steps with a link inside it, cut where the link goes:
-    # (words before, link words, path#anchor, words after).
-    note: tuple = ()
+    # A sentence under the steps.
+    note: LinkedSentence | None = None
 
 
 @dataclass(frozen=True)
@@ -590,15 +604,17 @@ _LEFT_RIGHT = CareStep(
     drawing="wear_left_right",
 )
 _SWITCH_ON_WORDS = "裝電池的：關上電池門。充電的：長按按鍵幾秒，照說明書。"
+_BEHIND_EAR_SWITCH_ON = CareStep(
+    title="開機", words=_SWITCH_ON_WORDS, drawing="behind_ear_switch_on"
+)
 _PUT_AWAY_WORDS = "裝電池的：打開電池門，放進盒子。充電的：插進充電座，照說明書。"
-_PUT_AWAY_LINK = ("怎麼收，看「日常保養」", "#care-title")
+_PUT_AWAY_LINK = Link("怎麼收，看「日常保養」", "#care-title")
 _HOOK_ON_WORDS = "把機身掛到耳朵上方，放在耳朵後面。"
 _LIFT_OFF_WORDS = "把機身從耳朵後面拿下來。"
-_PUSH_IN_NOTE = (
-    "戴好後一直嘯叫（尖尖的叫聲），通常是沒推到位：拿出來再推一次，還是叫就看",
-    "「助聽器怪怪的」",
-    "#problems-title",
-    "。",
+_PUSH_IN_NOTE = LinkedSentence(
+    before="戴好後一直嘯叫（尖尖的叫聲），通常是沒推到位：拿出來再推一次，還是叫就看",
+    link=Link("「助聽器怪怪的」", "#problems-title"),
+    after="。",
 )
 _PUT_IN = "戴上"
 _TAKE_OUT = "拿下"
@@ -613,9 +629,7 @@ HEARING_AID_WEAR = PickExplain(
                     title=_PUT_IN,
                     steps=(
                         _LEFT_RIGHT,
-                        CareStep(
-                            title="開機", words=_SWITCH_ON_WORDS, drawing="behind_ear_switch_on"
-                        ),
+                        _BEHIND_EAR_SWITCH_ON,
                         CareStep(
                             title="耳模轉進去",
                             words="拿著耳模，把伸進耳道的那一端對準耳道，輕輕轉著推進去，直到貼平。",
@@ -659,9 +673,7 @@ HEARING_AID_WEAR = PickExplain(
                     title=_PUT_IN,
                     steps=(
                         _LEFT_RIGHT,
-                        CareStep(
-                            title="開機", words=_SWITCH_ON_WORDS, drawing="behind_ear_switch_on"
-                        ),
+                        _BEHIND_EAR_SWITCH_ON,
                         CareStep(
                             title="先掛機身",
                             words=_HOOK_ON_WORDS,

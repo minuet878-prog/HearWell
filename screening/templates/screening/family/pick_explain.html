@@ -22,7 +22,7 @@
             <ol class="care-steps divided-rows">{% for step in option.steps %}{% include "screening/family/care_step.html" with number=forloop.counter %}{% endfor %}</ol>{% endif %}{% for group in option.step_groups %}
             <h3 class="care-steps-title">{{ group.title }}</h3>
             <ol class="care-steps divided-rows">{% for step in group.steps %}{% include "screening/family/care_step.html" with number=forloop.counter %}{% endfor %}</ol>{% if group.note %}
-            <p class="care-steps-note">{{ group.note.0 }}<a class="tap-link" href="{{ group.note.2 }}">{{ group.note.1 }}</a>{{ group.note.3 }}</p>{% endif %}{% endfor %}{% if option.steps_note %}
+            <p class="care-steps-note">{{ group.note.before }}<a class="tap-link" href="{{ group.note.link.href }}">{{ group.note.link.words }}</a>{{ group.note.after }}</p>{% endif %}{% endfor %}{% if option.steps_note %}
             <p class="mt-4 mb-0">{{ option.steps_note }}</p>{% endif %}</li>
         {% endfor %}
     </ul>

@@ -12099,7 +12099,7 @@ class FamilyHearingAidsTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             expect(self.page).to_have_url(f"{self.live_server_url}/family#urgent-title")
 
             self.page.goto(f"{self.live_server_url}{self.PATH}")
-            expect(self.main().get_by_text("內容查核於 2026/11/06。")).to_be_visible()
+            expect(self.main().get_by_text("內容查核於 2026/11/14。")).to_be_visible()
             self.main().get_by_role("link", name="回到家人專區").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/family")
 
@@ -13275,31 +13275,38 @@ class FamilyWearTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
                     self.group().get_by_label(option.label).check()
                     self.assert_shows(option)
                     expect(self.live().locator("input[type=checkbox]:checked")).to_have_count(0)
+                    # At the usual text size and at 200%, as 日常保養's.
+                    self.assert_sizes()
                     self.assert_fits_a_phone_at_double_text_size(
                         f"{self.PATH}, {option.label}", width=390
                     )
-                    rem = self.rem()
-                    for target in (
-                        *self.group().locator(".choice-group label").all(),
-                        *self.live().locator("label").all(),
-                        *self.live().get_by_role("link").all(),
-                    ):
-                        box = target.bounding_box()
-                        self.assertGreaterEqual(box["height"], 44)
-                        self.assertGreaterEqual(box["width"], 44)
-                    for words in (
-                        self.group().locator("legend"),
-                        *self.live().get_by_role("heading").all(),
-                        *self.live().locator("label > span").all(),
-                        *self.live().locator("strong").all(),
-                        *self.live().locator("p").all(),
-                    ):
-                        self.assertGreaterEqual(self.font_size(words), rem)
-                    for drawing in self.live().locator("svg").all():
-                        box = drawing.bounding_box()
-                        self.assertGreaterEqual(box["x"], 0)
-                        self.assertLessEqual(box["x"] + box["width"], 390)
+                    self.assert_sizes()
                     previous = option
+
+    def assert_sizes(self):
+        """Every box, choice and link at least 44px each way, every word at least 1rem, and every
+        drawing inside the page."""
+        rem = self.rem()
+        for target in (
+            *self.group().locator(".choice-group label").all(),
+            *self.live().locator("label").all(),
+            *self.live().get_by_role("link").all(),
+        ):
+            box = target.bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertGreaterEqual(box["width"], 44)
+        for words in (
+            self.group().locator("legend"),
+            *self.live().get_by_role("heading").all(),
+            *self.live().locator("label > span").all(),
+            *self.live().locator("strong").all(),
+            *self.live().locator("p").all(),
+        ):
+            self.assertGreaterEqual(self.font_size(words), rem)
+        for drawing in self.live().locator("svg").all():
+            box = drawing.bounding_box()
+            self.assertGreaterEqual(box["x"], 0)
+            self.assertLessEqual(box["x"] + box["width"], 390)
 
 
 class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
