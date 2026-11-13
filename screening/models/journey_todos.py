@@ -1,9 +1,8 @@
 from django.conf import settings
 from django.db import models
 
-# #481: every tick is in this round until #482 sets when a step's or a stop's 手動待辦 start over
-# (spec #478: the latest life-impact record for step 5, the pair of hearing aids for step 4 and
-# the eight stops after 記錄聽力圖, one round for that one).
+# 記錄聽力圖's one round, and the first pair of hearing aids' (#482); journey_todos.current_rounds
+# says which round each 手動待辦 is in now.
 FIRST_ROUND = 1
 
 
@@ -14,6 +13,8 @@ class TodoTick(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="todo_ticks"
     )
     key = models.CharField(max_length=40)  # a JourneyTodo's key
+    # The pair's number, or step 5's life-impact record's id (0 before one), with no foreign key
+    # to it (spec #478); an earlier round's tick is kept.
     round = models.PositiveIntegerField()
     ticked_at = models.DateTimeField(auto_now_add=True)
 
