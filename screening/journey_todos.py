@@ -143,26 +143,28 @@ def _ticked(user, todos, round_now):
 def stop_todos(slug, state, user):
     """A route stop's 待辦, judged on state (user's FittingState)."""
     todos = STOP_TODOS.get(slug, ())
-    ticked = _ticked(user, todos, _stop_round(slug, state.aid))
-    return _judged(todos, state, ticked, STOP_HINT)
+    manual_ticked = _ticked(user, todos, _stop_round(slug, state.aid))
+    return _judged(todos, state, manual_ticked, STOP_HINT)
 
 
 def step_todos(number, done, user, aid, life_impact):
     """A 照顧旅程 step's own 待辦; done, whether the step is done; aid and life_impact as
     current_rounds takes them."""
     todos = STEP_TODOS.get(number, ())
-    ticked = _ticked(user, todos, _step_round(number, aid, life_impact))
-    return _judged(todos, done, ticked, STEP_HINT)
+    manual_ticked = _ticked(user, todos, _step_round(number, aid, life_impact))
+    return _judged(todos, done, manual_ticked, STEP_HINT)
 
 
-def _judged(todos, subject, ticked, hint):
+def _judged(todos, judged_on, manual_ticked, undone_hint):
+    # judged_on: what each 自動待辦's rule reads, a stop's FittingState or whether a step is
+    # done; manual_ticked: the keys of the 手動待辦 ticked now; undone_hint: the muted line
+    # under an 自動待辦 not done yet, STOP_HINT or STEP_HINT.
     listed = []
     for todo in todos:
         if todo.rule is None:
-            listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in ticked))
+            listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in manual_ticked))
         else:
-            done = bool(todo.rule(subject))
-            listed.append(
-                JourneyTodo(todo.key, todo.text, False, done, DONE_HINT if done else hint)
-            )
+            done = bool(todo.rule(judged_on))
+            hint = DONE_HINT if done else undone_hint
+            listed.append(JourneyTodo(todo.key, todo.text, False, done, hint))
     return tuple(listed)
