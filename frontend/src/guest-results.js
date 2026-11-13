@@ -186,6 +186,9 @@ export async function saveGuestResults({
   const failedBox = root.querySelector("[data-guest-failed]");
   saving.hidden = false;
   failedBox.hidden = true;
+  // Self-review B2: focus goes with what is happening, so a screen reader says it (and is not
+  // left on 要 or 再試一次, now hidden).
+  saving.focus();
   const failed = [];
   for (const result of results) {
     let response = null;
@@ -211,7 +214,10 @@ export async function saveGuestResults({
     if (response?.ok) clearGuestResult(result.code);
     else failed.push(result);
   }
-  if (failed.length === 0) return navigate(doneUrl);
+  if (failed.length === 0) {
+    saving.textContent = "已保存，正在打開我的紀錄。";
+    return navigate(doneUrl);
+  }
   const names = JSON.parse(root.querySelector("#guest-names").textContent);
   root.querySelector("[data-guest-failed-list]").replaceChildren(
     ...failed.map((result) => {
@@ -222,6 +228,7 @@ export async function saveGuestResults({
   );
   saving.hidden = true;
   failedBox.hidden = false;
+  root.querySelector("[data-guest-failed-list]").focus();
   root
     .querySelector("[data-guest-retry]")
     .addEventListener("click", () => saveGuestResults({ root, fetchSave, navigate }), { once: true });

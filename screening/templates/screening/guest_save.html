@@ -21,9 +21,9 @@
     {% else %}
     <h1 class="h3 mt-4">保存這次結果</h1>
     {% endif %}
-    <p data-guest-saving{% if asking %} hidden{% endif %}>正在保存，請稍候。</p>
+    <p data-guest-saving role="status" tabindex="-1"{% if asking %} hidden{% endif %}>正在保存，請稍候。</p>
     <div data-guest-failed hidden>
-        <div class="text-xl/normal font-bold text-danger" role="alert" data-guest-failed-list></div>
+        <div class="text-xl/normal font-bold text-danger" role="alert" tabindex="-1" data-guest-failed-list></div>
         <button type="button" class="btn btn-primary btn-lg w-full mt-3" data-guest-retry>再試一次</button>
     </div>
     {{ names|json_script:"guest-names" }}

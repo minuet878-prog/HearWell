@@ -254,9 +254,9 @@ describe("saveGuestResults (the save page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/my_hearing" data-home-url="/">
-        <p data-guest-saving>正在保存，請稍候。</p>
+        <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
-          <div role="alert" data-guest-failed-list></div>
+          <div role="alert" tabindex="-1" data-guest-failed-list></div>
           <button type="button" data-guest-retry>再試一次</button>
         </div>
         <script id="guest-names" type="application/json">{"hhie-s": "聽力對生活的影響（HHIE-S）", "hhia-s": "聽力對生活的影響（HHIA-S）"}</script>
@@ -333,6 +333,32 @@ describe("saveGuestResults (the save page)", () => {
     // The same receipt number both times, so a lost reply cannot make two records.
     expect(fetchSave.mock.calls[1][1].headers["Idempotency-Key"]).toBe(guestResult().key);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
+  });
+
+  // Self-review B2: a screen reader hears it is saving, then how it went.
+  it("moves focus to the saving line while saving, and says when it is saved", async () => {
+    saveGuestResult(guestResult());
+    let reply;
+    const fetchSave = vi.fn(() => new Promise((resolve) => { reply = resolve; }));
+    const saving = saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    const line = root.querySelector("[data-guest-saving]");
+    expect(document.activeElement).toBe(line);
+    expect(line.textContent).toBe("正在保存，請稍候。");
+    reply({ ok: true, status: 201, json: () => Promise.resolve({}) });
+    await saving;
+    expect(line.textContent).toBe("已保存，正在打開我的紀錄。");
+    expect(navigate).toHaveBeenCalledWith("/my_hearing");
+  });
+
+  it("moves focus to what was not saved, and back to the saving line on 再試一次", async () => {
+    saveGuestResult(guestResult());
+    const fetchSave = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve({}) })
+      .mockReturnValueOnce(new Promise(() => {}));
+    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    expect(document.activeElement).toBe(root.querySelector("[data-guest-failed-list]"));
+    root.querySelector("[data-guest-retry]").click();
+    expect(document.activeElement).toBe(root.querySelector("[data-guest-saving]"));
   });
 
   it("goes home when there is nothing to save", async () => {
@@ -490,9 +516,9 @@ describe("askToSaveGuestResults (the save page's question)", () => {
           <button type="button" data-guest-ask-yes>要，存進這個帳號</button>
           <button type="button" data-guest-ask-no>不要，清掉這次結果</button>
         </div>
-        <p data-guest-saving hidden>正在保存，請稍候。</p>
+        <p data-guest-saving role="status" tabindex="-1" hidden>正在保存，請稍候。</p>
         <div data-guest-failed hidden>
-          <div role="alert" data-guest-failed-list></div>
+          <div role="alert" tabindex="-1" data-guest-failed-list></div>
           <button type="button" data-guest-retry>再試一次</button>
         </div>
         <script id="guest-names" type="application/json">{"hhie-s": "聽力對生活的影響（HHIE-S）", "hhia-s": "聽力對生活的影響（HHIA-S）"}</script>
@@ -544,6 +570,8 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     askToSaveGuestResults({ root, now: NOW + DAY, fetchSave, navigate });
     root.querySelector("[data-guest-ask-yes]").click();
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
+    // Self-review B2: not left on the button just hidden.
+    expect(document.activeElement).toBe(root.querySelector("[data-guest-saving]"));
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/my_hearing"));
     expect(fetchSave).toHaveBeenCalledTimes(2);
     const keys = fetchSave.mock.calls.map(([, options]) => options.headers["Idempotency-Key"]).sort();

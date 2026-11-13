@@ -341,14 +341,21 @@ class GuestAskQuestionTests(GuestSaveTestCase):
         self.assertContains(response, f"data-guest-ask-yes>{YES}</button>")
         self.assertContains(response, f"data-guest-ask-no>{NO}</button>")
         # Nothing is being saved until 要.
-        self.assertContains(response, "<p data-guest-saving hidden>正在保存，請稍候。</p>")
+        self.assertContains(
+            response,
+            '<p data-guest-saving role="status" tabindex="-1" hidden>正在保存，請稍候。</p>',
+        )
         self.assertIn("no-store", response["Cache-Control"])
 
     def test_from_the_card_it_saves_without_asking(self):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertContains(response, '<h1 class="h3 mt-4">保存這次結果</h1>')
-        self.assertContains(response, "<p data-guest-saving>正在保存，請稍候。</p>")
+        self.assertContains(
+            response, '<p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>'
+        )
         self.assertNotContains(response, "data-asking")
+        # Self-review B2: what was not saved takes focus, so it is read out.
+        self.assertContains(response, 'role="alert" tabindex="-1" data-guest-failed-list')
         self.assertNotContains(response, YES)
         self.assertNotContains(response, NO)
 
