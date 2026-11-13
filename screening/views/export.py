@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.forms import Form9Form, Form25Form, NoticeForm, answer_choices
 from screening.journey_todos import TODO_TEXTS, current_rounds
+from screening.main_flow import get_user_state
 from screening.models import Answer, AudiogramPoint, Questionnaire
 from screening.views.common import health_data_page
 from screening.views.guide import GUIDE_CHAPTERS
@@ -65,7 +66,7 @@ def download_my_data(request):
     points = AudiogramPoint.objects.order_by("ear", "conduction", "frequency")
     audiograms = user.audiograms.prefetch_related(Prefetch("points", queryset=points))
     aid = models.AidAndSubsidy.for_user(user)
-    rounds = current_rounds(user, aid)
+    rounds = current_rounds(aid, get_user_state(user, timezone.localdate()).life_impact)
     chapter_titles = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
     data = {
         "account": {
@@ -152,7 +153,7 @@ def download_my_data(request):
             {
                 "todo": TODO_TEXTS.get(tick.key, tick.key),
                 "ticked_at": _taipei(tick.ticked_at),
-                "current_round": rounds.get(tick.key) == tick.round,
+                "current_round": rounds.get(tick.key) == tick.round_key,
             }
             for tick in user.todo_ticks.order_by("ticked_at", "id")
         ],

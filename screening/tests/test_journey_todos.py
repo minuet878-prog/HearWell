@@ -8,12 +8,14 @@ from unittest.mock import patch
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
+from django.test import TestCase, TransactionTestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from screening import models
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.journey_todos import STOP_TODOS, stop_todos
+from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, stop_todos
 from screening.models import (
     FIRST_ROUND,
     AidAndSubsidy,
@@ -67,7 +69,7 @@ class Ticket480JourneyTodosTests(test_care_journey.CareJourneyTestCase):
         # Spec #478 acceptance 2: the card takes the 您在這裡 stop's list, not one of its own.
         self.at_form_9()
         card = self.journey().card
-        here = here_stop(fitting_state(self.user, TODAY))
+        here = here_stop(fitting_state(self.user, TODAY), self.user)
         self.assertEqual(here.slug, "form-9")
         self.assertEqual(
             kinds(card.todos), [("form-9-book", True, False), ("form-9-answer", False, False)]
@@ -116,7 +118,8 @@ class Ticket480JourneyTodosTests(test_care_journey.CareJourneyTestCase):
             kinds(journey.card.todos),
             [("form-25-book", True, False), ("form-25-answer", False, False)],
         )
-        self.assertEqual(journey.card.todos, here_stop(fitting_state(self.user, TODAY)).todos)
+        here = here_stop(fitting_state(self.user, TODAY), self.user)
+        self.assertEqual(journey.card.todos, here.todos)
 
     def test_step_5_lists_its_own_manual_to_do(self):
         # Within the normal range steps 3 and 4 are 目前不需要, so step 5 is current.
@@ -132,7 +135,8 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
     rule, so a stop's list is judged here as the 您在這裡 card would show it."""
 
     def todos(self, slug):
-        return {todo.key: todo.done for todo in stop_todos(slug, fitting_state(self.user, TODAY))}
+        state = fitting_state(self.user, TODAY)
+        return {todo.key: todo.done for todo in stop_todos(slug, state, self.user)}
 
     def test_reading_before_you_go_ticks_its_chapter_but_not_booking(self):
         # Spec #478 acceptance 8.
@@ -189,7 +193,7 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
         state = fitting_state(self.user, TODAY)
         self.assertEqual(state.stop, "after-fitting")
         self.assertEqual(
-            kinds(here_stop(state).todos),
+            kinds(here_stop(state, self.user).todos),
             [("after-fitting-date", False, True), ("after-fitting-adjust", True, False)],
         )
 
@@ -276,8 +280,20 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             {
                 "audiogram-test": "到醫院或診所做聽力檢查",
                 "audiogram-copy": "跟醫院或診所要一份聽力圖",
-                "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完會自動打勾",
+                "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完就會往下一站",
             },
+        )
+
+    def test_step_4_s_own_automatic_to_do_says_it_finishes_the_step(self):
+        # The owner on 2026-11-13: a stop's says it moves the route on, step 4's that the step is
+        # done (phase-2-grill-decisions.md); fitted 40 days ago, bought paying otherwise.
+        self.answer()
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 10, 3), subsidy=Subsidy.OTHER
+        )
+        todos = self.part(self.current_card(self.main()), "todos")
+        self.assertEqual(
+            self.words(todos)["step-4-ioi-ha"], "做完助聽器效益問卷 ，未完成。 做完這一步就完成"
         )
 
     def test_a_done_automatic_to_do_is_a_ticked_ring_saying_so(self):
@@ -315,6 +331,20 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.assertIn('<div class="todos">', self.current_card(main))
         self.assertEqual(guide.count('<div class="todos">'), 1)
         self.assertIn('<div class="todos">', self.here(guide))
+
+    def test_steps_not_needed_list_no_to_dos(self):
+        # Spec #478 acceptance 6 for 目前不需要: within the normal range steps 3 and 4 open to
+        # say what they are, without step 4's own to-dos; step 5's card lists its own.
+        self.answer(on=date(2026, 9, 12))
+        self.make(NORMAL, NORMAL)
+        main = self.main()
+        not_needed = re.findall(r'<li class="journey-step is-not-needed.*?</li>', main, re.S)
+        self.assertEqual(len(not_needed), 2)
+        for step in not_needed:
+            self.assertIn("目前不需要", step)
+            self.assertNotIn('class="todo', step)
+        self.assertEqual(main.count('<div class="todos">'), 1)
+        self.assertEqual(listed(self.current_card(main)), [("step-5-calendar", True, False)])
 
     def test_step_1_s_card_has_no_list(self):
         # Spec #478 acceptance 3.
@@ -517,7 +547,7 @@ class Ticket481TicksDoNotMoveTheJourneyTests(test_care_journey.CareJourneyTestCa
     def test_every_manual_to_do_ticked_leaves_form_9_the_stop(self):
         # 13.
         self.at_form_9()
-        TodoTick.objects.create(user=self.user, key="form-9-book", round=FIRST_ROUND)
+        TodoTick.objects.create(user=self.user, key="form-9-book", round_key=FIRST_ROUND)
         journey = self.journey()
         self.assertEqual(journey.current, 3)
         self.assertEqual(fitting_state(self.user, TODAY).stop, "form-9")
@@ -540,7 +570,7 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
     def test_the_download_lists_each_tick_with_its_words_and_time(self):
         # 24: an unticked one is not there; an earlier round's is Ticket482RoundDataTests'.
         other = consented_user(username="todo_export_other")
-        TodoTick.objects.create(user=other, key="audiogram-copy", round=FIRST_ROUND)
+        TodoTick.objects.create(user=other, key="audiogram-copy", round_key=FIRST_ROUND)
         for key, moment in (
             ("audiogram-test", datetime(2026, 11, 12, 9, 30)),
             ("form-9-book", datetime(2026, 11, 12, 9, 31)),
@@ -566,10 +596,27 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
             ],
         )
 
+    def test_the_download_s_queries_do_not_grow_with_the_ticks(self):
+        # CODING_STANDARDS 15: two ticks and many, the same queries.
+        for key in ("audiogram-test", "audiogram-copy"):
+            self.tick(key)
+        url = reverse("download_my_data")
+        with CaptureQueriesContext(connection) as two:
+            self.client.get(url)
+        # Counted now: the ticks' requests below empty the log it reads.
+        queries = len(two)
+        many = sorted(MANUAL_KEYS - {"audiogram-test", "audiogram-copy"})
+        self.assertGreater(len(many), 5)
+        for key in many:
+            self.tick(key)
+        self.assertEqual(TodoTick.objects.filter(user=self.user).count(), len(MANUAL_KEYS))
+        with self.assertNumQueries(queries):
+            self.client.get(url)
+
     def test_deleting_the_account_takes_its_ticks(self):
         # 25: PROTECT, so delete_with_data deletes them first; another's stay.
         other = consented_user(username="todo_delete_other")
-        TodoTick.objects.create(user=other, key="audiogram-test", round=FIRST_ROUND)
+        TodoTick.objects.create(user=other, key="audiogram-test", round_key=FIRST_ROUND)
         self.user.set_password(test_account_deletion.PASSWORD)
         self.user.save()
         self.client.force_login(self.user)
@@ -606,7 +653,7 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         """Whether each 手動待辦 of a stop is ticked, as the 您在這裡 stop would show them."""
         return {
             todo.key: todo.done
-            for todo in stop_todos(slug, fitting_state(self.user, TODAY))
+            for todo in stop_todos(slug, fitting_state(self.user, TODAY), self.user)
             if todo.manual
         }
 
@@ -807,3 +854,28 @@ class Ticket482PairMigrationTests(TransactionTestCase):
             ),
             [(date(2026, 10, 3), "other", True, 1)],
         )
+
+
+class Ticket481PrivacyListTests(TestCase):
+    """The ticks are named where the account's data is listed: the privacy notice's 蒐集哪些資料
+    and the delete-account page. A minor fix as #181 was (ADR 0014): the date moves, the consent
+    version stays and nobody agrees again."""
+
+    def test_the_privacy_notice_lists_the_ticks(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        collected = content[content.index("蒐集哪些資料") : content.index("存放在哪裡、保存多久")]
+        self.assertIn(
+            "<li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>", collected
+        )
+
+    def test_the_delete_account_page_lists_the_ticks(self):
+        self.client.force_login(consented_user(username="todo_privacy_delete"))
+        response = self.client.get(reverse("delete_account"))
+        self.assertContains(response, "<li>照顧旅程的待辦打勾</li>", html=True)
+
+    def test_the_date_moved_and_the_version_stayed(self):
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
+        self.assertEqual(models.CONSENT_VERSION, 4)
+        user = consented_user(username="todo_privacy_agreed")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 200)

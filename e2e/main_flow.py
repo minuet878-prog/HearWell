@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
 from typing import ClassVar
+from unittest.mock import patch
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
@@ -35,6 +36,7 @@ from screening.family_zone import (
     VISIT_QUESTIONS,
 )
 from screening.fitting_route import add_months
+from screening.journey_todos import STOP_TODOS
 from screening.models import (
     AidAndSubsidy,
     Answer,
@@ -3634,7 +3636,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     todos = card.locator(".todos")
                     # #481: a manual one's state is its checkbox's, not words.
                     expect(todos.get_by_role("listitem")).to_have_text(
-                        ["預約開九號表", "回答九號表完成了，未完成。做完會自動打勾"]
+                        ["預約開九號表", "回答九號表完成了，未完成。做完就會往下一站"]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
                     self.assertEqual(self.main().locator(".btn-primary").count(), 1)
@@ -3657,6 +3659,30 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         ".map(e => parseFloat(getComputedStyle(e).fontSize))"
                     )
                     self.assertGreaterEqual(min(sizes), 18, path)
+
+    # Spec #478 acceptance 27 (the mockup's B on #479: the button as it is now): with its to-dos
+    # under it, the 現在這一步 card's solid button sits in the card where and as big as it does
+    # without them, as the page draws form 9's card with no to-dos.
+    def test_to_dos_leave_the_solid_button_where_it_was(self):
+        def button_in_card():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            expect(card.locator(".btn-primary")).to_have_count(1)
+            button, box = card.locator(".btn-primary").bounding_box(), card.bounding_box()
+            at = (button["x"] - box["x"], button["y"] - box["y"], button["width"], button["height"])
+            return at, card.locator(".todos").count()
+
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            with_todos, listed = button_in_card()
+            self.assertEqual(listed, 1)
+            with patch.dict(STOP_TODOS, {"form-9": ()}):
+                without, listed = button_in_card()
+            self.assertEqual(listed, 0)
+            self.assertEqual(with_todos, without)
 
     # #481 (spec #478 acceptance 11, 12, 28, 30): on the home page a 手動待辦 is a checkbox;
     # pressed, it is ticked without leaving the page, ✓ 已儲存 showing on its row for a while,

@@ -476,7 +476,10 @@ class PrivacyPageT361Tests(TestCase):
             self.assertNotIn(vague, self.main)
 
     def test_route_answers_are_a_second_level_list_in_the_same_words(self):
-        item = re.search(r"<li>(健康資料：.*?)</li>\s*<li>同意紀錄", self.main, re.S).group(1)
+        # Spec #478 put the to-do ticks between it and 同意紀錄.
+        item = re.search(
+            r"<li>(健康資料：.*?)</li>\s*<li>照顧旅程的待辦打勾", self.main, re.S
+        ).group(1)
         inner = re.search(r"<ul>(.*?)</ul>", item, re.S).group(1)
         self.assertEqual(
             re.findall(r"<li>(.*?)</li>", inner),
@@ -563,7 +566,9 @@ class VpsPrivacyTests(TestCase):
         self.assertEqual(services[:2], ["Vultr", "Sentry"])
 
     def test_it_shows_version_4_and_the_new_date(self):
-        self.assertIn("第 4 版，2026/11/12 更新", self.main)
+        # Spec #478's minor fix moved the date on since, the version staying 4 (ADR 0014).
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 12))
+        self.assertIn(f"第 4 版，{models.PRIVACY_UPDATED_ON:%Y/%m/%d} 更新", self.main)
 
     def test_who_agreed_to_version_3_agrees_again_to_version_4(self):
         user = User.objects.create_user(username="agreed_to_version_3")

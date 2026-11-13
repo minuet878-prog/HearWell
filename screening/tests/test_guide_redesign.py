@@ -6,14 +6,9 @@ from django.urls import reverse
 from screening.models import AidAndSubsidy, GuideChapterView, Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide, test_guide_summary
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, route_stops
 
 PTA_55 = test_guide_summary.PTA_55
-STOP = (
-    r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
-    # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
-    r'(?=\s*(?:<li class="route-stop|</ol>))'
-)
 SOLID = re.compile(r'class="btn btn-primary[ "]')
 FOLD = '<details class="result-details">'
 
@@ -36,7 +31,7 @@ class MyGuideRedesignTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def stops(self, page=None):
-        return dict(re.findall(STOP, page or self.page(), re.S))
+        return dict(route_stops(page or self.page()))
 
     def test_the_route_comes_first_and_the_jump_down_to_it_is_gone(self):
         self.make(PTA_55, PTA_55)

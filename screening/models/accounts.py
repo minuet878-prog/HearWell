@@ -16,8 +16,9 @@ from screening.models.submissions import Answer
 CONSENT_VERSION = 4
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
 # cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); version 4 moved
-# it with the version (#452).
-PRIVACY_UPDATED_ON = date(2026, 11, 12)
+# it with the version (#452); naming the 照顧旅程's to-do ticks (spec #478), a minor fix as
+# #181 was (ADR 0014), moved it again.
+PRIVACY_UPDATED_ON = date(2026, 11, 13)
 
 
 class User(AbstractUser):

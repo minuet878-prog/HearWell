@@ -72,9 +72,6 @@ class FittingState:
     # Q7: within the normal range, not wearing hearing aids, the route waits until the user
     # starts on a stop; the 照顧旅程's 目前不需要 is the same (ADR 0044).
     waiting: bool
-    # The keys of the 手動待辦 ticked in their current round (#481, #482), for the route's and
-    # the 照顧旅程's 待辦 alike; whether a stop is done never reads them (ADR 0047).
-    ticked: frozenset
 
     @property
     def fitted(self):
@@ -154,12 +151,6 @@ def fitting_state(user, today):
     started = bool(viewed) or (aid is not None and not aid.unanswered)
     waiting = not wearing and fitting is False and not started
     stop = _stop(wearing, done | not_applicable, waiting)
-    # Imported here, as journey_todos reads this module's AUDIOGRAM. A tick of an earlier round
-    # is kept (#482) but not ticked now.
-    from screening.journey_todos import current_rounds
-
-    rounds = current_rounds(user, aid)
-    ticks = user.todo_ticks.values_list("key", "round")
     return FittingState(
         latest,
         audiogram,
@@ -172,7 +163,6 @@ def fitting_state(user, today):
         today,
         aid,
         waiting,
-        frozenset(key for key, number in ticks if rounds.get(key) == number),
     )
 
 
