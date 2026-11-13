@@ -40,6 +40,13 @@ ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 PASSWORD_RULES = ("至少 8 個字", "不要全部是數字", "不要跟您的使用者名稱太像", "不要用太常見的密碼")
 # The site's own words in place of Django's username help; its validator and 150 limit stay.
 USERNAME_HELP = "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。"
+# The help under a new password and its second typing: the register page and, since #527, the
+# page that sets a new password from a 重設密碼信.
+PASSWORD_HELP = format_html(
+    "設定密碼時，請您注意：<ul>{}</ul>",
+    format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
+)
+PASSWORD_AGAIN_HELP = "請再輸入一次同樣的密碼。"
 
 
 def latest_roc_birth_year():
@@ -75,11 +82,8 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         if not self.is_bound:
             self.fields["username"].widget.attrs.pop("autofocus", None)
         self.fields["username"].help_text = USERNAME_HELP
-        self.fields["password1"].help_text = format_html(
-            "設定密碼時，請您注意：<ul>{}</ul>",
-            format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
-        )
-        self.fields["password2"].help_text = "請再輸入一次同樣的密碼。"
+        self.fields["password1"].help_text = PASSWORD_HELP
+        self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
         # #332 (spec #326 D6): the page's green tick checks against the same latest year.
         self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
 
@@ -174,11 +178,8 @@ class SetNewPasswordForm(NoLabelSuffix, SetPasswordForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs["class"] = "form-control"
-        self.fields["new_password1"].help_text = format_html(
-            "設定密碼時，請您注意：<ul>{}</ul>",
-            format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
-        )
-        self.fields["new_password2"].help_text = "請再輸入一次同樣的密碼。"
+        self.fields["new_password1"].help_text = PASSWORD_HELP
+        self.fields["new_password2"].help_text = PASSWORD_AGAIN_HELP
 
 
 def answer_choices(question):
