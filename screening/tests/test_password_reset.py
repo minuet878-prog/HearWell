@@ -1,5 +1,6 @@
 import re
-from datetime import datetime, timedelta
+import time
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from django.conf import settings
@@ -391,6 +392,30 @@ class AttemptLimitTests(TestCase):
             response = self._ask("a@example.com")
         self.assertRedirects(response, reverse("password_reset_sent"))
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_hour_counts_from_the_first_attempt_not_the_latest(self):
+        # Nine now and the tenth 50 minutes later: an hour after the first, the count is gone.
+        start = time.time()
+
+        def at(minutes):
+            moved = start + minutes * 60
+            return (
+                mock.patch("time.time", return_value=moved),
+                mock.patch(
+                    "django.core.cache.backends.db.tz_now",
+                    return_value=datetime.fromtimestamp(moved, tz=UTC),
+                ),
+            )
+
+        for minutes, times in ((0, 9), (50, 1)):
+            clock, cache_clock = at(minutes)
+            with clock, cache_clock:
+                for _ in range(times):
+                    self._ask("x@example.com")
+        clock, cache_clock = at(61)
+        with clock, cache_clock:
+            response = self._ask("a@example.com")
+        self.assertRedirects(response, reverse("password_reset_sent"))
 
     def test_the_address_is_the_last_one_forwarded(self):
         for _ in range(10):

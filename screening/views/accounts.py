@@ -21,9 +21,9 @@ from screening.forms import (
     ForgotPasswordForm,
     RegisterForm,
     SetNewPasswordForm,
-    count_reset,
+    add_attempt,
+    attempts,
     may_reset_password,
-    reset_count,
 )
 from screening.models import User
 from screening.views.common import health_data_page, safe_next
@@ -83,17 +83,17 @@ class ForgotPasswordView(auth_views.PasswordResetView):
         # last, which Nginx adds). Past the limit the email is not looked up at all, so the page
         # cannot tell whether it is registered.
         address = BaseThrottle().get_ident(request)
-        if reset_count("address", address) >= RESETS_PER_ADDRESS:
+        if attempts("address", address) >= RESETS_PER_ADDRESS:
             form = self.form_class(initial={"email": request.POST.get("email", "")})
             return self.render_to_response(
                 self.get_context_data(form=form, too_many=TOO_MANY_RESETS)
             )
-        count_reset("address", address)
+        add_attempt("address", address)
         return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         email = form.cleaned_data["email"]
-        count_reset("email", email.lower())
+        add_attempt("email", email)
         self.request.session[RESET_EMAIL] = email
         return super().form_valid(form)
 

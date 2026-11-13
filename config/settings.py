@@ -188,7 +188,7 @@ else:
 DEFAULT_FROM_EMAIL = f"聽伴 <{from_address}>"
 
 # The forgot-password page's attempt counts (#528) are shared by every Gunicorn process, so they
-# live in a database table (build.sh creates it); each lasts an hour from its latest attempt.
+# live in a database table (build.sh creates it); each lasts an hour from its first attempt.
 # The default cache stays in each process's memory: the guest scoring limit (spec #492) never
 # writes to the database.
 CACHES = {
@@ -196,7 +196,6 @@ CACHES = {
     "password_reset": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "password_reset_limits",
-        "TIMEOUT": 60 * 60,
     },
 }
 

@@ -1,4 +1,5 @@
 import hashlib
+import time
 import unicodedata
 from datetime import date
 
@@ -119,18 +120,27 @@ RESETS_PER_ADDRESS = 10
 RESETS_PER_EMAIL = 3
 
 
-def _reset_count_key(kind, value):
-    # A hash, so the cache table never holds an address or an email as typed.
-    return f"{kind}:{hashlib.sha256(value.encode()).hexdigest()}"
+RESET_WINDOW = 60 * 60
 
 
-def reset_count(kind, value):
-    return caches["password_reset"].get(_reset_count_key(kind, value), 0)
+def _attempts_key(kind, value):
+    # A hash, so the cache table never holds an address or an email as typed; an email in any
+    # letter case counts as one.
+    return f"{kind}:{hashlib.sha256(value.lower().encode()).hexdigest()}"
 
 
-def count_reset(kind, value):
-    """One more attempt; the count lasts an hour from now (the cache's TIMEOUT)."""
-    caches["password_reset"].set(_reset_count_key(kind, value), reset_count(kind, value) + 1)
+def attempts(kind, value):
+    """How many this hour; the hour starts at the first attempt."""
+    count, _ = caches["password_reset"].get(_attempts_key(kind, value), (0, None))
+    return count
+
+
+def add_attempt(kind, value):
+    # The hour's end is kept with the count, so a later attempt does not move it.
+    key = _attempts_key(kind, value)
+    now = time.time()
+    count, ends = caches["password_reset"].get(key, (0, now + RESET_WINDOW))
+    caches["password_reset"].set(key, (count + 1, ends), timeout=ends - now)
 
 
 def may_reset_password(user):
@@ -172,7 +182,7 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
 
     def clean(self):
         email = self.cleaned_data.get("email")
-        if email and reset_count("email", email.lower()) >= RESETS_PER_EMAIL:
+        if email and attempts("email", email) >= RESETS_PER_EMAIL:
             raise forms.ValidationError(TOO_MANY_RESETS)
         return self.cleaned_data
 
