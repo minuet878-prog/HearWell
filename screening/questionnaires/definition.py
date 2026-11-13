@@ -18,6 +18,15 @@ RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您�
 # The hearing-aid guide link (#220 E4) after the button of the life-impact step that recommends
 # a hearing check or assessment (spec #218, ticket #229).
 GUIDE_ACTION = {"second_label": "看助聽器選配指引", "second_url": "guide"}
+# The guest result's save card (spec #492): what saving brings at each level of HHIE-S and HHIA-S,
+# which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them.
+SAVE_REASONS = {
+    "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
+    "mild_to_moderate": (
+        "註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。"
+    ),
+    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配與補助申請。",
+}
 
 
 @dataclass(frozen=True)
@@ -68,6 +77,8 @@ class Definition:
     # Answered without an account (spec #492): the guest's wizard, answer page and result page
     # score it without saving (ADR 0055).
     guest: bool = False
+    # Guest questionnaires only: level -> the save card's sentence on what saving brings.
+    save_reasons: dict = field(default_factory=dict)
     # Which of the recommendation wizard's first answers it tells about: LIFE_IMPACT, TINNITUS,
     # LISTENING or HEARING_AID (ADR 0030). "": none.
     concern: str = ""

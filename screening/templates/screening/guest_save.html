@@ -1,0 +1,20 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}保存這次結果｜聽伴{% endblock %}
+
+{% block extra_head %}<script type="module" src="{% static 'screening/frontend/guest-save.js' %}"></script>{% endblock %}
+
+{% block body %}
+{# Spec #492: guest-save.js sends the guest results kept in this browser to the records API, each with its receipt number, then goes to 我的紀錄; one that is not saved stays, named here. #}
+<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-done-url="{% url 'my_hearing' %}" data-home-url="{% url 'index' %}">
+    <h1 class="h3 mt-4">保存這次結果</h1>
+    <p data-guest-saving>正在保存，請稍候。</p>
+    <div data-guest-failed hidden>
+        <div class="text-xl/normal font-bold text-danger" role="alert" data-guest-failed-list></div>
+        <button type="button" class="btn btn-primary btn-lg w-full mt-3" data-guest-retry>再試一次</button>
+    </div>
+    {{ names|json_script:"guest-names" }}
+    {% csrf_token %}
+</div>
+{% endblock %}

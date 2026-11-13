@@ -235,6 +235,9 @@ class SubmissionCreateSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="IOI-HA only: the answer page's data-norm-token; ignored for the others.",
     )
+    # True when the save page sends a guest result kept in the browser (spec #492), which #500
+    # counts; the answer page sends none.
+    from_guest = StrictBooleanField(required=False, default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -304,6 +307,7 @@ class GuestAnswersSerializer(SubmissionCreateSerializer):
     the same rules and in the same words as an account's submission."""
 
     norm_token = None  # IOI-HA's, which a guest cannot answer
+    from_guest = None  # a guest's answers are not saved here
     # True when the answer page sends the answers just answered; the guest result page sends
     # them again with false. Counts the guests' completions (#500).
     just_finished = StrictBooleanField()

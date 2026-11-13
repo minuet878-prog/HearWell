@@ -721,6 +721,9 @@ components:
           type: string
           description: 'IOI-HA only: the answer page''s data-norm-token; ignored for
             the others.'
+        from_guest:
+          type: boolean
+          default: false
       required:
       - answers
       - questionnaire
