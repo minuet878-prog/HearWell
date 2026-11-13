@@ -15,6 +15,7 @@ from .views import (
     qa_assistant,
     reports,
     results,
+    simulator,
 )
 
 urlpatterns = [
@@ -37,6 +38,7 @@ urlpatterns = [
     path("family/visits/subsidy", family.family_subsidy_check, name="family_subsidy_check"),
     path("family/visits/deadlines", family.family_deadlines, name="family_deadlines"),
     path("learn", home.learn, name="learn"),
+    path("learn/simulator", simulator.hearing_loss_simulator, name="hearing_loss_simulator"),
     path("qa", qa_assistant.qa_home, name="qa_home"),
     path("qa/topic/<slug:topic>", qa_assistant.qa_topic, name="qa_topic"),
     # Before qa/<slug:code>, which would take them for question codes.
