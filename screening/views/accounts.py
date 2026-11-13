@@ -21,6 +21,7 @@ from screening.forms import (
     DeleteAccountForm,
     ForgotPasswordForm,
     RegisterForm,
+    ResetEmailNotSent,
     SetNewPasswordForm,
     add_attempt,
     attempts,
@@ -99,9 +100,9 @@ class ForgotPasswordView(auth_views.PasswordResetView):
         add_attempt("email", email)
         try:
             response = super().form_valid(form)
-        except Exception:
-            # #529: Django only logs a failed send and carries on; here the page says so. A fixed
-            # message: the mail service's own words may hold the email (Sentry drops them too).
+        except ResetEmailNotSent:
+            # #529: the page says so. A fixed message: the mail service's own words may hold the
+            # email (Sentry drops them too).
             logger.exception("A password reset email could not be sent")
             return self.render_to_response(self.get_context_data(form=form, send_failed=True))
         self.request.session[RESET_EMAIL] = email

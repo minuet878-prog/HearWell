@@ -13,6 +13,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from screening import forms
 from screening.forms import PASSWORD_RULES
 from screening.models import User
 from screening.tests.helpers import consented_user
@@ -466,12 +467,15 @@ class RefusingBackend(BaseEmailBackend):
         raise OSError(f"Resend refused {messages[0].to[0]}")
 
 
-class RefusingSecondBackend(BaseEmailBackend):
-    sent = 0
+class RefusingTheSecondEmailBackend(BaseEmailBackend):
+    """Sends the first email and refuses the second. Django makes a backend for each email, so
+    the count is kept on the class (SendFailureTests.setUp starts it at 0)."""
+
+    calls = 0
 
     def send_messages(self, messages):
-        RefusingSecondBackend.sent += 1
-        if RefusingSecondBackend.sent == 2:
+        RefusingTheSecondEmailBackend.calls += 1
+        if RefusingTheSecondEmailBackend.calls == 2:
             raise OSError(f"Resend refused {messages[0].to[0]}")
         return len(messages)
 
@@ -485,6 +489,7 @@ class SendFailureTests(TestCase):
 
     def setUp(self):
         caches["password_reset"].clear()
+        RefusingTheSecondEmailBackend.calls = 0
         consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
 
     def _ask(self):
@@ -497,16 +502,15 @@ class SendFailureTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
-            f'<div class="error-box wrap-anywhere" role="alert">{SEND_FAILED} '
-            f'<a class="inline-link" href="mailto:{HELP_ADDRESS}">{HELP_ADDRESS}</a></div>',
+            f'<div class="error-box wrap-anywhere" role="alert"><span>{SEND_FAILED} '
+            f'<a class="inline-link" href="mailto:{HELP_ADDRESS}">{HELP_ADDRESS}</a></span></div>',
             html=True,
         )
         self.assertContains(response, 'value="a@example.com"')
         self.assertNotIn(RESET_EMAIL, self.client.session)
 
-    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingSecondBackend")
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingTheSecondEmailBackend")
     def test_one_of_two_failing_is_a_failure_too(self):
-        RefusingSecondBackend.sent = 0
         consented_user(username="lin_mei", email="a@example.com", password=PASSWORD)
         with self.assertLogs("screening.views.accounts", "ERROR"):
             response = self._ask()
@@ -521,3 +525,9 @@ class SendFailureTests(TestCase):
         self.assertIsNotNone(record.exc_info)
         self.assertNotIn("a@example.com", record.getMessage())
         self.assertEqual(record.args, ())
+
+    def test_a_mistake_before_sending_stays_an_error(self):
+        # Only the mail service failing reads as 信寄不出去; a broken email template is a bug.
+        with mock.patch.object(forms.loader, "render_to_string", side_effect=ValueError("bug")):
+            with self.assertRaises(ValueError):
+                self._ask()

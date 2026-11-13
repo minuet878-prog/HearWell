@@ -159,6 +159,10 @@ def _same_email(typed, stored):
     )
 
 
+class ResetEmailNotSent(Exception):
+    """#529: the mail service did not take a 重設密碼信."""
+
+
 class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
     """Spec #355: every ordinary account on the email gets a 重設密碼信, with or without a
     password (one made with Google or LINE gains one); staff, superusers and inactive accounts
@@ -197,7 +201,7 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         to_email,
         html_email_template_name=None,
     ):
-        # Django's, with replies going to the owner's mailbox.
+        # Django's, with replies going to the owner's mailbox and a failed send passed on.
         subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
         message = EmailMultiAlternatives(
             subject,
@@ -209,7 +213,11 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         message.attach_alternative(
             loader.render_to_string(html_email_template_name, context), "text/html"
         )
-        message.send()
+        # Django's own catches every failure to send and only logs it; the page must say so (#529).
+        try:
+            message.send()
+        except Exception as error:
+            raise ResetEmailNotSent from error
 
 
 class SetNewPasswordForm(NoLabelSuffix, SetPasswordForm):

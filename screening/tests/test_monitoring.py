@@ -8,11 +8,12 @@ from pathlib import Path
 from unittest import mock
 
 import sentry_sdk
+from django.core.cache import caches
 from django.core.handlers.wsgi import WSGIHandler
 from django.core.management.utils import get_random_secret_key
 from django.core.signals import request_finished, request_started
 from django.db import IntegrityError, close_old_connections
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from sentry_sdk.transport import Transport
 
@@ -202,6 +203,19 @@ class MonitoringTests(TestCase):
         self._assert_no_personal_data(event, payload, "monitored_user")
 
     # 3b
+    @override_settings(
+        EMAIL_BACKEND="screening.tests.test_password_reset.RefusingBackend",
+        # The guest scoring limit's address rule: no X-Forwarded-For here, so REMOTE_ADDR.
+    )
+    def test_a_failed_reset_email_sends_no_email(self):
+        # #529: the mail service's error names the recipient; Sentry gets neither.
+        caches["password_reset"].clear()
+        status, _ = self._send("post", reverse("password_reset"), {"email": self.user.email})
+        self.assertEqual(status, 200)
+        event, sent = self._only_event()
+        self.assertEqual(event["logentry"], {"message": "A password reset email could not be sent"})
+        self.assertNotIn(self.user.email, sent)
+
     def test_logged_error_sends_only_the_template(self):
         # Seven digits: longer than the microseconds in a timestamp, so only a leak can match.
         self.assertEqual(scoring.classify(4242424, "hhie-s"), scoring.UNKNOWN)
