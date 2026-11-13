@@ -109,7 +109,7 @@ class CareJourney:
 def care_journey(user, today):
     route = fitting_state(user, today)
     main = get_user_state(user, today)
-    life_impact = main.last_result if main.last_result and main.last_result.is_life_impact else None
+    life_impact = main.life_impact
     fitted_on = route.aid.fitted_on if route.fitted else None
     # IOI-HA from the fitting date on, however soon (spec #453 Q8); the latest gives the day.
     ioi_ha = (
@@ -122,7 +122,7 @@ def care_journey(user, today):
     # Each step's day, None while it is not done; step 5 never is, a retest only moves the
     # next one on.
     done_on = {
-        1: _day(life_impact.submission) if life_impact else None,
+        1: _day(life_impact) if life_impact else None,
         2: route.audiogram.tested_on if AUDIOGRAM in route.done else None,
         3: fitted_on,
         4: _day(ioi_ha) if ioi_ha else None,
@@ -158,7 +158,7 @@ def care_journey(user, today):
         next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
     card = _card(
         user,
-        main.life_impact,
+        life_impact,
         current,
         done[current],
         route,
@@ -171,7 +171,7 @@ def care_journey(user, today):
         steps,
         current,
         card,
-        life_impact.submission if life_impact else None,
+        life_impact,
         next_screening,
     )
 

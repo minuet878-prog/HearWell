@@ -16,6 +16,10 @@ class JourneyTodo:
     manual: bool  # 手動待辦, ticked by the user; else 自動待辦, ticked from the records
     done: bool
     hint: str = ""  # an 自動待辦's muted line under its words; a 手動待辦 has none
+    # A 手動待辦's round as listed (current_rounds), sent back with a tick so a page left open
+    # from an earlier round changes nothing in this one (the cross review on #478); None for
+    # an 自動待辦.
+    round_key: int | None = None
 
 
 @dataclass(frozen=True)
@@ -150,26 +154,28 @@ def _ticked(user, todos, round_now):
 def stop_todos(slug, state, user):
     """A route stop's 待辦, judged on state (user's FittingState)."""
     todos = STOP_TODOS.get(slug, ())
-    manual_ticked = _ticked(user, todos, _stop_round(slug, state.aid))
-    return _judged(todos, state, manual_ticked, STOP_HINT)
+    round_now = _stop_round(slug, state.aid)
+    return _judged(todos, state, _ticked(user, todos, round_now), round_now, STOP_HINT)
 
 
 def step_todos(number, done, user, aid, life_impact):
     """A 照顧旅程 step's own 待辦; done, whether the step is done; aid and life_impact as
     current_rounds takes them."""
     todos = STEP_TODOS.get(number, ())
-    manual_ticked = _ticked(user, todos, _step_round(number, aid, life_impact))
-    return _judged(todos, done, manual_ticked, STEP_HINT)
+    round_now = _step_round(number, aid, life_impact)
+    return _judged(todos, done, _ticked(user, todos, round_now), round_now, STEP_HINT)
 
 
-def _judged(todos, judged_on, manual_ticked, undone_hint):
+def _judged(todos, judged_on, manual_ticked, round_now, undone_hint):
     # judged_on: what each 自動待辦's rule reads, a stop's FittingState or whether a step is
-    # done; manual_ticked: the keys of the 手動待辦 ticked now; undone_hint: the muted line
+    # done; manual_ticked: the keys of the 手動待辦 ticked in round_now, the list's round;
+    # undone_hint: the muted line
     # under an 自動待辦 not done yet that completes its stop or step, STOP_HINT or STEP_HINT.
     listed = []
     for todo in todos:
         if todo.rule is None:
-            listed.append(JourneyTodo(todo.key, todo.text, True, todo.key in manual_ticked))
+            ticked = todo.key in manual_ticked
+            listed.append(JourneyTodo(todo.key, todo.text, True, ticked, round_key=round_now))
         else:
             done = bool(todo.rule(judged_on))
             hint = DONE_HINT if done else undone_hint if todo.completes else PART_HINT

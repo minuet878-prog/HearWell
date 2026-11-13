@@ -14,7 +14,7 @@ function row(key, ticked) {
       <input type="hidden" name="ticked" value="${ticked ? "0" : "1"}">
       <input type="hidden" name="next" value="/">
       <button type="submit" class="todo-button" role="checkbox" aria-checked="${ticked}">
-        <span class="todo-box" aria-hidden="true">${ticked ? "<svg></svg>" : ""}</span>
+        <span class="todo-box" aria-hidden="true"><svg><path></path></svg></span>
         <span class="todo-text">預約開九號表</span>
       </button>
     </form>
@@ -83,9 +83,25 @@ describe("tickInPlace", () => {
     await press("form-9-other");
     expect(button("form-9-other").getAttribute("aria-checked")).toBe("false");
     expect(item("form-9-other").classList.contains("is-done")).toBe(false);
-    expect(item("form-9-other").querySelector(".todo-box svg")).toBeNull();
+    expect(item("form-9-other").querySelector(".todo-box svg").classList).not.toContain(
+      "todo-tick",
+    );
     expect(item("form-9-other").querySelector('[name="ticked"]').value).toBe("1");
     expect(saved()[0].closest("li")).toBe(item("form-9-other"));
+  });
+
+  it("shows the one tick the page drew, not one of its own (the cross review on #478)", async () => {
+    // journey_todos.html draws every box's tick, hidden by site.css while unticked, so a row
+    // just ticked looks as it does after a reload.
+    const drawn = item("form-9-book").querySelector(".todo-box svg");
+    answer({ ticked: true });
+    await press("form-9-book");
+    expect(item("form-9-book").querySelector(".todo-box").children).toHaveLength(1);
+    expect(item("form-9-book").querySelector(".todo-box svg")).toBe(drawn);
+    answer({ ticked: false });
+    await press("form-9-book");
+    expect(item("form-9-book").querySelector(".todo-box svg")).toBe(drawn);
+    expect(drawn.classList).not.toContain("todo-tick");
   });
 
   it("draws the tick once only on the row just ticked", async () => {
@@ -142,6 +158,22 @@ describe("tickInPlace", () => {
     expect(fresh.querySelector("button").getAttribute("aria-checked")).toBe("true");
     expect(fresh.querySelector(".spinner")).toBeNull();
     expect(fresh.getElementById("page-loading-status").textContent).toBe("");
+    expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled();
+  });
+
+  it("reloads the page, saving nothing, when it is of an earlier round", async () => {
+    // The cross review on #478: a tab left open across a retest or a new pair; the server wrote
+    // nothing, so neither the tick nor ✓ 已儲存 shows, and the page comes back as it is now.
+    const fresh = document.implementation.createHTMLDocument("");
+    fresh.body.innerHTML = `<ul>${row("form-9-book", false)}</ul>`;
+    const location = { reload: vi.fn() };
+    const win = { fetch: window.fetch, setTimeout, clearTimeout, location };
+    tickInPlace(fresh, win);
+    answer({ reload: true }, { status: 409 });
+    fresh.querySelector("button").click();
+    await vi.waitFor(() => expect(location.reload).toHaveBeenCalledTimes(1));
+    expect(fresh.querySelector("button").getAttribute("aria-checked")).toBe("false");
+    expect(fresh.querySelector(".todo-saved")).toBeNull();
     expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled();
   });
 

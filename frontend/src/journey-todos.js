@@ -6,8 +6,6 @@
 
 // As long as the answer page's (AnswerApp.jsx); site.css fades it in its last 0.3 s.
 export const SAVED_FOR = 1500;
-const TICK = "M5 12.5l4.5 4.5L19 7.5";
-const SVG = "http://www.w3.org/2000/svg";
 
 export function tickInPlace(doc = document, win = window) {
   let saved = null;
@@ -27,23 +25,13 @@ export function tickInPlace(doc = document, win = window) {
 
   const show = (form, ticked) => {
     const button = form.querySelector("button");
-    const box = form.querySelector(".todo-box");
+    const tick = form.querySelector(".todo-box svg");
     form.closest(".todo").classList.toggle("is-done", ticked);
     button.setAttribute("aria-checked", String(ticked));
     form.elements.ticked.value = ticked ? "0" : "1";
-    box.replaceChildren();
-    if (ticked) {
-      // Drawn once, being just ticked (the mockup's note ⑧); with reduced motion simply there.
-      const svg = doc.createElementNS(SVG, "svg");
-      svg.setAttribute("viewBox", "0 0 24 24");
-      svg.setAttribute("focusable", "false");
-      svg.classList.add("todo-tick");
-      const path = doc.createElementNS(SVG, "path");
-      path.setAttribute("pathLength", "1");
-      path.setAttribute("d", TICK);
-      svg.append(path);
-      box.append(svg);
-    }
+    // The page's own tick, shown by is-done (journey_todos.html); drawn once, being just ticked
+    // (the mockup's note ⑧), with reduced motion simply there.
+    tick.classList.toggle("todo-tick", ticked);
     say(button);
   };
 
@@ -67,6 +55,12 @@ export function tickInPlace(doc = document, win = window) {
           // Signed out meanwhile, the login page would come back as if saved.
           redirect: "manual",
         });
+        // Of an earlier round (a retest or a new pair since the page was opened): nothing was
+        // saved, so the page is shown as it is now (the cross review on #478).
+        if (response.status === 409) {
+          win.location.reload();
+          return;
+        }
         if (!response.ok) throw new Error(`not saved: ${response.status}`);
         reply = await response.json();
       } catch {

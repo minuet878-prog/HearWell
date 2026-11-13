@@ -3700,9 +3700,13 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             box = card.get_by_role("checkbox", name="預約開九號表")
             row = card.locator('[data-todo="form-9-book"]')
             expect(box).not_to_be_checked()
+            # The page's one tick drawing, hidden while unticked (the cross review on #478).
+            tick = row.locator(".todo-box svg")
+            expect(tick).to_be_hidden()
             self.page.evaluate("window.notReloaded = true")
             box.click()
             expect(box).to_be_checked()
+            expect(tick).to_be_visible()
             expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
             self.assertTrue(self.page.evaluate("window.notReloaded"))
             self.assertGreater(row.evaluate(animations), 0)  # the tick draws, ✓ 已儲存 fades
@@ -3728,6 +3732,61 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(box).not_to_be_checked()
             words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
             self.assertGreaterEqual(saved["y"], words["y"] + words["height"] - 1)
+
+    # Spec #478 acceptance 18: with JavaScript off, a 手動待辦 pressed is its form sent, which
+    # goes back to the same page at its row, ticked; on my guide too, where pressing it again
+    # unticks it.
+    def test_ticking_a_to_do_without_javascript_comes_back_to_its_row(self):
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 390, "height": 900}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card, presses in (
+                ("/", ".journey-card", (True,)),
+                ("/guide", ".route-card", (False, True)),
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    for ticked in presses:
+                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
+                        box.click()
+                        expect(self.page).to_have_url(
+                            f"{self.live_server_url}{path}#todo-form-9-book"
+                        )
+                        target = self.page.evaluate("document.querySelector(':target').id")
+                        self.assertEqual(target, "todo-form-9-book")
+                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
+                        expect(box).to_be_checked(checked=ticked)
+
+    # Spec #478 acceptance 28: by keyboard alone, Tab from the card's button reaches the
+    # 手動待辦's checkbox, Space ticks it and again unticks it, saying so in aria-checked, and
+    # the focus stays on the row.
+    def test_a_to_do_ticks_and_unticks_by_keyboard(self):
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.main().locator(card)
+                    box = card.get_by_role("checkbox", name="預約開九號表")
+                    card.get_by_role("link", name="看九號表的流程").focus()
+                    self.page.keyboard.press("Tab")
+                    expect(box).to_be_focused()
+                    for ticked in ("true", "false"):
+                        self.page.keyboard.press("Space")
+                        expect(box).to_have_attribute("aria-checked", ticked)
+                        expect(card.locator(".todo-saved")).to_have_text("✓ 已儲存")
+                        expect(box).to_be_focused()
 
     def saved_box(self, row):
         saved = row.locator(".todo-saved")

@@ -61,14 +61,22 @@ def journey_todo_tick(request):
     # In its current round (#482): an earlier round's tick stays as it was.
     life_impact = get_user_state(request.user, timezone.localdate()).life_impact
     current = current_rounds(AidAndSubsidy.for_user(request.user), life_impact)[key]
+    # journey-todos.js asks for JSON and stays on the page; a plain form goes back to its row.
+    wants_json = request.get_preferred_type(["text/html", "application/json"]) == "application/json"
+    back_to_row = HttpResponseRedirect(f"{safe_next(request) or reverse('index')}#todo-{key}")
+    # A page left open from an earlier round (the cross review on #478): nothing written, the
+    # page shown afresh; journey-todos.js reloads it.
+    if request.POST.get("round") != str(current):
+        if wants_json:
+            return JsonResponse({"reload": True}, status=409)
+        return back_to_row
     if ticked == "1":
         TodoTick.objects.get_or_create(user=request.user, key=key, round_key=current)
     else:
         TodoTick.objects.filter(user=request.user, key=key, round_key=current).delete()
-    # journey-todos.js asks for JSON and stays on the page; a plain form goes back to its row.
-    if request.get_preferred_type(["text/html", "application/json"]) == "application/json":
+    if wants_json:
         return JsonResponse({"ticked": ticked == "1"})
-    return HttpResponseRedirect(f"{safe_next(request) or reverse('index')}#todo-{key}")
+    return back_to_row
 
 
 def family_guide(request):

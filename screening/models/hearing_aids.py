@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 
 class AidEar(models.TextChoices):
@@ -62,13 +62,16 @@ class AidAndSubsidy(models.Model):
 
     def save(self, *args, **kwargs):
         # 換新機 (#482): the fitting date moved later, whichever form sent it; filled in the first
-        # time, moved earlier or cleared, the same pair.
-        if self.pk is not None and self.fitted_on is not None:
-            saved = AidAndSubsidy.objects.filter(pk=self.pk).values_list("fitted_on", flat=True)
-            before = saved.first()
-            if before is not None and self.fitted_on > before:
-                self.pair_number += 1
-        super().save(*args, **kwargs)
+        # time, moved earlier or cleared, the same pair. Judged on the row as saved, locked till
+        # this save is in, never on the pair this object was read with: two requests read at
+        # the same pair each count (the cross review on #478).
+        with transaction.atomic():
+            if self.pk is not None:
+                saved = AidAndSubsidy.objects.select_for_update().filter(pk=self.pk)
+                before, pair = saved.values_list("fitted_on", "pair_number").get()
+                later = None not in (before, self.fitted_on) and self.fitted_on > before
+                self.pair_number = pair + 1 if later else pair
+            super().save(*args, **kwargs)
 
     @classmethod
     def for_user(cls, user):
