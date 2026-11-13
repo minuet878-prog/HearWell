@@ -241,7 +241,8 @@ describe("touch", () => {
 
   it("a finger marks as it lands, and dragging does not scroll the page", () => {
     renderRight();
-    expect(chart().style.touchAction).toBe("none");
+    expect(chart().style.touchAction).toBe("pinch-zoom");
+    expect(chart().getAttribute("aria-label")).toBe("聽力圖（用手指按住拖曳標記；鍵盤請用下方的數值表）");
     touchDown(1000, 40);
     expect(magnifier().textContent).toBe("1000 Hz 40 dB");
     expect(scrolls()).toBe(false);
@@ -259,6 +260,18 @@ describe("touch", () => {
     touchDown(1000, 40);
     touchUp(1000, 40);
     expect(point("right-air-1000")).toBeNull();
+  });
+
+  // Pinching the chart still zooms it.
+  it("a second finger (zooming) cancels the mark", () => {
+    renderRight();
+    touchDown(1000, 40);
+    fireEvent.pointerDown(chart(), { ...finger(2000, 50), pointerId: 2 });
+    expect(magnifier()).toBeNull();
+    expect(scrolls()).toBe(true);
+    touchUp(1000, 40);
+    expect(point("right-air-1000")).toBeNull();
+    expect(point("right-air-2000")).toBeNull();
   });
 
   it("marks nothing when the browser takes the touch", () => {
@@ -363,6 +376,15 @@ describe("masking", () => {
     fireEvent.click(maskToggle());
     back();
     expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+
+    // And when the confirm step sends the user back to change an ear.
+    fireEvent.click(maskToggle());
+    forward();
+    forward();
+    Element.prototype.scrollIntoView.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "改右耳" }));
+    expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
   });
 
   it("says under the switch which of this ear's marks need it, and what it is", () => {

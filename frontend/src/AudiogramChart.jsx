@@ -109,8 +109,9 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
   // A boolean, so picking another symbol does not add the listener again.
   const marking = Boolean(symbol);
 
-  // Once a drag has started the page must not scroll under the finger. React listens to touchmove
-  // passively, where preventDefault does nothing, so this listener is added by hand.
+  // touch-action already keeps the page still under a marking finger; this backs it up while a
+  // drag is on. React listens to touchmove passively, where preventDefault does nothing, so this
+  // listener is added by hand.
   useEffect(() => {
     if (!marking) return undefined;
     const chart = svg.current;
@@ -146,6 +147,12 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
 
   const handlers = symbol && {
     onPointerDown(event) {
+      // A second finger means zooming, not marking: the mark under way is dropped.
+      if (dragging.current) {
+        dragging.current = null;
+        setPreview(null);
+        return;
+      }
       event.preventDefault();
       svg.current.setPointerCapture?.(event.pointerId);
       startDrag(event);
@@ -183,7 +190,7 @@ export default function AudiogramChart({ points, oldPoints, symbol, masked = fal
         role="img"
         aria-label={symbol ? "聽力圖（用手指按住拖曳標記；鍵盤請用下方的數值表）" : label}
         className="audiogram-svg"
-        style={symbol ? { touchAction: "none" } : undefined}
+        style={symbol ? { touchAction: "pinch-zoom" } : undefined}
         onClick={onTap && ((event) => onTap(toChart(event)))}
         {...handlers}
       >

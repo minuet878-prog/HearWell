@@ -16,6 +16,7 @@ const STEPS = ["檢查日期", "標右耳", "標左耳", "確認存檔"];
 const STEP_EAR = { 2: "right", 3: "left" };
 const EAR_STEP = { right: 2, left: 3 };
 const EAR_LABEL = { right: "右耳", left: "左耳" };
+const CONDUCTION_LABEL = { air: "氣導", bone: "骨導" };
 const HOW_TO = [
   "選下面的符號",
   "在圖上按住，上下拖到報告上的位置",
@@ -96,7 +97,8 @@ export default function AudiogramApp({
 }) {
   const [step, setStep] = useState(1);
   const [symbolKey, setSymbolKey] = useState("right-air");
-  // Stays as set within a step (spec question 18); every step opens with it off.
+  // Stays as set within a step; every step opens with it off (this replaces spec question 18,
+  // which kept it on across steps).
   const [masked, setMasked] = useState(false);
   const [points, setPoints] = useState(() =>
     Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
@@ -319,7 +321,7 @@ export default function AudiogramApp({
               <tbody>
                 {earSymbols.map((s) => (
                   <tr key={s.key}>
-                    <th scope="row">{s.label.slice(2)}</th>
+                    <th scope="row">{CONDUCTION_LABEL[s.conduction]}</th>
                     <td>{s.mark}</td>
                     <td className="audiogram-mask-mark">{s.maskedMark}</td>
                   </tr>

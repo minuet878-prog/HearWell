@@ -3366,9 +3366,9 @@
     border: 1px solid var(--color-border);
   }
 
+  /* Bold, not orange: orange is for the switch while it is on (ADR 0007). */
   .audiogram-mask-mark {
     font-weight: 700;
-    color: var(--color-masking);
   }
 
   .audiogram-chart.masking {
