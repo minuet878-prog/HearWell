@@ -207,7 +207,9 @@ class GuestScore(GenericAPIView):
             "screening/graded_result.html",
             {
                 "submission": result.submission,
-                # The save card's Google button (#513), never inside LINE (#505 acceptance 3).
+                # The save card's LINE button (#543), also inside LINE, and its Google button
+                # (#513), never inside LINE (#505 acceptance 3).
+                "line_save": oidc.enabled("line"),
                 "google_save": oidc.enabled("google") and not is_line_in_app_browser(request),
             }
             | result.page_context(),

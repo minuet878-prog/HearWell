@@ -54,13 +54,18 @@ from screening.models import (
     User,
 )
 from screening.questionnaires.thi import SUPPORT_MESSAGE as THI_SUPPORT_MESSAGE
+from screening.tests import test_line_in_app_browser
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
     GOOGLE_CLIENT_ID,
+    LINE_AUTHORIZE,
+    LINE_CHANNEL_ID,
+    LINE_ENDPOINTS,
     consented_user,
     fake_definition,
     google_on,
     id_token,
+    line_on,
     register,
 )
 
@@ -14774,15 +14779,19 @@ class GuestDeclineSaveTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.assertFalse(Submission.objects.exists())
 
 
-@google_on
-class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
-    """#513 (spec #505 acceptance 35, 36): a guest finishes HHIE-S and presses the save card's
-    「使用 Google 帳戶繼續」. Google itself is played here: instead of going to Google, the browser
-    comes straight back to our callback as if the user had said yes there, and our server's one
-    call to Google's token endpoint (screening.oidc.post_to_provider) returns the ID token Google
-    would. The rest, state, nonce and PKCE included, runs for real."""
+class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
+    """A guest finishes HHIE-S and presses the save card's 「使用 Google 帳戶繼續」 (#513, spec #505
+    acceptance 35, 36) or 「使用 LINE 帳號繼續」 (#543, spec #506 acceptance 23, 24). The provider
+    itself is played here: instead of going there, the browser comes straight back to our callback
+    as if the user had said yes, and our server's calls to the provider
+    (screening.oidc.post_to_provider) get the answers it would give. The rest, state, nonce and
+    PKCE included, runs for real. Each provider's class says which one and how it answers."""
 
     fixtures = ("questions_fixture.json",)
+    provider = ""  # "google" or "line"
+    authorize = ""  # the provider's authorize URL our server sends the browser to
+    button = ""  # the save card's button
+    user_agent = None  # the Pixel 7's own, unless given
 
     @classmethod
     def setUpClass(cls):
@@ -14798,31 +14807,105 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
 
     def setUp(self):
         self.hhie_s = Questionnaire.objects.get(code="hhie-s")
-        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        phone = self.playwright.devices["Pixel 7"]
+        if self.user_agent:
+            phone = phone | {"user_agent": self.user_agent}
+        self.context = self.browser.new_context(**phone)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
         self.addCleanup(self.context.close)
         self.nonce = None
-        self.sub = "google-e2e"
+        self.sub = f"{self.provider}-e2e"
+        self.username = f"e2e_{self.provider}"
         # Our button's own URL: page.route never sees where a redirect goes (Playwright's docs).
-        self.page.route(f"{self.live_server_url}/login/google/save-card", self.google_says_yes)
-        exchange = patch("screening.oidc.post_to_provider", side_effect=self.token_response)
+        self.page.route(
+            f"{self.live_server_url}/login/{self.provider}/save-card", self.provider_says_yes
+        )
+        exchange = patch("screening.oidc.post_to_provider", side_effect=self.provider_answers)
         exchange.start()
         self.addCleanup(exchange.stop)
 
-    def google_says_yes(self, route):
-        # Our server's answer, its session cookie kept, but back to us instead of on to Google.
+    def provider_says_yes(self, route):
+        # Our server's answer, its session cookie kept, but back to us instead of on to the
+        # provider.
         response = route.fetch(max_redirects=0)
-        to_google = urlparse(response.headers["location"])
+        to_provider = urlparse(response.headers["location"])
         self.assertEqual(
-            f"{to_google.scheme}://{to_google.netloc}{to_google.path}", GOOGLE_AUTHORIZE
+            f"{to_provider.scheme}://{to_provider.netloc}{to_provider.path}", self.authorize
         )
-        query = dict(parse_qsl(to_google.query))
+        query = dict(parse_qsl(to_provider.query))
         self.nonce = query["nonce"]
-        callback = f"{self.live_server_url}/login/google/callback?code=e2e&state={query['state']}"
+        callback = (
+            f"{self.live_server_url}/login/{self.provider}/callback?code=e2e&state={query['state']}"
+        )
         route.fulfill(response=response, headers=response.headers | {"location": callback})
 
-    def token_response(self, url, fields):
+    def provider_answers(self, url, fields):
+        raise NotImplementedError
+
+    def guest_results(self):
+        return self.page.evaluate(
+            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
+        )
+
+    def guest_finishes_then_saves(self):
+        # 有時 on every item: 20, 輕度到中度影響.
+        self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+        self.answer("沒戴")
+        self.next()
+        for number in range(1, QUESTION_COUNT + 1):
+            self.answer("有時", number)
+            if number < QUESTION_COUNT:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.main().get_by_text("總分 20 分")).to_be_visible()
+        card = self.main().locator(".result-next")
+        card.get_by_role("link", name=self.button).click()
+
+    def test_a_new_account_names_agrees_and_saves_without_being_asked(self):
+        with self.saving_artifacts():
+            self.guest_finishes_then_saves()
+            expect(self.page).to_have_url(f"{self.live_server_url}/login/{self.provider}/name")
+            self.main().get_by_label("使用者名稱").fill(self.username)
+            self.main().get_by_role("button", name="下一步").click()
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            record = Submission.objects.get(user__username=self.username)
+            self.assertEqual(record.result.total, 20)
+            self.assertEqual(self.guest_results(), [])
+
+    def test_an_account_there_already_is_asked_and_no_clears_it(self):
+        account = consented_user(username=f"{self.username}_had")
+        account.sign_in_methods.create(
+            provider=self.provider, subject=self.sub, used_to_register=True
+        )
+        with self.saving_artifacts():
+            self.guest_finishes_then_saves()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
+            expect(
+                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
+            ).to_be_visible()
+            expect(self.page.locator(".site-account")).to_contain_text(
+                f"目前登入：{self.username}_had"
+            )
+            self.assertFalse(Submission.objects.exists())
+            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
+            self.main().get_by_role("button", name="不要，清掉這次結果").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            self.assertEqual(self.guest_results(), [])
+            self.assertFalse(Submission.objects.exists())
+
+
+@google_on
+class GuestSaveWithGoogleTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
+    """#513: from the save card with Google, whose one call is to its token endpoint."""
+
+    provider = "google"
+    authorize = GOOGLE_AUTHORIZE
+    button = "使用 Google 帳戶繼續"
+
+    def provider_answers(self, url, fields):
         now = int(timezone.now().timestamp())
         claims = {
             "iss": "https://accounts.google.com",
@@ -14836,51 +14919,30 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         }
         return {"access_token": "never-kept", "id_token": id_token(**claims)}
 
-    def guest_results(self):
-        return self.page.evaluate(
-            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
-        )
 
-    def guest_finishes_then_google(self):
-        # 有時 on every item: 20, 輕度到中度影響.
-        self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
-        self.answer("沒戴")
-        self.next()
-        for number in range(1, QUESTION_COUNT + 1):
-            self.answer("有時", number)
-            if number < QUESTION_COUNT:
-                self.next()
-        self.main().get_by_role("button", name="送出").click()
-        expect(self.main().get_by_text("總分 20 分")).to_be_visible()
-        card = self.main().locator(".result-next")
-        card.get_by_role("link", name="使用 Google 帳戶繼續").click()
+@line_on
+class GuestSaveWithLineTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
+    """#543 (spec #506 acceptance 23, 24): from the save card with LINE, inside LINE's own browser
+    (no Google there). LINE is called three times: its token, verify and revoke endpoints."""
 
-    def test_a_new_account_names_agrees_and_saves_without_being_asked(self):
-        with self.saving_artifacts():
-            self.guest_finishes_then_google()
-            expect(self.page).to_have_url(f"{self.live_server_url}/login/google/name")
-            self.main().get_by_label("使用者名稱").fill("e2e_google")
-            self.main().get_by_role("button", name="下一步").click()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
-            record = Submission.objects.get(user__username="e2e_google")
-            self.assertEqual(record.result.total, 20)
-            self.assertEqual(self.guest_results(), [])
+    provider = "line"
+    authorize = LINE_AUTHORIZE
+    button = "使用 LINE 帳號繼續"
+    user_agent = test_line_in_app_browser.LINE_ANDROID
 
-    def test_an_account_there_already_is_asked_and_no_clears_it(self):
-        account = consented_user(username="e2e_google_had")
-        account.sign_in_methods.create(provider="google", subject=self.sub, used_to_register=True)
-        with self.saving_artifacts():
-            self.guest_finishes_then_google()
-            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
-            expect(
-                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
-            ).to_be_visible()
-            expect(self.page.locator(".site-account")).to_contain_text("目前登入：e2e_google_had")
-            self.assertFalse(Submission.objects.exists())
-            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
-            self.main().get_by_role("button", name="不要，清掉這次結果").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/")
-            self.assertEqual(self.guest_results(), [])
-            self.assertFalse(Submission.objects.exists())
+    def provider_answers(self, url, fields):
+        now = int(timezone.now().timestamp())
+        claims = {
+            "iss": "https://access.line.me",
+            "aud": LINE_CHANNEL_ID,
+            "sub": self.sub,
+            "iat": now,
+            "exp": now + 3600,
+            "nonce": self.nonce,
+        }
+        answers = {
+            "token": {"access_token": "never-kept", "id_token": "e2e-line-id-token"},
+            "verify": claims,
+            "revoke": {},
+        }
+        return answers[LINE_ENDPOINTS[url]]
