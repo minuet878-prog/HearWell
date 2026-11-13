@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block body %}
-{# Spec #505 (the #507 mockup section 6, W15, W16): one thing to do, the password or the Google on the account; the line under the title says what comes next. #}
+{# Spec #505 (the #507 mockup section 6, W15, W16), #506 (the #539 mockup 6): one thing to do, the password or a provider on the account; the line under the title says what comes next. #}
 <div class="narrow-form">
     <h1 class="h3 mt-4">先確認是您本人</h1>
     {% if confirm_error %}<div class="error-box" role="alert">{{ confirm_error }}</div>{% endif %}
@@ -33,9 +33,10 @@
         </div>
     </form>
     {% else %}
-    <p>接下來要<strong>{{ words }}</strong>。請用您帳號上的 Google 再登入一次。</p>
+    {# #506 acceptance 21 (the #539 mockup W9): with two or more buttons, any one of them. #}
+    <p>接下來要<strong>{{ words }}</strong>。{% if names|length > 1 %}請用您帳號上的其中一種方式再登入一次。{% elif names %}請用您帳號上的 {{ names.0 }} 再登入一次。{% endif %}</p>
     <div class="flex flex-col gap-4">
-        {% include "screening/google_confirm.html" %}
+        {% include "screening/confirm_buttons.html" %}
         <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'account_settings' %}">取消</a>
     </div>
     {% endif %}
