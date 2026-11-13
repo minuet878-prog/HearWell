@@ -8,6 +8,7 @@ import {
   clearGuestResult,
   loadGuestResult,
   saveGuestResult,
+  saveGuestResults,
   showGuestResult,
 } from "./guest-results.js";
 
@@ -225,6 +226,118 @@ describe("showGuestResult (the guest result page)", () => {
     await showGuestResult({ root, now: NOW, fetchScore, navigate });
     expect(root.querySelector("[data-guest-error]").textContent).toBe("結果載入失敗，請重新整理這一頁");
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
+  });
+
+  // #492 acceptance 15, on the save card (the #493 mockup's D1): 2 days after, 5 days left.
+  it("says on the save card how many days the result has left", async () => {
+    const withCard = { ...SCORED, html: `<p>還留 <span data-guest-days-left></span> 天</p>${CLEAR_ROW}` };
+    for (const [finishedAt, left] of [[NOW - 2 * DAY, "5"], [NOW, "7"], [NOW - 6.5 * DAY, "1"]]) {
+      localStorage.clear();
+      saveGuestResult(guestResult({ finishedAt }));
+      await showGuestResult({ root, now: NOW, fetchScore: reply(200, withCard), navigate });
+      expect(root.querySelector("[data-guest-days-left]").textContent).toBe(left);
+    }
+  });
+});
+
+// The save page (guest_save.html), #492 acceptance 22, 24, 25.
+describe("saveGuestResults (the save page)", () => {
+  const HHIA_S = guestResult({
+    code: "hhia-s", questionnaireId: 3, answers: [{ question: 31, score: 2 }], wearing: true,
+    key: "1f0e2d3c-4b5a-4968-8776-655443322110",
+  });
+  let root;
+  let navigate;
+
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/my_hearing" data-home-url="/">
+        <p data-guest-saving>正在保存，請稍候。</p>
+        <div data-guest-failed hidden>
+          <div role="alert" data-guest-failed-list></div>
+          <button type="button" data-guest-retry>再試一次</button>
+        </div>
+        <script id="guest-names" type="application/json">{"hhie-s": "聽力對生活的影響（HHIE-S）", "hhia-s": "聽力對生活的影響（HHIA-S）"}</script>
+        <input type="hidden" name="csrfmiddlewaretoken" value="csrf-token">
+      </div>`;
+    root = document.getElementById("guest-save");
+    navigate = vi.fn();
+  });
+
+  // Replies by questionnaire, so the order the two are sent in does not matter.
+  const replies = (byId) => vi.fn((url, options) => {
+    const status = byId[JSON.parse(options.body).questionnaire];
+    return status instanceof Error
+      ? Promise.reject(status)
+      : Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve({}) });
+  });
+
+  it("sends each with its receipt number and the guest mark, as the answer page would", async () => {
+    saveGuestResult(guestResult());
+    const fetchSave = replies({ 1: 201 });
+    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSave.mock.calls[0];
+    expect(url).toBe("/api/submissions/");
+    expect(options.method).toBe("POST");
+    expect(options.headers["X-CSRFToken"]).toBe("csrf-token");
+    expect(options.headers["Idempotency-Key"]).toBe(guestResult().key);
+    expect(JSON.parse(options.body)).toEqual({
+      questionnaire: 1,
+      wearing_hearing_aid: false,
+      answers: guestResult().answers,
+      from_guest: true,
+    });
+  });
+
+  it("saves both, clears them and goes to 我的紀錄", async () => {
+    saveGuestResult(guestResult());
+    saveGuestResult(HHIA_S);
+    // 200: sent again, the record already there; saved all the same.
+    const fetchSave = replies({ 1: 201, 3: 200 });
+    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    expect(fetchSave).toHaveBeenCalledTimes(2);
+    expect(loadGuestResult("hhie-s", NOW)).toBeNull();
+    expect(loadGuestResult("hhia-s", NOW)).toBeNull();
+    expect(navigate).toHaveBeenCalledWith("/my_hearing");
+  });
+
+  it("keeps one not saved and says which, clearing the one saved", async () => {
+    saveGuestResult(guestResult());
+    saveGuestResult(HHIA_S);
+    await saveGuestResults({ root, now: NOW, fetchSave: replies({ 1: 201, 3: 500 }), navigate });
+    expect(loadGuestResult("hhie-s", NOW)).toBeNull();
+    expect(loadGuestResult("hhia-s", NOW)).toEqual(HHIA_S);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(root.querySelector("[data-guest-failed]").hidden).toBe(false);
+    expect(root.querySelector("[data-guest-saving]").hidden).toBe(true);
+    const list = root.querySelector("[data-guest-failed-list]").textContent;
+    expect(list).toContain("「聽力對生活的影響（HHIA-S）」沒有存成");
+    expect(list).not.toContain("HHIE-S");
+  });
+
+  it("keeps it after a network failure, and 再試一次 sends it again", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(NOW); // 再試一次 reads the clock again
+    saveGuestResult(guestResult());
+    const fetchSave = vi.fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({ ok: true, status: 201, json: () => Promise.resolve({}) });
+    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
+    expect(root.querySelector("[data-guest-failed-list]").textContent).toContain("「聽力對生活的影響（HHIE-S）」沒有存成");
+    root.querySelector("[data-guest-retry]").click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/my_hearing"));
+    expect(fetchSave).toHaveBeenCalledTimes(2);
+    // The same receipt number both times, so a lost reply cannot make two records.
+    expect(fetchSave.mock.calls[1][1].headers["Idempotency-Key"]).toBe(guestResult().key);
+    expect(loadGuestResult("hhie-s", NOW)).toBeNull();
+  });
+
+  it("goes home when there is nothing to save", async () => {
+    const fetchSave = replies({});
+    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    expect(fetchSave).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("/");
   });
 });
 

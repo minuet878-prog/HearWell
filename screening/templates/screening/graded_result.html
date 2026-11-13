@@ -24,7 +24,7 @@
 {% if support_message %}
 <p class="mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
-{% if submission.pk %}{% include "screening/result_next.html" %}{% endif %}
+{% if submission.pk %}{% include "screening/result_next.html" %}{% else %}{% include "screening/save_card.html" %}{% endif %}
 <div class="result-list">
 <details class="result-details">
     {% include "screening/result_details_summary.html" %}

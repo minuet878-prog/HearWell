@@ -378,7 +378,9 @@ class GuestResultPageTests(GuestTestCase):
         self.client.logout()
         html = self.section([4] * 10)
         self.assertNotIn("result-since-last", html)
-        self.assertNotIn("result-next", html)
+        # The 照顧旅程 card's place holds the save card instead (#496).
+        self.assertEqual(html.count('<div class="result-next">'), 1)
+        self.assertIn('<h2 class="result-next-title">註冊保存這次結果</h2>', html)
         for name in ("share_report", "health_report", "my_hearing"):
             self.assertNotIn(f'href="{reverse(name)}', html)
 
