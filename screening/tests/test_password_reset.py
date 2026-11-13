@@ -7,14 +7,16 @@ from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import mail
 from django.core.cache import caches
+from django.core.mail.backends.base import BaseEmailBackend
 from django.db import connection
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from screening.forms import PASSWORD_RULES
 from screening.models import User
 from screening.tests.helpers import consented_user
+from screening.views.accounts import RESET_EMAIL
 
 PASSWORD = "Xk9#mPq2vLw"
 NOT_REGISTERED = "這個信箱沒有註冊，請檢查有沒有打錯"
@@ -455,3 +457,67 @@ class AttemptLimitTests(TestCase):
         self.assertTrue(keys)
         self.assertNotIn("9.9.9.9", keys)
         self.assertNotIn("a@example.com", keys)
+
+
+class RefusingBackend(BaseEmailBackend):
+    """A mail service that answers with an error naming the recipient, as Resend's can."""
+
+    def send_messages(self, messages):
+        raise OSError(f"Resend refused {messages[0].to[0]}")
+
+
+class RefusingSecondBackend(BaseEmailBackend):
+    sent = 0
+
+    def send_messages(self, messages):
+        RefusingSecondBackend.sent += 1
+        if RefusingSecondBackend.sent == 2:
+            raise OSError(f"Resend refused {messages[0].to[0]}")
+        return len(messages)
+
+
+SEND_FAILED = "信寄不出去，請稍後再試，或寫信到"
+
+
+class SendFailureTests(TestCase):
+    """#529 (spec #355): when the mail service fails, the page says so instead of pretending,
+    keeps what was typed, and the owner sees the error in Sentry without the email in it."""
+
+    def setUp(self):
+        caches["password_reset"].clear()
+        consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+
+    def _ask(self):
+        return self.client.post(reverse("password_reset"), {"email": "a@example.com"})
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_the_page_says_it_could_not_send_and_keeps_the_email(self):
+        with self.assertLogs("screening.views.accounts", "ERROR"):
+            response = self._ask()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            f'<div class="error-box wrap-anywhere" role="alert">{SEND_FAILED} '
+            f'<a class="inline-link" href="mailto:{HELP_ADDRESS}">{HELP_ADDRESS}</a></div>',
+            html=True,
+        )
+        self.assertContains(response, 'value="a@example.com"')
+        self.assertNotIn(RESET_EMAIL, self.client.session)
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingSecondBackend")
+    def test_one_of_two_failing_is_a_failure_too(self):
+        RefusingSecondBackend.sent = 0
+        consented_user(username="lin_mei", email="a@example.com", password=PASSWORD)
+        with self.assertLogs("screening.views.accounts", "ERROR"):
+            response = self._ask()
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, SEND_FAILED)
+
+    @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
+    def test_the_log_has_the_error_but_not_the_email(self):
+        with self.assertLogs("screening.views.accounts", "ERROR") as logs:
+            self._ask()
+        (record,) = logs.records
+        self.assertIsNotNone(record.exc_info)
+        self.assertNotIn("a@example.com", record.getMessage())
+        self.assertEqual(record.args, ())

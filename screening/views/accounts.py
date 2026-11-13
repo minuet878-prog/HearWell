@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.contrib import messages
@@ -34,6 +35,8 @@ def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse("index"))
 
+
+logger = logging.getLogger(__name__)
 
 # Set when an account is made; only then does agreeing on the consent page greet the user (#152).
 NEW_ACCOUNT = "screening.new_account"
@@ -94,8 +97,15 @@ class ForgotPasswordView(auth_views.PasswordResetView):
     def form_valid(self, form):
         email = form.cleaned_data["email"]
         add_attempt("email", email)
+        try:
+            response = super().form_valid(form)
+        except Exception:
+            # #529: Django only logs a failed send and carries on; here the page says so. A fixed
+            # message: the mail service's own words may hold the email (Sentry drops them too).
+            logger.exception("A password reset email could not be sent")
+            return self.render_to_response(self.get_context_data(form=form, send_failed=True))
         self.request.session[RESET_EMAIL] = email
-        return super().form_valid(form)
+        return response
 
 
 @require_http_methods(["GET"])
