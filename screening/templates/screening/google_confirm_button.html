@@ -1,8 +1,0 @@
-{# Spec #505 (the #507 mockup D3, W15): 確認本人 by signing in again with the Google on the account; a form, so the trip starts only from this site. action: what is confirmed for (confirm_identity.ACTIONS). #}
-<form method="post" action="{% url 'confirm_identity' %}?action={{ action }}">
-    {% csrf_token %}
-    <button type="submit" name="provider" value="google" class="btn btn-lg btn-google">
-        {% include "screening/google_logo.html" %}
-        <span>使用 Google 帳戶確認</span>
-    </button>
-</form>

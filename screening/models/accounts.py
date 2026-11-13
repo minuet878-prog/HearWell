@@ -29,6 +29,11 @@ class User(AbstractUser):
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
 
     @property
+    def is_admin(self):
+        # Staff or superuser: signs in with a password only and cannot delete itself (spec #505).
+        return self.is_staff or self.is_superuser
+
+    @property
     def age(self):
         if self.birth_year is None:
             return None

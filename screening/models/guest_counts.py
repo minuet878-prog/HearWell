@@ -2,6 +2,8 @@ from django.db import models
 from django.db.models import F
 from django.utils import timezone
 
+from screening.models.sign_in import SignInMethod
+
 
 class GuestMonth(models.Model):
     # 訪客月計數 (spec #492, #500): how many guests finished HHIE-S or HHIA-S each month and how
@@ -22,6 +24,11 @@ class GuestMonth(models.Model):
         return f"{self.month.year}/{self.month.month:02d}"
 
 
+# The 保存 column of how an account was registered: the provider of the sign-in method it was
+# made with, or None, a password (Q13). A provider added to SignInMethod.Provider needs its own.
+SAVED_COLUMNS = {None: "saved_password", SignInMethod.Provider.GOOGLE: "saved_google"}
+
+
 def count_guest_saved(user):
     """Add one to this month's 保存 in the column of how this account was registered: the sign-in
     method it registered with, or none, a password (Q13). A method added later does not count."""
@@ -30,7 +37,7 @@ def count_guest_saved(user):
         .values_list("provider", flat=True)
         .first()
     )
-    count_guest(f"saved_{provider or 'password'}")
+    count_guest(SAVED_COLUMNS[provider])
 
 
 def count_guest(field):

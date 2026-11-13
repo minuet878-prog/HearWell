@@ -68,10 +68,9 @@ def sign_in_choices(request):
     Google is set up, or inside LINE a way out to Safari or Chrome instead, and the error a
     Google trip came back with (taken out, so said once)."""
     google = oidc.enabled("google")
-    in_line = is_line_in_app_browser(request)
     return {
-        "google_sign_in": google and not in_line,
-        "open_outside_url": open_outside_url(request) if google and in_line else "",
+        "google_sign_in": google and not is_line_in_app_browser(request),
+        "open_outside_url": line_way_out(request) if google else "",
         "sign_in_error": request.session.pop(SIGN_IN_ERROR, ""),
     }
 

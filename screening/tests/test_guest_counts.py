@@ -16,7 +16,8 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import GuestMonth, Questionnaire, User
+from screening.models import GuestMonth, Questionnaire, SignInMethod, User
+from screening.models.guest_counts import SAVED_COLUMNS
 from screening.questionnaires import hhie_s
 from screening.tests.helpers import consented_user
 
@@ -171,6 +172,14 @@ class OnlyTheCountsTests(GuestCountTestCase):
             fields,
             {"id", "month", "completed", "saved_password", "saved_google", "saved_line"},
         )
+
+    def test_every_way_to_register_has_its_own_saved_column(self):
+        # #513, Q13: a provider added without a column would otherwise fail only when saving.
+        columns = {field.name for field in GuestMonth._meta.get_fields()}
+        for provider in [None, *SignInMethod.Provider]:
+            with self.subTest(provider):
+                self.assertIn(SAVED_COLUMNS[provider], columns)
+        self.assertEqual(len(set(SAVED_COLUMNS.values())), len(SAVED_COLUMNS))
 
     def test_the_admin_lists_each_month_newest_first(self):
         GuestMonth.objects.create(

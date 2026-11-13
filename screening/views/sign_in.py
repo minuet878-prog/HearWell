@@ -57,7 +57,7 @@ class LoginView(auth_views.LoginView):
         return super().get_context_data(**kwargs) | sign_in_choices(self.request)
 
 
-def _require_google():
+def _require_google_keys():
     # Without the keys Google does not exist on the site (#505 acceptance 1).
     if not oidc.enabled("google"):
         raise Http404
@@ -70,20 +70,20 @@ def _back_to(page, request, message):
 
 @require_http_methods(["GET"])
 def google_start(request):
-    _require_google()
+    _require_google_keys()
     return HttpResponseRedirect(oidc.begin(request, "google", "sign_in", safe_next(request)))
 
 
 @require_http_methods(["GET"])
 def google_save_card(request):
     """The guest result's save card (#513): where the trip ends is _save_card's to say."""
-    _require_google()
+    _require_google_keys()
     return HttpResponseRedirect(oidc.begin(request, "google", "save_card"))
 
 
 @require_http_methods(["GET"])
 def google_callback(request):
-    _require_google()
+    _require_google_keys()
     # Read before finish() takes the trip out: where a trip that fails goes back to.
     flow = request.session.get(oidc.FLOW) or {}
     try:
@@ -98,22 +98,17 @@ def google_callback(request):
         # and line; its words are fixed strings, never a token, code or email.
         logger.exception("Google callback rejected")
         return _failed(request, flow, FAILED)
-    handlers = {
-        "sign_in": _sign_in,
-        "confirm_identity": confirm_identity.came_back,
-        "add_method": sign_in_methods.came_back,
-        "save_card": _save_card,
-    }
-    return handlers[identity.purpose](request, identity)
+    came_back, _ = TRIPS[identity.purpose]
+    return came_back(request, identity)
 
 
 def _failed(request, flow, message):
-    # 確認本人 goes back to its own page (#510), adding one to account settings (#511); anything
-    # else to the login page.
-    if flow.get("purpose") == "confirm_identity":
-        return confirm_identity.trip_failed(request, flow)
-    if flow.get("purpose") == "add_method":
-        return sign_in_methods.trip_failed(request)
+    # Without a trip in the session (forged, or used up) it is taken as signing in.
+    _, trip_failed = TRIPS[flow.get("purpose", "sign_in")]
+    return trip_failed(request, flow, message)
+
+
+def _back_to_login(request, flow, message):
     return _back_to("login", request, message)
 
 
@@ -122,24 +117,18 @@ def _save_card(request, identity):
     then the save page. An account Google already knows is asked first, naming it, as any login
     with guest results is (the Google this phone uses may be a family member's); only a new
     account is taken as the guest's own and saves straight away."""
-    known = SignInMethod.objects.filter(
-        provider=identity.provider, subject=identity.subject
-    ).exists()
+    known = SignInMethod.objects.for_identity(identity).exists()
     save = reverse("guest_save")
     return _sign_in(request, replace(identity, next=save if known else f"{save}?from=card"))
 
 
 def _sign_in(request, identity):
-    method = (
-        SignInMethod.objects.select_related("user")
-        .filter(provider=identity.provider, subject=identity.subject)
-        .first()
-    )
+    method = SignInMethod.objects.select_related("user").for_identity(identity).first()
     if method is not None:
         user = method.user
         # Admin accounts sign in with a password only (#505 acceptance 11, Q16); login() skips
         # the backend's is_active check, so a deactivated account is turned away here.
-        if user.is_staff or user.is_superuser:
+        if user.is_admin:
             return _back_to("login", request, ADMIN)
         if not user.is_active:
             return _back_to("login", request, FAILED)
@@ -162,6 +151,17 @@ def _sign_in(request, identity):
     return redirect("google_name")
 
 
+# What each purpose of a trip (oidc.PURPOSES) does with who came back, and where a trip that
+# ended without anyone goes (with the words for why): 確認本人 back to its own page (#510),
+# adding one to account settings (#511), the others to the login page.
+TRIPS = {
+    "sign_in": (_sign_in, _back_to_login),
+    "save_card": (_save_card, _back_to_login),
+    "confirm_identity": (confirm_identity.came_back, confirm_identity.trip_failed),
+    "add_method": (sign_in_methods.came_back, sign_in_methods.trip_failed),
+}
+
+
 def _pending(request):
     """The identity waiting for its name, or None when there is none or it is too old (removed)."""
     pending = request.session.get(PENDING)
@@ -178,7 +178,7 @@ def _pending(request):
 def google_name(request):
     """#505 acceptance 5-7: the first time back from Google, a name (and a birth year) before the
     account is made; leaving here makes nothing."""
-    _require_google()
+    _require_google_keys()
     pending = _pending(request)
     if pending is None:
         return _back_to("login", request, NAME_EXPIRED)
@@ -213,7 +213,7 @@ def google_name(request):
 def google_same_email(request):
     """#505 acceptance 12-14 (the #507 mockup 4, W11): the Google email is already some account's.
     Nobody is signed in; the identity waits, as for the name page, in case it is not theirs."""
-    _require_google()
+    _require_google_keys()
     pending = _pending(request)
     if pending is None:
         return _back_to("login", request, NAME_EXPIRED)

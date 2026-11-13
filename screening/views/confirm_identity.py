@@ -88,12 +88,7 @@ def came_back(request, identity):
     on this account (#505 acceptance 31); otherwise nothing is confirmed."""
     # The trip started on the confirm page, whose URL (its next) names the action.
     action = QueryDict(urlsplit(identity.next).query).get("action")
-    if (
-        action in ACTIONS
-        and request.user.sign_in_methods.filter(
-            provider=identity.provider, subject=identity.subject
-        ).exists()
-    ):
+    if action in ACTIONS and request.user.sign_in_methods.for_identity(identity).exists():
         _confirm(request, action)
     else:
         request.session[CONFIRM_ERROR] = NOT_YOURS
@@ -101,8 +96,9 @@ def came_back(request, identity):
     return redirect(identity.next)
 
 
-def trip_failed(request, flow):
-    """A confirm_identity trip that ended without an identity goes back to its confirm page."""
+def trip_failed(request, flow, message):
+    """A confirm_identity trip that ended without an identity goes back to its confirm page,
+    with its own words."""
     request.session[CONFIRM_ERROR] = NOT_CONFIRMED
     return redirect(flow["next"])
 

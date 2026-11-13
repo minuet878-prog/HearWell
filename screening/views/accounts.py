@@ -120,7 +120,7 @@ def account_settings(request):
 def delete_account(request):
     user = request.user
     # Staff could lock everyone out of admin; they remove their staff rights first.
-    if user.is_staff or user.is_superuser:
+    if user.is_admin:
         status = 403 if request.method == "POST" else 200
         return render(request, "screening/delete_account.html", {"is_admin": True}, status=status)
     if user.has_usable_password():

@@ -2,6 +2,12 @@ from django.conf import settings
 from django.db import models
 
 
+class SignInMethodQuerySet(models.QuerySet):
+    def for_identity(self, identity):
+        """The row of who came back from a provider (an oidc.Identity): by its code only."""
+        return self.filter(provider=identity.provider, subject=identity.subject)
+
+
 class SignInMethod(models.Model):
     # 登入方式 (GLOSSARY.md, spec #505, ADR 0057): a provider and the code it gives this person
     # (`sub`), the only thing an account is known by there; never matched by email. A password is
@@ -17,6 +23,8 @@ class SignInMethod(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     # Whether the account was made with it (the monthly 保存 count and acceptance 6 read it).
     used_to_register = models.BooleanField(default=False)
+
+    objects = SignInMethodQuerySet.as_manager()
 
     class Meta:
         verbose_name = verbose_name_plural = "登入方式"

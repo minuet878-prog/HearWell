@@ -23,10 +23,6 @@ REMOVED = "已移除 Google 登入。"
 NOT_ADDED = "沒有完成新增 Google 登入，請再試一次。"
 
 
-def _is_admin(user):
-    return user.is_staff or user.is_superuser
-
-
 def _keeps_a_way_in(user, method):
     """Whether the account can still be signed into without this method (acceptance 27): a
     usable password, or another sign-in method."""
@@ -37,7 +33,7 @@ def group(request):
     """What the account settings' 登入方式 group shows; None for an admin account, and without
     the Google keys, when there is nothing to add or remove (acceptance 1)."""
     user = request.user
-    if _is_admin(user) or not oidc.enabled("google"):
+    if user.is_admin or not oidc.enabled("google"):
         return None
     google = user.sign_in_methods.filter(provider=SignInMethod.Provider.GOOGLE).first()
     return {
@@ -48,12 +44,12 @@ def group(request):
     }
 
 
-def _require_google(user):
+def _require_google_keys_and_not_admin(user):
     # Without the keys Google does not exist on the site (acceptance 1); admin accounts never
     # have a sign-in method (acceptance 28).
     if not oidc.enabled("google"):
         raise Http404
-    if _is_admin(user):
+    if user.is_admin:
         raise PermissionDenied
 
 
@@ -62,7 +58,7 @@ def _require_google(user):
 @require_http_methods(["GET"])
 def google_add(request):
     """新增 Google 登入: after 確認本人 straight on to Google; came_back adds what comes back."""
-    _require_google(request.user)
+    _require_google_keys_and_not_admin(request.user)
     if request.user.sign_in_methods.filter(provider=SignInMethod.Provider.GOOGLE).exists():
         return redirect("account_settings")
     if not confirm_identity.use_confirmation(request, "add_google"):
@@ -76,9 +72,9 @@ def came_back(request, identity):
     user = request.user
     # The trip starts only from google_add, signed in and not admin; checked again where the
     # row is written.
-    if not user.is_authenticated or _is_admin(user):
+    if not user.is_authenticated or user.is_admin:
         raise PermissionDenied
-    if SignInMethod.objects.filter(provider=identity.provider, subject=identity.subject).exists():
+    if SignInMethod.objects.for_identity(identity).exists():
         messages.error(request, TAKEN)
     else:
         SignInMethod.objects.create(
@@ -88,8 +84,9 @@ def came_back(request, identity):
     return redirect("account_settings")
 
 
-def trip_failed(request):
-    """An add_method trip that ended without an identity goes back to account settings."""
+def trip_failed(request, flow, message):
+    """An add_method trip that ended without an identity goes back to account settings, with its
+    own words."""
     messages.error(request, NOT_ADDED)
     return redirect("account_settings")
 
@@ -100,7 +97,7 @@ def trip_failed(request):
 def google_remove(request):
     """移除 Google 登入 after 確認本人, unless it is the account's only way in (acceptance 26,
     27)."""
-    _require_google(request.user)
+    _require_google_keys_and_not_admin(request.user)
     method = get_object_or_404(
         SignInMethod, user=request.user, provider=SignInMethod.Provider.GOOGLE
     )
