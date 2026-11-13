@@ -108,7 +108,7 @@ class ButtonTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertContains(
             response,
-            f'<a class="btn btn-lg btn-google" href="{reverse("line_start")}">',
+            f'<a class="btn btn-lg btn-provider" href="{reverse("line_start")}">',
         )
         self.assertContains(response, 'class="btn-line-logo"')
 
@@ -562,6 +562,28 @@ class CallbackSecurityTests(TestCase):
             )
 
     # 14
+    def test_access_denied_in_any_case_is_a_cancel(self):
+        query = {"error": "access_denied", "state": self.line.authorize["state"]}
+        self.assertRejected(self.line.come_back(query=query), CANCELLED_WORDS)
+
+    def test_any_other_error_on_the_callback_is_line_not_answering(self):
+        # Only ACCESS_DENIED is the user pressing cancel; any other error LINE sends back is LINE
+        # not answering.
+        for error in ("SERVER_ERROR", "INVALID_REQUEST", "INTERACTION_REQUIRED"):
+            with self.subTest(error):
+                self.line.start()
+                query = {"error": error, "state": self.line.authorize["state"]}
+                with self.assertLogs("screening.views.sign_in", "ERROR"):
+                    response = self.line.come_back(query=query)
+                self.assertRejected(response, UNAVAILABLE_WORDS)
+        self.assertEqual(self.line.calls, [])
+
+    def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+            response = self.line.come_back(query={"error": "SERVER_ERROR", "state": "forged"})
+        self.assertRejected(response)
+        self.assertIn("LINE callback rejected", logs.output[0])
+
     def test_line_not_answering_comes_back_to_login_and_goes_to_monitoring(self):
         down = oidc.Unavailable("https://api.line.me/oauth2/v2.1/token: URLError")
         for name, come_back in (
@@ -635,11 +657,13 @@ class PrivacyTests(TestCase):
             "用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。",
         )
 
-    def test_version_8_dated_the_day_it_changed(self):
-        # Version 7 (Google, spec #505) is already live: LINE is one more.
+    def test_version_8_with_its_date(self):
+        # Version 7 (Google, spec #505) is already live: LINE is one more. Its date is set the
+        # day version 8 goes live, not before version 7's.
         self.assertEqual(models.CONSENT_VERSION, 8)
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
-        self.assertContains(self.client.get(reverse("privacy")), "第 8 版，2026/11/14 更新")
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
+        updated_on = models.PRIVACY_UPDATED_ON.strftime("%Y/%m/%d")
+        self.assertContains(self.client.get(reverse("privacy")), f"第 8 版，{updated_on} 更新")
 
     def test_who_agreed_to_version_7_agrees_again(self):
         user = User.objects.create_user(username="agreed_to_7")

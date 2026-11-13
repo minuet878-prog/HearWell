@@ -23,9 +23,9 @@ from screening.models.submissions import Answer
 CONSENT_VERSION = 8
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
 # cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5,
-# 6, 7 and 8 moved it with the version (#452, spec #478, #526, spec #505, #506). A guest's
-# answers stay in the browser (spec #492): nothing new is kept, so that sentence needed no
-# version of its own.
+# 6 and 7 moved it with the version (#452, spec #478, #526, spec #505). Version 8 (#506) has not
+# moved it yet: it is set to the day version 8 goes live. A guest's answers stay in the browser
+# (spec #492): nothing new is kept, so that sentence needed no version of its own.
 PRIVACY_UPDATED_ON = date(2026, 11, 14)
 
 

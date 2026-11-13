@@ -26,7 +26,8 @@ from django.views.decorators.http import require_http_methods
 from screening import oidc
 from screening.forms import PasswordConfirmForm
 from screening.models import SignInMethod
-from screening.views.common import line_way_out
+from screening.views.common import line_way_out, provider_logo, works_here
+from screening.views.provider_words import WORDS
 
 # What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
 # leads back to. 移除 Google／LINE 登入 has none: the right password removes it on this page, in
@@ -47,25 +48,15 @@ REMOVES = {"remove_google": "google", "remove_line": "line"}
 CONFIRMED = "screening.identity_confirmed"
 CONFIRMED_SECONDS = 5 * 60  # #505 acceptance 29
 
-# A message for the confirm page (or the delete page), shown once.
+# A message for the confirm page (or the delete page), shown once; each provider's own are in
+# provider_words.WORDS.
 CONFIRM_ERROR = "screening.confirm_error"
-# By the provider that came back: Google the #507 mockup W16, LINE the #539 mockup W10.
-NOT_YOURS = {
-    "google": "這不是您帳號上的 Google。請改用註冊時用的那個 Google 帳戶。",
-    "line": "這不是您帳號上的 LINE。請用註冊時那支手機上的 LINE 再試一次。",
-}
 EXPIRED = "確認已經過期，請再確認一次。"  # W18
-# Cancelled, refused or the provider down: no wording in either mockup (drafts for the owner).
-NOT_CONFIRMED = {
-    "google": "沒有完成 Google 確認，請再試一次。",
-    "line": "沒有完成 LINE 確認，請再試一次。",
-}
-REMOVED = {"google": "已移除 Google 登入。", "line": "已移除 LINE 登入。"}  # LINE: W11
 
-# The providers to confirm with, in the order of their buttons (the #539 mockup: LINE above
-# Google, as on the login page), and their buttons' words (Google D3, LINE W1).
+# The providers to confirm with, in the order of their buttons: LINE above Google, the same
+# buttons in the same order as on the login page (the #539 mockup 6, #506 acceptance 2). Not
+# account settings' order (sign_in_methods.PROVIDERS, the newest last): on purpose.
 ORDER = ("line", "google")
-BUTTONS = {"line": "使用 LINE 帳號確認", "google": "使用 Google 帳戶確認"}
 
 
 def _fresh(confirmed):
@@ -122,7 +113,7 @@ def came_back(request, identity):
             return _remove(request, _to_remove(request.user, REMOVES[action]))
         _confirm(request, action)
     else:
-        request.session[CONFIRM_ERROR] = NOT_YOURS[identity.provider]
+        request.session[CONFIRM_ERROR] = WORDS[identity.provider].not_yours
     # The confirm page, which goes on to the action's page once confirmed.
     return redirect(identity.next)
 
@@ -130,7 +121,7 @@ def came_back(request, identity):
 def trip_failed(request, flow, message):
     """A confirm_identity trip that ended without an identity goes back to its confirm page,
     with its own words."""
-    request.session[CONFIRM_ERROR] = NOT_CONFIRMED[flow["provider"]]
+    request.session[CONFIRM_ERROR] = WORDS[flow["provider"]].not_confirmed
     return redirect(flow["next"])
 
 
@@ -147,19 +138,19 @@ def without_password(request):
     line above them. Inside LINE Google refuses to sign in, so its button is left out; when it is
     the only one, a way out to Safari or Chrome takes its place (#511)."""
     on_account = providers(request.user)
-    way_out = line_way_out(request) if "google" in on_account else ""
-    here = [provider for provider in on_account if not (provider == "google" and way_out)]
+    here = [provider for provider in on_account if works_here(request, provider)]
     return {
         "buttons": [
             {
                 "provider": provider,
-                "logo": f"screening/{provider}_logo.html",
-                "words": BUTTONS[provider],
+                "logo": provider_logo(provider),
+                "words": WORDS[provider].confirm_button,
             }
             for provider in here
         ],
         "names": [SignInMethod.Provider(provider).label for provider in here or on_account],
-        "open_outside_url": "" if here else way_out,
+        # None of the account's providers works here: only Google, inside LINE.
+        "open_outside_url": line_way_out(request) if on_account and not here else "",
     }
 
 
@@ -179,7 +170,7 @@ def _to_remove(user, provider):
 
 def _remove(request, method):
     method.delete()
-    messages.success(request, REMOVED[method.provider])
+    messages.success(request, WORDS[method.provider].removed)
     return HttpResponseRedirect(f"{reverse('account_settings')}#sign-in-methods")
 
 

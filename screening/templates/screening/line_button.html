@@ -1,5 +1,5 @@
 {# Spec #506 (the #539 mockup D1 B, D2, W1): Google's light button with LINE's green icon, not LINE's own green one (its white words are too faint, 2.3:1). label: 登入, 註冊, 繼續 or 確認; start: the URL name of the trip it starts (line_start, to sign in, when not given). #}
-<a class="btn btn-lg btn-google" href="{% url start|default:'line_start' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
+<a class="btn btn-lg btn-provider" href="{% url start|default:'line_start' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
     {% include "screening/line_logo.html" %}
     <span>使用 LINE 帳號{{ label }}</span>
 </a>

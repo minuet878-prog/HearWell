@@ -27,21 +27,25 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Provider:
+    name: str  # as the provider writes it, for log lines
     authorize_url: str
     token_url: str
     issuers: tuple
     scope: str
     # Added to the authorize URL for 確認本人 and for adding a sign-in method: (name, value) pairs.
     reauthenticate: tuple = ()
-    # Where the provider itself checks its ID token, and where its access token is revoked;
-    # empty when the token endpoint's ID token is read as it comes (Google).
+    # Where the provider itself checks its ID token; empty when the token endpoint's ID token
+    # is read as it comes (Google).
     verify_url: str = ""
+    # Where the access token it gave is revoked as soon as the ID token is read; empty when it is
+    # not (Google).
     revoke_url: str = ""
 
 
 PROVIDERS = {
     # Google's discovery document (https://accounts.google.com/.well-known/openid-configuration).
     "google": Provider(
+        name="Google",
         authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
         token_url="https://oauth2.googleapis.com/token",
         # Google's ID tokens carry either form (developers.google.com/identity/openid-connect).
@@ -55,6 +59,7 @@ PROVIDERS = {
     ),
     # LINE Login v2.1 (developers.line.biz/en/reference/line-login/, checked 2026-11-14).
     "line": Provider(
+        name="LINE",
         authorize_url="https://access.line.me/oauth2/v2.1/authorize",
         token_url="https://api.line.me/oauth2/v2.1/token",
         issuers=("https://access.line.me",),
@@ -80,11 +85,12 @@ class SignInFailed(Exception):
 
 
 class Cancelled(SignInFailed):
-    """The user said no on the provider's page (the callback carries `error`)."""
+    """The user said no on the provider's page (the callback's `error` is access_denied)."""
 
 
 class Unavailable(SignInFailed):
-    """The provider did not answer, or answered with an error, when our server called it."""
+    """The provider did not answer, or answered with an error: when our server called it, or
+    on the callback (any `error` but access_denied)."""
 
 
 class Rejected(SignInFailed):
@@ -209,6 +215,9 @@ def _verified_claims(provider, id_token, nonce):
 def _revoke(provider, access_token):
     """Ask the provider to revoke the access token it gave (spec #506 acceptance 9). One that
     fails goes to error monitoring and signs in all the same."""
+    # The provider's name in the log line's template itself: error monitoring keeps only the
+    # template (config/monitoring.py), and the name is no one's data.
+    name = PROVIDERS[provider].name
     try:
         answer = post_to_provider(
             PROVIDERS[provider].revoke_url,
@@ -219,10 +228,10 @@ def _revoke(provider, access_token):
             },
         )
     except Unavailable:
-        logger.exception("LINE access token not revoked: no answer")
+        logger.exception(f"{name} access token not revoked: no answer")
         return
     if "error" in answer:
-        logger.error("LINE access token not revoked: refused")
+        logger.error(f"{name} access token not revoked: refused")
 
 
 def _same(a, b):
@@ -243,9 +252,15 @@ def finish(request, provider):
     now = timezone.now().timestamp()
     if now - flow["started_at"] > FLOW_SECONDS:
         raise Rejected("trip too old")
-    # A cancel only once it is known to be this trip's, in time: anyone can send `error`.
+    # An error only once it is known to be this trip's, in time: anyone can send `error`. Only
+    # the user saying no is a cancel: Google sends access_denied, LINE ACCESS_DENIED; any other
+    # (LINE's SERVER_ERROR, ...) is the provider not answering (#505 acceptance 20, #506
+    # acceptance 14).
     if "error" in request.GET:
-        raise Cancelled(request.GET["error"])
+        error = request.GET["error"]
+        if error.lower() == "access_denied":
+            raise Cancelled(error)
+        raise Unavailable(f"{provider} callback: {error}")
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")
@@ -265,15 +280,16 @@ def finish(request, provider):
     # provider not answering (#505 acceptance 20).
     if "id_token" not in tokens:
         raise Unavailable(f"{provider} token endpoint: no id_token")
-    if PROVIDERS[provider].verify_url:
-        try:
+    try:
+        if PROVIDERS[provider].verify_url:
             claims = _verified_claims(provider, tokens["id_token"], flow["nonce"])
-        finally:
-            # Whatever the ID token turned out to be, the access token is not kept (#506
-            # acceptance 9). Only LINE has a verify endpoint, and a revoke one.
+        else:
+            claims = _claims(tokens["id_token"])
+    finally:
+        # Whatever the ID token turned out to be, the access token is not kept (#506
+        # acceptance 9).
+        if PROVIDERS[provider].revoke_url:
             _revoke(provider, tokens.get("access_token", ""))
-    else:
-        claims = _claims(tokens["id_token"])
     # The same checks for every provider, on LINE's verified answer too (#506 acceptance 12).
     if claims.get("iss") not in PROVIDERS[provider].issuers:
         raise Rejected("iss is not the provider")

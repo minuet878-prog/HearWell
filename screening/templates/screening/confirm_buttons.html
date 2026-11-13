@@ -3,7 +3,7 @@
 <form method="post" action="{% url 'confirm_identity' %}?action={{ action }}" class="flex flex-col gap-3">
     {% csrf_token %}
     {% for button in buttons %}
-    <button type="submit" name="provider" value="{{ button.provider }}" class="btn btn-lg btn-google">
+    <button type="submit" name="provider" value="{{ button.provider }}" class="btn btn-lg btn-provider">
         {% include button.logo %}
         <span>{{ button.words }}</span>
     </button>

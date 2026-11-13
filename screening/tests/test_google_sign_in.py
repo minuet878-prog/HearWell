@@ -565,6 +565,30 @@ class CallbackSecurityTests(TestCase):
         )
         self.assertIn("Google token exchange failed", logs.output[0])
 
+    def test_access_denied_in_any_case_is_a_cancel(self):
+        query = {"error": "ACCESS_DENIED", "state": self.google.authorize["state"]}
+        self.assertRejected(
+            self.google.come_back(query=query),
+            "沒有完成 Google 登入。可以再試一次，或用其他方式登入。",
+        )
+
+    def test_any_other_error_on_the_callback_is_google_not_answering(self):
+        # Only access_denied is the user saying no; any other error Google sends back is Google
+        # not answering (#505 acceptance 20).
+        for error in ("server_error", "temporarily_unavailable", "invalid_request"):
+            with self.subTest(error):
+                self.google.start()
+                query = {"error": error, "state": self.google.authorize["state"]}
+                with self.assertLogs("screening.views.sign_in", "ERROR"):
+                    response = self.google.come_back(query=query)
+                self.assertRejected(response, "Google 暫時沒有回應，請稍後再試，或用其他方式登入。")
+
+    def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+            response = self.google.come_back(query={"error": "server_error", "state": "forged"})
+        self.assertRejected(response)
+        self.assertIn("Google callback rejected", logs.output[0])
+
     def test_an_error_answer_from_google_is_google_not_answering(self):
         # Google's token endpoint answering 200 with no ID token: an error in its JSON, or none.
         for name, answer in (

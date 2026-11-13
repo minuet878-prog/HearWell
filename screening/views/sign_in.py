@@ -16,55 +16,27 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from screening import oidc
-from screening.forms import GoogleNameForm, LineNameForm
 from screening.models import SignInMethod, User
 from screening.views import confirm_identity, sign_in_methods
 from screening.views.accounts import NEW_ACCOUNT
 from screening.views.common import SIGN_IN_ERROR, safe_next, sign_in_choices
+from screening.views.provider_words import WORDS
 
 logger = logging.getLogger(__name__)
 
-# The words a trip comes back with, by provider: Google's (the #507 mockup W4-W7, W10, the end of
-# two changed by the #539 mockup W8) and LINE's (#506 acceptance 13, 14; the #539 mockup W2, W3).
-# Technical details go to error monitoring only.
-CANCELLED = {
-    "google": "沒有完成 Google 登入。可以再試一次，或用其他方式登入。",
-    "line": "沒有完成 LINE 登入，可以再試一次，或用其他方式登入。",
-}
-UNAVAILABLE = {
-    "google": "Google 暫時沒有回應，請稍後再試，或用其他方式登入。",
-    "line": "LINE 暫時沒有回應，請稍後再試，或用其他方式登入。",
-}
+# Each provider's own words are in provider_words.WORDS; these are the same whichever provider
+# it was (UNVERIFIED: only Google gives an email to verify). Technical details go to error
+# monitoring only.
 FAILED = "登入沒有完成，請再試一次。"
 UNVERIFIED = "這個 Google 帳戶的 email 還沒有驗證，沒辦法用來註冊。請改用帳號密碼註冊。"
-# LINE's has no wording in the #539 mockup: Google's, with the LINE button's words (W1).
-NAME_EXPIRED = {
-    "google": "等太久了，請再按一次「使用 Google 帳戶登入」。",
-    "line": "等太久了，請再按一次「使用 LINE 帳號登入」。",
-}
 # #505 acceptance 11 (no wording in the mockup; a draft for the owner to settle).
 ADMIN = "這個帳號請用帳號密碼登入。"
-
-# Error monitoring keeps a log line's template only (config/monitoring.py), so each provider's
-# name is written into its own.
-NOT_ANSWERING_LOG = {
-    "google": "Google token exchange failed",
-    "line": "LINE token exchange failed",
-}
-REJECTED_LOG = {"google": "Google callback rejected", "line": "LINE callback rejected"}
 
 # Who came back from a provider for the first time, until the name page makes the account:
 # {"provider", "subject", "email" (Google's; "" from LINE), "purpose", "next", "at" (a Unix
 # time)}. Gone once anyone signs in (forget_pending).
 PENDING = "screening.oidc_identity"
 PENDING_SECONDS = 10 * 60  # #505 acceptance 7
-
-# Each provider's name page: its form and template. LINE gives no email, so its form asks for
-# one (#506 acceptance 5).
-NAME_PAGES = {
-    "google": (GoogleNameForm, "screening/google_name.html"),
-    "line": (LineNameForm, "screening/line_name.html"),
-}
 
 
 def forget_pending(sender, request, **kwargs):
@@ -131,17 +103,18 @@ def _callback(request, provider):
     _require_keys(provider)
     # Read before finish() takes the trip out: where a trip that fails goes back to.
     flow = request.session.get(oidc.FLOW) or {}
+    words = WORDS[provider]
     try:
         identity = oidc.finish(request, provider)
     except oidc.Cancelled:
-        return _failed(request, flow, CANCELLED[provider])
+        return _failed(request, flow, words.cancelled)
     except oidc.Unavailable:
-        logger.exception(NOT_ANSWERING_LOG[provider])
-        return _failed(request, flow, UNAVAILABLE[provider])
+        logger.exception(words.not_answering_log)
+        return _failed(request, flow, words.unavailable)
     except oidc.Rejected:
         # To error monitoring as an ERROR, as above: which check failed is the exception's type
         # and line; its words are fixed strings, never a token, code or email.
-        logger.exception(REJECTED_LOG[provider])
+        logger.exception(words.rejected_log)
         return _failed(request, flow, FAILED)
     came_back, _ = TRIPS[identity.purpose]
     return came_back(request, identity)
@@ -247,16 +220,21 @@ def _name_page(request, provider):
     """The first time back from a provider, a name (and a birth year, and from LINE an email)
     before the account is made; leaving here makes nothing."""
     _require_keys(provider)
+    words = WORDS[provider]
     pending = _pending(request, provider)
     if pending is None:
-        return _back_to("login", request, NAME_EXPIRED[provider])
-    form_class, template = NAME_PAGES[provider]
-    form = form_class(request.POST if request.method == "POST" else None)
+        return _back_to("login", request, words.name_expired)
+    form = words.name_form(request.POST if request.method == "POST" else None)
     if form.is_valid():
         try:
             with transaction.atomic():
-                # Google's email, or the one typed on LINE's name page ("" when left empty).
-                user = form.save(email=form.cleaned_data.get("email", pending["email"]))
+                # A name form asks for an email only when the provider gives none (LINE's): then
+                # the one typed ("" when left empty), otherwise the provider's (Google's).
+                if "email" in form.fields:
+                    email = form.cleaned_data["email"]
+                else:
+                    email = pending["email"]
+                user = form.save(email=email)
                 SignInMethod.objects.create(
                     user=user,
                     provider=pending["provider"],
@@ -281,7 +259,7 @@ def _name_page(request, provider):
             if pending["next"]:
                 return redirect_to_login(pending["next"], reverse("consent"))
             return redirect("consent")
-    return render(request, template, {"form": form, "email": pending["email"]})
+    return render(request, words.name_template, {"form": form, "email": pending["email"]})
 
 
 @never_cache  # it shows the Google email
@@ -306,7 +284,7 @@ def google_same_email(request):
     _require_keys("google")
     pending = _pending(request, "google")
     if pending is None:
-        return _back_to("login", request, NAME_EXPIRED["google"])
+        return _back_to("login", request, WORDS["google"].name_expired)
     # After the password, back to account settings' 登入方式 group to add Google there
     # (acceptance 14); the anchor survives as the login page's next.
     password_next = f"{reverse('account_settings')}#sign-in-methods"
