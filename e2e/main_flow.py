@@ -14039,3 +14039,84 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     devtools.send(
                         "CSS.forcePseudoState", {"nodeId": node, "forcedPseudoClasses": []}
                     )
+
+
+class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#496 (spec #492 acceptance 34, the first route): a guest answers HHIE-S, registers from the
+    save card and agrees; 我的紀錄 has that record with the same score."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def guest_answers_hhie_s(self):
+        # 常常 on items 1-3, 從未 on the rest: 12, 輕度到中度影響.
+        self.page.goto(f"{self.live_server_url}/questionnaire_list")
+        self.main().get_by_role("group", name="您目前的實際年齡？").get_by_label(
+            "65 歲以上", exact=True
+        ).check()
+        self.main().get_by_role("button", name="下一步").click()
+        self.answer("沒戴")
+        self.next()
+        for number in range(1, QUESTION_COUNT + 1):
+            self.answer("常常" if number <= 3 else "從未", number=number)
+            if number < QUESTION_COUNT:
+                self.next()
+        self.main().get_by_role("button", name="送出").click()
+        expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
+        expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
+
+    def guest_results(self):
+        return self.page.evaluate(
+            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
+        )
+
+    def register_from_the_card(self):
+        card = self.main().locator(".result-next")
+        expect(card.get_by_role("heading", name="註冊保存這次結果")).to_be_visible()
+        expect(card).to_contain_text("還留 7 天")
+        card.get_by_role("link", name="註冊保存").click()
+        self.page.get_by_label("使用者名稱").fill("e2e_guest")
+        self.page.get_by_label("電子郵件").fill("e2e_guest@example.com")
+        self.page.get_by_label("密碼", exact=True).fill("Fake-pass-2468")
+        self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-2468")
+        self.main().get_by_role("button", name="註冊").click()
+
+    def test_registering_from_the_card_saves_it_with_the_same_score(self):
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            self.register_from_the_card()
+            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
+            # Saved without being asked, then 我的紀錄.
+            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
+            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：12")
+            record = Submission.objects.get(user__username="e2e_guest")
+            self.assertEqual(record.result.total, 12)
+            self.assertEqual(record.result.level["text"], "輕度到中度影響")
+            self.assertEqual(self.guest_results(), [])
+
+    def test_declining_the_consent_keeps_the_guest_result(self):
+        """#492 acceptance 28: 不同意 logs out home, the guest result still in the browser."""
+        with self.saving_artifacts():
+            self.guest_answers_hhie_s()
+            self.register_from_the_card()
+            self.main().get_by_role("button", name="不同意", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
+            self.assertFalse(Submission.objects.exists())
