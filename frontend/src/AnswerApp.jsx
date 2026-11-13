@@ -12,6 +12,8 @@ const HEARING_AID_CHOICES = [
   { value: true, label: "有戴" },
 ];
 const FAILED = "送出失敗，請再按一次送出";
+// I4: a guest whose result this browser cannot keep, before answering or when keeping it fails.
+const CANNOT_KEEP = "這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。";
 // #326 B4: how long ✓ 已儲存 stays beside the progress.
 const SAVED_FOR = 1500;
 // #330 (spec #326 B1): how long ✓ 已送出 stays before the result page opens.
@@ -175,7 +177,7 @@ export default function AnswerApp({
   if (cannotKeep) {
     return (
       <div className="answer-app">
-        <p className="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold" role="alert">這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。</p>
+        <p className="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold" role="alert">{CANNOT_KEEP}</p>
         <a className="btn btn-primary btn-lg" href={registerUrl}>註冊新帳號</a>
       </div>
     );
@@ -292,8 +294,7 @@ export default function AnswerApp({
 
     if (guest && response?.ok) {
       const { scores, level } = await response.json();
-      finished.current = true;
-      saveGuestResult({
+      const kept = saveGuestResult({
         code: questionnaireCode,
         questionnaireId,
         answers,
@@ -303,6 +304,13 @@ export default function AnswerApp({
         total: scores.total,
         level,
       });
+      // Self-review B1: not kept (storage full meanwhile), so its page would find nothing; the
+      // answers stay on screen.
+      if (!kept) {
+        setStatus({ type: "cannotKeep" });
+        return;
+      }
+      finished.current = true;
       setStatus({ type: "sent" });
       setTimeout(() => navigate(`/guest/result/${questionnaireCode}`), SENT_FOR);
       return;
@@ -410,6 +418,12 @@ export default function AnswerApp({
       </fieldset>
 
       {status.type === "error" && <p className="text-xl/normal font-bold text-danger" role="alert">{status.message}</p>}
+      {status.type === "cannotKeep" && (
+        <div role="alert" className="mb-4">
+          <p className="text-xl/normal font-bold text-danger">{CANNOT_KEEP}</p>
+          <a className="btn btn-primary btn-lg" href={registerUrl}>註冊新帳號</a>
+        </div>
+      )}
       {status.type === "expired" && (
         <div role="alert" className="mb-4">
           <p className="text-xl/normal font-bold text-danger">登入已經過期，請重新登入</p>

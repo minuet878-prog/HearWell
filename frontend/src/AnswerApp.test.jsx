@@ -1339,6 +1339,28 @@ describe("guest", () => {
     expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
   });
 
+  // Self-review B1: the check passed, but keeping the result itself failed (storage full meanwhile).
+  it("stays on the answers and asks to register when the result cannot be kept after scoring", async () => {
+    mockApi([{ status: 200, body: SCORED }]);
+    const setItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
+      if (key === "hearwell:guest-result:hhie-s") throw new DOMException("full", "QuotaExceededError");
+      return setItem.call(this, key, value);
+    });
+    await renderApp({
+      guest: true, questionnaireCode: "hhie-s", userId: 0, registerUrl: "/register?next=%2Fquestionnaire%2F1",
+    });
+    answerAll();
+    submit();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。");
+    expect(screen.getByRole("link", { name: "註冊新帳號" }).getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+    expect(radio("常常").checked).toBe(true);
+    expect(screen.queryByText("已送出")).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it("starts as usual when the browser can keep the result", async () => {
     await renderGuest();
     expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
