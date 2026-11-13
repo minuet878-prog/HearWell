@@ -14039,3 +14039,81 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     devtools.send(
                         "CSS.forcePseudoState", {"nodeId": node, "forcedPseudoClasses": []}
                     )
+
+
+class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#498 (#492 acceptance 34, the third route): a guest finishes HHIE-S, clears the result and
+    going back shows none of it; 不要 first changes nothing (acceptance 16)."""
+
+    fixtures = ("questions_fixture.json",)
+    CONFIRM = "清除後就找不回來了，確定嗎？"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def kept(self):
+        return self.page.evaluate("localStorage.getItem('hearwell:guest-result:hhie-s')")
+
+    def test_cleared_and_not_seen_going_back(self):
+        with self.saving_artifacts():
+            home = f"{self.live_server_url}/"
+            self.page.goto(home)
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("有時", number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/result/hhie-s")
+            score = self.main().get_by_text("總分 20 分")
+            expect(score).to_be_visible()
+            self.assertIsNotNone(self.kept())
+
+            clear_row = self.main().locator("details[data-guest-clear] > summary")
+            question = self.main().get_by_text(self.CONFIRM)
+            expect(clear_row).to_have_text("清除這次結果")
+            expect(question).to_be_hidden()
+            clear_row.click()
+            expect(question).to_be_focused()
+            no = self.main().get_by_role("button", name="不要")
+            expect(no).to_be_in_viewport()
+
+            # 不要: folded back, focus on the row, the result as it was.
+            no.click()
+            expect(question).to_be_hidden()
+            expect(clear_row).to_be_focused()
+            expect(score).to_be_visible()
+            self.assertIsNotNone(self.kept())
+
+            clear_row.click()
+            self.main().get_by_role("button", name="清除", exact=True).click()
+            expect(self.page).to_have_url(home)
+            self.assertIsNone(self.kept())
+
+            # Back: the result page is gone from the history, and nothing shows its result.
+            self.page.go_back()
+            self.page.wait_for_load_state("load")
+            self.assertNotIn("/guest/result/", self.page.url)
+            expect(self.main()).not_to_contain_text("總分")
+            # Opened again by its address, it goes home (before it finishes loading).
+            self.page.goto(f"{self.live_server_url}/guest/result/hhie-s", wait_until="commit")
+            expect(self.page).to_have_url(home)
+            expect(self.main()).not_to_contain_text("總分")
