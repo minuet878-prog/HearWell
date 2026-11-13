@@ -22,6 +22,7 @@ PRIVACY_SECTIONS = [
     ("who-title", "誰在蒐集"),
     ("why-title", "為什麼蒐集"),
     ("collected-title", "蒐集哪些資料"),
+    ("google-title", "用 Google 登入時"),  # spec #505
     ("password-reset-title", "忘記密碼時"),  # #526
     ("question-log-title", "問答小助手的提問紀錄"),
     ("storage-title", "存放在哪裡、保存多久"),
@@ -81,7 +82,9 @@ class AccountSettingsTests(TestCase):
 
 class DeleteAccountPageTests(TestCase):
     def test_delete_is_the_red_solid_button_and_cancel_the_blue_frame(self):
-        self.client.force_login(consented_user(username="delete_redesign"))
+        self.client.force_login(
+            consented_user(username="delete_redesign", password="redesign-pass")
+        )
         main = _main(self.client.get(reverse("delete_account")))
 
         self.assertIn(

@@ -282,6 +282,47 @@
     --btn-disabled-bg: var(--color-severe);
     --btn-disabled-border-color: var(--color-severe);
   }
+  /* Spec #505 (the #507 mockup D4): Google's light button, its own colours (words #1f1f1f at
+     16.5:1, the 1px frame #747775 at 4.5:1 on white), scaled up to our buttons' height and corner;
+     under a mouse and when pressed only the fill greys, as Google's own button does. */
+  .btn-google {
+    --btn-color: #1f1f1f;
+    --btn-bg: #fff;
+    --btn-border-color: #747775;
+    --btn-hover-color: #1f1f1f;
+    --btn-hover-bg: #f2f2f2;
+    --btn-hover-border-color: #747775;
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #1f1f1f;
+    --btn-active-bg: #e6e6e6;
+    --btn-active-border-color: #747775;
+    width: 100%;
+    gap: 0.75rem;
+    border-width: 1px;
+    font-weight: 600;
+  }
+  .btn-google-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
+  .auth-or {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-muted);
+  }
+  .auth-or::before, .auth-or::after { content: ""; flex: 1; border-top: 1px solid var(--color-line); }
+  /* #512 (the #507 mockup W3): the compass before 用 Safari／Chrome 打開, in the text's colour. */
+  .btn-open-outside-icon {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-right: 0.5rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
   /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);
@@ -3868,6 +3909,56 @@
   .settings-row-note {
     font-size: 1rem;
     font-weight: 400;
+  }
+
+  /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
+     name and state in the middle, the one thing to do with it on the right; at large text sizes
+     the action drops under the words. */
+  .sign-in-method {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.25rem;
+    padding: 0.75rem 0;
+  }
+
+  .sign-in-method-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+  }
+
+  .sign-in-method-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Google's G keeps its own colours, on white with a thin frame. */
+  .sign-in-method-icon:has(.btn-google-logo) {
+    border: 1px solid var(--color-line);
+    background-color: #fff;
+  }
+
+  .sign-in-method-icon .btn-google-logo {
+    stroke: none;
+  }
+
+  .sign-in-method-body {
+    display: flex;
+    flex: 1 1 8rem;
+    flex-direction: column;
+    overflow-wrap: anywhere;
   }
 
   /* Deleting the account is set apart from everything above it, in red whatever its state. */

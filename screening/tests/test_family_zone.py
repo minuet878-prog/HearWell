@@ -600,11 +600,21 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>您忘記密碼時，寄重設密碼信給您",
                 "<li>重設密碼信會傳到美國",
                 "<li>Resend（寄信服務",
+                # Spec #505's 用 Google 登入時 (consent version 7); the owner reviews it at
+                # acceptance. Its row's tags (details, summary's body, ul) are in the digest.
+                "{# Spec #505 acceptance 38",
+                '<summary><h2 id="google-title"',
+                "<p>只拿 Google 給您的代號",
+                "<li>代號：Google",
+                "<li>email：第一次用 Google",
+                "<p>我們不保留 Google",
+                "<p>您按「使用 Google 帳戶登入」",
+                "<li>登入方式：用 Google 登入時",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.
-            # #526 added the tags of the 忘記密碼時 row.
-            "bf7c007bbe37a430b592bea3a26914dd8e68133070b4a0ba5ea176d030990ccf",
+            # #526 and spec #505 added the tags of the 忘記密碼時 and 用 Google 登入時 rows.
+            "2a35523b567e184051525015de33f9998274b4dbf088889b9f19bb8782430cd9",
         ),
     )
 

@@ -17,17 +17,23 @@ from screening.models.submissions import Answer
 # 2026-11-13, phase-2-grill-decisions.md).
 # 6: the 重設密碼信 uses the email, Resend in the United States receives it, and the
 # forgot-password page keeps hashed IPs and emails for an hour (#526, spec #355).
-CONSENT_VERSION = 6
+# 7: signing in with Google keeps Google's code (`sub`) and email as a 登入方式 (spec #505).
+CONSENT_VERSION = 7
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
-# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5
-# and 6 moved it with the version (#452, spec #478, #526). A guest's answers stay in the
-# browser (spec #492): nothing new is kept, so that sentence needed no version of its own.
-PRIVACY_UPDATED_ON = date(2026, 11, 13)
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5,
+# 6 and 7 moved it with the version (#452, spec #478, #526, spec #505). A guest's answers stay
+# in the browser (spec #492): nothing new is kept, so that sentence needed no version of its own.
+PRIVACY_UPDATED_ON = date(2026, 11, 14)
 
 
 class User(AbstractUser):
     # Western calendar year; only the year is collected (data minimisation).
     birth_year = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    @property
+    def is_admin(self):
+        # Staff or superuser: signs in with a password only and cannot delete itself (spec #505).
+        return self.is_staff or self.is_superuser
 
     @property
     def age(self):
@@ -45,6 +51,7 @@ class User(AbstractUser):
     def delete_with_data(self):
         # Spec phase7_account_deletion.md: the account and everything of it, or nothing.
         # Children first, because every link to the user (and Answer to Submission) is PROTECT.
+        self.sign_in_methods.all().delete()  # 登入方式 (spec #505)
         self.report_comparisons.all().delete()
         Answer.objects.filter(submission__user=self).delete()
         self.submissions.all().delete()  # norm_basis is RESTRICT, so linked pairs go together

@@ -1179,7 +1179,8 @@ class Ticket481PrivacyListTests(TestCase):
         self.assertContains(self.client.get(reverse("consent")), f"<li>{TICKS_HIGHLIGHT}</li>")
 
     def test_version_5_dated_the_day_it_changed(self):
-        # #526 raised it to 6 for the 重設密碼信 (test_consent).
+        # #526 raised it to 6 for the 重設密碼信 (test_consent), spec #505 to 7
+        # (test_google_sign_in).
         self.assertGreaterEqual(models.CONSENT_VERSION, 5)
         self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
 

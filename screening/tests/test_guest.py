@@ -392,7 +392,7 @@ class PrivacyTests(GuestTestCase):
         response = self.client.get(reverse("privacy"))
         self.assertContains(response, "未註冊時只計算、不儲存，作答留在您的瀏覽器")
         # Spec #478 raised it to 5 the same day; #492 adds no version of its own (#526 raised it
-        # to 6 for the 重設密碼信).
+        # to 6 for the 重設密碼信, spec #505 to 7 for Google).
         self.assertGreaterEqual(models.CONSENT_VERSION, 5)
 
 

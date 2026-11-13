@@ -1,4 +1,3 @@
-from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.views.generic import TemplateView
 
@@ -6,6 +5,7 @@ from .views import (
     accounts,
     answering,
     audiograms,
+    confirm_identity,
     export,
     family,
     guest,
@@ -16,18 +16,19 @@ from .views import (
     qa_assistant,
     reports,
     results,
+    sign_in,
+    sign_in_methods,
     simulator,
 )
 
 urlpatterns = [
     path("", home.index, name="index"),
-    path(
-        "login",
-        auth_views.LoginView.as_view(
-            template_name="screening/login.html", http_method_names=["get", "post"]
-        ),
-        name="login",
-    ),
+    path("login", sign_in.LoginView.as_view(), name="login"),
+    path("login/google", sign_in.google_start, name="google_start"),
+    path("login/google/callback", sign_in.google_callback, name="google_callback"),
+    path("login/google/name", sign_in.google_name, name="google_name"),
+    path("login/google/same-email", sign_in.google_same_email, name="google_same_email"),
+    path("login/google/save-card", sign_in.google_save_card, name="google_save_card"),
     path("logout", accounts.logout_view, name="logout"),
     path("forgot_password", accounts.ForgotPasswordView.as_view(), name="password_reset"),
     path("forgot_password/sent", accounts.password_reset_sent, name="password_reset_sent"),
@@ -78,6 +79,8 @@ urlpatterns = [
     path("my_data/download", export.download_my_data, name="download_my_data"),
     path("account", accounts.account_settings, name="account_settings"),
     path("account/delete", accounts.delete_account, name="delete_account"),
+    path("account/confirm", confirm_identity.confirm_identity, name="confirm_identity"),
+    path("account/sign-in-methods/google/add", sign_in_methods.google_add, name="google_add"),
     path("submission/<int:submission_id>", results.submission_result, name="result"),
     path("audiograms", audiograms.audiogram_list, name="audiogram_list"),
     path("audiograms/new", audiograms.audiogram_new, name="audiogram_new"),

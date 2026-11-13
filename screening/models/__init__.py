@@ -3,7 +3,7 @@
 # (migration 0022 names screening.models._share_token and _share_expiry).
 from screening.models.accounts import CONSENT_VERSION, PRIVACY_UPDATED_ON, Consent, User
 from screening.models.audiograms import Audiogram, AudiogramPoint, Conduction, Ear
-from screening.models.guest_counts import GuestMonth, count_guest
+from screening.models.guest_counts import GuestMonth, count_guest, count_guest_saved
 from screening.models.guide import GuideChapterView
 from screening.models.hearing_aids import (
     AidAndSubsidy,
@@ -29,6 +29,7 @@ from screening.models.sharing import (
     _share_expiry,
     _share_token,
 )
+from screening.models.sign_in import SignInMethod
 from screening.models.submissions import (
     Answer,
     NormGroup,

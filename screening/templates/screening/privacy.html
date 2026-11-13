@@ -62,9 +62,23 @@ moved only the date (#400).
                 </li>
                 <li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>
                 <li>同意紀錄：您哪一天同意了哪一版說明。</li>
+                <li>登入方式：用 Google 登入時，Google 給您的代號、哪一天新增的，以及是不是註冊時用的（見下一段）。</li>
             </ul>
             {# Spec #492 (ADR 0055): a guest's answers and result stay in the browser; the server only scores them. #}
             <p>未註冊時只計算、不儲存，作答留在您的瀏覽器。</p>
+            </div>
+        </details>
+        {# Spec #505 acceptance 38 (ADR 0056, 0057): what signing in with Google takes, and what it does not. #}
+        <details class="fold-row">
+            <summary><h2 id="google-title" class="fold-row-title">用 Google 登入時</h2></summary>
+            <div class="fold-row-body">
+            <p>只拿 Google 給您的代號和 email（Google 標示已驗證的），不拿您在 Google 的名稱、大頭貼和聯絡人。</p>
+            <ul>
+                <li>代號：Google 給這個網站的一串編號，用來認出下次登入的是同一個帳號。我們只看代號認人，不會因為 email 相同就把兩個帳號併在一起。</li>
+                <li>email：第一次用 Google 註冊時，存成帳號的電子郵件。之後您在 Google 改了 email，這裡不會跟著改。</li>
+            </ul>
+            <p>我們不保留 Google 給的任何權杖（讓網站代替您向 Google 拿資料的憑證）。登入完成後，不會再跟 Google 拿任何資料。</p>
+            <p>您按「使用 Google 帳戶登入」時，Google 會知道您要登入聽伴；Google 怎麼處理這件事，依照 Google 自己的隱私權政策。</p>
             </div>
         </details>
         {# #526 (spec #355): the 重設密碼信, Resend in the United States, and what the forgot-password page keeps for an hour. #}

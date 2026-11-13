@@ -21,6 +21,7 @@ HIGHLIGHTS = (
     "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
     "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
     "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。",  # 6 (#526)
+    "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # 7 (#505)
     "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
     "您可以隨時要求查詢、更正或刪除您的資料。",
     "結果只是參考，不是醫療診斷。",
@@ -59,10 +60,11 @@ class PrivacyPageTests(TestCase):
         # #181, ADR 0014: cdnjs went with Bootstrap and the font comes from our own host, so
         # neither is listed; one fewer service was a minor fix that kept version 1 (#286 then
         # raised it to 2 for the 助聽器與補助資料). #452: Render and Neon went with the move to
-        # Vultr.
+        # Vultr. Google Fonts went with the font; Google itself is named for signing in (#505).
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "cdnjs")
-        self.assertNotContains(response, "Google")
+        self.assertNotContains(response, "Google Fonts")
+        self.assertNotContains(response, "googleapis")
         for service in ("Vultr", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
@@ -505,7 +507,7 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        self.assertEqual(len(classes), 14)  # #400 the question log, #526 忘記密碼時
+        self.assertEqual(len(classes), 15)  # #400 the question log, #526 忘記密碼時, #505 Google
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})
@@ -647,13 +649,10 @@ class PasswordResetPrivacyTests(TestCase):
         self.assertContains(self.client.get(reverse("consent")), f"<li>{RESET_HIGHLIGHT}</li>")
 
     def test_version_6(self):
-        self.assertEqual(models.CONSENT_VERSION, 6)
-        self.assertContains(
-            self.client.get(reverse("privacy")),
-            f"第 6 版，{models.PRIVACY_UPDATED_ON:%Y/%m/%d} 更新",
-        )
+        # Spec #505 raised it to 7 for Google (test_google_sign_in).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 6)
 
-    def test_who_agreed_to_version_5_agrees_again_to_version_6(self):
+    def test_who_agreed_to_version_5_agrees_again(self):
         user = User.objects.create_user(username="reset_agreed_to_version_5")
         Consent.objects.create(user=user, version=5)
         self.client.force_login(user)
@@ -662,4 +661,6 @@ class PasswordResetPrivacyTests(TestCase):
         response = self.client.post(reverse("consent"), {"agree": "", "next": url})
         self.assertRedirects(response, url)
         versions = Consent.objects.filter(user=user).order_by("id")
-        self.assertEqual(list(versions.values_list("version", flat=True)), [5, 6])
+        self.assertEqual(
+            list(versions.values_list("version", flat=True)), [5, models.CONSENT_VERSION]
+        )

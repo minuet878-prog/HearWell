@@ -18,8 +18,8 @@ from screening.forms import (
     RESETS_PER_ADDRESS,
     ROC_OFFSET,
     TOO_MANY_RESETS,
-    DeleteAccountForm,
     ForgotPasswordForm,
+    PasswordConfirmForm,
     RegisterForm,
     ResetEmailNotSent,
     SetNewPasswordForm,
@@ -28,7 +28,8 @@ from screening.forms import (
     may_reset_password,
 )
 from screening.models import User
-from screening.views.common import health_data_page, safe_next
+from screening.views import confirm_identity, sign_in_methods
+from screening.views.common import health_data_page, line_way_out, safe_next, sign_in_choices
 
 
 @require_http_methods(["POST"])
@@ -66,7 +67,11 @@ def register(request):
                 return redirect("consent")
     else:
         form = RegisterForm()
-    return render(request, "screening/register.html", {"form": form, "next": next_url})
+    return render(
+        request,
+        "screening/register.html",
+        {"form": form, "next": next_url} | sign_in_choices(request),
+    )
 
 
 # Spec #355: the email typed on the forgot-password page, for the next page to show; kept in the
@@ -186,7 +191,12 @@ def account_settings(request):
     return render(
         request,
         "screening/account.html",
-        {"consent": consent, "share": share, "roc_birth_year": roc_birth_year},
+        {
+            "consent": consent,
+            "share": share,
+            "roc_birth_year": roc_birth_year,
+            "sign_in_methods": sign_in_methods.group(request),
+        },
     )
 
 
@@ -195,11 +205,22 @@ def account_settings(request):
 def delete_account(request):
     user = request.user
     # Staff could lock everyone out of admin; they remove their staff rights first.
-    if user.is_staff or user.is_superuser:
+    if user.is_admin:
         status = 403 if request.method == "POST" else 200
         return render(request, "screening/delete_account.html", {"is_admin": True}, status=status)
-    form = DeleteAccountForm(request.POST if request.method == "POST" else None, user=user)
-    if form.is_valid():
+    if user.has_usable_password():
+        form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
+        delete = form.is_valid()
+    else:
+        # #505 acceptance 30: without a password, 確認本人 with the Google on the account first;
+        # a confirmation gone stale meanwhile sends the page back with W18.
+        form = None
+        delete = request.method == "POST" and confirm_identity.use_confirmation(
+            request, "delete_account"
+        )
+        if request.method == "POST" and not delete:
+            return redirect("delete_account")
+    if delete:
         user.delete_with_data()
         logout(request)
         messages.success(request, "您的帳號和資料已經刪除。")
@@ -209,6 +230,11 @@ def delete_account(request):
         "screening/delete_account.html",
         {
             "form": form,
+            "confirmed": form is None and confirm_identity.is_confirmed(request, "delete_account"),
+            "confirm_error": confirm_identity.confirm_error(request),
+            "sign_in_methods": user.sign_in_methods.all(),
+            "providers": confirm_identity.providers(user),
+            "open_outside_url": line_way_out(request),
             "submission_count": user.submissions.count(),
             "audiogram_count": user.audiograms.count(),
         },
