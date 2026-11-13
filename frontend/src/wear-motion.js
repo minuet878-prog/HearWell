@@ -61,6 +61,12 @@ function movePoint([x, y], [right, down, degrees], [px, py]) {
   ];
 }
 
+// A path's d with its numbers, in order, swapped for these.
+function withNumbers(d, numbers) {
+  let n = 0;
+  return d.replace(NUMBER, () => round(numbers[n++]));
+}
+
 function draw(drawing, percent) {
   const motion = JSON.parse(drawing.dataset.motion);
   const pieces = [...drawing.firstElementChild.children];
@@ -94,11 +100,7 @@ function draw(drawing, percent) {
         numbers[point * 2] = x;
         numbers[point * 2 + 1] = y;
       }
-      let n = 0;
-      pieces[index].setAttribute(
-        "d",
-        original[index].d.replace(NUMBER, () => round(numbers[n++])),
-      );
+      pieces[index].setAttribute("d", withNumbers(original[index].d, numbers));
     }
   }
   for (const shape of motion.shapes || []) {
@@ -111,21 +113,21 @@ function draw(drawing, percent) {
         continue;
       }
       const to = original[index].d.match(NUMBER).map(Number);
-      let n = 0;
-      pieces[index].setAttribute(
-        "d",
-        shape.from.replace(NUMBER, (from) => round(Number(from) + (to[n++] - from) * t)),
-      );
+      const between = shape.from.match(NUMBER).map((from, n) => from * (1 - t) + to[n] * t);
+      pieces[index].setAttribute("d", withNumbers(shape.from, between));
     }
   }
   for (const index of motion.cues) pieces[index].setAttribute("visibility", "hidden");
 }
 
 // Seen as ▶ 看動作; heard with the step's title, 看動作：推進耳塞, so a row of them is not a row
-// of 看動作. The label starts with the words seen, for those who speak to their phone.
-function say(button, icon, words) {
+// of 看動作. The label starts with the words seen, for those who speak to their phone. As the
+// #520 mockup: solid until it has played, then an outline 再看一次.
+function labelButton(button, played) {
+  const [icon, words] = played ? ["↺", "再看一次"] : ["▶", "看動作"];
   button.textContent = `${icon} ${words}`;
   button.setAttribute("aria-label", `${words}：${button.dataset.motionPlay}`);
+  button.className = `btn ${played ? "btn-outline-primary" : "btn-primary"} care-motion-play`;
 }
 
 // The frame each drawing is waiting for, so 再看一次 while it plays starts it over.
@@ -141,7 +143,7 @@ function play(win, button) {
     if (elapsed < DURATION) {
       frames.set(drawing, win.requestAnimationFrame(frame));
     } else {
-      say(button, "↺", "再看一次");
+      labelButton(button, true);
     }
   };
   frame();
@@ -157,9 +159,8 @@ export function addMotionButtons(win = window) {
       .textContent.replace(/^\d+\.\s*/, "");
     const button = win.document.createElement("button");
     button.type = "button";
-    button.className = "btn btn-outline-primary care-motion-play";
     button.dataset.motionPlay = title;
-    say(button, "▶", "看動作");
+    labelButton(button, false);
     drawing.after(button);
   }
   // One listener for the page, so the steps pick-explain.js copies play too.

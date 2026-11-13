@@ -13299,6 +13299,8 @@ class FamilyWearTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             *self.group().locator(".choice-group label").all(),
             *self.live().locator("label").all(),
             *self.live().get_by_role("link").all(),
+            # #519: 看動作 under the drawings that move.
+            *self.live().get_by_role("button").all(),
         ):
             box = target.bounding_box()
             self.assertGreaterEqual(box["height"], 44)
@@ -13309,6 +13311,7 @@ class FamilyWearTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             *self.live().locator("label > span").all(),
             *self.live().locator("strong").all(),
             *self.live().locator("p").all(),
+            *self.live().get_by_role("button").all(),
         ):
             self.assertGreaterEqual(self.font_size(words), rem)
         for drawing in self.live().locator("svg").all():
@@ -13325,9 +13328,12 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     PATH = "/family/hearing-aids"
     SHAPE = "耳掛（耳塞和細線）"
     TITLES = ("先掛機身", "推進耳塞", "塞好固定線", "拉出固定線", "拉出耳塞", "拿下機身")
-    # 推進耳塞's dome, and the first of its arrows (wear-motion-review.md's pieces 10 and 15).
+    # 推進耳塞's tube, dome and first arrow, and 先掛機身's first arrow (wear-motion-review.md's
+    # pieces 8, 10, 15 and 14).
+    TUBE = 8
     DOME = 10
     ARROW = 15
+    HOOK_ON_ARROW = 14
     # Where a piece is on the page, so scrolling to the button does not count as moving.
     WHERE = """el => {
         const box = el.getBoundingClientRect();
@@ -13360,13 +13366,21 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             button = step.get_by_role("button")
             pieces = step.locator("svg > g > *")
             dome, arrow = pieces.nth(self.DOME), pieces.nth(self.ARROW)
+            tube = pieces.nth(self.TUBE)
             drawn = dome.evaluate(self.WHERE)
+            tube_drawn = tube.bounding_box()
             expect(arrow).to_be_visible()
 
-            button.focus()
+            # From the step before's box, Tab reaches it.
+            before = self.live().locator("li", has=self.page.get_by_text("3. 先掛機身"))
+            before.get_by_role("checkbox").focus()
+            self.page.keyboard.press("Tab")
+            expect(button).to_be_focused()
             self.page.keyboard.press("Enter")
             start = dome.evaluate(self.WHERE)
             self.assertNotEqual(start, drawn)
+            # Acceptance 7: the thin tube goes with the dome.
+            self.assertNotEqual(tube.bounding_box(), tube_drawn)
             expect(arrow).to_be_hidden()
             # On its way: neither where it started nor where it is drawn.
             self.page.wait_for_function(
@@ -13381,6 +13395,8 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(button).to_have_accessible_name("再看一次：推進耳塞")
             for now, then in zip(dome.evaluate(self.WHERE), drawn, strict=True):
                 self.assertAlmostEqual(now, then, delta=0.5)
+            for side in ("width", "height"):
+                self.assertAlmostEqual(tube.bounding_box()[side], tube_drawn[side], delta=0.5)
             expect(arrow).to_be_hidden()
             expect(button).to_be_focused()
             self.assertNotEqual(self.style(button, "boxShadow"), "none")
@@ -13404,7 +13420,7 @@ class WearMotionTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
             expect(self.live().locator("svg[data-motion]")).to_have_count(len(self.TITLES))
             expect(self.live().get_by_role("button")).to_have_count(0)
             first = self.live().locator("svg[data-motion]").first.locator("> g > *")
-            expect(first.nth(14)).to_be_visible()
+            expect(first.nth(self.HOOK_ON_ARROW)).to_be_visible()
 
 
 class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):

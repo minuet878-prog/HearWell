@@ -45,6 +45,7 @@ const serverPage = () => {
         </ol></li>
         <li><strong>耳內</strong><ol>
           ${step("3. 對準耳道", drawing(null, "<path d='M0 0'/>"))}
+          ${step("4. 轉著推進去", drawing(PUSH_IN, PUSH_IN_PIECES))}
         </ol></li>
       </ul>
       <div aria-live="polite" data-pick-live></div>
@@ -69,11 +70,12 @@ describe("addMotionButtons", () => {
 
   it("puts 看動作 under each drawing with a motion, and under no other", () => {
     addMotionButtons(fakeWindow());
-    const [button, ...others] = buttons();
-    expect(others).toEqual([]);
-    expect(button.textContent).toContain("看動作");
-    expect(button.previousElementSibling.dataset.motion).toBeDefined();
-    expect(button.type).toBe("button");
+    expect(buttons()).toHaveLength(2);
+    for (const button of buttons()) {
+      expect(button.textContent).toContain("看動作");
+      expect(button.previousElementSibling.dataset.motion).toBeDefined();
+      expect(button.type).toBe("button");
+    }
   });
 
   // #519 acceptance 8: reduced motion keeps the reviewed drawing, with no button to press.
@@ -87,6 +89,7 @@ describe("addMotionButtons", () => {
     addMotionButtons(fakeWindow());
     expect(buttons()[0].getAttribute("aria-label")).toBe("看動作：推進耳塞");
     expect(buttons()[0].textContent).toBe("▶ 看動作");
+    expect(buttons()[0].classList.contains("btn-primary")).toBe(true);
   });
 });
 
@@ -145,6 +148,9 @@ describe("playing a motion", () => {
     expect(words(button)).toBe("再看一次");
     expect(button.getAttribute("aria-label")).toBe("再看一次：推進耳塞");
     expect(button.textContent).toBe("↺ 再看一次");
+    // The #520 mockup: a solid 看動作, an outline 再看一次.
+    expect(button.classList.contains("btn-outline-primary")).toBe(true);
+    expect(button.classList.contains("btn-primary")).toBe(false);
   });
 
   // Acceptance 4.
@@ -197,6 +203,28 @@ describe("with 選外型", () => {
       expect(arrowsGone(original)).toBe(false);
     });
   }
+});
+
+// Acceptance 6: after changing to another shape, its steps play.
+it("plays the steps of a shape picked after another", () => {
+  vi.useFakeTimers();
+  serverPage();
+  addMotionButtons(fakeWindow());
+  runPickExplain();
+  const [first, second] = document.querySelectorAll("input[type=radio]");
+  first.click();
+  buttons(live())[0].click();
+  second.click();
+  const [button] = buttons(live());
+  expect(button.getAttribute("aria-label")).toBe("看動作：轉著推進去");
+  button.click();
+  const copy = live().querySelector("svg[data-motion]");
+  expect(pieces(copy)[1].getAttribute("transform")).toMatch(/^translate\(80 -55\)/);
+  vi.advanceTimersByTime(2400);
+  expect(pieces(copy)[1].getAttribute("transform")).toBe("translate(846 628)");
+  expect(button.getAttribute("aria-label")).toBe("再看一次：轉著推進去");
+  vi.useRealTimers();
+  document.body.innerHTML = "";
 });
 
 // Acceptance 5: a page with several steps that move; only the one pressed does.
