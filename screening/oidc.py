@@ -199,7 +199,11 @@ def finish(request, provider):
         code_verifier=flow["code_verifier"],
         redirect_uri=callback_url(provider),
     )
-    claims = _claims(tokens.get("id_token") if isinstance(tokens, dict) else None)
+    # An answer without an ID token (an error in its JSON, even with HTTP 200) is the provider
+    # not answering, as an HTTP error is (#505 acceptance 20).
+    if not isinstance(tokens, dict) or "id_token" not in tokens:
+        raise Unavailable(f"{provider} token endpoint: no id_token")
+    claims = _claims(tokens["id_token"])
     if claims.get("iss") not in PROVIDERS[provider].issuers:
         raise Rejected("iss is not the provider")
     if claims.get("aud") != _setting(provider, "CLIENT_ID"):

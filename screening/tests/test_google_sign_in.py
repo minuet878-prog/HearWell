@@ -497,6 +497,22 @@ class CallbackSecurityTests(TestCase):
         )
         self.assertIn("Google token exchange failed", logs.output[0])
 
+    def test_an_error_answer_from_google_is_google_not_answering(self):
+        # Google's token endpoint answering 200 with no ID token: an error in its JSON, or none.
+        for name, answer in (
+            ("error", {"error": "invalid_grant", "error_description": "Bad Request"}),
+            ("no id_token", {"access_token": "never-kept"}),
+        ):
+            with self.subTest(name):
+                self.google.start()
+                with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+                    response = self.google.come_back(sub="google-1", exchange=answer)
+                self.assertRejected(
+                    response, "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。", exchanged=True
+                )
+                self.assertIn("Google token exchange failed", logs.output[0])
+                self.google.exchanges.clear()
+
     def test_a_rejected_callback_goes_to_monitoring_without_its_secrets(self):
         # Error monitoring takes ERROR and above (Sentry's logging integration); a forged
         # callback is a technical detail for it, as Google not answering is (spec #505).

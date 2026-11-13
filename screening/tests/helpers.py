@@ -159,7 +159,8 @@ class FakeGoogle:
     ):
         """GET our callback. query: the callback's query instead of Google's code and state.
         cancelled: back as Google sends someone who said no (its error, this trip's state).
-        exchange: what exchange_code does instead of returning the ID token (an exception)."""
+        exchange: what exchange_code does instead of returning the ID token: an exception it
+        raises, or the JSON (a dict) it gives back."""
         if cancelled:
             query = {"error": "access_denied", "state": self.authorize["state"]}
         if query is None:
@@ -171,6 +172,8 @@ class FakeGoogle:
 
         def fake_exchange(**kwargs):
             self.exchanges.append(kwargs)
+            if isinstance(exchange, dict):
+                return exchange
             if exchange is not None:
                 raise exchange
             return token
