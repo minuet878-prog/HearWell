@@ -14386,6 +14386,44 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             expect(self.main()).not_to_contain_text("總分")
 
 
+class GuestAnswerAfterFiveSecondsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """The owner's acceptance (#492): the 5-second fallback (I3) asked a guest to register even when
+    React had loaded, the note and its button over working questions. Past 5 seconds, a loaded
+    page keeps its questions and no note."""
+
+    fixtures = ("questions_fixture.json",)
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def test_a_loaded_page_shows_no_note_after_5_seconds(self):
+        with self.saving_artifacts():
+            self.page.clock.install()
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            wearing = self.main().get_by_role("radio", name="沒戴")
+            expect(wearing).to_be_visible()
+            self.page.clock.run_for(6000)
+            expect(self.main().locator("#answer-guest-fallback")).to_be_hidden()
+            expect(self.main().get_by_role("link", name="註冊新帳號")).to_have_count(0)
+            expect(wearing).to_be_visible()
+
+
 class GuestWithoutJavaScriptTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
     """Self-review P3 (I3): with JavaScript off a guest's answer page shows no form, whose answers
     would be lost at the login it leads to, but the note asking to register."""

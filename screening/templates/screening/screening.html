@@ -71,6 +71,8 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
         // React not ready in 5 seconds (slow, or its file failed to load): give the form back,
         // or to a guest the note asking to register (I3).
         setTimeout(function () {
+            // React already ready took the loading state away: nothing to give back.
+            if (!document.documentElement.classList.contains("answer-loading")) return;
             document.documentElement.classList.remove("answer-loading");
             document.getElementById("answer-loading").textContent = "";
             var guest = document.getElementById("answer-guest-fallback");
