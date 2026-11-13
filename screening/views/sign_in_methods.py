@@ -18,7 +18,7 @@ from django.views.decorators.http import require_http_methods
 from screening import oidc
 from screening.models import SignInMethod
 from screening.views import confirm_identity
-from screening.views.common import line_way_out
+from screening.views.common import line_way_out, provider_logo, works_here
 
 # The rows after 帳號密碼, in this order (the #539 mockup D4: the newest last).
 PROVIDERS = ("google", "line")
@@ -48,28 +48,28 @@ def group(request):
     if user.is_admin or not providers:
         return None
     methods = {method.provider: method for method in user.sign_in_methods.all()}
-    # Inside LINE Google refuses to sign in, so a way out takes its 新增 button's place; LINE
-    # itself works there as anywhere.
-    way_out = line_way_out(request) if "google" in providers and "google" not in methods else ""
     rows = []
     for provider in providers:
         method = methods.get(provider)
-        can_add = method is None and not (provider == "google" and way_out)
+        can_add = method is None and works_here(request, provider)
         rows.append(
             {
                 "provider": provider,
                 "name": SignInMethod.Provider(provider).label,
-                "logo": f"screening/{provider}_logo.html",
+                "logo": provider_logo(provider),
                 "method": method,
                 "add_url": reverse(f"{provider}_add") if can_add else "",
                 "can_remove": method is not None and method.can_be_removed(),
             }
         )
+    # One not on the account that cannot be added here (Google inside LINE): a way out takes
+    # its 新增 button's place.
+    not_here = any(row["method"] is None and not row["add_url"] for row in rows)
     return {
         "rows": rows,
         "only_way_in": any(row["method"] and not row["can_remove"] for row in rows),
         "can_change": any(row["add_url"] or row["can_remove"] for row in rows),
-        "open_outside_url": way_out,
+        "open_outside_url": line_way_out(request) if not_here else "",
     }
 
 

@@ -26,7 +26,7 @@ from django.views.decorators.http import require_http_methods
 from screening import oidc
 from screening.forms import PasswordConfirmForm
 from screening.models import SignInMethod
-from screening.views.common import line_way_out
+from screening.views.common import line_way_out, provider_logo, works_here
 
 # What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
 # leads back to. 移除 Google／LINE 登入 has none: the right password removes it on this page, in
@@ -147,19 +147,19 @@ def without_password(request):
     line above them. Inside LINE Google refuses to sign in, so its button is left out; when it is
     the only one, a way out to Safari or Chrome takes its place (#511)."""
     on_account = providers(request.user)
-    way_out = line_way_out(request) if "google" in on_account else ""
-    here = [provider for provider in on_account if not (provider == "google" and way_out)]
+    here = [provider for provider in on_account if works_here(request, provider)]
     return {
         "buttons": [
             {
                 "provider": provider,
-                "logo": f"screening/{provider}_logo.html",
+                "logo": provider_logo(provider),
                 "words": BUTTONS[provider],
             }
             for provider in here
         ],
         "names": [SignInMethod.Provider(provider).label for provider in here or on_account],
-        "open_outside_url": "" if here else way_out,
+        # None of the account's providers works here: only Google, inside LINE.
+        "open_outside_url": line_way_out(request) if on_account and not here else "",
     }
 
 
