@@ -32,6 +32,7 @@ urlpatterns = [
     path("login/line", sign_in.line_start, name="line_start"),
     path("login/line/callback", sign_in.line_callback, name="line_callback"),
     path("login/line/name", sign_in.line_name, name="line_name"),
+    path("login/line/save-card", sign_in.line_save_card, name="line_save_card"),
     path("logout", accounts.logout_view, name="logout"),
     path("forgot_password", accounts.ForgotPasswordView.as_view(), name="password_reset"),
     path("forgot_password/sent", accounts.password_reset_sent, name="password_reset_sent"),
