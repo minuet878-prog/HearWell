@@ -9,7 +9,7 @@ from django.utils import timezone
 from screening.models import AidAndSubsidy, Questionnaire, Submission
 from screening.questionnaires import hhie_s
 from screening.tests import test_guide, test_guide_summary, test_route_steps
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, route_stops
 
 PTA_55 = test_guide_summary.PTA_55
 # The route's nine stops in order (spec #291): recording an audiogram, then the chapters,
@@ -56,12 +56,7 @@ class GuideRouteTests(TestCase):
 
     def stops(self):
         """Each stop's (slug, markup) in page order."""
-        stop = (
-            r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
-            # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
-            r'(?=\s*(?:<li class="route-stop|</ol>))'
-        )
-        return re.findall(stop, self.page(), re.S)
+        return route_stops(self.page())
 
     def stop(self, slug):
         return dict(self.stops())[slug]

@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from screening.models import AidAndSubsidy, GuideChapterView, User
 from screening.tests import test_guide, test_guide_summary, test_home_journey
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, route_stops
 
 ROUTE_STOP = "/guide#stop-assessment"
 CHAPTER_CARD = "/guide/assessment#stop-question"
@@ -140,13 +140,8 @@ class RouteQuestionTests(TestCase):
         return self.client.get(reverse("guide") + query).content.decode()
 
     def stop(self, slug, query=""):
-        stop = (
-            r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
-            # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
-            r'(?=\s*(?:<li class="route-stop|</ol>))'
-        )
         # Without the to-dos, whose manual ones are forms too (#481): these are the questions'.
-        return test_home_journey.TODOS.sub("", dict(re.findall(stop, self.page(query), re.S))[slug])
+        return test_home_journey.TODOS.sub("", dict(route_stops(self.page(query)))[slug])
 
     def marks(self, slug):
         return re.findall(r'<span class="route-mark">([^<]+)</span>', self.stop(slug))
