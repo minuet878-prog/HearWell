@@ -75,6 +75,17 @@ class RecordsSwitchTests(TestCase):
         # The audiogram list's own buttons and cards stay below the switch.
         self.assertLess(main.index('aria-label="紀錄種類"'), main.index("新增聽力圖"))
 
+    def test_first_paint_waits_for_the_switch(self):
+        # A slow phone painted before the switch was parsed, so its pill never slid.
+        self._submission()
+        self._audiogram()
+        for url in (QUESTIONNAIRES, reverse("audiogram_list")):
+            with self.subTest(url=url):
+                content = self.client.get(url).content.decode()
+                head = content[: content.index("</head>")]
+                self.assertIn('<link rel="expect" href="#records-switch" blocking="render">', head)
+                self.assertIn('<nav id="records-switch" class="records-switch"', content)
+
     def test_other_audiogram_pages_have_no_switch(self):
         audiogram = self._audiogram()
         self._audiogram()
