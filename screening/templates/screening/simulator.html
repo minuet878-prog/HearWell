@@ -1,0 +1,48 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}聽損模擬｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script type="module" src="{% static 'screening/frontend/simulator.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{# #487 (spec #484, the #485 mockup E1 + V1, ADR 0053): the degrees, the dark player and the hint are React's; without JavaScript the sentences and the hint are here instead. #}
+<h1 class="h3 mt-4">聽損模擬</h1>
+<p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+{{ data|json_script:"simulator-data" }}
+<div id="simulator"></div>
+<noscript>
+    <p class="font-bold">需要開啟 JavaScript 才能播放。</p>
+    <ol>
+        {% for text, voice in sentences %}
+        <li>{{ text }}（{{ voice }}聲）</li>
+        {% endfor %}
+    </ol>
+    <div class="tip-box">
+        {% for line in limits %}
+        <p>{{ line }}</p>
+        {% endfor %}
+    </div>
+</noscript>
+<h2 class="h4 mt-8">接下來</h2>
+<ul class="list-unstyled text-balance">
+    <li><a class="link-card action-card" href="{% url 'family_talk' %}">
+        {% include "screening/action_icon.html" with icon="family" %}
+        <span class="link-card-body">
+            <span class="link-card-title">怎麼跟他說話</span>
+            <span>情境題與溝通重點</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+    <li><a class="link-card action-card" href="{% url 'guide' %}">
+        {% include "screening/action_icon.html" with icon="guide" %}
+        <span class="link-card-body">
+            <span class="link-card-title">了解助聽器選配與補助</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
+</ul>
+<p class="quiet-links"><a href="{% url 'learn' %}">回到了解</a></p>
+{% endblock %}

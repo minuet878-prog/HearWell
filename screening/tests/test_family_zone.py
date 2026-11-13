@@ -151,6 +151,8 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
         self.assertEqual(
             ENTRY.findall(self._entries(content)),
             [
+                # #487 (the #485 mockup ⑤): the hearing loss simulator comes first.
+                ("/learn/simulator", "sound", "先聽聽看他聽到的聲音", "選程度，聽同一句話怎麼變"),
                 ("/family/talk", "family", "怎麼跟他說話", TALK_NOTE),
                 ("/family/visits", "clipboard", "陪診與代辦", VISITS_NOTE),
                 ("/family/reluctant", "question", "長輩不肯去怎麼說", RELUCTANT_NOTE),

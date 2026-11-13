@@ -21,6 +21,14 @@
         </span>
         <span class="link-card-arrow" aria-hidden="true">›</span>
     </a></li>
+    {# #487 (the #485 mockup ⑤): the hearing loss simulator, after the family zone. #}
+    <li><a class="link-card action-card" href="{% url 'hearing_loss_simulator' %}">
+        {% include "screening/action_icon.html" with icon="sound" %}
+        <span class="link-card-body">
+            <span class="link-card-title">聽損模擬：聽聽看他聽到的聲音</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a></li>
     {# #397 (spec #396): the Q&A assistant, #373's entry 1. #}
     <li><a class="link-card action-card" href="{% url 'qa_home' %}">
         {% include "screening/action_icon.html" with icon="question" %}
