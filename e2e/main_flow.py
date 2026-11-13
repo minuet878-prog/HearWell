@@ -593,7 +593,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             entries = self.page.get_by_role("navigation", name="專區內容")
-            expect(entries.get_by_role("link")).to_have_count(4)
+            # #487: the hearing loss simulator's row first.
+            expect(entries.get_by_role("link")).to_have_count(5)
             for link in entries.get_by_role("link").all():
                 self.assertNotIn("#", link.get_attribute("href"))
             urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
@@ -3909,15 +3910,16 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            # #469: four rows to other pages, then 陪伴配戴助聽器's fold row.
+            # #469: rows to other pages (#487: the hearing loss simulator first, so five), then
+            # 陪伴配戴助聽器's fold row.
             zone = self.main().get_by_role("navigation", name="專區內容")
             entries = zone.get_by_role("link")
-            expect(entries).to_have_count(4)
+            expect(entries).to_have_count(5)
             for entry in [*entries.all(), zone.locator("summary")]:
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             # The line under a title is words to read: at least the 18px body text's 1rem.
-            note = entries.first.get_by_text("情境題與溝通重點")
+            note = zone.get_by_text("情境題與溝通重點")
             root = self.page.evaluate(
                 "parseFloat(getComputedStyle(document.documentElement).fontSize)"
             )
@@ -7849,8 +7851,9 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
     def test_learn_cards_are_list_rows(self):
         with self.saving_artifacts():
             self.visit(False, "/learn")
+            # #487: the hearing loss simulator is the fourth.
             cards = self.main().get_by_role("link")
-            self.assertEqual(cards.count(), 3)
+            self.assertEqual(cards.count(), 4)
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
                     self.assert_list_row(card)
@@ -10529,8 +10532,9 @@ class ReportShareLearnT366Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     def test_learn_card_titles_end_with_more_than_one_character(self):
         self.open("/learn", self.PHONE, signed_in=False)
         with self.saving_artifacts():
+            # #487: the hearing loss simulator is the fourth.
             titles = self.main().locator(".link-card-title")
-            expect(titles).to_have_count(3)
+            expect(titles).to_have_count(4)
             for title in titles.all():
                 lines = self.lines(title)
                 with self.subTest(title=lines):
@@ -13900,3 +13904,52 @@ class ButtonSpacingT453Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                 self.open(path, signed_in=signed_in)
                 with self.saving_artifacts():
                     self.assertEqual(self.page.evaluate(self.CLOSE, self.LEAST), [])
+
+
+class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#487 (spec #484, the #485 mockup E1 + V1): from 了解 to the hearing loss simulator, a degree,
+    play and the sentence. Playwright's Chromium cannot decode AAC, so what is checked is that a
+    sentence downloads on play and not before; how it sounds is the owner's to hear."""
+
+    def test_from_learn_pick_a_degree_play_and_show_the_sentence(self):
+        with self.saving_artifacts():
+            self.open("/learn", signed_in=False)
+            audio = []
+            self.page.on(
+                "request",
+                lambda request: (
+                    audio.append(urlparse(request.url).path)
+                    if request.url.endswith(".m4a")
+                    else None
+                ),
+            )
+            self.main().get_by_role("link", name=re.compile("^聽損模擬")).click()
+            expect(self.page).to_have_url(re.compile(r"/learn/simulator$"))
+            main = self.main()
+            main.get_by_role("button", name="中度").click()
+            expect(main.get_by_role("button", name="中度")).to_have_attribute(
+                "aria-pressed", "true"
+            )
+            expect(main.locator(".simulator-line")).to_have_text("中度：常聽不完整")
+            # Acceptance 21: nothing downloads before the play button.
+            self.assertEqual(audio, [])
+            with self.page.expect_request(re.compile(r"sentence-1\.m4a$")):
+                main.get_by_role("button", name="播放").click()
+            self.assertEqual(len(audio), 1)
+            self.assertTrue(audio[0].endswith("sentence-1.m4a"))
+            main.get_by_role("button", name="顯示這句話").click()
+            expect(main.get_by_text("星期四下午三點去看醫生。")).to_be_visible()
+
+    def test_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            self.open("/learn/simulator", (320, 640), signed_in=False)
+            self.main().locator(".simulator-play").wait_for()
+            self.assert_fits_a_phone_at_double_text_size("hearing loss simulator")
+            # The play button stays round on its own row, the arrows under it.
+            play = self.main().locator(".simulator-play").bounding_box()
+            self.assertAlmostEqual(play["width"], play["height"], delta=1)
+            for name in ("上一句", "下一句"):
+                with self.subTest(button=name):
+                    step = self.main().get_by_role("button", name=name).bounding_box()
+                    self.assertGreaterEqual(step["y"], play["y"] + play["height"])
+                    self.assertGreaterEqual(step["height"], 44)

@@ -5895,3 +5895,288 @@
 @keyframes route-ring {
   50% { box-shadow: 0 0 0 0.75rem rgba(31, 78, 140, 0.22); }
 }
+
+/* #487 the hearing loss simulator (the #485 mockup E1 + V1, ADR 0053): a row of degree pills, then
+   one dark blue player, the page's only one, holding the white sound bars, the play button and
+   its neighbours, 模擬｜正常聽 and 顯示這句話. Buttons only change colour (ADR 0006). */
+@layer components {
+  .simulator-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0 0 0.75rem;
+  }
+
+  .simulator-chip {
+    min-height: var(--spacing-touch);
+    padding: 0 0.8rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 500;
+  }
+
+  .simulator-chip[aria-pressed="true"] {
+    background-color: var(--color-brand-selected);
+    box-shadow: inset 0 0 0 2px var(--color-primary);
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  /* Not by colour alone (#357). */
+  .simulator-chip[aria-pressed="true"]::before {
+    content: "✓ ";
+  }
+
+  .simulator-chip:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .simulator-player {
+    container-type: inline-size;
+    position: relative;
+    overflow: hidden;
+    margin: 0 0 1rem;
+    padding: 1rem 1rem 0.875rem;
+    border-radius: var(--radius-large);
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+
+  /* On dark blue the site's blue focus ring would vanish. */
+  .simulator-player :focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .simulator-meter {
+    container-type: inline-size;
+    padding: 0.625rem 0.75rem 0.25rem;
+    border-radius: 1rem;
+    background-color: #fff;
+    color: var(--color-heading);
+  }
+
+  .simulator-line {
+    margin: 0 0 0.375rem;
+  }
+
+  .simulator-line b {
+    color: var(--color-primary);
+  }
+
+  .simulator-bars {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .simulator-bar {
+    display: flex;
+    flex: 1;
+    flex-direction: column-reverse;
+    gap: 0.1667rem;
+  }
+
+  .simulator-bar > span {
+    height: 0.4444rem;
+    border-radius: 0.1667rem;
+    background-color: var(--color-brand-selected);
+  }
+
+  .simulator-bar > .is-lit {
+    background-color: var(--color-primary);
+  }
+
+  .simulator-ends {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0.375rem 0 0;
+    color: var(--color-muted);
+  }
+
+  .simulator-zhuyin {
+    margin-inline-start: 0.25em;
+  }
+
+  /* At double text size the 注音 no longer fit beside 低沉 and 尖細 (the #485 mockup ⓪-3). */
+  @container (max-width: 14rem) {
+    .simulator-zhuyin {
+      display: none;
+    }
+  }
+
+  .simulator-controls {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    margin: 0.625rem 0 0.25rem;
+  }
+
+  /* Faint rings round the play button, as sound spreading (decoration only). */
+  .simulator-controls::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 15rem;
+    height: 15rem;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle closest-side,
+      transparent 43.5%, rgb(255 255 255 / 0.16) 44% 44.8%,
+      transparent 45.3% 65.5%, rgb(255 255 255 / 0.16) 66% 66.8%,
+      transparent 67.3% 87.5%, rgb(255 255 255 / 0.16) 88% 88.8%, transparent 89.3%
+    );
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .simulator-play,
+  .simulator-step {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    border-radius: 50%;
+  }
+
+  .simulator-play {
+    width: 4.4444rem;
+    height: 4.4444rem;
+    border: 0;
+    background-color: #fff;
+    color: var(--color-primary);
+  }
+
+  .simulator-play svg {
+    width: 42%;
+    height: 42%;
+    fill: currentColor;
+  }
+
+  .simulator-step {
+    width: 3.1111rem;
+    height: 3.1111rem;
+    border: 2px solid #fff;
+    background-color: transparent;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  /* At double text size the three no longer fit in a row: play on its own, the arrows under it. */
+  @container (max-width: 17rem) {
+    .simulator-controls {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .simulator-play {
+      order: -1;
+      margin-inline: calc((100% - 4.4444rem) / 2);
+    }
+
+    .simulator-step {
+      width: var(--spacing-touch);
+      height: var(--spacing-touch);
+    }
+  }
+
+  .simulator-caption {
+    position: relative;
+    margin: 0 0 0.75rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .simulator-caption span {
+    font-weight: 400;
+  }
+
+  /* As 我的紀錄's 問卷｜聽力圖, turned for dark blue: a see-through white track, the picked half
+     white with blue words. */
+  .simulator-switch {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
+    gap: 0.25rem;
+    margin: 0 0 0.75rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-tab);
+    background-color: rgb(255 255 255 / 0.14);
+  }
+
+  .simulator-switch button {
+    min-height: var(--spacing-touch);
+    padding: 0.25rem 1rem;
+    border: 0;
+    border-radius: var(--radius-tab);
+    background-color: transparent;
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .simulator-switch button[aria-pressed="true"] {
+    background-color: #fff;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+  .simulator-reveal {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: var(--spacing-touch);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .simulator-reveal svg {
+    flex: none;
+    width: 1.3rem;
+    height: 1.3rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .simulator-reveal[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .simulator-said {
+    position: relative;
+    margin: 0.25rem 0 0;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-medium);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-size: 1.2222rem;
+    font-weight: 700;
+  }
+
+  /* #328 (A2): colour only, under a mouse. */
+  @media (hover: hover) and (pointer: fine) {
+    .simulator-chip[aria-pressed="false"]:hover {
+      background-color: var(--color-brand-soft);
+    }
+
+    .simulator-switch button[aria-pressed="false"]:hover {
+      background-color: rgb(255 255 255 / 0.24);
+    }
+  }
+}
