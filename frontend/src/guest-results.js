@@ -58,21 +58,28 @@ export function clearGuestResult(code) {
   attempt(() => localStorage.removeItem(GUEST_PREFIX + code));
 }
 
+// Every guest result kept, by its code; each one that must not stay (expired or broken) is
+// deleted on the way, in one pass over the storage.
+function keptResults(now) {
+  const keys = attempt(() => Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))) ?? [];
+  const kept = new Map();
+  for (const key of keys) {
+    const code = key.slice(GUEST_PREFIX.length);
+    const result = parse(attempt(() => localStorage.getItem(key)));
+    if (isUsable(result, code, now)) kept.set(code, result);
+    else attempt(() => localStorage.removeItem(key));
+  }
+  return kept;
+}
+
 // Also deletes every guest result that must not stay: expired or broken.
 export function loadGuestResult(code, now = Date.now()) {
-  const keys = attempt(() => Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))) ?? [];
-  for (const key of keys) {
-    const kept = parse(attempt(() => localStorage.getItem(key)));
-    if (!isUsable(kept, key.slice(GUEST_PREFIX.length), now)) attempt(() => localStorage.removeItem(key));
-  }
-  const result = parse(attempt(() => localStorage.getItem(GUEST_PREFIX + code)));
-  return isUsable(result, code, now) ? result : null;
+  return keptResults(now).get(code) ?? null;
 }
 
 // Every guest result kept, the ones that must not stay deleted first.
 export function loadGuestResults(now = Date.now()) {
-  const keys = attempt(() => Object.keys(localStorage).filter((key) => key.startsWith(GUEST_PREFIX))) ?? [];
-  return keys.map((key) => loadGuestResult(key.slice(GUEST_PREFIX.length), now)).filter((result) => result !== null);
+  return [...keptResults(now).values()];
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
