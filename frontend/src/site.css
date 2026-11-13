@@ -3911,6 +3911,56 @@
     font-weight: 400;
   }
 
+  /* Spec #505 (the #507 mockup 5): a way to sign in a row, its mark in a circle on the left,
+     name and state in the middle, the one thing to do with it on the right; at large text sizes
+     the action drops under the words. */
+  .sign-in-method {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.25rem;
+    padding: 0.75rem 0;
+  }
+
+  .sign-in-method-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.6667rem;
+    height: 2.6667rem;
+    border-radius: 50%;
+    background-color: var(--color-brand-soft);
+  }
+
+  .sign-in-method-icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Google's G keeps its own colours, on white with a thin frame. */
+  .sign-in-method-icon:has(.btn-google-logo) {
+    border: 1px solid var(--color-line);
+    background-color: #fff;
+  }
+
+  .sign-in-method-icon .btn-google-logo {
+    stroke: none;
+  }
+
+  .sign-in-method-body {
+    display: flex;
+    flex: 1 1 8rem;
+    flex-direction: column;
+    overflow-wrap: anywhere;
+  }
+
   /* Deleting the account is set apart from everything above it, in red whatever its state. */
   .settings-card-danger,
   .settings-card-danger:is(:hover, :active, :focus-visible) {

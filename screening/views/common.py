@@ -76,6 +76,12 @@ def sign_in_choices(request):
     }
 
 
+def line_way_out(request):
+    """Inside LINE, the open-in-Safari-or-Chrome URL that takes a Google button's place on a
+    page; empty anywhere else (#511: account settings, the confirm and delete pages)."""
+    return open_outside_url(request) if is_line_in_app_browser(request) else ""
+
+
 def open_outside_url(request):
     """This page again with LINE's openExternalBrowser=1, which makes LINE open it in Safari or
     Chrome instead of its own browser (login-research.md L10); the page's own query is kept."""

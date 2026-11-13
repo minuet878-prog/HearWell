@@ -19,11 +19,14 @@ from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 from screening.forms import PasswordConfirmForm
+from screening.views.common import line_way_out
 
 # What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
-# leads back to. #511 adds add_google and remove_google.
+# leads back to.
 ACTIONS = {
     "delete_account": ("刪除帳號", "delete_account"),
+    "add_google": ("新增 Google 登入", "google_add"),
+    "remove_google": ("移除 Google 登入", "google_remove"),
 }
 
 # When the owner last confirmed (a Unix time); taken out by the action it is used for.
@@ -130,6 +133,7 @@ def confirm_identity(request):
             "words": words,
             "form": form,
             "providers": providers(user),
+            "open_outside_url": line_way_out(request),
             "confirm_error": confirm_error(request),
         },
     )

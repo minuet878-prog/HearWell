@@ -13,8 +13,8 @@ from django.views.decorators.http import require_http_methods
 from screening import models
 from screening.forms import ROC_OFFSET, PasswordConfirmForm, RegisterForm
 from screening.models import User
-from screening.views import confirm_identity
-from screening.views.common import health_data_page, safe_next, sign_in_choices
+from screening.views import confirm_identity, sign_in_methods
+from screening.views.common import health_data_page, line_way_out, safe_next, sign_in_choices
 
 
 @require_http_methods(["POST"])
@@ -106,7 +106,12 @@ def account_settings(request):
     return render(
         request,
         "screening/account.html",
-        {"consent": consent, "share": share, "roc_birth_year": roc_birth_year},
+        {
+            "consent": consent,
+            "share": share,
+            "roc_birth_year": roc_birth_year,
+            "sign_in_methods": sign_in_methods.group(request),
+        },
     )
 
 
@@ -142,6 +147,7 @@ def delete_account(request):
             "confirm_error": confirm_identity.confirm_error(request),
             "sign_in_methods": user.sign_in_methods.all(),
             "providers": confirm_identity.providers(user),
+            "open_outside_url": line_way_out(request),
             "submission_count": user.submissions.count(),
             "audiogram_count": user.audiograms.count(),
         },

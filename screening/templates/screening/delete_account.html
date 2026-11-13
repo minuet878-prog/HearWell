@@ -26,7 +26,8 @@
 {# Spec #505 acceptance 30 (the #507 mockup W17): no password field; the red button comes after 確認本人. #}
 <p class="font-bold text-heading">您的帳號沒有密碼，請用 Google 確認是本人。</p>
 <div class="max-w-form flex flex-col gap-4">
-    {% if "google" in providers %}{% include "screening/google_confirm_button.html" with action="delete_account" %}{% endif %}
+    {# Inside LINE Google refuses to sign in: a way out to Safari or Chrome instead (#511). #}
+    {% if "google" in providers %}{% if open_outside_url %}{% include "screening/line_open_outside.html" %}{% else %}{% include "screening/google_confirm_button.html" with action="delete_account" %}{% endif %}{% endif %}
     <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'account_settings' %}">取消</a>
 </div>
 {% else %}

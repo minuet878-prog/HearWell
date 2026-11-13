@@ -16,7 +16,7 @@ from django.views.decorators.http import require_http_methods
 from screening import oidc
 from screening.forms import GoogleNameForm
 from screening.models import SignInMethod, User
-from screening.views import confirm_identity
+from screening.views import confirm_identity, sign_in_methods
 from screening.views.accounts import NEW_ACCOUNT
 from screening.views.common import SIGN_IN_ERROR, safe_next, sign_in_choices
 
@@ -80,15 +80,22 @@ def google_callback(request):
     except oidc.Rejected as error:
         logger.warning("Google callback rejected: %s", error)
         return _failed(request, flow, FAILED)
-    # The later purposes (add_method #511, save_card #513) add theirs.
-    handlers = {"sign_in": _sign_in, "confirm_identity": confirm_identity.came_back}
+    # The later purpose (save_card #513) adds its own.
+    handlers = {
+        "sign_in": _sign_in,
+        "confirm_identity": confirm_identity.came_back,
+        "add_method": sign_in_methods.came_back,
+    }
     return handlers[identity.purpose](request, identity)
 
 
 def _failed(request, flow, message):
-    # 確認本人 goes back to its own page (#510); anything else to the login page.
+    # 確認本人 goes back to its own page (#510), adding one to account settings (#511); anything
+    # else to the login page.
     if flow.get("purpose") == "confirm_identity":
         return confirm_identity.trip_failed(request, flow)
+    if flow.get("purpose") == "add_method":
+        return sign_in_methods.trip_failed(request)
     return _back_to("login", request, message)
 
 
@@ -181,9 +188,9 @@ def google_same_email(request):
     pending = _pending(request)
     if pending is None:
         return _back_to("login", request, NAME_EXPIRED)
-    # After the password, back to account settings to add Google there (acceptance 14).
-    # #511: point this at its 登入方式 section (an anchor survives as the login page's next).
-    password_next = reverse("account_settings")
+    # After the password, back to account settings' 登入方式 group to add Google there
+    # (acceptance 14); the anchor survives as the login page's next.
+    password_next = f"{reverse('account_settings')}#sign-in-methods"
     return render(
         request,
         "screening/google_same_email.html",

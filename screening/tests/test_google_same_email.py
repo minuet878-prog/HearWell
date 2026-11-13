@@ -84,7 +84,7 @@ class SameEmailTests(TestCase):
         self.assertTrue(self.owner.check_password(PASSWORD))
         self.assertFalse(self.owner.sign_in_methods.exists())
 
-    # 14: #511 makes account settings' 登入方式 section, which this then points at.
+    # 14: to account settings' 登入方式 group (#511).
     def test_signing_in_with_the_password_goes_back_to_account_settings(self):
         self._back_from_google()
         page = self.client.get(reverse("google_same_email")).content.decode()
@@ -92,7 +92,11 @@ class SameEmailTests(TestCase):
         self.assertTrue(href.startswith(reverse("login") + "?"))
         self.assertEqual(self.client.get(href).status_code, 200)
         response = self.client.post(href, {"username": "王小明", "password": PASSWORD})
-        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
+        self.assertRedirects(
+            response,
+            f"{reverse('account_settings')}#sign-in-methods",
+            fetch_redirect_response=False,
+        )
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.owner.pk)
         self.assertFalse(self.owner.sign_in_methods.exists())
 
