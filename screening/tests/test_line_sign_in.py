@@ -15,7 +15,7 @@ from django.utils import timezone
 from screening import models, oidc
 from screening.models import Consent, GuestMonth, SignInMethod, User
 from screening.models.guest_counts import count_guest_saved
-from screening.tests import test_consent, test_line_in_app_browser
+from screening.tests import test_consent, test_google_sign_in, test_line_in_app_browser
 from screening.tests.helpers import (
     LINE_CHANNEL_ID,
     FakeGoogle,
@@ -313,6 +313,34 @@ class FirstTimeTests(TestCase):
         self.assertEqual(User.objects.count(), 2)
         self.assertEqual(SignInMethod.objects.get().user.username, "陳阿蘭")
 
+    def test_an_email_up_to_the_accounts_254_characters(self):
+        # The account's email column holds 254 (cross-review of #506, Spec 7): one longer is
+        # the form's error, not a database error.
+        domain = f"{'b' * 63}.{'c' * 63}.{'d' * 57}.com"
+        longest = f"{'a' * 64}@{domain}"
+        self.assertEqual(len(longest), 254)
+        self._to_name_page()
+        self.assertContains(self.client.get(reverse("line_name")), 'maxlength="254"')
+        response = self._name(email=f"a{longest}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("email", response.context["form"].errors)
+        self.assertEqual(User.objects.count(), 0)
+        self.assertRedirects(self._name(email=longest), reverse("consent"))
+        self.assertEqual(User.objects.get().email, longest)
+
+    def test_an_email_in_lines_answer_is_never_used(self):
+        # Only Google's email is ever taken from a provider (cross-review of #506, Spec 5): one
+        # LINE sends anyway is not kept, nor taken to the same-email page.
+        consented_user(username="林阿美", email="chen.lan@example.com", password=PASSWORD)
+        self.line.start()
+        response = self.line.come_back(
+            sub="line-new", email="chen.lan@example.com", email_verified=True
+        )
+        self.assertRedirects(response, reverse("line_name"))
+        self.assertEqual(self.client.session["screening.oidc_identity"]["email"], "")
+        self._name("陳阿蘭")
+        self.assertEqual(User.objects.get(username="陳阿蘭").email, "")
+
     def test_a_taken_name_gets_the_same_error_as_registering(self):
         User.objects.create_user(username="陳阿蘭", password="x")
         registering = self.client.post(reverse("register"), {"username": "陳阿蘭"})
@@ -406,6 +434,37 @@ class RevokeTests(TestCase):
                 output = "\n".join(logs.output)
                 self.assertIn("LINE access token not revoked", output)
                 self.assertNotIn("line-access-token", output)
+
+    def test_a_refusal_with_nothing_in_it_is_a_failed_revoke(self):
+        # LINE's revoke answering 400 with an empty body, through the real post_to_provider
+        # (cross-review of #506, Spec 9): an ERROR to monitoring, signed in all the same.
+        refusing = test_google_sign_in.PostToProviderTests.serve(self, 400, b"")
+        real_post = oidc.post_to_provider
+        with self.assertLogs("screening.oidc", "ERROR") as logs:
+            response = self.line.come_back(
+                sub="line-1", revoke=lambda fields: real_post(refusing, fields)
+            )
+        self.assertRedirects(response, reverse("consent"), target_status_code=302)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+        self.assertEqual(
+            [(record.levelname, record.getMessage()) for record in logs.records],
+            [("ERROR", "LINE access token not revoked: refused")],
+        )
+
+    def test_an_access_token_without_an_id_token_is_revoked(self):
+        # The token answer has an access token but no ID token (cross-review of #506, Spec 9).
+        token = {"access_token": "line-access-token", "token_type": "Bearer"}
+        with self.assertLogs("screening.views.sign_in", "ERROR"):
+            response = self.line.come_back(sub="line-1", token=token)
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertEqual(self.line.endpoints(), ["token", "revoke"])
+        self.assertEqual(self.line.calls[1][1]["access_token"], "line-access-token")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_a_token_answer_without_an_access_token_revokes_nothing(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR"):
+            self.line.come_back(sub="line-1", token={"error": "invalid_grant"})
+        self.assertEqual(self.line.endpoints(), ["token"])
 
     def test_an_id_token_line_refuses_still_has_its_access_token_revoked(self):
         with self.assertLogs("screening.views.sign_in", "ERROR"):
@@ -587,6 +646,21 @@ class CallbackSecurityTests(TestCase):
                     response = self.line.come_back(query=query)
                 self.assertRejected(response, UNAVAILABLE_WORDS)
         self.assertEqual(self.line.calls, [])
+
+    def test_the_callbacks_error_text_never_reaches_the_logs(self):
+        # Anyone holding this trip's state can write anything into `error` (cross-review of
+        # #506, Standards 3): the log lines and their tracebacks are fixed words.
+        crafted = "SERVER_ERROR chen.lan@example.com"
+        query = {
+            "error": crafted,
+            "error_description": "chen.lan",
+            "state": self.line.authorize["state"],
+        }
+        with self.assertLogs("screening", "DEBUG") as logs:
+            self.assertRejected(self.line.come_back(query=query), UNAVAILABLE_WORDS)
+        output = "\n".join(logs.output)
+        self.assertIn("LINE token exchange failed", output)
+        self.assertNotIn("chen.lan", output)
 
     def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
         with self.assertLogs("screening.views.sign_in", "ERROR") as logs:

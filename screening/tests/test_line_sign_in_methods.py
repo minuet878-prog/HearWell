@@ -309,6 +309,23 @@ class AddTests(TestCase):
         )
         self.assertFalse(other.sign_in_methods.exists())
 
+    def test_the_same_account_adding_two_lines_at_once_keeps_the_first(self):
+        # Two browsers of this account each add a different LINE (cross-review of #506,
+        # Standards 4): one LINE per account, so the second is not added, not a server error.
+        other_client = Client()
+        other_client.force_login(self.user)
+        other_line = FakeLine(other_client)
+        self.start_adding()
+        self.start_adding(client=other_client, line=other_line)
+        self.line.come_back(sub="line-first")
+        response = other_line.come_back(sub="line-second")
+        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
+        self.assertEqual(messages_on(other_client), [NOT_ADDED])
+        self.assertEqual(
+            list(self.user.sign_in_methods.values_list("provider", "subject")),
+            [("line", "line-first")],
+        )
+
     # 17: the other account takes it between the check and the insert.
     def test_a_line_added_to_another_account_meanwhile_is_not_added(self):
         real = SignInMethodQuerySet.for_identity

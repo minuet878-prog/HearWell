@@ -583,6 +583,19 @@ class CallbackSecurityTests(TestCase):
                     response = self.google.come_back(query=query)
                 self.assertRejected(response, "Google 暫時沒有回應，請稍後再試，或用其他方式登入。")
 
+    def test_the_callbacks_error_text_never_reaches_the_logs(self):
+        # Anyone holding this trip's state can write anything into `error` (cross-review of
+        # #506, Standards 3): the log lines and their tracebacks are fixed words.
+        query = {
+            "error": "server_error lin.mei@example.com",
+            "state": self.google.authorize["state"],
+        }
+        with self.assertLogs("screening", "DEBUG") as logs:
+            self.google.come_back(query=query)
+        output = "\n".join(logs.output)
+        self.assertIn("Google token exchange failed", output)
+        self.assertNotIn("lin.mei", output)
+
     def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
         with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
             response = self.google.come_back(query={"error": "server_error", "state": "forged"})
@@ -838,6 +851,12 @@ class PostToProviderTests(SimpleTestCase):
         body = b'{"error": "invalid_request", "error_description": "IdToken expired."}'
         answer = oidc.post_to_provider(self.serve(400, body), {})
         self.assertEqual(answer["error"], "invalid_request")
+
+    def test_a_refusal_without_a_body_is_still_a_refusal(self):
+        # Only a 2xx with nothing in it is an empty answer (LINE's revoke saying yes); a 4xx with
+        # nothing in it is the provider refusing (cross-review of #506, Spec 9).
+        answer = oidc.post_to_provider(self.serve(400, b""), {})
+        self.assertIn("error", answer)
 
     def test_no_usable_answer_is_unavailable(self):
         for name, status, body in (

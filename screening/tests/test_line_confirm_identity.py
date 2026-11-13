@@ -2,16 +2,20 @@
 password with any sign-in method on the account, LINE among them, by the same rules as Google's
 (#510): bound to its action, for 5 minutes, used once; and a LINE-only account deleting itself."""
 
+import threading
 from contextlib import nullcontext
+from unittest import mock
 from urllib.parse import parse_qsl, quote, urlsplit
 
-from django.test import TestCase
+from django.db import connection
+from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
 from screening import oidc
-from screening.models import SignInMethod, User
+from screening.models import CONSENT_VERSION, SignInMethod, User
 from screening.tests import (
     test_confirm_identity,
+    test_consent,
     test_line_in_app_browser,
     test_line_sign_in_methods,
     test_sign_in_methods_settings,
@@ -19,6 +23,7 @@ from screening.tests import (
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
     LINE_AUTHORIZE,
+    LINE_ENDPOINTS,
     FakeGoogle,
     FakeLine,
     consented_user,
@@ -249,6 +254,19 @@ class RemoveWithoutPasswordTests(TestCase):
         self.assertEqual(line.come_back(sub=OWN_LINE).status_code, 403)
         self.assertEqual(methods(self.user), [("line", OWN_LINE)])
 
+    def test_two_browsers_one_after_the_other_leave_one_way_in(self):
+        # Both trips started while the account had LINE and Google; the second comes back after
+        # the first removed its one.
+        other = Client()
+        other.force_login(self.user)
+        line = FakeLine(self.client)
+        line.authorize = off_to(self, press(self.client, "line", "remove_google"), LINE_AUTHORIZE)
+        other_line = FakeLine(other)
+        other_line.authorize = off_to(self, press(other, "line", "remove_line"), LINE_AUTHORIZE)
+        line.come_back(sub=OWN_LINE)
+        self.assertEqual(other_line.come_back(sub=OWN_LINE).status_code, 403)
+        self.assertEqual(methods(self.user), [("line", OWN_LINE)])
+
     def test_a_line_confirmation_for_deleting_removes_nothing(self):
         confirm_with_line(self)
         self.client.get(CONFIRM_REMOVE_LINE)
@@ -274,6 +292,108 @@ class RemoveWithoutPasswordTests(TestCase):
                 self.assertContains(page, NOT_CONFIRMED)
                 self.assertContains(page, LINE_BUTTON)
                 self.assertEqual(methods(self.user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+
+@line_on
+class ProviderTurnedOffTests(TestCase):
+    """A sign-in method whose provider's keys are gone signs in nowhere, so it is no way in: the
+    last one that still works is not removed (cross-review of #506, Standards 1)."""
+
+    def setUp(self):
+        # Google's keys off (only LINE's on): its row is still on the account.
+        self.user = line_and_google_user()
+        self.client.force_login(self.user)
+
+    def test_line_is_the_only_way_in_left(self):
+        self.assertEqual(self.client.get(CONFIRM_REMOVE_LINE).status_code, 403)
+        settings = self.client.get(reverse("account_settings"))
+        self.assertNotContains(settings, test_line_sign_in_methods.REMOVE_BUTTON)
+        self.assertContains(settings, test_line_sign_in_methods.ONLY_WAY_IN)
+
+    def test_line_coming_back_to_remove_itself_removes_nothing(self):
+        # Google's keys taken off while at LINE.
+        with google_on:
+            line = FakeLine(self.client)
+            line.authorize = off_to(self, press(self.client, "line", "remove_line"), LINE_AUTHORIZE)
+        self.assertEqual(line.come_back(sub=OWN_LINE).status_code, 403)
+        self.assertEqual(methods(self.user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+    def test_with_a_password_it_can_still_be_removed(self):
+        self.user.set_password(PASSWORD)
+        self.user.save()
+        self.client.force_login(self.user)
+        response = self.client.post(CONFIRM_REMOVE_LINE, {"password": PASSWORD})
+        self.assertRedirects(response, SETTINGS_GROUP, fetch_redirect_response=False)
+        self.assertEqual(methods(self.user), [("google", OWN_GOOGLE)])
+
+
+@google_on
+@line_on
+class RemovingAtTheSameMomentTests(TransactionTestCase):
+    """Two browsers removing LINE and Google from an account without a password at the same
+    moment: whichever comes second waits for the first and is refused, so the account keeps a
+    way in (cross-review of #506, Standards 1). Real threads with their own database
+    connections; only LINE's answers (post_to_provider) and a pause after each check are put
+    in."""
+
+    def test_one_of_two_removals_at_once_is_refused(self):
+        user = line_and_google_user()
+        trips = []
+        for action in ("remove_line", "remove_google"):
+            client = Client()
+            client.force_login(user)
+            trips.append((client, off_to(self, press(client, "line", action), LINE_AUTHORIZE)))
+        verified = {}
+        for _, authorize in trips:
+            line = FakeLine(None)
+            line.authorize = authorize
+            verified[authorize["nonce"]] = line.claims(OWN_LINE)
+
+        def line_answers(url, fields):
+            endpoint = LINE_ENDPOINTS[url]
+            if endpoint == "token":
+                return {"access_token": "line-access-token", "id_token": "line-id-token"}
+            if endpoint == "verify":
+                return verified[fields["nonce"]]
+            return {}
+
+        # The first to check waits (at most a second) for the other to check too: without a
+        # lock both find the other's sign-in method still there and both remove theirs.
+        checked = []
+        second_checked = threading.Event()
+        real_check = SignInMethod.can_be_removed
+
+        def check_then_pause(method):
+            answer = real_check(method)
+            checked.append(method.provider)
+            if len(checked) == 1:
+                second_checked.wait(timeout=1)
+            else:
+                second_checked.set()
+            return answer
+
+        errors = []
+
+        def come_back(client, authorize):
+            try:
+                query = {"code": "line-auth-code", "state": authorize["state"]}
+                client.get(reverse("line_callback"), query)
+            except Exception as error:
+                errors.append(error)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=come_back, args=trip) for trip in trips]
+        with (
+            mock.patch("screening.oidc.post_to_provider", side_effect=line_answers),
+            mock.patch.object(SignInMethod, "can_be_removed", check_then_pause),
+        ):
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+        self.assertEqual(errors, [])
+        self.assertEqual(len(methods(user)), 1)
 
 
 @line_on
@@ -450,3 +570,72 @@ class BeforeAgreeingTests(TestCase):
                     )
                 self.assertNotIn(oidc.FLOW, self.client.session)
         self.assertEqual(methods(user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+
+def a_newer_notice_goes_live(user):
+    """The privacy notice changes while the user is away at the provider: they agreed to the
+    one before only."""
+    user.consents.update(version=CONSENT_VERSION - 1)
+
+
+@google_on
+@line_on
+class NewerNoticeDuringTheTripTests(TestCase):
+    """The callback is open before agreeing (signing in is). Coming back to add or remove a
+    sign-in method after a newer privacy notice went live goes to agree first and writes
+    nothing; only confirming to delete the account goes on (cross-review of #506, Standards
+    2)."""
+
+    def test_adding_google_or_line_adds_nothing(self):
+        for provider, fake, authorize in (
+            ("google", FakeGoogle, GOOGLE_AUTHORIZE),
+            ("line", FakeLine, LINE_AUTHORIZE),
+        ):
+            with self.subTest(provider):
+                user = consented_user(username=f"adding_{provider}", password=PASSWORD)
+                self.client.force_login(user)
+                self.client.post(confirm_url(f"add_{provider}"), {"password": PASSWORD})
+                trip = fake(self.client)
+                trip.authorize = off_to(
+                    self, self.client.get(reverse(f"{provider}_add")), authorize
+                )
+                a_newer_notice_goes_live(user)
+                response = trip.come_back(sub=f"{provider}-new")
+                self.assertRedirects(
+                    response,
+                    test_consent._consent_url(reverse("account_settings")),
+                    fetch_redirect_response=False,
+                )
+                self.assertFalse(SignInMethod.objects.exists())
+
+    def test_removing_with_line_or_google_removes_nothing(self):
+        user = line_and_google_user()
+        self.client.force_login(user)
+        for provider, fake, authorize, sub in (
+            ("line", FakeLine, LINE_AUTHORIZE, OWN_LINE),
+            ("google", FakeGoogle, GOOGLE_AUTHORIZE, OWN_GOOGLE),
+        ):
+            with self.subTest(provider):
+                user.give_consent()
+                trip = fake(self.client)
+                pressed = press(self.client, provider, "remove_google")
+                trip.authorize = off_to(self, pressed, authorize)
+                a_newer_notice_goes_live(user)
+                response = trip.come_back(sub=sub)
+                self.assertRedirects(
+                    response,
+                    test_consent._consent_url(CONFIRM_REMOVE_GOOGLE),
+                    fetch_redirect_response=False,
+                )
+                self.assertEqual(methods(user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+    def test_confirming_to_delete_goes_on(self):
+        user = line_only_user(sub=OWN_LINE)
+        self.client.force_login(user)
+        line = FakeLine(self.client)
+        line.authorize = off_to(self, press(self.client, "line", "delete_account"), LINE_AUTHORIZE)
+        a_newer_notice_goes_live(user)
+        response = line.come_back(sub=OWN_LINE)
+        self.assertRedirects(response, CONFIRM_DELETE, target_status_code=302)
+        confirmed = self.client.session[confirm_identity.CONFIRMED]
+        self.assertEqual(confirmed["action"], "delete_account")

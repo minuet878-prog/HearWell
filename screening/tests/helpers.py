@@ -260,7 +260,8 @@ class FakeLine:
         """GET our callback. query: the callback's query instead of LINE's code and state.
         cancelled: back as LINE sends someone who pressed cancel (its error, this trip's state).
         token, verify, revoke: what that endpoint does instead of answering well: an exception
-        post_to_provider raises (oidc.Unavailable), or the JSON (a dict) it gives back.
+        post_to_provider raises (oidc.Unavailable), the JSON (a dict) it gives back, or a
+        function of the form fields that gives the answer.
         claims: changes to what the verify endpoint answers."""
         if cancelled:
             query = {
@@ -289,6 +290,8 @@ class FakeLine:
             self.calls.append((endpoint, fields))
             if isinstance(instead[endpoint], dict):
                 return instead[endpoint]
+            if callable(instead[endpoint]):
+                return instead[endpoint](fields)
             if instead[endpoint] is not None:
                 raise instead[endpoint]
             return answers[endpoint]
