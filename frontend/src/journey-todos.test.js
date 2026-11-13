@@ -145,6 +145,22 @@ describe("tickInPlace", () => {
     expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled();
   });
 
+  it("reloads the page, saving nothing, when it is of an earlier round", async () => {
+    // The cross review on #478: a tab left open across a retest or a new pair; the server wrote
+    // nothing, so neither the tick nor ✓ 已儲存 shows, and the page comes back as it is now.
+    const fresh = document.implementation.createHTMLDocument("");
+    fresh.body.innerHTML = `<ul>${row("form-9-book", false)}</ul>`;
+    const location = { reload: vi.fn() };
+    const win = { fetch: window.fetch, setTimeout, clearTimeout, location };
+    tickInPlace(fresh, win);
+    answer({ reload: true }, { status: 409 });
+    fresh.querySelector("button").click();
+    await vi.waitFor(() => expect(location.reload).toHaveBeenCalledTimes(1));
+    expect(fresh.querySelector("button").getAttribute("aria-checked")).toBe("false");
+    expect(fresh.querySelector(".todo-saved")).toBeNull();
+    expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled();
+  });
+
   it("sends the form the plain way when the network fails", async () => {
     window.fetch = vi.fn(async () => {
       throw new TypeError("offline");

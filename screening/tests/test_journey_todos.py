@@ -15,7 +15,8 @@ from django.utils import timezone
 
 from screening import models
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, stop_todos
+from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, current_rounds, stop_todos
+from screening.main_flow import get_user_state
 from screening.models import (
     FIRST_ROUND,
     AidAndSubsidy,
@@ -24,6 +25,7 @@ from screening.models import (
     Consent,
     GuideChapterView,
     Questionnaire,
+    Submission,
     Subsidy,
     TodoTick,
     User,
@@ -43,6 +45,13 @@ SOLID = test_home_journey.SOLID
 TODAY = test_care_journey.TODAY
 PTA_55 = test_care_journey.PTA_55
 NORMAL = test_care_journey.NORMAL
+
+
+def round_now(user, key):
+    """The round a page shows key's row in now, as its form sends it back (journey_todos.html);
+    "" for an 自動待辦, which has none."""
+    life_impact = get_user_state(user, timezone.localdate()).life_impact
+    return current_rounds(AidAndSubsidy.for_user(user), life_impact).get(key, "")
 
 
 def kinds(todos):
@@ -390,11 +399,9 @@ class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
     current_card = Ticket480TodoPagesTests.current_card
 
     def tick(self, key, ticked=True, next_url="/", **headers):
-        return self.client.post(
-            reverse("journey_todo_tick"),
-            {"todo": key, "ticked": "1" if ticked else "0", "next": next_url},
-            headers=headers,
-        )
+        data = {"todo": key, "ticked": "1" if ticked else "0", "next": next_url}
+        data["round"] = round_now(self.user, key)
+        return self.client.post(reverse("journey_todo_tick"), data, headers=headers)
 
     def test_a_tick_is_kept_on_the_home_page_and_my_guide(self):
         # Spec #478 acceptance 11.
@@ -661,7 +668,8 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
 
     def tick(self, *keys):
         for key in keys:
-            self.client.post(reverse("journey_todo_tick"), {"todo": key, "ticked": "1"})
+            data = {"todo": key, "ticked": "1", "round": round_now(self.user, key)}
+            self.client.post(reverse("journey_todo_tick"), data)
 
     def fit(self, fitted_on, subsidy=Subsidy.OTHER, level=""):
         # 配戴之後's question, which a first date and a changed one both go through.
@@ -818,6 +826,55 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
         self.answer(on=date(2026, 11, 10))
         self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, False)])
+
+    def tab(self, key):
+        """The form of key's row on the home page now, as a tab left open keeps it."""
+        content = self.client.get(reverse("index")).content.decode()
+        row = re.search(
+            rf'<li class="todo todo-manual[^"]*" data-todo="{key}".*?</li>', content, re.S
+        )
+        return dict(re.findall(r'<input type="hidden" name="(\w+)" value="([^"]*)"', row.group(0)))
+
+    def ticks_now(self, key):
+        return TodoTick.objects.filter(user=self.user, key=key).values_list("round_key", flat=True)
+
+    def test_a_tab_left_on_step_5_s_last_round_leaves_the_new_round_alone(self):
+        # The cross review on #478: tab A unticks the last round's tick after a retest and a
+        # tick in the new round; neither plainly nor in place does it touch the new one.
+        for accept in (BROWSER, "application/json"):
+            with self.subTest(accept=accept):
+                TodoTick.objects.all().delete()
+                Submission.objects.filter(user=self.user).delete()
+                self.at_step_5()
+                tab_a = self.tab("step-5-calendar")
+                self.assertEqual(tab_a["ticked"], "0")
+                retest = self.answer(code=hhia_s.CODE, on=date(2026, 11, 10))
+                self.tick("step-5-calendar")
+                response = self.client.post(
+                    reverse("journey_todo_tick"), tab_a, headers={"accept": accept}
+                )
+                if accept == BROWSER:
+                    self.assertRedirects(
+                        response, "/#todo-step-5-calendar", fetch_redirect_response=False
+                    )
+                else:
+                    self.assertEqual(response.status_code, 409)
+                    self.assertEqual(response.json(), {"reload": True})
+                self.assertIn(retest.pk, self.ticks_now("step-5-calendar"))
+
+    def test_a_tab_left_on_the_last_pair_leaves_the_new_pair_alone(self):
+        # The same after 換新機, step 4's card being 二十五號表's.
+        self.at_form_25()
+        self.tick("form-25-book")
+        tab_a = self.tab("form-25-book")
+        self.fit(date(2026, 10, 5), Subsidy.DISABILITY, AidLevel.MID)
+        self.tick("form-25-book")
+        response = self.client.post(
+            reverse("journey_todo_tick"), tab_a, headers={"accept": BROWSER}
+        )
+        self.assertRedirects(response, "/#todo-form-25-book", fetch_redirect_response=False)
+        self.assertEqual(sorted(self.ticks_now("form-25-book")), [1, 2])
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
 
     def test_a_new_life_impact_record_keeps_the_route_s_ticks(self):
         # The two rounds apart: a retest is no new pair, a new pair no retest.

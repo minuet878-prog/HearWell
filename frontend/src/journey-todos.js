@@ -67,6 +67,12 @@ export function tickInPlace(doc = document, win = window) {
           // Signed out meanwhile, the login page would come back as if saved.
           redirect: "manual",
         });
+        // Of an earlier round (a retest or a new pair since the page was opened): nothing was
+        // saved, so the page is shown as it is now (the cross review on #478).
+        if (response.status === 409) {
+          win.location.reload();
+          return;
+        }
         if (!response.ok) throw new Error(`not saved: ${response.status}`);
         reply = await response.json();
       } catch {
