@@ -14779,8 +14779,8 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
     """#513 (spec #505 acceptance 35, 36): a guest finishes HHIE-S and presses the save card's
     「使用 Google 帳戶繼續」. Google itself is played here: instead of going to Google, the browser
     comes straight back to our callback as if the user had said yes there, and our server's one
-    call to Google (screening.oidc.exchange_code) returns the ID token Google would. The rest,
-    state, nonce and PKCE included, runs for real."""
+    call to Google's token endpoint (screening.oidc.post_to_provider) returns the ID token Google
+    would. The rest, state, nonce and PKCE included, runs for real."""
 
     fixtures = ("questions_fixture.json",)
 
@@ -14806,7 +14806,7 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         self.sub = "google-e2e"
         # Our button's own URL: page.route never sees where a redirect goes (Playwright's docs).
         self.page.route(f"{self.live_server_url}/login/google/save-card", self.google_says_yes)
-        exchange = patch("screening.oidc.exchange_code", side_effect=self.token_response)
+        exchange = patch("screening.oidc.post_to_provider", side_effect=self.token_response)
         exchange.start()
         self.addCleanup(exchange.stop)
 
@@ -14822,7 +14822,7 @@ class GuestSaveWithGoogleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         callback = f"{self.live_server_url}/login/google/callback?code=e2e&state={query['state']}"
         route.fulfill(response=response, headers=response.headers | {"location": callback})
 
-    def token_response(self, **kwargs):
+    def token_response(self, url, fields):
         now = int(timezone.now().timestamp())
         claims = {
             "iss": "https://accounts.google.com",

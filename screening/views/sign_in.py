@@ -1,4 +1,5 @@
-"""Signing up and in with Google (spec #505, ADR 0056, ADR 0057)."""
+"""Signing up and in with Google or LINE (spec #505, #506, ADR 0056, ADR 0057). Both go the same
+way; each provider has its own URLs (google_*, line_*) over the shared views here."""
 
 import logging
 from dataclasses import replace
@@ -15,7 +16,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from screening import oidc
-from screening.forms import GoogleNameForm
+from screening.forms import GoogleNameForm, LineNameForm
 from screening.models import SignInMethod, User
 from screening.views import confirm_identity, sign_in_methods
 from screening.views.accounts import NEW_ACCOUNT
@@ -23,21 +24,47 @@ from screening.views.common import SIGN_IN_ERROR, safe_next, sign_in_choices
 
 logger = logging.getLogger(__name__)
 
-# The words a Google trip comes back with (the #507 mockup W4-W7, W10); technical details go to
-# error monitoring only.
-CANCELLED = "沒有完成 Google 登入。可以再試一次，或用帳號密碼登入。"
-UNAVAILABLE = "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。"
+# The words a trip comes back with, by provider: Google's (the #507 mockup W4-W7, W10, the end of
+# two changed by the #539 mockup W8) and LINE's (#506 acceptance 13, 14; the #539 mockup W2, W3).
+# Technical details go to error monitoring only.
+CANCELLED = {
+    "google": "沒有完成 Google 登入。可以再試一次，或用其他方式登入。",
+    "line": "沒有完成 LINE 登入，可以再試一次，或用其他方式登入。",
+}
+UNAVAILABLE = {
+    "google": "Google 暫時沒有回應，請稍後再試，或用其他方式登入。",
+    "line": "LINE 暫時沒有回應，請稍後再試，或用其他方式登入。",
+}
 FAILED = "登入沒有完成，請再試一次。"
 UNVERIFIED = "這個 Google 帳戶的 email 還沒有驗證，沒辦法用來註冊。請改用帳號密碼註冊。"
-NAME_EXPIRED = "等太久了，請再按一次「使用 Google 帳戶登入」。"
+# LINE's has no wording in the #539 mockup: Google's, with the LINE button's words (W1).
+NAME_EXPIRED = {
+    "google": "等太久了，請再按一次「使用 Google 帳戶登入」。",
+    "line": "等太久了，請再按一次「使用 LINE 帳號登入」。",
+}
 # #505 acceptance 11 (no wording in the mockup; a draft for the owner to settle).
 ADMIN = "這個帳號請用帳號密碼登入。"
 
-# Who came back from Google for the first time, until the name page makes the account:
-# {"provider", "subject", "email", "purpose", "next", "at" (a Unix time)}. Gone once anyone signs
-# in (forget_pending).
+# Error monitoring keeps a log line's template only (config/monitoring.py), so each provider's
+# name is written into its own.
+NOT_ANSWERING_LOG = {
+    "google": "Google token exchange failed",
+    "line": "LINE token exchange failed",
+}
+REJECTED_LOG = {"google": "Google callback rejected", "line": "LINE callback rejected"}
+
+# Who came back from a provider for the first time, until the name page makes the account:
+# {"provider", "subject", "email" (Google's; "" from LINE), "purpose", "next", "at" (a Unix
+# time)}. Gone once anyone signs in (forget_pending).
 PENDING = "screening.oidc_identity"
 PENDING_SECONDS = 10 * 60  # #505 acceptance 7
+
+# Each provider's name page: its form and template. LINE gives no email, so its form asks for
+# one (#506 acceptance 5).
+NAME_PAGES = {
+    "google": (GoogleNameForm, "screening/google_name.html"),
+    "line": (LineNameForm, "screening/line_name.html"),
+}
 
 
 def forget_pending(sender, request, **kwargs):
@@ -48,7 +75,8 @@ def forget_pending(sender, request, **kwargs):
 
 
 class LoginView(auth_views.LoginView):
-    """Django's login page, with the Google button above the password form (spec #505)."""
+    """Django's login page, with the LINE and Google buttons above the password form (spec #505,
+    #506)."""
 
     template_name = "screening/login.html"
     http_method_names = ("get", "post")
@@ -57,9 +85,9 @@ class LoginView(auth_views.LoginView):
         return super().get_context_data(**kwargs) | sign_in_choices(self.request)
 
 
-def _require_google_keys():
-    # Without the keys Google does not exist on the site (#505 acceptance 1).
-    if not oidc.enabled("google"):
+def _require_keys(provider):
+    # Without its keys a provider does not exist on the site (#505, #506 acceptance 1).
+    if not oidc.enabled(provider):
         raise Http404
 
 
@@ -68,38 +96,56 @@ def _back_to(page, request, message):
     return redirect(page)
 
 
+def _start(request, provider):
+    _require_keys(provider)
+    return HttpResponseRedirect(oidc.begin(request, provider, "sign_in", safe_next(request)))
+
+
 @require_http_methods(["GET"])
 def google_start(request):
-    _require_google_keys()
-    return HttpResponseRedirect(oidc.begin(request, "google", "sign_in", safe_next(request)))
+    return _start(request, "google")
+
+
+@require_http_methods(["GET"])
+def line_start(request):
+    return _start(request, "line")
 
 
 @require_http_methods(["GET"])
 def google_save_card(request):
     """The guest result's save card (#513): where the trip ends is _save_card's to say."""
-    _require_google_keys()
+    _require_keys("google")
     return HttpResponseRedirect(oidc.begin(request, "google", "save_card"))
+
+
+def _callback(request, provider):
+    _require_keys(provider)
+    # Read before finish() takes the trip out: where a trip that fails goes back to.
+    flow = request.session.get(oidc.FLOW) or {}
+    try:
+        identity = oidc.finish(request, provider)
+    except oidc.Cancelled:
+        return _failed(request, flow, CANCELLED[provider])
+    except oidc.Unavailable:
+        logger.exception(NOT_ANSWERING_LOG[provider])
+        return _failed(request, flow, UNAVAILABLE[provider])
+    except oidc.Rejected:
+        # To error monitoring as an ERROR, as above: which check failed is the exception's type
+        # and line; its words are fixed strings, never a token, code or email.
+        logger.exception(REJECTED_LOG[provider])
+        return _failed(request, flow, FAILED)
+    came_back, _ = TRIPS[identity.purpose]
+    return came_back(request, identity)
 
 
 @require_http_methods(["GET"])
 def google_callback(request):
-    _require_google_keys()
-    # Read before finish() takes the trip out: where a trip that fails goes back to.
-    flow = request.session.get(oidc.FLOW) or {}
-    try:
-        identity = oidc.finish(request, "google")
-    except oidc.Cancelled:
-        return _failed(request, flow, CANCELLED)
-    except oidc.Unavailable:
-        logger.exception("Google token exchange failed")
-        return _failed(request, flow, UNAVAILABLE)
-    except oidc.Rejected:
-        # To error monitoring as an ERROR, as above: which check failed is the exception's type
-        # and line; its words are fixed strings, never a token, code or email.
-        logger.exception("Google callback rejected")
-        return _failed(request, flow, FAILED)
-    came_back, _ = TRIPS[identity.purpose]
-    return came_back(request, identity)
+    return _callback(request, "google")
+
+
+@require_http_methods(["GET"])
+def line_callback(request):
+    return _callback(request, "line")
 
 
 def _failed(request, flow, message):
@@ -114,9 +160,9 @@ def _back_to_login(request, flow, message):
 
 def _save_card(request, identity):
     """From the save card (#505 acceptance 35, 36, Q18): signed in or registered as _sign_in does,
-    then the save page. An account Google already knows is asked first, naming it, as any login
-    with guest results is (the Google this phone uses may be a family member's); only a new
-    account is taken as the guest's own and saves straight away."""
+    then the save page. An account the provider already knows is asked first, naming it, as any
+    login with guest results is (the Google or LINE this phone uses may be a family member's);
+    only a new account is taken as the guest's own and saves straight away."""
     # One look decides both: a second could find an account the first did not, and sign into it
     # without asking (Codex review of #505, Spec 1).
     method = _method(identity)
@@ -137,16 +183,18 @@ def _method(identity):
 def _signed_in_as(request, identity, method):
     if method is not None:
         user = method.user
-        # Admin accounts sign in with a password only (#505 acceptance 11, Q16); login() skips
-        # the backend's is_active check, so a deactivated account is turned away here.
+        # Admin accounts sign in with a password only (#505 acceptance 11, Q16, #506 acceptance
+        # 22); login() skips the backend's is_active check, so a deactivated account is turned
+        # away here.
         if user.is_admin:
             return _back_to("login", request, ADMIN)
         if not user.is_active:
             return _back_to("login", request, FAILED)
         login(request, user)
         return HttpResponseRedirect(identity.next or reverse("consent"))
-    # Never seen: only an email Google says is verified becomes an account's (Q3, acceptance 9).
-    if not identity.email_verified or not identity.email:
+    # Never seen. Only an email Google says is verified becomes an account's (Q3, #505
+    # acceptance 9); LINE gives none, one may be typed on its name page (#506 acceptance 5).
+    if identity.provider == "google" and not (identity.email_verified and identity.email):
         return _back_to("register", request, UNVERIFIED)
     request.session[PENDING] = {
         "provider": identity.provider,
@@ -156,10 +204,11 @@ def _signed_in_as(request, identity, method):
         "next": identity.next,
         "at": timezone.now().timestamp(),
     }
-    # An email already on an account (any case) is never signed into nor merged (ADR 0057).
-    if User.objects.filter(email__iexact=identity.email).exists():
+    # An email already on an account (any case) is never signed into nor merged (ADR 0057). Only
+    # Google's: the one typed on LINE's name page is not asked about (#506 acceptance 8).
+    if identity.email and User.objects.filter(email__iexact=identity.email).exists():
         return redirect("google_same_email")
-    return redirect("google_name")
+    return redirect(f"{identity.provider}_name")
 
 
 # The purposes a trip can have (oidc.begin), the only list of them: what each does with who came
@@ -173,10 +222,11 @@ TRIPS = {
 }
 
 
-def _pending(request):
-    """The identity waiting for its name, or None when there is none or it is too old (removed)."""
+def _pending(request, provider):
+    """The provider's identity waiting for its name, or None when there is none or it is too old
+    (removed)."""
     pending = request.session.get(PENDING)
-    if pending is None or pending["provider"] != "google":
+    if pending is None or pending["provider"] != provider:
         return None
     if timezone.now().timestamp() - pending["at"] > PENDING_SECONDS:
         del request.session[PENDING]
@@ -184,20 +234,20 @@ def _pending(request):
     return pending
 
 
-@never_cache  # it shows the Google email
-@require_http_methods(["GET", "POST"])
-def google_name(request):
-    """#505 acceptance 5-7: the first time back from Google, a name (and a birth year) before the
-    account is made; leaving here makes nothing."""
-    _require_google_keys()
-    pending = _pending(request)
+def _name_page(request, provider):
+    """The first time back from a provider, a name (and a birth year, and from LINE an email)
+    before the account is made; leaving here makes nothing."""
+    _require_keys(provider)
+    pending = _pending(request, provider)
     if pending is None:
-        return _back_to("login", request, NAME_EXPIRED)
-    form = GoogleNameForm(request.POST if request.method == "POST" else None)
+        return _back_to("login", request, NAME_EXPIRED[provider])
+    form_class, template = NAME_PAGES[provider]
+    form = form_class(request.POST if request.method == "POST" else None)
     if form.is_valid():
         try:
             with transaction.atomic():
-                user = form.save(email=pending["email"])
+                # Google's email, or the one typed on LINE's name page ("" when left empty).
+                user = form.save(email=form.cleaned_data.get("email", pending["email"]))
                 SignInMethod.objects.create(
                     user=user,
                     provider=pending["provider"],
@@ -205,7 +255,7 @@ def google_name(request):
                     used_to_register=True,
                 )
         except IntegrityError:
-            # Someone else took this name after is_valid(), or this Google got its account
+            # Someone else took this name after is_valid(), or this code got its account
             # meanwhile (the page sent twice); any other clash is a real error.
             if SignInMethod.objects.filter(
                 provider=pending["provider"], subject=pending["subject"]
@@ -222,7 +272,21 @@ def google_name(request):
             if pending["next"]:
                 return redirect_to_login(pending["next"], reverse("consent"))
             return redirect("consent")
-    return render(request, "screening/google_name.html", {"form": form, "email": pending["email"]})
+    return render(request, template, {"form": form, "email": pending["email"]})
+
+
+@never_cache  # it shows the Google email
+@require_http_methods(["GET", "POST"])
+def google_name(request):
+    """#505 acceptance 5-7: the email is Google's, shown as a row."""
+    return _name_page(request, "google")
+
+
+@never_cache  # it shows the email typed
+@require_http_methods(["GET", "POST"])
+def line_name(request):
+    """#506 acceptance 5-8 (the #539 mockup 4): an optional email field in place of the row."""
+    return _name_page(request, "line")
 
 
 @never_cache  # it shows the Google email
@@ -230,10 +294,10 @@ def google_name(request):
 def google_same_email(request):
     """#505 acceptance 12-14 (the #507 mockup 4, W11): the Google email is already some account's.
     Nobody is signed in; the identity waits, as for the name page, in case it is not theirs."""
-    _require_google_keys()
-    pending = _pending(request)
+    _require_keys("google")
+    pending = _pending(request, "google")
     if pending is None:
-        return _back_to("login", request, NAME_EXPIRED)
+        return _back_to("login", request, NAME_EXPIRED["google"])
     # After the password, back to account settings' 登入方式 group to add Google there
     # (acceptance 14); the anchor survives as the login page's next.
     password_next = f"{reverse('account_settings')}#sign-in-methods"

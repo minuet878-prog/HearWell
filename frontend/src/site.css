@@ -307,7 +307,8 @@
     border-width: 1px;
     font-weight: 600;
   }
-  .btn-google-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* Spec #506 (the #539 mockup D1 B): LINE's button is this same button, with LINE's icon. */
+  .btn-google-logo, .btn-line-logo { flex: none; width: 1.5rem; height: 1.5rem; }
   /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
   .auth-or {
     display: flex;
