@@ -212,6 +212,10 @@ NORM_COMPARISON_TEXT = {"below": "低於常模", "within": "在範圍內", "abov
 # The same comparisons in the IOI-HA result page's words (#183).
 NORM_VERSUS_TEXT = {"below": "比一般使用者低", "within": "在一般範圍內", "above": "比一般使用者好"}
 
+# How a record's hearing aids were worn, in words: 我的紀錄, the result page and the guest
+# scoring API alike.
+TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
+
 
 def compare_to_norm(group, item_number, score):
     lower, upper = IOI_HA_NORMS[group][item_number]

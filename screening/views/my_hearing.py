@@ -11,6 +11,7 @@ from screening.scoring import (
     IOI_HA_ITEM_NAMES,
     IOI_HA_NORMS,
     NORM_COMPARISON_TEXT,
+    TREND_STATUS_TEXT,
     compare_to_norm,
     since_last_text,
 )
@@ -51,7 +52,6 @@ def _ioi_ha_chart(records):
     return {"latest": latest, "previous": previous, "grouped": grouped, "columns": columns}
 
 
-TREND_STATUS_TEXT = {False: "沒戴助聽器", True: "有戴助聽器", None: "助聽器未記錄"}
 # 「和上一次比」's extra line when the two records were worn differently (ticket #214). A
 # life-impact tab never shows one: it compares records worn the same way.
 WEARING_CHANGE_TEXT = {

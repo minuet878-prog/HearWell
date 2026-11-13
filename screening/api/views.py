@@ -31,7 +31,7 @@ from screening.models import (
     count_guest,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
-from screening.views.my_hearing import TREND_STATUS_TEXT
+from screening.scoring import TREND_STATUS_TEXT
 
 
 class QuestionnaireList(ListAPIView):

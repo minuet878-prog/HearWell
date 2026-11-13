@@ -4,8 +4,9 @@ from django.utils import timezone
 
 from screening.care_journey import next_step
 from screening.models import Submission
+from screening.scoring import TREND_STATUS_TEXT
 from screening.views.common import health_data_page
-from screening.views.my_hearing import TREND_STATUS_TEXT, shows_wearing_comparison
+from screening.views.my_hearing import shows_wearing_comparison
 
 
 @login_required
