@@ -1,13 +1,14 @@
 import base64
-import dataclasses
 import hashlib
 import json
+import threading
 from datetime import date, timedelta
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
 from django.db import DatabaseError, connection
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -492,7 +493,9 @@ class CallbackSecurityTests(TestCase):
         self.assertRejected(self.google.come_back(sub=None), exchanged=True)
 
     def test_an_unreadable_id_token_is_rejected(self):
-        with mock.patch("screening.oidc.exchange_code", return_value={"id_token": "not-a-token"}):
+        with mock.patch(
+            "screening.oidc.post_to_provider", return_value={"id_token": "not-a-token"}
+        ):
             response = self.client.get(
                 reverse("google_callback"),
                 {"code": "auth-code", "state": self.google.authorize["state"]},
@@ -765,19 +768,64 @@ class PrivacyTests(TestCase):
         self.assertContains(self.client.get(test_consent._consent_url(url)), "Google")
 
 
-@google_on
-class ExchangeCodeTests(TestCase):
-    """#505 acceptance 20 at the real exchange_code: no answer from the token endpoint is
-    Unavailable, never a server error. Nothing listens on port 9 of this machine."""
+class PostToProviderTests(SimpleTestCase):
+    """#505 acceptance 20 and #506 acceptance 12, 14 at the real post_to_provider, against a
+    small server on this machine: what a provider answers is given back, no answer is
+    Unavailable, never a server error."""
 
-    def test_a_token_endpoint_that_does_not_answer_is_unavailable(self):
-        nowhere = dataclasses.replace(
-            oidc.PROVIDERS["google"], token_url="http://127.0.0.1:9/token"
+    def serve(self, status, body):
+        """A provider on this machine answering every POST with this status and body; the form
+        it was sent goes into self.received."""
+        self.received = []
+        test = self
+
+        class Provider(BaseHTTPRequestHandler):
+            def do_POST(self):
+                length = int(self.headers["Content-Length"])
+                test.received.append(dict(parse_qsl(self.rfile.read(length).decode())))
+                self.send_response(status)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Provider)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_port}/token"
+
+    def test_posts_the_form_and_gives_the_json(self):
+        url = self.serve(200, b'{"id_token": "x"}')
+        self.assertEqual(
+            oidc.post_to_provider(url, {"code": "c", "nonce": "中"}), {"id_token": "x"}
         )
-        with (
-            mock.patch.dict(oidc.PROVIDERS, {"google": nowhere}),
-            self.assertRaises(oidc.Unavailable),
+        self.assertEqual(self.received, [{"code": "c", "nonce": "中"}])
+
+    def test_an_empty_answer_is_an_empty_dict(self):
+        # LINE's revoke endpoint answers 200 with nothing in it.
+        self.assertEqual(oidc.post_to_provider(self.serve(200, b""), {}), {})
+
+    def test_a_refusal_gives_its_json(self):
+        # LINE's verify endpoint refusing an ID token: 400 with an error in its JSON.
+        body = b'{"error": "invalid_request", "error_description": "IdToken expired."}'
+        answer = oidc.post_to_provider(self.serve(400, body), {})
+        self.assertEqual(answer["error"], "invalid_request")
+
+    def test_no_usable_answer_is_unavailable(self):
+        for name, status, body in (
+            ("server error", 500, b'{"error": "server_error"}'),
+            ("not json", 200, b"<html>"),
+            ("a refusal not in json", 400, b"Bad Request"),
+            ("not an object", 200, b"[]"),
         ):
-            oidc.exchange_code(
-                provider="google", code="c", code_verifier="v", redirect_uri="https://x/cb"
-            )
+            with self.subTest(name), self.assertRaises(oidc.Unavailable):
+                oidc.post_to_provider(self.serve(status, body), {})
+
+    def test_a_provider_that_does_not_answer_is_unavailable(self):
+        # Nothing listens on port 9 of this machine.
+        with self.assertRaises(oidc.Unavailable):
+            oidc.post_to_provider("http://127.0.0.1:9/token", {"code": "c"})

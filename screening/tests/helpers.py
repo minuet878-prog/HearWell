@@ -99,6 +99,7 @@ google_on = override_settings(
     SITE_URL="https://tingpal.test",
 )
 GOOGLE_AUTHORIZE = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN = "https://oauth2.googleapis.com/token"
 
 
 def id_token(**claims):
@@ -113,8 +114,9 @@ def id_token(**claims):
 
 class FakeGoogle:
     """Google for a test: start() follows the Google button to the authorize URL, come_back()
-    returns to our callback as Google would. Only screening.oidc.exchange_code, our server's call
-    to Google's token endpoint, is replaced; state, nonce, PKCE and their expiry run for real.
+    returns to our callback as Google would. Only screening.oidc.post_to_provider, our server's
+    calls to a provider, is replaced: Google's token endpoint answers; state, nonce, PKCE and
+    their expiry run for real.
 
         google = FakeGoogle(self.client)
         google.start()
@@ -124,7 +126,7 @@ class FakeGoogle:
     def __init__(self, client):
         self.client = client
         self.authorize = None  # the last authorize URL's query, one value per name
-        self.exchanges = []  # the keyword arguments of each exchange_code call
+        self.exchanges = []  # the form fields of each call to Google's token endpoint
 
     def start(self, **params):
         response = self.client.get(reverse("google_start"), params)
@@ -159,8 +161,8 @@ class FakeGoogle:
     ):
         """GET our callback. query: the callback's query instead of Google's code and state.
         cancelled: back as Google sends someone who said no (its error, this trip's state).
-        exchange: what exchange_code does instead of returning the ID token: an exception it
-        raises, or the JSON (a dict) it gives back."""
+        exchange: what the token endpoint does instead of returning the ID token: an exception
+        post_to_provider raises, or the JSON (a dict) it gives back."""
         if cancelled:
             query = {"error": "access_denied", "state": self.authorize["state"]}
         if query is None:
@@ -170,13 +172,14 @@ class FakeGoogle:
             "id_token": id_token(**self.claims(sub, email, **claims)),
         }
 
-        def fake_exchange(**kwargs):
-            self.exchanges.append(kwargs)
+        def fake_post(url, fields):
+            assert url == GOOGLE_TOKEN, url
+            self.exchanges.append(fields)
             if isinstance(exchange, dict):
                 return exchange
             if exchange is not None:
                 raise exchange
             return token
 
-        with patch("screening.oidc.exchange_code", side_effect=fake_exchange):
+        with patch("screening.oidc.post_to_provider", side_effect=fake_post):
             return self.client.get(reverse("google_callback"), query)

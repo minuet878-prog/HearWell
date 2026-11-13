@@ -1,9 +1,9 @@
 """A thin OpenID Connect client for signing in with Google (spec #505, ADR 0056).
 
 Python's own library only. begin() keeps what a trip needs in the session; finish() takes it out
-again on the way back (once used, gone) and checks it before and after the one call our server
-makes to the provider, exchange_code(), which is the only thing tests replace. Provider and
-purpose are parameters: LINE joins this flow in its own spec.
+again on the way back (once used, gone) and checks it before and after calling the provider.
+Every call our server makes to a provider goes through post_to_provider(), the only thing tests
+replace. Provider and purpose are parameters: LINE joins this flow in its own spec.
 """
 
 import base64
@@ -12,6 +12,7 @@ import hmac
 import http.client
 import json
 import secrets
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -45,7 +46,7 @@ PROVIDERS = {
 # "started_at" (a Unix time), "next"}. One at a time; a new trip replaces an unfinished one.
 FLOW = "screening.oidc_flow"
 FLOW_SECONDS = 10 * 60  # #505 acceptance 16
-TOKEN_TIMEOUT_SECONDS = 10
+PROVIDER_TIMEOUT_SECONDS = 10
 
 
 class SignInFailed(Exception):
@@ -127,31 +128,33 @@ def begin(request, provider, purpose, next_url=""):
     return f"{PROVIDERS[provider].authorize_url}?{urlencode(query)}"
 
 
-def exchange_code(*, provider, code, code_verifier, redirect_uri):
-    """Our server's one call to the provider: the code for tokens, at its token endpoint.
-    Gives the token endpoint's JSON; raises Unavailable when there is no usable answer."""
-    body = urlencode(
-        {
-            "grant_type": "authorization_code",
-            "code": code,
-            "code_verifier": code_verifier,
-            "redirect_uri": redirect_uri,
-            "client_id": _setting(provider, "CLIENT_ID"),
-            "client_secret": _setting(provider, "CLIENT_SECRET"),
-        }
-    ).encode("ascii")
+def post_to_provider(url, fields):
+    """Our server's one way of calling a provider: a form POST of fields to url. Gives the JSON
+    answer, {} for an empty one, also when the provider refuses the request (HTTP 4xx, with an
+    `error` in its JSON); raises Unavailable when there is no usable answer: no connection, a
+    timeout, a server error (5xx), or an answer that is not a JSON object."""
     request = urllib.request.Request(
-        PROVIDERS[provider].token_url,
-        data=body,
+        url,
+        data=urlencode(fields).encode("ascii"),
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=TOKEN_TIMEOUT_SECONDS) as response:
-            return json.loads(response.read())
+        try:
+            with urllib.request.urlopen(request, timeout=PROVIDER_TIMEOUT_SECONDS) as response:
+                body = response.read()
+        except urllib.error.HTTPError as error:
+            if error.code >= 500:
+                raise
+            with error:
+                body = error.read()
+        answer = json.loads(body) if body else {}
     except (OSError, http.client.HTTPException, ValueError) as error:
-        # OSError covers URLError, HTTPError (an error answer, e.g. invalid_grant) and timeouts;
-        # HTTPException a connection cut while reading; ValueError an answer that is not JSON.
-        raise Unavailable(f"{provider} token endpoint: {type(error).__name__}") from error
+        # OSError covers URLError, a 5xx HTTPError and timeouts; HTTPException a connection cut
+        # while reading; ValueError an answer that is not JSON.
+        raise Unavailable(f"{url}: {type(error).__name__}") from error
+    if not isinstance(answer, dict):
+        raise Unavailable(f"{url}: not a JSON object")
+    return answer
 
 
 def _claims(id_token):
@@ -191,15 +194,21 @@ def finish(request, provider):
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")
-    tokens = exchange_code(
-        provider=provider,
-        code=code,
-        code_verifier=flow["code_verifier"],
-        redirect_uri=callback_url(provider),
+    # The code for tokens, at the provider's token endpoint.
+    tokens = post_to_provider(
+        PROVIDERS[provider].token_url,
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "code_verifier": flow["code_verifier"],
+            "redirect_uri": callback_url(provider),
+            "client_id": _setting(provider, "CLIENT_ID"),
+            "client_secret": _setting(provider, "CLIENT_SECRET"),
+        },
     )
-    # An answer without an ID token (an error in its JSON, even with HTTP 200) is the provider
-    # not answering, as an HTTP error is (#505 acceptance 20).
-    if not isinstance(tokens, dict) or "id_token" not in tokens:
+    # An answer without an ID token (an error in its JSON, whatever its HTTP status) is the
+    # provider not answering (#505 acceptance 20).
+    if "id_token" not in tokens:
         raise Unavailable(f"{provider} token endpoint: no id_token")
     claims = _claims(tokens["id_token"])
     if claims.get("iss") not in PROVIDERS[provider].issuers:
