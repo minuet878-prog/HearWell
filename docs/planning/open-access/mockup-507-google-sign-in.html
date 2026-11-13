@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#507 Google 登入（設計圖第一版）</title>
+<style>
+  /* ---- tokens and base: copied from #470 (docs/planning/redesign/mockup-470-account.html) ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+    /* Google's light button (branding guidelines): fill, 1px stroke, text */
+    --g-fill: #ffffff; --g-stroke: #747775; --g-text: #1f1f1f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 4px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; max-width: 100%; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .q code, .spec code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newc { outline: 2px dashed var(--annot); outline-offset: 4px; border-radius: 6px; position: relative; }
+  .newc-tag { position: absolute; right: 0; top: -14px; font-size: 12px; font-weight: 700; color: #fff; background: var(--annot); padding: 0 6px; border-radius: 4px; line-height: 1.5; z-index: 3; }
+
+  .phone { background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; min-height: 844px; }
+  .pg { padding: 18px 20px 120px; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 6; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; }
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  .brand { margin: 0; font-size: 22px; font-weight: 700; color: var(--primary); }
+  .h1 { font-size: 28px; color: var(--heading); margin: 14px 0 8px; line-height: 1.3; font-weight: 700; }
+  .h2 { font-size: 22px; color: var(--heading); margin: 28px 0 8px; line-height: 1.35; font-weight: 700; }
+  .pg p { margin: 0 0 12px; }
+  .pg ul { margin: 0 0 12px; padding-left: 1.3em; }
+  .muted { color: var(--muted); }
+
+  .b { display: flex; align-items: center; justify-content: center; min-height: 56px; width: 100%; font-size: 20px; font-weight: 700; margin-top: 12px; text-align: center; padding: 0 12px; border-radius: 14px; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .solid-d { background: var(--severe); color: #fff; }
+  .tlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* Google button: light theme, standard 4-colour G on white, scaled up from 14px keeping the
+     ratio (allowed by the branding guidelines). Same height and corner as our .b buttons. */
+  .gbtn { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 56px; width: 100%; margin-top: 12px; padding: 0 16px; border-radius: 14px; background: var(--g-fill); color: var(--g-text); box-shadow: inset 0 0 0 1px var(--g-stroke); font-size: 20px; font-weight: 600; }
+  .gbtn .g { flex: none; width: 24px; height: 24px; }
+
+  .or { display: flex; align-items: center; gap: 12px; margin: 22px 0 14px; color: var(--muted); }
+  .or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
+  .field { margin: 0 0 18px; }
+  .lab { display: block; font-weight: 700; color: var(--heading); margin: 0 0 4px; }
+  .labrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 4px; }
+  .inp { position: relative; display: flex; align-items: center; min-height: 58px; border: 2px solid var(--line-strong); border-radius: 12px; padding: 0 14px 0 48px; font-size: 20px; color: var(--heading); background: #fff; }
+  .inp svg { position: absolute; left: 13px; width: 24px; height: 24px; fill: none; stroke: var(--body); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .inp.focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(31,78,140,.25); }
+  .inp.focus svg { stroke: var(--primary); }
+  .inp.plain { padding-left: 14px; }
+  .ig { display: flex; }
+  .ig span { display: grid; place-items: center; padding: 0 14px; border: 2px solid var(--line-strong); background: var(--surface); color: var(--heading); min-height: 58px; }
+  .ig span:first-child { border-radius: 12px 0 0 12px; border-right: 0; }
+  .ig span:last-child { border-radius: 0 12px 12px 0; border-left: 0; }
+  .ig .inp { flex: 1; border-radius: 0; padding-left: 14px; }
+  .help { color: var(--muted); margin: 6px 0 0; }
+  .toggle { min-height: 44px; padding: 0 14px; border: 2px solid var(--primary); color: var(--primary); border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; font-size: 18px; }
+  .sp-t { margin: 0 0 6px; font-weight: 700; color: var(--heading); }
+  .sp-bar { display: flex; gap: 4px; margin-bottom: 14px; }
+  .sp-bar span { flex: 1; height: 9px; border-radius: 999px; background: var(--line-strong); }
+  .sp-bar span.on { background: var(--primary); }
+
+  .h3b { background: var(--surface); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .h3b p { margin: 0 0 6px; }
+  .h3b p:last-child { margin: 0; }
+  .em { display: flex; gap: 12px; background: var(--severe-bg); border-radius: 16px; padding: 14px 18px; margin: 12px 0; color: var(--heading); }
+  .dot-i { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--severe); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 16px; margin-top: 2px; }
+
+  .info { display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 6px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .info dt { color: var(--muted); flex-basis: 100%; }
+  .info dd { margin: 0; font-weight: 700; color: var(--heading); }
+  dl.infos { margin: 0; border-top: 1px solid var(--line); }
+  .method { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); min-height: 72px; flex-wrap: wrap; }
+  .method .grow { flex: 1; min-width: 160px; }
+  .m-title { display: block; font-weight: 700; color: var(--heading); }
+  .m-sub { display: block; color: var(--muted); }
+  .m-ico { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .m-ico.gw { background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
+  .m-ico .g { width: 24px; height: 24px; }
+  .mini-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; font-weight: 700; display: inline-flex; align-items: center; font-size: 18px; }
+  .mini-btn.outline { border: 2px solid var(--primary); color: var(--primary); }
+  .mini-btn.danger { color: var(--severe); text-decoration: underline; text-underline-offset: 4px; padding: 0 4px; }
+  .listE { border-top: 1px solid var(--line); margin: 14px 0 0; padding: 0; list-style: none; }
+  .tap { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+  .icoE { flex: none; width: 48px; height: 48px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .grow { flex: 1; min-width: 0; }
+  .t-title { display: block; font-weight: 700; color: var(--heading); }
+  .chev { flex: none; font-size: 24px; font-weight: 700; color: var(--primary); line-height: 1; }
+  .danger-t { color: var(--severe) !important; }
+  .icoD { background: var(--severe-bg); color: var(--severe); }
+
+  /* the save card (#492's 保存卡) is still being drawn in #493: a placeholder block here */
+  .savecard { background: var(--primary-soft); border-radius: 20px; padding: 18px 18px 20px; margin-top: 20px; }
+  .savecard h3 { margin: 0 0 6px; font-size: 22px; color: var(--heading); }
+  .lv { border-radius: 16px; padding: 14px 18px; margin-top: 10px; background: #fff4d6; color: #704800; }
+  .lv .nm { font-size: 22px; font-weight: 700; display: block; }
+  .lv .d { color: var(--heading); display: block; }
+
+  /* 200% text: text sizes doubled, widths unchanged (what iOS larger text does) */
+  .x2 .pg { font-size: 36px; line-height: 1.45; }
+  .x2 .brand { font-size: 44px; }
+  .x2 .h1 { font-size: 56px; }
+  .x2 .b, .x2 .gbtn { font-size: 40px; min-height: 0; padding: 12px 16px; }
+  .x2 .gbtn .g { width: 40px; height: 40px; }
+  .x2 .lab, .x2 .help, .x2 .or, .x2 .sp-t { font-size: 36px; }
+  .x2 .inp { font-size: 40px; min-height: 0; padding-top: 10px; padding-bottom: 10px; }
+  .x2 .ig span { min-height: 0; padding: 0 10px; }
+  .x2 .toggle { font-size: 36px; }
+  .x2 .tlink { font-size: 36px; }
+  .x2 .phone { min-height: 0; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+  @media (max-width: 700px) { table.spec { display: block; overflow-x: auto; } }
+  .sw { display: inline-grid; place-items: center; width: 30px; height: 26px; border-radius: 6px; border: 1px solid; margin-right: 8px; font-weight: 700; font-size: 15px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></symbol>
+  <symbol id="i-reg" viewBox="0 0 24 24"><circle cx="10" cy="8" r="4"/><path d="M3 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-safari" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
+  <!-- standard 4-colour Google "G" (48x48). Implementation uses the file from Google's official download bundle. -->
+  <symbol id="g-logo" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></symbol>
+</svg>
+
+<div class="sheet">
+  <h1>#507 Google 登入・設計圖第一版</h1>
+  <p class="lead">規格 #505。版式照 #470 選定的登入頁 B（白底大標題、粗框輸入框、錯誤放紅底框）。手機寬 390px；紫色虛線橫線＝手機第一個畫面的底（844px），分頁列浮在第一個畫面底部。紫色虛線框＝<b>草稿字句</b>（我擬的，請您逐句審，見最後的字句表）或<b>新元件</b>（框上有標）。其他字句都是網站現有的。</p>
+  <p class="lead">Google 按鈕照 Google 官方規定的淺色版：白底、1px 灰框 #747775、字 #1f1f1f、標準四色 G 不改顏色與比例；官方允許等比例放大，所以跟我們的按鈕一樣高 56px、字 20px。圖上的 G 是示意，實作時用 Google 官方下載包的檔案。</p>
+  <p class="lead">案例：wang_ming 用帳號密碼註冊過，電子郵件 wang.ming@gmail.com；新來的人 Google email 是 lin.mei@gmail.com。</p>
+
+  <!-- ================= 1 登入頁 ================= -->
+  <section class="group">
+    <h2>1　登入頁</h2>
+    <p class="q">這頁要長輩做的一件事：<b>登入</b>。Google 按鈕放在帳號密碼表單上方（規格 #505 驗收 2）。兩種排法差在帳號密碼表單要不要先收起來。之後 LINE 上線時，LINE 按鈕放在 Google 上方，兩顆一樣大（Google 規定要跟其他第三方按鈕一樣醒目）。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">甲　Google 在上，下面直接是表單<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <a class="gbtn newc"><span class="newc-tag">新元件 Google 按鈕</span><svg class="g"><use href="#g-logo"/></svg><span class="draft">使用 Google 帳戶登入</span></a>
+          <p class="or"><span class="draft">或用帳號密碼</span></p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+          <p style="text-align:center;margin-top:16px">忘記密碼？請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+          <div style="border-top:1px solid var(--line);margin-top:8px;padding-top:12px">
+            <p style="margin:0">還沒有帳號？</p>
+            <a class="b outline" style="margin-top:6px">註冊新帳號</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>用密碼的人照舊一眼看到欄位，用 Google 的人一按就走。藍色實心「登入」仍是這頁唯一的實心按鈕；Google 按鈕是白底灰框，不會搶過它。<b>代價</b>：頁面多了約 110px，「註冊新帳號」被推到第一個畫面外。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">乙　Google 在上，帳號密碼先收起來</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+          <a class="b outline newc" style="margin-top:14px"><span class="newc-tag">新元件 收起的表單</span><svg class="i" style="margin-right:8px"><use href="#i-key"/></svg><span class="draft">用帳號密碼登入</span></a>
+          <div style="border-top:1px solid var(--line);margin-top:20px;padding-top:12px">
+            <p style="margin:0">還沒有帳號？</p>
+            <a class="b outline" style="margin-top:6px">註冊新帳號</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>最短、選擇最清楚。<b>代價</b>：用密碼的老使用者每次都要多點一下才看到欄位；瀏覽器的「自動填入密碼」也要點開後才出現；這頁沒有實心按鈕。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">甲・Google 登入沒完成（錯誤訊息）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <div class="em"><span class="dot-i">!</span><span class="draft"><b style="color:var(--severe)">沒有完成 Google 登入。</b>可以再試一次，或用帳號密碼登入。</span></div>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶登入</a>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>三種錯誤都放在同一個位置、同一個紅底框（#470 D6 選的樣子），只換字：在 Google 按了取消、Google 沒回應、回呼被竄改或逾時。字句見最後的字句表 W4–W6。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">從 LINE 裡打開（甲、乙都一樣）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">登入</h1>
+          <p class="muted">歡迎回來。</p>
+          <div class="h3b newc"><span class="newc-tag">新元件 LINE 裡的提示</span>
+            <p class="draft"><b>想用 Google 登入？</b>LINE 裡面不能用 Google 登入，請改用 Safari 或 Chrome 打開這一頁。</p>
+            <p class="draft">在 LINE 裡做的篩檢結果不會跟著過去。</p>
+            <a class="b outline" style="margin-top:6px"><svg class="i" style="margin-right:8px"><use href="#i-safari"/></svg><span class="draft">用 Safari／Chrome 打開</span></a>
+          </div>
+          <p class="or">或用帳號密碼</p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid">登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb on"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>Google 按鈕不出現，改成灰色提示框（P3）裡的一顆藍框按鈕；按了用外部瀏覽器打開同一頁（網址加 <code>openExternalBrowser=1</code>）。LINE 上線後，這框上面會多一顆 LINE 按鈕。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2 註冊頁 ================= -->
+  <section class="group">
+    <h2>2　註冊頁</h2>
+    <p class="q">跟登入頁同一個排法（您選甲就是甲）。步驟條「第 1 步／共 2 步」放在 Google 按鈕上方，因為用 Google 也一樣是兩步：取名稱、同意。從 LINE 裡打開時跟登入頁一樣換成灰色提示框。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">甲・註冊頁</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">註冊</h1>
+          <p class="muted">建立帳號，篩檢結果會幫您存起來。</p>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p>
+          <div class="sp-bar"><span class="on"></span><span></span></div>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg><span class="draft">使用 Google 帳戶註冊</span></a>
+          <p class="or"><span class="draft">或填寫資料註冊</span></p>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp"><svg><use href="#i-user"/></svg></div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <div class="field"><label class="lab">電子郵件</label><div class="inp"><svg><use href="#i-mail"/></svg></div><p class="help">忘記密碼時，用這個信箱確認是您本人。</p></div>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp"><svg><use href="#i-lock"/></svg></div></div>
+          <p class="muted">（下面照舊：密碼規則、確認密碼、出生年、註冊按鈕、「已經有帳號？登入」）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb on"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>Google 按鈕的字改成「註冊」（Google 允許 Sign in／Sign up／Continue 三種說法）。其實按下去不管有沒有帳號都會處理好：用過的人直接登入，不會多開帳號。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3 取名稱頁 ================= -->
+  <section class="group">
+    <h2>3　取名稱頁（第一次用 Google 的人）</h2>
+    <p class="q">這頁要長輩做的一件事：<b>取一個使用者名稱</b>。從 Google 回來後才到這頁；在這頁離開就不建帳號（#505 驗收 5–7）。欄位與說明跟註冊頁相同；電子郵件不能改，用一列資訊顯示。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">取名稱頁</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1 draft">幫帳號取個名字</h1>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p>
+          <div class="sp-bar"><span class="on"></span><span></span></div>
+          <dl class="infos newc" style="margin-bottom:18px"><span class="newc-tag">資訊列</span>
+            <div class="info"><dt>電子郵件（來自 Google）</dt><dd>lin.mei@gmail.com</dd></div>
+          </dl>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>林阿美</div><p class="help">登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。</p></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp plain">45</div><span>年</span></div><p class="help">填了之後會直接推薦適合您年齡的問卷，不用再問一次。不會公開。</p></div>
+          <p class="draft">下一步請您閱讀並同意<a class="tlink" style="min-height:0;display:inline">隱私權說明</a>。</p>
+          <a class="b solid draft">下一步</a>
+          <div class="h3b" style="margin-top:20px"><p class="draft"><b>已經有帳號了嗎？</b>先用帳號密碼登入，再到帳號設定新增 Google 登入，紀錄才會在同一個帳號。</p></div>
+          <a class="tlink">用帳號密碼登入</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>這時候還沒有帳號，所以分頁列仍是沒登入的那一組。「下一步」在第一個畫面內、分頁列上方（為了放得下，email 那一列不另加說明，隱私權那句也縮短）。灰框放最下面，不打擾第一次來的人；寫了「紀錄才會在同一個帳號」，讓已有帳號的人知道為什麼要先登入。</p></div>
+      </div>
+
+      <div class="opt x2">
+        <p class="opt-label">取名稱頁・200% 字級</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">幫帳號取個名字</h1>
+          <p class="sp-t">第 1 步／共 2 步：建立帳號</p>
+          <div class="sp-bar"><span class="on"></span><span></span></div>
+          <dl class="infos" style="margin-bottom:18px">
+            <div class="info"><dt>電子郵件（來自 Google）</dt><dd style="overflow-wrap:anywhere">lin.mei@gmail.com</dd></div>
+          </dl>
+          <div class="field"><label class="lab">使用者名稱</label><div class="inp focus"><svg><use href="#i-user"/></svg>林阿美</div></div>
+          <div class="field"><label class="lab">出生年（選填）</label><div class="ig"><span>民國</span><div class="inp plain">45</div><span>年</span></div></div>
+          <a class="b solid">下一步</a>
+        </div></div>
+        <div class="note"><p>字放大 200%（只放大字，寬度照舊 390px）。email 在窄螢幕斷行（<code>wrap-anywhere</code>，跟登入頁的信箱同一招），不會左右捲。說明文字也在，只是這裡省略沒畫。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4 email 相同頁 ================= -->
+  <section class="group">
+    <h2>4　email 相同頁</h2>
+    <p class="q">第一次用 Google，但 Google 的 email 跟某個既有帳號相同（ADR 0057）。這頁要長輩做的一件事：<b>如果那是您的帳號，用密碼登入</b>。網站不能說出那個帳號的使用者名稱（不然別人拿某個 email 就能查到帳號）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">email 相同頁</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1 draft">這個 email 已經有帳號</h1>
+          <p class="draft">wang.ming@gmail.com 已經用在一個聽伴帳號。</p>
+          <p class="draft">如果那是您的帳號，請先用帳號密碼登入，再到帳號設定新增 Google 登入。這樣您的紀錄都會在同一個帳號裡。</p>
+          <a class="b solid draft">用帳號密碼登入</a>
+          <div class="h3b" style="margin-top:24px">
+            <p class="draft"><b>那不是我的帳號</b></p>
+            <p class="draft">可能是有人打錯了 email。您可以用這個 Google 另外建立自己的帳號。</p>
+            <a class="tlink draft">不是我的，建立新帳號</a>
+          </div>
+          <p style="margin-top:16px">忘記密碼？請寫信到 <a class="tlink" style="min-height:0;display:inline">hearwellweb@gmail.com</a></p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>主要按鈕是「用帳號密碼登入」（大多數人是這種情況）。「不是我的」放灰框、用文字連結，比較不會被順手按到（按錯的話紀錄會分在兩個帳號）。寫出的 email 是他自己剛從 Google 選的，不洩漏別人的資料。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5 帳號設定：登入方式 ================= -->
+  <section class="group">
+    <h2>5　帳號設定的「登入方式」</h2>
+    <p class="q">放在「我的帳號」（使用者名稱、電子郵件、出生年）下面、「家人與資料」上面。每一種登入方式一列：左邊圖示、中間名稱與狀態、右邊動作。新增是藍框小按鈕；移除是紅色文字連結（#470 D4「取消分享」同一個樣子）。管理員帳號不顯示這一塊。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">有密碼、還沒有 Google</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">我的帳號</h2>
+          <dl class="infos">
+            <div class="info"><dt>使用者名稱</dt><dd>wang_ming</dd></div>
+            <div class="info"><dt>電子郵件</dt><dd>wang.ming@gmail.com</dd></div>
+          </dl>
+          <div class="newc" style="margin-top:28px"><span class="newc-tag">新區塊</span>
+            <h2 class="h2" style="margin-top:0">登入方式</h2>
+            <div style="border-top:1px solid var(--line)">
+              <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub">已設定</span></span></div>
+              <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub draft">還沒有新增</span></span><a class="mini-btn outline draft">新增</a></div>
+            </div>
+            <p class="muted draft" style="margin-top:10px;font-size:16px">新增或移除之前，會先請您確認是本人。</p>
+          </div>
+          <h2 class="h2">家人與資料</h2>
+          <p class="muted">（下面照舊）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>右邊的按鈕寫「新增」兩個字就好，因為這一列已經寫了 Google；讀螢幕軟體唸「新增 Google 登入」（按鈕的無障礙名稱）。出生年那一列這裡省略沒畫。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">有密碼、也有 Google</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">登入方式</h2>
+          <div style="border-top:1px solid var(--line)">
+            <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub">已設定</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub draft">2026/11/20 新增</span></span><a class="mini-btn danger draft">移除</a></div>
+          </div>
+          <p class="muted" style="margin-top:10px;font-size:16px">新增或移除之前，會先請您確認是本人。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>只畫「登入方式」這一塊，上下照第一張。移除是紅字連結，不是實心按鈕：不是這頁的主要動作。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">只有 Google（沒有密碼）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">帳號設定</h1>
+          <h2 class="h2">登入方式</h2>
+          <div style="border-top:1px solid var(--line)">
+            <div class="method"><span class="m-ico"><svg class="i"><use href="#i-key"/></svg></span><span class="grow"><span class="m-title">帳號密碼</span><span class="m-sub draft">沒有設定</span></span></div>
+            <div class="method"><span class="m-ico gw"><svg class="g"><use href="#g-logo"/></svg></span><span class="grow"><span class="m-title">Google</span><span class="m-sub draft">註冊時使用</span></span></div>
+          </div>
+          <p class="muted draft" style="margin-top:10px;font-size:16px">這是您目前唯一的登入方式，所以不能移除。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>沒有移除連結，改一句說明為什麼（#505 驗收 27）。「帳號密碼」這一列沒有「設定」按鈕：這次不做自己設密碼（規格的不在範圍）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6 確認本人、刪除帳號 ================= -->
+  <section class="group">
+    <h2>6　確認本人、刪除帳號</h2>
+    <p class="q">新增、移除登入方式和刪帳號之前都先確認本人（ADR 0057）。這頁要長輩做的一件事：<b>輸入密碼</b>，或沒有密碼時<b>用 Google 再登入一次</b>。標題下一行寫出等一下要做什麼，免得不知道為什麼又要登入。</p>
+    <div class="row">
+
+      <div class="opt">
+        <p class="opt-label">確認本人・有密碼（新增 Google 前）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1 draft">先確認是您本人</h1>
+          <p class="draft">接下來要<b>新增 Google 登入</b>。請輸入 wang_ming 的密碼。</p>
+          <div class="field"><div class="labrow"><label class="lab" style="margin:0">密碼</label><span class="toggle">顯示</span></div><div class="inp focus"><svg><use href="#i-lock"/></svg></div></div>
+          <a class="b solid draft">確認</a>
+          <a class="b outline">取消</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>密碼錯誤時，跟刪除帳號頁一樣在欄位下顯示「密碼不正確」。確認後直接被帶到 Google；回來就新增好、回到帳號設定。移除時把「新增 Google 登入」換成「移除 Google 登入」。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">確認本人・沒有密碼</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">先確認是您本人</h1>
+          <p class="draft">接下來要<b>刪除帳號</b>。請用您帳號上的 Google 再登入一次。</p>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg><span class="draft">使用 Google 帳戶確認</span></a>
+          <a class="b outline">取消</a>
+          <div class="em" style="margin-top:22px"><span class="dot-i">!</span><span class="draft"><b style="color:var(--severe)">這不是您帳號上的 Google。</b>請改用註冊時用的那個 Google 帳戶。</span></div>
+          <p class="muted" style="font-size:16px">↑ 選錯 Google 回來時才出現（#505 驗收 31），平常沒有。</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>「確認」不在 Google 允許的三種說法（登入、註冊、繼續）裡；如果您比較放心，可以改成「使用 Google 帳戶繼續」（見 D3）。錯誤框實際上放在標題下面，這裡畫在下方只是為了一張圖看兩種狀態。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">刪除帳號・沒有密碼</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">刪除帳號</h1>
+          <p>刪除後，下面這些資料會全部消失，<b>無法復原</b>：</p>
+          <ul><li>您的帳號（使用者名稱、電子郵件、出生年）</li><li>問卷紀錄 3 筆（每一題的作答和分數）</li><li>聽力圖 1 張</li><li>助聽器與補助資料</li><li>同意紀錄</li><li class="draft">登入方式（Google）</li></ul>
+          <p class="h3b">想留一份紀錄的話，請先<a class="tlink" style="min-height:0;display:inline">下載我的資料</a>。</p>
+          <p class="draft" style="font-weight:700;color:var(--heading)">您的帳號沒有密碼，請用 Google 確認是本人。</p>
+          <a class="gbtn"><svg class="g"><use href="#g-logo"/></svg>使用 Google 帳戶確認</a>
+          <a class="b outline">取消</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav></div>
+        <div class="note"><p>密碼欄換成 Google 按鈕，紅色「刪除帳號」這時先不出現。確認回來後同一頁換成「已確認是您本人」＋紅色實心「刪除帳號」＋「取消」（跟現在的刪除帳號頁一樣），5 分鐘內有效。清單多一行「登入方式（Google）」。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 7 保存卡 ================= -->
+  <section class="group">
+    <h2>7　保存卡加上 Google</h2>
+    <p class="q">保存卡本身的樣子還在 #493 畫（訪客結果頁的設計圖），這裡只畫 Google 按鈕加在哪：「註冊保存」下面、「登入保存」上面。最後的位置跟著 #493 選定的保存卡走。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">訪客結果頁的保存卡（示意）</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">HHIE-S 結果</h1>
+          <div class="lv"><span class="nm">輕度到中度影響</span><span class="d">總分 14 分（滿分 40）</span></div>
+          <div class="savecard">
+            <h3>（保存卡標題，見 #493）</h3>
+            <p class="muted">（依分級寫註冊後的好處，見 #493）</p>
+            <a class="b solid">註冊保存</a>
+            <a class="gbtn newc"><span class="newc-tag">加在這裡</span><svg class="g"><use href="#g-logo"/></svg><span class="draft">使用 Google 帳戶繼續</span></a>
+            <a class="b outline">登入保存</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span><span class="tb"><svg class="i"><use href="#i-login"/></svg>登入</span><span class="tb"><svg class="i"><use href="#i-reg"/></svg>註冊</span></nav></div>
+        <div class="note"><p>這裡用「繼續」：按下去可能是註冊（新來的人）、也可能是登入（用過 Google 的人），「繼續」兩種都對。從 LINE 裡打開時這顆不出現（#512）。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= decisions ================= -->
+  <section class="group">
+    <h2>要您決定的地方</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>我的建議</th></tr>
+      <tr><td>D1</td><td>登入頁（和註冊頁）怎麼排</td><td>甲 Google 在上、下面直接是表單：用密碼的人照舊一眼看到欄位，瀏覽器自動填入照常；頁面長約 110px。<br>乙 帳號密碼先收起來：最短；用密碼的人每次多點一下，這頁沒有實心按鈕。</td><td><b>甲</b></td></tr>
+      <tr><td>D2</td><td>Google 按鈕的字</td><td>「使用 Google 帳戶登入／註冊／繼續」：跟 Google 自己的中文按鈕一樣，長輩在別的網站看過。<br>「用 Google 登入」：比較短，跟規格用語一致；Google 允許翻譯，意思也清楚。</td><td><b>使用 Google 帳戶…</b>（畫面上看過的比較敢按）</td></tr>
+      <tr><td>D3</td><td>確認本人頁的 Google 按鈕</td><td>「使用 Google 帳戶確認」：說的就是這頁在做的事；但不在 Google 列的三種說法裡（官方寫的是「例如」，不是只能三種）。<br>「使用 Google 帳戶繼續」：完全照官方說法；長輩可能不懂為什麼要「繼續」。</td><td><b>確認</b>（上一行已寫要做什麼）</td></tr>
+      <tr><td>D4</td><td>按鈕形狀</td><td>A 圓角 14px，跟網站其他按鈕一樣（Google 官方有長方形版）。<br>B 膠囊形（全圓角），Google 官方另一種：跟網站其他按鈕不一樣。</td><td><b>A</b></td></tr>
+      <tr><td>D5</td><td>帳號設定「登入方式」放哪</td><td>A 放在「我的帳號」下面、「家人與資料」上面（圖上這樣）：跟帳號資料放一起。<br>B 併進「我的帳號」那一組：少一個標題，但資料列和有按鈕的列混在一起。</td><td><b>A</b></td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>草稿字句（請逐句審）</h2>
+    <p class="q">圖上紫框的字都在這裡。您改過的字句，我會記進選定紀錄，實作照它寫。</p>
+    <table class="spec">
+      <tr><th>#</th><th>在哪</th><th>字句</th></tr>
+      <tr><td>W1</td><td>登入／註冊／保存卡的 Google 按鈕</td><td>使用 Google 帳戶登入／使用 Google 帳戶註冊／使用 Google 帳戶繼續</td></tr>
+      <tr><td>W2</td><td>登入頁、註冊頁的分隔</td><td>或用帳號密碼／或填寫資料註冊</td></tr>
+      <tr><td>W3</td><td>LINE 裡的提示框</td><td><b>想用 Google 登入？</b>LINE 裡面不能用 Google 登入，請改用 Safari 或 Chrome 打開這一頁。在 LINE 裡做的篩檢結果不會跟著過去。按鈕：用 Safari／Chrome 打開</td></tr>
+      <tr><td>W4</td><td>錯誤：在 Google 按了取消</td><td>沒有完成 Google 登入。可以再試一次，或用帳號密碼登入。</td></tr>
+      <tr><td>W5</td><td>錯誤：Google 沒回應</td><td>Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。</td></tr>
+      <tr><td>W6</td><td>錯誤：回呼被竄改、逾時、重放</td><td>登入沒有完成，請再試一次。</td></tr>
+      <tr><td>W7</td><td>錯誤：Google 的 email 沒有驗證</td><td>這個 Google 帳戶的 email 還沒有驗證，沒辦法用來註冊。請改用帳號密碼註冊。</td></tr>
+      <tr><td>W8</td><td>取名稱頁</td><td>標題：幫帳號取個名字；資訊列：電子郵件（來自 Google）；說明：下一步請您閱讀並同意隱私權說明。按鈕：下一步</td></tr>
+      <tr><td>W9</td><td>取名稱頁的灰框</td><td><b>已經有帳號了嗎？</b>先用帳號密碼登入，再到帳號設定新增 Google 登入，紀錄才會在同一個帳號。連結：用帳號密碼登入</td></tr>
+      <tr><td>W10</td><td>取名稱頁逾時（10 分鐘）</td><td>等太久了，請再按一次「使用 Google 帳戶登入」。</td></tr>
+      <tr><td>W11</td><td>email 相同頁</td><td>標題：這個 email 已經有帳號；（email）已經用在一個聽伴帳號。如果那是您的帳號，請先用帳號密碼登入，再到帳號設定新增 Google 登入。這樣您的紀錄都會在同一個帳號裡。按鈕：用帳號密碼登入。灰框：<b>那不是我的帳號</b>／可能是有人打錯了 email。您可以用這個 Google 另外建立自己的帳號。連結：不是我的，建立新帳號</td></tr>
+      <tr><td>W12</td><td>帳號設定</td><td>標題：登入方式；狀態：已設定／沒有設定／還沒有新增／（日期）新增／註冊時使用；按鈕：新增、移除；說明：新增或移除之前，會先請您確認是本人。／這是您目前唯一的登入方式，所以不能移除。</td></tr>
+      <tr><td>W13</td><td>新增失敗：Google 已用在別的帳號</td><td>這個 Google 帳號已經用在另一個聽伴帳號，所以沒有新增。</td></tr>
+      <tr><td>W14</td><td>新增、移除成功（綠色提示，跟現有訊息一樣）</td><td>已新增 Google 登入。下次可以直接用 Google 登入。／已移除 Google 登入。</td></tr>
+      <tr><td>W15</td><td>確認本人頁</td><td>標題：先確認是您本人；接下來要<b>（新增 Google 登入／移除 Google 登入／刪除帳號）</b>。請輸入（使用者名稱）的密碼。／請用您帳號上的 Google 再登入一次。按鈕：確認、使用 Google 帳戶確認</td></tr>
+      <tr><td>W16</td><td>確認本人用錯 Google</td><td>這不是您帳號上的 Google。請改用註冊時用的那個 Google 帳戶。</td></tr>
+      <tr><td>W17</td><td>刪除帳號頁（沒有密碼）</td><td>清單多一行：登入方式（Google）；您的帳號沒有密碼，請用 Google 確認是本人。</td></tr>
+      <tr><td>W18</td><td>確認本人逾時（5 分鐘）</td><td>確認已經過期，請再確認一次。</td></tr>
+    </table>
+  </section>
+
+  <section class="group">
+    <h2>新用到的顏色組合與對比值</h2>
+    <p class="q">文字要 ≥4.5:1，元件邊界要 ≥3:1。其他組合沿用 #454、#470 已驗過的值。</p>
+    <table class="spec">
+      <tr><th>組合</th><th>對比</th><th>要求</th><th>結果</th></tr>
+      <tr><td><span class="sw" style="background:#fff;color:#1f1f1f;border-color:#1f1f1f">字</span>Google 按鈕字 #1f1f1f／白</td><td>16.5:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#fff;color:#747775;border-color:#747775">框</span>Google 按鈕外框 #747775／白</td><td>4.5:1</td><td>≥3:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#f4f6f8;color:#212529;border-color:#212529">字</span>灰色提示框裡的字 #212529／#f4f6f8</td><td>14.2:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#eef3fa;color:#1f4e8c;border-color:#1f4e8c">字</span>保存卡裡的藍字 #1f4e8c／#eef3fa</td><td>7.5:1</td><td>≥4.5:1</td><td>合格</td></tr>
+      <tr><td><span class="sw" style="background:#feece7;color:#8f2a12;border-color:#8f2a12">字</span>錯誤紅底框 #8f2a12／#feece7</td><td>7.3:1</td><td>≥4.5:1</td><td>合格</td></tr>
+    </table>
+    <p class="q" style="margin-top:12px">可點範圍：Google 按鈕高 56px、帳號設定的「新增」高 44px、「移除」連結高 44px，都 ≥44×44px。字：最小 16px 只用在註記與次要說明（跟 #470 一樣），內文 18px、按鈕 20px。</p>
+  </section>
+</div>
+</body>
+</html>
