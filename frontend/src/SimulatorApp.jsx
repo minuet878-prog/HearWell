@@ -4,13 +4,15 @@ import { BLOCKS, meterBlocks } from "./simulator.js";
 
 // #487 (spec #484, the #485 mockup E1 + V1, ADR 0053): pick a typical degree, play one sentence
 // at a time, switch 模擬｜正常聽 while it plays. engine does the sound (simulator-engine.js; a
-// fake in tests): play(url, onEnded), stop() and setCurve(thresholds), 正常聽 being all zeros.
+// fake in tests): play(url, onEnded), stop(), setCurve(thresholds), 正常聽 being all zeros, and
+// setBackground(url), null for 安靜 (#488).
 export default function SimulatorApp({ data, engine }) {
   const [levelIndex, setLevelIndex] = useState(0);
   const [normal, setNormal] = useState(false);
   const [sentenceIndex, setSentenceIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [restaurant, setRestaurant] = useState(false);
   const saidId = useId();
 
   const level = data.levels[levelIndex];
@@ -24,6 +26,11 @@ export default function SimulatorApp({ data, engine }) {
   useEffect(() => {
     engine.setCurve(thresholds);
   }, [engine, thresholds]);
+
+  // The restaurant goes under the speech, or away, without stopping it either (#488).
+  useEffect(() => {
+    engine.setBackground(restaurant ? data.restaurant.audio : null);
+  }, [engine, restaurant, data.restaurant.audio]);
 
   function play(index) {
     setPlaying(true);
@@ -105,6 +112,20 @@ export default function SimulatorApp({ data, engine }) {
           </button>
           <button type="button" aria-pressed={normal} onClick={() => setNormal(true)}>
             正常聽
+          </button>
+        </div>
+        <div className="simulator-switch" role="group" aria-label="在哪裡">
+          <button type="button" aria-pressed={!restaurant} onClick={() => setRestaurant(false)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 11l8-6 8 6M6 10v9h12v-9" />
+            </svg>
+            安靜
+          </button>
+          <button type="button" aria-pressed={restaurant} onClick={() => setRestaurant(true)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v8a2 2 0 0 1-2 2M17 3c-1.7 1.2-2.5 3.5-2.5 6.5 0 2 1 3.5 2.5 3.5v8" />
+            </svg>
+            餐廳
           </button>
         </div>
         <button type="button" className="simulator-reveal" aria-expanded={revealed} aria-controls={saidId} onClick={() => setRevealed(!revealed)}>

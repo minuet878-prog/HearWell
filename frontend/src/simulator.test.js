@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 
-import { BLOCKS, impulseResponse, meterBlocks } from "./simulator.js";
+import { BLOCKS, backgroundVolume, impulseResponse, loudness, meterBlocks } from "./simulator.js";
 
 const FREQUENCIES = [250, 500, 1000, 2000, 4000, 8000];
 // 高頻下降 and 中重度 as the owner approved them on the #485 mockup.
@@ -62,4 +62,20 @@ it("lights 8 blocks a band for normal hearing and one fewer for every 12.5 dB lo
 
 it("never lights fewer than none or more than eight", () => {
   expect(meterBlocks([-10, 0, 100, 120, 50, 95])).toEqual([8, 8, 0, 0, 4, 0]);
+});
+
+it("measures loudness as the root mean square of the samples", () => {
+  // A square wave of 0.5 and a sine wave of 1 (0.7071 by hand).
+  expect(loudness(Float32Array.from([0.5, -0.5, 0.5, -0.5]))).toBeCloseTo(0.5, 6);
+  const sine = Float32Array.from({ length: 4800 }, (_, n) => Math.sin((2 * Math.PI * 100 * n) / 48000));
+  expect(loudness(sine)).toBeCloseTo(0.7071, 3);
+});
+
+it("sets the restaurant so the speech is the given dB above it", () => {
+  // Worked by hand: speech 0.1, restaurant 0.05; 5 dB below 0.1 is 0.0562, so turn it up 1.1247.
+  expect(backgroundVolume(0.1, 0.05, 5)).toBeCloseTo(1.1247, 4);
+  // A restaurant already 5 dB under the speech stays as it is.
+  expect(backgroundVolume(0.1, 0.1 / 10 ** (5 / 20), 5)).toBeCloseTo(1, 6);
+  // 0 dB: as loud as the speech.
+  expect(backgroundVolume(0.2, 0.05, 0)).toBeCloseTo(4, 6);
 });

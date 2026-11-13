@@ -41,3 +41,15 @@ export function impulseResponse(frequencies, thresholds, sampleRate) {
 export function meterBlocks(thresholds) {
   return thresholds.map((db) => Math.min(BLOCKS, Math.max(0, Math.round((100 - db) / DB_PER_BLOCK))));
 }
+
+// How loud a stretch of sound is: the root mean square of its samples.
+export function loudness(samples) {
+  let sum = 0;
+  for (const sample of samples) sum += sample * sample;
+  return Math.sqrt(sum / samples.length);
+}
+
+// The volume to play the restaurant at so the speech is snr dB above it (#488; +5 dB, #485).
+export function backgroundVolume(speech, background, snr) {
+  return speech / 10 ** (snr / 20) / background;
+}

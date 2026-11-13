@@ -1,21 +1,27 @@
-import { impulseResponse } from "./simulator.js";
+import { backgroundVolume, impulseResponse, loudness } from "./simulator.js";
 
-// The hearing loss simulator's sound (#487, ADR 0052), by Web Audio: a sentence plays through one
-// ConvolverNode a curve (a degree, or 正常聽), each behind its own volume; picking another curve
-// fades that one in and the last one out, so what plays goes on without a click. Nothing is built
-// or downloaded before the first press of play: browsers (iOS above all) let sound start only from
-// a tap, and a sentence downloads when first played.
+// The hearing loss simulator's sound (#487, ADR 0052), by Web Audio. The sentence, and under it the
+// restaurant (#488), meet in one mix before any filter: the hearing loss turns both down alike.
+// The mix plays through one ConvolverNode a curve (a degree, or 正常聽), each behind its own volume;
+// picking another curve fades that one in and the last one out, so what plays goes on without a
+// click. Nothing is built or downloaded before the first press of play: browsers (iOS above all)
+// let sound start only from a tap, and a sound downloads when first needed.
 
 // Seconds for a fade to settle: quick enough to hear as instant, slow enough not to click.
 const GLIDE = 0.02;
 
-export function createEngine(frequencies) {
+export function createEngine(frequencies, snr) {
   let context = null;
+  let mix = null;
   let source = null;
+  let speechLoudness = 0;
   let curve = null;
+  // The restaurant's URL while 餐廳 is picked, its sound while it plays.
+  let background = null;
+  let backgroundSource = null;
   // A path a curve, by its thresholds: { convolver, volume }.
   const paths = new Map();
-  // Each play() takes a ticket; a sentence still downloading for an older ticket does not start.
+  // Each play() takes a ticket; a sound still downloading for an older ticket does not start.
   let ticket = 0;
   const buffers = new Map();
 
@@ -28,8 +34,7 @@ export function createEngine(frequencies) {
       // The filter's own levels are the point: no normalising.
       const convolver = new ConvolverNode(context, { buffer: impulse, disableNormalization: true });
       const volume = new GainNode(context, { gain: 0 });
-      convolver.connect(volume).connect(context.destination);
-      if (source) source.connect(convolver);
+      mix.connect(convolver).connect(volume).connect(context.destination);
       paths.set(key, { convolver, volume });
     }
     return paths.get(key);
@@ -55,8 +60,32 @@ export function createEngine(frequencies) {
     return buffers.get(url);
   }
 
+  function stopBackground() {
+    if (backgroundSource) {
+      backgroundSource.stop();
+      backgroundSource = null;
+    }
+  }
+
+  // The restaurant under the sentence playing now, snr dB below it, round and round.
+  function startBackground() {
+    const mine = ticket;
+    load(background)
+      .then((buffer) => {
+        if (mine !== ticket || !source || !background || backgroundSource) return;
+        const volume = new GainNode(context, {
+          gain: backgroundVolume(speechLoudness, loudness(buffer.getChannelData(0)), snr),
+        });
+        backgroundSource = new AudioBufferSourceNode(context, { buffer, loop: true });
+        backgroundSource.connect(volume).connect(mix);
+        backgroundSource.start();
+      })
+      .catch(() => {});
+  }
+
   function stop() {
     ticket += 1;
+    stopBackground();
     if (source) {
       source.onended = null;
       source.stop();
@@ -70,6 +99,12 @@ export function createEngine(frequencies) {
       if (context) listen();
     },
 
+    setBackground(url) {
+      background = url;
+      stopBackground();
+      if (url && source) startBackground();
+    },
+
     stop,
 
     play(url, onEnded) {
@@ -80,19 +115,25 @@ export function createEngine(frequencies) {
       if (!context) {
         if (navigator.audioSession) navigator.audioSession.type = "playback";
         context = new AudioContext();
+        mix = new GainNode(context);
         listen();
       }
       context.resume();
+      // Both downloads at once when 餐廳 is picked.
+      if (background) load(background).catch(() => {});
       load(url)
         .then((buffer) => {
           if (mine !== ticket) return;
+          speechLoudness = loudness(buffer.getChannelData(0));
           source = new AudioBufferSourceNode(context, { buffer });
-          for (const { convolver } of paths.values()) source.connect(convolver);
+          source.connect(mix);
           source.onended = () => {
             source = null;
+            stopBackground();
             onEnded();
           };
           source.start();
+          if (background) startBackground();
         })
         .catch(() => {
           if (mine === ticket) onEnded();

@@ -23,6 +23,7 @@ const DATA = {
     { text: "謝謝你送的水果，很新鮮。", voice: "男", audio: "/static/s4.m4a" },
   ],
   limits: ["這是典型的程度，不是誰真正的聽力。", "聽不到聲音？先關掉手機的靜音。"],
+  restaurant: { audio: "/static/restaurant.m4a", snr: 5 },
 };
 
 // Stands in for Web Audio: records what the player asked for.
@@ -40,11 +41,21 @@ function fakeEngine() {
     setCurve(thresholds) {
       this.calls.push(["curve", thresholds]);
     },
+    setBackground(url) {
+      this.calls.push(["background", url]);
+    },
     played() {
       return this.calls.filter(([what]) => what === "play").map(([, url]) => url);
     },
     lastCurve() {
       return this.calls.filter(([what]) => what === "curve").at(-1)[1];
+    },
+    backgrounds() {
+      return this.calls.filter(([what]) => what === "background").map(([, url]) => url);
+    },
+    // What starts or stops a sentence, leaving out settings that only change what is heard.
+    starts() {
+      return this.calls.filter(([what]) => what === "play" || what === "stop");
     },
   };
 }
@@ -96,8 +107,7 @@ it("changes degree while playing without stopping or starting again", () => {
   press("播放");
   const before = engine.calls.length;
   press("輕度");
-  const after = engine.calls.slice(before);
-  expect(after.filter(([what]) => what !== "curve")).toEqual([]);
+  expect(engine.calls.slice(before).filter(([what]) => what === "play" || what === "stop")).toEqual([]);
   expect(engine.lastCurve()).toEqual([25, 30, 30, 35, 40, 40]);
   expect(line(container)).toBe("輕度：小聲就漏聽");
   expect(screen.getByRole("button", { name: "暫停" })).toBeTruthy();
@@ -116,7 +126,7 @@ it("switches to 正常聽 and back while playing, the bars full, without startin
   expect(pressed("程度")).toEqual(["高頻下降"]);
   press("模擬");
   expect(engine.lastCurve()).toEqual([15, 20, 25, 45, 65, 75]);
-  expect(engine.calls.slice(before).filter(([what]) => what !== "curve")).toEqual([]);
+  expect(engine.calls.slice(before).filter(([what]) => what === "play" || what === "stop")).toEqual([]);
 });
 
 it("goes back to 模擬 when a degree is picked during 正常聽", () => {
@@ -134,7 +144,7 @@ it("plays the next sentence instead when moving on while playing, and wraps roun
   press("播放");
   press("下一句");
   // The first sentence stops before the second starts.
-  expect(engine.calls.filter(([what]) => what !== "curve").map(([what]) => what)).toEqual(["play", "stop", "play"]);
+  expect(engine.starts().map(([what]) => what)).toEqual(["play", "stop", "play"]);
   expect(engine.played()).toEqual(["/static/s1.m4a", "/static/s2.m4a"]);
   expect(caption(container)).toBe("第 2 句・男聲（共 4 句）");
   press("暫停");
@@ -188,4 +198,37 @@ it("announces the line that says what is heard", () => {
   const { container } = open();
   expect(container.querySelector(".simulator-line").getAttribute("aria-live")).toBe("polite");
   expect(container.querySelector(".simulator-bars").getAttribute("aria-hidden")).toBe("true");
+});
+
+it("opens on 安靜 without asking for the restaurant", () => {
+  // #488: nothing of the restaurant downloads before 餐廳 is picked.
+  const { engine } = open();
+  expect(pressed("在哪裡")).toEqual(["安靜"]);
+  expect(engine.backgrounds().filter(Boolean)).toEqual([]);
+});
+
+it("switches to 餐廳 and back while playing without starting again", () => {
+  // #484 acceptance 10; #488: switching never stops what plays.
+  const { engine } = open();
+  press("播放");
+  const before = engine.starts().length;
+  press("餐廳");
+  expect(pressed("在哪裡")).toEqual(["餐廳"]);
+  expect(engine.backgrounds().at(-1)).toBe("/static/restaurant.m4a");
+  press("正常聽");
+  press("中度");
+  press("安靜");
+  expect(engine.backgrounds().at(-1)).toBeNull();
+  expect(engine.starts().length).toBe(before);
+  expect(screen.getByRole("button", { name: "暫停" })).toBeTruthy();
+});
+
+it("keeps 餐廳 picked when a sentence ends, for the next one", () => {
+  // #484 acceptance 11: the engine stops the restaurant with the sentence; the choice stays.
+  const { engine } = open();
+  press("餐廳");
+  press("播放");
+  act(() => engine.ended());
+  expect(pressed("在哪裡")).toEqual(["餐廳"]);
+  expect(screen.getByRole("button", { name: "播放" })).toBeTruthy();
 });

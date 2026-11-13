@@ -102,6 +102,11 @@ class SimulatorPageTests(test_family_zone.SignsInWithARecord, TestCase):
             [static(f"screening/simulator/sentence-{n}.m4a") for n in range(1, 5)],
         )
         self.assertEqual(data["limits"], [LIMITS, NO_SOUND])
+        # #488: the restaurant at the owner's +5 dB (speech 5 dB above it, #485).
+        self.assertEqual(
+            data["restaurant"],
+            {"audio": static("screening/simulator/restaurant.m4a"), "snr": 5},
+        )
         self.assertEqual(data["levels"][0]["note"], HIGH_NOTE)
         self.assertTrue(all("note" not in level for level in data["levels"][1:]))
 

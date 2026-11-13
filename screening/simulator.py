@@ -52,6 +52,9 @@ SENTENCES = (
     ("謝謝你送的水果，很新鮮。", "男"),
 )
 
+# The restaurant behind the speech (#488): the speech this many dB above it (#485).
+RESTAURANT_SNR_DB = 5
+
 LIMITS = (
     "這是典型的程度，不是誰真正的聽力。"
     "模擬只把聲音變小聲；真正的聽損還會讓聲音糊在一起，實際可能更吃力。",

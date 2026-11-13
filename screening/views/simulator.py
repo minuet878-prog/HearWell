@@ -1,7 +1,14 @@
 from django.shortcuts import render
 from django.templatetags.static import static
 
-from screening.simulator import FREQUENCIES, LEVELS, LIMITS, NORMAL_LINE, SENTENCES
+from screening.simulator import (
+    FREQUENCIES,
+    LEVELS,
+    LIMITS,
+    NORMAL_LINE,
+    RESTAURANT_SNR_DB,
+    SENTENCES,
+)
 
 
 def hearing_loss_simulator(request):
@@ -16,6 +23,10 @@ def hearing_loss_simulator(request):
             for n, (text, voice) in enumerate(SENTENCES, start=1)
         ],
         "limits": LIMITS,
+        "restaurant": {
+            "audio": static("screening/simulator/restaurant.m4a"),
+            "snr": RESTAURANT_SNR_DB,
+        },
     }
     return render(
         request,

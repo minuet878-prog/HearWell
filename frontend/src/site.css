@@ -6113,6 +6113,10 @@
   }
 
   .simulator-switch button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     min-height: var(--spacing-touch);
     padding: 0.25rem 1rem;
     border: 0;
@@ -6120,6 +6124,18 @@
     background-color: transparent;
     color: #fff;
     font-weight: 500;
+  }
+
+  /* 安靜｜餐廳 carry a house and a fork beside their words (the #485 mockup). */
+  .simulator-switch svg {
+    flex: none;
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .simulator-switch button[aria-pressed="true"] {
