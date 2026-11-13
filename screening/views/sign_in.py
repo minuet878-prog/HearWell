@@ -100,7 +100,6 @@ def _sign_in(request, identity):
     # Never seen: only an email Google says is verified becomes an account's (Q3, acceptance 9).
     if not identity.email_verified or not identity.email:
         return _back_to("register", request, UNVERIFIED)
-    # #509: an email already on an account goes to google_same_email here (ADR 0057).
     request.session[PENDING] = {
         "provider": identity.provider,
         "subject": identity.subject,
@@ -109,6 +108,9 @@ def _sign_in(request, identity):
         "next": identity.next,
         "at": timezone.now().timestamp(),
     }
+    # An email already on an account (any case) is never signed into nor merged (ADR 0057).
+    if User.objects.filter(email__iexact=identity.email).exists():
+        return redirect("google_same_email")
     return redirect("google_name")
 
 
@@ -157,3 +159,22 @@ def google_name(request):
                 return redirect_to_login(pending["next"], reverse("consent"))
             return redirect("consent")
     return render(request, "screening/google_name.html", {"form": form, "email": pending["email"]})
+
+
+@never_cache  # it shows the Google email
+@require_http_methods(["GET"])
+def google_same_email(request):
+    """#505 acceptance 12-14 (the #507 mockup 4, W11): the Google email is already some account's.
+    Nobody is signed in; the identity waits, as for the name page, in case it is not theirs."""
+    _require_google()
+    pending = _pending(request)
+    if pending is None:
+        return _back_to("login", request, NAME_EXPIRED)
+    # After the password, back to account settings to add Google there (acceptance 14).
+    # #511: point this at its 登入方式 section (an anchor survives as the login page's next).
+    password_next = reverse("account_settings")
+    return render(
+        request,
+        "screening/google_same_email.html",
+        {"email": pending["email"], "password_next": password_next},
+    )
