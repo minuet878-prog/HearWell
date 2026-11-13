@@ -9,9 +9,9 @@ purpose are parameters: LINE joins this flow in its own spec.
 import base64
 import hashlib
 import hmac
+import http.client
 import json
 import secrets
-import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -145,8 +145,9 @@ def exchange_code(*, provider, code, code_verifier, redirect_uri):
     try:
         with urllib.request.urlopen(request, timeout=TOKEN_TIMEOUT_SECONDS) as response:
             return json.loads(response.read())
-    except (urllib.error.URLError, TimeoutError, ValueError) as error:
-        # HTTPError (an error answer, e.g. invalid_grant) is a URLError too.
+    except (OSError, http.client.HTTPException, ValueError) as error:
+        # OSError covers URLError, HTTPError (an error answer, e.g. invalid_grant) and timeouts;
+        # HTTPException a connection cut while reading; ValueError an answer that is not JSON.
         raise Unavailable(f"{provider} token endpoint: {type(error).__name__}") from error
 
 

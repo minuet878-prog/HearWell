@@ -1,4 +1,5 @@
 import base64
+import dataclasses
 import hashlib
 import json
 from datetime import date, timedelta
@@ -568,3 +569,21 @@ class PrivacyTests(TestCase):
         url = reverse("my_hearing")
         self.assertRedirects(self.client.get(url), test_consent._consent_url(url))
         self.assertContains(self.client.get(test_consent._consent_url(url)), "Google")
+
+
+@google_on
+class ExchangeCodeTests(TestCase):
+    """#505 acceptance 20 at the real exchange_code: no answer from the token endpoint is
+    Unavailable, never a server error. Nothing listens on port 9 of this machine."""
+
+    def test_a_token_endpoint_that_does_not_answer_is_unavailable(self):
+        nowhere = dataclasses.replace(
+            oidc.PROVIDERS["google"], token_url="http://127.0.0.1:9/token"
+        )
+        with (
+            mock.patch.dict(oidc.PROVIDERS, {"google": nowhere}),
+            self.assertRaises(oidc.Unavailable),
+        ):
+            oidc.exchange_code(
+                provider="google", code="c", code_verifier="v", redirect_uri="https://x/cb"
+            )
