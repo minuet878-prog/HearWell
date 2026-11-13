@@ -13,11 +13,12 @@ from screening.models.submissions import Answer
 # 2: the 助聽器與補助資料 (#286, spec #284 Q9). 3: the operator's name became 聽伴 (ADR 0039).
 # 4: the site moved to a Vultr VPS in Tokyo, so the data's country and who stores it changed,
 # and the backups keep deleted data up to 10 days (#452, ADR 0042).
-CONSENT_VERSION = 4
+# 5: the 照顧旅程's to-do ticks are kept, so what is collected changed (spec #478, the owner on
+# 2026-11-13, phase-2-grill-decisions.md).
+CONSENT_VERSION = 5
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
-# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); version 4 moved
-# it with the version (#452); naming the 照顧旅程's to-do ticks (spec #478), a minor fix as
-# #181 was (ADR 0014), moved it again.
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4 and
+# 5 moved it with the version (#452, spec #478).
 PRIVACY_UPDATED_ON = date(2026, 11, 13)
 
 

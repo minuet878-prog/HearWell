@@ -21,6 +21,7 @@ from screening.models import (
     AidAndSubsidy,
     AidLevel,
     Certificate,
+    Consent,
     GuideChapterView,
     Questionnaire,
     Subsidy,
@@ -28,7 +29,12 @@ from screening.models import (
     User,
 )
 from screening.questionnaires import hhia_s, ioi_ha, ssq12_tw, thi
-from screening.tests import test_account_deletion, test_care_journey, test_home_journey
+from screening.tests import (
+    test_account_deletion,
+    test_care_journey,
+    test_consent,
+    test_home_journey,
+)
 from screening.tests.helpers import consented_user
 from screening.views.guide import here_stop
 
@@ -858,8 +864,9 @@ class Ticket482PairMigrationTests(TransactionTestCase):
 
 class Ticket481PrivacyListTests(TestCase):
     """The ticks are named where the account's data is listed: the privacy notice's 蒐集哪些資料
-    and the delete-account page. A minor fix as #181 was (ADR 0014): the date moves, the consent
-    version stays and nobody agrees again."""
+    and its highlights, and the delete-account page. What is collected changed, so the owner on
+    2026-11-13 raised the consent to version 5 and everyone agrees again, as the notice's 說明改版
+    promises (version 2 did the same for the 助聽器與補助資料)."""
 
     def test_the_privacy_notice_lists_the_ticks(self):
         content = self.client.get(reverse("privacy")).content.decode()
@@ -873,9 +880,28 @@ class Ticket481PrivacyListTests(TestCase):
         response = self.client.get(reverse("delete_account"))
         self.assertContains(response, "<li>照顧旅程的待辦打勾</li>", html=True)
 
-    def test_the_date_moved_and_the_version_stayed(self):
-        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
-        self.assertEqual(models.CONSENT_VERSION, 4)
-        user = consented_user(username="todo_privacy_agreed")
+    def test_the_highlights_say_the_ticks_are_kept(self):
+        # The privacy notice's top and the consent page, which share them.
+        self.assertContains(self.client.get(reverse("privacy")), f"<li>{TICKS_HIGHLIGHT}</li>")
+        self.client.force_login(User.objects.create_user(username="todo_highlights"))
+        self.assertContains(self.client.get(reverse("consent")), f"<li>{TICKS_HIGHLIGHT}</li>")
+
+    def test_version_5_dated_the_day_it_changed(self):
+        self.assertEqual(models.CONSENT_VERSION, 5)
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
+        self.assertContains(self.client.get(reverse("privacy")), "第 5 版，2026/11/13 更新")
+
+    def test_who_agreed_to_version_4_agrees_again_to_version_5(self):
+        user = User.objects.create_user(username="todo_agreed_to_version_4")
+        Consent.objects.create(user=user, version=4)
         self.client.force_login(user)
-        self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 200)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), test_consent._consent_url(url))
+        response = self.client.post(reverse("consent"), {"agree": "", "next": url})
+        self.assertRedirects(response, url)
+        versions = Consent.objects.filter(user=user).order_by("id")
+        self.assertEqual(list(versions.values_list("version", flat=True)), [4, 5])
+
+
+# The highlight naming the ticks, on the privacy notice's top and the consent page.
+TICKS_HIGHLIGHT = "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。"
