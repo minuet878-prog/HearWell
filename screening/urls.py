@@ -1,4 +1,3 @@
-from django.contrib.auth import views as auth_views
 from django.urls import path
 from django.views.generic import TemplateView
 
@@ -16,18 +15,16 @@ from .views import (
     qa_assistant,
     reports,
     results,
+    sign_in,
     simulator,
 )
 
 urlpatterns = [
     path("", home.index, name="index"),
-    path(
-        "login",
-        auth_views.LoginView.as_view(
-            template_name="screening/login.html", http_method_names=["get", "post"]
-        ),
-        name="login",
-    ),
+    path("login", sign_in.LoginView.as_view(), name="login"),
+    path("login/google", sign_in.google_start, name="google_start"),
+    path("login/google/callback", sign_in.google_callback, name="google_callback"),
+    path("login/google/name", sign_in.google_name, name="google_name"),
     path("logout", accounts.logout_view, name="logout"),
     path("register", accounts.register, name="register"),
     path("privacy", accounts.privacy, name="privacy"),

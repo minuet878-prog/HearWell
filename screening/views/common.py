@@ -1,6 +1,8 @@
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 
+from screening import oidc
+
 
 def safe_next(request):
     # Only same-site URLs; anything else is treated as no next (open redirect guard).
@@ -35,4 +37,17 @@ def older_fold(rows, day, unit):
         "rows": older,
         "title": f"看以前的 {len(older)} {unit}",
         "dates": f"{day(older[-1]):%Y/%m/%d} 到 {day(older[0]):%Y/%m/%d}",
+    }
+
+
+# Spec #505: why a Google trip did not end signed in, said once on the login or register page.
+SIGN_IN_ERROR = "screening.sign_in_error"
+
+
+def sign_in_choices(request):
+    """What the login and register pages show above the password form: the Google button when
+    Google is set up, and the error a Google trip came back with (taken out, so said once)."""
+    return {
+        "google_sign_in": oidc.enabled("google"),
+        "sign_in_error": request.session.pop(SIGN_IN_ERROR, ""),
     }

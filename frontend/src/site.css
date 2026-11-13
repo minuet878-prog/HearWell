@@ -282,6 +282,35 @@
     --btn-disabled-bg: var(--color-severe);
     --btn-disabled-border-color: var(--color-severe);
   }
+  /* Spec #505 (the #507 mockup D4): Google's light button, its own colours (words #1f1f1f at
+     16.5:1, the 1px frame #747775 at 4.5:1 on white), scaled up to our buttons' height and corner;
+     under a mouse and when pressed only the fill greys, as Google's own button does. */
+  .btn-google {
+    --btn-color: #1f1f1f;
+    --btn-bg: #fff;
+    --btn-border-color: #747775;
+    --btn-hover-color: #1f1f1f;
+    --btn-hover-bg: #f2f2f2;
+    --btn-hover-border-color: #747775;
+    --btn-focus-ring: var(--color-focus-ring);
+    --btn-active-color: #1f1f1f;
+    --btn-active-bg: #e6e6e6;
+    --btn-active-border-color: #747775;
+    width: 100%;
+    gap: 0.75rem;
+    border-width: 1px;
+    font-weight: 600;
+  }
+  .btn-google-logo { flex: none; width: 1.5rem; height: 1.5rem; }
+  /* 或用帳號密碼 between the Google button and the password form: a line on each side. */
+  .auth-or {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    color: var(--color-muted);
+  }
+  .auth-or::before, .auth-or::after { content: ""; flex: 1; border-top: 1px solid var(--color-line); }
   /* The site only recoloured the rest and active states; disabled kept the pre-migration framework blue, #0d6efd. */
   .btn-outline-primary {
     --btn-color: var(--color-primary);

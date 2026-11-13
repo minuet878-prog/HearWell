@@ -16,13 +16,17 @@ from django.urls import reverse
 # reads nobody's records and its answers are the same for everyone (ADR 0032), and family send
 # each other its answer links (the owner's call for spec #396, 2026-10-27); typing a question
 # there is part of it (#399). The zone's page on how to talk with him came out of the family guide
-# with the same words (#469).
+# with the same words (#469). Signing in or up with Google is the way to an account, as login and
+# register are, and makes nothing before the name page (spec #505).
 OPEN_PAGES = {
     "index",
     "privacy",
     "consent",
     "add_to_home",
     "login",
+    "google_start",
+    "google_callback",
+    "google_name",
     "register",
     "logout",
     "download_my_data",

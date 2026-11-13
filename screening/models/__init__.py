@@ -29,6 +29,7 @@ from screening.models.sharing import (
     _share_expiry,
     _share_token,
 )
+from screening.models.sign_in import SignInMethod
 from screening.models.submissions import (
     Answer,
     NormGroup,

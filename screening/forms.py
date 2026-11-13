@@ -99,6 +99,37 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         return user
 
 
+class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
+    """Spec #505 acceptance 5, 6: the name and birth year of an account made with Google, with
+    the register form's fields, words and checks; no password, and the email is Google's."""
+
+    roc_birth_year = RegisterForm.base_fields["roc_birth_year"]
+
+    class Meta:
+        model = User
+        fields = ("username",)
+        field_classes = UserCreationForm.Meta.field_classes  # UsernameField, as registering
+
+    clean_username = UserCreationForm.clean_username
+    clean_roc_birth_year = RegisterForm.clean_roc_birth_year
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "form-control")
+        self.fields["username"].help_text = USERNAME_HELP
+        self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
+
+    def save(self, *, email):
+        user = super().save(commit=False)
+        roc = self.cleaned_data["roc_birth_year"]
+        user.birth_year = None if roc is None else roc + ROC_OFFSET
+        user.email = email
+        user.set_unusable_password()
+        user.save()
+        return user
+
+
 def answer_choices(question):
     return question.questionnaire.definition.choices(question.question_number)
 

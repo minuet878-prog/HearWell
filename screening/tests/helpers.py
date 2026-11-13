@@ -1,5 +1,12 @@
+import base64
+import json
 import re
 from unittest.mock import patch
+from urllib.parse import parse_qsl, urlsplit
+
+from django.test import override_settings
+from django.urls import reverse
+from django.utils import timezone
 
 from screening import models, questionnaires
 from screening.questionnaires import hhie_s
@@ -82,3 +89,87 @@ def step_bar(response):
         return None
     segments = re.findall(r'<span class="step-progress-segment( is-done)?"></span>', bar.group(1))
     return segments.count(" is-done"), len(segments)
+
+
+# Spec #505: Google sign-in. Tests turn Google on with these settings; test_settings leaves it off.
+GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com"
+google_on = override_settings(
+    GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET="test-secret",
+    SITE_URL="https://tingpal.test",
+)
+GOOGLE_AUTHORIZE = "https://accounts.google.com/o/oauth2/v2/auth"
+
+
+def id_token(**claims):
+    """An ID token as Google's token endpoint returns it. Ours reads the payload without the
+    signature (Google's docs allow it straight from the token endpoint), so it is left blank."""
+
+    def part(data):
+        return base64.urlsafe_b64encode(json.dumps(data).encode()).rstrip(b"=").decode()
+
+    return f"{part({'alg': 'RS256', 'typ': 'JWT'})}.{part(claims)}.c2lnbmF0dXJl"
+
+
+class FakeGoogle:
+    """Google for a test: start() follows the Google button to the authorize URL, come_back()
+    returns to our callback as Google would. Only screening.oidc.exchange_code, our server's call
+    to Google's token endpoint, is replaced; state, nonce, PKCE and their expiry run for real.
+
+        google = FakeGoogle(self.client)
+        google.start()
+        response = google.come_back(sub="google-1", email="lin.mei@example.com")
+    """
+
+    def __init__(self, client):
+        self.client = client
+        self.authorize = None  # the last authorize URL's query, one value per name
+        self.exchanges = []  # the keyword arguments of each exchange_code call
+
+    def start(self, **params):
+        response = self.client.get(reverse("google_start"), params)
+        location = urlsplit(response["Location"])
+        assert f"{location.scheme}://{location.netloc}{location.path}" == GOOGLE_AUTHORIZE
+        self.authorize = dict(parse_qsl(location.query))
+        return response
+
+    def claims(self, sub, email, **overrides):
+        """The ID token's claims Google would send back for this trip."""
+        now = int(timezone.now().timestamp())
+        return {
+            "iss": "https://accounts.google.com",
+            "aud": GOOGLE_CLIENT_ID,
+            "sub": sub,
+            "email": email,
+            "email_verified": True,
+            "iat": now,
+            "exp": now + 3600,
+            "nonce": self.authorize["nonce"],
+        } | overrides
+
+    def come_back(
+        self,
+        sub="google-sub-1",
+        email="lin.mei@example.com",
+        *,
+        query=None,
+        exchange=None,
+        **claims,
+    ):
+        """GET our callback. query: the callback's query instead of Google's code and state.
+        exchange: what exchange_code does instead of returning the ID token (an exception)."""
+        if query is None:
+            query = {"code": "auth-code", "state": self.authorize["state"]}
+        token = {
+            "access_token": "never-kept",
+            "id_token": id_token(**self.claims(sub, email, **claims)),
+        }
+
+        def fake_exchange(**kwargs):
+            self.exchanges.append(kwargs)
+            if exchange is not None:
+                raise exchange
+            return token
+
+        with patch("screening.oidc.exchange_code", side_effect=fake_exchange):
+            return self.client.get(reverse("google_callback"), query)

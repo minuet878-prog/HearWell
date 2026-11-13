@@ -1,0 +1,458 @@
+import base64
+import hashlib
+from datetime import timedelta
+from unittest import mock
+from urllib.parse import parse_qsl, urlsplit
+
+from django.test import TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
+
+from screening import models, oidc
+from screening.models import Consent, SignInMethod, User
+from screening.tests import test_consent
+from screening.tests.helpers import GOOGLE_CLIENT_ID, FakeGoogle, consented_user, google_on
+
+GOOGLE_BUTTON = "使用 Google 帳戶"
+FAILED_WORDS = "登入沒有完成，請再試一次。"
+
+
+@override_settings(GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET="")
+class WithoutKeysTests(TestCase):
+    """#505 acceptance 1: without the keys there is no Google at all."""
+
+    def test_no_button_on_the_login_and_register_pages(self):
+        for name in ("login", "register"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, GOOGLE_BUTTON)
+
+    def test_the_google_urls_are_404(self):
+        for name in ("google_start", "google_callback", "google_name"):
+            with self.subTest(url=name):
+                self.assertEqual(self.client.get(reverse(name)).status_code, 404)
+        self.assertEqual(self.client.post(reverse("google_name")).status_code, 404)
+
+    def test_a_client_id_without_its_secret_is_still_off(self):
+        with override_settings(GOOGLE_CLIENT_ID="only-the-id"):
+            self.assertNotContains(self.client.get(reverse("login")), GOOGLE_BUTTON)
+            self.assertEqual(self.client.get(reverse("google_start")).status_code, 404)
+
+
+@google_on
+class ButtonTests(TestCase):
+    """#505 acceptance 2 (the #507 mockup D1 甲, D2, W1, W2): the button above the form."""
+
+    def test_login_page_has_the_button_above_the_form_then_the_divider(self):
+        content = self.client.get(reverse("login")).content.decode()
+        button = content.index("使用 Google 帳戶登入")
+        divider = content.index("或用帳號密碼")
+        form = content.index(f'action="{reverse("login")}"')
+        self.assertLess(button, divider)
+        self.assertLess(divider, form)
+
+    def test_register_page_has_the_button_above_the_form_then_the_divider(self):
+        content = self.client.get(reverse("register")).content.decode()
+        button = content.index("使用 Google 帳戶註冊")
+        divider = content.index("或填寫資料註冊")
+        form = content.index(f'action="{reverse("register")}"')
+        self.assertLess(button, divider)
+        self.assertLess(divider, form)
+
+    def test_the_button_carries_next_on(self):
+        target = reverse("questionnaire_list")
+        for name in ("login", "register"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name), {"next": target})
+                self.assertContains(
+                    response, f'href="{reverse("google_start")}?next=/questionnaire_list"'
+                )
+
+
+@google_on
+class StartTests(TestCase):
+    """#505 acceptance 4 and 21: the trip to Google."""
+
+    def setUp(self):
+        self.google = FakeGoogle(self.client)
+
+    def test_the_authorize_url_asks_for_openid_email_with_state_nonce_and_pkce(self):
+        self.google.start()
+        query = self.google.authorize
+        self.assertEqual(query["response_type"], "code")
+        self.assertEqual(query["client_id"], GOOGLE_CLIENT_ID)
+        self.assertEqual(query["scope"], "openid email")
+        self.assertEqual(query["redirect_uri"], "https://tingpal.test/login/google/callback")
+        self.assertEqual(query["code_challenge_method"], "S256")
+        for name in ("state", "nonce", "code_challenge"):
+            self.assertGreaterEqual(len(query[name]), 32, name)
+
+    def test_each_trip_has_its_own_state_nonce_and_pkce(self):
+        self.google.start()
+        first = self.google.authorize
+        self.google.start()
+        for name in ("state", "nonce", "code_challenge"):
+            self.assertNotEqual(first[name], self.google.authorize[name], name)
+
+    def test_the_verifier_sent_on_the_way_back_hashes_to_the_challenge(self):
+        self.google.start()
+        self.google.come_back()
+        verifier = self.google.exchanges[0]["code_verifier"]
+        digest = hashlib.sha256(verifier.encode()).digest()
+        challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+        self.assertEqual(challenge, self.google.authorize["code_challenge"])
+        self.assertNotEqual(verifier, self.google.authorize["code_challenge"])
+        self.assertEqual(
+            self.google.exchanges[0]["redirect_uri"], "https://tingpal.test/login/google/callback"
+        )
+        self.assertEqual(self.google.exchanges[0]["code"], "auth-code")
+
+    # 21
+    @override_settings(ALLOWED_HOSTS=["tingpal.test", "evil.example"])
+    def test_a_forged_host_header_does_not_change_the_callback_url(self):
+        response = self.client.get(reverse("google_start"), headers={"host": "evil.example"})
+        query = dict(parse_qsl(urlsplit(response["Location"]).query))
+        self.assertEqual(query["redirect_uri"], "https://tingpal.test/login/google/callback")
+
+
+@google_on
+class FirstTimeTests(TestCase):
+    """#505 acceptance 5-9: the first time back from Google."""
+
+    def setUp(self):
+        self.google = FakeGoogle(self.client)
+
+    def _to_name_page(self, **start):
+        self.google.start(**start)
+        return self.google.come_back(sub="google-new", email="lin.mei@example.com")
+
+    def _name(self, username="林阿美", roc_birth_year=""):
+        return self.client.post(
+            reverse("google_name"), {"username": username, "roc_birth_year": roc_birth_year}
+        )
+
+    # 5
+    def test_back_from_google_goes_to_the_name_page_without_an_account(self):
+        response = self._to_name_page()
+        self.assertRedirects(response, reverse("google_name"))
+        self.assertEqual(User.objects.count(), 0)
+        page = self.client.get(reverse("google_name"))
+        self.assertContains(page, "電子郵件（來自 Google）")
+        self.assertContains(page, "lin.mei@example.com")
+        self.assertContains(page, '<label for="id_username">使用者名稱</label>', html=True)
+        self.assertContains(
+            page, '<label for="id_roc_birth_year">出生年（選填）</label>', html=True
+        )
+        self.assertContains(
+            page, "先用帳號密碼登入，再到帳號設定新增 Google 登入，紀錄才會在同一個帳號。"
+        )
+        self.assertContains(page, f'href="{reverse("login")}"')
+        self.assertNotContains(page, 'type="password"')
+        self.assertEqual(User.objects.count(), 0)
+        self.assertIn("no-store", page["Cache-Control"])
+
+    # 6
+    def test_a_taken_name_gets_the_same_error_as_registering(self):
+        User.objects.create_user(username="林阿美", password="x")
+        registering = self.client.post(reverse("register"), {"username": "林阿美"})
+        self._to_name_page()
+        response = self._name("林阿美")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].errors["username"],
+            registering.context["form"].errors["username"],
+        )
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_a_name_differing_only_in_case_is_taken_too(self):
+        User.objects.create_user(username="Ming", password="x")
+        self._to_name_page()
+        self.assertEqual(self._name("ming").status_code, 200)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_a_birth_year_out_of_range_gets_the_register_pages_error(self):
+        self._to_name_page()
+        response = self._name(roc_birth_year="200")
+        self.assertContains(response, "請輸入民國 1 到")
+        self.assertEqual(User.objects.count(), 0)
+
+    # 6
+    def test_naming_makes_the_account_signs_in_and_goes_to_consent(self):
+        self._to_name_page()
+        response = self._name("林阿美", roc_birth_year="45")
+        self.assertRedirects(response, reverse("consent"))
+        user = User.objects.get()
+        self.assertEqual(user.username, "林阿美")
+        self.assertEqual(user.birth_year, 1956)
+        self.assertEqual(user.email, "lin.mei@example.com")
+        self.assertFalse(user.has_usable_password())
+        method = SignInMethod.objects.get()
+        self.assertEqual(
+            (method.user, method.provider, method.subject, method.used_to_register),
+            (user, "google", "google-new", True),
+        )
+        self.assertEqual(int(self.client.session["_auth_user_id"]), user.pk)
+
+    def test_the_name_page_is_used_once(self):
+        self._to_name_page()
+        self._name("林阿美")
+        response = self._name("別人")  # still signed in as 林阿美, whose session it was
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertEqual(User.objects.count(), 1)
+
+    # 7
+    def test_after_10_minutes_the_name_page_makes_nothing(self):
+        self._to_name_page()
+        later = timezone.now() + timedelta(minutes=10, seconds=1)
+        with mock.patch("django.utils.timezone.now", return_value=later):
+            response = self._name("林阿美")
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertEqual(User.objects.count(), 0)
+        self.assertContains(
+            self.client.get(reverse("login")), "等太久了，請再按一次「使用 Google 帳戶登入」。"
+        )
+
+    def test_within_10_minutes_the_name_page_still_works(self):
+        self._to_name_page()
+        later = timezone.now() + timedelta(minutes=9, seconds=50)
+        with mock.patch("django.utils.timezone.now", return_value=later):
+            self._name("林阿美")
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_the_name_page_without_google_sends_to_login(self):
+        self.assertRedirects(self.client.get(reverse("google_name")), reverse("login"))
+
+    # 8
+    def test_agreeing_goes_on_into_the_wizard_as_registering_does(self):
+        target = reverse("questionnaire_list")
+        self._to_name_page(next=target)
+        response = self._name("林阿美")
+        self.assertRedirects(response, test_consent._consent_url(target))
+        response = self.client.post(reverse("consent"), {"agree": "", "next": target})
+        self.assertRedirects(response, f"{target}?from=consent", fetch_redirect_response=False)
+        self.assertTrue(User.objects.get().has_consented())
+
+    def test_declining_signs_out_and_keeps_the_account_with_no_records(self):
+        self._to_name_page()
+        self._name("林阿美")
+        response = self.client.post(reverse("consent"), {"decline": ""})
+        self.assertRedirects(response, reverse("index"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+        user = User.objects.get()
+        self.assertFalse(user.consents.exists())
+        self.assertFalse(user.submissions.exists())
+
+    # 9
+    def test_an_unverified_email_makes_no_account(self):
+        self.google.start()
+        for verified in (False, "false", None):
+            with self.subTest(email_verified=verified):
+                self.google.start()
+                response = self.google.come_back(sub="google-new", email_verified=verified)
+                self.assertRedirects(response, reverse("register"), fetch_redirect_response=False)
+                self.assertNotIn("screening.oidc_identity", self.client.session)
+                self.assertContains(
+                    self.client.get(reverse("register")),
+                    "這個 Google 帳戶的 email 還沒有驗證，沒辦法用來註冊。請改用帳號密碼註冊。",
+                )
+        self.assertEqual(self.client.get(reverse("google_name")).status_code, 302)
+        self.assertEqual(User.objects.count(), 0)
+
+
+@google_on
+class AgainTests(TestCase):
+    """#505 acceptance 10, 11: signing in again."""
+
+    def setUp(self):
+        self.google = FakeGoogle(self.client)
+        self.user = consented_user(username="林阿美", email="lin.mei@example.com")
+        self.user.set_unusable_password()
+        self.user.save()
+        SignInMethod.objects.create(
+            user=self.user, provider="google", subject="google-1", used_to_register=True
+        )
+
+    # 10
+    def test_the_same_code_signs_in_the_same_account(self):
+        self.google.start()
+        response = self.google.come_back(sub="google-1", email="new.address@example.com")
+        self.assertRedirects(response, reverse("consent"), target_status_code=302)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(SignInMethod.objects.count(), 1)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, "lin.mei@example.com")
+
+    def test_signing_in_again_goes_back_to_next(self):
+        target = reverse("my_hearing")
+        self.google.start(next=target)
+        self.assertRedirects(self.google.come_back(sub="google-1"), target)
+
+    def test_next_to_another_site_is_dropped(self):
+        self.google.start(next="https://evil.example/")
+        response = self.google.come_back(sub="google-1")
+        self.assertRedirects(response, reverse("consent"), target_status_code=302)
+
+    def test_an_unverified_email_still_signs_in_a_known_code(self):
+        self.google.start()
+        self.google.come_back(sub="google-1", email_verified=False)
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    # 11
+    def test_an_admin_account_is_not_signed_in(self):
+        for flags in ({"is_staff": True}, {"is_superuser": True}):
+            with self.subTest(**flags):
+                User.objects.filter(pk=self.user.pk).update(
+                    **{"is_staff": False, "is_superuser": False} | flags
+                )
+                self.google.start()
+                response = self.google.come_back(sub="google-1")
+                self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+                self.assertNotIn("_auth_user_id", self.client.session)
+                self.assertContains(self.client.get(reverse("login")), "這個帳號請用帳號密碼登入。")
+
+    def test_a_deactivated_account_is_not_signed_in(self):
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        self.google.start()
+        self.assertRedirects(self.google.come_back(sub="google-1"), reverse("login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    # 39
+    def test_who_agreed_to_the_last_version_is_asked_again(self):
+        Consent.objects.filter(user=self.user).update(version=models.CONSENT_VERSION - 1)
+        target = reverse("my_hearing")
+        self.google.start(next=target)
+        self.google.come_back(sub="google-1")
+        self.assertRedirects(self.client.get(target), test_consent._consent_url(target))
+
+
+@google_on
+class CallbackSecurityTests(TestCase):
+    """#505 acceptance 15-20: a forged, replayed, late or cancelled callback signs no one in.
+    The code google-1 belongs to an account, so a check that let it through would sign it in."""
+
+    def setUp(self):
+        self.google = FakeGoogle(self.client)
+        self.user = consented_user(username="林阿美")
+        SignInMethod.objects.create(user=self.user, provider="google", subject="google-1")
+        self.google.start()
+
+    def assertRejected(self, response, message=FAILED_WORDS, exchanged=False):
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertContains(self.client.get(reverse("login")), message)
+        self.assertEqual(bool(self.google.exchanges), exchanged)
+
+    def test_the_real_callback_signs_in(self):
+        # The other tests' baseline: unchanged, this callback does sign the account in.
+        self.assertRedirects(
+            self.google.come_back(sub="google-1"), reverse("consent"), target_status_code=302
+        )
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    # 15
+    def test_a_different_state_is_rejected_before_calling_google(self):
+        state = self.google.authorize["state"]
+        forged = state[:-1] + ("A" if state[-1] != "A" else "B")
+        self.assertRejected(self.google.come_back(query={"code": "auth-code", "state": forged}))
+
+    def test_no_state_is_rejected_before_calling_google(self):
+        self.assertRejected(self.google.come_back(query={"code": "auth-code"}))
+
+    def test_no_trip_in_the_session_is_rejected(self):
+        query = {"code": "auth-code", "state": self.google.authorize["state"]}
+        session = self.client.session
+        del session["screening.oidc_flow"]
+        session.save()
+        self.assertRejected(self.google.come_back(query=query))
+
+    def test_a_state_is_used_up_even_by_a_failed_try(self):
+        good = {"code": "auth-code", "state": self.google.authorize["state"]}
+        self.google.come_back(query={"code": "auth-code", "state": "wrong"})
+        self.assertRejected(self.google.come_back(query=good))
+
+    def test_no_code_is_rejected(self):
+        self.assertRejected(self.google.come_back(query={"state": self.google.authorize["state"]}))
+
+    # 16
+    def test_more_than_10_minutes_after_leaving_is_rejected_before_calling_google(self):
+        later = timezone.now() + timedelta(minutes=10, seconds=1)
+        with mock.patch("django.utils.timezone.now", return_value=later):
+            response = self.google.come_back(sub="google-1")
+        self.assertRejected(response)
+
+    def test_just_under_10_minutes_is_still_in_time(self):
+        later = timezone.now() + timedelta(minutes=9, seconds=50)
+        with mock.patch("django.utils.timezone.now", return_value=later):
+            self.google.come_back(sub="google-1")
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    # 17
+    def test_an_id_token_for_another_trip_is_rejected(self):
+        self.assertRejected(self.google.come_back(sub="google-1", nonce="other"), exchanged=True)
+
+    def test_an_id_token_without_a_nonce_is_rejected(self):
+        self.assertRejected(self.google.come_back(sub="google-1", nonce=None), exchanged=True)
+
+    def test_an_id_token_for_another_client_is_rejected(self):
+        self.assertRejected(
+            self.google.come_back(sub="google-1", aud="another.apps.googleusercontent.com"),
+            exchanged=True,
+        )
+
+    def test_an_id_token_from_another_issuer_is_rejected(self):
+        self.assertRejected(
+            self.google.come_back(sub="google-1", iss="https://evil.example"), exchanged=True
+        )
+
+    def test_both_of_googles_issuer_forms_are_accepted(self):
+        self.google.come_back(sub="google-1", iss="accounts.google.com")
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+    def test_an_expired_id_token_is_rejected(self):
+        past = int(timezone.now().timestamp()) - 1
+        self.assertRejected(self.google.come_back(sub="google-1", exp=past), exchanged=True)
+
+    def test_an_id_token_without_a_sub_is_rejected(self):
+        self.assertRejected(self.google.come_back(sub=None), exchanged=True)
+
+    def test_an_unreadable_id_token_is_rejected(self):
+        with mock.patch("screening.oidc.exchange_code", return_value={"id_token": "not-a-token"}):
+            response = self.client.get(
+                reverse("google_callback"),
+                {"code": "auth-code", "state": self.google.authorize["state"]},
+            )
+        self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    # 18
+    def test_the_same_callback_twice_is_rejected(self):
+        query = {"code": "auth-code", "state": self.google.authorize["state"]}
+        self.google.come_back(sub="google-new", query=query)  # to the name page, not signed in
+        self.assertRedirects(
+            self.google.come_back(sub="google-1", query=query),
+            reverse("login"),
+            fetch_redirect_response=False,
+        )
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(len(self.google.exchanges), 1)
+
+    # 19
+    def test_cancelling_on_google_comes_back_to_login_with_words(self):
+        response = self.google.come_back(
+            query={"error": "access_denied", "state": self.google.authorize["state"]}
+        )
+        self.assertRejected(response, "沒有完成 Google 登入。可以再試一次，或用帳號密碼登入。")
+        self.assertNotIn("screening.oidc_flow", self.client.session)
+
+    # 20
+    def test_google_not_answering_comes_back_to_login_and_goes_to_monitoring(self):
+        with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+            response = self.google.come_back(
+                sub="google-1", exchange=oidc.Unavailable("google token endpoint: URLError")
+            )
+        self.assertRejected(
+            response, "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。", exchanged=True
+        )
+        self.assertIn("Google token exchange failed", logs.output[0])
