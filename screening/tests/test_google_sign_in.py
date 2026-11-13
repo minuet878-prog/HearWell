@@ -275,6 +275,29 @@ class FirstTimeTests(TestCase):
         self.assertRedirects(response, f"{target}?from=consent", fetch_redirect_response=False)
         self.assertTrue(User.objects.get().has_consented())
 
+    def test_from_the_plain_login_page_agreeing_goes_where_registering_does(self):
+        # Codex review Spec 4: the register page without a next (its link in the header) goes
+        # home after agreeing; Google from the plain login page goes the same way.
+        password = test_consent.PASSWORD
+        self.client.post(
+            reverse("register"),
+            {
+                "username": "密碼註冊",
+                "email": "pw@example.com",
+                "password1": password,
+                "password2": password,
+            },
+        )
+        registering = self.client.post(reverse("consent"), {"agree": ""})
+        self.assertRedirects(registering, reverse("index"), fetch_redirect_response=False)
+        self.client.logout()
+
+        self._to_name_page()
+        self.assertRedirects(self._name("林阿美"), reverse("consent"))
+        response = self.client.post(reverse("consent"), {"agree": ""})
+        self.assertRedirects(response, registering.url, fetch_redirect_response=False)
+        self.assertTrue(User.objects.get(username="林阿美").has_consented())
+
     def test_declining_signs_out_and_keeps_the_account_with_no_records(self):
         self._to_name_page()
         self._name("林阿美")
