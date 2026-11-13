@@ -16,6 +16,12 @@
     {# Issue #151: register and consent are steps 1 and 2 of 2, numbered apart from the wizard. #}
     {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
     <div class="auth-form">
+        {# Spec #505 (the #507 mockup D1 甲, W2): Google above the form, under the step bar: it takes the same two steps. #}
+        {% if sign_in_error %}<p class="error-box" role="alert">{{ sign_in_error }}</p>{% endif %}
+        {% if google_sign_in or open_outside_url %}
+        {% if google_sign_in %}{% include "screening/google_button.html" with label="註冊" %}{% else %}{% include "screening/line_open_outside.html" %}{% endif %}
+        <p class="auth-or">或填寫資料註冊</p>
+        {% endif %}
         <form class="register-form" method="post" action="{% url 'register' %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ next }}">

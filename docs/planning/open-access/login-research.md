@@ -49,6 +49,8 @@
 
 **重放舊回呼怎麼擋**：三層。(1) state 用一次就從 session 刪掉，同一個網址再打一次就找不到 state 而拒絕；(2) 授權碼依 OAuth 2.0 標準只能用一次、且要短效〔R1〕，對方會拒絕；(3) nonce 綁在這次的 session，舊 ID token 對不上。另外 Django `login()` 會換 session 代號，state 要在登入前就 pop 掉。
 
+**兩個回呼同時到（交叉審查 Spec 3，本人決定不修）**：同一個 session 的兩個請求幾乎同時到，可能都在對方存回 session 之前讀到 state，兩邊都去換 token。Django 的 session 沒有鎖，要擋住得另加資料庫層的一次性紀錄。不修的原因：Google 的授權碼本身只能換一次〔R1〕，兩邊最多一邊換成功，另一邊會被 Google 拒絕、走「Google 暫時沒有回應」，不會兩邊都登入。
+
 套件對照：allauth 的 state 存在 session、用一次就刪、10 分鐘過期、最多留 10 組〔A10〕；PKCE 要手動開；nonce 未看到。Authlib 有送 nonce 就一定驗〔A6〕。
 
 ---
@@ -66,7 +68,7 @@
 **對第 1 項訪客認領的影響**：
 - 全程在 LINE 內建瀏覽器裡：訪客作答存在 LINE 瀏覽器自己的 localStorage → 用 LINE 註冊（自動登入、回到同一個瀏覽器）→ 同意 → 送出。**認領得到**（理論上，要實機驗）。
 - 在 LINE 裡做完、按 Google：可能被擋；若改用 `openExternalBrowser=1` 跳到 Safari／Chrome，**訪客作答留在 LINE 那邊，認領不到**。
-- 所以「在 LINE 內建瀏覽器裡要不要顯示 Google 按鈕」需要本人決定（見最後一節）。辨認 LINE 內建瀏覽器只能看 User-Agent 字串，LINE 未公開官方格式（未找到官方來源）。
+- 所以「在 LINE 內建瀏覽器裡要不要顯示 Google 按鈕」需要本人決定（見最後一節）。辨認 LINE 內建瀏覽器只能看 User-Agent 字串，LINE 未公開官方格式（未找到官方來源；#512 照 LINE 自己的 LIFF 套件判斷，見第 9 節）。
 
 ---
 
@@ -128,6 +130,43 @@
 
 ---
 
+## 8. Google 能不能要求重新驗證（#508 實作前查，給 #510 確認本人用）
+
+查詢日期 2026-11-13。結論：**Google 不支援「強迫重新輸入密碼」**；能做的只有讓他重選帳號，和事後看他多久以前在 Google 登入過。
+
+| 參數或欄位 | Google 支不支援 | 來源 |
+|---|---|---|
+| `max_age`（要求多少秒內登入過） | 不支援：授權參數表沒有這一項，discovery 文件也沒有 | 〔G1〕〔G9〕 |
+| `prompt=login`（強迫重新登入） | 不支援：`prompt` 只列 `none`、`consent`、`select_account` 三種 | 〔G1〕〔G2〕 |
+| `prompt=select_account` | 支援：一定跳出選帳號畫面，不會自動用目前登入的那個 | 〔G1〕〔G2〕 |
+| `login_hint` | 支援：可以帶 email 或 `sub`，先選好那個帳號（會略過選帳號畫面） | 〔G1〕 |
+| `auth_time`（上次在 Google 登入的時間） | 有條件：授權網址要帶 `claims={"id_token":{"auth_time":{"essential":true}}}`，而且要在 Google Auth Platform 的 Settings → Advanced Settings 勾「Session age claims」；應用程式要「已發布＋已驗證」才拿得到，預設關閉 | 〔G1〕〔G10〕 |
+| 重新驗證的要求 | Google 安全功能文件明寫不支援 Google 帳戶的 reauth 請求；建議自己看 `auth_time` 決定要不要另外加關卡 | 〔G10〕 |
+
+`auth_time` 是「這台裝置或瀏覽器上次登入 Google 帳戶的時間」〔G10〕，手機一直登入著的長輩通常是很久以前，拿它來擋（例如要求 5 分鐘內）會讓人過不了，又沒辦法叫 Google 重新問密碼。
+
+**給 #510 的建議**：確認本人時帶 `prompt=select_account`（讓他看見自己選的是哪個 Google，防「順手用了別人的」），不帶 `login_hint`（帶了會略過選帳號）；代號必須等於帳號上那一列。`auth_time` 等品牌驗證通過、有需要時再評估，先不靠它。規格「其他說明」寫的極限照舊：擋得住換成別的 Google，擋不住拿著本人已解鎖手機的人。
+
+---
+
+## 9. 怎麼認出 LINE 內建瀏覽器（#512 實作時查）
+
+查詢日期 2026-11-13。結論：**LINE 沒有公開 User-Agent（瀏覽器每次連線自報身分的那串字）格式**，但 LINE 自己的 LIFF 套件就是看 `Line/版本號` 判斷，我們照用同一條規則。
+
+| 項目 | 找到的內容 | 來源 |
+|---|---|---|
+| LINE 官方套件怎麼判斷 | `@liff/util` 2.32.0（2026-11-09 發布）的 `isLINEBrowser` 用 `/Line\/\d+\.\d+\.\d+/`（大小寫要對）；`isLIFFBrowser` 是同一串後面多 ` LIFF`。`liff.isInClient()` 就是用它 | 〔L12〕 |
+| iOS 實際字串 | `Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) … Safari Line/15.12.1`（2025-08-18 的文章；LIFF 瀏覽器同一串、尾巴多 `LIFF`） | 〔C1〕 |
+| Android 實際字串 | `Mozilla/5.0 (Linux; Android 5.0; …; wv) … Mobile Safari/537.36 Line/6.5.1/IAB`（舊版本，但格式「`Line/版本/IAB`」至今仍是常用解析套件的判斷依據） | 〔U1〕 |
+| LINE 版本號 | 2026 年的版本是 `26.7.2` 這種三段數字，規則照樣對得到 | 〔N1〕 |
+| 外部瀏覽器參數 | `openExternalBrowser=1`：從 LINE 裡打開的網址都適用，LIFF 除外；不支援電腦版 LINE | 〔L10〕 |
+
+**做法**：`screening/views/common.py` 的 `is_line_in_app_browser(request)` 是全站唯一的判斷，登入頁、註冊頁用它，保存卡（#513）與 LINE 登入（#506）照用。LIFF 瀏覽器也會被認出來，那裡 Google 一樣會被擋，所以一起處理。
+
+**沒查到、要實機確認**：最新 Android 版 LINE 的完整字串（找不到 2025 年以後的公開樣本）；本人驗收條件 41 用 iPhone 從 LINE 打開正式站時，順便記下 Android 是否也只認得出 `Line/`。
+
+---
+
 ## 要本人決定的事
 
 1. **做法**
@@ -172,6 +211,8 @@
 - 〔G6〕Google 品牌驗證：https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification
 - 〔G7〕Google 管理 OAuth 用戶端：https://support.google.com/cloud/answer/15549257
 - 〔G8〕Google OAuth 速率限制：https://support.google.com/cloud/answer/9028764
+- 〔G9〕Google discovery 文件：https://accounts.google.com/.well-known/openid-configuration
+- 〔G10〕Sign in with Google 安全功能（Security bundle，`auth_time`、Session age claims）：https://developers.google.com/identity/siwg/security-bundle
 - 〔L1〕LINE Login 網頁整合：https://developers.line.biz/en/docs/line-login/integrate-line-login/
 - 〔L2〕LINE PKCE：https://developers.line.biz/en/docs/line-login/integrate-pkce/
 - 〔L3〕LINE 驗證 ID token：https://developers.line.biz/en/docs/line-login/verify-id-token/
@@ -183,5 +224,9 @@
 - 〔L9〕LIFF 瀏覽器與 LINE 內建瀏覽器差異：https://developers.line.biz/en/docs/liff/differences-between-liff-browser-and-line-in-app-browser/
 - 〔L10〕LINE URL scheme（外部瀏覽器參數）：https://developers.line.biz/en/docs/line-login/using-line-url-scheme/
 - 〔L11〕LINE Login 開始使用（建立頻道、發布狀態）：https://developers.line.biz/en/docs/line-login/getting-started/
+- 〔L12〕LINE 官方 LIFF 套件 `@liff/util` 2.32.0（`isLINEBrowser`、`isLIFFBrowser`）：https://www.npmjs.com/package/@liff/util ；`@liff/is-in-client`：https://www.npmjs.com/package/@liff/is-in-client
+- 〔C1〕Classmethod「LIFFブラウザとLINE InAppBrowserにおけるUser-Agentの違い」（2025-08-18）：https://dev.classmethod.jp/articles/liff-vs-line-inappbrowser-user-agent/
+- 〔U1〕ua-parser-js 2.0.10（2026-05-21）的 LINE 規則與測試資料：https://github.com/faisalman/ua-parser-js/blob/master/src/main/ua-parser.js ；https://github.com/faisalman/ua-parser-js/blob/master/test/data/ua/browser/line.json
+- 〔N1〕LINE 內建瀏覽器 26.7.x 修復（2026-05，iOS 26.7.2、Android 26.7.1）：https://www.sogi.com.tw/articles/line-im/6268894 ；https://jetstream.blog/2026/05/25/android-line-app-browser-issue-20260525/
 - 〔R1〕OAuth 2.0（RFC 6749）§4.1.2 授權碼只能用一次：https://www.rfc-editor.org/rfc/rfc6749#section-4.1.2
 - 〔AP1〕Apple iPhone 使用手冊（Safari 加入主畫面）：https://support.apple.com/guide/iphone/bookmark-favorite-webpages-iph42ab2f3a7/ios

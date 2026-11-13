@@ -109,6 +109,37 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         return user
 
 
+class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
+    """Spec #505 acceptance 5, 6: the name and birth year of an account made with Google, with
+    the register form's fields, words and checks; no password, and the email is Google's."""
+
+    roc_birth_year = RegisterForm.base_fields["roc_birth_year"]
+
+    class Meta:
+        model = User
+        fields = ("username",)
+        field_classes = UserCreationForm.Meta.field_classes  # UsernameField, as registering
+
+    clean_username = UserCreationForm.clean_username
+    clean_roc_birth_year = RegisterForm.clean_roc_birth_year
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "form-control")
+        self.fields["username"].help_text = USERNAME_HELP
+        self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
+
+    def save(self, *, email):
+        user = super().save(commit=False)
+        roc = self.cleaned_data["roc_birth_year"]
+        user.birth_year = None if roc is None else roc + ROC_OFFSET
+        user.email = email
+        user.set_unusable_password()
+        user.save()
+        return user
+
+
 # Spec #355: the 重設密碼信 is answered by mail to the owner's mailbox.
 HELP_ADDRESS = "hearwellweb@gmail.com"
 
@@ -240,7 +271,8 @@ def offers_not_applicable(question):
     return "na" in dict(answer_choices(question))
 
 
-class DeleteAccountForm(NoLabelSuffix, forms.Form):
+class PasswordConfirmForm(NoLabelSuffix, forms.Form):
+    # The password asked for before deleting the account or confirming it is you (#510).
     # strip=False like Django's login and register forms: spaces are part of a password.
     password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
 

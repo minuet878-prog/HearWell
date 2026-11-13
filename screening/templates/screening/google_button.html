@@ -1,0 +1,5 @@
+{# Spec #505 (the #507 mockup D2, D4, W1): Google's light button, its own words for sign in, sign up or continue; the four-colour G as Google draws it. label: 登入, 註冊 or 繼續; start: the URL name of the trip it starts (google_start, to sign in, when not given). #}
+<a class="btn btn-lg btn-google" href="{% url start|default:'google_start' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
+    {% include "screening/google_logo.html" %}
+    <span>使用 Google 帳戶{{ label }}</span>
+</a>

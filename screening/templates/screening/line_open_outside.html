@@ -1,0 +1,9 @@
+{# Spec #505 acceptance 3 (ticket #512, the #507 mockup W3): inside LINE, Google would be blocked, so a 提示框 (P3) with a way out to Safari or Chrome takes the Google button's place. open_outside_url: this page with openExternalBrowser=1. Signed in (#511: account settings, the confirm and delete pages) the account keeps its records, so the guest line is left out. #}
+<div class="tip-box">
+    <p><b>想用 Google 登入？</b>LINE 裡面不能用 Google 登入，請改用 Safari 或 Chrome 打開這一頁。</p>
+    {% if not user.is_authenticated %}<p>在 LINE 裡做的篩檢結果不會跟著過去。</p>{% endif %}
+    <a class="w-full btn btn-lg btn-outline-primary mt-2" href="{{ open_outside_url }}">
+        <svg class="btn-open-outside-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>
+        <span>用 Safari／Chrome 打開</span>
+    </a>
+</div>

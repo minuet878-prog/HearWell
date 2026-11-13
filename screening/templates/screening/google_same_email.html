@@ -1,0 +1,21 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}這個 email 已經有帳號｜聽伴{% endblock %}
+
+{% block body %}
+{# Spec #505 acceptance 12-14 (the #507 mockup 4, W11, ADR 0057): first time with Google, but the email is already an account's. Never that account's name (anyone could look an email up). #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">這個 email 已經有帳號</h1>
+    <div class="auth-form">
+        <p class="wrap-anywhere">{{ email }} 已經用在一個聽伴帳號。</p>
+        <p>如果那是您的帳號，請先用帳號密碼登入，再到帳號設定新增 Google 登入。這樣您的紀錄都會在同一個帳號裡。</p>
+        <a class="w-full btn btn-lg btn-primary" href="{% url 'login' %}?next={{ password_next|urlencode }}">用帳號密碼登入</a>
+        <div class="tip-box mt-6">
+            <p class="mb-2"><strong>那不是我的帳號</strong></p>
+            <p class="mb-2">可能是有人打錯了 email。您可以用這個 Google 另外建立自己的帳號。</p>
+            <a class="inline-link" href="{% url 'google_name' %}">不是我的，建立新帳號</a>
+        </div>
+        <p class="mt-4 mb-0 wrap-anywhere">忘記密碼？請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+    </div>
+</div>
+{% endblock %}

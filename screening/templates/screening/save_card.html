@@ -8,6 +8,8 @@
     <p class="mb-3">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
     <div class="flex flex-col gap-2">
         <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ next }}">註冊保存</a>
+        {# #513 (the #507 mockup 7, W1): its own trip, which comes back to the save page; not inside LINE, where Google is blocked. #}
+        {% if google_save %}{% include "screening/google_button.html" with label="繼續" start="google_save_card" next="" %}{% endif %}
         <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'login' %}?next={{ next }}">登入保存</a>
     </div>
     <p class="mt-3 mb-1 text-(--color-muted)">這次結果只存在這支手機上，還留 <span data-guest-days-left></span> 天，之後自動刪除。</p>

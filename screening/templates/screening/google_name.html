@@ -1,0 +1,45 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}幫帳號取個名字｜聽伴{% endblock %}
+
+{% block body %}
+{# Spec #505 acceptance 5-7 (the #507 mockup 3, W8, W9): the register page's name and birth year; the email is Google's and cannot be changed, so it is a row, not a field. No account until 下一步. #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">幫帳號取個名字</h1>
+    {% include "screening/step_progress.html" with step=1 total=2 label="建立帳號" %}
+    <div class="auth-form">
+        <dl class="settings-group mb-4">
+            <div class="settings-row">
+                <dt class="settings-row-note">帳號的電子郵件（來自 Google）</dt>
+                <dd class="settings-row-title wrap-anywhere">{{ email }}</dd>
+            </div>
+        </dl>
+        <form class="register-form" method="post" action="{% url 'google_name' %}">
+            {% csrf_token %}
+            <div class="mb-4 auth-field">
+                {{ form.username.label_tag }}
+                <div class="auth-input">
+                    {% include "screening/auth_field_icon.html" with icon="user" %}
+                    {{ form.username }}
+                </div>
+                {% include "screening/field_messages.html" with field=form.username help_class="field-help" %}
+            </div>
+            <div class="mb-4 auth-field">
+                {{ form.roc_birth_year.label_tag }}
+                <div class="input-group">
+                    <span class="input-group-text">民國</span>
+                    {{ form.roc_birth_year }}
+                    <span class="input-group-text">年</span>
+                </div>
+                {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
+            </div>
+            <p>下一步請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>。</p>
+            <button class="w-full btn btn-lg btn-primary" type="submit">下一步</button>
+        </form>
+        <div class="tip-box mt-6">
+            <p class="mb-2"><strong>已經有帳號了嗎？</strong>先用帳號密碼登入，再到帳號設定新增 Google 登入，紀錄才會在同一個帳號。</p>
+            <a class="inline-link" href="{% url 'login' %}">用帳號密碼登入</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -159,6 +159,17 @@ AUTH_PASSWORD_VALIDATORS = [
 
 AUTH_USER_MODEL = "screening.User"
 
+# Google sign-in (spec #505, ADR 0056): off until both keys are set, so local development needs
+# no Google client. SITE_URL makes the callback URL a fixed string, never built from the request's
+# Host header (acceptance 21); no trailing slash, e.g. https://tingpal.tw.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and not SITE_URL:
+    raise ImproperlyConfigured(
+        "有 GOOGLE_CLIENT_ID 就要設定 SITE_URL（網站的正式網址，例如 https://tingpal.tw）"
+    )
+
 LOGIN_URL = "login"
 # The consent page sends people who already agreed straight on to the home page.
 LOGIN_REDIRECT_URL = "consent"
