@@ -25,7 +25,10 @@ SUBMISSIONS = "/api/submissions/"
 
 
 def counts():
-    return list(GuestMonth.objects.order_by("month").values_list("month", "completed", "saved"))
+    # 保存 of accounts registered with a password: every one here (the others: #513's tests).
+    return list(
+        GuestMonth.objects.order_by("month").values_list("month", "completed", "saved_password")
+    )
 
 
 def this_month():
@@ -157,33 +160,46 @@ class SavedTests(GuestCountTestCase):
 
 
 class OnlyTheCountsTests(GuestCountTestCase):
-    """#492 acceptance 32 and #500: the month and two numbers, nobody's IP, account or answers;
-    the admin can look but not change; not part of anybody's data."""
+    """#492 acceptance 32 and #500: the month and the numbers (保存 in three since #513), nobody's
+    IP, account or answers; the admin can look but not change; not part of anybody's data."""
 
     PASSWORD = "Fake-pass-1357"
 
-    def test_the_table_has_only_the_month_and_two_counts(self):
+    def test_the_table_has_only_the_month_and_the_counts(self):
         fields = {field.name for field in GuestMonth._meta.get_fields()}
-        self.assertEqual(fields, {"id", "month", "completed", "saved"})
+        self.assertEqual(
+            fields,
+            {"id", "month", "completed", "saved_password", "saved_google", "saved_line"},
+        )
 
     def test_the_admin_lists_each_month_newest_first(self):
-        GuestMonth.objects.create(month=date(2026, 10, 1), completed=31, saved=9)
-        GuestMonth.objects.create(month=date(2026, 11, 1), completed=12, saved=4)
+        GuestMonth.objects.create(
+            month=date(2026, 10, 1), completed=31, saved_password=9, saved_google=5
+        )
+        GuestMonth.objects.create(month=date(2026, 11, 1), completed=12, saved_password=4)
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         page = self.client.get(reverse("admin:screening_guestmonth_changelist")).content.decode()
         months = re.findall(r'<th class="field-month_label"><a [^>]*>([^<]+)</a></th>', page)
         self.assertEqual(months, ["2026/11", "2026/10"])
-        for heading in ("月份", "訪客完成", "保存"):
+        for heading in ("月份", "訪客完成", "保存（帳號密碼）", "保存（Google）", "保存（LINE）"):
             with self.subTest(heading=heading):
                 self.assertIn(heading, page)
         october = page[page.index(">2026/10<") :]
         cells = re.findall(r'<td class="field-(\w+)">(\d+)</td>', october)
-        self.assertEqual(cells, [("completed", "31"), ("saved", "9")])
+        self.assertEqual(
+            cells,
+            [
+                ("completed", "31"),
+                ("saved_password", "9"),
+                ("saved_google", "5"),
+                ("saved_line", "0"),
+            ],
+        )
 
     def test_two_or_many_months_take_the_same_queries(self):
         # CODING_STANDARDS 15: a month more each month.
-        GuestMonth.objects.create(month=date(2026, 10, 1), completed=31, saved=9)
-        GuestMonth.objects.create(month=date(2026, 11, 1), completed=12, saved=4)
+        GuestMonth.objects.create(month=date(2026, 10, 1), completed=31, saved_password=9)
+        GuestMonth.objects.create(month=date(2026, 11, 1), completed=12, saved_password=4)
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
         changelist = reverse("admin:screening_guestmonth_changelist")
         self.client.get(changelist)  # the first request also looks up what the admin caches
@@ -196,9 +212,9 @@ class OnlyTheCountsTests(GuestCountTestCase):
             self.assertEqual(self.client.get(changelist).status_code, 200)
 
     def test_the_admin_cannot_add_change_or_delete(self):
-        october = GuestMonth.objects.create(month=date(2026, 10, 1), completed=31, saved=9)
+        october = GuestMonth.objects.create(month=date(2026, 10, 1), completed=31, saved_password=9)
         self.client.force_login(User.objects.create_superuser(username="owner", password="pw"))
-        data = {"month": "2026-10-01", "completed": 0, "saved": 0}
+        data = {"month": "2026-10-01", "completed": 0, "saved_password": 0}
         add = reverse("admin:screening_guestmonth_add")
         change = reverse("admin:screening_guestmonth_change", args=[october.pk])
         delete = reverse("admin:screening_guestmonth_delete", args=[october.pk])
@@ -219,7 +235,8 @@ class OnlyTheCountsTests(GuestCountTestCase):
             headers={"Idempotency-Key": str(uuid.uuid4())},
         )
         data = json.loads(self.client.get(reverse("download_my_data")).content)
-        self.assertFalse({"guest_month", "guest_months", "completed", "saved"} & set(data))
+        names = {"guest_month", "guest_months", "completed", "saved_password", "saved_google"}
+        self.assertFalse(names & set(data))
         self.assertNotIn("訪客", json.dumps(data, ensure_ascii=False))
         self.client.post(reverse("delete_account"), {"password": self.PASSWORD})
         self.assertFalse(User.objects.filter(pk=user.pk).exists())

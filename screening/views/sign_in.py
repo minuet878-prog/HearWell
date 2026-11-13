@@ -1,6 +1,7 @@
 """Signing up and in with Google (spec #505, ADR 0056, ADR 0057)."""
 
 import logging
+from dataclasses import replace
 
 from django.contrib.auth import login
 from django.contrib.auth import views as auth_views
@@ -66,6 +67,13 @@ def google_start(request):
 
 
 @require_http_methods(["GET"])
+def google_save_card(request):
+    """The guest result's save card (#513): where the trip ends is _save_card's to say."""
+    _require_google()
+    return HttpResponseRedirect(oidc.begin(request, "google", "save_card"))
+
+
+@require_http_methods(["GET"])
 def google_callback(request):
     _require_google()
     # Read before finish() takes the trip out: where a trip that fails goes back to.
@@ -80,11 +88,11 @@ def google_callback(request):
     except oidc.Rejected as error:
         logger.warning("Google callback rejected: %s", error)
         return _failed(request, flow, FAILED)
-    # The later purpose (save_card #513) adds its own.
     handlers = {
         "sign_in": _sign_in,
         "confirm_identity": confirm_identity.came_back,
         "add_method": sign_in_methods.came_back,
+        "save_card": _save_card,
     }
     return handlers[identity.purpose](request, identity)
 
@@ -97,6 +105,18 @@ def _failed(request, flow, message):
     if flow.get("purpose") == "add_method":
         return sign_in_methods.trip_failed(request)
     return _back_to("login", request, message)
+
+
+def _save_card(request, identity):
+    """From the save card (#505 acceptance 35, 36, Q18): signed in or registered as _sign_in does,
+    then the save page. An account Google already knows is asked first, naming it, as any login
+    with guest results is (the Google this phone uses may be a family member's); only a new
+    account is taken as the guest's own and saves straight away."""
+    known = SignInMethod.objects.filter(
+        provider=identity.provider, subject=identity.subject
+    ).exists()
+    save = reverse("guest_save")
+    return _sign_in(request, replace(identity, next=save if known else f"{save}?from=card"))
 
 
 def _sign_in(request, identity):
