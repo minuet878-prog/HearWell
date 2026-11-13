@@ -35,6 +35,10 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
 <div>
     <h1 class="h3 mt-4">{{ questionnaire.definition.topic }}</h1>
     <p class="answer-meta">{{ questionnaire.questionnaire_name }}・共 {{ question_count }} 題・大約 {{ questionnaire.definition.minutes }} 分鐘</p>
+    {% if guest %}
+    {# Spec #492 (the #493 mockup G2): a guest's answers are scored, not saved. #}
+    <p class="answer-guest-line"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>沒註冊時只計算、不儲存。<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a></span></p>
+    {% endif %}
     {# React reads the intro from here and folds it under 這份問卷在問什麼？ (#153, #463), the source with it; without JS it just stays. #}
     <div id="answer-intro">
     {% include questionnaire.definition.intro_template %}
@@ -58,7 +62,7 @@ The generic error is an ErrorList (a <ul>), so it must not go inside the <p>.
             document.getElementById("answer-loading").textContent = "";
         }, 5000);
     </script>
-    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
+    <div id="answer-app" data-questionnaire-id="{{ questionnaire.id }}" data-user-id="{{ user.id }}" data-minutes="{{ questionnaire.definition.minutes }}"{% if guest %} data-guest data-questionnaire-code="{{ questionnaire.code }}"{% endif %}{% if preselect_unaided %} data-preselect-unaided{% endif %}{% if always_aided %} data-always-aided{% endif %}{% if is_ioi_ha %} data-skip-wearing data-norm-token="{{ norm_token }}"{% endif %}></div>
     {% endif %}
     <form id="answer-form" action="{% url 'screening' questionnaire.id %}" method="POST">
         {% csrf_token %}

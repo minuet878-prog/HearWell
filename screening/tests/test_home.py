@@ -123,7 +123,8 @@ class NewUserHomeTests(TestCase):
 
     def test_other_protected_pages_still_go_to_login_and_back(self):
         consented_user(username="tester", password=self.PASSWORD)
-        for url in (self.list_url, reverse("my_hearing"), reverse("audiogram_list")):
+        # The list is a guest's wizard since spec #492 (test_guest).
+        for url in (reverse("my_hearing"), reverse("audiogram_list")):
             with self.subTest(url=url):
                 self.client.logout()
                 login_url = f"{reverse('login')}?next={url}"

@@ -88,8 +88,12 @@ def life_impact_questionnaire(user, questionnaires, state, age_group):
         age_group = AgeGroupForm.OLDER if age > 65 else AgeGroupForm.ADULT
     if age_group is None:
         return None
-    code = hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE
-    return next(q for q in life_impact if q.code == code)
+    return next(q for q in life_impact if q.code == age_group_code(age_group))
+
+
+def age_group_code(age_group):
+    """The life-impact questionnaire's code for AgeGroupForm's value: HHIE-S from 65 on."""
+    return hhie_s.CODE if age_group == AgeGroupForm.OLDER else hhia_s.CODE
 
 
 @dataclass(frozen=True)

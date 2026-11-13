@@ -563,7 +563,8 @@ class VpsPrivacyTests(TestCase):
         self.assertEqual(services[:2], ["Vultr", "Sentry"])
 
     def test_it_shows_version_4_and_the_new_date(self):
-        self.assertIn("第 4 版，2026/11/12 更新", self.main)
+        # Spec #492's sentence on a guest's answers moved the date again, not the version.
+        self.assertIn("第 4 版，2026/11/13 更新", self.main)
 
     def test_who_agreed_to_version_3_agrees_again_to_version_4(self):
         user = User.objects.create_user(username="agreed_to_version_3")

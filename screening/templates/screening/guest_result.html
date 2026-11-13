@@ -1,0 +1,19 @@
+{% extends "screening/layout.html" %}
+{% load static %}
+
+{% block title %}{{ questionnaire.questionnaire_name }} 結果｜聽伴{% endblock %}
+
+{% block extra_head %}<script type="module" src="{% static 'screening/frontend/guest-result.js' %}"></script>{% endblock %}
+
+{% block body %}
+{# A guest's result (spec #492): guest-result.js reads it from this browser, has the scoring-only API draw the result page's section and puts it here; without one it goes home. Headed as result_header.html heads a record's. #}
+<div id="guest-result" data-code="{{ questionnaire.code }}" data-score-url="{% url 'api:guest_score' %}" data-home-url="{% url 'index' %}">
+    <div data-guest-shown hidden>
+        <h1 class="h3 mt-2 mb-1">{{ questionnaire.definition.topic }}</h1>
+        <p>{{ questionnaire.questionnaire_name }}・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
+        <div data-guest-section></div>
+    </div>
+    <p class="text-xl/normal font-bold text-danger" role="alert" data-guest-error></p>
+    {% csrf_token %}
+</div>
+{% endblock %}

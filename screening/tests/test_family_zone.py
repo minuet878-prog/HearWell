@@ -512,11 +512,11 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
             hrefs = re.findall(r'<a class="link-card[^"]*" href="([^"]*)"', item)
             self.assertEqual(hrefs, expected)
         self.assertEqual(self.client.get("/guide").status_code, 200)
-        for path in ("/questionnaire_list", "/audiograms/new"):
-            with self.subTest(path=path):
-                response = self.client.get(path)
-                self.assertEqual(response.status_code, 302)
-                self.assertIn("/login", response["Location"])
+        # The list is a guest's wizard since spec #492 (test_guest).
+        self.assertEqual(self.client.get("/questionnaire_list").status_code, 200)
+        response = self.client.get("/audiograms/new")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response["Location"])
 
     def test_foot_has_sources_checked_date_and_the_way_back(self):
         foot = self.main[self.main.index("</fieldset>") :]
@@ -582,6 +582,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>您的資料會保存到您刪除帳號",
                 "<li>刪除的資料（包括刪除的帳號",
                 "<li>Vultr（網站主機與資料庫）",
+                # Spec #492's sentence on a guest's answers, which the owner reviews at acceptance.
+                "{# Spec #492 (ADR 0055): a guest's answers",
+                "<p>未註冊時只計算、不儲存",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.

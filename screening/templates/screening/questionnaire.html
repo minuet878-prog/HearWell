@@ -34,7 +34,8 @@
 </a>
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
-{% include "screening/step_progress.html" %}
+{# A guest's wizard is the age alone (spec #492): no steps to count. #}
+{% if not guest %}{% include "screening/step_progress.html" %}{% endif %}
 {% if recommended %}
 <h1 class="h3 mt-2">推薦您做這一份</h1>
 <section aria-labelledby="recommended-title" class="recommended-block">
@@ -66,6 +67,7 @@
     </div>
 </form>
 {% endif %}
-<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>
+{# The catalogue needs an account. #}
+{% if not guest %}<p class="mt-6">知道要做哪一份？<a href="{% url 'questionnaire_list' %}?choose=self">自己選問卷</a></p>{% endif %}
 {% endif %}
 {% endblock %}

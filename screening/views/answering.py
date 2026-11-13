@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.core import signing
 from django.db import IntegrityError
 from django.db.models import Count, OuterRef, Subquery, prefetch_related_objects
@@ -22,7 +23,12 @@ from screening.forms import (
     offers_not_applicable,
 )
 from screening.ioi_norm import TOKEN_ERROR, ioi_ha_norm, norm_bases, norm_token
-from screening.main_flow import catalogue_recommendation, get_user_state, life_impact_questionnaire
+from screening.main_flow import (
+    age_group_code,
+    catalogue_recommendation,
+    get_user_state,
+    life_impact_questionnaire,
+)
 from screening.models import Questionnaire, Submission
 from screening.questionnaires.definition import (
     HEARING_AID,
@@ -90,9 +96,10 @@ def _wizard_step(request, step, total, catalog, **context):
     )
 
 
-@login_required
 @health_data_page
 def questionnaire_list(request):
+    if not request.user.is_authenticated:
+        return _guest_wizard(request)
     questionnaires = Questionnaire.objects.defined().annotate(question_count=Count("questions"))
     user = request.user
     state = get_user_state(user, timezone.localdate())
@@ -202,6 +209,21 @@ def questionnaire_list(request):
     )
 
 
+def _guest_wizard(request):
+    # Without an account the wizard asks the age alone and opens that questionnaire's answer page
+    # (spec #492): only HHIE-S and HHIA-S can be answered as a guest.
+    age_form = AgeGroupForm(request.GET if "age_group" in request.GET else None)
+    if age_form.is_valid():
+        code = age_group_code(age_form.cleaned_data["age_group"])
+        questionnaire = get_object_or_404(Questionnaire.objects.for_guests(), code=code)
+        return redirect("screening", questionnaire_id=questionnaire.pk)
+    return render(
+        request,
+        "screening/questionnaire.html",
+        {"step": 1, "guest": True, "field": age_form["age_group"], "back_url": reverse("index")},
+    )
+
+
 def wearing_follow_ups(questionnaires):
     # The follow-ups for someone who wears hearing aids: IOI-HA, then SSQ12-TW and a
     # satisfaction-type questionnaire (SADL) when it is visible (#174). One missing from the
@@ -212,10 +234,17 @@ def wearing_follow_ups(questionnaires):
     return [q for q in (by_code.get(IOI_HA), by_code.get(SSQ12), satisfaction) if q]
 
 
-@login_required
 @require_http_methods(["GET", "POST"])
 @health_data_page
 def screening(request, questionnaire_id):
+    # A guest answers HHIE-S or HHIA-S on the React page, scored without saving (spec #492);
+    # every other questionnaire, and the web form that saves a record, needs an account.
+    guest = not request.user.is_authenticated
+    if guest and not (
+        request.method == "GET"
+        and Questionnaire.objects.for_guests().filter(pk=questionnaire_id).exists()
+    ):
+        return redirect_to_login(request.get_full_path())
     if request.method == "GET":
         questionnaire = get_object_or_404(Questionnaire.objects.defined(), pk=questionnaire_id)
         # IOI-HA is answered wearing hearing aids by definition, so it does not ask.
@@ -254,6 +283,7 @@ def screening(request, questionnaire_id):
                 # the wearing step there.
                 "use_react": True,
                 "always_aided": always_aided,
+                "guest": guest,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },

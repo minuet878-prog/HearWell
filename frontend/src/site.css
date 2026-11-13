@@ -2340,7 +2340,15 @@
     font-size: 1rem;
   }
 
-  .answer-autosave svg {
+  /* A guest's line under the questionnaire's name on the answer page (#495, the #493 mockup G2). */
+  .answer-guest-line {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .answer-autosave svg,
+  .answer-guest-line svg {
     flex: none;
     width: 1.1rem;
     height: 1.1rem;
