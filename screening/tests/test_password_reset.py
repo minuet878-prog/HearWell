@@ -77,7 +77,8 @@ class ForgotPasswordPageTests(TestCase):
 
     def test_an_email_of_staff_or_a_superuser_only_reads_as_not_registered(self):
         User.objects.create_user(username="staff", email="s@example.com", is_staff=True)
-        User.objects.create_superuser(username="root", email="r@example.com", password=PASSWORD)
+        # A superuser who is not staff too, so each flag is checked on its own.
+        User.objects.create_user(username="root", email="r@example.com", is_superuser=True)
         for email in ("s@example.com", "r@example.com"):
             with self.subTest(email=email):
                 response = self._ask(email)
