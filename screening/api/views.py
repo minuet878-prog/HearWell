@@ -11,6 +11,7 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
+from screening.api.permissions import GUEST_OR_CONSENTED
 from screening.api.serializers import (
     AudiogramCreateSerializer,
     AudiogramSerializer,
@@ -46,15 +47,7 @@ class QuestionnaireList(ListAPIView):
 class QuestionnaireDetail(RetrieveAPIView):
     serializer_class = QuestionnaireDetailSerializer
 
-    def get_permissions(self):
-        # A guest answers HHIE-S or HHIA-S on the React answer page (spec #492): their questions
-        # are open to anyone; every other questionnaire's still need an account.
-        if (
-            not self.request.user.is_authenticated
-            and Questionnaire.objects.for_guests().filter(pk=self.kwargs.get("pk")).exists()
-        ):
-            return []
-        return super().get_permissions()
+    permission_classes = (GUEST_OR_CONSENTED,)
 
     def get_queryset(self):
         return Questionnaire.objects.defined().prefetch_related(
