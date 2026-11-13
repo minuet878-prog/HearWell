@@ -3981,13 +3981,14 @@
     stroke-linejoin: round;
   }
 
-  /* Google's G keeps its own colours, on white with a thin frame. */
-  .sign-in-method-icon:has(.btn-google-logo) {
+  /* Google's G and LINE's icon keep their own colours, on white with a thin frame (the #539
+     mockup 5). */
+  .sign-in-method-icon:has(.btn-google-logo, .btn-line-logo) {
     border: 1px solid var(--color-line);
     background-color: #fff;
   }
 
-  .sign-in-method-icon .btn-google-logo {
+  .sign-in-method-icon :is(.btn-google-logo, .btn-line-logo) {
     stroke: none;
   }
 

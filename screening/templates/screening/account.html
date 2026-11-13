@@ -28,7 +28,7 @@
     {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
 </section>
 
-{# Spec #505 acceptance 22, 27, 28 (the #507 mockup 5, D5, W12): one row per way to sign in; adding is a small blue frame, removing a red text link. Admin accounts have no group, nor anyone without the Google keys. #}
+{# Spec #505 acceptance 22, 27, 28 (the #507 mockup 5, D5, W12) and #506 acceptance 15, 18 (the #539 mockup 5, D4): one row per way to sign in, 帳號密碼, Google, LINE; adding is a small blue frame, removing a red text link. A provider without its keys has no row; admin accounts have no group, nor anyone when no provider has keys. #}
 {% if sign_in_methods %}
 <section id="sign-in-methods" class="mt-6" aria-labelledby="sign-in-methods-title">
     <h2 id="sign-in-methods-title" class="h4">登入方式</h2>
@@ -38,30 +38,31 @@
             <span class="sign-in-method-body"><span class="settings-row-title">帳號密碼</span>
                 <span class="settings-row-note">{% if user.has_usable_password %}已設定{% else %}沒有設定{% endif %}</span></span>
         </li>
-        {% with google=sign_in_methods.google %}
+        {% for row in sign_in_methods.rows %}
         <li class="sign-in-method">
-            <span class="sign-in-method-icon">{% include "screening/google_logo.html" %}</span>
-            <span class="sign-in-method-body"><span class="settings-row-title">Google</span>
-                <span class="settings-row-note">{% if not google %}還沒有新增{% elif google.used_to_register %}註冊時使用{% else %}{{ google.created_at|date:"Y/m/d" }} 新增{% endif %}</span></span>
-            {% if google %}
+            <span class="sign-in-method-icon">{% include row.logo %}</span>
+            <span class="sign-in-method-body"><span class="settings-row-title">{{ row.name }}</span>
+                <span class="settings-row-note">{% if not row.method %}還沒有新增{% elif row.method.used_to_register %}註冊時使用{% else %}{{ row.method.created_at|date:"Y/m/d" }} 新增{% endif %}</span></span>
             {# To 確認本人, where the right password removes it (the owner's call on the #505 review); opening that page changes nothing. #}
-            {% if sign_in_methods.can_remove %}<form method="get" action="{% url 'confirm_identity' %}">
-                <input type="hidden" name="action" value="remove_google">
-                <button class="danger-link" type="submit" aria-label="移除 Google 登入">移除</button>
-            </form>{% endif %}
-            {% elif not sign_in_methods.open_outside_url %}
-            <a class="btn btn-outline-primary" href="{% url 'google_add' %}" aria-label="新增 Google 登入">新增</a>
+            {% if row.can_remove %}<form method="get" action="{% url 'confirm_identity' %}">
+                <input type="hidden" name="action" value="remove_{{ row.provider }}">
+                <button class="danger-link" type="submit" aria-label="移除 {{ row.name }} 登入">移除</button>
+            </form>
+            {% elif row.add_url %}
+            <a class="btn btn-outline-primary" href="{{ row.add_url }}" aria-label="新增 {{ row.name }} 登入">新增</a>
             {% endif %}
         </li>
-        {% endwith %}
+        {% endfor %}
     </ul>
-    {% if not sign_in_methods.google and sign_in_methods.open_outside_url %}
-    {% include "screening/line_open_outside.html" with open_outside_url=sign_in_methods.open_outside_url %}
-    {% elif sign_in_methods.google and not sign_in_methods.can_remove %}
+    {% if sign_in_methods.only_way_in %}
     <p class="mt-2 mb-0">這是您目前唯一的登入方式，所以不能移除。</p>
-    {% else %}
+    {% elif sign_in_methods.can_change %}
     <p class="mt-2 mb-0">新增或移除之前，會先請您確認是本人。</p>
     {% endif %}
+    {# Inside LINE, for Google only (the #539 mockup 5): LINE's own row works there. #}
+    {% if sign_in_methods.open_outside_url %}<div class="mt-4">
+    {% include "screening/line_open_outside.html" with open_outside_url=sign_in_methods.open_outside_url %}
+    </div>{% endif %}
 </section>
 {% endif %}
 
