@@ -54,7 +54,7 @@ function fakeEngine() {
       return this.calls.filter(([what]) => what === "background").map(([, url]) => url);
     },
     // What starts or stops a sentence, leaving out settings that only change what is heard.
-    starts() {
+    playsAndStops() {
       return this.calls.filter(([what]) => what === "play" || what === "stop");
     },
   };
@@ -105,9 +105,9 @@ it("changes degree while playing without stopping or starting again", () => {
   const { engine, container } = open();
   press("中度");
   press("播放");
-  const before = engine.calls.length;
+  const before = engine.playsAndStops().length;
   press("輕度");
-  expect(engine.calls.slice(before).filter(([what]) => what === "play" || what === "stop")).toEqual([]);
+  expect(engine.playsAndStops().slice(before)).toEqual([]);
   expect(engine.lastCurve()).toEqual([25, 30, 30, 35, 40, 40]);
   expect(line(container)).toBe("輕度：小聲就漏聽");
   expect(screen.getByRole("button", { name: "暫停" })).toBeTruthy();
@@ -117,7 +117,7 @@ it("switches to 正常聽 and back while playing, the bars full, without startin
   // #484 acceptance 8.
   const { engine, container } = open();
   press("播放");
-  const before = engine.calls.length;
+  const before = engine.playsAndStops().length;
   press("正常聽");
   expect(engine.lastCurve()).toEqual([0, 0, 0, 0, 0, 0]);
   expect(line(container)).toBe("正常聽：每一種聲音都聽得到");
@@ -126,7 +126,7 @@ it("switches to 正常聽 and back while playing, the bars full, without startin
   expect(pressed("程度")).toEqual(["高頻下降"]);
   press("模擬");
   expect(engine.lastCurve()).toEqual([15, 20, 25, 45, 65, 75]);
-  expect(engine.calls.slice(before).filter(([what]) => what === "play" || what === "stop")).toEqual([]);
+  expect(engine.playsAndStops().slice(before)).toEqual([]);
 });
 
 it("goes back to 模擬 when a degree is picked during 正常聽", () => {
@@ -144,7 +144,7 @@ it("plays the next sentence instead when moving on while playing, and wraps roun
   press("播放");
   press("下一句");
   // The first sentence stops before the second starts.
-  expect(engine.starts().map(([what]) => what)).toEqual(["play", "stop", "play"]);
+  expect(engine.playsAndStops().map(([what]) => what)).toEqual(["play", "stop", "play"]);
   expect(engine.played()).toEqual(["/static/s1.m4a", "/static/s2.m4a"]);
   expect(caption(container)).toBe("第 2 句・男聲（共 4 句）");
   press("暫停");
@@ -204,6 +204,10 @@ it("opens on 安靜 without asking for the restaurant", () => {
   // #488: nothing of the restaurant downloads before 餐廳 is picked.
   const { engine } = open();
   expect(pressed("在哪裡")).toEqual(["安靜"]);
+  // A house and a fork beside the words (the #485 mockup), not read out.
+  for (const button of within(screen.getByRole("group", { name: "在哪裡" })).getAllByRole("button")) {
+    expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  }
   expect(engine.backgrounds().filter(Boolean)).toEqual([]);
 });
 
@@ -211,7 +215,7 @@ it("switches to 餐廳 and back while playing without starting again", () => {
   // #484 acceptance 10; #488: switching never stops what plays.
   const { engine } = open();
   press("播放");
-  const before = engine.starts().length;
+  const before = engine.playsAndStops().length;
   press("餐廳");
   expect(pressed("在哪裡")).toEqual(["餐廳"]);
   expect(engine.backgrounds().at(-1)).toBe("/static/restaurant.m4a");
@@ -219,7 +223,7 @@ it("switches to 餐廳 and back while playing without starting again", () => {
   press("中度");
   press("安靜");
   expect(engine.backgrounds().at(-1)).toBeNull();
-  expect(engine.starts().length).toBe(before);
+  expect(engine.playsAndStops().length).toBe(before);
   expect(screen.getByRole("button", { name: "暫停" })).toBeTruthy();
 });
 

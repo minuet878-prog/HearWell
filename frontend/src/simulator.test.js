@@ -71,6 +71,14 @@ it("measures loudness as the root mean square of the samples", () => {
   expect(loudness(sine)).toBeCloseTo(0.7071, 3);
 });
 
+it("leaves the silence before and after a sentence out of its loudness", () => {
+  // #488 review: counting the quiet ends made the speech sound 0.6-1.1 dB louder than +5 dB over
+  // the restaurant. A tenth of a second of speech at 0.1, with as much silence each side.
+  const speech = Float32Array.from({ length: 4800 }, (_, n) => (n % 2 ? -0.1 : 0.1));
+  const padded = Float32Array.from([...new Float32Array(4800), ...speech, ...new Float32Array(4800)]);
+  expect(loudness(padded)).toBeCloseTo(0.1, 6);
+});
+
 it("sets the restaurant so the speech is the given dB above it", () => {
   // Worked by hand: speech 0.1, restaurant 0.05; 5 dB below 0.1 is 0.0562, so turn it up 1.1247.
   expect(backgroundVolume(0.1, 0.05, 5)).toBeCloseTo(1.1247, 4);

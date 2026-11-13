@@ -13986,6 +13986,12 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                 "aria-pressed", "true"
             )
             expect(main.locator(".simulator-line")).to_have_text("正常聽：每一種聲音都聽得到")
+            # #488: and 餐廳.
+            main.get_by_role("button", name="餐廳").focus()
+            self.page.keyboard.press(" ")
+            expect(main.get_by_role("button", name="餐廳")).to_have_attribute(
+                "aria-pressed", "true"
+            )
 
     def test_every_control_is_big_enough_and_every_word_at_least_body_size(self):
         # Acceptance 19 at a phone's width: 44 x 44 and 1rem (18px) at least.

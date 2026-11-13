@@ -36,8 +36,10 @@ class FakeGainNode extends FakeNode {
     super(owner, options);
     this.gain = {
       value: options.gain ?? 1,
+      targets: [],
       setTargetAtTime(value) {
         this.value = value;
+        this.targets.push(value);
       },
     };
   }
@@ -56,8 +58,9 @@ class FakeAudioBufferSourceNode extends FakeNode {
     this.started = true;
   }
 
-  stop() {
+  stop(when = 0) {
     this.stopped = true;
+    this.stopAt = when;
   }
 }
 
@@ -174,4 +177,47 @@ it("stops both when the sentence is stopped", async () => {
   expect(source(SPEECH).stopped).toBe(true);
   expect(source(RESTAURANT).stopped).toBe(true);
   expect(ended).not.toHaveBeenCalled();
+});
+
+it("starts the restaurant with the sentence the first time, not after it", async () => {
+  // #488 review: the restaurant is the bigger download; the sentence waits for it.
+  let arrive;
+  fetch.mockImplementation((url) =>
+    url === RESTAURANT
+      ? new Promise((resolve) => {
+          arrive = () => resolve({ arrayBuffer: () => Promise.resolve(url) });
+        })
+      : Promise.resolve({ arrayBuffer: () => Promise.resolve(url) }),
+  );
+  await playing({ restaurant: true });
+  expect(source(SPEECH)).toBeUndefined();
+  arrive();
+  await settle();
+  expect(source(SPEECH).started && source(RESTAURANT).started).toBe(true);
+});
+
+it("fades the restaurant in and out instead of clicking", async () => {
+  const { engine } = await playing({ restaurant: true });
+  const volume = source(RESTAURANT).outputs[0];
+  expect(volume.options.gain).toBe(0);
+  expect(volume.gain.targets.at(-1)).toBeCloseTo(1.1247, 4);
+  engine.setBackground(null);
+  expect(volume.gain.targets.at(-1)).toBe(0);
+  expect(source(RESTAURANT).stopAt).toBeGreaterThan(context.currentTime);
+});
+
+it("keeps the restaurant going when the degree or 正常聽 changes", async () => {
+  const { engine } = await playing({ restaurant: true });
+  engine.setCurve([0, 0, 0, 0, 0, 0]);
+  engine.setCurve([40, 45, 50, 55, 60, 65]);
+  expect(source(RESTAURANT).stopped).toBe(false);
+  expect(filtersOn(source(RESTAURANT))).toEqual(filtersOn(source(SPEECH)));
+});
+
+it("turns the two down 2 dB where they meet, so the loudest sentence does not clip", async () => {
+  // #488 review: sentence 2 peaks at full scale and the restaurant took it 1.2% over.
+  await playing({ restaurant: true });
+  const [meet] = source(SPEECH).outputs;
+  expect(source(RESTAURANT).outputs[0].outputs).toContain(meet);
+  expect(meet.gain.value).toBeCloseTo(10 ** (-2 / 20), 6);
 });

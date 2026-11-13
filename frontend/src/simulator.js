@@ -42,11 +42,25 @@ export function meterBlocks(thresholds) {
   return thresholds.map((db) => Math.min(BLOCKS, Math.max(0, Math.round((100 - db) / DB_PER_BLOCK))));
 }
 
-// How loud a stretch of sound is: the root mean square of its samples.
-export function loudness(samples) {
+// How loud a sound is while it sounds: the root mean square of its 10 ms stretches (at 48 kHz)
+// that are within 40 dB of its loudest, so a sentence's quiet ends do not count (#488 review).
+const STRETCH = 480;
+const QUIET = 10 ** (-40 / 20);
+
+function rootMeanSquare(samples) {
   let sum = 0;
   for (const sample of samples) sum += sample * sample;
   return Math.sqrt(sum / samples.length);
+}
+
+export function loudness(samples) {
+  const stretches = [];
+  for (let start = 0; start < samples.length; start += STRETCH) {
+    stretches.push(samples.subarray(start, start + STRETCH));
+  }
+  const loudest = Math.max(...stretches.map(rootMeanSquare));
+  const sounding = stretches.filter((stretch) => rootMeanSquare(stretch) >= loudest * QUIET);
+  return rootMeanSquare(Float32Array.from(sounding.flatMap((stretch) => [...stretch])));
 }
 
 // The volume to play the restaurant at so the speech is snr dB above it (#488; +5 dB, #485).

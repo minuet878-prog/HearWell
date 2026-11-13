@@ -9,6 +9,9 @@ import { backgroundVolume, impulseResponse, loudness } from "./simulator.js";
 
 // Seconds for a fade to settle: quick enough to hear as instant, slow enough not to click.
 const GLIDE = 0.02;
+// Room left where the two meet: sentence 2 peaks at full scale, and the restaurant on top took it
+// 1.2% over (#488 review).
+const HEADROOM = 10 ** (-2 / 20);
 
 export function createEngine(frequencies, snr) {
   let context = null;
@@ -16,14 +19,21 @@ export function createEngine(frequencies, snr) {
   let source = null;
   let speechLoudness = 0;
   let curve = null;
-  // The restaurant's URL while 餐廳 is picked, its sound while it plays.
-  let background = null;
-  let backgroundSource = null;
+  // The restaurant's address while 餐廳 is picked; its sound and volume while it plays.
+  let backgroundUrl = null;
+  let restaurant = null;
   // A path a curve, by its thresholds: { convolver, volume }.
   const paths = new Map();
   // Each play() takes a ticket; a sound still downloading for an older ticket does not start.
   let ticket = 0;
   const buffers = new Map();
+  // Each decoded sound's loudness, worked out once.
+  const levels = new Map();
+
+  function level(buffer) {
+    if (!levels.has(buffer)) levels.set(buffer, loudness(buffer.getChannelData(0)));
+    return levels.get(buffer);
+  }
 
   function path(thresholds) {
     const key = thresholds.join(",");
@@ -53,39 +63,47 @@ export function createEngine(frequencies, snr) {
       const loading = fetch(url)
         .then((response) => response.arrayBuffer())
         .then((bytes) => context.decodeAudioData(bytes));
-      // A failed download is tried again on the next press.
+      // A failed download is tried again next time it is needed.
       loading.catch(() => buffers.delete(url));
       buffers.set(url, loading);
     }
     return buffers.get(url);
   }
 
-  function stopBackground() {
-    if (backgroundSource) {
-      backgroundSource.stop();
-      backgroundSource = null;
+  // The restaurant, snr dB under the sentence playing now, faded in, round and round.
+  function startRestaurant(buffer) {
+    const volume = new GainNode(context, { gain: 0 });
+    const playing = new AudioBufferSourceNode(context, { buffer, loop: true });
+    playing.connect(volume).connect(mix);
+    volume.gain.setTargetAtTime(backgroundVolume(speechLoudness, level(buffer), snr), context.currentTime, GLIDE);
+    playing.start();
+    restaurant = { playing, volume };
+  }
+
+  // Faded out, then stopped.
+  function stopRestaurant() {
+    if (restaurant) {
+      restaurant.volume.gain.setTargetAtTime(0, context.currentTime, GLIDE);
+      restaurant.playing.stop(context.currentTime + 5 * GLIDE);
+      restaurant = null;
     }
   }
 
-  // The restaurant under the sentence playing now, snr dB below it, round and round.
-  function startBackground() {
+  // 餐廳 picked while a sentence plays, or before its download came: the restaurant joins it.
+  function joinRestaurant() {
+    const url = backgroundUrl;
     const mine = ticket;
-    load(background)
+    load(url)
       .then((buffer) => {
-        if (mine !== ticket || !source || !background || backgroundSource) return;
-        const volume = new GainNode(context, {
-          gain: backgroundVolume(speechLoudness, loudness(buffer.getChannelData(0)), snr),
-        });
-        backgroundSource = new AudioBufferSourceNode(context, { buffer, loop: true });
-        backgroundSource.connect(volume).connect(mix);
-        backgroundSource.start();
+        if (mine === ticket && source && backgroundUrl === url && !restaurant) startRestaurant(buffer);
       })
+      // Without it the sentence goes on alone.
       .catch(() => {});
   }
 
   function stop() {
     ticket += 1;
-    stopBackground();
+    stopRestaurant();
     if (source) {
       source.onended = null;
       source.stop();
@@ -100,9 +118,9 @@ export function createEngine(frequencies, snr) {
     },
 
     setBackground(url) {
-      background = url;
-      stopBackground();
-      if (url && source) startBackground();
+      backgroundUrl = url;
+      stopRestaurant();
+      if (url && source) joinRestaurant();
     },
 
     stop,
@@ -115,25 +133,27 @@ export function createEngine(frequencies, snr) {
       if (!context) {
         if (navigator.audioSession) navigator.audioSession.type = "playback";
         context = new AudioContext();
-        mix = new GainNode(context);
+        mix = new GainNode(context, { gain: HEADROOM });
         listen();
       }
       context.resume();
-      // Both downloads at once when 餐廳 is picked.
-      if (background) load(background).catch(() => {});
-      load(url)
-        .then((buffer) => {
+      // With 餐廳 the sentence waits for the restaurant, the bigger download, so they start
+      // together; a restaurant that fails to download leaves the sentence alone.
+      const wanted = backgroundUrl;
+      Promise.all([load(url), wanted ? load(wanted).catch(() => null) : null])
+        .then(([buffer, background]) => {
           if (mine !== ticket) return;
-          speechLoudness = loudness(buffer.getChannelData(0));
+          speechLoudness = level(buffer);
           source = new AudioBufferSourceNode(context, { buffer });
           source.connect(mix);
           source.onended = () => {
             source = null;
-            stopBackground();
+            stopRestaurant();
             onEnded();
           };
           source.start();
-          if (background) startBackground();
+          if (background && backgroundUrl === wanted) startRestaurant(background);
+          else if (backgroundUrl) joinRestaurant();
         })
         .catch(() => {
           if (mine === ticket) onEnded();
