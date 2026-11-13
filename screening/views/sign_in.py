@@ -17,6 +17,7 @@ from django.views.decorators.http import require_http_methods
 from screening import oidc
 from screening.forms import GoogleNameForm
 from screening.models import SignInMethod, User
+from screening.views import confirm_identity
 from screening.views.accounts import NEW_ACCOUNT
 from screening.views.common import SIGN_IN_ERROR, safe_next, sign_in_choices
 
@@ -75,18 +76,32 @@ def google_save_card(request):
 @require_http_methods(["GET"])
 def google_callback(request):
     _require_google()
+    # Read before finish() takes the trip out: where a trip that fails goes back to.
+    flow = request.session.get(oidc.FLOW) or {}
     try:
         identity = oidc.finish(request, "google")
     except oidc.Cancelled:
-        return _back_to("login", request, CANCELLED)
+        return _failed(request, flow, CANCELLED)
     except oidc.Unavailable:
         logger.exception("Google token exchange failed")
-        return _back_to("login", request, UNAVAILABLE)
+        return _failed(request, flow, UNAVAILABLE)
     except oidc.Rejected as error:
         logger.warning("Google callback rejected: %s", error)
-        return _back_to("login", request, FAILED)
-    # The later purposes (add_method #511, confirm_identity #510) add theirs.
-    return {"sign_in": _sign_in, "save_card": _save_card}[identity.purpose](request, identity)
+        return _failed(request, flow, FAILED)
+    # The later purpose (add_method #511) adds its own.
+    handlers = {
+        "sign_in": _sign_in,
+        "confirm_identity": confirm_identity.came_back,
+        "save_card": _save_card,
+    }
+    return handlers[identity.purpose](request, identity)
+
+
+def _failed(request, flow, message):
+    # 確認本人 goes back to its own page (#510); anything else to the login page.
+    if flow.get("purpose") == "confirm_identity":
+        return confirm_identity.trip_failed(request, flow)
+    return _back_to("login", request, message)
 
 
 def _save_card(request, identity):

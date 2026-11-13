@@ -1001,7 +1001,7 @@ class PwaNavTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = consented_user(username="pwanavtester")
+        cls.user = consented_user(username="pwanavtester", password="pwa-nav-pass")
         cls.questionnaire = Questionnaire.objects.create(questionnaire_name="HHIE-S", code="hhie-s")
         question = Question.objects.create(
             questionnaire=cls.questionnaire,

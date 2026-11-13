@@ -4732,7 +4732,7 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
         super().tearDownClass()
 
     def setUp(self):
-        self.user = consented_user(username="style_e2e")
+        self.user = consented_user(username="style_e2e", password="style-e2e-pass")
         self.hhie_s = Questionnaire.objects.get(code="hhie-s")
         self.client.force_login(self.user)
         self.cookie = {

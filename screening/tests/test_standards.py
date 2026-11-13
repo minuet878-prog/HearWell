@@ -432,6 +432,7 @@ NO_HEALTH_DATA = {
     "consent": "the privacy summary and the agree button only",
     "audiogram_new": "an empty input page; a saved audiogram opens in audiogram_edit",
     "delete_account": "how many records would go, not their answers, scores or audiograms",
+    "confirm_identity": "the password field or the Google button, and what comes next",
     "report_share_create": "POST only, answers with a redirect",
     "report_share_cancel": "POST only, answers with a redirect",
 }

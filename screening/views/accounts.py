@@ -11,8 +11,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from screening import models
-from screening.forms import ROC_OFFSET, DeleteAccountForm, RegisterForm
+from screening.forms import ROC_OFFSET, PasswordConfirmForm, RegisterForm
 from screening.models import User
+from screening.views import confirm_identity
 from screening.views.common import health_data_page, safe_next, sign_in_choices
 
 
@@ -117,8 +118,17 @@ def delete_account(request):
     if user.is_staff or user.is_superuser:
         status = 403 if request.method == "POST" else 200
         return render(request, "screening/delete_account.html", {"is_admin": True}, status=status)
-    form = DeleteAccountForm(request.POST if request.method == "POST" else None, user=user)
-    if form.is_valid():
+    if user.has_usable_password():
+        form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
+        delete = form.is_valid()
+    else:
+        # #505 acceptance 30: without a password, 確認本人 with the Google on the account first;
+        # a confirmation gone stale meanwhile sends the page back with W18.
+        form = None
+        delete = request.method == "POST" and confirm_identity.use_confirmation(request)
+        if request.method == "POST" and not delete:
+            return redirect("delete_account")
+    if delete:
         user.delete_with_data()
         logout(request)
         messages.success(request, "您的帳號和資料已經刪除。")
@@ -128,6 +138,10 @@ def delete_account(request):
         "screening/delete_account.html",
         {
             "form": form,
+            "confirmed": form is None and confirm_identity.is_confirmed(request),
+            "confirm_error": confirm_identity.confirm_error(request),
+            "sign_in_methods": user.sign_in_methods.all(),
+            "providers": confirm_identity.providers(user),
             "submission_count": user.submissions.count(),
             "audiogram_count": user.audiograms.count(),
         },

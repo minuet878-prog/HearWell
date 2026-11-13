@@ -139,7 +139,8 @@ def offers_not_applicable(question):
     return "na" in dict(answer_choices(question))
 
 
-class DeleteAccountForm(NoLabelSuffix, forms.Form):
+class PasswordConfirmForm(NoLabelSuffix, forms.Form):
+    # The password asked for before deleting the account or confirming it is you (#510).
     # strip=False like Django's login and register forms: spaces are part of a password.
     password = forms.CharField(strip=False, error_messages={"required": "請輸入密碼"})
 
