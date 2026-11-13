@@ -1,9 +1,9 @@
-"""A thin OpenID Connect client for signing in with Google (spec #505, ADR 0056).
+"""A thin OpenID Connect client for signing in with Google or LINE (spec #505, #506, ADR 0056).
 
 Python's own library only. begin() keeps what a trip needs in the session; finish() takes it out
 again on the way back (once used, gone) and checks it before and after calling the provider.
 Every call our server makes to a provider goes through post_to_provider(), the only thing tests
-replace. Provider and purpose are parameters: LINE joins this flow in its own spec.
+replace. Provider and purpose are parameters.
 """
 
 import base64
@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import http.client
 import json
+import logging
 import secrets
 import urllib.error
 import urllib.request
@@ -21,6 +22,8 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class Provider:
@@ -28,10 +31,16 @@ class Provider:
     token_url: str
     issuers: tuple
     scope: str
+    # Added to the authorize URL for 確認本人 and for adding a sign-in method: (name, value) pairs.
+    reauthenticate: tuple = ()
+    # Where the provider itself checks its ID token, and where its access token is revoked;
+    # empty when the token endpoint's ID token is read as it comes (Google).
+    verify_url: str = ""
+    revoke_url: str = ""
 
 
-# Google's discovery document (https://accounts.google.com/.well-known/openid-configuration).
 PROVIDERS = {
+    # Google's discovery document (https://accounts.google.com/.well-known/openid-configuration).
     "google": Provider(
         authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
         token_url="https://oauth2.googleapis.com/token",
@@ -39,6 +48,21 @@ PROVIDERS = {
         issuers=("https://accounts.google.com", "accounts.google.com"),
         # The `sub` and the email only: no name, no picture (spec #505, Q2).
         scope="openid email",
+        # Google cannot be made to ask for the password again (no max_age, no prompt=login;
+        # login-research.md section 8): its account chooser at least shows which Google is used,
+        # to confirm with or to add. No login_hint, which would skip the chooser.
+        reauthenticate=(("prompt", "select_account"),),
+    ),
+    # LINE Login v2.1 (developers.line.biz/en/reference/line-login/, checked 2026-11-14).
+    "line": Provider(
+        authorize_url="https://access.line.me/oauth2/v2.1/authorize",
+        token_url="https://api.line.me/oauth2/v2.1/token",
+        issuers=("https://access.line.me",),
+        # The `sub` only: no name, picture or email (spec #506).
+        scope="openid",
+        # Its ID token is signed with our channel secret (HS256): LINE checks it (spec #506).
+        verify_url="https://api.line.me/oauth2/v2.1/verify",
+        revoke_url="https://api.line.me/oauth2/v2.1/revoke",
     ),
 }
 
@@ -58,7 +82,7 @@ class Cancelled(SignInFailed):
 
 
 class Unavailable(SignInFailed):
-    """The provider did not answer, or answered with an error, when we exchanged the code."""
+    """The provider did not answer, or answered with an error, when our server called it."""
 
 
 class Rejected(SignInFailed):
@@ -121,10 +145,7 @@ def begin(request, provider, purpose, next_url=""):
         "code_challenge_method": "S256",
     }
     if purpose in ("confirm_identity", "add_method"):
-        # Google cannot be made to ask for the password again (no max_age, no prompt=login;
-        # login-research.md section 8): its account chooser at least shows which Google is used,
-        # to confirm with or to add. No login_hint, which would skip the chooser.
-        query["prompt"] = "select_account"
+        query.update(PROVIDERS[provider].reauthenticate)
     return f"{PROVIDERS[provider].authorize_url}?{urlencode(query)}"
 
 
@@ -170,6 +191,38 @@ def _claims(id_token):
     return claims
 
 
+def _verified_claims(provider, id_token, nonce):
+    """The ID token's claims as the provider's verify endpoint gives them (LINE: its ID token is
+    signed with our channel secret, which spec #506 leaves to LINE to check). An ID token it
+    refuses (expired, another nonce, not ours) is rejected, not the provider not answering."""
+    answer = post_to_provider(
+        PROVIDERS[provider].verify_url,
+        {"id_token": id_token, "client_id": _setting(provider, "CLIENT_ID"), "nonce": nonce},
+    )
+    if "error" in answer:
+        raise Rejected("the provider refused the ID token")
+    return answer
+
+
+def _revoke(provider, access_token):
+    """Ask the provider to revoke the access token it gave (spec #506 acceptance 9). One that
+    fails goes to error monitoring and signs in all the same."""
+    try:
+        answer = post_to_provider(
+            PROVIDERS[provider].revoke_url,
+            {
+                "access_token": access_token,
+                "client_id": _setting(provider, "CLIENT_ID"),
+                "client_secret": _setting(provider, "CLIENT_SECRET"),
+            },
+        )
+    except Unavailable:
+        logger.exception("LINE access token not revoked: no answer")
+        return
+    if "error" in answer:
+        logger.error("LINE access token not revoked: refused")
+
+
 def _same(a, b):
     # As bytes: compare_digest refuses str with anything but ASCII, and the callback's state or
     # the token's nonce can be anything.
@@ -210,7 +263,16 @@ def finish(request, provider):
     # provider not answering (#505 acceptance 20).
     if "id_token" not in tokens:
         raise Unavailable(f"{provider} token endpoint: no id_token")
-    claims = _claims(tokens["id_token"])
+    if PROVIDERS[provider].verify_url:
+        try:
+            claims = _verified_claims(provider, tokens["id_token"], flow["nonce"])
+        finally:
+            # Whatever the ID token turned out to be, the access token is not kept (#506
+            # acceptance 9). Only LINE has a verify endpoint, and a revoke one.
+            _revoke(provider, tokens.get("access_token", ""))
+    else:
+        claims = _claims(tokens["id_token"])
+    # The same checks for every provider, on LINE's verified answer too (#506 acceptance 12).
     if claims.get("iss") not in PROVIDERS[provider].issuers:
         raise Rejected("iss is not the provider")
     if claims.get("aud") != _setting(provider, "CLIENT_ID"):

@@ -164,10 +164,18 @@ AUTH_USER_MODEL = "screening.User"
 # Host header (acceptance 21); no trailing slash, e.g. https://tingpal.tw.
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+# LINE sign-in (spec #506): the same, with the names LINE Developers gives them (Channel ID,
+# Channel secret), read under the names screening.oidc looks for.
+LINE_CLIENT_ID = os.environ.get("LINE_CHANNEL_ID", "")
+LINE_CLIENT_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and not SITE_URL:
     raise ImproperlyConfigured(
         "有 GOOGLE_CLIENT_ID 就要設定 SITE_URL（網站的正式網址，例如 https://tingpal.tw）"
+    )
+if LINE_CLIENT_ID and LINE_CLIENT_SECRET and not SITE_URL:
+    raise ImproperlyConfigured(
+        "有 LINE_CHANNEL_ID 就要設定 SITE_URL（網站的正式網址，例如 https://tingpal.tw）"
     )
 
 LOGIN_URL = "login"

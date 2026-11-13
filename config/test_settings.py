@@ -11,9 +11,10 @@ STORAGES = {
 INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "debug_toolbar"]  # noqa: F405
 MIDDLEWARE = [m for m in MIDDLEWARE if not m.startswith("debug_toolbar")]  # noqa: F405
 
-# Google sign-in is off in tests whatever the local .env says; tests turn it on themselves
-# (screening.tests.helpers.google_on).
+# Google and LINE sign-in are off in tests whatever the local .env says; tests turn them on
+# themselves (screening.tests.helpers.google_on, line_on).
 GOOGLE_CLIENT_ID = GOOGLE_CLIENT_SECRET = ""
+LINE_CLIENT_ID = LINE_CLIENT_SECRET = ""
 
 
 def worktree_test_database(base_dir, database_name):

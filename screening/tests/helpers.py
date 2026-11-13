@@ -183,3 +183,115 @@ class FakeGoogle:
 
         with patch("screening.oidc.post_to_provider", side_effect=fake_post):
             return self.client.get(reverse("google_callback"), query)
+
+
+# Spec #506: LINE sign-in. Tests turn LINE on with these settings; test_settings leaves it off.
+LINE_CHANNEL_ID = "1650000000"
+line_on = override_settings(
+    LINE_CLIENT_ID=LINE_CHANNEL_ID,
+    LINE_CLIENT_SECRET="line-test-secret",
+    SITE_URL="https://tingpal.test",
+)
+LINE_AUTHORIZE = "https://access.line.me/oauth2/v2.1/authorize"
+# LINE's endpoints our server calls, by the name FakeLine.calls records them under.
+LINE_ENDPOINTS = {
+    "https://api.line.me/oauth2/v2.1/token": "token",
+    "https://api.line.me/oauth2/v2.1/verify": "verify",
+    "https://api.line.me/oauth2/v2.1/revoke": "revoke",
+}
+
+
+class FakeLine:
+    """LINE for a test: start() follows a LINE button to the authorize URL, come_back() returns to
+    our callback as LINE would. Only screening.oidc.post_to_provider, our server's calls to a
+    provider, is replaced: LINE's token, verify and revoke endpoints answer as LINE does; state,
+    nonce, PKCE and their expiry run for real.
+
+        line = FakeLine(self.client)
+        line.start()
+        response = line.come_back(sub="U1")
+        line.endpoints()  # ["token", "verify", "revoke"]
+    """
+
+    def __init__(self, client):
+        self.client = client
+        self.authorize = None  # the last authorize URL's query, one value per name
+        self.calls = []  # (endpoint, form fields) of each call to LINE, in order
+
+    def start(self, view="line_start", **params):
+        """GET our view that starts a LINE trip (line_start unless named) and keep where it sends
+        the browser."""
+        response = self.client.get(reverse(view), params)
+        location = urlsplit(response["Location"])
+        assert f"{location.scheme}://{location.netloc}{location.path}" == LINE_AUTHORIZE
+        self.authorize = dict(parse_qsl(location.query))
+        return response
+
+    def endpoints(self):
+        """Which of LINE's endpoints our server called, in order."""
+        return [endpoint for endpoint, _ in self.calls]
+
+    def claims(self, sub, **overrides):
+        """What LINE's verify endpoint answers for this trip's ID token. A claim set to None is
+        left out."""
+        now = int(timezone.now().timestamp())
+        claims = {
+            "iss": "https://access.line.me",
+            "sub": sub,
+            "aud": LINE_CHANNEL_ID,
+            "exp": now + 3600,
+            "iat": now,
+            "nonce": self.authorize["nonce"],
+            "amr": ["linesso"],
+        } | overrides
+        return {name: value for name, value in claims.items() if value is not None}
+
+    def come_back(
+        self,
+        sub="line-sub-1",
+        *,
+        query=None,
+        cancelled=False,
+        token=None,
+        verify=None,
+        revoke=None,
+        **claims,
+    ):
+        """GET our callback. query: the callback's query instead of LINE's code and state.
+        cancelled: back as LINE sends someone who pressed cancel (its error, this trip's state).
+        token, verify, revoke: what that endpoint does instead of answering well: an exception
+        post_to_provider raises (oidc.Unavailable), or the JSON (a dict) it gives back.
+        claims: changes to what the verify endpoint answers."""
+        if cancelled:
+            query = {
+                "error": "ACCESS_DENIED",
+                "error_description": "The user has denied the approval",
+                "state": self.authorize["state"],
+            }
+        if query is None:
+            query = {"code": "line-auth-code", "state": self.authorize["state"]}
+        answers = {
+            "token": {
+                "access_token": "line-access-token",
+                "token_type": "Bearer",
+                "refresh_token": "line-refresh-token",
+                "expires_in": 2592000,
+                "scope": "openid",
+                "id_token": "line-id-token",
+            },
+            "verify": self.claims(sub, **claims),
+            "revoke": {},
+        }
+        instead = {"token": token, "verify": verify, "revoke": revoke}
+
+        def fake_post(url, fields):
+            endpoint = LINE_ENDPOINTS[url]
+            self.calls.append((endpoint, fields))
+            if isinstance(instead[endpoint], dict):
+                return instead[endpoint]
+            if instead[endpoint] is not None:
+                raise instead[endpoint]
+            return answers[endpoint]
+
+        with patch("screening.oidc.post_to_provider", side_effect=fake_post):
+            return self.client.get(reverse("line_callback"), query)
