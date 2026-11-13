@@ -203,6 +203,20 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
             [("after-fitting-date", False, True), ("after-fitting-adjust", True, False)],
         )
 
+    def test_only_a_stop_s_whole_end_says_the_route_moves_on(self):
+        # The owner on 2026-11-13: the fitting date is part of 配戴之後's end (#295), so undone
+        # it says it ticks itself; the one that is a stop's whole end says the route moves on.
+        hints = {
+            todo.key: todo.hint
+            for slug in ("before-you-go", "after-fitting")
+            for todo in stop_todos(slug, fitting_state(self.user, TODAY), self.user)
+            if not todo.manual
+        }
+        self.assertEqual(
+            hints,
+            {"before-you-go-read": "做完就會往下一站", "after-fitting-date": "做完會自動打勾"},
+        )
+
     def test_answering_form_25_done_ticks_its_answer(self):
         aid = AidAndSubsidy.objects.create(
             user=self.user,
