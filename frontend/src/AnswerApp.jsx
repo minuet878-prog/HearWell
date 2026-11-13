@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { clearDraft, loadDraft, saveDraft } from "./draft.js";
-import { saveGuestResult } from "./guest-results.js";
+import { canKeepGuestResults, saveGuestResult } from "./guest-results.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 // Same choices as the Django form (forms.HearingAidForm); the question itself is the
@@ -52,10 +52,15 @@ export default function AnswerApp({
   // scored without saving, kept in this browser as the guest result of this questionnaire code.
   guest = false,
   questionnaireCode,
+  // Where a guest registers instead when this browser cannot keep the guest result (I4).
+  registerUrl,
   onReady,
   onFail = () => {},
   navigate = (url) => window.location.assign(url),
 }) {
+  // I4: a guest's result lives in this browser only, so a browser that cannot keep it (some
+  // private modes) is found out before anything is answered.
+  const [cannotKeep] = useState(() => guest && !canKeepGuestResults());
   const [questions, setQuestions] = useState(null);
   const [wearingQuestion, setWearingQuestion] = useState(null);
   const [saved, setSaved] = useState(null);
@@ -106,6 +111,11 @@ export default function AnswerApp({
   }
 
   useEffect(() => {
+    // Ready all the same: the page shows the note instead of the questions or the form.
+    if (cannotKeep) {
+      onReady();
+      return;
+    }
     fetch(`/api/questionnaires/${questionnaireId}/`, { headers: { Accept: "application/json" } })
       .then((response) => {
         if (!response.ok) throw new Error(`questionnaire ${response.status}`);
@@ -161,6 +171,15 @@ export default function AnswerApp({
     if (moved.current) legend.current?.focus();
     moved.current = false;
   }, [form?.step, form === null]);
+
+  if (cannotKeep) {
+    return (
+      <div className="answer-app">
+        <p className="text-[calc(1.275rem+0.3vw)] min-[1200px]:text-[1.5rem] font-bold" role="alert">這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。</p>
+        <a className="btn btn-primary btn-lg" href={registerUrl}>註冊新帳號</a>
+      </div>
+    );
+  }
 
   if (questions === null) return null;
 
@@ -303,7 +322,7 @@ export default function AnswerApp({
     } else if (response?.status === 403) {
       setStatus({ type: "expired" });
     } else if (response?.status === 429) {
-      // A guest's 20 an hour (spec #492): the server's words; the answers stay on screen.
+      // A guest's 40 an hour (spec #492): the server's words; the answers stay on screen.
       const body = await response.json().catch(() => ({}));
       setStatus({ type: "error", message: body.detail ?? FAILED });
     } else if (response?.status === 409) {

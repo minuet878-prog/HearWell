@@ -4,6 +4,7 @@ import { DRAFT_PREFIX, loadDraft, saveDraft } from "./draft.js";
 import {
   GUEST_PREFIX,
   MAX_AGE_MS,
+  canKeepGuestResults,
   clearGuestResult,
   loadGuestResult,
   saveGuestResult,
@@ -436,5 +437,38 @@ describe("a guest result 7 days on (the guest result page)", () => {
     expect(navigate).toHaveBeenCalledWith("/");
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
     expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
+  });
+});
+
+// Implementation decision I4: checked before a guest starts answering, so nobody answers for a
+// result the browser cannot keep (some private modes).
+describe("canKeepGuestResults", () => {
+  const refuse = () => {
+    throw new DOMException("refused", "QuotaExceededError");
+  };
+
+  it("says yes when the browser keeps what is written, and leaves nothing behind", () => {
+    expect(canKeepGuestResults()).toBe(true);
+    expect(Object.keys(localStorage)).toEqual([]);
+  });
+
+  it("says no when writing throws", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(refuse);
+    expect(canKeepGuestResults()).toBe(false);
+  });
+
+  it("says no when removing throws", () => {
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(refuse);
+    expect(canKeepGuestResults()).toBe(false);
+  });
+
+  it("says no when the storage itself cannot be reached", () => {
+    const blocked = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("blocked", "SecurityError");
+    });
+    const kept = canKeepGuestResults();
+    // Before afterEach clears the storage.
+    blocked.mockRestore();
+    expect(kept).toBe(false);
   });
 });

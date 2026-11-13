@@ -284,6 +284,10 @@ def screening(request, questionnaire_id):
                 "use_react": True,
                 "always_aided": always_aided,
                 "guest": guest,
+                # A guest whose browser cannot answer here registers, then comes back (I3, I4).
+                "register_url": f"{reverse('register')}?{urlencode({'next': request.path})}"
+                if guest
+                else None,
                 # New for every opened page: answering again later is a new submission.
                 "idempotency_key": uuid.uuid4(),
             },

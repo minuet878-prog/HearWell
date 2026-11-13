@@ -133,7 +133,7 @@ paths:
         '400':
           description: Invalid answers, or not HHIE-S or HHIA-S
         '429':
-          description: More than 20 in an hour from this address
+          description: More than 40 in an hour from this address
   /api/questionnaires/:
     get:
       operationId: questionnaires_list

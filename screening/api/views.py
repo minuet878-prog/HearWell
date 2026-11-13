@@ -22,7 +22,14 @@ from screening.api.serializers import (
     SubmissionDetailSerializer,
     SubmissionSerializer,
 )
-from screening.models import Answer, Audiogram, AudiogramPoint, Question, Questionnaire
+from screening.models import (
+    Answer,
+    Audiogram,
+    AudiogramPoint,
+    Question,
+    Questionnaire,
+    count_guest,
+)
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.views.my_hearing import TREND_STATUS_TEXT
 
@@ -149,6 +156,9 @@ class SubmissionList(ListAPIView):
             created = False
         if not created and not _same_content(existing, data):
             return Response({"detail": "這個收據編號已經用過"}, status.HTTP_409_CONFLICT)
+        # A guest result newly saved counts (#500); sent again and found, it does not.
+        if created and data["from_guest"]:
+            count_guest("saved")
         # Same query and serializer as GET /api/submissions/{id}/, so the bodies match.
         submission = _own_submission_details(request, with_ioi_ha=True).get(pk=existing.pk)
         return Response(
@@ -158,10 +168,11 @@ class SubmissionList(ListAPIView):
 
 
 class GuestScoreThrottle(SimpleRateThrottle):
-    # Spec #492: 20 an hour from one connection source (DRF's get_ident), counted in the server's
-    # memory cache only, never in the database.
+    # Spec #492: 40 an hour from one connection source (DRF's get_ident), counted in the server's
+    # memory cache only, never in the database. 40, not the grill's 20 (implementation decision
+    # I1): one questionnaire scores twice, on the answer page and on the guest result page.
     scope = "guest_score"
-    rate = "20/hour"
+    rate = "40/hour"
 
     def get_cache_key(self, request, view):
         return self.cache_format % {"scope": self.scope, "ident": self.get_ident(request)}
@@ -185,7 +196,7 @@ class GuestScore(GenericAPIView):
         responses={
             200: GuestScoreSerializer,
             400: OpenApiResponse(description="Invalid answers, or not HHIE-S or HHIA-S"),
-            429: OpenApiResponse(description="More than 20 in an hour from this address"),
+            429: OpenApiResponse(description="More than 40 in an hour from this address"),
         },
     )
     def post(self, request):
@@ -200,6 +211,9 @@ class GuestScore(GenericAPIView):
             "screening/graded_result.html",
             {"submission": result.submission} | result.page_context(),
         )
+        # The answer page's send counts; the guest result page sending them again does not.
+        if data["just_finished"]:
+            count_guest("completed")
         return Response(
             GuestScoreSerializer(
                 {

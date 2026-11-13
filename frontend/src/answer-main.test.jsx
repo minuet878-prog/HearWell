@@ -204,3 +204,76 @@ describe("React entry", () => {
     expect(app().textContent).toBe("");
   });
 });
+
+// Implementation decision I3: the web form saves records (a guest sending it is asked to log in
+// and loses the answers), so a guest is asked to register instead of getting the form back.
+describe("guest", () => {
+  const CANNOT_LOAD = "這個瀏覽器載不出免註冊作答，請註冊後再做。";
+  const note = () => document.getElementById("answer-guest-fallback");
+
+  // As screening.html draws it for a guest (test_guest.GuestFallbackTests checks the template).
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div id="answer-intro"><p>本問卷的目的在幫助您了解自己的聽力。</p></div>
+      <p id="answer-loading" role="status"></p>
+      <div id="answer-guest-fallback" role="alert" hidden>
+        <p>${CANNOT_LOAD}</p><a href="/register?next=%2Fquestionnaire%2F1">註冊新帳號</a>
+      </div>
+      <div id="answer-app" data-questionnaire-id="1" data-user-id="" data-minutes="3" data-guest
+        data-questionnaire-code="hhie-s" data-register-url="/register?next=%2Fquestionnaire%2F1"></div>
+      <form id="answer-form">
+        <input type="hidden" name="csrfmiddlewaretoken" value="token">
+        <input type="radio" name="form-0-score" value="4" aria-label="常常">
+      </form>`;
+  });
+
+  it("asks to register, not the form, when React is not ready in 5 seconds", () => {
+    vi.useFakeTimers();
+    runInline();
+    vi.advanceTimersByTime(4999);
+    expect(note().hidden).toBe(true);
+    vi.advanceTimersByTime(1);
+    expect(note().hidden).toBe(false);
+    expect(note().textContent).toContain(CANNOT_LOAD);
+    expect(form().hidden).toBe(true);
+    expect(status().textContent).toBe("");
+  });
+
+  it("asks to register, not the form, when loading fails", async () => {
+    runInline();
+    respondWith({ ok: false, status: 500, json: () => Promise.resolve({}) });
+    await startReact();
+    await waitFor(() => expect(html().classList.contains("answer-loading")).toBe(false));
+    expect(note().hidden).toBe(false);
+    expect(form().hidden).toBe(true);
+    expect(status().textContent).toBe("");
+  });
+
+  it("stays out of the way when React takes over in time", async () => {
+    runInline();
+    respondWith(ok);
+    await startReact();
+    await waitFor(() => expect(app().textContent).toContain("這次填答時，您有沒有戴助聽器？"));
+    expect(note().hidden).toBe(true);
+    expect(form().hidden).toBe(true);
+  });
+
+  // I4: the page's register link goes to React for a browser that cannot keep the result.
+  it("hands the register link over for a browser that cannot keep the result", async () => {
+    const refused = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    try {
+      runInline();
+      respondWith(ok);
+      await startReact();
+      await waitFor(() => expect(app().textContent).toContain("這個瀏覽器不能暫存結果"));
+      expect(app().querySelector("a").getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+      expect(form().hidden).toBe(true);
+      expect(note().hidden).toBe(true);
+      expect(html().classList.contains("answer-loading")).toBe(false);
+    } finally {
+      refused.mockRestore();
+    }
+  });
+});
