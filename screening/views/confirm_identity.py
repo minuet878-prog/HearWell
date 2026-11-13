@@ -107,6 +107,11 @@ def came_back(request, identity):
         return redirect_to_login(identity.next)
     # The trip started on the confirm page, whose URL (its next) names the action.
     action = QueryDict(urlsplit(identity.next).query).get("action")
+    # The callback is open before agreeing, as signing in is; of these actions only deleting the
+    # account is (#505 acceptance 30). A newer privacy notice that went live during the trip is
+    # agreed to first, and nothing is written (cross-review of #506, Standards 2).
+    if action != "delete_account" and not request.user.has_consented():
+        return redirect_to_login(identity.next, reverse("consent"))
     if action in ACTIONS and request.user.sign_in_methods.for_identity(identity).exists():
         # Removing has no page to go on to: it is done now, as the password does it (#506
         # acceptance 19), checked again in case the account changed during the trip.

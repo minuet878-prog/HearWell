@@ -7,6 +7,7 @@ refused."""
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponseRedirect
@@ -101,6 +102,11 @@ def came_back(request, identity):
     # where the row is written.
     if not user.is_authenticated or user.is_admin:
         raise PermissionDenied
+    # The callback is open before agreeing, as signing in is: a newer privacy notice that went
+    # live during the trip is agreed to first, and nothing is added (cross-review of #506,
+    # Standards 2).
+    if not user.has_consented():
+        return redirect_to_login(reverse("account_settings"), reverse("consent"))
     if SignInMethod.objects.for_identity(identity).exists():
         messages.error(request, WORDS[identity.provider].taken)
         return redirect("account_settings")

@@ -12,9 +12,10 @@ from django.test import Client, TestCase, TransactionTestCase
 from django.urls import reverse
 
 from screening import oidc
-from screening.models import SignInMethod, User
+from screening.models import CONSENT_VERSION, SignInMethod, User
 from screening.tests import (
     test_confirm_identity,
+    test_consent,
     test_line_in_app_browser,
     test_line_sign_in_methods,
     test_sign_in_methods_settings,
@@ -569,3 +570,72 @@ class BeforeAgreeingTests(TestCase):
                     )
                 self.assertNotIn(oidc.FLOW, self.client.session)
         self.assertEqual(methods(user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+
+def a_newer_notice_goes_live(user):
+    """The privacy notice changes while the user is away at the provider: they agreed to the
+    one before only."""
+    user.consents.update(version=CONSENT_VERSION - 1)
+
+
+@google_on
+@line_on
+class NewerNoticeDuringTheTripTests(TestCase):
+    """The callback is open before agreeing (signing in is). Coming back to add or remove a
+    sign-in method after a newer privacy notice went live goes to agree first and writes
+    nothing; only confirming to delete the account goes on (cross-review of #506, Standards
+    2)."""
+
+    def test_adding_google_or_line_adds_nothing(self):
+        for provider, fake, authorize in (
+            ("google", FakeGoogle, GOOGLE_AUTHORIZE),
+            ("line", FakeLine, LINE_AUTHORIZE),
+        ):
+            with self.subTest(provider):
+                user = consented_user(username=f"adding_{provider}", password=PASSWORD)
+                self.client.force_login(user)
+                self.client.post(confirm_url(f"add_{provider}"), {"password": PASSWORD})
+                trip = fake(self.client)
+                trip.authorize = off_to(
+                    self, self.client.get(reverse(f"{provider}_add")), authorize
+                )
+                a_newer_notice_goes_live(user)
+                response = trip.come_back(sub=f"{provider}-new")
+                self.assertRedirects(
+                    response,
+                    test_consent._consent_url(reverse("account_settings")),
+                    fetch_redirect_response=False,
+                )
+                self.assertFalse(SignInMethod.objects.exists())
+
+    def test_removing_with_line_or_google_removes_nothing(self):
+        user = line_and_google_user()
+        self.client.force_login(user)
+        for provider, fake, authorize, sub in (
+            ("line", FakeLine, LINE_AUTHORIZE, OWN_LINE),
+            ("google", FakeGoogle, GOOGLE_AUTHORIZE, OWN_GOOGLE),
+        ):
+            with self.subTest(provider):
+                user.give_consent()
+                trip = fake(self.client)
+                pressed = press(self.client, provider, "remove_google")
+                trip.authorize = off_to(self, pressed, authorize)
+                a_newer_notice_goes_live(user)
+                response = trip.come_back(sub=sub)
+                self.assertRedirects(
+                    response,
+                    test_consent._consent_url(CONFIRM_REMOVE_GOOGLE),
+                    fetch_redirect_response=False,
+                )
+                self.assertEqual(methods(user), [("google", OWN_GOOGLE), ("line", OWN_LINE)])
+
+    def test_confirming_to_delete_goes_on(self):
+        user = line_only_user(sub=OWN_LINE)
+        self.client.force_login(user)
+        line = FakeLine(self.client)
+        line.authorize = off_to(self, press(self.client, "line", "delete_account"), LINE_AUTHORIZE)
+        a_newer_notice_goes_live(user)
+        response = line.come_back(sub=OWN_LINE)
+        self.assertRedirects(response, CONFIRM_DELETE, target_status_code=302)
+        confirmed = self.client.session[confirm_identity.CONFIRMED]
+        self.assertEqual(confirmed["action"], "delete_account")
