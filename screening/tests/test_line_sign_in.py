@@ -657,11 +657,13 @@ class PrivacyTests(TestCase):
             "用 LINE 登入時，只拿 LINE 給您的代號，不拿名稱、大頭貼、email 和好友名單。",
         )
 
-    def test_version_8_dated_the_day_it_changed(self):
-        # Version 7 (Google, spec #505) is already live: LINE is one more.
+    def test_version_8_with_its_date(self):
+        # Version 7 (Google, spec #505) is already live: LINE is one more. Its date is set the
+        # day version 8 goes live, not before version 7's.
         self.assertEqual(models.CONSENT_VERSION, 8)
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
-        self.assertContains(self.client.get(reverse("privacy")), "第 8 版，2026/11/14 更新")
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
+        updated_on = models.PRIVACY_UPDATED_ON.strftime("%Y/%m/%d")
+        self.assertContains(self.client.get(reverse("privacy")), f"第 8 版，{updated_on} 更新")
 
     def test_who_agreed_to_version_7_agrees_again(self):
         user = User.objects.create_user(username="agreed_to_7")
