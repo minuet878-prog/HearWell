@@ -5,7 +5,6 @@ A to-do never changes whether a step or a stop is done."""
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from screening import questionnaires
 from screening.fitting_route import AUDIOGRAM
 from screening.models import FIRST_ROUND
 
@@ -93,49 +92,67 @@ STEP_HINT = "做完這一步就完成"
 _ALL_TODOS = tuple(todo for todos in (*STOP_TODOS.values(), *STEP_TODOS.values()) for todo in todos)
 TODO_TEXTS = {todo.key: todo.text for todo in _ALL_TODOS}
 MANUAL_KEYS = frozenset(todo.key for todo in _ALL_TODOS if todo.rule is None)
-# 記錄聽力圖's, step 2's card, which never start over (spec #478).
-_ONE_ROUND_KEYS = frozenset(todo.key for todo in STOP_TODOS[AUDIOGRAM])
-_STEP_5_KEYS = frozenset(todo.key for todo in STEP_TODOS[5])
+# Step 5's round before any life-impact record.
+NO_LIFE_IMPACT = 0
 
 
-def current_rounds(user, aid):
-    """The round each 手動待辦 is ticked in now (#482, spec #478), for a tick and for reading
-    the ticks alike: 記錄聽力圖's the first, always; step 5's the latest life-impact record's id,
-    0 before one; the other eight stops' and step 4's the pair of hearing aids
-    (AidAndSubsidy.pair_number). aid: the user's, None before any."""
-    pair = aid.pair_number if aid is not None else FIRST_ROUND
-    life_impact = _latest_life_impact(user)
-    rounds = dict.fromkeys(MANUAL_KEYS, pair)
-    rounds |= dict.fromkeys(_ONE_ROUND_KEYS, FIRST_ROUND)
-    rounds |= dict.fromkeys(_STEP_5_KEYS, life_impact)
-    return rounds
+def _pair(aid):
+    return aid.pair_number if aid is not None else FIRST_ROUND
 
 
-def _latest_life_impact(user):
-    # The record get_user_state takes for the latest life-impact one, kept by its id alone: no
+def _stop_round(slug, aid):
+    # 記錄聽力圖's, step 2's card, never starts over (spec #478); the other eight stops' go by
+    # the pair of hearing aids (AidAndSubsidy.pair_number).
+    return FIRST_ROUND if slug == AUDIOGRAM else _pair(aid)
+
+
+def _step_round(number, aid, life_impact):
+    # Step 4's by the pair; step 5's by the latest life-impact record, kept by its id alone: no
     # foreign key, so deleting records stays as it was (spec #478).
-    codes = [code for code in questionnaires.offered() if questionnaires.get(code).life_impact]
-    latest = user.submissions.filter(questionnaire__code__in=codes).order_by("-created_at", "-id")
-    return latest.values_list("id", flat=True).first() or 0
+    if number == 5:
+        return life_impact.pk if life_impact is not None else NO_LIFE_IMPACT
+    return _pair(aid)
 
 
-def _ticked(user, aid):
-    # The keys of user's 手動待辦 ticked in their current round (#481, #482): a tick of an
-    # earlier round is kept but not ticked now. Whether a stop is done never reads them (ADR 0047).
-    rounds = current_rounds(user, aid)
-    ticks = user.todo_ticks.values_list("key", "round")
-    return frozenset(key for key, number in ticks if rounds.get(key) == number)
+def current_rounds(aid, life_impact):
+    """The round each 手動待辦 is ticked in now (#482, spec #478), for a tick and for reading
+    the ticks alike. aid: the user's AidAndSubsidy, None before any; life_impact: their latest
+    life-impact record (UserState.life_impact, the one the 照顧旅程 shows), None before one."""
+    rounds = {
+        todo.key: _stop_round(slug, aid) for slug, todos in STOP_TODOS.items() for todo in todos
+    }
+    rounds |= {
+        todo.key: _step_round(number, aid, life_impact)
+        for number, todos in STEP_TODOS.items()
+        for todo in todos
+    }
+    return {key: number for key, number in rounds.items() if key in MANUAL_KEYS}
+
+
+def _ticked(user, todos, round_now):
+    # The keys of user's 手動待辦 among todos ticked in round_now, their list's round (#481,
+    # #482): a tick of an earlier round is kept but not ticked now. Whether a stop is done never
+    # reads them (ADR 0047).
+    manual = [todo.key for todo in todos if todo.rule is None]
+    if not manual:
+        return frozenset()
+    ticks = user.todo_ticks.filter(key__in=manual, round=round_now)
+    return frozenset(ticks.values_list("key", flat=True))
 
 
 def stop_todos(slug, state, user):
     """A route stop's 待辦, judged on state (user's FittingState)."""
-    return _judged(STOP_TODOS.get(slug, ()), state, _ticked(user, state.aid), STOP_HINT)
+    todos = STOP_TODOS.get(slug, ())
+    ticked = _ticked(user, todos, _stop_round(slug, state.aid))
+    return _judged(todos, state, ticked, STOP_HINT)
 
 
-def step_todos(number, done, user, aid):
-    """A 照顧旅程 step's own 待辦; done, whether the step is done; aid, the user's
-    AidAndSubsidy, None before any."""
-    return _judged(STEP_TODOS.get(number, ()), done, _ticked(user, aid), STEP_HINT)
+def step_todos(number, done, user, aid, life_impact):
+    """A 照顧旅程 step's own 待辦; done, whether the step is done; aid and life_impact as
+    current_rounds takes them."""
+    todos = STEP_TODOS.get(number, ())
+    ticked = _ticked(user, todos, _step_round(number, aid, life_impact))
+    return _judged(todos, done, ticked, STEP_HINT)
 
 
 def _judged(todos, subject, ticked, hint):

@@ -8,6 +8,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening.care_journey import care_journey
 from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS, current_rounds
+from screening.main_flow import get_user_state
 from screening.models import AidAndSubsidy, TodoTick
 from screening.views.answering import continue_notice
 from screening.views.common import health_data_page, safe_next
@@ -58,7 +59,8 @@ def journey_todo_tick(request):
     if key not in MANUAL_KEYS or ticked not in ("0", "1"):
         return HttpResponseBadRequest()
     # In its current round (#482): an earlier round's tick stays as it was.
-    current = current_rounds(request.user, AidAndSubsidy.for_user(request.user))[key]
+    life_impact = get_user_state(request.user, timezone.localdate()).life_impact
+    current = current_rounds(AidAndSubsidy.for_user(request.user), life_impact)[key]
     if ticked == "1":
         TodoTick.objects.get_or_create(user=request.user, key=key, round=current)
     else:

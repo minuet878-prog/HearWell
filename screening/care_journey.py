@@ -157,7 +157,15 @@ def care_journey(user, today):
         on = main.next_suggested_date
         next_screening = NextScreening(on, (on - today).days, False, life_impact_href)
     card = _card(
-        user, current, done[current], route, fitted_on, today, next_screening, life_impact_href
+        user,
+        main.life_impact,
+        current,
+        done[current],
+        route,
+        fitted_on,
+        today,
+        next_screening,
+        life_impact_href,
     )
     return CareJourney(
         steps,
@@ -191,8 +199,11 @@ def _life_impact_href(user, main):
     return reverse("screening", args=[questionnaire.pk])
 
 
-def _card(user, current, done, route, fitted_on, today, next_screening, life_impact_href):
-    # done: whether the 現在這一步 is, for its own 待辦 (step 5 never is); user: route's.
+def _card(
+    user, life_impact, current, done, route, fitted_on, today, next_screening, life_impact_href
+):
+    # done: whether the 現在這一步 is, for its own 待辦 (step 5 never is); user: route's;
+    # life_impact: the latest life-impact record, None before one.
     if current == 1:
         return JourneyCard(
             CARE_JOURNEY_STEPS[0],
@@ -206,7 +217,7 @@ def _card(user, current, done, route, fitted_on, today, next_screening, life_imp
         # Not 等待補助發放, which the home page leaves to my guide (spec #453).
         three_months = add_months(fitted_on, FITTING_MONTHS)
         title = CARE_JOURNEY_STEPS[3]
-        todos = step_todos(4, done, user, route.aid)
+        todos = step_todos(4, done, user, route.aid, life_impact)
         if today < three_months:
             because = fitting_countdown_text((three_months - today).days)
             return JourneyCard(title, because, "clipboard", todos=todos)
@@ -219,7 +230,7 @@ def _card(user, current, done, route, fitted_on, today, next_screening, life_imp
             todos=todos,
         )
     title = CARE_JOURNEY_STEPS[4]
-    todos = step_todos(5, done, user, route.aid)
+    todos = step_todos(5, done, user, route.aid, life_impact)
     if next_screening is None:
         # Without a life-impact record step 5 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
