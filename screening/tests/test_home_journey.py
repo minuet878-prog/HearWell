@@ -29,6 +29,8 @@ TODAY = date(2026, 11, 12)
 NORMAL = (20, 20, 20, 20)
 PTA_55 = test_guide_summary.PTA_55
 SOLID = re.compile(r'class="btn btn-primary\b')
+# The 現在這一步 card's 待辦 (spec #478), left to test_journey_todos: these check its one thing.
+TODOS = re.compile(r'<div class="todos">.*?</div>', re.S)
 
 
 class HomeJourneyTestCase(TestCase):
@@ -109,11 +111,11 @@ class HomeJourneyTestCase(TestCase):
         ]
 
     def card(self, main):
-        return self.part(main, "journey-card")
+        return TODOS.sub("", self.part(main, "journey-card"))
 
     def items(self, main):
         """Each step's (classes, its HTML) in order."""
-        steps = self.part(main, "journey-steps")
+        steps = TODOS.sub("", self.part(main, "journey-steps"))
         return re.findall(r'<li class="journey-step ([^"]*)"[^>]*>(.*?)</li>', steps, re.S)
 
     def steps(self, main):
@@ -510,8 +512,15 @@ class StepInteractionTests(HomeJourneyTestCase):
         # I2: the walked steps, numbered for the entrance's timing; 「2 / 5」 stays.
         self.step_3_with_two_done()
         main = self.main()
-        # Played once the 現在這一步 is in view (ADR 0029).
-        self.assertRegex(main, r'<li class="journey-step is-current"[^>]*data-play-in-view>')
+        # Played once the 現在這一步's one thing is in view (ADR 0029; #480 moved the mark there
+        # from the whole step, which the to-dos under it made too tall).
+        self.assertRegex(
+            main,
+            r'<li class="journey-step is-current"[^>]*>\s*<span class="journey-dot">3</span>\s*'
+            r'<div class="journey-card">\s*<div class="journey-card-main" '
+            r"data-play-in-view>",
+        )
+        self.assertEqual(main.count("data-play-in-view"), 1)
         steps = re.findall(r'<li class="journey-step ([^"]*)" style="--journey-step: (\d)"', main)
         self.assertEqual(
             steps,

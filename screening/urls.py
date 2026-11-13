@@ -48,6 +48,7 @@ urlpatterns = [
     path("guide", guide.guide, name="guide"),
     path("guide/<slug:chapter>", guide.guide_chapter, name="guide_chapter"),
     path("route_answer", guide.route_answer, name="route_answer"),
+    path("journey_todo_tick", home.journey_todo_tick, name="journey_todo_tick"),
     path("consent", accounts.consent, name="consent"),
     path("monitoring-test", monitoring.monitoring_test, name="monitoring_test"),
     path("questionnaire_list", answering.questionnaire_list, name="questionnaire_list"),

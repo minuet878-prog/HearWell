@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 
 class AidEar(models.TextChoices):
@@ -54,9 +54,24 @@ class AidAndSubsidy(models.Model):
     level = models.CharField(max_length=8, choices=AidLevel, blank=True, default="")
     # 二十五號表's answer (#296): None unanswered, False 還沒, True 完成了.
     form_25_done = models.BooleanField(null=True, blank=True)
+    # 第幾台 (#482, spec #478): the 手動待辦's round on the route and step 4, from 1.
+    pair_number = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return f"{self.user} aid and subsidy"
+
+    def save(self, *args, **kwargs):
+        # 換新機 (#482): the fitting date moved later, whichever form sent it; filled in the first
+        # time, moved earlier or cleared, the same pair. Judged on the row as saved, locked till
+        # this save is in, never on the pair this object was read with: two requests read at
+        # the same pair each count (the cross review on #478).
+        with transaction.atomic():
+            if self.pk is not None:
+                saved = AidAndSubsidy.objects.select_for_update().filter(pk=self.pk)
+                before, pair = saved.values_list("fitted_on", "pair_number").get()
+                later = None not in (before, self.fitted_on) and self.fitted_on > before
+                self.pair_number = pair + 1 if later else pair
+            super().save(*args, **kwargs)
 
     @classmethod
     def for_user(cls, user):

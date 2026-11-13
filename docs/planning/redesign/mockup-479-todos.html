@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#479 照顧旅程待辦設計圖</title>
+<style>
+  /* ---- tokens: as #454 / #458 / #466, values from frontend/src/site.css ---- */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8; --input-border: #6c757d;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --annot: #7e22ce; /* annotation only, not part of the design */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 8px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .intro { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 16px; max-width: 1100px; }
+  .intro h2 { font-size: 24px; color: var(--heading); margin: 0 0 6px; }
+  .intro p { margin: 0 0 8px; }
+  .intro ol, .intro ul { margin: 0 0 8px; padding-left: 1.3em; }
+  .group { margin: 44px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  .note p { margin: 0 0 6px; }
+  .note code, table.spec code { font-size: 13px; background: #f4f6f8; padding: 0 3px; border-radius: 4px; }
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .callout { position: relative; outline: 3px solid var(--annot); outline-offset: 3px; border-radius: 6px; }
+  .callout-tag { display: inline-block; color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 1px 10px; margin: 0 0 4px; font-weight: 700; line-height: 1.5; }
+
+  /* ---- the phone: every length is calc(n * var(--r)), --r being the site's rem (18px;
+     36px at 200% text, as e2e's DOUBLE_TEXT_SIZE), px only where site.css uses px ---- */
+  .phone { --r: 18px; width: 390px; background: #fff; border-radius: 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; overflow: hidden; font-size: var(--r); line-height: 1.5; color: var(--body); }
+  .phone.x2 { --r: 36px; }
+  .pg { padding: calc(.75 * var(--r)) calc(.75 * var(--r)) 120px; }
+  .crop .pg { padding-bottom: calc(.75 * var(--r)); }
+  .brand { margin: 0 0 calc(1.5 * var(--r)); font-size: calc(1.2222 * var(--r)); font-weight: 700; color: var(--primary); }
+  .h1 { margin: 0 0 calc(.5 * var(--r)); font-size: calc(1.5556 * var(--r)); line-height: 1.3; font-weight: 700; color: var(--heading); overflow-wrap: anywhere; }
+  .h4 { margin: 0 0 calc(.5 * var(--r)); font-size: calc(1.2222 * var(--r)); line-height: 1.3; font-weight: 700; color: var(--heading); }
+  .phone p { margin: 0 0 var(--r); }
+  .cropped-hint { color: var(--annot) !important; font-size: 14px; margin: 0 !important; }
+  .fold { position: absolute; left: 0; right: 0; top: 844px; border-top: 2px dashed var(--annot); z-index: 4; }
+  .fold span { position: absolute; right: 8px; top: 2px; font-size: 12px; color: var(--annot); background: rgba(255,255,255,.9); padding: 0 4px; border-radius: 4px; line-height: 1.4; }
+  .chev-d { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); fill: none; stroke: var(--primary); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* S1 buttons */
+  .btn { display: flex; align-items: center; justify-content: center; width: 100%; min-height: calc(3.1111 * var(--r)); padding: calc(.5 * var(--r)) calc(1.25 * var(--r)); border: 2px solid transparent; border-radius: calc(.7778 * var(--r)); font-size: calc(1.1111 * var(--r)); font-weight: 700; line-height: 1.5; text-align: center; overflow-wrap: anywhere; }
+  .solid { background: var(--primary); color: #fff; }
+  .outline { background: transparent; color: var(--primary); border-color: var(--primary); }
+
+  /* home tiles (#459) */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(calc(8.5 * var(--r)), 100%), 1fr)); gap: calc(.75 * var(--r)); margin: var(--r) 0 calc(1.75 * var(--r)); }
+  .tile { position: relative; display: flex; flex-direction: column; min-width: 0; padding: calc(.75 * var(--r)) calc(.875 * var(--r)) calc(.875 * var(--r)); border-radius: calc(.75 * var(--r)); overflow-wrap: anywhere; }
+  .tile-info { background: var(--surface); color: var(--heading); }
+  .L1m { background: var(--mild-bg); color: var(--mild); }
+  .tl-label { font-weight: 700; }
+  a.tile .tl-label { padding-right: calc(1.75 * var(--r)); }
+  .tile-info .tl-label, .tl-small { color: var(--muted); }
+  .tl-score { font-size: calc(2.2222 * var(--r)); font-weight: 700; line-height: 1.15; }
+  .tl-score small { font-size: calc(1.1111 * var(--r)); }
+  .tl-level { font-weight: 700; }
+  .tl-arrow { position: absolute; top: calc(.5 * var(--r)); right: calc(.75 * var(--r)); color: var(--primary); font-size: calc(1.6667 * var(--r)); font-weight: 700; line-height: 1; }
+  .tl-date { margin-top: calc(.4 * var(--r)); font-size: calc(1.4444 * var(--r)); font-weight: 700; line-height: 1.25; }
+
+  /* 照顧旅程 (#459): N3 dots on a line, the 現在這一步 card beside it */
+  .jhead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: var(--r); margin-bottom: var(--r); }
+  .jhead .h4 { margin: 0; }
+  .jcount { margin: 0 !important; font-size: calc(1.1111 * var(--r)); font-weight: 700; color: var(--heading); }
+  ol.jr { --dot: calc(2 * var(--r)); list-style: none; margin: 0; padding: 0; }
+  .js { position: relative; display: flex; gap: calc(.75 * var(--r)); padding-bottom: var(--r); }
+  .js:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) + .125 * var(--r)); bottom: calc(.125 * var(--r)); left: calc((var(--dot) - 2px) / 2); width: 2px; border-radius: 999px; background: var(--line-strong); }
+  .js.walked::after { z-index: 1; background: var(--primary); }
+  .jdot { flex: none; position: relative; z-index: 2; width: var(--dot); height: var(--dot); border: 2px solid var(--primary); border-radius: 50%; background: #fff; color: var(--primary); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .jdot svg { width: calc(1.1 * var(--r)); height: calc(1.1 * var(--r)); fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .js.later .jdot { border-color: var(--line-strong); background: var(--surface); color: var(--muted); }
+  .jsum { flex: 1; min-width: 0; display: flex; align-items: center; gap: calc(.5 * var(--r)); min-height: calc(2.75 * var(--r)); margin-top: calc(-.375 * var(--r)); padding: 0 calc(.25 * var(--r)); }
+  .jbody { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: calc(.625 * var(--r)); }
+  .js.later .jbody, .jwhen { color: var(--muted); }
+  .jarrow { flex: none; color: var(--primary); font-size: calc(1.5 * var(--r)); font-weight: 700; line-height: 1; transform: rotate(90deg); }
+  .js.cur .jdot { margin-top: calc(.875 * var(--r)); }
+  .js.cur:not(:last-child)::after { top: calc(var(--dot) + var(--r)); }
+  .js:has(+ .cur)::after { bottom: calc(-.75 * var(--r)); }
+  .jcard { flex: 1; min-width: 0; padding: calc(.875 * var(--r)) var(--r) var(--r); border-radius: calc(.75 * var(--r)); background: var(--primary-soft); }
+  .jcard-label { margin: 0 !important; color: var(--muted); font-weight: 700; }
+  .jcard-title { margin: 0 0 calc(.375 * var(--r)); color: var(--heading); font-size: calc(1.2222 * var(--r)); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+  .jcard-because { margin: 0 !important; }
+  .jcard .btn { margin-top: calc(.75 * var(--r)); }
+  /* site.css @container (max-width: 15rem): at 200% text (15rem = 540px) a 390px phone's list
+     is narrower, so the card drops under its dot. Written for .x2, as a container query cannot
+     read --r. */
+  .x2 .js { flex-direction: column; gap: calc(.4 * var(--r)); }
+  .x2 .js:not(:last-child)::after { display: none; }
+  .x2 .js.cur .jdot { margin-top: 0; }
+  .home-links { display: flex; flex-wrap: wrap; column-gap: calc(1.5 * var(--r)); margin: calc(.5 * var(--r)) 0 var(--r); padding: calc(.375 * var(--r)) 0 0; border-top: 1px solid var(--line); list-style: none; }
+  .home-links a { display: inline-flex; align-items: center; min-height: calc(2.75 * var(--r)); color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
+
+  /* 選配路線 (#467): N3 dots, the 您在這裡 card */
+  ol.route { --rs: calc(1.7778 * var(--r)); list-style: none; margin: 0; padding: 0; }
+  .rs { position: relative; display: flex; gap: calc(.75 * var(--r)); padding-bottom: calc(.75 * var(--r)); }
+  .rs:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--rs) + .25 * var(--r)); bottom: calc(.25 * var(--r)); left: calc((var(--rs) - 2px) / 2); width: 2px; border-radius: 999px; background: var(--line-strong); }
+  .rs.walked::after { z-index: 1; background: var(--primary); }
+  .rnum { flex: none; position: relative; z-index: 2; width: var(--rs); height: var(--rs); margin-top: calc(.3 * var(--r)); border: 2px solid var(--primary); border-radius: 50%; background: #fff; color: var(--primary); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .rnum svg { width: 60%; height: 60%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .rbox { flex: 1 1 0; min-width: 0; }
+  .rsum { display: flex; align-items: flex-start; gap: calc(.5 * var(--r)); min-height: calc(2.75 * var(--r)); padding: calc(.35 * var(--r)) calc(.25 * var(--r)); }
+  .rrow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .rtitle { color: var(--heading); font-weight: 700; }
+  .rmarks { display: block; color: var(--muted); font-weight: 400; }
+  .rsum .chev-d { margin-top: calc(.2 * var(--r)); }
+  .rnote { margin: calc(.25 * var(--r)) 0 0 !important; padding-inline-start: calc(.25 * var(--r)); }
+  .ranswer { margin: calc(.5 * var(--r)) 0 0 !important; padding-inline-start: calc(.25 * var(--r)); color: var(--muted); font-size: var(--r); }
+  .ranswer a { color: var(--primary); font-weight: 700; text-decoration: underline; }
+  .rgap { flex-basis: 100%; margin: 0 !important; padding-left: calc(var(--rs) + .75 * var(--r)); color: var(--muted); font-size: var(--r); }
+  .rs.has-gap { flex-wrap: wrap; }
+  .rcard { padding: calc(.875 * var(--r)) var(--r) var(--r); border-radius: calc(1.5 * var(--r)); background: var(--primary-soft); }
+  .rs.here .rnum { margin-top: calc(.875 * var(--r)); }
+  .rs.here:not(:last-child)::after { top: calc(var(--rs) + 1.25 * var(--r)); }
+  .rs:has(+ .here)::after { bottom: calc(-.75 * var(--r)); }
+  .rhere { margin: 0 !important; color: var(--muted); font-size: var(--r); font-weight: 700; }
+  .rcard .rtitle { display: flex; align-items: center; gap: calc(.5 * var(--r)); min-height: calc(2.75 * var(--r)); font-size: calc(1.2222 * var(--r)); overflow-wrap: anywhere; }
+  .rcard .rtitle > span:first-child { flex: 1; min-width: 0; }
+  .rcard .rtitle .chev-d { transform: rotate(-90deg); }
+  .rcard > .btn { margin-top: calc(.75 * var(--r)); }
+  .sq { margin-top: calc(.75 * var(--r)); }
+  .sq-legend { display: block; margin-bottom: calc(.5 * var(--r)); font-weight: 700; font-size: calc(1.25 * var(--r)); line-height: 1.5; color: var(--heading); }
+  .sq-answers { display: grid; grid-template-columns: minmax(0, 1fr); gap: calc(.5 * var(--r)); }
+  .sq-answers .btn { margin: 0; }
+  /* the route's own 15rem rule, as above */
+  .x2 .rs { flex-direction: column; gap: calc(.4 * var(--r)); }
+  .x2 .rs:not(:last-child)::after { display: none; }
+
+  /* ---- new: the to-do list (#478), the same on both cards ---- */
+  .todos { margin-top: calc(.75 * var(--r)); }
+  .jcard .todos.after, .rcard .todos.after { margin-top: var(--r); }
+  .todos-head { margin: 0 0 calc(.375 * var(--r)) !important; color: var(--muted); font-weight: 700; }
+  ul.todo { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(.5 * var(--r)); }
+  /* 手動: a white row framed like a field (4.7:1), a square box in a 2px blue frame; the whole row is the target */
+  .t-man { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: calc(.625 * var(--r)); min-height: calc(2.75 * var(--r)); padding: calc(.625 * var(--r)) calc(.75 * var(--r)); background: #fff; border: 1px solid var(--input-border); border-radius: calc(.75 * var(--r)); color: var(--body); }
+  .box { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border: 2px solid var(--primary); border-radius: calc(.25 * var(--r)); background: #fff; color: #fff; display: grid; place-items: center; }
+  .box svg { width: 80%; height: 80%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .t-man.on .box { background: var(--primary); }
+  .t-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .saved { flex: none; margin-left: auto; color: var(--normal); font-weight: 700; white-space: nowrap; }
+  /* 自動: no frame and no white, a circle (empty, or the journey's blue tick), a muted line saying it ticks itself */
+  .t-auto { display: flex; align-items: flex-start; column-gap: calc(.625 * var(--r)); padding: calc(.25 * var(--r)) calc(.75 * var(--r) + 1px) 0; }
+  .ring { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border: 2px solid var(--muted); border-radius: 50%; display: grid; place-items: center; color: var(--primary); }
+  .ring svg { width: 70%; height: 70%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .t-auto.on .ring { border-color: var(--primary); background: #fff; }
+  .t-hint { display: block; color: var(--muted); }
+
+  /* W1 */
+  .bar { position: absolute; display: flex; justify-content: space-around; align-items: center; z-index: 5; }
+  .float { left: 12px; right: 12px; top: 748px; height: 82px; border-radius: 30px; padding: 6px; box-shadow: 0 6px 24px rgba(33,37,41,.16); }
+  .g88 { background: rgba(255,255,255,.88); }
+  .glass { -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255,255,255,.7); }
+  .tb { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 17px; font-weight: 500; border-radius: 24px; line-height: 1.3; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+  svg.i { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  table.spec { border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden; font-size: 16px; max-width: 1300px; }
+  table.spec th, table.spec td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.spec th { background: var(--surface); color: var(--heading); }
+  table.dec td:first-child { font-weight: 700; white-space: nowrap; }
+  .sw { display: inline-block; width: 22px; height: 22px; border-radius: 5px; border: 1px solid #adb5bd; vertical-align: -5px; margin-right: 6px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; }
+  .legend-row .t-man, .legend-row .t-auto { --r: 18px; }
+  .mini { --r: 18px; width: 276px; background: var(--primary-soft); border-radius: 12px; padding: 10px; font-size: 18px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h5v-6h4v6h5V10"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M8 16v-4M12 16V8M16 16v-6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-tick" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#479 照顧旅程的待辦：首頁「現在這一步」與我的選配指引「您在這裡」（設計圖）</h1>
+  <p class="lead">規格 #478、ADR 0047、第 2 階段拷問 Q11–Q14。假設今天是 2026/11/13，目前這一站是九號表（有身障證明，還沒回答九號表完成了）。
+  手機寬 390px、內文 18px；顏色、字級、圓角、間距照 <code>frontend/src/site.css</code> 現在的首頁與我的選配指引，<b>只多出待辦</b>。
+  <span class="draft">紫色虛線框</span>＝我擬的字句，請您審；<span class="callout-tag">紫色標籤</span>＝說明用，不是畫面的一部分。</p>
+
+  <div class="intro">
+    <h2>這頁在比什麼、我建議哪個</h2>
+    <p><b>比的是：</b>待辦清單放在卡片的實心按鈕<b>上面（A）</b>還是<b>下面（B）</b>。兩種排法的待辦長得一樣：手動的是白底方框列（整列可點），自動的是圓圈加一行小字（不能點）。</p>
+    <p><b>建議 B（待辦在按鈕下面）</b>，原因：</p>
+    <ol>
+      <li><b>按鈕留在原位。</b>第 1 階段定稿的「一件事＋一顆按鈕」不動，按鈕跟現在正式畫面在同一個高度；A 會把按鈕往下推約 165px（九號表兩項；記錄聽力圖那步三項約 225px），按鈕下緣剛好在第一個畫面底部、被分頁列蓋住。字放大 200% 時推約 600px，見第 ④ 組。</li>
+      <li><b>兩頁的順序一樣。</b>我的選配指引「您在這裡」的按鈕下面本來就接著回答問題（#467）；B 讓待辦也接在按鈕下面，「回答九號表完成了」緊挨著「九號表完成了嗎？」這題。</li>
+    </ol>
+    <p><b>B 的代價：</b>待辦在按鈕後面，有人看到按鈕就去按了，比較少往下看待辦；A 讀起來是「先列要做的事、再去做」，順序比較直覺。</p>
+    <p><b>請您決定：</b>排法 A／B、四句我擬的小字（第 ⑤ 組表格）、最後的待辦字句草稿表（逐句審）。</p>
+  </div>
+
+  <!-- ============ ① home, A and B ============ -->
+  <section class="group">
+    <h2>① 首頁・第 3 步「現在這一步」卡片（目前這一站是九號表）</h2>
+    <p class="q">兩支手機只差待辦的位置。待辦：手動「預約開九號表」（沒勾）、自動「回答九號表完成了」（還沒，空圈）。紫色虛線「手機第一個畫面到這裡」是 844px 高的手機打開時看得到的範圍；分頁列畫在第一個畫面的底部。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　待辦在按鈕上面</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">早安，今天只要做一件事</h1>
+          <div class="tiles"><a class="tile L1m"><span class="tl-label">上次結果</span><span class="tl-score">18 <small>分</small></span><span class="tl-level">輕度到中度影響</span><span class="tl-arrow">›</span></a><div class="tile tile-info"><span class="tl-label">下次篩檢</span><span class="tl-date">2027/03/26</span><span class="tl-small">還有 133 天</span></div></div>
+          <section>
+            <div class="jhead"><h2 class="h4">照顧旅程</h2><p class="jcount">2 / 5</p></div>
+            <ol class="jr">
+              <li class="js walked"><span class="jdot"><svg><use href="#i-tick"/></svg></span><span class="jsum"><span class="jbody"><span>填生活影響問卷</span><span class="jwhen">2026/09/26</span></span><span class="jarrow">›</span></span></li>
+              <li class="js walked"><span class="jdot"><svg><use href="#i-tick"/></svg></span><span class="jsum"><span class="jbody"><span>記錄聽力圖</span><span class="jwhen">2026/09/01</span></span><span class="jarrow">›</span></span></li>
+              <li class="js cur"><span class="jdot">3</span><div class="jcard">
+                <p class="jcard-label">現在這一步</p>
+                <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+                <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+                <div class="todos"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+                  <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+                  <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+                </ul></div>
+                <a class="btn solid">看九號表的流程</a>
+              </div></li>
+              <li class="js later"><span class="jdot">4</span><span class="jsum"><span class="jbody"><span>戴滿 3 個月做效益問卷</span></span><span class="jarrow">›</span></span></li>
+              <li class="js later"><span class="jdot">5</span><span class="jsum"><span class="jbody"><span>半年後再篩檢</span></span><span class="jarrow">›</span></span></li>
+            </ol>
+          </section>
+          <ul class="home-links"><li><a>印聽力報告</a></li><li><a>分享給家人</a></li><li><a>加到手機主畫面</a></li></ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>讀起來是「先看要做哪些事、再按按鈕去做」。按鈕被往下推約 165px（實測按鈕在 788–844px，B 是 622–678px），第一個畫面裡被分頁列蓋住，要往下捲一點才看得到。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　待辦在按鈕下面<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1">早安，今天只要做一件事</h1>
+          <div class="tiles"><a class="tile L1m"><span class="tl-label">上次結果</span><span class="tl-score">18 <small>分</small></span><span class="tl-level">輕度到中度影響</span><span class="tl-arrow">›</span></a><div class="tile tile-info"><span class="tl-label">下次篩檢</span><span class="tl-date">2027/03/26</span><span class="tl-small">還有 133 天</span></div></div>
+          <section>
+            <div class="jhead"><h2 class="h4">照顧旅程</h2><p class="jcount">2 / 5</p></div>
+            <ol class="jr">
+              <li class="js walked"><span class="jdot"><svg><use href="#i-tick"/></svg></span><span class="jsum"><span class="jbody"><span>填生活影響問卷</span><span class="jwhen">2026/09/26</span></span><span class="jarrow">›</span></span></li>
+              <li class="js walked"><span class="jdot"><svg><use href="#i-tick"/></svg></span><span class="jsum"><span class="jbody"><span>記錄聽力圖</span><span class="jwhen">2026/09/01</span></span><span class="jarrow">›</span></span></li>
+              <li class="js cur"><span class="jdot">3</span><div class="jcard">
+                <p class="jcard-label">現在這一步</p>
+                <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+                <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+                <a class="btn solid">看九號表的流程</a>
+                <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+                  <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+                  <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+                </ul></div>
+              </div></li>
+              <li class="js later"><span class="jdot">4</span><span class="jsum"><span class="jbody"><span>戴滿 3 個月做效益問卷</span></span><span class="jarrow">›</span></span></li>
+              <li class="js later"><span class="jdot">5</span><span class="jsum"><span class="jbody"><span>半年後再篩檢</span></span><span class="jarrow">›</span></span></li>
+            </ol>
+          </section>
+          <ul class="home-links"><li><a>印聽力報告</a></li><li><a>分享給家人</a></li><li><a>加到手機主畫面</a></li></ul>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb on"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>卡片上半部（一件事、為什麼、按鈕）跟現在正式畫面完全一樣，按鈕在同一個高度；待辦接在下面，捲一下就看到。</p><p>一頁仍然只有一顆實心按鈕：手動方框勾了才是藍底，大小只有 27px，不是按鈕的樣子。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ② the four looks and ✓ 已儲存 ============ -->
+  <section class="group">
+    <h2>② 手動與自動怎麼分、「✓ 已儲存」出現在哪</h2>
+    <p class="q">手動＝白底、有框的一整列，左邊方框（像表單的勾選框），整列都能點，至少 44px 高。自動＝沒有白底、沒有框，左邊是圓圈，下面一行灰色小字說明它會自己打勾；自動勾好的圓圈跟照顧旅程已完成的步一樣是藍框藍勾。</p>
+    <div class="row">
+      <div class="opt" style="width:560px">
+        <p class="opt-label">四種樣子</p>
+        <table class="spec" style="width:560px;table-layout:fixed"><col style="width:300px"><col>
+          <tr><th>樣子</th><th>讀螢幕軟體唸</th></tr>
+          <tr><td><div class="mini"><ul class="todo"><li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li></ul></div></td><td>「預約開九號表，核取方塊，未勾選」；可以用 Tab 走到、空白鍵勾</td></tr>
+          <tr><td><div class="mini"><ul class="todo"><li class="t-man on"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="t-text">預約開九號表</span></li></ul></div></td><td>「預約開九號表，核取方塊，已勾選」</td></tr>
+          <tr><td><div class="mini"><ul class="todo"><li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint">做完會自動打勾</span></span></li></ul></div></td><td>「回答九號表完成了，未完成。做完會自動打勾」；純文字，Tab 不會停</td></tr>
+          <tr><td><div class="mini"><ul class="todo"><li class="t-auto on"><span class="ring"><svg><use href="#i-tick"/></svg></span><span class="t-text">回答九號表完成了<span class="t-hint">已自動打勾</span></span></li></ul></div></td><td>「回答九號表完成了，已完成。已自動打勾」</td></tr>
+        </table>
+        <div class="note"><p>方框與圓圈本身不帶意思給讀螢幕軟體（<code>aria-hidden</code>），狀態用字唸出來（#478 驗收 28）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">剛勾下去（B，只畫卡片）</p>
+        <div class="phone crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">3</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+            <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+            <a class="btn solid">看九號表的流程</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man on callout"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="t-text">預約開九號表</span><span class="saved">✓ 已儲存</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p><b>「✓ 已儲存」在剛勾的那一列右邊</b>，成功綠（白底 8.5:1），手指剛點的地方就看得到。跟作答頁一樣停約 1.5 秒、最後 0.3 秒淡出（ADR 0028）；減少動態效果時方框直接變藍、不播勾勾動畫，「✓ 已儲存」照樣出現、時間到直接消失。</p><p>字放大時它掉到第二行（見 ④）。有 JavaScript 時不換頁；沒有 JavaScript 時送出後回到同一張卡片，方框是勾著的。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">重新打開首頁</p>
+        <div class="phone crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">3</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+            <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+            <a class="btn solid">看九號表的流程</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man on"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="t-text">預約開九號表</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>勾著、沒有「✓ 已儲存」。字不劃線、不變淡，勾錯再點一次就取消（取消也出現「✓ 已儲存」，見 ⑤ D4）。</p><p>手動勾滿了，現在這一步仍是九號表：要回答「九號表完成了」才往下走（#478 驗收 13）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">別站的例子：自動已打勾</p>
+        <div class="phone crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">3</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">去找聽力師之前</h3>
+            <p class="jcard-because">第一次去找聽力師前先準備好，看診時比較不會漏問。</p>
+            <a class="btn solid">去之前要準備什麼</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-auto on"><span class="ring"><svg><use href="#i-tick"/></svg></span><span class="t-text">看完「去找聽力師之前」這一章<span class="t-hint"><span class="draft">已自動打勾</span></span></span></li>
+              <li class="t-man"><span class="box"></span><span class="t-text">預約聽力師</span></li>
+            </ul></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>只為了畫出「自動已打勾」的樣子。照現有規則，看完這一章這站就算完成、目前這一站會往下走，所以正式畫面不太會停在這個狀態（#478 驗收 8 是同一情況）。</p><p>待辦照草稿表的順序列，手動與自動混排。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">第 2 步：三個待辦</p>
+        <div class="phone crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">2</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">記錄聽力圖</h3>
+            <p class="jcard-because">您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。</p>
+            <a class="btn solid">記錄醫院的聽力圖</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man"><span class="box"></span><span class="t-text">到醫院或診所做聽力檢查</span></li>
+              <li class="t-man"><span class="box"></span><span class="t-text">跟醫院要一份聽力圖</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">把聽力圖記到聽伴<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>#478 驗收 1。按鈕仍是記錄聽力圖；兩個手動、一個自動。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ③ my guide ============ -->
+  <section class="group">
+    <h2>③ 我的選配指引・「您在這裡」（九號表）</h2>
+    <p class="q">同一份待辦、同一個樣子，勾的狀態跟首頁同步。卡片原本的順序（站名、按鈕、九號表完成了嗎？）不動，待辦照 A／B 放在按鈕上面或下面。完成的三站照現在的樣子（藍框藍勾、可點開）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">A　待辦在按鈕上面</p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:calc(1 * var(--r))">我的選配指引</h1>
+          <p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+          <section style="margin-top:calc(1.5 * var(--r))">
+            <h2 class="h4">選配與補助，一步一步看</h2>
+            <ol class="route">
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">記錄聽力圖</span><span class="rmarks">已完成・2026/09/01 的聽力圖</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">去找聽力師之前</span><span class="rmarks">已完成</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">身障鑑定與鑑定醫院</span><span class="rmarks">已完成</span></span><svg class="chev-d"><use href="#i-down"/></svg></span><p class="ranswer">有身障證明 <a>修改</a></p></div></li>
+              <li class="rs here"><span class="rnum">4</span><div class="rbox rcard">
+                <p class="rhere">您在這裡</p>
+                <a class="rtitle"><span>九號表：申請助聽器補助</span><svg class="chev-d"><use href="#i-down"/></svg></a>
+                <div class="todos"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+                  <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+                  <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+                </ul></div>
+                <a class="btn solid">看九號表的流程</a>
+                <div class="sq"><span class="sq-legend">九號表完成了嗎？</span><div class="sq-answers"><a class="btn outline">完成了</a><a class="btn outline">還沒</a></div></div>
+              </div></li>
+              <li class="rs"><span class="rnum">5</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">等待核定公文</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs"><span class="rnum">6</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">助聽器的種類與價格</span></span><svg class="chev-d"><use href="#i-down"/></svg></span><p class="rnote">收到核定通知後 6 個月內要買。</p></div></li>
+              <li class="rs has-gap"><span class="rnum">7</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">配戴助聽器之後</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div><p class="rgap">至少 1 個月</p></li>
+              <li class="rs"><span class="rnum">8</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">二十五號表：使用效益驗證</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs"><span class="rnum">9</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">等待補助發放</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+            </ol>
+          </section>
+          <p class="cropped-hint">（下面接「依您 2026/09/01 的聽力圖」，不變）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>按鈕和「九號表完成了嗎？」都被推到第一個畫面以下。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">B　待辦在按鈕下面<span class="rec">建議</span></p>
+        <div class="phone"><div class="pg">
+          <p class="brand">聽伴</p>
+          <h1 class="h1" style="margin-top:calc(1 * var(--r))">我的選配指引</h1>
+          <p>依您在聽伴最新的紀錄，整理出現在的狀況，和接下來可以看的章節。</p>
+          <section style="margin-top:calc(1.5 * var(--r))">
+            <h2 class="h4">選配與補助，一步一步看</h2>
+            <ol class="route">
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">記錄聽力圖</span><span class="rmarks">已完成・2026/09/01 的聽力圖</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">去找聽力師之前</span><span class="rmarks">已完成</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs walked"><span class="rnum"><svg><use href="#i-tick"/></svg></span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">身障鑑定與鑑定醫院</span><span class="rmarks">已完成</span></span><svg class="chev-d"><use href="#i-down"/></svg></span><p class="ranswer">有身障證明 <a>修改</a></p></div></li>
+              <li class="rs here"><span class="rnum">4</span><div class="rbox rcard">
+                <p class="rhere">您在這裡</p>
+                <a class="rtitle"><span>九號表：申請助聽器補助</span><svg class="chev-d"><use href="#i-down"/></svg></a>
+                <a class="btn solid">看九號表的流程</a>
+                <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+                  <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+                  <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+                </ul></div>
+                <div class="sq"><span class="sq-legend">九號表完成了嗎？</span><div class="sq-answers"><a class="btn outline">完成了</a><a class="btn outline">還沒</a></div></div>
+              </div></li>
+              <li class="rs"><span class="rnum">5</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">等待核定公文</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs"><span class="rnum">6</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">助聽器的種類與價格</span></span><svg class="chev-d"><use href="#i-down"/></svg></span><p class="rnote">收到核定通知後 6 個月內要買。</p></div></li>
+              <li class="rs has-gap"><span class="rnum">7</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">配戴助聽器之後</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div><p class="rgap">至少 1 個月</p></li>
+              <li class="rs"><span class="rnum">8</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">二十五號表：使用效益驗證</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+              <li class="rs"><span class="rnum">9</span><div class="rbox"><span class="rsum"><span class="rrow"><span class="rtitle">等待補助發放</span></span><svg class="chev-d"><use href="#i-down"/></svg></span></div></li>
+            </ol>
+          </section>
+          <p class="cropped-hint">（下面接「依您 2026/09/01 的聽力圖」，不變）</p>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡（390×844）</span></div>
+        <nav class="bar float glass g88"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>按鈕留在原位；「回答九號表完成了」（自動）正上方就是這一題，答了「完成了」它就打勾、這一站算完成。</p><p>題目的「完成了／還沒」是框線按鈕、手動待辦是有框的白列：兩者都能點，但一個是回答、一個是勾選，樣子不同。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ④ 200% ============ -->
+  <section class="group">
+    <h2>④ 字放大 200%（390px 寬，只畫卡片附近）</h2>
+    <p class="q">字放大 200%（網站基準字 36px）時，照現在的規則卡片會掉到圓點下面、撐滿寬度（site.css 已有，首頁和選配路線都是）。實測：每一行待辦完整換行、整頁不左右捲（內容寬度都在 390px 內）；手動待辦整列可點範圍 264×155px（390px 一般字級是 278×52px，都超過 44×44px）；待辦的字最小 36px（一般字級 18px）。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">首頁 A（200%）</p>
+        <div class="phone x2 crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">3</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+            <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+            <div class="todos"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+            <a class="btn solid">看九號表的流程</a>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>實測按鈕在卡片頂端往下約 1,060px（B 約 460px），200% 時第一個畫面看不到按鈕。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">首頁 B（200%）<span class="rec">建議</span></p>
+        <div class="phone x2 crop"><div class="pg">
+          <ol class="jr"><li class="js cur"><span class="jdot">3</span><div class="jcard">
+            <p class="jcard-label">現在這一步</p>
+            <h3 class="jcard-title">九號表：申請助聽器補助</h3>
+            <p class="jcard-because">您已經有身障證明，可以準備申請九號表的助聽器補助。</p>
+            <a class="btn solid">看九號表的流程</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man on callout"><span class="box"><svg><use href="#i-tick"/></svg></span><span class="t-text">預約開九號表</span><span class="saved">✓ 已儲存</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>畫的是剛勾下去：「✓ 已儲存」在這一列的第二行靠右（字不夠寬時自己換行，不擠到待辦的字）。</p></div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">我的選配指引 B（200%）<span class="rec">建議</span></p>
+        <div class="phone x2 crop"><div class="pg">
+          <ol class="route"><li class="rs here"><span class="rnum">4</span><div class="rbox rcard">
+            <p class="rhere">您在這裡</p>
+            <a class="rtitle"><span>九號表：申請助聽器補助</span><svg class="chev-d"><use href="#i-down"/></svg></a>
+            <a class="btn solid">看九號表的流程</a>
+            <div class="todos after"><p class="todos-head"><span class="draft">要做的事</span></p><ul class="todo">
+              <li class="t-man"><span class="box"></span><span class="t-text">預約開九號表</span></li>
+              <li class="t-auto"><span class="ring"></span><span class="t-text">回答九號表完成了<span class="t-hint"><span class="draft">做完會自動打勾</span></span></span></li>
+            </ul></div>
+            <div class="sq"><span class="sq-legend">九號表完成了嗎？</span><div class="sq-answers"><a class="btn outline">完成了</a><a class="btn outline">還沒</a></div></div>
+          </div></li></ol>
+        </div></div>
+        <div class="note"><p>選配路線在 200% 時本來就把卡片放到號碼下面（site.css 的 15rem 規則）；待辦照樣一列一列往下排。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ⑤ decisions ============ -->
+  <section class="group">
+    <h2>⑤ 要您決定的事</h2>
+    <table class="spec dec">
+      <tr><th>#</th><th>問題</th><th>選項與代價</th><th>我的建議</th></tr>
+      <tr><td>D1</td><td>待辦放在按鈕上面或下面</td><td>A 上面：先列事、再按按鈕，順序直覺；按鈕往下推 165–225px，200% 時推約 600px，第一個畫面看不到按鈕。<br>B 下面：按鈕與卡片上半部跟現在一樣；待辦可能少被看到。</td><td><b>B</b></td></tr>
+      <tr><td>D2</td><td>自動待辦下面那行灰色小字</td><td>要：長輩知道為什麼點了沒反應（#478 使用者故事 3）；每項多一行。<br>不要：清單比較短，但自動與手動只靠圓圈／方框和白底分辨。</td><td><b>要</b>：沒做「<span class="draft">做完會自動打勾</span>」，做了「<span class="draft">已自動打勾</span>」</td></tr>
+      <tr><td>D3</td><td>清單標題</td><td>「<span class="draft">要做的事</span>」；或「這一步要做的事」（第 3 步其實是一站，說「這一步」會跟卡片的「現在這一步」對不上站名）；或不放標題。</td><td>「要做的事」</td></tr>
+      <tr><td>D4</td><td>取消勾選時要不要也出現「✓ 已儲存」</td><td>要：勾和取消都存了，回饋一致。<br>不要：取消時只有方框變白，看起來像沒存。</td><td><b>要</b></td></tr>
+      <tr><td>D5</td><td>「✓ 已儲存」的位置</td><td>剛勾那一列的右邊（本頁畫法）：手指點哪就在哪看到；字放大時掉到第二行，那一列會變高一點。<br>清單標題那一行的右邊：位置固定、不擠到字；但離剛點的那列遠一點。</td><td>剛勾那一列的右邊</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ ⑥ contrast ============ -->
+  <section class="group">
+    <h2>⑥ 對比實測（WCAG 2.x 相對亮度公式計算）</h2>
+    <p class="q">字要 4.5:1 以上；方框、圓圈、列的外框這類「看得出能點／狀態」的圖形要 3:1 以上（WCAG 1.4.11）。卡片底色是淡藍 #eef3fa，手動列是白底 #ffffff。</p>
+    <table class="spec">
+      <tr><th>元素</th><th>前景</th><th>背景</th><th>比值</th><th>要求</th></tr>
+      <tr><td>手動待辦的字</td><td><span class="sw" style="background:#343a40"></span>#343a40</td><td><span class="sw" style="background:#ffffff"></span>#ffffff</td><td>11.51:1</td><td>4.5 ✓</td></tr>
+      <tr><td>自動待辦的字、卡片「為什麼」</td><td><span class="sw" style="background:#343a40"></span>#343a40</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>10.32:1</td><td>4.5 ✓</td></tr>
+      <tr><td>卡片標題</td><td><span class="sw" style="background:#212529"></span>#212529</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>13.84:1</td><td>4.5 ✓</td></tr>
+      <tr><td>「要做的事」、自動小字、「現在這一步」「您在這裡」</td><td><span class="sw" style="background:#4a5460"></span>#4a5460</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>6.90:1</td><td>4.5 ✓</td></tr>
+      <tr><td>「✓ 已儲存」（在白色手動列上）</td><td><span class="sw" style="background:#14573c"></span>#14573c</td><td><span class="sw" style="background:#ffffff"></span>#ffffff</td><td>8.54:1</td><td>4.5 ✓</td></tr>
+      <tr><td>實心按鈕的字</td><td><span class="sw" style="background:#ffffff"></span>#ffffff</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td>8.31:1</td><td>4.5 ✓</td></tr>
+      <tr><td>手動方框的藍框（沒勾）</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td><span class="sw" style="background:#ffffff"></span>#ffffff</td><td>8.31:1</td><td>3 ✓</td></tr>
+      <tr><td>手動方框勾了：白勾在藍底</td><td><span class="sw" style="background:#ffffff"></span>#ffffff</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td>8.31:1</td><td>3 ✓</td></tr>
+      <tr><td>手動列的外框（與卡片底色）</td><td><span class="sw" style="background:#6c757d"></span>#6c757d</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>4.21:1</td><td>3 ✓</td></tr>
+      <tr><td>自動空圈的灰框</td><td><span class="sw" style="background:#4a5460"></span>#4a5460</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>6.90:1</td><td>3 ✓</td></tr>
+      <tr><td>自動已打勾的藍框藍勾</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa（圈內白 8.31:1）</td><td>7.45:1</td><td>3 ✓</td></tr>
+    </table>
+    <div class="note"><p>沒用的顏色：線條灰 #8a94a3 在淡藍上只有 2.75:1，所以自動空圈改用 #4a5460，不用照顧旅程「之後的步」那個淡灰框。字級：待辦與小字都是內文 18px（200% 時 36px），沒有比 18px 小的字。</p></div>
+  </section>
+
+  <!-- ============ ⑦ wording draft ============ -->
+  <section class="group">
+    <h2>⑦ 待辦字句草稿（<span class="draft">全部是草稿，請您逐句審</span>）</h2>
+    <p class="q">照 #478「實作決定」的表。括號裡是網站判斷「做了」的規則，不會顯示在畫面上；最右欄是我看到可能要您決定的地方。審定後的字句記進拷問決定或這張票的選定紀錄。</p>
+    <table class="spec">
+      <tr><th>屬於</th><th>種類</th><th>畫面上的字句</th><th>備註</th></tr>
+      <tr><td>第 1 步</td><td>—</td><td>不列待辦（只有按鈕那件事）</td><td></td></tr>
+      <tr><td>記錄聽力圖（＝第 2 步）</td><td>手動</td><td>到醫院或診所做聽力檢查</td><td></td></tr>
+      <tr><td>記錄聽力圖</td><td>手動</td><td>跟醫院要一份聽力圖</td><td>上一句寫「醫院或診所」，這句只寫「醫院」，要不要一致？</td></tr>
+      <tr><td>記錄聽力圖</td><td>自動</td><td>把聽力圖記到聽伴（記了一張能判讀的聽力圖）</td><td>記了缺頻率的聽力圖不算，這項仍是空圈</td></tr>
+      <tr><td>去找聽力師之前</td><td>自動</td><td>看完「去找聽力師之前」這一章</td><td>看完這章這站就算完成，所以這項打勾時目前這一站已經往下走</td></tr>
+      <tr><td>去找聽力師之前</td><td>手動</td><td>預約聽力師</td><td></td></tr>
+      <tr><td>身障鑑定</td><td>手動</td><td>預約鑑定醫院</td><td></td></tr>
+      <tr><td>身障鑑定</td><td>自動</td><td>回答有沒有身心障礙證明（有，或不申請補助）</td><td>回答「正在申請鑑定」不算</td></tr>
+      <tr><td>九號表</td><td>手動</td><td>預約開九號表</td><td></td></tr>
+      <tr><td>九號表</td><td>自動</td><td>回答九號表完成了</td><td></td></tr>
+      <tr><td>等待核定公文</td><td>自動</td><td>記下核定的耳朵與等級</td><td>這站只有一項，而且就是這站的完成條件</td></tr>
+      <tr><td>種類與價格</td><td>自動</td><td>看完「助聽器的種類與價格」這一章</td><td>同「去找聽力師之前」，看完這站就完成</td></tr>
+      <tr><td>種類與價格</td><td>手動</td><td>試戴過助聽器</td><td></td></tr>
+      <tr><td>配戴之後</td><td>自動</td><td>記下開始配戴的日期</td><td></td></tr>
+      <tr><td>配戴之後</td><td>手動</td><td>回去調整過助聽器</td><td>跟第 4 步的手動待辦同一句，但是兩個不同的勾：在這站勾了，到第 4 步仍是沒勾。要不要改成不同的字（例如這裡「回去調整過一次」、第 4 步「戴滿 3 個月前再調整一次」）？</td></tr>
+      <tr><td>二十五號表</td><td>手動</td><td>預約開二十五號表</td><td></td></tr>
+      <tr><td>二十五號表</td><td>自動</td><td>回答二十五號表完成了</td><td></td></tr>
+      <tr><td>等待補助發放</td><td>手動</td><td>收到補助款</td><td>這站沒有網站判斷的完成條件，只有這一個手動勾</td></tr>
+      <tr><td>第 4 步（倒數與效益問卷）</td><td>手動</td><td>回去調整過助聽器</td><td>見上面「配戴之後」</td></tr>
+      <tr><td>第 4 步</td><td>自動</td><td>做完效益問卷（IOI-HA）</td><td>長輩不一定懂「IOI-HA」，要不要只寫「做完效益問卷」？</td></tr>
+      <tr><td>第 5 步</td><td>手動</td><td>把下次篩檢日期記在月曆或手機上</td><td></td></tr>
+    </table>
+    <p class="q" style="margin-top:12px">另外四句小字也是草稿：清單標題「要做的事」、自動待辦「做完會自動打勾」「已自動打勾」、勾選後「✓ 已儲存」（沿用作答頁現有的字）。</p>
+  </section>
+
+  <!-- ============ ⑧ for the implementer ============ -->
+  <section class="group">
+    <h2>⑧ 給實作的備註（不用您決定）</h2>
+    <ul class="q" style="padding-left:1.2em">
+      <li>手動待辦在沒有 JavaScript 時也要能存（#478 驗收 18）：建議每一列是表單裡的送出按鈕，加 <code>role="checkbox"</code> 與 <code>aria-checked</code>，讀起來是核取方塊、按下就送出；有 JavaScript 時攔下送出、不換頁、顯示「✓ 已儲存」。選定後由 #480 決定實作。</li>
+      <li>自動待辦是純文字的清單項目，狀態用看不見的字「已完成／未完成」唸出；圓圈 <code>aria-hidden</code>，不能聚焦。</li>
+      <li>手動列沿用白卡＝可點（ADR 0022）與表單外框 #6c757d；按下只變色（ADR 0028），不位移。</li>
+      <li>勾勾動畫只在剛勾的那一下播一次（同選配路線完成一站的勾，0.45 秒）；減少動態效果時不播。</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

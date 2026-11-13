@@ -34,6 +34,12 @@ class UserState:
     reminder: str | None = None  # my records' retest line
     retest_button: str | None = None  # the retake button's text, once a retest is due
 
+    @property
+    def life_impact(self):
+        """The latest life-impact record, None before one."""
+        last = self.last_result
+        return last.submission if last is not None and last.is_life_impact else None
+
 
 NEW_USER_STATE = UserState(
     is_new=True,
