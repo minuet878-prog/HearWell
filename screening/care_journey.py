@@ -204,7 +204,7 @@ def _card(current, done, route, fitted_on, today, next_screening, life_impact_hr
         # Not 等待補助發放, which the home page leaves to my guide (spec #453).
         three_months = add_months(fitted_on, FITTING_MONTHS)
         title = CARE_JOURNEY_STEPS[3]
-        todos = step_todos(4, done)
+        todos = step_todos(4, done, route.ticked)
         if today < three_months:
             because = fitting_countdown_text((three_months - today).days)
             return JourneyCard(title, because, "clipboard", todos=todos)
@@ -217,7 +217,7 @@ def _card(current, done, route, fitted_on, today, next_screening, life_impact_hr
             todos=todos,
         )
     title = CARE_JOURNEY_STEPS[4]
-    todos = step_todos(5, done)
+    todos = step_todos(5, done, route.ticked)
     if next_screening is None:
         # Without a life-impact record step 5 is due: one to do first (spec #453).
         button = (LIFE_IMPACT_BUTTON, life_impact_href)
