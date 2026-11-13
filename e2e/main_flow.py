@@ -13908,8 +13908,9 @@ class ButtonSpacingT453Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
 
 class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#487 (spec #484, the #485 mockup E1 + V1): from 了解 to the hearing loss simulator, a degree,
-    play and the sentence. Playwright's Chromium cannot decode AAC, so what is checked is that a
-    sentence downloads on play and not before; how it sounds is the owner's to hear."""
+    play and the sentence; #488 the restaurant under it. Playwright's Chromium cannot decode AAC,
+    so what is checked is that a sound downloads when needed and not before; how it sounds is the
+    owner's to hear."""
 
     def test_from_learn_pick_a_degree_play_and_show_the_sentence(self):
         with self.saving_artifacts():
@@ -13942,6 +13943,16 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             expect(main.get_by_role("button", name="暫停")).to_be_visible()
             main.get_by_role("button", name="顯示這句話").click()
             expect(main.get_by_text("星期四下午三點去看醫生。")).to_be_visible()
+            # #488: the restaurant downloads only once 餐廳 is picked and a sentence plays.
+            main.get_by_role("button", name="暫停").click()
+            self.assertFalse(any(path.endswith("restaurant.m4a") for path in audio))
+            main.get_by_role("button", name="餐廳").click()
+            expect(main.get_by_role("button", name="餐廳")).to_have_attribute(
+                "aria-pressed", "true"
+            )
+            with self.page.expect_request(re.compile(r"restaurant\.m4a$")):
+                main.get_by_role("button", name="播放").click()
+            self.assertEqual(sum(path.endswith("restaurant.m4a") for path in audio), 1)
 
     def test_fits_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
