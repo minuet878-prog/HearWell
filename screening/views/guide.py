@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 from screening import assessment_hospitals, models
 from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
 from screening.forms import STOP_QUESTIONS
+from screening.journey_todos import stop_todos
 from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
@@ -113,14 +114,13 @@ def _guide_page(request, edit=None, question=None, done_now=None):
         context["has_records"] = state.has_records
         context["latest"] = state.latest  # 問卷結果 without an audiogram asks for one
         # The same life-impact record the home page shows as the last result.
-        last = get_user_state(request.user, today=today).last_result
-        context["life_impact"] = last.submission if last and last.is_life_impact else None
+        context["life_impact"] = get_user_state(request.user, today=today).life_impact
         # Whether the latest record was answered wearing hearing aids (#220 M16, grill Q4), or
         # a fitting date is filled in (#287).
         context["wearing"] = state.wearing
         if state.audiogram is not None:
             context |= _guide_audiogram(state)
-    context["route"] = route = _route(state, edit, question)
+    context["route"] = route = _route(state, request.user, edit, question)
     # #467 (I2): the line is blue as far as the 目前這一站, and its entrance is paced by how far
     # that is, so it takes about the same time wherever the stop is.
     here = next((i for i, stop in enumerate(route) if stop.here), None)
@@ -171,6 +171,7 @@ class RouteStop:
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
     gap: str = ""  # said on the line on to the next stop (#296)
+    todos: tuple = ()  # the 您在這裡 stop's 待辦 (spec #478), the 照顧旅程's card takes them too
 
     @property
     def here(self):
@@ -284,10 +285,10 @@ def _reached(slug, aid):
     return questions if aid.approved_ears else questions[:2]
 
 
-def _route(state, edit=None, question=None):
+def _route(state, user, edit=None, question=None):
     # 選配路線 (#258, spec #291): recording an audiogram, then the chapters in reading order
     # and the two waits, which have no chapter and point to form 9's 申請流程 (Q15). Signed
-    # out, no stop is marked.
+    # out, no stop is marked. user: state's, whose ticks the 您在這裡 stop's 待辦 read.
     steps = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
     places = {c.slug: (c.title, reverse("guide_chapter", args=[c.slug])) for c in GUIDE_CHAPTERS}
     places |= {
@@ -307,16 +308,16 @@ def _route(state, edit=None, question=None):
             )
             for slug, title, url in stops
         ]
-    return [_route_stop(state, *stop, edit, question) for stop in stops]
+    return [_route_stop(state, user, *stop, edit, question) for stop in stops]
 
 
-def here_stop(state):
+def here_stop(state, user):
     """The 目前這一站 as the route shows it (title, url, button), or None without one; the
-    照顧旅程's card takes it (ADR 0044)."""
-    return next((stop for stop in _route(state) if stop.here), None)
+    照顧旅程's card takes it (ADR 0044). state: user's FittingState."""
+    return next((stop for stop in _route(state, user) if stop.here), None)
 
 
-def _route_stop(state, slug, title, url, edit=None, question=None):
+def _route_stop(state, user, slug, title, url, edit=None, question=None):
     marks, links, action, tested_on = [], [], None, None
     notes = list(ROUTE_REMINDERS.get(slug, ()))
     form_9 = reverse("guide_chapter", args=["form-9"])
@@ -400,6 +401,7 @@ def _route_stop(state, slug, title, url, edit=None, question=None):
         questions=shown,
         editable=editable,
         gap=gap,
+        todos=stop_todos(slug, state, user) if slug == state.stop else (),
     )
 
 

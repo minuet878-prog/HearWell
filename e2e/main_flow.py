@@ -13,6 +13,7 @@ from datetime import date, datetime, timedelta
 from itertools import combinations, pairwise
 from math import log2
 from typing import ClassVar
+from unittest.mock import patch
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
@@ -35,6 +36,7 @@ from screening.family_zone import (
     VISIT_QUESTIONS,
 )
 from screening.fitting_route import add_months
+from screening.journey_todos import STOP_TODOS
 from screening.models import (
     AidAndSubsidy,
     Answer,
@@ -3420,7 +3422,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
             expect(self.here().locator(".route-mark")).to_have_text(["您在這裡"])
-            expect(self.here().locator("form")).to_have_count(0)
+            # No question; its 手動待辦 is a form of its own (#481).
+            expect(self.here().locator("form.stop-question")).to_have_count(0)
             done = self.main().locator(".route-stop").filter(has_text="已完成")
             expect(done).to_have_count(8)
             self.assert_fits_a_phone_at_double_text_size("/guide at the payout")
@@ -3612,6 +3615,184 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     )
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 390, state)
+
+    # Spec #478 acceptance 27 and 29 (the owner's pick B on #479): at form 9 the home page's
+    # 現在這一步 card and my guide's 您在這裡 card list the same to-dos under their one solid
+    # button, a manual one a white framed row with a box and an automatic one a ring off white;
+    # 390px wide at 200% text nothing scrolls sideways, every manual row is at least 44px each
+    # way and every word at least 18px.
+    def test_to_dos_sit_under_the_button_and_fit_a_phone_at_double_text_size(self):
+        def style(locator, name):
+            return locator.evaluate("(e, name) => getComputedStyle(e)[name]", name)
+
+        self.open(390, 640)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.main().locator(card)
+                    todos = card.locator(".todos")
+                    # #481: a manual one's state is its checkbox's, not words.
+                    expect(todos.get_by_role("listitem")).to_have_text(
+                        ["預約開九號表", "回答九號表完成了，未完成。做完就會往下一站"]
+                    )
+                    button = card.get_by_role("link", name="看九號表的流程")
+                    self.assertEqual(self.main().locator(".btn-primary").count(), 1)
+                    self.assertLess(button.bounding_box()["y"], todos.bounding_box()["y"])
+                    manual, auto = todos.locator(".todo-manual"), todos.locator(".todo-auto")
+                    self.assertEqual(style(manual, "backgroundColor"), "rgb(255, 255, 255)")
+                    self.assertEqual(style(manual, "borderTopWidth"), "1px")
+                    self.assertEqual(style(auto, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                    self.assertEqual(style(auto, "borderTopWidth"), "0px")
+                    self.assertNotEqual(style(manual.locator(".todo-box"), "borderRadius"), "50%")
+                    self.assertEqual(style(auto.locator(".todo-ring"), "borderRadius"), "50%")
+                    self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
+                    # #481: what takes the press is the row's checkbox, as big as the row.
+                    for row in todos.get_by_role("checkbox").all():
+                        box = row.bounding_box()
+                        self.assertGreaterEqual(min(box["width"], box["height"]), 44, path)
+                    sizes = todos.evaluate(
+                        "list => [...list.querySelectorAll('*')].filter(e => e.childNodes.length"
+                        " && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))"
+                        ".map(e => parseFloat(getComputedStyle(e).fontSize))"
+                    )
+                    self.assertGreaterEqual(min(sizes), 18, path)
+
+    # Spec #478 acceptance 27 (the mockup's B on #479: the button as it is now): with its to-dos
+    # under it, the 現在這一步 card's solid button sits in the card where and as big as it does
+    # without them, as the page draws form 9's card with no to-dos.
+    def test_to_dos_leave_the_solid_button_where_it_was(self):
+        def button_in_card():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            expect(card.locator(".btn-primary")).to_have_count(1)
+            button, box = card.locator(".btn-primary").bounding_box(), card.bounding_box()
+            at = (button["x"] - box["x"], button["y"] - box["y"], button["width"], button["height"])
+            return at, card.locator(".todos").count()
+
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            with_todos, listed = button_in_card()
+            self.assertEqual(listed, 1)
+            with patch.dict(STOP_TODOS, {"form-9": ()}):
+                without, listed = button_in_card()
+            self.assertEqual(listed, 0)
+            self.assertEqual(with_todos, without)
+
+    # #481 (spec #478 acceptance 11, 12, 28, 30): on the home page a 手動待辦 is a checkbox;
+    # pressed, it is ticked without leaving the page, ✓ 已儲存 showing on its row for a while,
+    # and is still ticked after a reload. With reduced motion pressing it again unticks it,
+    # nothing plays, and ✓ 已儲存 shows all the same.
+    def test_ticking_a_to_do_on_the_home_page_saves_it_in_place(self):
+        animations = "e => e.getAnimations({subtree: true}).length"
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            box = card.get_by_role("checkbox", name="預約開九號表")
+            row = card.locator('[data-todo="form-9-book"]')
+            expect(box).not_to_be_checked()
+            # The page's one tick drawing, hidden while unticked (the cross review on #478).
+            tick = row.locator(".todo-box svg")
+            expect(tick).to_be_hidden()
+            self.page.evaluate("window.notReloaded = true")
+            box.click()
+            expect(box).to_be_checked()
+            expect(tick).to_be_visible()
+            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
+            self.assertTrue(self.page.evaluate("window.notReloaded"))
+            self.assertGreater(row.evaluate(animations), 0)  # the tick draws, ✓ 已儲存 fades
+            # On the row's right, beside its words (the owner's D5 on #479).
+            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
+            self.assertLess(saved["y"], words["y"] + words["height"])
+            self.assertGreater(saved["x"], words["x"])
+            expect(row.locator(".todo-saved")).to_have_count(0)  # gone after 1.5 s
+            self.page.reload()
+            expect(box).to_be_checked()
+            self.page.emulate_media(reduced_motion="reduce")
+            box.click()
+            expect(box).not_to_be_checked()
+            box.click()
+            expect(box).to_be_checked()
+            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
+            self.assertEqual(row.evaluate(animations), 0)
+            self.page.reload()
+            expect(box).to_be_checked()
+            # At 200% text it drops to a second line, under the words.
+            self.double_text()
+            box.click()
+            expect(box).not_to_be_checked()
+            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
+            self.assertGreaterEqual(saved["y"], words["y"] + words["height"] - 1)
+
+    # Spec #478 acceptance 18: with JavaScript off, a 手動待辦 pressed is its form sent, which
+    # goes back to the same page at its row, ticked; on my guide too, where pressing it again
+    # unticks it.
+    def test_ticking_a_to_do_without_javascript_comes_back_to_its_row(self):
+        self.context = self.browser.new_context(
+            java_script_enabled=False, viewport={"width": 390, "height": 900}
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.addCleanup(self.context.close)
+        self.page = self.context.new_page()
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card, presses in (
+                ("/", ".journey-card", (True,)),
+                ("/guide", ".route-card", (False, True)),
+            ):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    for ticked in presses:
+                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
+                        box.click()
+                        expect(self.page).to_have_url(
+                            f"{self.live_server_url}{path}#todo-form-9-book"
+                        )
+                        target = self.page.evaluate("document.querySelector(':target').id")
+                        self.assertEqual(target, "todo-form-9-book")
+                        box = self.main().locator(card).get_by_role("checkbox", name="預約開九號表")
+                        expect(box).to_be_checked(checked=ticked)
+
+    # Spec #478 acceptance 28: by keyboard alone, Tab from the card's button reaches the
+    # 手動待辦's checkbox, Space ticks it and again unticks it, saying so in aria-checked, and
+    # the focus stays on the row.
+    def test_a_to_do_ticks_and_unticks_by_keyboard(self):
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.main().locator(card)
+                    box = card.get_by_role("checkbox", name="預約開九號表")
+                    card.get_by_role("link", name="看九號表的流程").focus()
+                    self.page.keyboard.press("Tab")
+                    expect(box).to_be_focused()
+                    for ticked in ("true", "false"):
+                        self.page.keyboard.press("Space")
+                        expect(box).to_have_attribute("aria-checked", ticked)
+                        expect(card.locator(".todo-saved")).to_have_text("✓ 已儲存")
+                        expect(box).to_be_focused()
+
+    def saved_box(self, row):
+        saved = row.locator(".todo-saved")
+        expect(saved).to_have_text("✓ 已儲存")
+        return saved.bounding_box()
 
     # #261 self-review: the action cards (#256) on the result pages, 320px wide at 200% text,
     # keep room for four characters a line in their titles. The home page has none since #459.
@@ -9080,9 +9261,12 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         .filter(a => a.effect.target.closest(within))
         .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
     STOP = '[aria-current="step"]'
+    # #480: what waits to be in view is the card's top, the to-dos and question below it left out.
+    STOP_MARK = '[aria-current="step"] [data-play-in-view]'
     JOURNEY = ".journey-steps"
-    # The journey waits for its 現在這一步 (#459), and its first tick shows the end.
-    JOURNEY_HERE = '.journey-step[aria-current="step"]'
+    # The journey waits for its 現在這一步's one thing (#459, #480), and its first tick shows the
+    # end.
+    JOURNEY_HERE = '.journey-step[aria-current="step"] [data-play-in-view]'
     TICK = ".journey-step.is-done .journey-dot path"
     WAVE = ".site-wave"
 
@@ -9147,10 +9331,11 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
 
     # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
     # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
+    # #480: what has to be in view is the card's top (STOP_MARK), not the whole stop.
     def test_current_stop_ring_plays_once_in_view(self):
         self.open("/guide")
         with self.saving_artifacts():
-            here = self.main().locator(self.STOP)
+            here = self.main().locator(self.STOP_MARK)
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).not_to_be_in_viewport()
             self.assertEqual(

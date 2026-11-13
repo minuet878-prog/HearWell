@@ -585,6 +585,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 # Spec #492's sentence on a guest's answers, which the owner reviews at acceptance.
                 "{# Spec #492 (ADR 0055): a guest's answers",
                 "<p>未註冊時只計算、不儲存",
+                # Spec #478 named the to-do ticks (consent version 5); the owner reviews the
+                # line at acceptance.
+                "<li>照顧旅程的待辦打勾",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
             # list; the visible words are the same as main's apart from that list's title.

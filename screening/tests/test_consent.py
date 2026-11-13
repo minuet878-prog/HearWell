@@ -19,6 +19,7 @@ PASSWORD = "Xk9#mPq2vLw"
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
 HIGHLIGHTS = (
     "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
+    "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
     "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
     "您可以隨時要求查詢、更正或刪除您的資料。",
     "結果只是參考，不是醫療診斷。",
@@ -125,7 +126,7 @@ class PrivacyHighlightsTests(TestCase):
         files = [
             path.name
             for path in TEMPLATES.rglob("*.html")
-            if HIGHLIGHTS[1] in path.read_text(encoding="utf-8")
+            if HIGHLIGHTS[2] in path.read_text(encoding="utf-8")
         ]
         self.assertEqual(files, ["consent_highlights.html"])
 
@@ -476,7 +477,10 @@ class PrivacyPageT361Tests(TestCase):
             self.assertNotIn(vague, self.main)
 
     def test_route_answers_are_a_second_level_list_in_the_same_words(self):
-        item = re.search(r"<li>(健康資料：.*?)</li>\s*<li>同意紀錄", self.main, re.S).group(1)
+        # Spec #478 put the to-do ticks between it and 同意紀錄.
+        item = re.search(
+            r"<li>(健康資料：.*?)</li>\s*<li>照顧旅程的待辦打勾", self.main, re.S
+        ).group(1)
         inner = re.search(r"<ul>(.*?)</ul>", item, re.S).group(1)
         self.assertEqual(
             re.findall(r"<li>(.*?)</li>", inner),
@@ -563,8 +567,11 @@ class VpsPrivacyTests(TestCase):
         self.assertEqual(services[:2], ["Vultr", "Sentry"])
 
     def test_it_shows_version_4_and_the_new_date(self):
-        # Spec #492's sentence on a guest's answers moved the date again, not the version.
-        self.assertIn("第 4 版，2026/11/13 更新", self.main)
+        # Spec #478 raised it to 5 since, with its own date (test_journey_todos).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 4)
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 12))
+        version, updated_on = models.CONSENT_VERSION, f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"
+        self.assertIn(f"第 {version} 版，{updated_on} 更新", self.main)
 
     def test_who_agreed_to_version_3_agrees_again_to_version_4(self):
         user = User.objects.create_user(username="agreed_to_version_3")
@@ -577,4 +584,5 @@ class VpsPrivacyTests(TestCase):
         versions = (
             Consent.objects.filter(user=user).order_by("id").values_list("version", flat=True)
         )
-        self.assertEqual(list(versions), [3, 4])
+        # The current version, 5 since spec #478.
+        self.assertEqual(list(versions), [3, models.CONSENT_VERSION])

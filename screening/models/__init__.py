@@ -12,6 +12,7 @@ from screening.models.hearing_aids import (
     Certificate,
     Subsidy,
 )
+from screening.models.journey_todos import FIRST_ROUND, TodoTick
 from screening.models.qa_assistant import (
     NoMatchReason,
     QuestionLog,

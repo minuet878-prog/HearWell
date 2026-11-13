@@ -16,5 +16,6 @@
 | 全站改版（白底、少框、照顧旅程首頁） | [拷問決定](redesign/grill-decisions.md) | [#453](https://github.com/minuet878-prog/HearWell/issues/453) |
 | 全站改版第 2 階段（待辦、便當格與聽力護照、故事卡片、家人模式） | [拷問決定](redesign/phase-2-grill-decisions.md) | 待辦 [#478](https://github.com/minuet878-prog/HearWell/issues/478)；其餘待開 |
 | 全站改版第 3 階段（情境日記、配戴與保養、聽損模擬、噪音計） | [拷問決定](redesign/phase-3-grill-decisions.md) | 聽損模擬 [#484](https://github.com/minuet878-prog/HearWell/issues/484)；其餘待開 |
+| 開放階段（免註冊先篩檢、Google 與 LINE 登入） | [規劃](open-access/plan.md)、[第 1 項拷問決定](open-access/grill-decisions.md)、[登入研究](open-access/login-research.md)、[登入拷問決定](open-access/login-grill-decisions.md) | 免註冊先篩檢 [#492](https://github.com/minuet878-prog/HearWell/issues/492)；Google 登入 [#505](https://github.com/minuet878-prog/HearWell/issues/505)；LINE 登入 [#506](https://github.com/minuet878-prog/HearWell/issues/506) |
 
 此處保存需求討論與來源研究，正式工作票及驗收進度在 GitHub Issues。歸檔不代表新增功能已上線。
