@@ -303,13 +303,16 @@ def finish(request, provider):
     subject = claims.get("sub")
     if not isinstance(subject, str) or not subject:
         raise Rejected("no sub")
-    email = claims.get("email")
+    # An email only where we ask for one (Google's scope): one LINE sends anyway is not used
+    # (spec #506 acceptance 5; cross-review of #506, Spec 5).
+    asked_for_email = "email" in PROVIDERS[provider].scope.split()
+    email = claims.get("email") if asked_for_email else None
     return Identity(
         provider=provider,
         subject=subject,
         email=email if isinstance(email, str) else "",
         # Google sends true; some older answers send the string "true".
-        email_verified=claims.get("email_verified") in (True, "true"),
+        email_verified=asked_for_email and claims.get("email_verified") in (True, "true"),
         purpose=flow["purpose"],
         next=flow["next"],
     )

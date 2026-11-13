@@ -303,6 +303,19 @@ class FirstTimeTests(TestCase):
         self.assertEqual(User.objects.count(), 2)
         self.assertEqual(SignInMethod.objects.get().user.username, "陳阿蘭")
 
+    def test_an_email_in_lines_answer_is_never_used(self):
+        # Only Google's email is ever taken from a provider (cross-review of #506, Spec 5): one
+        # LINE sends anyway is not kept, nor taken to the same-email page.
+        consented_user(username="林阿美", email="chen.lan@example.com", password=PASSWORD)
+        self.line.start()
+        response = self.line.come_back(
+            sub="line-new", email="chen.lan@example.com", email_verified=True
+        )
+        self.assertRedirects(response, reverse("line_name"))
+        self.assertEqual(self.client.session["screening.oidc_identity"]["email"], "")
+        self._name("陳阿蘭")
+        self.assertEqual(User.objects.get(username="陳阿蘭").email, "")
+
     def test_a_taken_name_gets_the_same_error_as_registering(self):
         User.objects.create_user(username="陳阿蘭", password="x")
         registering = self.client.post(reverse("register"), {"username": "陳阿蘭"})
