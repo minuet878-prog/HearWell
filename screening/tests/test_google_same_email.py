@@ -100,6 +100,35 @@ class SameEmailTests(TestCase):
         self.assertEqual(int(self.client.session["_auth_user_id"]), self.owner.pk)
         self.assertFalse(self.owner.sign_in_methods.exists())
 
+    def test_after_signing_in_the_waiting_google_makes_no_second_account(self):
+        # The Google waits for a name in case it is not theirs; once someone signs in, by any
+        # way, it is over: the name page must not make (and sign into) another account.
+        for name, sign_in in (
+            (
+                "password",
+                lambda: self.client.post(
+                    reverse("login"), {"username": "王小明", "password": PASSWORD}
+                ),
+            ),
+            ("google", lambda: self.google.come_back(sub="google-owner", email="b@example.com")),
+        ):
+            with self.subTest(name):
+                self.client.logout()
+                self._back_from_google()
+                if name == "google":
+                    SignInMethod.objects.get_or_create(
+                        user=self.owner, provider="google", subject="google-owner"
+                    )
+                    self.google.start()
+                sign_in()
+                self.assertEqual(int(self.client.session["_auth_user_id"]), self.owner.pk)
+                response = self.client.post(
+                    reverse("google_name"), {"username": "林阿美", "roc_birth_year": ""}
+                )
+                self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+                self.assertEqual(User.objects.count(), 1)
+                self.assertEqual(int(self.client.session["_auth_user_id"]), self.owner.pk)
+
     def test_without_a_trip_to_google_the_page_sends_back_to_login(self):
         response = self.client.get(reverse("google_same_email"))
         self.assertRedirects(response, reverse("login"))

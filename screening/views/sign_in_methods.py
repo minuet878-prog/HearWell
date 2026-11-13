@@ -65,7 +65,7 @@ def google_add(request):
     _require_google(request.user)
     if request.user.sign_in_methods.filter(provider=SignInMethod.Provider.GOOGLE).exists():
         return redirect("account_settings")
-    if not confirm_identity.use_confirmation(request):
+    if not confirm_identity.use_confirmation(request, "add_google"):
         return confirm_identity.ask_confirmation("add_google")
     return HttpResponseRedirect(oidc.begin(request, "google", "add_method"))
 
@@ -96,7 +96,7 @@ def trip_failed(request):
 
 @never_cache
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["POST"])  # changes data: never from a link, always with the CSRF token
 def google_remove(request):
     """移除 Google 登入 after 確認本人, unless it is the account's only way in (acceptance 26,
     27)."""
@@ -106,7 +106,7 @@ def google_remove(request):
     )
     if not _keeps_a_way_in(request.user, method):
         raise PermissionDenied
-    if not confirm_identity.use_confirmation(request):
+    if not confirm_identity.use_confirmation(request, "remove_google"):
         return confirm_identity.ask_confirmation("remove_google")
     method.delete()
     messages.success(request, REMOVED)

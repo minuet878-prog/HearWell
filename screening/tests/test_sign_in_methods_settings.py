@@ -87,8 +87,10 @@ class GroupTests(TestCase):
         SignInMethod.objects.filter(pk=method.pk).update(created_at=added)
         group = self.settings_group(user)
         self.assertRegex(group, r"Google</span>\s*<span[^>]*>2026/11/20 新增")
-        self.assertIn(f'href="{REMOVE}" aria-label="移除 Google 登入">移除</a>', group)
-        self.assertIn('class="danger-link"', group)
+        self.assertIn(f'action="{REMOVE}"', group)
+        self.assertIn(
+            'class="danger-link" type="submit" aria-label="移除 Google 登入">移除<', group
+        )
         self.assertNotIn(ADD, group)
         self.assertIn("新增或移除之前，會先請您確認是本人。", group)
 
@@ -176,6 +178,13 @@ class AddTests(TestCase):
     def test_the_right_password_goes_on_to_google_for_adding(self):
         self.start_adding()
         self.assertEqual(self.client.session[oidc.FLOW]["purpose"], "add_method")
+
+    def test_google_is_asked_to_show_its_account_chooser(self):
+        # So the user picks which Google to add, not whichever the phone is signed into; no
+        # login_hint, which would skip the chooser.
+        self.start_adding()
+        self.assertEqual(self.google.authorize["prompt"], "select_account")
+        self.assertNotIn("login_hint", self.google.authorize)
 
     # 24
     def test_a_new_google_is_added_and_signs_into_the_same_account(self):
@@ -297,7 +306,7 @@ class AdminTests(TestCase):
     def test_removing_is_refused(self):
         # An admin should never have one; if one is there, removing is still not theirs to do.
         add_google(self.admin)
-        self.assertEqual(self.client.get(REMOVE).status_code, 403)
+        self.assertEqual(self.client.post(REMOVE).status_code, 403)
         self.assertTrue(self.admin.sign_in_methods.exists())
 
     def test_made_admin_during_the_trip_nothing_is_added(self):
@@ -322,17 +331,20 @@ class RemoveTests(TestCase):
 
     # 26
     def test_removing_after_the_password_and_google_no_longer_knows_it(self):
-        response = self.client.get(REMOVE)
+        response = self.client.post(REMOVE)
         self.assertRedirects(response, CONFIRM_REMOVE)
         self.assertContains(
             self.client.get(CONFIRM_REMOVE), "接下來要<strong>移除 Google 登入</strong>。"
         )
         self.assertTrue(self.user.sign_in_methods.exists())
-        response = confirm_with_password(self, CONFIRM_REMOVE)
-        self.assertRedirects(response, REMOVE, fetch_redirect_response=False)
-        response = self.client.get(REMOVE)
-        self.assertRedirects(response, reverse("account_settings"), fetch_redirect_response=False)
-        self.assertEqual(messages_on(self.client), ["已移除 Google 登入。"])
+        # The right password removes it straight away: the browser takes the POST on (307).
+        response = self.client.post(CONFIRM_REMOVE, {"password": PASSWORD}, follow=True)
+        self.assertEqual(
+            response.redirect_chain, [(REMOVE, 307), (reverse("account_settings"), 302)]
+        )
+        self.assertEqual(
+            [str(message) for message in response.context["messages"]], ["已移除 Google 登入。"]
+        )
         self.assertFalse(SignInMethod.objects.exists())
         # Signing in with that Google is now a code never seen: off to make a new account.
         self.client.logout()
@@ -342,40 +354,75 @@ class RemoveTests(TestCase):
         self.assertRedirects(response, reverse("google_name"))
         self.assertNotIn("_auth_user_id", self.client.session)
 
+    def test_a_link_cannot_remove_even_when_confirmed(self):
+        # A page elsewhere can make the browser GET any URL (an <img>), with this session.
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
+        self.assertEqual(self.client.get(REMOVE).status_code, 405)
+        self.assertTrue(self.user.sign_in_methods.exists())
+
+    def test_back_on_the_confirm_page_it_is_shown_not_sent_to_a_get(self):
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})  # the 307 not followed
+        response = self.client.get(CONFIRM_REMOVE)
+        self.assertContains(response, "接下來要<strong>移除 Google 登入</strong>。")
+        self.assertTrue(self.user.sign_in_methods.exists())
+
+    def test_a_post_from_another_site_is_refused(self):
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
+        # The same session, posting without this site's CSRF token.
+        other_site = self.client_class(enforce_csrf_checks=True)
+        other_site.cookies = self.client.cookies
+        self.assertEqual(other_site.post(REMOVE).status_code, 403)
+        self.assertTrue(self.user.sign_in_methods.exists())
+
+    def test_a_confirmation_for_another_action_does_not_remove(self):
+        # 確認本人 for 新增 is left unused: this account already has Google, so 新增 goes back.
+        confirm_with_password(self, CONFIRM_ADD)
+        self.assertRedirects(self.client.get(ADD), reverse("account_settings"))
+        self.assertRedirects(self.client.post(REMOVE), CONFIRM_REMOVE)
+        self.assertTrue(self.user.sign_in_methods.exists())
+
+    def test_the_settings_page_removes_with_a_form(self):
+        group = methods_group(self.client.get(reverse("account_settings")))
+        self.assertRegex(
+            group,
+            rf'<form method="post" action="{REMOVE}">\s*<input type="hidden" '
+            r'name="csrfmiddlewaretoken"[^>]*>\s*<button class="danger-link" type="submit" '
+            r'aria-label="移除 Google 登入">移除</button>',
+        )
+
     # 27
     def test_the_only_way_in_cannot_be_removed_even_when_sent_directly(self):
         user = google_only_user(username="lin_mei", sub="google-only")
         self.client.force_login(user)
-        test_confirm_identity.confirm_with_google(self, sub="google-only")
-        self.assertEqual(self.client.get(REMOVE).status_code, 403)
-        self.assertEqual(self.client.post(REMOVE).status_code, 405)
+        test_confirm_identity.confirm_with_google(self, sub="google-only", action="remove_google")
+        self.assertEqual(self.client.post(REMOVE).status_code, 403)
+        self.assertEqual(self.client.get(REMOVE).status_code, 405)
         self.assertTrue(user.sign_in_methods.exists())
 
     # 29
     def test_after_5_minutes_confirm_again(self):
-        confirm_with_password(self, CONFIRM_REMOVE)
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
         with later(5 * 60 + 1):
-            response = self.client.get(REMOVE)
+            response = self.client.post(REMOVE)
             self.assertRedirects(response, CONFIRM_REMOVE, fetch_redirect_response=False)
         self.assertTrue(self.user.sign_in_methods.exists())
 
     def test_without_confirming_nothing_is_removed(self):
-        self.assertRedirects(self.client.get(REMOVE), CONFIRM_REMOVE)
-        self.assertEqual(self.client.post(REMOVE).status_code, 405)
+        self.assertRedirects(self.client.post(REMOVE), CONFIRM_REMOVE)
         self.assertTrue(self.user.sign_in_methods.exists())
 
     def test_only_this_accounts_google(self):
         # Another account's Google is never this account's to remove.
         other = google_only_user(username="lin_mei", sub="google-other")
         SignInMethod.objects.filter(user=self.user).delete()
-        confirm_with_password(self, CONFIRM_REMOVE)
-        self.assertEqual(self.client.get(REMOVE).status_code, 404)
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
+        self.assertEqual(self.client.post(REMOVE).status_code, 404)
         self.assertTrue(other.sign_in_methods.exists())
 
     def test_without_google_keys_is_404(self):
-        confirm_with_password(self, CONFIRM_REMOVE)
+        self.client.post(CONFIRM_REMOVE, {"password": PASSWORD})
         with self.settings(GOOGLE_CLIENT_ID=""):
-            self.assertEqual(self.client.get(REMOVE).status_code, 404)
+            self.assertEqual(self.client.post(REMOVE).status_code, 404)
         self.assertTrue(self.user.sign_in_methods.exists())
 
 

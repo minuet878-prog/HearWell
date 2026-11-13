@@ -135,9 +135,9 @@ class WrongGoogleTests(TestCase):
         self.assertTrue(User.objects.filter(username="someone_else").exists())
 
 
-def confirm_with_google(test, sub=OWN_SUB):
+def confirm_with_google(test, sub=OWN_SUB, action="delete_account"):
     google = FakeGoogle(test.client)
-    start_confirming(test.client, google)
+    start_confirming(test.client, google, action)
     google.come_back(sub=sub, email="own@example.com")
 
 
@@ -185,16 +185,27 @@ class ConfirmationLastsTests(TestCase):
 
     def test_a_confirmation_is_good_for_one_action(self):
         request = self.request()
-        self.assertTrue(confirm_identity.is_confirmed(request))
-        self.assertTrue(confirm_identity.is_confirmed(request))  # looking does not use it
-        self.assertTrue(confirm_identity.use_confirmation(request))
-        self.assertFalse(confirm_identity.use_confirmation(request))
-        self.assertFalse(confirm_identity.is_confirmed(request))
+        self.assertTrue(confirm_identity.is_confirmed(request, "delete_account"))
+        # Looking does not use it.
+        self.assertTrue(confirm_identity.is_confirmed(request, "delete_account"))
+        self.assertTrue(confirm_identity.use_confirmation(request, "delete_account"))
+        self.assertFalse(confirm_identity.use_confirmation(request, "delete_account"))
+        self.assertFalse(confirm_identity.is_confirmed(request, "delete_account"))
+
+    def test_a_confirmation_is_only_for_the_action_it_was_asked_for(self):
+        # Confirmed to delete the account: adding or removing a sign-in method is not confirmed.
+        request = self.request()
+        for other in ("add_google", "remove_google"):
+            with self.subTest(other):
+                self.assertFalse(confirm_identity.is_confirmed(request, other))
+                self.assertFalse(confirm_identity.use_confirmation(request, other))
+        # Trying it on another action uses it up all the same.
+        self.assertFalse(confirm_identity.is_confirmed(request, "delete_account"))
 
     def test_a_used_confirmation_is_not_reported_as_expired(self):
         request = self.request()
-        confirm_identity.use_confirmation(request)
-        confirm_identity.use_confirmation(request)
+        confirm_identity.use_confirmation(request, "delete_account")
+        confirm_identity.use_confirmation(request, "delete_account")
         self.assertIsNone(confirm_identity.confirm_error(request))
 
 
@@ -214,7 +225,7 @@ class ConfirmWithPasswordTests(TestCase):
     def confirmed(self):
         request = RequestFactory().get("/")
         request.session = self.client.session
-        return confirm_identity.is_confirmed(request)
+        return confirm_identity.is_confirmed(request, "delete_account")
 
     def test_asks_for_the_password_and_says_what_comes_next(self):
         response = self.client.get(CONFIRM_DELETE)

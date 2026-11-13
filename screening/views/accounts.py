@@ -130,7 +130,9 @@ def delete_account(request):
         # #505 acceptance 30: without a password, 確認本人 with the Google on the account first;
         # a confirmation gone stale meanwhile sends the page back with W18.
         form = None
-        delete = request.method == "POST" and confirm_identity.use_confirmation(request)
+        delete = request.method == "POST" and confirm_identity.use_confirmation(
+            request, "delete_account"
+        )
         if request.method == "POST" and not delete:
             return redirect("delete_account")
     if delete:
@@ -143,7 +145,7 @@ def delete_account(request):
         "screening/delete_account.html",
         {
             "form": form,
-            "confirmed": form is None and confirm_identity.is_confirmed(request),
+            "confirmed": form is None and confirm_identity.is_confirmed(request, "delete_account"),
             "confirm_error": confirm_identity.confirm_error(request),
             "sign_in_methods": user.sign_in_methods.all(),
             "providers": confirm_identity.providers(user),

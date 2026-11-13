@@ -44,7 +44,11 @@
             <span class="sign-in-method-body"><span class="settings-row-title">Google</span>
                 <span class="settings-row-note">{% if not google %}還沒有新增{% elif google.used_to_register %}註冊時使用{% else %}{{ google.created_at|date:"Y/m/d" }} 新增{% endif %}</span></span>
             {% if google %}
-            {% if sign_in_methods.can_remove %}<a class="danger-link" href="{% url 'google_remove' %}" aria-label="移除 Google 登入">移除</a>{% endif %}
+            {# A form, not a link: removing changes data, so only this site can ask for it (CSRF). #}
+            {% if sign_in_methods.can_remove %}<form method="post" action="{% url 'google_remove' %}">
+                {% csrf_token %}
+                <button class="danger-link" type="submit" aria-label="移除 Google 登入">移除</button>
+            </form>{% endif %}
             {% elif not sign_in_methods.open_outside_url %}
             <a class="btn btn-outline-primary" href="{% url 'google_add' %}" aria-label="新增 Google 登入">新增</a>
             {% endif %}

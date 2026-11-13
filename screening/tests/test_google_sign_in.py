@@ -461,6 +461,24 @@ class CallbackSecurityTests(TestCase):
         )
         self.assertIn("Google token exchange failed", logs.output[0])
 
+    def test_a_rejected_callback_goes_to_monitoring_without_its_secrets(self):
+        # Error monitoring takes ERROR and above (Sentry's logging integration); a forged
+        # callback is a technical detail for it, as Google not answering is (spec #505).
+        for name, come_back in (
+            ("state", {"query": {"code": "secret-code", "state": "forged-state"}}),
+            ("nonce", {"sub": "google-1", "nonce": "other", "email": "amei@example.com"}),
+        ):
+            with self.subTest(name):
+                self.google.start()
+                state = self.google.authorize["state"]
+                with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
+                    response = self.google.come_back(**come_back)
+                self.assertRedirects(response, reverse("login"), fetch_redirect_response=False)
+                output = "\n".join(logs.output)
+                self.assertIn("Google callback rejected", output)
+                for secret in ("secret-code", "forged-state", state, "amei@example.com"):
+                    self.assertNotIn(secret, output)
+
 
 class SignInMethodDataTests(TestCase):
     """#505 acceptance 33, 34 and the admin: the sign-in methods go with the account, come out

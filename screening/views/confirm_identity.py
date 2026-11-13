@@ -1,16 +1,18 @@
 """確認本人 (spec #505, ADR 0057): before deleting the account, or adding or removing a sign-in
 method, the account's owner shows it is them: with the password when the account has one,
 otherwise by signing in again with a provider already on the account, which must give back
-that account's code (`sub`). It holds for 5 minutes and for one action.
+that account's code (`sub`). It holds for 5 minutes and for the one action it was asked for.
 
 For a view that needs it (#511):
 
-    if not use_confirmation(request):
+    if not use_confirmation(request, "add_google"):
         return ask_confirmation("add_google")
 """
 
+from urllib.parse import urlsplit
+
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect, QueryDict
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -21,15 +23,17 @@ from screening import oidc
 from screening.forms import PasswordConfirmForm
 from screening.views.common import line_way_out
 
-# What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15) and the page it
-# leads back to.
+# What the confirmation is for: the words after 「接下來要」 (the #507 mockup W15), the page it
+# leads back to, and whether that page acts on a POST only, so the password's POST is taken on
+# there (a 307) and the action is done without a second press.
 ACTIONS = {
-    "delete_account": ("刪除帳號", "delete_account"),
-    "add_google": ("新增 Google 登入", "google_add"),
-    "remove_google": ("移除 Google 登入", "google_remove"),
+    "delete_account": ("刪除帳號", "delete_account", False),
+    "add_google": ("新增 Google 登入", "google_add", False),
+    "remove_google": ("移除 Google 登入", "google_remove", True),
 }
 
-# When the owner last confirmed (a Unix time); taken out by the action it is used for.
+# Which action the owner last confirmed for, and when: {"action", "at" (a Unix time)}; taken out
+# by the action it is used for.
 CONFIRMED = "screening.identity_confirmed"
 CONFIRMED_SECONDS = 5 * 60  # #505 acceptance 29
 
@@ -41,25 +45,31 @@ EXPIRED = "確認已經過期，請再確認一次。"  # W18
 NOT_CONFIRMED = "沒有完成 Google 確認，請再試一次。"
 
 
-def _fresh(confirmed_at):
-    return (
-        confirmed_at is not None and timezone.now().timestamp() - confirmed_at <= CONFIRMED_SECONDS
-    )
+def _fresh(confirmed):
+    return timezone.now().timestamp() - confirmed["at"] <= CONFIRMED_SECONDS
 
 
-def is_confirmed(request):
-    """Whether the owner confirmed in the last 5 minutes; leaves the confirmation in place."""
-    return _fresh(request.session.get(CONFIRMED))
+def _confirm(request, action):
+    request.session[CONFIRMED] = {"action": action, "at": timezone.now().timestamp()}
 
 
-def use_confirmation(request):
-    """Take the confirmation out of the session for the one action it allows: True when it is
-    from the last 5 minutes. A stale one is dropped and the next page says so (W18)."""
-    confirmed_at = request.session.pop(CONFIRMED, None)
-    if _fresh(confirmed_at):
+def is_confirmed(request, action):
+    """Whether the owner confirmed for this action in the last 5 minutes; leaves the
+    confirmation in place."""
+    confirmed = request.session.get(CONFIRMED)
+    return confirmed is not None and confirmed["action"] == action and _fresh(confirmed)
+
+
+def use_confirmation(request, action):
+    """Take the confirmation out of the session: True when it was for this action and is from
+    the last 5 minutes. One for another action is used up all the same; a stale one is dropped
+    and the next page says so (W18)."""
+    confirmed = request.session.pop(CONFIRMED, None)
+    if confirmed is None or confirmed["action"] != action:
+        return False
+    if _fresh(confirmed):
         return True
-    if confirmed_at is not None:
-        request.session[CONFIRM_ERROR] = EXPIRED
+    request.session[CONFIRM_ERROR] = EXPIRED
     return False
 
 
@@ -76,10 +86,15 @@ def confirm_error(request):
 def came_back(request, identity):
     """The provider's callback for a confirm_identity trip: the code that came back must be one
     on this account (#505 acceptance 31); otherwise nothing is confirmed."""
-    if request.user.sign_in_methods.filter(
-        provider=identity.provider, subject=identity.subject
-    ).exists():
-        request.session[CONFIRMED] = timezone.now().timestamp()
+    # The trip started on the confirm page, whose URL (its next) names the action.
+    action = QueryDict(urlsplit(identity.next).query).get("action")
+    if (
+        action in ACTIONS
+        and request.user.sign_in_methods.filter(
+            provider=identity.provider, subject=identity.subject
+        ).exists()
+    ):
+        _confirm(request, action)
     else:
         request.session[CONFIRM_ERROR] = NOT_YOURS
     # The confirm page, which goes on to the action's page once confirmed.
@@ -108,16 +123,18 @@ def confirm_identity(request):
     action = request.GET.get("action")
     if action not in ACTIONS:
         raise Http404
-    words, page = ACTIONS[action]
-    if is_confirmed(request):
+    words, page, on_post = ACTIONS[action]
+    # Back here already confirmed (from Google): on to the action's page; one acting on a POST
+    # only is not opened with a GET, so the page is shown again instead.
+    if is_confirmed(request, action) and not on_post:
         return redirect(page)
     user = request.user
     form = None
     if user.has_usable_password():
         form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
         if form.is_valid():
-            request.session[CONFIRMED] = timezone.now().timestamp()
-            return redirect(page)
+            _confirm(request, action)
+            return redirect(page, preserve_request=on_post)
     elif request.method == "POST":
         # No password: a provider on the account, asked to show its account chooser.
         provider = request.POST.get("provider")

@@ -34,9 +34,17 @@ NAME_EXPIRED = "等太久了，請再按一次「使用 Google 帳戶登入」�
 ADMIN = "這個帳號請用帳號密碼登入。"
 
 # Who came back from Google for the first time, until the name page makes the account:
-# {"provider", "subject", "email", "purpose", "next", "at" (a Unix time)}.
+# {"provider", "subject", "email", "purpose", "next", "at" (a Unix time)}. Gone once anyone signs
+# in (forget_pending).
 PENDING = "screening.oidc_identity"
 PENDING_SECONDS = 10 * 60  # #505 acceptance 7
+
+
+def forget_pending(sender, request, **kwargs):
+    """Django's user_logged_in, whatever the way in (connected in apps.py): the identity waits
+    only while nobody is signed in. Left there, the name page would make a second account and
+    sign into it, e.g. after the same-email page's password login."""
+    request.session.pop(PENDING, None)
 
 
 class LoginView(auth_views.LoginView):
@@ -85,8 +93,10 @@ def google_callback(request):
     except oidc.Unavailable:
         logger.exception("Google token exchange failed")
         return _failed(request, flow, UNAVAILABLE)
-    except oidc.Rejected as error:
-        logger.warning("Google callback rejected: %s", error)
+    except oidc.Rejected:
+        # To error monitoring as an ERROR, as above: which check failed is the exception's type
+        # and line; its words are fixed strings, never a token, code or email.
+        logger.exception("Google callback rejected")
         return _failed(request, flow, FAILED)
     handlers = {
         "sign_in": _sign_in,
@@ -189,8 +199,7 @@ def google_name(request):
                 raise
             form.add_error("username", form.instance.unique_error_message(User, ["username"]))
         else:
-            del request.session[PENDING]
-            login(request, user)
+            login(request, user)  # also forgets the pending identity
             # As registering with a password does: the consent page greets a new account (#152).
             request.session[NEW_ACCOUNT] = True
             if pending["next"]:
