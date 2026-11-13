@@ -89,6 +89,26 @@ describe("showGuestHome", () => {
     expect(tiles[0].className).toBe("journey-tile result-banner-normal pr-10");
   });
 
+  // #492 acceptance 19, the home's half (self-review P1): past 7 days it is not shown, and gone.
+  it("shows no result past its 7 days and deletes it from this browser", () => {
+    saveGuestResult(guestResult({ finishedAt: NOW - 7 * DAY - 1 }));
+    show();
+    expect(root.hidden).toBe(true);
+    expect(root.children).toHaveLength(0);
+    expect(localStorage.getItem("hearwell:guest-result:hhie-s")).toBeNull();
+  });
+
+  it("beside an expired one, shows only the one still kept", () => {
+    saveGuestResult(guestResult({ finishedAt: NOW - 8 * DAY }));
+    saveGuestResult(guestResult({ code: "hhia-s", finishedAt: NOW - DAY }));
+    show();
+    expect([...root.querySelectorAll("a")].map((tile) => tile.getAttribute("href"))).toEqual([
+      "/guest/result/hhia-s",
+    ]);
+    expect(root.textContent).toContain("您有一份還沒保存的結果");
+    expect(Object.keys(localStorage)).toEqual(["hearwell:guest-result:hhia-s"]);
+  });
+
   it("drawn again, shows what is kept now", () => {
     saveGuestResult(guestResult());
     show();
