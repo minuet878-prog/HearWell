@@ -70,7 +70,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const daysLeft = (finishedAt, now) => Math.ceil((finishedAt + MAX_AGE_MS - now) / DAY_MS);
 
 const pad = (number) => String(number).padStart(2, "0");
-const day = (time) => {
+export const day = (time) => {
   const date = new Date(time);
   return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
 };

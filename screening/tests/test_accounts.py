@@ -128,10 +128,10 @@ class LoginNextTests(TestCase):
             response, f'<input type="hidden" name="next" value="{self.target}">', html=True
         )
 
-    def test_cta_leads_to_register_and_records_still_need_login(self):
-        # Spec #148 (ticket #150): the home CTA registers first; records still ask to log in. The
-        # list is a guest's wizard since spec #492 (test_guest).
-        self.assertContains(self.client.get(reverse("index")), f'href="{self.register_url}"')
+    def test_cta_opens_the_guest_wizard_and_records_still_need_login(self):
+        # #499 (spec #492): the home CTA opens a guest's wizard (test_guest), no account first;
+        # records still ask to log in.
+        self.assertContains(self.client.get(reverse("index")), f'href="{self.target}"')
         response = self.client.get(reverse("my_hearing"), follow=True)
         self.assertRedirects(response, f"{reverse('login')}?next={reverse('my_hearing')}")
         self.assertContains(response, self.NOTE)

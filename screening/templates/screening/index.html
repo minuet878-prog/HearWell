@@ -5,7 +5,10 @@
 
 {% block extra_head %}{% include "screening/continue_notice.html" %}{% if journey %}
 {# #459 I1 + I2: one step open at a time, and the entrance on the tab's first visit only. #}
-<script type="module" src="{% static 'screening/frontend/care-journey.js' %}"></script>{% endif %}{% endblock %}
+<script type="module" src="{% static 'screening/frontend/care-journey.js' %}"></script>{% endif %}{% if guest_questionnaires %}
+{# #499 (spec #492, the #493 mockup's A1): guest-home.js fills #guest-home with the guest results kept in this browser. #}
+{{ guest_questionnaires|json_script:"guest-home-data" }}
+<script type="module" src="{% static 'screening/frontend/guest-home.js' %}"></script>{% endif %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
@@ -107,7 +110,8 @@
     <li data-hide-in-app><a href="{% url 'add_to_home' %}">加到手機主畫面</a></li>
 </ul>
 {% else %}
-{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. #471 (mockup #458 ⑪ for a visitor): a visitor sees the same page, its first step making the account (spec #148: register first, then choose a questionnaire), and can log in instead. #}
+{# #459 (mockup #458 A): the 空狀態首頁, for a signed-in user without a questionnaire or an audiogram. The dashed box is a preview, not a link. #471 (mockup #458 ⑪ for a visitor): a visitor sees the same page and can log in instead; since #499 (spec #492) a visitor answers without an account. #}
+{% if guest_questionnaires %}<div id="guest-home" class="grid gap-3 mb-6" hidden></div>{% endif %}
 <h1 class="h3">從一份問卷開始</h1>
 <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
 <div class="empty-preview">
@@ -118,17 +122,17 @@
         <li><span class="step-list-number">2</span><span class="step-list-body">馬上看到結果分級和建議</span></li>
         <li><span class="step-list-number">3</span><span class="step-list-body">首頁一次告訴您一件該做的事</span></li>
         {% else %}
-        <li><span class="step-list-number">1</span><span class="step-list-body">建立帳號，大約 1 分鐘。</span></li>
-        <li><span class="step-list-number">2</span><span class="step-list-body">回答問題，大約 3 分鐘。</span></li>
-        <li><span class="step-list-number">3</span><span class="step-list-body">馬上看到結果分級和建議。</span></li>
+        {# #499 (spec #492): a visitor answers first and registers only to keep the result. #}
+        <li><span class="step-list-number">1</span><span class="step-list-body">回答問題，大約 3 分鐘。</span></li>
+        <li><span class="step-list-number">2</span><span class="step-list-body">馬上看到結果分級和建議。</span></li>
+        <li><span class="step-list-number">3</span><span class="step-list-body">想保存再註冊，不註冊也看得到結果。</span></li>
         {% endif %}
     </ol>
 </div>
 {% url 'questionnaire_list' as list_url %}
-{% if user.is_authenticated %}
+{# Without an account the list is the wizard's age step (#495). #}
 <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
-{% else %}
-<a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{% url 'register' %}?next={{ list_url|urlencode }}">開始篩檢</a>
+{% if not user.is_authenticated %}
 <p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
 {% endif %}
 <ul class="home-links" role="list">
