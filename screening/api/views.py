@@ -11,6 +11,7 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
+from screening import oidc
 from screening.api.permissions import GUEST_OR_CONSENTED
 from screening.api.serializers import (
     AudiogramCreateSerializer,
@@ -30,9 +31,11 @@ from screening.models import (
     Question,
     Questionnaire,
     count_guest,
+    count_guest_saved,
 )
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
 from screening.scoring import TREND_STATUS_TEXT
+from screening.views.common import is_line_in_app_browser
 
 
 class QuestionnaireList(ListAPIView):
@@ -151,7 +154,7 @@ class SubmissionList(ListAPIView):
             return Response({"detail": "這個收據編號已經用過"}, status.HTTP_409_CONFLICT)
         # A guest result newly saved counts (#500); sent again and found, it does not.
         if created and data["from_guest"]:
-            count_guest("saved")
+            count_guest_saved(request.user)
         # Same query and serializer as GET /api/submissions/{id}/, so the bodies match.
         submission = _own_submission_details(request, with_ioi_ha=True).get(pk=existing.pk)
         return Response(
@@ -202,7 +205,12 @@ class GuestScore(GenericAPIView):
         )
         html = render_to_string(
             "screening/graded_result.html",
-            {"submission": result.submission} | result.page_context(),
+            {
+                "submission": result.submission,
+                # The save card's Google button (#513), never inside LINE (#505 acceptance 3).
+                "google_save": oidc.enabled("google") and not is_line_in_app_browser(request),
+            }
+            | result.page_context(),
         )
         # The answer page's send counts; the guest result page sending them again does not.
         if data["just_finished"]:

@@ -26,6 +26,7 @@ urlpatterns = [
     path("login/google/callback", sign_in.google_callback, name="google_callback"),
     path("login/google/name", sign_in.google_name, name="google_name"),
     path("login/google/same-email", sign_in.google_same_email, name="google_same_email"),
+    path("login/google/save-card", sign_in.google_save_card, name="google_save_card"),
     path("logout", accounts.logout_view, name="logout"),
     path("register", accounts.register, name="register"),
     path("privacy", accounts.privacy, name="privacy"),
