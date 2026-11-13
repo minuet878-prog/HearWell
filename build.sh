@@ -14,6 +14,9 @@ python manage.py collectstatic --no-input
 
 python manage.py migrate
 
+# The forgot-password page's attempt counts (#528); does nothing once the table exists.
+python manage.py createcachetable
+
 # Questions typed into the Q&A assistant are kept 90 days; there is no scheduler (#401).
 python manage.py purge_question_log
 

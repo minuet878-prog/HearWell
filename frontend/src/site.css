@@ -4542,6 +4542,11 @@
     color: var(--color-severe);
   }
 
+  /* #529: a mail address in the box keeps the box's red (mockup #524). */
+  .error-box .inline-link {
+    color: inherit;
+  }
+
   /* A list row that opens (E): the privacy notice's sections and the phones on 加到主畫面. The
      row's words in the heading colour, a blue chevron at its end, down while folded and swapped
      (not turned) for an up one when open, so nothing moves (ADR 0006); a thin line under each

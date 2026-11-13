@@ -296,7 +296,8 @@ class RedesignLayoutTests(TestCase):
                 self.assertEqual(nav.count('aria-current="page"'), 1)
                 self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
         self.client.logout()
-        for name, label in (("login", "登入"), ("register", "註冊")):
+        # #527 (mockup #524): the forgot-password page comes from the login page and stays on it.
+        for name, label in (("login", "登入"), ("register", "註冊"), ("password_reset", "登入")):
             with self.subTest(url=name):
                 nav = self._nav(self.client.get(reverse(name)))
                 self.assertEqual(nav.count('aria-current="page"'), 1)
@@ -330,9 +331,10 @@ class RedesignLayoutTests(TestCase):
                 reverse("index"): "聽伴 聽力自我照護",
                 reverse("login"): "登入" + suffix,
                 reverse("register"): "註冊" + suffix,
+                reverse("password_reset"): "忘記密碼" + suffix,
             }
         )
-        for name in ("index", "login", "register"):
+        for name in ("index", "login", "register", "password_reset"):
             titles[reverse(name)] = self._title(reverse(name))
         self.assertEqual(titles, expected)
         self.assertEqual(len(set(titles.values())), len(titles))
@@ -1019,6 +1021,7 @@ class PwaNavTests(TestCase):
         return [
             (False, reverse("login")),
             (False, reverse("register")),
+            (False, reverse("password_reset")),
             (False, reverse("add_to_home")),
             (True, reverse("questionnaire_list")),
             (True, reverse("screening", args=[self.questionnaire.id])),
@@ -1131,6 +1134,7 @@ class PwaNavTests(TestCase):
             (True, reverse("screening", args=[self.questionnaire.id])),
             (False, reverse("login")),
             (False, reverse("register")),
+            (False, reverse("password_reset")),
             (True, reverse("share_report")),  # the share form (#193)
             (True, reverse("audiogram_compare")),
             (True, reverse("audiogram_delete", args=[self.audiogram.id])),

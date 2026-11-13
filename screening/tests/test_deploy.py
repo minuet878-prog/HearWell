@@ -46,10 +46,13 @@ print(json.dumps({
     "hsts_subdomains": getattr(settings, "SECURE_HSTS_INCLUDE_SUBDOMAINS", False),
     "hsts_preload": getattr(settings, "SECURE_HSTS_PRELOAD", False),
     "silenced": settings.SILENCED_SYSTEM_CHECKS,
+    "email_backend": settings.EMAIL_BACKEND,
+    "from_email": settings.DEFAULT_FROM_EMAIL,
+    "resend_key": getattr(settings, "ANYMAIL", {}).get("RESEND_API_KEY"),
 }))
 """
 
-    def _run(self, args, debug, module="config.settings", hsts="3600"):
+    def _run(self, args, debug, module="config.settings", hsts="3600", drop=()):
         env = {
             **os.environ,
             "DJANGO_SETTINGS_MODULE": module,
@@ -58,7 +61,12 @@ print(json.dumps({
             "SECRET_KEY": get_random_secret_key(),
             # Production settings refuse to start without these; DUMP's request uses this host.
             "ALLOWED_HOSTS": "localhost",
+            # A made-up key: these tests never send an email (spec #355).
+            "RESEND_API_KEY": "re_test_only",
+            "DEFAULT_FROM_EMAIL": "noreply@tingpal.tw",
         }
+        for name in drop:
+            env.pop(name)
         env.pop("SECURE_HSTS_SECONDS", None)
         if hsts is not None:
             env["SECURE_HSTS_SECONDS"] = hsts
@@ -66,8 +74,10 @@ print(json.dumps({
             [sys.executable, *args], cwd=self.ROOT, env=env, capture_output=True, text=True
         )
 
-    def _settings(self, debug, toolbar="as-installed", module="config.settings", hsts="3600"):
-        result = self._run(["-c", self.DUMP, toolbar], debug, module, hsts)
+    def _settings(
+        self, debug, toolbar="as-installed", module="config.settings", hsts="3600", drop=()
+    ):
+        result = self._run(["-c", self.DUMP, toolbar], debug, module, hsts, drop)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout.strip().splitlines()[-1])
 
@@ -100,6 +110,29 @@ print(json.dumps({
         error = json.loads(result.stdout.strip().splitlines()[-1])["error"]
         self.assertIn("缺少 SECURE_HSTS_SECONDS 環境變數", error)
         self.assertIn("部署平台", error)
+
+    # Spec #355: the 重設密碼信 goes through Resend's HTTPS API, from 聽伴's noreply address.
+    def test_production_sends_email_through_resend(self):
+        dumped = self._settings(debug=False)
+        self.assertEqual(dumped["email_backend"], "anymail.backends.resend.EmailBackend")
+        self.assertEqual(dumped["resend_key"], "re_test_only")
+        self.assertEqual(dumped["from_email"], "聽伴 <noreply@tingpal.tw>")
+
+    # Spec #355: a forgotten variable stops the site instead of failing to send later.
+    def test_production_requires_the_resend_key_and_the_sender(self):
+        for name in ("RESEND_API_KEY", "DEFAULT_FROM_EMAIL"):
+            with self.subTest(name=name):
+                result = self._run(["-c", AllowedHostsTests.LOAD], debug=False, drop=(name,))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                error = json.loads(result.stdout.strip().splitlines()[-1])["error"]
+                self.assertIn(f"缺少 {name} 環境變數", error)
+                self.assertIn("部署平台", error)
+
+    # Spec #355: on the developer's computer the email is printed in the terminal, never sent.
+    def test_development_prints_email_in_the_terminal(self):
+        dumped = self._settings(debug=True, hsts=None, drop=("RESEND_API_KEY",))
+        self.assertEqual(dumped["email_backend"], "django.core.mail.backends.console.EmailBackend")
+        self.assertEqual(dumped["from_email"], "聽伴 <noreply@tingpal.tw>")
 
     # 4, 7
     def test_debug_without_dev_packages_still_works(self):
@@ -169,6 +202,12 @@ print(json.dumps({
         purge = lines.index("python manage.py purge_question_log")
         self.assertLess(lines.index("python manage.py migrate"), purge)
 
+    def test_build_creates_the_cache_table_after_migrating(self):
+        # #528: the forgot-password page's attempt counts live in a database cache table.
+        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
+        table = lines.index("python manage.py createcachetable")
+        self.assertLess(lines.index("python manage.py migrate"), table)
+
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())
@@ -200,8 +239,10 @@ else:
             "DEBUG": "True" if debug else "False",
             # A throwaway key for this process only; never written anywhere.
             "SECRET_KEY": get_random_secret_key(),
-            # Production settings refuse to start without it.
+            # Production settings refuse to start without them.
             "SECURE_HSTS_SECONDS": "3600",
+            "RESEND_API_KEY": "re_test_only",
+            "DEFAULT_FROM_EMAIL": "noreply@tingpal.tw",
         }
         env.pop("ALLOWED_HOSTS", None)
         if hosts is not None:

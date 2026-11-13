@@ -15,11 +15,13 @@ from screening.models.submissions import Answer
 # and the backups keep deleted data up to 10 days (#452, ADR 0042).
 # 5: the 照顧旅程's to-do ticks are kept, so what is collected changed (spec #478, the owner on
 # 2026-11-13, phase-2-grill-decisions.md).
-CONSENT_VERSION = 5
+# 6: the 重設密碼信 uses the email, Resend in the United States receives it, and the
+# forgot-password page keeps hashed IPs and emails for an hour (#526, spec #355).
+CONSENT_VERSION = 6
 # The 提問紀錄 (#400) is new data but linked to no one, so only the date moved (ADR 0034); the
-# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4 and
-# 5 moved it with the version (#452, spec #478). A guest's answers stay in the browser (spec
-# #492): nothing new is kept, so that sentence needed no version of its own.
+# cookie sentence's minor fix for public forms (#431) moved it again (ADR 0014); versions 4, 5
+# and 6 moved it with the version (#452, spec #478, #526). A guest's answers stay in the
+# browser (spec #492): nothing new is kept, so that sentence needed no version of its own.
 PRIVACY_UPDATED_ON = date(2026, 11, 13)
 
 

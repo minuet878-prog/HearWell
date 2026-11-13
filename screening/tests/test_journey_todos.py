@@ -1179,9 +1179,9 @@ class Ticket481PrivacyListTests(TestCase):
         self.assertContains(self.client.get(reverse("consent")), f"<li>{TICKS_HIGHLIGHT}</li>")
 
     def test_version_5_dated_the_day_it_changed(self):
-        self.assertEqual(models.CONSENT_VERSION, 5)
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
-        self.assertContains(self.client.get(reverse("privacy")), "第 5 版，2026/11/13 更新")
+        # #526 raised it to 6 for the 重設密碼信 (test_consent).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 5)
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
 
     def test_who_agreed_to_version_4_agrees_again_to_version_5(self):
         user = User.objects.create_user(username="todo_agreed_to_version_4")
@@ -1192,7 +1192,9 @@ class Ticket481PrivacyListTests(TestCase):
         response = self.client.post(reverse("consent"), {"agree": "", "next": url})
         self.assertRedirects(response, url)
         versions = Consent.objects.filter(user=user).order_by("id")
-        self.assertEqual(list(versions.values_list("version", flat=True)), [4, 5])
+        self.assertEqual(
+            list(versions.values_list("version", flat=True)), [4, models.CONSENT_VERSION]
+        )
 
 
 # The highlight naming the ticks, on the privacy notice's top and the consent page.

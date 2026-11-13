@@ -29,6 +29,13 @@ urlpatterns = [
         name="login",
     ),
     path("logout", accounts.logout_view, name="logout"),
+    path("forgot_password", accounts.ForgotPasswordView.as_view(), name="password_reset"),
+    path("forgot_password/sent", accounts.password_reset_sent, name="password_reset_sent"),
+    path(
+        "reset/<uidb64>/<token>",
+        accounts.SetNewPasswordView.as_view(),
+        name="password_reset_confirm",
+    ),
     path("register", accounts.register, name="register"),
     path("privacy", accounts.privacy, name="privacy"),
     path("family", home.family_guide, name="family_guide"),

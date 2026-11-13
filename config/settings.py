@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "anymail",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,42 @@ AUTH_USER_MODEL = "screening.User"
 LOGIN_URL = "login"
 # The consent page sends people who already agreed straight on to the home page.
 LOGIN_REDIRECT_URL = "consent"
+
+# The 重設密碼信 (spec #355): its link works for a day. Production sends it with Resend's HTTPS
+# API (the hosts block SMTP); a forgotten key or sender stops the site instead of failing to send
+# later. The sender is the address alone in the environment, the name 聽伴 is added here.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+if not DEBUG:
+    resend_api_key = os.environ.get("RESEND_API_KEY")
+    if not resend_api_key:
+        raise ImproperlyConfigured(
+            "正式環境缺少 RESEND_API_KEY 環境變數，請在部署平台設定 Resend 只能寄信的金鑰"
+        )
+    from_address = os.environ.get("DEFAULT_FROM_EMAIL")
+    if not from_address:
+        raise ImproperlyConfigured(
+            "正式環境缺少 DEFAULT_FROM_EMAIL 環境變數，請在部署平台設定寄件地址，"
+            "例如 noreply@tingpal.tw"
+        )
+    EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+    ANYMAIL = {"RESEND_API_KEY": resend_api_key}
+else:
+    # On the developer's computer the email is printed in the terminal; tests keep it in memory.
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    from_address = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@tingpal.tw")
+DEFAULT_FROM_EMAIL = f"聽伴 <{from_address}>"
+
+# The forgot-password page's attempt counts (#528) are shared by every Gunicorn process, so they
+# live in a database table (build.sh creates it); each lasts an hour from its first attempt.
+# The default cache stays in each process's memory: the guest scoring limit (spec #492) never
+# writes to the database.
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "password_reset": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "password_reset_limits",
+    },
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/

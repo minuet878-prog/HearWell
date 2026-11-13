@@ -65,6 +65,9 @@ jobs:
           # Same as the production site; production settings refuse to start without them.
           ALLOWED_HOSTS: tingpal.tw
           SECURE_HSTS_SECONDS: "3600"
+          DEFAULT_FROM_EMAIL: noreply@tingpal.tw
+          # A made-up key: the check never sends an email (spec #355).
+          RESEND_API_KEY: re_ci_only
         run: |
           python -m venv /tmp/prod
           /tmp/prod/bin/pip install -r requirements.txt
