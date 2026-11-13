@@ -1,4 +1,4 @@
-{% load static %}
+{% load static custom_filters %}
 
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -49,6 +49,10 @@
     {% if user.is_authenticated %}
     {# Clears unfinished answers kept in this browser when logging out. #}
     <script type="module" src="{% static 'screening/frontend/logout.js' %}"></script>
+    {% if request.resolver_match.url_name|asks_about_guest_results %}
+    {# #497: guest results kept in this browser, not come from the save card: the save page asks first whether to keep them in this account. #}
+    <script type="module" src="{% static 'screening/frontend/guest-ask.js' %}" data-ask-url="{% url 'guest_save' %}"></script>
+    {% endif %}
     {% endif %}
     {% block extra_head %}
     {% endblock %}

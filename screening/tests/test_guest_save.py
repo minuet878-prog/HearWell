@@ -278,3 +278,122 @@ class SavingTests(GuestSaveTestCase):
         self.assertFalse(self.user.submissions.exists())
         # An account's own answer page sends none.
         self.assertEqual(self.save(self.body(self.hhie_s, [4] * 10), uuid.uuid4()).status_code, 201)
+
+
+ASK_SCRIPT = 'src="/static/screening/frontend/guest-ask.js" data-ask-url="/guest/save"'
+
+
+class GuestAskRedirectTests(GuestSaveTestCase):
+    """#497 (#492 acceptance 26, 27): someone signed in by another way than the save card, with
+    guest results in this browser, is taken to the save page's question on opening a page;
+    guest-ask.js looks in the browser, the page only carries it."""
+
+    def test_pages_past_the_consent_and_the_home_page_carry_it(self):
+        self.client.force_login(consented_user(username="asked"))
+        for name in ("index", "questionnaire_list", "my_hearing"):
+            with self.subTest(page=name):
+                self.assertContains(self.client.get(reverse(name)), ASK_SCRIPT)
+
+    def test_the_save_page_itself_does_not_so_it_cannot_loop(self):
+        self.client.force_login(consented_user(username="saving_page"))
+        for url in (reverse("guest_save"), SAVE_FROM_CARD):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url), "guest-ask.js")
+
+    def test_nor_the_consent_page_before_agreeing(self):
+        # The save page needs the consent, so sending someone there from the consent would loop.
+        self.client.force_login(User.objects.create_user(username="not_agreed"))
+        response = self.client.get(reverse("consent"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "guest-ask.js")
+
+    def test_nor_the_pages_open_before_agreeing(self):
+        # Reading the notice or deleting the account must stay possible before agreeing.
+        self.client.force_login(User.objects.create_user(username="reading"))
+        for name in ("privacy", "account_settings", "delete_account", "family_guide"):
+            with self.subTest(page=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "guest-ask.js")
+
+    def test_nor_any_page_without_an_account(self):
+        for name in ("index", "privacy", "login", "register"):
+            with self.subTest(page=name):
+                self.assertNotContains(self.client.get(reverse(name)), "guest-ask.js")
+
+
+ASK_TITLE = '<h1 class="h3 mt-4">要把這次結果存到這個帳號嗎？</h1>'
+YES = "要，存進這個帳號"
+NO = "不要，清掉這次結果"
+
+
+class GuestAskQuestionTests(GuestSaveTestCase):
+    """#497 (the #493 mockup's F2): the save page not come from the card asks first; from the card
+    it saves straight away (#492 acceptance 22, 23 unchanged)."""
+
+    def setUp(self):
+        self.client.force_login(consented_user(username="question"))
+
+    def test_not_from_the_card_it_asks_with_what_each_answer_does(self):
+        response = self.client.get(reverse("guest_save"))
+        self.assertContains(response, ASK_TITLE)
+        self.assertContains(response, "data-asking")
+        self.assertContains(response, f"data-guest-ask-yes>{YES}</button>")
+        self.assertContains(response, f"data-guest-ask-no>{NO}</button>")
+        # Nothing is being saved until 要.
+        self.assertContains(response, "<p data-guest-saving hidden>正在保存，請稍候。</p>")
+        self.assertIn("no-store", response["Cache-Control"])
+
+    def test_from_the_card_it_saves_without_asking(self):
+        response = self.client.get(SAVE_FROM_CARD)
+        self.assertContains(response, '<h1 class="h3 mt-4">保存這次結果</h1>')
+        self.assertContains(response, "<p data-guest-saving>正在保存，請稍候。</p>")
+        self.assertNotContains(response, "data-asking")
+        self.assertNotContains(response, YES)
+        self.assertNotContains(response, NO)
+
+
+class GuestAskOtherWaysInTests(GuestSaveTestCase):
+    """#492 acceptance 26, 27: registering from the top's 註冊, or logging in to an account there
+    already, ends on a page that takes a browser with guest results to the question; until 要
+    the account has no new record."""
+
+    def test_registering_from_the_top_then_agreeing_lands_where_it_is_asked(self):
+        response = self.client.post(
+            reverse("register"),
+            {
+                "username": "grandson",
+                "email": "grandson@example.com",
+                "password1": PASSWORD,
+                "password2": PASSWORD,
+            },
+        )
+        self.assertRedirects(response, reverse("consent"), fetch_redirect_response=False)
+        response = self.client.post(reverse("consent"), {"agree": ""}, follow=True)
+        self.assertEqual(response.resolver_match.url_name, "index")
+        self.assertContains(response, ASK_SCRIPT)
+        self.assertContains(self.client.get(reverse("guest_save")), ASK_TITLE)
+        self.assertFalse(Submission.objects.exists())
+
+    def test_logging_in_to_another_account_lands_where_it_is_asked(self):
+        consented_user(username="another", password=PASSWORD)
+        response = self.client.post(
+            reverse("login"), {"username": "another", "password": PASSWORD}, follow=True
+        )
+        self.assertEqual(response.resolver_match.url_name, "index")
+        self.assertContains(response, ASK_SCRIPT)
+        self.assertContains(self.client.get(reverse("guest_save")), ASK_TITLE)
+        self.assertFalse(Submission.objects.exists())
+
+    def test_not_agreed_to_the_latest_notice_the_consent_comes_before_the_question(self):
+        user = User.objects.create_user(username="old_notice", password=PASSWORD)
+        Consent.objects.create(user=user, version=models.CONSENT_VERSION - 1)
+        self.client.force_login(user)
+        # The home page sends there all the same; the save page asks for the consent first.
+        self.assertContains(self.client.get(reverse("index")), ASK_SCRIPT)
+        save = reverse("guest_save")
+        consent = f"{reverse('consent')}?next={quote(save, safe='')}"
+        self.assertRedirects(self.client.get(save), consent, fetch_redirect_response=False)
+        self.client.post(consent, {"agree": ""})
+        self.assertContains(self.client.get(save), ASK_TITLE)
+        self.assertFalse(Submission.objects.exists())

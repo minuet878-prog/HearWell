@@ -38,6 +38,7 @@ export default defineConfig({
         "guest-result": "src/guest-result-main.js",
         "guest-save": "src/guest-save-main.js",
         "guest-home": "src/guest-home-main.js",
+        "guest-ask": "src/guest-ask-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

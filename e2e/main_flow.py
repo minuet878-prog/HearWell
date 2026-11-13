@@ -14446,3 +14446,81 @@ class GuestHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             tile.click()
             expect(self.page).to_have_url(re.compile(r"/guest/result/hhie-s$"))
             expect(self.main().locator("#result-score")).to_contain_text("總分 12 分")
+
+
+class GuestDeclineSaveTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """#497 (#492 acceptance 34, the second route; 27): a guest finishes HHIE-S, then logs in to
+    another account there already, not from the save card; asked first, 不要，清掉這次結果 leaves
+    that account with no new record and the browser with no guest result."""
+
+    fixtures = ("questions_fixture.json",)
+    PASSWORD = "Fake-pass-2468"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.hhie_s = Questionnaire.objects.get(code="hhie-s")
+        self.account = consented_user(username="decline_e2e", password=self.PASSWORD)
+        self.context = self.browser.new_context(**self.playwright.devices["Pixel 7"])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def guest_results(self):
+        return self.page.evaluate(
+            "Object.keys(localStorage).filter(key => key.startsWith('hearwell:guest-result:'))"
+        )
+
+    def test_logging_in_asks_and_no_clears_it_saving_nothing(self):
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/questionnaire/{self.hhie_s.pk}")
+            self.answer("沒戴")
+            self.next()
+            for number in range(1, QUESTION_COUNT + 1):
+                self.answer("有時", number)
+                if number < QUESTION_COUNT:
+                    self.next()
+            self.main().get_by_role("button", name="送出").click()
+            expect(self.main().get_by_text("總分 20 分")).to_be_visible()
+
+            # Not the save card's 登入保存: the tab bar's 登入.
+            nav = self.page.get_by_role("navigation", name="主要導覽")
+            nav.get_by_role("link", name="登入").click()
+            self.main().get_by_label("使用者名稱").fill("decline_e2e")
+            self.main().get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.main().get_by_role("button", name="登入").click()
+
+            # Home first, then the question.
+            expect(self.page).to_have_url(f"{self.live_server_url}/guest/save")
+            expect(
+                self.main().get_by_role("heading", name="要把這次結果存到這個帳號嗎？")
+            ).to_be_visible()
+            expect(self.main()).to_contain_text(
+                "這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。"
+            )
+            tile = self.main().locator(".journey-tile")
+            expect(tile).to_contain_text("聽力對生活的影響")
+            expect(tile).to_contain_text("20 分")
+            expect(tile).to_contain_text("輕度到中度影響")
+            # Asked, not saved.
+            self.assertFalse(Submission.objects.filter(user=self.account).exists())
+            self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
+
+            self.main().get_by_role("button", name="不要，清掉這次結果").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            self.assertEqual(self.guest_results(), [])
+            self.assertFalse(Submission.objects.filter(user=self.account).exists())
+            # Not asked again.
+            nav.get_by_role("link", name="紀錄").click()
+            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
+            self.assertFalse(Submission.objects.exists())
