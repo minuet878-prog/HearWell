@@ -136,7 +136,9 @@ def attempts(kind, value):
 
 
 def add_attempt(kind, value):
-    # The hour's end is kept with the count, so a later attempt does not move it.
+    # The hour's end is kept with the count, so a later attempt does not move it. Reading and
+    # writing are two steps, so requests at the very same moment may count once between them;
+    # the owner accepted the limits being about right (2026-11-13) over a new table for it.
     key = _attempts_key(kind, value)
     now = time.time()
     count, ends = caches["password_reset"].get(key, (0, now + RESET_WINDOW))
