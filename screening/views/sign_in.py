@@ -111,11 +111,20 @@ def line_start(request):
     return _start(request, "line")
 
 
+def _from_save_card(request, provider):
+    """The guest result's save card (#513, #543): where the trip ends is _save_card's to say."""
+    _require_keys(provider)
+    return HttpResponseRedirect(oidc.begin(request, provider, "save_card"))
+
+
 @require_http_methods(["GET"])
 def google_save_card(request):
-    """The guest result's save card (#513): where the trip ends is _save_card's to say."""
-    _require_keys("google")
-    return HttpResponseRedirect(oidc.begin(request, "google", "save_card"))
+    return _from_save_card(request, "google")
+
+
+@require_http_methods(["GET"])
+def line_save_card(request):
+    return _from_save_card(request, "line")
 
 
 def _callback(request, provider):

@@ -8,7 +8,8 @@
     <p class="mb-3">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
     <div class="flex flex-col gap-2">
         <a class="btn btn-primary btn-lg w-full" href="{% url 'register' %}?next={{ next }}">註冊保存</a>
-        {# #513 (the #507 mockup 7, W1): its own trip, which comes back to the save page; not inside LINE, where Google is blocked. #}
+        {# #513, #543 (the #507 mockup 7, the #539 mockup 7): each its own trip, which comes back to the save page; LINE above Google, as on the login page; Google not inside LINE, where it is blocked. #}
+        {% if line_save %}{% include "screening/line_button.html" with label="繼續" start="line_save_card" next="" %}{% endif %}
         {% if google_save %}{% include "screening/google_button.html" with label="繼續" start="google_save_card" next="" %}{% endif %}
         <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'login' %}?next={{ next }}">登入保存</a>
     </div>
