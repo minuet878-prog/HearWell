@@ -18,6 +18,7 @@ from screening.forms import (
     ForgotPasswordForm,
     RegisterForm,
     SetNewPasswordForm,
+    may_reset_password,
 )
 from screening.models import User
 from screening.views.common import health_data_page, safe_next
@@ -93,6 +94,11 @@ class SetNewPasswordView(auth_views.PasswordResetConfirmView):
     form_class = SetNewPasswordForm
     post_reset_login = True
     success_url = reverse_lazy("consent")
+
+    def get_user(self, uidb64):
+        # An account made an administrator or inactive after the email went out: an expired link.
+        user = super().get_user(uidb64)
+        return user if user is not None and may_reset_password(user) else None
 
     def form_valid(self, form):
         response = super().form_valid(form)

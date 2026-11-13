@@ -106,6 +106,11 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
 HELP_ADDRESS = "hearwellweb@gmail.com"
 
 
+def may_reset_password(user):
+    """Spec #355: ordinary active accounts only; an administrator resets on the server."""
+    return user.is_active and not user.is_staff and not user.is_superuser
+
+
 def _same_email(typed, stored):
     # Django's own check after its case-insensitive query: letters that only look alike after
     # NFKC folding must still match, so a look-alike address cannot reach someone else's account.
@@ -127,10 +132,10 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
     )
 
     def get_users(self, email):
-        users = User.objects.filter(
-            email__iexact=email, is_active=True, is_staff=False, is_superuser=False
-        )
-        return [user for user in users if _same_email(email, user.email)]
+        users = User.objects.filter(email__iexact=email)
+        return [
+            user for user in users if may_reset_password(user) and _same_email(email, user.email)
+        ]
 
     def clean_email(self):
         email = self.cleaned_data["email"]

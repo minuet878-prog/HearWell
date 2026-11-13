@@ -285,3 +285,22 @@ class ExpiredLinkTests(TestCase):
 
     def test_a_link_lasts_one_day(self):
         self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 24 * 60 * 60)
+
+
+class LinkOfAnAccountThatChangedTests(TestCase):
+    """#527 self-review (spec #355 story 34): an account made staff or superuser, or made
+    inactive, after the email was sent cannot use its link either."""
+
+    def test_the_link_reads_as_expired(self):
+        for number, change in enumerate(
+            ({"is_staff": True}, {"is_superuser": True}, {"is_active": False})
+        ):
+            with self.subTest(change=change):
+                email = f"later{number}@example.com"
+                user = consented_user(username=f"later_{number}", email=email, password=PASSWORD)
+                self.client.post(reverse("password_reset"), {"email": email})
+                link = _reset_link(mail.outbox[-1])
+                User.objects.filter(pk=user.pk).update(**change)
+                response = self.client.get(link, follow=True)
+                self.assertContains(response, "這個連結已經過期或用過了")
+                self.assertNotContains(response, 'type="password"')
