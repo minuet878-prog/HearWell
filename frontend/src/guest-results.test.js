@@ -128,6 +128,17 @@ describe("beside the answer drafts", () => {
   });
 });
 
+// The section's last row, as graded_result.html draws it for a guest (#498).
+const CLEAR_ROW = `
+  <details class="result-details" data-guest-clear="">
+    <summary><span>清除這次結果</span></summary>
+    <div>
+      <p tabindex="-1" data-guest-clear-question="">清除後就找不回來了，確定嗎？</p>
+      <button type="button" data-guest-clear-yes="">清除</button>
+      <button type="button" data-guest-clear-no="">不要</button>
+    </div>
+  </details>`;
+
 describe("showGuestResult (the guest result page)", () => {
   const SCORED = {
     questionnaire: { code: "hhie-s", name: "HHIE-S" },
@@ -135,7 +146,7 @@ describe("showGuestResult (the guest result page)", () => {
     wearing_text: "沒戴助聽器",
     scores: { total: 16, emotional: 12, social: 4 },
     level: { code: "mild_to_moderate", text: "輕度到中度影響", color: "mild_to_moderate" },
-    html: '<div class="result-banner">總分 16 分</div>',
+    html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}`,
   };
   let root;
   let navigate;
@@ -218,7 +229,7 @@ describe("showGuestResult (the guest result page)", () => {
 
   // #492 acceptance 15, on the save card (the #493 mockup's D1): 2 days after, 5 days left.
   it("says on the save card how many days the result has left", async () => {
-    const withCard = { ...SCORED, html: "<p>還留 <span data-guest-days-left></span> 天</p>" };
+    const withCard = { ...SCORED, html: `<p>還留 <span data-guest-days-left></span> 天</p>${CLEAR_ROW}` };
     for (const [finishedAt, left] of [[NOW - 2 * DAY, "5"], [NOW, "7"], [NOW - 6.5 * DAY, "1"]]) {
       localStorage.clear();
       saveGuestResult(guestResult({ finishedAt }));
@@ -326,5 +337,104 @@ describe("saveGuestResults (the save page)", () => {
     await saveGuestResults({ root, now: NOW, fetchSave, navigate });
     expect(fetchSave).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("/");
+  });
+});
+
+// #498 (#492 acceptance 16, 17; the #493 mockup's E1): the red row under the result opens its
+// question; 不要 changes nothing, 清除 forgets only this questionnaire's result and goes home.
+describe("清除這次結果 (the guest result page)", () => {
+  const SCORED = { wearing_text: "沒戴助聽器", html: `<div class="result-banner">總分 16 分</div>${CLEAR_ROW}` };
+  let root;
+  let navigate;
+
+  beforeEach(async () => {
+    document.body.innerHTML = `
+      <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
+        <div data-guest-shown hidden>
+          <p>HHIE-S・<span data-guest-date></span> 作答・<span data-guest-wearing></span></p>
+          <div data-guest-section></div>
+        </div>
+        <p role="alert" data-guest-error></p>
+      </div>`;
+    root = document.getElementById("guest-result");
+    navigate = vi.fn();
+    Element.prototype.scrollIntoView = vi.fn();
+    saveGuestResult(guestResult());
+    saveGuestResult(guestResult({ code: "hhia-s", questionnaireId: 3, total: 0 }));
+    const fetchScore = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(SCORED) }));
+    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+  });
+
+  afterEach(() => {
+    delete Element.prototype.scrollIntoView;
+  });
+
+  const row = () => root.querySelector("[data-guest-clear]");
+  const opened = async () => {
+    const toggled = new Promise((resolve) => row().addEventListener("toggle", resolve, { once: true }));
+    row().open = true;
+    await toggled;
+  };
+
+  it("opens the question under the row, with focus on it and its buttons in view", async () => {
+    await opened();
+    expect(document.activeElement).toBe(root.querySelector("[data-guest-clear-question]"));
+    expect(document.activeElement.textContent).toBe("清除後就找不回來了，確定嗎？");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    expect(Element.prototype.scrollIntoView.mock.contexts[0]).toBe(root.querySelector("[data-guest-clear-no]"));
+  });
+
+  it("changes nothing on 不要: folded back, focus on the row, both results kept", async () => {
+    await opened();
+    root.querySelector("[data-guest-clear-no]").click();
+    expect(row().open).toBe(false);
+    expect(document.activeElement).toBe(row().querySelector("summary"));
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
+    expect(loadGuestResult("hhia-s", NOW)).not.toBeNull();
+    expect(root.querySelector("[data-guest-shown]").hidden).toBe(false);
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("forgets only this questionnaire's on 清除 and goes home, the page emptied first", async () => {
+    await opened();
+    root.querySelector("[data-guest-clear-yes]").click();
+    expect(loadGuestResult("hhie-s", NOW)).toBeNull();
+    expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
+    expect(loadGuestResult("hhia-s", NOW)).toEqual(guestResult({ code: "hhia-s", questionnaireId: 3, total: 0 }));
+    expect(navigate).toHaveBeenCalledWith("/");
+    // Nothing of it left for the browser's cache of this page to show.
+    expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
+    expect(root.querySelector("[data-guest-section]").innerHTML).toBe("");
+  });
+
+  it("goes home again when the page comes back from the browser's cache after 清除", async () => {
+    root.querySelector("[data-guest-clear-yes]").click();
+    navigate.mockClear();
+    const fetchScore = vi.fn();
+    // What guest-result-main.js does on a pageshow from the cache.
+    await showGuestResult({ root, now: NOW, fetchScore, navigate });
+    expect(fetchScore).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("/");
+    expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
+  });
+});
+
+// #492 acceptance 19: 7 full days on, the guest result page shows none and the browser drops it.
+describe("a guest result 7 days on (the guest result page)", () => {
+  it("is not shown and is deleted from the browser", async () => {
+    document.body.innerHTML = `
+      <div id="guest-result" data-code="hhie-s" data-score-url="/api/guest-scores/" data-home-url="/">
+        <div data-guest-shown hidden><div data-guest-section></div></div>
+        <p role="alert" data-guest-error></p>
+      </div>`;
+    const root = document.getElementById("guest-result");
+    saveGuestResult(guestResult());
+    const fetchScore = vi.fn();
+    const navigate = vi.fn();
+    await showGuestResult({ root, now: NOW + 7 * DAY + 1, fetchScore, navigate });
+    expect(fetchScore).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("/");
+    expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
+    expect(localStorage.getItem(`${GUEST_PREFIX}hhie-s`)).toBeNull();
   });
 });

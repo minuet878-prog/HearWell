@@ -1,0 +1,11 @@
+{# #498 (the #493 mockup's E1): a guest result's last list row, in red, opens its confirmation under it rather than over the page; the buttons as #470's account deletion, red solid above, the blue frame under. guest-results.js clears the result and goes home on 清除, folds it back on 不要. #}
+<details class="result-details guest-clear" data-guest-clear>
+    {% include "screening/result_details_summary.html" with icon="trash" title="清除這次結果" %}
+    <div class="guest-clear-confirm">
+        <p class="guest-clear-question" tabindex="-1" data-guest-clear-question>清除後就找不回來了，確定嗎？</p>
+        <div class="flex flex-col gap-4">
+            <button type="button" class="btn btn-danger btn-lg w-full" data-guest-clear-yes>清除</button>
+            <button type="button" class="btn btn-outline-primary btn-lg w-full" data-guest-clear-no>不要</button>
+        </div>
+    </div>
+</details>

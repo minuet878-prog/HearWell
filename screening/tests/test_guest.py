@@ -391,3 +391,42 @@ class PrivacyTests(GuestTestCase):
         response = self.client.get(reverse("privacy"))
         self.assertContains(response, "未註冊時只計算、不儲存，作答留在您的瀏覽器")
         self.assertEqual(models.CONSENT_VERSION, 4)
+
+
+class GuestClearRowTests(GuestTestCase):
+    """#498 (#492 acceptance 16, the #493 mockup's E1): the guest result's section ends with the
+    red row 「清除這次結果」, which opens its confirmation under it; a record's page has none."""
+
+    CONFIRM = "清除後就找不回來了，確定嗎？"
+
+    def test_the_guest_section_ends_with_the_row_and_its_confirmation(self):
+        html = self.guest_score(self.body(self.hhie_s, [4] * 10)).json()["html"]
+        row = re.search(r"<details [^>]*data-guest-clear>(.*?)</details>", html, re.S)
+        self.assertIsNotNone(row)
+        row = row.group(1)
+        summary = re.search(r"<summary>(.*?)</summary>", row, re.S).group(1)
+        self.assertIn('data-icon="trash"', summary)
+        self.assertIn("<span>清除這次結果</span>", summary)
+        self.assertIn(f"data-guest-clear-question>{self.CONFIRM}</p>", row)
+        # Red solid 清除 above, the blue frame 不要 under it (#470's account deletion).
+        self.assertRegex(
+            row,
+            r'<button type="button" class="btn btn-danger[^"]*" data-guest-clear-yes>清除</button>'
+            r'\s*<button type="button" class="btn btn-outline-primary[^"]*" data-guest-clear-no>'
+            r"不要</button>",
+        )
+        # The last row of the result's list, after 看完整說明.
+        self.assertLess(html.index('class="result-details"'), html.index("data-guest-clear"))
+
+    def test_a_records_result_page_has_no_clear_row(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            "/api/submissions/",
+            json.dumps(self.body(self.hhie_s, [4] * 10)),
+            content_type="application/json",
+            headers={"Idempotency-Key": str(uuid.uuid4())},
+        )
+        page = self.client.get(reverse("result", args=[response.json()["id"]]))
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, "data-guest-clear")
+        self.assertNotContains(page, self.CONFIRM)
