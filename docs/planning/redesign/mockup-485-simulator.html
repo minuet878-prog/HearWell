@@ -125,6 +125,43 @@
   table.spec th { background: var(--surface); color: var(--heading); }
   table.spec td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .chart { background: #fff; border-radius: 14px; padding: 12px; max-width: 680px; }
+
+  /* ---- ⓪ special directions (new for this page only) ---- */
+  .chips { display: flex; flex-wrap: wrap; gap: calc(.4 * var(--r)); margin: 0 0 calc(.75 * var(--r)); }
+  .chip { display: inline-flex; align-items: center; min-height: calc(2.75 * var(--r)); padding: 0 calc(.8 * var(--r)); border-radius: 999px; background: var(--surface); color: var(--heading); font-weight: 500; white-space: nowrap; }
+  .chip.on { background: var(--primary-sel); box-shadow: inset 0 0 0 2px var(--primary); color: var(--primary); font-weight: 700; }
+  .chip.on::before { content: "✓ "; white-space: pre; }
+  /* D1: the sound bars */
+  .eqp { padding: calc(.75 * var(--r)) calc(.875 * var(--r)) calc(.625 * var(--r)); border-radius: calc(1.5 * var(--r)); background: var(--primary-soft); }
+  .eq-head { margin: 0 0 calc(.625 * var(--r)) !important; color: var(--heading); line-height: 1.45; }
+  .eq-head b { color: var(--primary); }
+  .eq { display: flex; align-items: flex-end; gap: calc(.4 * var(--r)); height: calc(5 * var(--r)); }
+  .eqbar { position: relative; flex: 1; height: 100%; border-radius: calc(.5 * var(--r)); background: #fff; box-shadow: inset 0 0 0 1.5px var(--line-strong); overflow: hidden; }
+  .eqbar::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(138,148,163,.22) 6px 8px); }
+  .eqfill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: calc(.5 * var(--r)); background: var(--primary); }
+  .eq-ends { display: flex; justify-content: space-between; gap: var(--r); margin-top: calc(.375 * var(--r)); color: var(--muted); }
+  .player { display: flex; align-items: center; justify-content: center; gap: calc(1.25 * var(--r)); margin: calc(.625 * var(--r)) 0 calc(.25 * var(--r)); }
+  .pbig { width: calc(4.4444 * var(--r)); height: calc(4.4444 * var(--r)); border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(31,78,140,.28); }
+  .pbig svg { width: 42%; height: 42%; fill: currentColor; margin-left: 6%; }
+  .pbig.pause svg { margin-left: 0; }
+  .pside { width: calc(3.1111 * var(--r)); height: calc(3.1111 * var(--r)); border-radius: 50%; border: 2px solid var(--primary); background: #fff; color: var(--primary); display: grid; place-items: center; font-size: calc(1.5 * var(--r)); font-weight: 700; line-height: 1; }
+  .pcap { margin: 0 0 calc(.75 * var(--r)) !important; text-align: center; color: var(--heading); font-weight: 700; }
+  .pcap small { font-size: var(--r); font-weight: 400; color: var(--muted); }
+  .switch.ico-sw span { gap: calc(.4 * var(--r)); }
+  .switch.ico-sw svg { width: calc(1.2 * var(--r)); height: calc(1.2 * var(--r)); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* D2: the dark player */
+  .dark { position: relative; overflow: hidden; padding: var(--r) var(--r) calc(.875 * var(--r)); border-radius: calc(1.5 * var(--r)); background: var(--primary); color: #fff; }
+  .dark .rings { position: absolute; left: 50%; top: calc(4.6 * var(--r)); width: calc(15 * var(--r)); height: calc(15 * var(--r)); transform: translate(-50%, -50%); pointer-events: none; }
+  .dark .pcap, .dark .pcap small { color: #fff; position: relative; }
+  .dark .pbig { position: relative; background: #fff; color: var(--primary); box-shadow: none; }
+  .dark .pside { position: relative; background: transparent; border-color: #fff; color: #fff; }
+  .dark .now-d { position: relative; margin: 0 0 calc(.75 * var(--r)) !important; text-align: center; }
+  .dark .switch { position: relative; background: rgba(255,255,255,.14); }
+  .dark .switch span { color: #fff; }
+  .dark .switch span.on { background: #fff; box-shadow: none; color: var(--primary); }
+  .dark .reveal { position: relative; color: #fff; }
+  /* D3: the drawing */
+  .scene { display: block; width: 100%; height: auto; margin: 0 0 calc(.25 * var(--r)); border-radius: calc(1.5 * var(--r)); background: var(--primary-soft); }
 </style>
 </head>
 <body>
@@ -140,6 +177,8 @@
   <symbol id="i-family" viewBox="0 0 24 24"><circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 20c0-3.3 2.2-6 5-6s5 2.7 5 6"/><path d="M14 20c0-2.6 1.3-4.6 3-4.6s3 2 3 4.6"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
   <symbol id="i-guide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v9h12v-9"/></symbol>
+  <symbol id="i-fork" viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8"/><path d="M11 3v8a2 2 0 0 1-2 2"/><path d="M17 3c-1.7 1.2-2.5 3.5-2.5 6.5 0 2 1 3.5 2.5 3.5v8"/></symbol>
 </svg>
 <div class="sheet">
   <h1>#485 聽損模擬（設計圖）</h1>
@@ -148,11 +187,130 @@
 
   <div class="intro">
     <h2>這頁在比什麼、我建議哪個</h2>
+    <p><b>比 0（第 ⓪ 組，新）：整體樣子。</b>照您說的「符合網站風格、又不要太像其他頁」，畫了三個方向：<b>D1 聲音條</b>、<b>D2 深藍播放器</b>、<b>D3 插圖對話</b>；第 ① 組 A 是只用網站現有元件的版本，留著對照。<b>建議 D1</b>：只有它在換程度、切正常聽時「看得到」少了哪些聲音，對家人最有說服力，又只用網站本來的藍與淡藍。<b>代價：</b>多一個要做、要測的元件。選定方向後，第 ③ 組的狀態和第 ④ 組的 200% 會照選定的方向重畫。</p>
     <p><b>比 1（第 ① 組）：</b>句子<b>一次一句的播放卡（A）</b>，還是<b>四句排成清單（B）</b>。</p>
     <p><b>建議 A</b>：「正常聽｜模擬」就在播放鈕正下方，播放中手指不用移遠就能來回切，這是整頁最重要的動作；程度、播放、切換都在第一個畫面裡。<b>代價：</b>要按「下一句」才看得到別的句子，一次只看得到一句。</p>
     <p><b>比 2（第 ② 組）：</b>程度用<b>四格選取格（建議）</b>還是<b>下拉框</b>。建議選取格：四種一眼看完、一按就換，播放中換程度也是一按；下拉框要按兩次，播放中不好換。<b>代價：</b>佔的高度多約 50px。</p>
-    <p><b>請您決定：</b>比 1、比 2；第 ⑥ 組的代表聽力圖、程度說明、四句話、預設程度、餐廳背景的訊噪比、其他字句（逐項審）；第 ⑤ 組家人專區入口放第幾列。</p>
+    <p><b>請您決定：</b>比 0（選 D1／D2／D3 的話，比 1 就照它的一次一句、比 2 照它的膠囊）；比 0 選原本的 A 時再看比 1、比 2；第 ⑥ 組的代表聽力圖、程度說明、四句話、預設程度、餐廳背景的訊噪比、其他字句（逐項審）；第 ⑤ 組家人專區入口放第幾列。</p>
   </div>
+
+  <!-- ============ ⓪ special directions ============ -->
+  <section class="group">
+    <h2>⓪ 特別設計：三個方向（新）</h2>
+    <p class="q">您要這頁「符合網站風格、又不要太像其他頁」。三個方向都用網站的藍、白底、Noto Sans TC、圓角和 18px 字，播放與切換的規則跟第 ① 組 A 一樣（一次一句、正常聽｜模擬就在播放下面），只換樣子。程度都改成一排膠囊（四顆放得下一行，比選取格省約 100px）。右邊第四支是 D1 切到正常聽的樣子。</p>
+    <div class="row">
+      <div class="opt">
+        <p class="opt-label">D1　聲音條 <span class="rec">建議</span></p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="eqp">
+            <p class="eq-head"><span class="draft"><b>高頻下降</b>：尖細的聲音大多聽不到</span></p>
+            <div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:85%"></span></span><span class="eqbar"><span class="eqfill" style="height:80%"></span></span><span class="eqbar"><span class="eqfill" style="height:75%"></span></span><span class="eqbar"><span class="eqfill" style="height:55%"></span></span><span class="eqbar"><span class="eqfill" style="height:35%"></span></span><span class="eqbar"><span class="eqfill" style="height:25%"></span></span></div>
+            <div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div>
+          </div>
+          <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+          <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+          <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+          <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>特別的地方</b>：六根條由低音排到高音，藍色是還聽得到的、斜線是聽不到的，高度直接從代表聽力圖算（100 減該頻率的 dB HL）。換程度或切正常聽時條跟著變，眼睛也看得到差別；條下面用注音標出低沉、尖細的音，接得上語言香蕉區。大圓播放鈕兩邊是上一句、下一句，像手機的播放器。</p>
+          <p><b>代價</b>：多一個要做、要測的元件（條是畫的，要另寫讀螢幕軟體的文字，例如「高音大多聽不到」）；條只是示意、不是真的聽力圖，要靠標題那一行講清楚。換程度時條長高縮短的動畫，系統開「減少動態效果」時改成直接換。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">D2　深藍播放器</p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="dark">
+            <svg class="rings" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"><circle cx="50" cy="50" r="22"/><circle cx="50" cy="50" r="33"/><circle cx="50" cy="50" r="44"/></svg>
+            <div class="player" style="margin-top:0"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+            <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+            <p class="now-d"><span class="draft">現在聽到：<b>高頻下降</b>的模擬</span></p>
+            <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+            <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+            <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+          </div>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>特別的地方</b>：整塊播放區是深藍底、白色大播放鈕，後面淡淡的聲波圈，像一台收音機，一眼看出「這頁是拿來聽的」。</p>
+          <p><b>代價</b>：全站改版定了白底、只有按鈕用實心藍（ADR 0043），這是第一塊大面積深藍，看起來最不像同一個網站；白字在深藍上對比 8.31:1 沒問題。沒有聲音條，看不出少了哪些聲音，只能靠「現在聽到…」那行字。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">D3　插圖對話</p>
+        <div class="phone" style="min-height:900px"><div class="pg">
+          <p class="brand">聽伴</p>
+          <a class="back">‹ 了解</a>
+          <h1 class="h1">聽損模擬</h1>
+          <p>聽聽看他聽到的聲音：選一種程度，按播放，播放時可以切到「正常聽」比一比。</p>
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <svg class="scene" viewBox="0 0 342 170" aria-hidden="true" fill="none" stroke="#1f4e8c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M24 132h294" stroke="#8a94a3"/>
+            <path d="M52 132v26M290 132v26" stroke="#8a94a3"/>
+            <!-- elder, left -->
+            <circle cx="78" cy="70" r="20"/><path d="M66 68h8M82 68h8M74 68h8" stroke-width="2"/><circle cx="70" cy="68" r="5" stroke-width="2"/><circle cx="86" cy="68" r="5" stroke-width="2"/>
+            <path d="M50 132c0-24 12-38 28-38s28 14 28 38"/>
+            <path d="M58 64c-2-14 8-22 20-22s22 8 20 22" stroke-width="2"/>
+            <!-- family, right -->
+            <circle cx="262" cy="74" r="18"/><path d="M238 132c0-22 10-34 24-34s24 12 24 34"/>
+            <path d="M246 68c2-12 10-16 16-16s14 4 16 16" stroke-width="2"/>
+            <!-- speech bubble from family toward elder -->
+            <path d="M150 22h80a14 14 0 0 1 14 14v30a14 14 0 0 1-14 14h-34l-14 14v-14h-32a14 14 0 0 1-14-14V36a14 14 0 0 1 14-14z" fill="#fff"/>
+            <path d="M170 51c4-8 8-8 12 0s8 8 12 0 8-8 12 0" stroke-width="2.6"/>
+            <!-- sound reaching the elder, fading -->
+            <path d="M122 60c-4 4-4 12 0 16" stroke-width="2"/><path d="M112 54c-7 7-7 21 0 28" stroke-width="2" stroke-dasharray="3 5"/>
+            <path d="M34 110h14" stroke="#8a94a3"/><path d="M296 110h14" stroke="#8a94a3"/>
+          </svg>
+          <div class="player"><span class="pside">‹</span><span class="pbig"><svg><use href="#i-play"/></svg></span><span class="pside">›</span></div>
+          <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+          <div class="switch"><span class="on">模擬</span><span>正常聽</span></div>
+          <div class="switch ico-sw"><span class="on"><svg><use href="#i-house"/></svg>安靜</span><span><svg><use href="#i-fork"/></svg>餐廳</span></div>
+          <a class="reveal"><svg><use href="#i-down"/></svg>顯示這句話</a>
+        </div>
+        <div class="fold"><span>手機第一個畫面到這裡</span></div>
+        <nav class="bar float"><span class="tb"><svg class="i"><use href="#i-home"/></svg>首頁</span><span class="tb"><svg class="i"><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg class="i"><use href="#i-chart"/></svg>紀錄</span><span class="tb on"><svg class="i"><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note">
+          <p><b>特別的地方</b>：一張線條圖：餐桌兩邊，家人說話、聲音傳到長輩那裡越來越淡，畫風沿用家人專區「怎麼跟他說話」的線條圖。最有溫度，家人一看就代入。</p>
+          <p><b>代價</b>：圖是固定的，換程度、切正常聽時畫面不會變，只能靠聲音；要多畫一張圖給您審。圖佔約 170px，「安靜｜餐廳」剛好貼著分頁列上緣。</p>
+        </div>
+      </div>
+
+      <div class="opt">
+        <p class="opt-label">D1 播放中，切到正常聽（只畫上半）</p>
+        <div class="phone crop"><div class="pg">
+          <div class="chips"><span class="chip on">高頻下降</span><span class="chip">輕度</span><span class="chip">中度</span><span class="chip">中重度</span></div>
+          <div class="eqp">
+            <p class="eq-head"><span class="draft"><b>正常聽</b>：每一種聲音都聽得到</span></p>
+            <div class="eq" aria-hidden="true"><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span><span class="eqbar"><span class="eqfill" style="height:100%"></span></span></div>
+            <div class="eq-ends"><span>低沉 ㄇㄅㄨ</span><span>尖細 ㄙㄒㄘ</span></div>
+          </div>
+          <div class="player"><span class="pside">‹</span><span class="pbig pause"><svg><use href="#i-pause"/></svg></span><span class="pside">›</span></div>
+          <p class="pcap">第 1 句・女聲<small>（共 4 句）</small></p>
+          <div class="switch"><span>模擬</span><span class="on">正常聽</span></div>
+        </div></div>
+        <div class="note"><p>六根條全滿；切回模擬時高音那幾根縮回去。程度膠囊保持選中高頻下降。</p></div>
+      </div>
+    </div>
+  </section>
 
   <!-- ============ ① A and B ============ -->
   <section class="group">
