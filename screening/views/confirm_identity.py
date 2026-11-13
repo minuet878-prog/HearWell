@@ -16,6 +16,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.http import Http404, HttpResponseRedirect, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -25,7 +26,7 @@ from django.views.decorators.http import require_http_methods
 
 from screening import oidc
 from screening.forms import PasswordConfirmForm
-from screening.models import SignInMethod
+from screening.models import SignInMethod, User
 from screening.views.common import line_way_out, provider_logo, works_here
 from screening.views.provider_words import WORDS
 
@@ -110,7 +111,7 @@ def came_back(request, identity):
         # Removing has no page to go on to: it is done now, as the password does it (#506
         # acceptance 19), checked again in case the account changed during the trip.
         if action in REMOVES:
-            return _remove(request, _to_remove(request.user, REMOVES[action]))
+            return _remove(request, REMOVES[action])
         _confirm(request, action)
     else:
         request.session[CONFIRM_ERROR] = WORDS[identity.provider].not_yours
@@ -162,15 +163,20 @@ def _to_remove(user, provider):
         raise Http404
     if user.is_admin:
         raise PermissionDenied
-    method = get_object_or_404(SignInMethod, user=user, provider=provider)
+    method = get_object_or_404(user.sign_in_methods, provider=provider)
     if not method.can_be_removed():
         raise PermissionDenied
     return method
 
 
-def _remove(request, method):
-    method.delete()
-    messages.success(request, WORDS[method.provider].removed)
+def _remove(request, provider):
+    # Checked again and removed with the account's row locked: two removals at once (two
+    # browsers, LINE and Google) take turns, so the second sees the first's and an account
+    # without a password always keeps a way in (cross-review of #506, Standards 1).
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        _to_remove(user, provider).delete()
+    messages.success(request, WORDS[provider].removed)
     return HttpResponseRedirect(f"{reverse('account_settings')}#sign-in-methods")
 
 
@@ -183,7 +189,8 @@ def confirm_identity(request):
         raise Http404
     words, page = ACTIONS[action]
     # Refused before the password is asked for, as on the POST that removes it.
-    removing = _to_remove(request.user, REMOVES[action]) if action in REMOVES else None
+    if action in REMOVES:
+        _to_remove(request.user, REMOVES[action])
     # Back here already confirmed (from Google): on to the action's page.
     if page is not None and is_confirmed(request, action):
         return redirect(page)
@@ -192,8 +199,8 @@ def confirm_identity(request):
     if user.has_usable_password():
         form = PasswordConfirmForm(request.POST if request.method == "POST" else None, user=user)
         if form.is_valid():
-            if removing is not None:
-                return _remove(request, removing)
+            if action in REMOVES:
+                return _remove(request, REMOVES[action])
             _confirm(request, action)
             return redirect(page)
     elif request.method == "POST":
