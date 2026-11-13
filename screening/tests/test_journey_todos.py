@@ -8,11 +8,12 @@ from unittest.mock import patch
 
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
-from django.test import TransactionTestCase
+from django.test import TestCase, TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from screening import models
 from screening.fitting_route import AUDIOGRAM, fitting_state
 from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, stop_todos
 from screening.models import (
@@ -853,3 +854,28 @@ class Ticket482PairMigrationTests(TransactionTestCase):
             ),
             [(date(2026, 10, 3), "other", True, 1)],
         )
+
+
+class Ticket481PrivacyListTests(TestCase):
+    """The ticks are named where the account's data is listed: the privacy notice's 蒐集哪些資料
+    and the delete-account page. A minor fix as #181 was (ADR 0014): the date moves, the consent
+    version stays and nobody agrees again."""
+
+    def test_the_privacy_notice_lists_the_ticks(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        collected = content[content.index("蒐集哪些資料") : content.index("存放在哪裡、保存多久")]
+        self.assertIn(
+            "<li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>", collected
+        )
+
+    def test_the_delete_account_page_lists_the_ticks(self):
+        self.client.force_login(consented_user(username="todo_privacy_delete"))
+        response = self.client.get(reverse("delete_account"))
+        self.assertContains(response, "<li>照顧旅程的待辦打勾</li>", html=True)
+
+    def test_the_date_moved_and_the_version_stayed(self):
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
+        self.assertEqual(models.CONSENT_VERSION, 4)
+        user = consented_user(username="todo_privacy_agreed")
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse("questionnaire_list")).status_code, 200)
