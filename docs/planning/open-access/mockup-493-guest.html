@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#493 免註冊先篩檢設計圖</title>
+<style>
+  /* Static mockup: no JavaScript (the preview shows a snapshot). Colours are the site's tokens
+     (frontend/src/site.css); sizes inside a phone frame are in em, so a frame at 36px is the
+     200% text version of the same markup. Purple is annotation only, not part of the design. */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --primary-sel: #e8eef7;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line: #e3e7ec; --line-strong: #8a94a3; --surface: #f4f6f8;
+    --normal: #14573c; --normal-bg: #e3f4ec; --mild: #704800; --mild-bg: #fff4d6;
+    --severe: #8f2a12; --severe-bg: #feece7;
+    --annot: #7e22ce;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 6px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .group { margin: 48px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); max-width: 1100px; }
+  .cols { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .opt { width: 390px; }
+  .opt-label { font-weight: 700; color: var(--heading); margin: 0 0 6px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .tagc { color: #fff; background: var(--annot); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 2px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.55; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+  .note code, .box code { font-size: 13px; background: #fff; padding: 0 3px; border-radius: 4px; }
+  .box { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 20px; max-width: 1100px; font-size: 16px; }
+  .box h3 { margin: 0 0 6px; font-size: 20px; color: var(--heading); }
+  .box ul { margin: 6px 0 0; padding-left: 1.2em; }
+  .draft { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: 3px; }
+  .newline { outline: 3px solid var(--annot); outline-offset: 2px; border-radius: 3px; }
+
+  /* ---- phone frame (everything inside in em) ---- */
+  .ph { width: 390px; background: #fff; border-radius: 28px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: 18px; line-height: 1.6; color: var(--body); overflow-wrap: anywhere; position: relative; }
+  .ph.x2 { font-size: 36px; }
+  .ph a { color: inherit; text-decoration: none; }
+  .hd { display: flex; align-items: center; gap: .4em; padding: .45em 16px; border-bottom: 1px solid var(--line); font-size: 1.2222em; font-weight: 700; color: var(--primary); }
+  .hd .logo { width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--primary); flex: none; }
+  .hd .tint { color: #1d6f99; }
+  .hd .acct { margin-left: auto; font-size: .8182em; font-weight: 400; color: var(--body); }
+  .pg { padding: 1.1em 16px 1.4em; }
+  .t1 { font-size: 1.5556em; color: var(--heading); margin: 0 0 .45em; line-height: 1.3; font-weight: 700; }
+  .ph p { margin: 0 0 1em; }
+  .meta { margin: 0 0 1em; }
+  .muted { color: var(--muted); }
+
+  .btn { display: flex; align-items: center; justify-content: center; gap: .4em; width: 100%; min-height: 2.8em; padding: .3em .8em; border-radius: .7em; border: 2px solid transparent; font-size: 1.1111em; font-weight: 700; text-align: center; line-height: 1.35; }
+  .btn + .btn { margin-top: .6em; }
+  .ph .solid { background: var(--primary); color: #fff; }
+  .ph .outline { background: #fff; color: var(--primary); border-color: var(--primary); }
+  .ph .danger { background: var(--severe); color: #fff; }
+  .btn-start::before { content: ""; width: 1.4em; height: 1.4em; border-radius: 50%; background: #fff; flex: none; opacity: .9; }
+  .ph .tlink { display: inline-flex; align-items: center; min-height: 2.4444em; color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: .25em; }
+
+  .preview { border: 2px dashed var(--line-strong); border-radius: .75em; padding: .875em 1em .25em; margin-bottom: 1.25em; }
+  .preview-t { font-weight: 700; color: var(--heading); margin: 0 0 .75em !important; }
+  ol.steps { list-style: none; margin: 0 0 1em; padding: 0; }
+  ol.steps li { position: relative; display: flex; gap: .75em; padding-bottom: 1em; }
+  ol.steps li:last-child { padding-bottom: 0; }
+  ol.steps li:not(:last-child)::after { content: ""; position: absolute; top: 2.5em; bottom: .25em; left: calc(1.125em - 1px); width: 2px; border-radius: 999px; background: var(--line-strong); }
+  .num { flex: none; width: 2.25em; height: 2.25em; border: 2px solid var(--primary); border-radius: 50%; background: #fff; color: var(--primary); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .stepb { flex: 1 1 0; min-width: 0; padding-top: .2em; }
+  .x2 ol.steps li { flex-direction: column; gap: .4em; }
+  .x2 ol.steps li::after { display: none; }
+  .links { display: flex; flex-wrap: wrap; column-gap: 1.5em; margin: .5em 0 1em; padding: .375em 0 0; border-top: 1px solid var(--line); list-style: none; }
+  .ph .links a { display: inline-flex; align-items: center; min-height: 2.4444em; font-weight: 700; color: var(--primary); text-decoration: underline; text-underline-offset: .25em; }
+
+  .ph .L1n { background: var(--normal-bg); color: var(--normal); }
+  .ph .L1m { background: var(--mild-bg); color: var(--mild); }
+  .ph .L1s { background: var(--severe-bg); color: var(--severe); }
+  .tile { display: block; position: relative; border-radius: .75em; padding: .75em 2.4em .75em 1em; margin-bottom: 1.25em; }
+  .tile .lab { display: block; font-weight: 700; }
+  .tile .sc { display: block; font-size: 2em; font-weight: 700; line-height: 1.15; }
+  .tile .sc small { font-size: .5em; }
+  .tile .lv { display: block; font-size: 1.1111em; font-weight: 700; }
+  .tile .sub { display: block; }
+  .tile .arr { position: absolute; right: .5em; top: 50%; transform: translateY(-50%); font-size: 2em; font-weight: 700; line-height: 1; }
+  .tile .tlink { color: inherit; }
+  .notice { display: flex; gap: .5em; align-items: flex-start; padding: .75em 1em; border-radius: .75em; background: var(--surface); color: var(--heading); margin-bottom: 1.25em; }
+  .notice svg { flex: none; width: 1.5em; height: 1.5em; margin-top: .1em; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .card-soft { background: var(--primary-soft); border-radius: 1.5em; padding: 1em 1.125em; margin-bottom: 1.25em; color: var(--heading); }
+  .card-soft .lab { display: block; margin: 0; color: var(--primary); font-weight: 700; }
+
+  .banner { padding: 1em 1.25em; border-radius: .75em; }
+  .banner .s { margin: 0 !important; font-size: 1.1111em; }
+  .banner .n { font-size: 2.4em; font-weight: 700; line-height: 1.05; }
+  .banner h2 { margin: 0; font-size: 1.2222em; font-weight: 700; line-height: 1.4; }
+  .one { margin: 1em 0 0 !important; color: var(--heading); }
+  .nlinks { margin: .25em 0 0 !important; }
+  .next { margin-top: 1.25em; padding: 1em 1.125em; border-radius: 1.5em; background: var(--primary-soft); }
+  .next .lab { margin: 0 !important; color: var(--primary); font-weight: 700; }
+  .next h2 { margin: .125em 0 .5em; font-size: 1.1111em; color: var(--heading); font-weight: 700; }
+  .next .why { margin: 0 0 .5em !important; color: var(--heading); }
+  .next .more { margin: 0 0 .85em !important; color: var(--heading); }
+  .next .keep { margin: .85em 0 0 !important; color: var(--muted); }
+  .next .keep + .keep { margin-top: .25em !important; }
+  .next .tlink { margin-top: .4em; }
+  .rlist { margin: 1.25em 0 1.5em; }
+  .row { display: flex; align-items: center; gap: .75em; min-height: 3.5556em; padding: .875em .25em; border-bottom: 1px solid var(--line); }
+  .rlist > .row:first-child { border-top: 1px solid var(--line); }
+  .ico { flex: none; width: 2.4444em; height: 2.4444em; border-radius: 50%; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; }
+  .ico svg { width: 1.3333em; height: 1.3333em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .row .rt { flex: 1; min-width: 0; font-weight: 700; color: var(--heading); }
+  .chev { color: var(--primary); font-size: 2em; font-weight: 700; line-height: 1; }
+  .fold { flex: none; width: .6em; height: .6em; margin: 0 .35em .25em; border-right: 3px solid var(--primary); border-bottom: 3px solid var(--primary); transform: rotate(45deg); }
+  .fold.up { margin-top: .3em; margin-bottom: 0; transform: rotate(-135deg); }
+  .row.red .fold { border-color: var(--severe); }
+  .ph .row.red .rt, .ph .row.red .chev { color: var(--severe); }
+  .row.red .ico { background: var(--severe-bg); color: var(--severe); }
+  .confirm { padding: 1em 1.125em 1.125em; margin: 0 0 1em; background: var(--severe-bg); border-radius: .75em; color: var(--heading); }
+  .confirm .qq { font-weight: 700; margin: 0 0 .75em !important; }
+  .hint { padding: .75em 1em; border-radius: .75em; background: var(--surface); color: var(--heading); margin: 1em 0 0 !important; }
+  .source { color: var(--muted); }
+
+  .dim { position: absolute; inset: 0; background: rgba(33,37,41,.55); display: flex; align-items: center; padding: 16px; }
+  .dlg { background: #fff; border-radius: 1em; padding: 1.25em 1.125em; width: 100%; box-shadow: 0 .5em 1.5em rgba(0,0,0,.25); }
+  .dlg .qq { font-size: 1.1111em; font-weight: 700; color: var(--heading); margin: 0 0 1em !important; }
+
+  .tabs { display: flex; border-top: 1px solid var(--line); background: #fff; padding: .3em 8px .5em; }
+  .tb { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 3.4em; color: var(--muted); border-radius: 1.3em; font-size: 1em; }
+  .tb svg { width: 1.4em; height: 1.4em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tb.on { color: var(--primary); font-weight: 700; background: var(--primary-sel); }
+
+  /* answer page */
+  .ans-meta { margin: 0 0 .5em !important; }
+  .guest-line { display: flex; gap: .4em; align-items: flex-start; color: var(--heading); margin: 0 0 1em !important; }
+  .guest-line svg { flex: none; width: 1.3em; height: 1.3em; margin-top: .15em; fill: none; stroke: var(--primary); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .guest-line .tlink { min-height: 0; display: inline; }
+  .guest-line-wrap .tlink { min-height: 2.4444em; display: inline-flex; }
+  .bars { display: flex; gap: 4px; margin: 0 0 .5em; }
+  .bars span { flex: 1; height: .45em; border-radius: 999px; background: var(--line); }
+  .bars span.on { background: var(--primary); }
+  .qline { font-size: 1em; color: var(--muted); font-weight: 400; display: block; }
+  .qtext { font-size: 1.3em; font-weight: 700; color: var(--heading); margin: .2em 0 .8em !important; line-height: 1.45; }
+  .choice { display: flex; align-items: center; gap: .6em; min-height: 3.1em; padding: .4em .9em; border: 2px solid #6c757d; border-radius: .7em; margin-bottom: .6em; color: var(--heading); font-weight: 700; }
+  .choice.sel { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .choice .dot { width: 1.1em; height: 1.1em; border-radius: 50%; border: 2px solid currentColor; flex: none; }
+  .navbtns { display: flex; gap: .6em; margin-top: 1em; }
+  .navbtns .btn { margin: 0; }
+  .navbtns .btn + .btn { margin: 0; }
+  .alert { color: var(--severe); font-weight: 700; font-size: 1.1111em; margin: .5em 0 0 !important; }
+
+  /* tables */
+  table.t { border-collapse: collapse; background: #fff; width: 100%; max-width: 1400px; font-size: 16px; margin-top: 12px; }
+  table.t th, table.t td { border: 1px solid #cfd5dc; padding: 8px 10px; text-align: left; vertical-align: top; }
+  table.t th { background: var(--surface); color: var(--heading); }
+  table.t td.words { font-size: 18px; color: var(--heading); min-width: 280px; }
+  .sw { display: inline-block; width: 16px; height: 16px; border-radius: 3px; vertical-align: -2px; border: 1px solid #999; margin-right: 4px; }
+  .src-spec { color: #14573c; font-weight: 700; }
+  .src-draft { color: var(--annot); font-weight: 700; }
+  .src-new { color: #fff; background: var(--annot); border-radius: 4px; padding: 0 6px; font-weight: 700; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M9 3h6v4H9zM6 5h12v16H6zM9 11h6M9 15h6"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></symbol>
+  <symbol id="i-reg" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</svg>
+<div class="sheet">
+  <h1>#493 免註冊先篩檢：設計圖（沒登入首頁、訪客結果頁與保存卡、詢問畫面、作答頁）</h1>
+  <p class="lead">案例：沒登入的長輩 2026/11/13 做完 HHIE-S，14 分、輕度到中度影響、沒戴助聽器；今天是 2026/11/15，所以這份訪客結果「還留 5 天」。分級三段的保存卡另用 4 分（無／極輕微影響）、30 分（顯著影響）。</p>
+  <p class="lead">樣子沿用全站改版第 1 階段已選定的元件：T1 標題、S1 按鈕與文字連結、L1 分級色塊、N3 步驟圓圈、E 清單列、P3 灰底提示框、W1 底部分頁列（這裡畫成靜態），以及 #460 結果頁 R1、#458 空狀態 A 版、#470 危險動作紅色。</p>
+  <p class="lead"><span class="draft">紫色虛線框</span>＝新字句草稿，請本人審（底部有逐句表）；<span class="newline">紫色實線框</span>＝規劃最壞情況假設要求、這次新加的一行，請本人確認要不要。每個有兩種以上做法的地方都標了代號（A1、A2…），<span class="rec">建議</span>是我的推薦。</p>
+
+  <!-- ================= 1. home ================= -->
+  <div class="group">
+    <h2>1　沒登入首頁</h2>
+    <p class="q">主要按鈕「開始篩檢」改連到推薦精靈的年齡組別那一步（不再先去註冊）；三步驟改成「回答問題 → 看結果 → 想保存再註冊」；「我已經有帳號，登入」照舊。底部分頁照舊：首頁｜了解｜登入｜註冊。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">1-0　一般（瀏覽器裡沒有訪客結果）　只有一種做法</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">從一份問卷開始</h1>
+            <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+            <div class="preview">
+              <p class="preview-t">做完第一份問卷，這裡會排出您的照顧旅程</p>
+              <ol class="steps">
+                <li><span class="num">1</span><span class="stepb draft">回答問題，大約 3 分鐘。</span></li>
+                <li><span class="num">2</span><span class="stepb draft">馬上看到結果分級和建議。</span></li>
+                <li><span class="num">3</span><span class="stepb draft">想保存再註冊，不註冊也看得到結果。</span></li>
+              </ol>
+            </div>
+            <a class="btn solid btn-start">開始篩檢</a>
+            <p style="margin:.5em 0 0"><a class="tlink">我已經有帳號，登入</a></p>
+            <ul class="links">
+              <li><a>了解助聽器選配與補助</a></li>
+              <li><a>我是家人</a></li>
+              <li><a>加到手機主畫面</a></li>
+            </ul>
+            <p class="muted" style="margin:0">內容由台灣執業聽力師設計與審定。</p>
+          </div>
+          <nav class="tabs"><span class="tb on"><svg><use href="#i-home"/></svg>首頁</span><span class="tb"><svg><use href="#i-book"/></svg>了解</span><span class="tb"><svg><use href="#i-login"/></svg>登入</span><span class="tb"><svg><use href="#i-reg"/></svg>註冊</span></nav>
+        </div>
+        <div class="note">
+          <p>改的只有三步驟的字和「開始篩檢」的去處。第 1 步原本是「建立帳號，大約 1 分鐘。」，現在移到第 3 步，並寫明「不註冊也看得到結果」（草稿）。</p>
+          <p><b>要本人看</b>：虛線框標題「做完第一份問卷，這裡會排出您的照顧旅程」對訪客其實要註冊保存後才成立；可以照舊，或改成「註冊保存後，這裡會排出您的照顧旅程」（字句表第 2 列）。</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="font-size:22px;margin:28px 0 4px;color:var(--heading)">1-1　有還沒保存的結果：最上面那一塊的樣子</h2>
+    <p class="q">由瀏覽器讀出訪客結果後才畫出來（伺服器送的頁人人相同）。寫日期、分級、還留幾天，點了進訪客結果頁。下面三種只差最上面那一塊，其餘同 1-0（只畫到按鈕）。</p>
+    <div class="cols">
+      <!-- A1 -->
+      <div class="opt">
+        <p class="opt-label">A1　分級色塊，整塊可點<span class="rec">建議</span></p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <a class="tile L1m">
+              <span class="lab">您有一份還沒保存的結果</span>
+              <span class="sub">2026/11/13・聽力對生活的影響</span>
+              <span class="sc">14 <small>分</small></span>
+              <span class="lv">輕度到中度影響</span>
+              <span class="sub draft">還留 5 天，看結果並保存</span>
+              <span class="arr" aria-hidden="true">›</span>
+            </a>
+            <h1 class="t1">從一份問卷開始</h1>
+            <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+            <div class="preview">
+              <p class="preview-t">做完第一份問卷，這裡會排出您的照顧旅程</p>
+              <ol class="steps">
+                <li><span class="num">1</span><span class="stepb">回答問題，大約 3 分鐘。</span></li>
+                <li><span class="num">2</span><span class="stepb">馬上看到結果分級和建議。</span></li>
+                <li><span class="num">3</span><span class="stepb">想保存再註冊，不註冊也看得到結果。</span></li>
+              </ol>
+            </div>
+            <a class="btn solid btn-start">開始篩檢</a>
+          </div>
+        </div>
+        <div class="note">
+          <p>跟登入後首頁的「上次結果」那格同一種：分級的淡色底＋深色字（L1），整格是一個連結、右邊箭頭。長輩已經會在登入後看到這個樣子。</p>
+          <p><b>代價</b>：第一個畫面變長，「開始篩檢」被推到下面一點（390 寬仍在第一個畫面內）。兩份（HHIE-S、HHIA-S）都有時疊兩格，標題改「您有 2 份還沒保存的結果」（草稿）。</p>
+        </div>
+      </div>
+      <!-- A2 -->
+      <div class="opt">
+        <p class="opt-label">A2　淡藍卡片＋藍框按鈕</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <div class="card-soft">
+              <span class="lab">您有一份還沒保存的結果</span>
+              <p style="margin:.25em 0 .1em">2026/11/13・聽力對生活的影響</p>
+              <p style="margin:0 0 .1em;font-weight:700">14 分・輕度到中度影響</p>
+              <p class="draft" style="margin:0 0 .75em">還留 5 天</p>
+              <a class="btn outline">看這次結果</a>
+            </div>
+            <h1 class="t1">從一份問卷開始</h1>
+            <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+            <div class="preview">
+              <p class="preview-t">做完第一份問卷，這裡會排出您的照顧旅程</p>
+              <ol class="steps">
+                <li><span class="num">1</span><span class="stepb">回答問題，大約 3 分鐘。</span></li>
+                <li><span class="num">2</span><span class="stepb">馬上看到結果分級和建議。</span></li>
+                <li><span class="num">3</span><span class="stepb">想保存再註冊，不註冊也看得到結果。</span></li>
+              </ol>
+            </div>
+            <a class="btn solid btn-start">開始篩檢</a>
+          </div>
+        </div>
+        <div class="note">
+          <p>跟結果頁「建議您下一步」同樣的淡藍卡，只有按鈕能點（ADR 0006）。分級寫成一行字、不上分級顏色。</p>
+          <p><b>代價</b>：一頁有實心＋藍框兩顆大按鈕，最長；分級沒有顏色，比較不像「我的結果」。</p>
+        </div>
+      </div>
+      <!-- A3 -->
+      <div class="opt">
+        <p class="opt-label">A3　灰底一行提示（像「繼續作答」提示）</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <div class="notice"><svg><use href="#i-clock"/></svg><span>您有一份還沒保存的結果：2026/11/13・輕度到中度影響・<span class="draft">還留 5 天</span>。<a class="tlink" style="min-height:2.4444em">看結果</a></span></div>
+            <h1 class="t1">從一份問卷開始</h1>
+            <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+            <div class="preview">
+              <p class="preview-t">做完第一份問卷，這裡會排出您的照顧旅程</p>
+              <ol class="steps">
+                <li><span class="num">1</span><span class="stepb">回答問題，大約 3 分鐘。</span></li>
+                <li><span class="num">2</span><span class="stepb">馬上看到結果分級和建議。</span></li>
+                <li><span class="num">3</span><span class="stepb">想保存再註冊，不註冊也看得到結果。</span></li>
+              </ol>
+            </div>
+            <a class="btn solid btn-start">開始篩檢</a>
+          </div>
+        </div>
+        <div class="note">
+          <p>沿用作答草稿的「繼續作答」灰底提示框（P3，#326 E7），最省空間。</p>
+          <p><b>代價</b>：沒寫分數；可點的只有「看結果」幾個字，長輩容易略過；跟「繼續作答」長得一樣，兩者同時出現時分不清。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. guest result ================= -->
+  <div class="group">
+    <h2>2　訪客結果頁</h2>
+    <p class="q">跟登入者結果頁（#460 R1）同一份模板：分數色塊、一句話（問卷定義已審定的建議 1）、「看完整說明」裡有分數位置條、建議 2–3、分項與每一題答案。照顧旅程卡片的位置換成保存卡；沒有「與上次比較」、分享、報告、看我的紀錄。清單最後多一列紅字「清除這次結果」（#470 帳號設定刪除列的紅色清單列）。</p>
+    <div class="cols">
+      <!-- B1 -->
+      <div class="opt">
+        <p class="opt-label">B1　保存卡放在一句話之後（原照顧旅程卡片的位置）<span class="rec">建議</span></p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="meta">HHIE-S・2026/11/13 作答・沒戴助聽器</p>
+            <div class="banner L1m">
+              <p class="s">總分 <span class="n">14</span> 分（滿分 40）</p>
+              <h2>輕度到中度影響</h2>
+            </div>
+            <p class="one">聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p>
+            <div class="next">
+              <p class="lab">建議您下一步</p>
+              <h2>註冊保存這次結果</h2>
+              <p class="why draft">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+              <p class="more draft">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+              <a class="btn solid">註冊保存</a>
+              <a class="btn outline">登入保存</a>
+              <p class="keep draft">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+              <p class="keep newline">換手機或換瀏覽器就看不到這次結果。</p>
+            </div>
+            <div class="rlist">
+              <div class="row"><span class="ico"><svg><use href="#i-info"/></svg></span><span class="rt">看完整說明</span><span class="fold" aria-hidden="true"></span></div>
+              <a class="row red"><span class="ico"><svg><use href="#i-trash"/></svg></span><span class="rt">清除這次結果</span><span class="chev">›</span></a>
+            </div>
+          </div>
+          <nav class="tabs"><span class="tb"><svg><use href="#i-home"/></svg>首頁</span><span class="tb"><svg><use href="#i-book"/></svg>了解</span><span class="tb"><svg><use href="#i-login"/></svg>登入</span><span class="tb"><svg><use href="#i-reg"/></svg>註冊</span></nav>
+        </div>
+        <div class="note">
+          <p>跟登入者看到的順序完全一樣：先知道結果和意思，再看到「下一步是註冊保存」。保存卡就是 <code>result_next.html</code> 那塊淡藍卡，標籤「建議您下一步」照舊、全頁唯一實心按鈕仍是它。</p>
+          <p><b>代價</b>：保存卡在一句話後面；顯著影響那句較長，保存卡會被推到第一個畫面的下緣。</p>
+        </div>
+      </div>
+      <!-- B2 -->
+      <div class="opt">
+        <p class="opt-label">B2　保存卡放在分數色塊正下方、一句話之前</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="meta">HHIE-S・2026/11/13 作答・沒戴助聽器</p>
+            <div class="banner L1m">
+              <p class="s">總分 <span class="n">14</span> 分（滿分 40）</p>
+              <h2>輕度到中度影響</h2>
+            </div>
+            <div class="next">
+              <p class="lab">建議您下一步</p>
+              <h2>註冊保存這次結果</h2>
+              <p class="why">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+              <p class="more">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+              <a class="btn solid">註冊保存</a>
+              <a class="btn outline">登入保存</a>
+              <p class="keep">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+              <p class="keep newline">換手機或換瀏覽器就看不到這次結果。</p>
+            </div>
+            <p class="one">聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p>
+            <div class="rlist">
+              <div class="row"><span class="ico"><svg><use href="#i-info"/></svg></span><span class="rt">看完整說明</span><span class="fold" aria-hidden="true"></span></div>
+              <a class="row red"><span class="ico"><svg><use href="#i-trash"/></svg></span><span class="rt">清除這次結果</span><span class="chev">›</span></a>
+            </div>
+          </div>
+          <nav class="tabs"><span class="tb"><svg><use href="#i-home"/></svg>首頁</span><span class="tb"><svg><use href="#i-book"/></svg>了解</span><span class="tb"><svg><use href="#i-login"/></svg>登入</span><span class="tb"><svg><use href="#i-reg"/></svg>註冊</span></nav>
+        </div>
+        <div class="note">
+          <p>保存卡一定在第一個畫面裡。</p>
+          <p><b>代價</b>：一句話（分級的意思）被擠到第二個畫面，長輩先看到「註冊」才看到結果的意思，像在推銷；跟登入者的結果頁順序不同，要多一個模板分支。</p>
+        </div>
+      </div>
+    </div>
+
+    <h2 style="font-size:22px;margin:28px 0 4px;color:var(--heading)">2-1　保存卡的兩個按鈕</h2>
+    <p class="q">只畫保存卡本身（案例同上）。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">C1　實心「註冊保存」＋藍框「登入保存」<span class="rec">建議</span></p>
+        <div class="ph"><div class="pg">
+          <div class="next" style="margin-top:0">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+            <p class="more">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="btn outline">登入保存</a>
+            <p class="keep">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+            <p class="keep newline">換手機或換瀏覽器就看不到這次結果。</p>
+          </div>
+        </div></div>
+        <div class="note"><p>兩顆一樣大、整條可按，已經有帳號的人一眼找得到。藍框按鈕是現有的 <code>btn-outline-primary</code>，不算第二顆實心。<b>代價</b>：卡片高一點。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">C2　實心「註冊保存」＋文字連結</p>
+        <div class="ph"><div class="pg">
+          <div class="next" style="margin-top:0">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+            <p class="more">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="tlink draft">我已經有帳號，登入保存</a>
+            <p class="keep">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+            <p class="keep newline">換手機或換瀏覽器就看不到這次結果。</p>
+          </div>
+        </div></div>
+        <div class="note"><p>跟首頁「開始篩檢」＋「我已經有帳號，登入」同一種排法。<b>代價</b>：連結字變長（不是規格寫的「登入保存」四個字，要本人同意）；文字連結比按鈕容易漏看。</p></div>
+      </div>
+    </div>
+
+    <h2 style="font-size:22px;margin:28px 0 4px;color:var(--heading)">2-2　「還留幾天」和「換手機或換瀏覽器就看不到」放哪裡</h2>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">D1　寫在保存卡最下面，灰字兩行<span class="rec">建議</span></p>
+        <div class="ph"><div class="pg">
+          <div class="next" style="margin-top:0">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why">（依分級的一句）</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="btn outline">登入保存</a>
+            <p class="keep draft">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+            <p class="keep newline">換手機或換瀏覽器就看不到這次結果。</p>
+          </div>
+        </div></div>
+        <div class="note"><p>「為什麼要保存」跟「不保存會怎樣」放在一起，讀到按鈕的人一定看得到。灰字 #4a5460 在淡藍底 6.9:1。<b>代價</b>：在按鈕後面，只看按鈕的人可能不會往下讀。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">D2　分數色塊下方一個灰底提示框</p>
+        <div class="ph"><div class="pg">
+          <div class="banner L1m">
+            <p class="s">總分 <span class="n">14</span> 分（滿分 40）</p>
+            <h2>輕度到中度影響</h2>
+          </div>
+          <p class="hint">這次結果只存在這支手機上，還留 5 天，之後自動刪除。<span class="newline">換手機或換瀏覽器就看不到這次結果。</span></p>
+          <p class="one">聽力問題已經慢慢影響您的社交活動與情緒……</p>
+        </div></div>
+        <div class="note"><p>一進頁就看到期限。<b>代價</b>：結果和它的意思中間多一塊框；跟保存卡分開，長輩不一定連得起來「所以要按註冊保存」。</p></div>
+      </div>
+    </div>
+
+    <h2 style="font-size:22px;margin:28px 0 4px;color:var(--heading)">2-3　「清除這次結果」的確認</h2>
+    <p class="q">確認句照規格：「清除後就找不回來了，確定嗎？」。按「不要」什麼都不變；按「清除」只清這一份，回沒登入首頁，返回鍵看不到。按鈕排法照 #470 刪除帳號：紅色實心在上、藍框取消在下。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">E1　在那一列下面展開<span class="rec">建議</span></p>
+        <div class="ph"><div class="pg">
+          <div class="rlist" style="margin-top:0">
+            <div class="row"><span class="ico"><svg><use href="#i-info"/></svg></span><span class="rt">看完整說明</span><span class="fold" aria-hidden="true"></span></div>
+            <div class="row red"><span class="ico"><svg><use href="#i-trash"/></svg></span><span class="rt">清除這次結果</span><span class="fold up" aria-hidden="true"></span></div>
+          </div>
+          <div class="confirm">
+            <p class="qq">清除後就找不回來了，確定嗎？</p>
+            <a class="btn danger">清除</a>
+            <a class="btn outline">不要</a>
+          </div>
+        </div></div>
+        <div class="note"><p>畫面不跳、不蓋住結果，跟「看完整說明」一樣是點開的一列；焦點移到確認句。<b>代價</b>：在頁面最下面，展開後可能要往下捲才看得到按鈕（實作時把它捲進畫面）。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">E2　蓋在頁面上的對話框</p>
+        <div class="ph" style="height:560px">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="meta">HHIE-S・2026/11/13 作答・沒戴助聽器</p>
+            <div class="banner L1m"><p class="s">總分 <span class="n">14</span> 分（滿分 40）</p><h2>輕度到中度影響</h2></div>
+          </div>
+          <div class="dim">
+            <div class="dlg">
+              <p class="qq">清除後就找不回來了，確定嗎？</p>
+              <a class="btn danger">清除</a>
+              <a class="btn outline">不要</a>
+            </div>
+          </div>
+        </div>
+        <div class="note"><p>一般 App 的樣子，不會漏看。用瀏覽器內建的 <code>&lt;dialog&gt;</code>，焦點會鎖在框裡。<b>代價</b>：全站目前沒有蓋在頁上的框，是新元件；200% 字級時框會佔滿整個畫面。</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 3. save card by level ================= -->
+  <div class="group">
+    <h2>3　保存卡依分級的三段字句（請本人逐句審）</h2>
+    <p class="q">規格：無／極輕微影響寫半年後提醒再做、跟這次比；輕度到中度、顯著影響寫接著記聽力圖、一步步帶著走選配與補助；三種都寫註冊後還有耳鳴、吵雜環境等問卷。每張上面那句「一句話」是問卷定義已審定的建議 1，不改。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">無／極輕微影響（4 分）</p>
+        <div class="ph"><div class="pg">
+          <div class="banner L1n"><p class="s">總分 <span class="n">4</span> 分（滿分 40）</p><h2>無／極輕微影響</h2></div>
+          <p class="one">這次結果顯示您的聽覺自覺障礙程度為無或僅有輕微障礙，暫時沒有明顯影響情緒與社交活動。</p>
+          <div class="next">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why draft">註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。</p>
+            <p class="more draft">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="btn outline">登入保存</a>
+          </div>
+        </div></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">輕度到中度影響（14 分）</p>
+        <div class="ph"><div class="pg">
+          <div class="banner L1m"><p class="s">總分 <span class="n">14</span> 分（滿分 40）</p><h2>輕度到中度影響</h2></div>
+          <p class="one">聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p>
+          <div class="next">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why draft">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+            <p class="more draft">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="btn outline">登入保存</a>
+          </div>
+        </div></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">顯著影響（30 分）</p>
+        <div class="ph"><div class="pg">
+          <div class="banner L1s"><p class="s">總分 <span class="n">30</span> 分（滿分 40）</p><h2>顯著影響</h2></div>
+          <p class="one">聽力問題已經嚴重影響到您的生活了，若您尚未採取任何行動，建議立即前往醫院耳鼻喉科尋求專業建議，並考慮配戴助聽器。</p>
+          <p class="nlinks"><a class="tlink">看助聽器選配指引</a></p>
+          <div class="next">
+            <p class="lab">建議您下一步</p>
+            <h2>註冊保存這次結果</h2>
+            <p class="why draft">註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配與補助申請。</p>
+            <p class="more draft">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+            <a class="btn solid">註冊保存</a>
+            <a class="btn outline">登入保存</a>
+          </div>
+        </div></div>
+        <div class="note"><p>顯著影響的建議 1 已經有「看助聽器選配指引」連結（選配指引不用登入就看得到），保存卡不重複寫。</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 4. ask screen ================= -->
+  <div class="group">
+    <h2>4　「要把這次結果存到這個帳號嗎？」</h2>
+    <p class="q">從頂端「註冊」或「登入」等其他入口進來、而瀏覽器裡有訪客結果時出現（從保存卡出發的不問）。已登入，底部分頁是登入後的四個。選「不要」會清掉這支手機裡全部的訪客結果，帳號裡不多任何紀錄。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">F1　按鈕只寫「要」「不要」（規格原文）</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span><span class="acct">目前登入：<b>ahua</b></span></div>
+          <div class="pg">
+            <h1 class="t1">要把這次結果存到這個帳號嗎？</h1>
+            <p class="draft">這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。</p>
+            <div class="tile L1m" style="padding-right:1em">
+              <span class="sub">2026/11/13・聽力對生活的影響</span>
+              <span class="sc">14 <small>分</small></span>
+              <span class="lv">輕度到中度影響</span>
+            </div>
+            <a class="btn solid">要</a>
+            <a class="btn outline">不要</a>
+            <p class="muted draft" style="margin:.85em 0 0">選「不要」，這支手機裡的這次結果會清掉。</p>
+          </div>
+          <nav class="tabs"><span class="tb"><svg><use href="#i-home"/></svg>首頁</span><span class="tb"><svg><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>照規格字句，e2e 與測試照原文抓按鈕。結果那格不能點（只是讓人認得是哪一份）。<b>代價</b>：「要」「不要」單獨讀（螢幕報讀器跳著讀按鈕時）不知道在答什麼。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">F2　按鈕寫出會發生什麼<span class="rec">建議</span></p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span><span class="acct">目前登入：<b>ahua</b></span></div>
+          <div class="pg">
+            <h1 class="t1">要把這次結果存到這個帳號嗎？</h1>
+            <p class="draft">這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。</p>
+            <div class="tile L1m" style="padding-right:1em">
+              <span class="sub">2026/11/13・聽力對生活的影響</span>
+              <span class="sc">14 <small>分</small></span>
+              <span class="lv">輕度到中度影響</span>
+            </div>
+            <a class="btn solid draft">要，存進這個帳號</a>
+            <a class="btn outline draft">不要，清掉這次結果</a>
+          </div>
+          <nav class="tabs"><span class="tb"><svg><use href="#i-home"/></svg>首頁</span><span class="tb"><svg><use href="#i-doc"/></svg>篩檢</span><span class="tb"><svg><use href="#i-chart"/></svg>紀錄</span><span class="tb"><svg><use href="#i-book"/></svg>了解</span></nav>
+        </div>
+        <div class="note"><p>按鈕自己說清楚後果，少一行說明。仍以「要」「不要」開頭，規格的意思不變。<b>代價</b>：改了規格寫的按鈕字，#497 的測試與 e2e 要照新字抓。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">兩份都有時（F1、F2 都一樣）</p>
+        <div class="ph"><div class="pg">
+          <h1 class="t1">要把這次結果存到這個帳號嗎？</h1>
+          <p class="draft">這支手機裡有 2 份還沒保存的結果。如果是幫家人做的，請選「不要」。</p>
+          <div class="tile L1m" style="padding-right:1em;margin-bottom:.6em"><span class="sub">2026/11/13・聽力對生活的影響（HHIE-S）</span><span class="lv">14 分・輕度到中度影響</span></div>
+          <div class="tile L1n" style="padding-right:1em"><span class="sub">2026/11/14・聽力對生活的影響（HHIA-S）</span><span class="lv">6 分・無／極輕微影響</span></div>
+          <a class="btn solid">要，存進這個帳號</a>
+          <a class="btn outline">不要，清掉這次結果</a>
+        </div></div>
+        <div class="note"><p>規格：一起保存或一起清掉，不分開問。兩份時名稱加問卷代碼，讓人分得出來。</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. answer page ================= -->
+  <div class="group">
+    <h2>5　作答頁上方那一行（沒登入）</h2>
+    <p class="q">規格字句：「沒註冊時只計算、不儲存」加隱私權說明的連結。作答頁照 #462 收起底部分頁列。有戴／沒戴助聽器照問（畫的是第 1 題）。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">G1　標題上方的灰底提示框</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <p class="notice" style="margin:0 0 1em"><svg><use href="#i-lock"/></svg><span>沒註冊時只計算、不儲存。<a class="tlink">隱私權說明</a></span></p>
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="ans-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+            <div class="bars"><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="qline">第 1 題／共 10 題・還剩大約 3 分鐘</span>
+            <p class="qtext">認識新朋友時，聽力問題使你不好意思嗎？</p>
+            <div class="choice"><span class="dot"></span>常常</div>
+            <div class="choice"><span class="dot"></span>有時</div>
+            <div class="choice"><span class="dot"></span>從未</div>
+            <div class="navbtns"><a class="btn solid">下一題 ›</a></div>
+          </div>
+        </div>
+        <div class="note"><p>最顯眼，一進來就看到。<b>代價</b>：多一塊框，題目和「下一題」往下推約一行半；#462 說過 IOI-HA 在 iPhone 已經差一點進不了第一個畫面（訪客只做 HHIE-S、HHIA-S，題目短，影響較小）。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">G2　問卷名稱下面一行字＋鎖頭<span class="rec">建議</span></p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="ans-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+            <p class="guest-line guest-line-wrap"><svg><use href="#i-lock"/></svg><span>沒註冊時只計算、不儲存。<a class="tlink">隱私權說明</a></span></p>
+            <div class="bars"><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <span class="qline">第 1 題／共 10 題・還剩大約 3 分鐘</span>
+            <p class="qtext">認識新朋友時，聽力問題使你不好意思嗎？</p>
+            <div class="choice"><span class="dot"></span>常常</div>
+            <div class="choice"><span class="dot"></span>有時</div>
+            <div class="choice"><span class="dot"></span>從未</div>
+            <div class="navbtns"><a class="btn solid">下一題 ›</a></div>
+          </div>
+        </div>
+        <div class="note"><p>跟問卷名稱那行同一組，不多框，只多一行。連結整行高 44px。<b>代價</b>：比 G1 不顯眼。</p></div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">太多次被擋時（最後一題按「送出」後）</p>
+        <div class="ph">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <span class="qline">第 10 題／共 10 題・還剩大約 1 分鐘</span>
+            <p class="qtext">和親友在餐館吃飯時，聽力問題會讓你感到困難嗎？</p>
+            <div class="choice"><span class="dot"></span>常常</div>
+            <div class="choice sel"><span class="dot"></span>有時</div>
+            <div class="choice"><span class="dot"></span>從未</div>
+            <p class="alert">剛才做了很多次，請過一小時再試。您的作答沒有不見。</p>
+            <div class="navbtns"><a class="btn outline">‹ 上一題</a><a class="btn solid">✓ 送出</a></div>
+          </div>
+        </div>
+        <div class="note"><p>位置與樣子跟現有的「送出失敗」錯誤訊息一樣（紅色粗體、<code>role="alert"</code>），字句照規格原文。作答留在畫面上。</p></div>
+      </div>
+    </div>
+    <div class="box">
+      <h3>作答頁要本人決定的一件小事</h3>
+      <ul>
+        <li>作答頁最下面現在寫「答案會自動存在這支手機，中途離開也沒關係。」，答完一題會閃「✓ 已儲存」。規格說訪客<b>不存草稿</b>，這兩樣對訪客是錯的。建議訪客時兩樣都拿掉；如果想留一句，草稿是「沒註冊時，中途離開答案不會留下。」（字句表第 15 列）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= 6. 200% ================= -->
+  <div class="group">
+    <h2>6　390px 寬＋200% 字級</h2>
+    <p class="q">上面每一張手機框都是 390px 寬、基礎字級 18px。下面三張是同一份樣式、基礎字級改成 36px（＝瀏覽器字級 200%），仍是 390px 寬。畫的是建議版（A1、B1＋C1＋D1、F2）。200% 時步驟圓圈改到字的上方（現有 <code>step-list</code> 的做法），所有東西往下排、不左右捲；底部分頁列照現有規則，這裡省略。</p>
+    <div class="cols">
+      <div class="opt">
+        <p class="opt-label">首頁（有還沒保存的結果，A1）</p>
+        <div class="ph x2">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <a class="tile L1m">
+              <span class="lab">您有一份還沒保存的結果</span>
+              <span class="sub">2026/11/13・聽力對生活的影響</span>
+              <span class="sc">14 <small>分</small></span>
+              <span class="lv">輕度到中度影響</span>
+              <span class="sub">還留 5 天，看結果並保存</span>
+              <span class="arr" aria-hidden="true">›</span>
+            </a>
+            <h1 class="t1">從一份問卷開始</h1>
+            <p>聽力變化很慢，自己常常沒發現。花 3 分鐘，看看聽力對您生活的影響。</p>
+            <div class="preview">
+              <p class="preview-t">做完第一份問卷，這裡會排出您的照顧旅程</p>
+              <ol class="steps">
+                <li><span class="num">1</span><span class="stepb">回答問題，大約 3 分鐘。</span></li>
+                <li><span class="num">2</span><span class="stepb">馬上看到結果分級和建議。</span></li>
+                <li><span class="num">3</span><span class="stepb">想保存再註冊，不註冊也看得到結果。</span></li>
+              </ol>
+            </div>
+            <a class="btn solid btn-start">開始篩檢</a>
+            <p style="margin:.5em 0 0"><a class="tlink">我已經有帳號，登入</a></p>
+          </div>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">訪客結果頁（B1＋C1＋D1），含清除確認 E1</p>
+        <div class="ph x2">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="meta">HHIE-S・2026/11/13 作答・沒戴助聽器</p>
+            <div class="banner L1m">
+              <p class="s">總分 <span class="n">14</span> 分（滿分 40）</p>
+              <h2>輕度到中度影響</h2>
+            </div>
+            <p class="one">聽力問題已經慢慢影響您的社交活動與情緒，例如與家人因聽不清楚而起爭執、在吵雜場合感到窘迫而退縮。</p>
+            <div class="next">
+              <p class="lab">建議您下一步</p>
+              <h2>註冊保存這次結果</h2>
+              <p class="why">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</p>
+              <p class="more">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
+              <a class="btn solid">註冊保存</a>
+              <a class="btn outline">登入保存</a>
+              <p class="keep">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</p>
+              <p class="keep">換手機或換瀏覽器就看不到這次結果。</p>
+            </div>
+            <div class="rlist">
+              <div class="row"><span class="ico"><svg><use href="#i-info"/></svg></span><span class="rt">看完整說明</span><span class="fold" aria-hidden="true"></span></div>
+              <div class="row red"><span class="ico"><svg><use href="#i-trash"/></svg></span><span class="rt">清除這次結果</span><span class="fold up" aria-hidden="true"></span></div>
+            </div>
+            <div class="confirm">
+              <p class="qq">清除後就找不回來了，確定嗎？</p>
+              <a class="btn danger">清除</a>
+              <a class="btn outline">不要</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="opt">
+        <p class="opt-label">詢問畫面（F2）與作答頁那一行（G2）</p>
+        <div class="ph x2">
+          <div class="hd"><span class="logo"></span>聽<span class="tint">伴</span></div>
+          <div class="pg">
+            <h1 class="t1">要把這次結果存到這個帳號嗎？</h1>
+            <p>這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。</p>
+            <div class="tile L1m" style="padding-right:1em">
+              <span class="sub">2026/11/13・聽力對生活的影響</span>
+              <span class="sc">14 <small>分</small></span>
+              <span class="lv">輕度到中度影響</span>
+            </div>
+            <a class="btn solid">要，存進這個帳號</a>
+            <a class="btn outline">不要，清掉這次結果</a>
+          </div>
+        </div>
+        <div class="ph x2" style="margin-top:24px">
+          <div class="pg">
+            <h1 class="t1">聽力對生活的影響</h1>
+            <p class="ans-meta">HHIE-S・共 10 題・大約 3 分鐘</p>
+            <p class="guest-line guest-line-wrap"><svg><use href="#i-lock"/></svg><span>沒註冊時只計算、不儲存。<a class="tlink">隱私權說明</a></span></p>
+            <p class="alert">剛才做了很多次，請過一小時再試。您的作答沒有不見。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="box">
+      <h3>檢查（照 #493 驗收條件）</h3>
+      <ul>
+        <li><b>不左右捲</b>：所有框都是 390px；按鈕、色塊、卡片都是整條寬度，文字可在任何字之間換行（日期 2026/11/13 在 200% 時也能斷）。沒有固定寬度的並排元素（200% 時步驟圓圈改到字上方）。</li>
+        <li><b>可點範圍至少 44×44px</b>：大按鈕最小高 56px（18px 字級時；200% 時 112px），整條寬；文字連結（「我已經有帳號，登入」「隱私權說明」「看結果」）最小高 44px；清單列最小高 64px；首頁 A1 色塊整格可點（約 350×180px）。</li>
+        <li><b>字至少 18px</b>：設計裡最小的字是內文 18px（灰字說明、分頁標籤、按鈕下的「還留 5 天」都是 18px）；說明用的紫色標註不是設計的一部分。</li>
+        <li><b>對比至少 4.5:1</b>：見下表，這次新加的文字最低是灰字 #4a5460 在淡藍底 #eef3fa（保存卡裡的「還留 5 天」那兩行）6.90:1；全頁最低是現有頁首「伴」字 5.55:1，不在這次範圍。數值用瀏覽器實際算出的顏色逐一檢查過。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ================= 7. contrast ================= -->
+  <div class="group">
+    <h2>7　對比實測（WCAG 2 相對亮度公式，用站上 token 的色碼算）</h2>
+    <table class="t">
+      <tr><th>用在哪裡</th><th>字色</th><th>底色</th><th>對比</th><th>標準</th></tr>
+      <tr><td>標題、保存卡標題、確認句</td><td><span class="sw" style="background:#212529"></span>#212529</td><td><span class="sw" style="background:#fff"></span>#ffffff</td><td>15.43:1</td><td>4.5:1 通過</td></tr>
+      <tr><td>內文</td><td><span class="sw" style="background:#343a40"></span>#343a40</td><td>#ffffff</td><td>11.51:1</td><td>通過</td></tr>
+      <tr><td>灰字（分頁標籤、出處）</td><td><span class="sw" style="background:#4a5460"></span>#4a5460</td><td>#ffffff</td><td>7.70:1</td><td>通過</td></tr>
+      <tr><td>文字連結、藍框按鈕字</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td>#ffffff</td><td>8.31:1</td><td>通過</td></tr>
+      <tr><td>實心按鈕（開始篩檢、註冊保存、要）</td><td>#ffffff</td><td><span class="sw" style="background:#1f4e8c"></span>#1f4e8c</td><td>8.31:1</td><td>通過</td></tr>
+      <tr><td>保存卡內文、詢問畫面</td><td>#212529</td><td><span class="sw" style="background:#eef3fa"></span>#eef3fa</td><td>13.84:1</td><td>通過</td></tr>
+      <tr><td>保存卡「建議您下一步」</td><td>#1f4e8c</td><td>#eef3fa</td><td>7.45:1</td><td>通過</td></tr>
+      <tr><td><b>保存卡灰字（還留 5 天、換手機那行）＝最低</b></td><td>#4a5460</td><td>#eef3fa</td><td><b>6.90:1</b></td><td>通過</td></tr>
+      <tr><td>分級色塊：無／極輕微影響</td><td><span class="sw" style="background:#14573c"></span>#14573c</td><td><span class="sw" style="background:#e3f4ec"></span>#e3f4ec</td><td>7.49:1</td><td>通過</td></tr>
+      <tr><td>分級色塊：輕度到中度影響</td><td><span class="sw" style="background:#704800"></span>#704800</td><td><span class="sw" style="background:#fff4d6"></span>#fff4d6</td><td>7.33:1</td><td>通過</td></tr>
+      <tr><td>分級色塊：顯著影響</td><td><span class="sw" style="background:#8f2a12"></span>#8f2a12</td><td><span class="sw" style="background:#feece7"></span>#feece7</td><td>7.32:1</td><td>通過</td></tr>
+      <tr><td>「清除這次結果」紅字列</td><td>#8f2a12</td><td>#ffffff</td><td>8.37:1</td><td>通過</td></tr>
+      <tr><td>「清除」紅色實心按鈕</td><td>#ffffff</td><td>#8f2a12</td><td>8.37:1</td><td>通過</td></tr>
+      <tr><td>清除確認框（E1）的確認句</td><td>#212529</td><td>#feece7</td><td>13.49:1</td><td>通過</td></tr>
+      <tr><td>灰底提示框（A3、D2、G1）</td><td>#212529</td><td><span class="sw" style="background:#f4f6f8"></span>#f4f6f8</td><td>14.24:1</td><td>通過</td></tr>
+      <tr><td>灰底提示框裡的連結</td><td>#1f4e8c</td><td>#f4f6f8</td><td>7.67:1</td><td>通過</td></tr>
+      <tr><td>底部分頁列選中的分頁</td><td>#1f4e8c</td><td><span class="sw" style="background:#e8eef7"></span>#e8eef7</td><td>7.13:1</td><td>通過</td></tr>
+      <tr><td>頁首「聽伴」的「伴」字（現有頁首，這次不動）</td><td><span class="sw" style="background:#1d6f99"></span>#1d6f99</td><td>#ffffff</td><td>5.55:1</td><td>通過（全頁最低，但不是這次新加的）</td></tr>
+      <tr><td>（非文字）作答選項外框</td><td><span class="sw" style="background:#6c757d"></span>#6c757d</td><td>#ffffff</td><td>4.69:1</td><td>3:1 通過</td></tr>
+      <tr><td>（非文字）首頁預覽虛線框、步驟連接線</td><td><span class="sw" style="background:#8a94a3"></span>#8a94a3</td><td>#ffffff</td><td>3.07:1</td><td>3:1 通過</td></tr>
+    </table>
+    <p class="note">E2 對話框後面的暗色遮罩是裝飾，不放字。底部分頁列的毛玻璃照 ADR 0045 固定 ≥4.5:1，這次不動。</p>
+  </div>
+
+  <!-- ================= 8. wording ================= -->
+  <div class="group">
+    <h2>8　字句草稿表（請本人逐句審）</h2>
+    <p class="q">來源：<span class="src-spec">規格原文</span>＝#492／拷問決定裡寫死的字，不建議改；<span class="src-draft">草稿</span>＝代理擬的；<span class="src-new">新加</span>＝規劃最壞情況假設要求、規格沒寫的。</p>
+    <table class="t">
+      <tr><th>#</th><th>位置</th><th>字句</th><th>來源</th><th>本人審</th></tr>
+      <tr><td>1</td><td>沒登入首頁・三步驟</td><td class="words">1　回答問題，大約 3 分鐘。<br>2　馬上看到結果分級和建議。<br>3　想保存再註冊，不註冊也看得到結果。</td><td><span class="src-draft">草稿</span>（第 1、2 步沿用現有字）</td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>2</td><td>沒登入首頁・虛線框標題</td><td class="words">照舊「做完第一份問卷，這裡會排出您的照顧旅程」<br>或改「註冊保存後，這裡會排出您的照顧旅程」</td><td><span class="src-draft">草稿</span></td><td>☐ 照舊　☐ 改</td></tr>
+      <tr><td>3</td><td>首頁最上面那一塊</td><td class="words">您有一份還沒保存的結果<br>2026/11/13・聽力對生活的影響／14 分／輕度到中度影響<br>還留 5 天，看結果並保存</td><td>標題 <span class="src-spec">規格原文</span>；最後一行 <span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>4</td><td>首頁・兩份都有時的標題</td><td class="words">您有 2 份還沒保存的結果</td><td><span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>5</td><td>保存卡・標籤與標題</td><td class="words">建議您下一步／註冊保存這次結果</td><td>標籤沿用結果頁；標題 <span class="src-spec">拷問決定 Q11</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>6</td><td>保存卡・無／極輕微影響</td><td class="words">註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。</td><td><span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>7</td><td>保存卡・輕度到中度影響</td><td class="words">註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。</td><td><span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>8</td><td>保存卡・顯著影響</td><td class="words">註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配與補助申請。</td><td><span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>9</td><td>保存卡・其他問卷（三種分級都有）</td><td class="words">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</td><td><span class="src-draft">草稿</span>（規格：「註冊後還有耳鳴、吵雜環境等問卷」）</td><td>☐ 照用　☐ 照規格原文　☐ 改成：</td></tr>
+      <tr><td>10</td><td>保存卡・按鈕</td><td class="words">註冊保存／登入保存（C2 的話：我已經有帳號，登入保存）</td><td><span class="src-spec">規格原文</span>（C2 那句 <span class="src-draft">草稿</span>）</td><td>☐ 照用</td></tr>
+      <tr><td>11</td><td>保存卡・還留幾天</td><td class="words">這次結果只存在這支手機上，還留 5 天，之後自動刪除。</td><td>「還留 5 天」<span class="src-spec">規格</span>；整句 <span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>12</td><td>保存卡・換瀏覽器</td><td class="words">換手機或換瀏覽器就看不到這次結果。</td><td><span class="src-new">新加</span>（規劃第 1 項跟第 2、3 項怎麼排：LINE 內建瀏覽器跟 Safari／Chrome 資料不共用的最壞情況）</td><td>☐ 要加　☐ 不加　☐ 改成：</td></tr>
+      <tr><td>13</td><td>訪客結果頁・清單列與確認</td><td class="words">清除這次結果<br>清除後就找不回來了，確定嗎？<br>按鈕：清除／不要</td><td><span class="src-spec">規格原文</span></td><td>☐ 照用</td></tr>
+      <tr><td>14</td><td>詢問畫面</td><td class="words">標題：要把這次結果存到這個帳號嗎？<br>說明：這支手機裡有一份還沒保存的結果。如果是幫家人做的，請選「不要」。<br>F1 按鈕：要／不要，下面一行「選「不要」，這支手機裡的這次結果會清掉。」<br>F2 按鈕：要，存進這個帳號／不要，清掉這次結果</td><td>標題與「要」「不要」<span class="src-spec">規格原文</span>；說明、F1 下面那行、F2 按鈕 <span class="src-draft">草稿</span></td><td>☐ 照用　☐ 改成：</td></tr>
+      <tr><td>15</td><td>作答頁上方那一行</td><td class="words">沒註冊時只計算、不儲存。隱私權說明（連結）</td><td><span class="src-spec">拷問決定 Q14</span></td><td>☐ 照用</td></tr>
+      <tr><td>16</td><td>作答頁最下面（訪客時）</td><td class="words">建議拿掉「答案會自動存在這支手機，中途離開也沒關係。」和「✓ 已儲存」；要留一句的話：沒註冊時，中途離開答案不會留下。</td><td><span class="src-draft">草稿</span></td><td>☐ 拿掉　☐ 換成草稿句　☐ 改成：</td></tr>
+      <tr><td>17</td><td>速率限制（作答頁送出時）</td><td class="words">剛才做了很多次，請過一小時再試。您的作答沒有不見。</td><td><span class="src-spec">規格原文</span>（拷問決定 Q13）</td><td>☐ 照用</td></tr>
+    </table>
+  </div>
+
+  <!-- ================= 9. picks ================= -->
+  <div class="group">
+    <h2>9　要本人挑的地方</h2>
+    <table class="t">
+      <tr><th>代號</th><th>題目</th><th>選項</th><th>建議</th><th>選定（本人選後填）</th></tr>
+      <tr><td>A</td><td>首頁「還沒保存的結果」那一塊</td><td>A1 分級色塊整塊可點／A2 淡藍卡＋藍框按鈕／A3 灰底一行提示</td><td>A1</td><td></td></tr>
+      <tr><td>B</td><td>保存卡在訪客結果頁的位置</td><td>B1 一句話之後（原照顧旅程卡片位置）／B2 分數色塊正下方</td><td>B1</td><td></td></tr>
+      <tr><td>C</td><td>保存卡的兩個按鈕</td><td>C1 實心＋藍框按鈕／C2 實心＋文字連結</td><td>C1</td><td></td></tr>
+      <tr><td>D</td><td>還留幾天與換瀏覽器那行</td><td>D1 保存卡最下面／D2 分數色塊下的灰底提示框</td><td>D1</td><td></td></tr>
+      <tr><td>E</td><td>清除確認</td><td>E1 在那一列下面展開／E2 蓋在頁上的對話框</td><td>E1</td><td></td></tr>
+      <tr><td>F</td><td>詢問畫面的按鈕字</td><td>F1「要」「不要」／F2「要，存進這個帳號」「不要，清掉這次結果」</td><td>F2</td><td></td></tr>
+      <tr><td>G</td><td>作答頁那一行</td><td>G1 標題上方灰底提示框／G2 問卷名稱下一行字</td><td>G2</td><td></td></tr>
+    </table>
+    <div class="box">
+      <h3>實作時注意（不用本人選，記給 #495 以後的票）</h3>
+      <ul>
+        <li>無／極輕微影響的建議 2 有「記錄聽力圖」連結（在「看完整說明」裡），那一頁要登入；訪客點了會被帶去登入。可以照舊（登入後就能記），或訪客時不顯示這個連結。</li>
+        <li>訪客結果頁的「看完整說明」裡沒有「與上次比較」；分項與每一題答案照登入者的寫法。</li>
+        <li>E1 展開確認時，焦點移到確認句、把按鈕捲進畫面；按「不要」收起、焦點回到「清除這次結果」。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>
