@@ -81,7 +81,9 @@ class AccountSettingsTests(TestCase):
 
 class DeleteAccountPageTests(TestCase):
     def test_delete_is_the_red_solid_button_and_cancel_the_blue_frame(self):
-        self.client.force_login(consented_user(username="delete_redesign"))
+        self.client.force_login(
+            consented_user(username="delete_redesign", password="redesign-pass")
+        )
         main = _main(self.client.get(reverse("delete_account")))
 
         self.assertIn(

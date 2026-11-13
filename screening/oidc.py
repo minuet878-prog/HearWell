@@ -121,6 +121,11 @@ def begin(request, provider, purpose, next_url=""):
         "code_challenge": _code_challenge(verifier),
         "code_challenge_method": "S256",
     }
+    if purpose == "confirm_identity":
+        # Google cannot be made to ask for the password again (no max_age, no prompt=login;
+        # login-research.md section 8): its account chooser at least shows which Google is used.
+        # No login_hint, which would skip the chooser.
+        query["prompt"] = "select_account"
     return f"{PROVIDERS[provider].authorize_url}?{urlencode(query)}"
 
 
