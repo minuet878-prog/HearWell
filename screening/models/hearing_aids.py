@@ -54,9 +54,21 @@ class AidAndSubsidy(models.Model):
     level = models.CharField(max_length=8, choices=AidLevel, blank=True, default="")
     # 二十五號表's answer (#296): None unanswered, False 還沒, True 完成了.
     form_25_done = models.BooleanField(null=True, blank=True)
+    # 第幾台 (#482, spec #478): the 手動待辦's round on the route and step 4, from 1.
+    pair_number = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return f"{self.user} aid and subsidy"
+
+    def save(self, *args, **kwargs):
+        # 換新機 (#482): the fitting date moved later, whichever form sent it; filled in the first
+        # time, moved earlier or cleared, the same pair.
+        if self.pk is not None and self.fitted_on is not None:
+            saved = AidAndSubsidy.objects.filter(pk=self.pk).values_list("fitted_on", flat=True)
+            before = saved.first()
+            if before is not None and self.fitted_on > before:
+                self.pair_number += 1
+        super().save(*args, **kwargs)
 
     @classmethod
     def for_user(cls, user):

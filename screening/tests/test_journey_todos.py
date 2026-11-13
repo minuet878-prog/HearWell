@@ -6,21 +6,26 @@ import re
 from datetime import date, datetime
 from unittest.mock import patch
 
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
+from django.test import TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.fitting_route import fitting_state
-from screening.journey_todos import stop_todos
+from screening.fitting_route import AUDIOGRAM, fitting_state
+from screening.journey_todos import STOP_TODOS, stop_todos
 from screening.models import (
     FIRST_ROUND,
     AidAndSubsidy,
     AidLevel,
     Certificate,
     GuideChapterView,
+    Questionnaire,
     Subsidy,
     TodoTick,
     User,
 )
+from screening.questionnaires import hhia_s, ioi_ha, ssq12_tw, thi
 from screening.tests import test_account_deletion, test_care_journey, test_home_journey
 from screening.tests.helpers import consented_user
 from screening.views.guide import here_stop
@@ -533,7 +538,7 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
     tick = Ticket481TickTests.tick
 
     def test_the_download_lists_each_tick_with_its_words_and_time(self):
-        # 24, as far as #481 goes: an unticked one is not there; 是不是目前這一輪 is #482's.
+        # 24: an unticked one is not there; an earlier round's is Ticket482RoundDataTests'.
         other = consented_user(username="todo_export_other")
         TodoTick.objects.create(user=other, key="audiogram-copy", round=FIRST_ROUND)
         for key, moment in (
@@ -548,10 +553,15 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
         self.assertEqual(
             data["journey_todos"],
             [
-                {"todo": "到醫院或診所做聽力檢查", "ticked_at": "2026-11-12T09:30:00+08:00"},
+                {
+                    "todo": "到醫院或診所做聽力檢查",
+                    "ticked_at": "2026-11-12T09:30:00+08:00",
+                    "current_round": True,
+                },
                 {
                     "todo": "把下次篩檢日期記在月曆或手機上",
                     "ticked_at": "2026-11-13T08:05:00+08:00",
+                    "current_round": True,
                 },
             ],
         )
@@ -571,3 +581,229 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
         self.assertEqual(list(TodoTick.objects.values_list("user", flat=True)), [other.pk])
+
+
+class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
+    """#482 (spec #478 acceptance 19–23): a step's or a stop's 手動待辦 start over each round,
+    judged on the 照顧旅程 and the 您在這裡 stop as the pages show them. Ticks go in through the
+    tick page and fitting dates through 配戴之後's question, as the user sends them."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+
+    def tick(self, *keys):
+        for key in keys:
+            self.client.post(reverse("journey_todo_tick"), {"todo": key, "ticked": "1"})
+
+    def fit(self, fitted_on, subsidy=Subsidy.OTHER, level=""):
+        # 配戴之後's question, which a first date and a changed one both go through.
+        data = {"stop": "after-fitting", "fitted_on": fitted_on.isoformat(), "ear": "both"}
+        data |= {"subsidy": subsidy, "level": level}
+        self.client.post(reverse("route_answer"), data)
+
+    def ticked(self, slug):
+        """Whether each 手動待辦 of a stop is ticked, as the 您在這裡 stop would show them."""
+        return {
+            todo.key: todo.done
+            for todo in stop_todos(slug, fitting_state(self.user, TODAY))
+            if todo.manual
+        }
+
+    def at_form_25(self):
+        # Fitted 2026/10/01 at 中階型 with 身障補助: step 4 shows 二十五號表's to-dos.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        self.fit(date(2026, 10, 1), Subsidy.DISABILITY, AidLevel.MID)
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, False))
+
+    def test_a_later_fitting_date_starts_the_route_s_eight_stops_over(self):
+        # 21: every stop's 手動待辦 ticked, the date moved later; 記錄聽力圖's stay.
+        self.at_form_25()
+        manual = [todo.key for todos in STOP_TODOS.values() for todo in todos if not todo.rule]
+        self.tick(*manual)
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
+        self.fit(date(2026, 10, 5), Subsidy.DISABILITY, AidLevel.MID)
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, False))
+        for slug, todos in STOP_TODOS.items():
+            with self.subTest(slug):
+                still = {todo.key: slug == AUDIOGRAM for todo in todos if not todo.rule}
+                self.assertEqual(self.ticked(slug), still)
+
+    def test_a_later_fitting_date_starts_step_4_s_own_over(self):
+        # 21 for step 4's card without 二十五號表: fitted 40 days ago, paying otherwise.
+        self.answer()
+        self.fit(date(2026, 10, 3))
+        self.tick("step-4-adjust")
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, True))
+        self.fit(date(2026, 10, 10))
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, False))
+
+    def test_an_earlier_fitting_date_keeps_the_ticks(self):
+        # 22: a date put right, not a new pair.
+        self.at_form_25()
+        self.tick("form-25-book", "step-4-adjust", "before-you-go-book")
+        self.fit(date(2026, 9, 25), Subsidy.DISABILITY, AidLevel.MID)
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
+        self.assertEqual(self.ticked("before-you-go"), {"before-you-go-book": True})
+
+    def test_the_first_fitting_date_keeps_the_ticks(self):
+        # 23: before any 助聽器與補助資料, and once some were answered without the date.
+        self.answer()
+        self.make(PTA_55, PTA_55)
+        self.tick("before-you-go-book")
+        self.client.post(reverse("route_answer"), {"stop": "assessment", "certificate": "yes"})
+        self.tick("form-9-book")
+        self.fit(date(2026, 10, 3))
+        self.assertEqual(self.ticked("before-you-go"), {"before-you-go-book": True})
+        self.assertEqual(self.ticked("form-9"), {"form-9-book": True})
+
+    def test_clearing_the_fitting_date_then_filling_it_again_keeps_the_ticks(self):
+        # 還沒開始戴 clears the date (spec #291 acceptance 18); neither is a later date.
+        self.at_form_25()
+        self.tick("before-you-go-book")
+        self.client.post(reverse("route_answer"), {"stop": "after-fitting", "not_fitted": "1"})
+        self.assertIsNone(AidAndSubsidy.for_user(self.user).fitted_on)
+        self.fit(date(2026, 10, 20))
+        self.assertEqual(self.ticked("before-you-go"), {"before-you-go-book": True})
+
+    def test_a_later_date_saved_anywhere_is_the_next_pair(self):
+        # The rule is the record's own, so a date saved apart from 配戴之後's question counts.
+        self.answer()
+        aid = AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 3))
+        self.tick("step-4-adjust")
+        aid.fitted_on = date(2026, 10, 4)
+        aid.save()
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, False))
+
+    def test_another_s_rounds_are_their_own(self):
+        # A new pair of one user's is no other user's (the round is read per account).
+        other = consented_user(username="round_other")
+        AidAndSubsidy.objects.create(user=other, fitted_on=date(2026, 10, 3))
+        self.client.force_login(other)
+        self.tick("step-4-adjust")
+        aid = AidAndSubsidy.for_user(other)
+        aid.fitted_on = date(2026, 10, 10)
+        aid.save()
+        self.client.force_login(self.user)
+        self.answer()
+        self.fit(date(2026, 10, 3))
+        self.tick("step-4-adjust")
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, True))
+
+    def at_step_5(self):
+        # Within the normal range steps 3 and 4 are 目前不需要, so step 5 is current.
+        self.answer(on=date(2026, 9, 12))
+        self.make(NORMAL, NORMAL)
+        self.tick("step-5-calendar")
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
+
+    def test_the_next_life_impact_record_starts_step_5_over(self):
+        # 19, either life-impact questionnaire; ticked again, it is that round's.
+        self.at_step_5()
+        self.answer(code=hhia_s.CODE, on=date(2026, 11, 10))
+        journey = self.journey()
+        self.assertEqual(journey.current, 5)
+        self.assertEqual(kinds(journey.card.todos), [("step-5-calendar", True, False)])
+        self.tick("step-5-calendar")
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
+
+    def test_another_questionnaire_keeps_step_5_s_ticks(self):
+        # 20: THI and SSQ12 are no life-impact questionnaire.
+        self.at_step_5()
+        ssq12 = Questionnaire.objects.create(questionnaire_name="SSQ12", code=ssq12_tw.CODE)
+        self.questionnaires[ssq12_tw.CODE] = ssq12
+        self.answer(code=thi.CODE, on=date(2026, 11, 10))
+        self.answer(code=ssq12_tw.CODE, on=date(2026, 11, 11))
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
+
+    def test_step_5_ticked_before_any_life_impact_record_starts_over_with_the_first(self):
+        # Worn and IOI-HA done, step 5 asks for one first (spec #453).
+        AidAndSubsidy.objects.create(
+            user=self.user, fitted_on=date(2026, 5, 1), subsidy=Subsidy.OTHER
+        )
+        self.answer(code=ioi_ha.CODE, on=date(2026, 9, 1))
+        self.assertEqual(self.journey().current, 5)
+        self.tick("step-5-calendar")
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, True)])
+        self.answer(on=date(2026, 11, 10))
+        self.assertEqual(kinds(self.journey().card.todos), [("step-5-calendar", True, False)])
+
+    def test_a_new_life_impact_record_keeps_the_route_s_ticks(self):
+        # The two rounds apart: a retest is no new pair, a new pair no retest.
+        self.at_form_25()
+        self.tick("form-25-book", "step-5-calendar")
+        self.answer(on=date(2026, 11, 10))
+        self.assertEqual(kinds(self.journey().card.todos)[0], ("form-25-book", True, True))
+
+
+class Ticket482RoundDataTests(test_home_journey.HomeJourneyTestCase):
+    """Spec #478 acceptance 19 and 24: an earlier round's ticks stay in 下載我的資料, each
+    saying whether it is in the current round."""
+
+    tick = Ticket481TickTests.tick
+
+    def tick_at(self, key, hour, minute):
+        moment = timezone.make_aware(datetime(2026, 11, 12, hour, minute))
+        with patch("django.utils.timezone.now", return_value=moment):
+            self.tick(key)
+
+    def test_the_download_says_which_ticks_are_in_the_current_round(self):
+        aid = AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 3))
+        self.tick_at("audiogram-test", 9, 0)
+        self.tick_at("form-9-book", 9, 1)
+        self.tick_at("step-5-calendar", 9, 2)
+        # A new pair and a life-impact record later, step 5 ticked anew and unticked again.
+        aid.fitted_on = date(2026, 10, 10)
+        aid.save()
+        self.answer()
+        self.tick_at("step-5-calendar", 9, 3)
+        self.tick("step-5-calendar", ticked=False)
+        self.tick_at("form-9-book", 9, 4)
+        data = json.loads(self.client.get(reverse("download_my_data")).content)
+        self.assertEqual(
+            [
+                (tick["todo"], tick["ticked_at"][11:16], tick["current_round"])
+                for tick in data["journey_todos"]
+            ],
+            [
+                ("到醫院或診所做聽力檢查", "09:00", True),
+                ("預約開九號表", "09:01", False),
+                ("把下次篩檢日期記在月曆或手機上", "09:02", False),
+                ("預約開九號表", "09:04", True),
+            ],
+        )
+
+
+class Ticket482PairMigrationTests(TransactionTestCase):
+    """#482: 助聽器與補助資料 kept before it count as the first pair, the rest as they were."""
+
+    before = (("screening", "0030_todotick"),)
+    after = (("screening", "0031_aidandsubsidy_pair_number"),)
+
+    def _migrate(self, targets):
+        executor = MigrationExecutor(connection)
+        executor.migrate(list(targets))
+        return executor.loader.project_state(list(targets)).apps
+
+    def tearDown(self):
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
+
+    def test_kept_records_are_the_first_pair_and_keep_their_answers(self):
+        apps = self._migrate(self.before)
+        old_user, old_aid = (
+            apps.get_model("screening", "User"),
+            apps.get_model("screening", "AidAndSubsidy"),
+        )
+        user = old_user.objects.create(username="kept_aid")
+        old_aid.objects.create(
+            user=user, fitted_on=date(2026, 10, 3), subsidy="other", form_25_done=True
+        )
+        new_aid = self._migrate(self.after).get_model("screening", "AidAndSubsidy")
+        self.assertEqual(
+            list(
+                new_aid.objects.values_list("fitted_on", "subsidy", "form_25_done", "pair_number")
+            ),
+            [(date(2026, 10, 3), "other", True, 1)],
+        )

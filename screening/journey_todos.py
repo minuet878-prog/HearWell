@@ -5,7 +5,9 @@ A to-do never changes whether a step or a stop is done."""
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from screening import questionnaires
 from screening.fitting_route import AUDIOGRAM
+from screening.models import FIRST_ROUND
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,30 @@ STEP_TODOS = {
 _ALL_TODOS = tuple(todo for todos in (*STOP_TODOS.values(), *STEP_TODOS.values()) for todo in todos)
 TODO_TEXTS = {todo.key: todo.text for todo in _ALL_TODOS}
 MANUAL_KEYS = frozenset(todo.key for todo in _ALL_TODOS if todo.rule is None)
+# 記錄聽力圖's, step 2's card, which never start over (spec #478).
+_ONE_ROUND_KEYS = frozenset(todo.key for todo in STOP_TODOS[AUDIOGRAM])
+_STEP_5_KEYS = frozenset(todo.key for todo in STEP_TODOS[5])
+
+
+def current_rounds(user, aid):
+    """The round each 手動待辦 is ticked in now (#482, spec #478), for a tick and for reading
+    the ticks alike: 記錄聽力圖's the first, always; step 5's the latest life-impact record's id,
+    0 before one; the other eight stops' and step 4's the pair of hearing aids
+    (AidAndSubsidy.pair_number). aid: the user's, None before any."""
+    pair = aid.pair_number if aid is not None else FIRST_ROUND
+    life_impact = _latest_life_impact(user)
+    rounds = dict.fromkeys(MANUAL_KEYS, pair)
+    rounds |= dict.fromkeys(_ONE_ROUND_KEYS, FIRST_ROUND)
+    rounds |= dict.fromkeys(_STEP_5_KEYS, life_impact)
+    return rounds
+
+
+def _latest_life_impact(user):
+    # The record get_user_state takes for the latest life-impact one, kept by its id alone: no
+    # foreign key, so deleting records stays as it was (spec #478).
+    codes = [code for code in questionnaires.offered() if questionnaires.get(code).life_impact]
+    latest = user.submissions.filter(questionnaire__code__in=codes).order_by("-created_at", "-id")
+    return latest.values_list("id", flat=True).first() or 0
 
 
 def stop_todos(slug, state):

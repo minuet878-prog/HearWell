@@ -7,8 +7,8 @@ from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
 
 from screening.care_journey import care_journey
-from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS
-from screening.models import FIRST_ROUND, TodoTick
+from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS, current_rounds
+from screening.models import AidAndSubsidy, TodoTick
 from screening.views.answering import continue_notice
 from screening.views.common import health_data_page, safe_next
 
@@ -57,10 +57,12 @@ def journey_todo_tick(request):
         raise Http404
     if key not in MANUAL_KEYS or ticked not in ("0", "1"):
         return HttpResponseBadRequest()
+    # In its current round (#482): an earlier round's tick stays as it was.
+    current = current_rounds(request.user, AidAndSubsidy.for_user(request.user))[key]
     if ticked == "1":
-        TodoTick.objects.get_or_create(user=request.user, key=key, round=FIRST_ROUND)
+        TodoTick.objects.get_or_create(user=request.user, key=key, round=current)
     else:
-        TodoTick.objects.filter(user=request.user, key=key, round=FIRST_ROUND).delete()
+        TodoTick.objects.filter(user=request.user, key=key, round=current).delete()
     # journey-todos.js asks for JSON and stays on the page; a plain form goes back to its row.
     if request.get_preferred_type(["text/html", "application/json"]) == "application/json":
         return JsonResponse({"ticked": ticked == "1"})
