@@ -318,9 +318,10 @@ class GuestAnswersSerializer(SubmissionCreateSerializer):
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
-        # The questions with their questionnaire loaded, so the result asks no more (#494).
+        # Each answer as a (question, score) pair for from_answers(), the questions with their
+        # questionnaire loaded, so the result asks no more (#494).
         questions = {question.id: question for question in attrs["questionnaire"].questions.all()}
-        attrs["scored"] = [
+        attrs["question_scores"] = [
             (questions[form.cleaned_data["question_id"].id], form.cleaned_data["score"])
             for form in attrs["formset"]
         ]

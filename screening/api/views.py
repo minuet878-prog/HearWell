@@ -205,7 +205,7 @@ class GuestScore(GenericAPIView):
         data = serializer.validated_data
         questionnaire, wearing = data["questionnaire"], data["wearing_hearing_aid"]
         result = questionnaire.definition.result.from_answers(
-            questionnaire, data["scored"], wearing
+            questionnaire, data["question_scores"], wearing
         )
         html = render_to_string(
             "screening/graded_result.html",
