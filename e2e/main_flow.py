@@ -11615,6 +11615,9 @@ class SpeechBananaTapTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
             self.page.wait_for_function("window.scrollY > 100")
             self.assert_nothing_picked()
 
+            # The page runs on after the lift by a varying amount, at times past box 5.
+            self.settled_scroll()
+            self.page.locator('[data-group="5"] rect').scroll_into_view_if_needed()
             scrolled = self.settled_scroll()
             start = self.on_screen(self.ON_BOX_5)
             self.assertEqual(self.page.evaluate(self.UNDER, start), [True, True])
