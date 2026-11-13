@@ -24,7 +24,7 @@
 {% if support_message %}
 <p class="mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
-{% if submission.pk %}{% include "screening/result_next.html" %}{% else %}{% include "screening/save_card.html" %}{% endif %}
+{% if submission.result.is_guest %}{% include "screening/save_card.html" %}{% else %}{% include "screening/result_next.html" %}{% endif %}
 <div class="result-list">
 <details class="result-details">
     {% include "screening/result_details_summary.html" %}
@@ -66,7 +66,7 @@
         </details>
     </div>
 </details>
-{% if submission.pk %}{% include "screening/result_rows.html" %}{% else %}{% include "screening/guest_clear.html" %}{% endif %}
+{% if submission.result.is_guest %}{% include "screening/guest_clear.html" %}{% else %}{% include "screening/result_rows.html" %}{% endif %}
 </div>
 {# HHIA-S's limits stay outside the fold, as the owner chose (text-heavy pages tidy-up). #}
 {% if submission.questionnaire.definition.result_note %}

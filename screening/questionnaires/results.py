@@ -47,6 +47,11 @@ class Result:
         self.unsaved_answers = answers
 
     @property
+    def is_guest(self):
+        # A guest's result (from_answers(), spec #492): no saved record, so no account behind it.
+        return self.submission.pk is None
+
+    @property
     def lowest_answers(self):  # up to 3 answers with a score, lowest first
         return []
 
@@ -126,8 +131,8 @@ class GradedResult(Result):
         from screening.scoring import UNKNOWN, level_change_text, result_since_last_text
 
         submission = self.submission
-        # A result from_answers() has no account, so nothing to compare with (#494).
-        if submission.pk is None or submission.wearing_hearing_aid is None:
+        # A guest's result has no account, so nothing to compare with (#494).
+        if self.is_guest or submission.wearing_hearing_aid is None:
             return None
         previous = (
             Submission.objects.filter(
@@ -183,7 +188,7 @@ class GradedResult(Result):
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=ssq12_tw.CODE).first()
                 # Only with an account: SSQ12-TW needs one (spec #492).
-                if submission.pk is not None
+                if not self.is_guest
                 and code in (hhie_s.CODE, hhia_s.CODE)
                 and submission.wearing_hearing_aid is False
                 else None
