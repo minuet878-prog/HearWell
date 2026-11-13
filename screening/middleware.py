@@ -66,4 +66,8 @@ class ConsentRequiredMiddleware:
             return None
         if match.url_name in OPEN_PAGES or request.user.has_consented():
             return None
+        # 確認本人 before deleting the account: without a password it is the only way to delete
+        # (spec #505 acceptance 30), and deleting is open before agreeing.
+        if match.url_name == "confirm_identity" and request.GET.get("action") == "delete_account":
+            return None
         return redirect_to_login(request.get_full_path(), reverse("consent"))

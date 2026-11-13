@@ -97,6 +97,48 @@ class DeleteWithoutPasswordTests(TestCase):
 
 
 @google_on
+class DeleteBeforeAgreeingTests(TestCase):
+    """#505 acceptance 30 for an account that has not agreed to the current privacy notice:
+    deleting one's data is a right before agreeing (ConsentRequiredMiddleware), so 確認本人 for
+    deleting is open too; its other actions are not."""
+
+    def check_deletes(self, user):
+        self.client.force_login(user)
+        google = FakeGoogle(self.client)
+        start_confirming(self.client, google)
+        response = google.come_back(sub=OWN_SUB, email="own@example.com")
+        page = self.client.get(response["Location"], follow=True)
+        self.assertRedirects(page, reverse("delete_account"))
+        self.assertContains(page, "已確認是您本人。")
+        self.assertRedirects(self.client.post(reverse("delete_account")), reverse("index"))
+        self.assertFalse(User.objects.filter(pk=user.pk).exists())
+
+    def test_never_agreed(self):
+        user = google_only_user()
+        user.consents.all().delete()
+        self.check_deletes(user)
+
+    def test_agreed_to_an_older_version_only(self):
+        user = google_only_user()
+        user.consents.update(version=5)
+        self.check_deletes(user)
+
+    def test_adding_or_removing_still_asks_to_agree_first(self):
+        user = google_only_user()
+        user.consents.all().delete()
+        self.client.force_login(user)
+        for action in ("add_google", "remove_google"):
+            with self.subTest(action):
+                url = f"{reverse('confirm_identity')}?action={action}"
+                response = self.client.get(url)
+                self.assertRedirects(
+                    response,
+                    f"{reverse('consent')}?next={quote(url, safe='')}",
+                    fetch_redirect_response=False,
+                )
+
+
+@google_on
 class WrongGoogleTests(TestCase):
     """#505 acceptance 31: a Google that is not the account's confirms nothing."""
 
