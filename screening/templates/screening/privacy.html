@@ -36,6 +36,7 @@ moved only the date (#400).
             <ul>
                 <li>讓您做聽力篩檢問卷，算出分數和建議。</li>
                 <li>保存您的紀錄，讓您看到聽力和助聽器效果隨時間的變化。</li>
+                <li>您忘記密碼時，寄重設密碼信給您。</li>
                 <li>網站出錯時找出原因、修好它。</li>
                 <li>看大家在問答小助手怎麼問，補充題目。</li>
             </ul>
@@ -66,6 +67,17 @@ moved only the date (#400).
             <p>未註冊時只計算、不儲存，作答留在您的瀏覽器。</p>
             </div>
         </details>
+        {# #526 (spec #355): the 重設密碼信, Resend in the United States, and what the forgot-password page keeps for an hour. #}
+        <details class="fold-row">
+            <summary><h2 id="password-reset-title" class="fold-row-title">忘記密碼時</h2></summary>
+            <div class="fold-row-body">
+            <p>您在「忘記密碼」頁輸入電子郵件後，我們會寄一封重設密碼信到這個信箱，信裡有您的使用者名稱和設新密碼的連結。只有您自己申請時才寄，網站不寄其他信。</p>
+            <ul>
+                <li>寄信服務：Resend（資料存放在美國）。信和寄送紀錄在 Resend 保存 30 天後自動刪除；刪除帳號時，已寄出的信也要到 30 天才會刪除。</li>
+                <li>為了防止有人大量試信箱，忘記密碼頁會暫存您的 IP 位址和輸入的電子郵件，存的是換算過的代碼（不是原文），一小時後自動清除。</li>
+            </ul>
+            </div>
+        </details>
         {# #400 (ADR 0034): anonymous, so not in 下載我的資料 and not deleted with the account. #}
         <details class="fold-row">
             <summary><h2 id="question-log-title" class="fold-row-title">問答小助手的提問紀錄</h2></summary>
@@ -91,6 +103,7 @@ moved only the date (#400).
                 <li>網站主機會留下連線紀錄（包含 IP 位址），用來維持網站運作，保存 14 天後自動刪除。</li>
                 <li>您的資料會保存到您刪除帳號或要求刪除為止。</li>
                 <li>錯誤紀錄（見下一段）保存 30 天後自動刪除。</li>
+                <li>重設密碼信會傳到美國的寄信服務 Resend，保存 30 天後自動刪除。</li>
                 <li>問答小助手的提問紀錄保存 90 天後自動刪除。</li>
                 <li>刪除的資料（包括刪除的帳號、超過 90 天的提問紀錄），在備份中最多再保留 10 天，之後自動清除。</li>
             </ul>
@@ -103,6 +116,7 @@ moved only the date (#400).
             <ul>
                 <li>Vultr（網站主機與資料庫）：存放上面所有資料。</li>
                 <li>Sentry（錯誤監控，資料存放在歐盟）：網站出錯時，只送出錯誤的種類、在程式的哪個位置、網址路徑（不含「?」後面的部分）、時間，以及伺服器的技術資訊（例如程式版本）。<strong>不會</strong>送出您的名稱、電子郵件、出生年、IP 位址、密碼、作答內容或分數。</li>
+                <li>Resend（寄信服務，資料存放在美國）：只在您申請重設密碼時，經手收件信箱和信的內容（使用者名稱、重設連結），保存 30 天後自動刪除。<strong>不會</strong>拿到您的出生年、作答或分數。</li>
             </ul>
             <p class="tip-box">本站只用登入和送出表單需要的 cookie（小型的瀏覽器紀錄），沒有追蹤或廣告。</p>
             </div>
