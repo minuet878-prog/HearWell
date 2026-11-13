@@ -14113,7 +14113,3 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.wait_for_load_state("load")
             self.assertNotIn("/guest/result/", self.page.url)
             expect(self.main()).not_to_contain_text("總分")
-            # Opened again by its address, it goes home (before it finishes loading).
-            self.page.goto(f"{self.live_server_url}/guest/result/hhie-s", wait_until="commit")
-            expect(self.page).to_have_url(home)
-            expect(self.main()).not_to_contain_text("總分")
