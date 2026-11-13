@@ -4,7 +4,9 @@ A definition's `result` is one of these classes; `submission.result` is it bound
 Callers ask the record's result instead of checking which type it is (ADR 0036).
 
 Scores come from the record's one scoring path (`with_scores()` or `_calculate_scores`), item data
-from the answers the caller prefetched (a subscale record alone loads its own). The imports inside
+from the answers the caller prefetched (a subscale record alone loads its own). A graded result
+from_answers() (a guest's, #494) is bound to an unsaved record instead: its scores worked out from
+its answers in Python (scores_from_answers), with no query and no account. The imports inside
 methods break an import cycle: the definitions import this module, and scoring and the models
 import the definitions.
 """
@@ -39,8 +41,10 @@ class Result:
     page_template = None
     page_shows_wearing = True  # the result page's header says how the hearing aids were worn
 
-    def __init__(self, submission):
+    def __init__(self, submission, answers=None):
         self.submission = submission
+        # A result from_answers(): its answers not saved, in item order. None reads the record's.
+        self.unsaved_answers = answers
 
     @property
     def lowest_answers(self):  # up to 3 answers with a score, lowest first
@@ -61,6 +65,8 @@ class Result:
         }
 
     def _answers(self):  # the result page's answers, in item order
+        if self.unsaved_answers is not None:
+            return self.unsaved_answers
         return self.submission.answers.select_related("question__questionnaire").order_by(
             "question__question_number"
         )
@@ -71,6 +77,25 @@ class GradedResult(Result):
 
     row_template = "screening/record_rows/graded.html"
     page_template = "screening/result.html"
+
+    @classmethod
+    def from_answers(cls, questionnaire, answers, wearing_hearing_aid):
+        """The result of answers not saved, worked out without a query and without an account
+        (a guest's, #494; spec #492): bound to an unsaved record, so the result page's template
+        draws it as it draws a saved one's. answers: (question, score) pairs of this
+        questionnaire, the questions with their questionnaire loaded (questionnaire.questions)."""
+        from screening.models import Answer, Submission, scores_from_answers
+
+        submission = Submission(
+            questionnaire=questionnaire, wearing_hearing_aid=wearing_hearing_aid
+        )
+        unsaved = sorted(
+            (Answer(question=question, score=score) for question, score in answers),
+            key=lambda answer: answer.question.question_number,
+        )
+        submission._scores_cache = scores_from_answers(unsaved)
+        submission.result = cls(submission, unsaved)
+        return submission.result
 
     @property
     def total(self):
@@ -101,7 +126,8 @@ class GradedResult(Result):
         from screening.scoring import UNKNOWN, level_change_text, result_since_last_text
 
         submission = self.submission
-        if submission.wearing_hearing_aid is None:
+        # A result from_answers() has no account, so nothing to compare with (#494).
+        if submission.pk is None or submission.wearing_hearing_aid is None:
             return None
         previous = (
             Submission.objects.filter(
@@ -154,7 +180,10 @@ class GradedResult(Result):
             ),
             "optional_ssq12": (
                 Questionnaire.objects.filter(code=ssq12_tw.CODE).first()
-                if code in (hhie_s.CODE, hhia_s.CODE) and submission.wearing_hearing_aid is False
+                # Only with an account: SSQ12-TW needs one (spec #492).
+                if submission.pk is not None
+                and code in (hhie_s.CODE, hhia_s.CODE)
+                and submission.wearing_hearing_aid is False
                 else None
             ),
         }
