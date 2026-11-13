@@ -20,6 +20,7 @@ TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
 HIGHLIGHTS = (
     "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
     "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
+    "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # version 6 (#505)
     "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
     "您可以隨時要求查詢、更正或刪除您的資料。",
     "結果只是參考，不是醫療診斷。",
@@ -58,10 +59,11 @@ class PrivacyPageTests(TestCase):
         # #181, ADR 0014: cdnjs went with Bootstrap and the font comes from our own host, so
         # neither is listed; one fewer service was a minor fix that kept version 1 (#286 then
         # raised it to 2 for the 助聽器與補助資料). #452: Render and Neon went with the move to
-        # Vultr.
+        # Vultr. Google Fonts went with the font; Google itself is named for signing in (#505).
         response = self.client.get(reverse("privacy"))
         self.assertNotContains(response, "cdnjs")
-        self.assertNotContains(response, "Google")
+        self.assertNotContains(response, "Google Fonts")
+        self.assertNotContains(response, "googleapis")
         for service in ("Vultr", "Sentry"):
             with self.subTest(service=service):
                 self.assertContains(response, service)
@@ -504,7 +506,7 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        self.assertEqual(len(classes), 13)  # #400 added the question log
+        self.assertEqual(len(classes), 14)  # #400 added the question log, #505 Google
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})

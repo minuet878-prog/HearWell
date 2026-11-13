@@ -1,9 +1,11 @@
 import base64
 import hashlib
-from datetime import timedelta
+import json
+from datetime import date, timedelta
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
+from django.db import DatabaseError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -15,6 +17,7 @@ from screening.tests.helpers import GOOGLE_CLIENT_ID, FakeGoogle, consented_user
 
 GOOGLE_BUTTON = "使用 Google 帳戶"
 FAILED_WORDS = "登入沒有完成，請再試一次。"
+PASSWORD = "Xk9#mPq2vLw"
 
 
 @override_settings(GOOGLE_CLIENT_ID="", GOOGLE_CLIENT_SECRET="")
@@ -456,3 +459,112 @@ class CallbackSecurityTests(TestCase):
             response, "Google 暫時沒有回應，請稍後再試，或用帳號密碼登入。", exchanged=True
         )
         self.assertIn("Google token exchange failed", logs.output[0])
+
+
+class SignInMethodDataTests(TestCase):
+    """#505 acceptance 33, 34 and the admin: the sign-in methods go with the account, come out
+    in 下載我的資料 without any token, and the admin may only look at them."""
+
+    def setUp(self):
+        self.user = consented_user(username="林阿美", password=PASSWORD)
+        self.method = SignInMethod.objects.create(
+            user=self.user, provider="google", subject="google-1", used_to_register=True
+        )
+        self.other = consented_user(username="別人")
+        SignInMethod.objects.create(user=self.other, provider="google", subject="google-2")
+        self.client.force_login(self.user)
+
+    # 33
+    def test_deleting_the_account_deletes_its_sign_in_methods(self):
+        response = self.client.post(reverse("delete_account"), {"password": PASSWORD})
+        self.assertRedirects(response, reverse("index"))
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertFalse(SignInMethod.objects.filter(user_id=self.user.pk).exists())
+        self.assertEqual(SignInMethod.objects.get().user, self.other)
+
+    def test_a_failure_midway_deletes_nothing(self):
+        with (
+            mock.patch.object(User, "delete", side_effect=DatabaseError),
+            self.assertRaises(DatabaseError),
+        ):
+            self.client.post(reverse("delete_account"), {"password": PASSWORD})
+        self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
+        self.assertTrue(SignInMethod.objects.filter(pk=self.method.pk).exists())
+        self.assertTrue(self.user.consents.exists())
+
+    def test_after_deleting_the_same_google_is_a_new_code(self):
+        self.client.post(reverse("delete_account"), {"password": PASSWORD})
+        with google_on:
+            google = FakeGoogle(self.client)
+            google.start()
+            response = google.come_back(sub="google-1")
+        self.assertRedirects(response, reverse("google_name"), fetch_redirect_response=False)
+
+    # 34
+    def test_the_download_lists_the_sign_in_methods_without_tokens(self):
+        response = self.client.get(reverse("download_my_data"))
+        data = json.loads(response.content)
+        created_at = timezone.localtime(self.method.created_at).isoformat()
+        self.assertEqual(
+            data["sign_in_methods"],
+            [
+                {
+                    "provider": "Google",
+                    "subject": "google-1",
+                    "created_at": created_at,
+                    "used_to_register": True,
+                }
+            ],
+        )
+        self.assertNotIn("google-2", response.content.decode())
+        self.assertNotIn("token", response.content.decode())
+
+    def test_the_download_has_an_empty_list_without_any(self):
+        self.client.force_login(consented_user(username="只用密碼"))
+        data = json.loads(self.client.get(reverse("download_my_data")).content)
+        self.assertEqual(data["sign_in_methods"], [])
+
+    def test_the_admin_may_look_but_not_add_change_or_delete(self):
+        admin = User.objects.create_superuser(username="admin", password=PASSWORD)
+        self.client.force_login(admin)
+        changelist = reverse("admin:screening_signinmethod_changelist")
+        self.assertEqual(self.client.get(changelist).status_code, 200)
+        change = reverse("admin:screening_signinmethod_change", args=[self.method.pk])
+        self.assertEqual(self.client.get(change).status_code, 200)
+        self.assertEqual(
+            self.client.get(reverse("admin:screening_signinmethod_add")).status_code, 403
+        )
+        self.client.post(change, {"subject": "changed"})
+        delete = reverse("admin:screening_signinmethod_delete", args=[self.method.pk])
+        self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
+        self.method.refresh_from_db()
+        self.assertEqual(self.method.subject, "google-1")
+
+
+class PrivacyTests(TestCase):
+    """#505 acceptance 38, 39: the privacy notice says what Google gives, in a new version."""
+
+    def test_the_privacy_notice_says_what_google_gives_and_what_it_does_not(self):
+        response = self.client.get(reverse("privacy"))
+        self.assertContains(response, "用 Google 登入時")
+        self.assertContains(
+            response,
+            "只拿 Google 給您的代號和 email（Google 標示已驗證的），"
+            "不拿您在 Google 的名稱、大頭貼和聯絡人。",
+        )
+        self.assertContains(response, "不保留 Google 給的任何權杖")
+        self.assertContains(response, "登入完成後，不會再跟 Google 拿任何資料。")
+
+    def test_version_6_dated_the_day_it_changed(self):
+        self.assertEqual(models.CONSENT_VERSION, 6)
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
+        self.assertContains(self.client.get(reverse("privacy")), "第 6 版，2026/11/13 更新")
+
+    # 39
+    def test_who_agreed_to_version_5_agrees_again(self):
+        user = User.objects.create_user(username="agreed_to_5")
+        Consent.objects.create(user=user, version=5)
+        self.client.force_login(user)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), test_consent._consent_url(url))
+        self.assertContains(self.client.get(test_consent._consent_url(url)), "Google")

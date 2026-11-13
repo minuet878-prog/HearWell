@@ -75,6 +75,16 @@ def download_my_data(request):
             "birth_year": user.birth_year,
             "date_joined": _taipei(user.date_joined),
         },
+        # Spec #505 acceptance 34: which provider, its code and since when; no token is kept.
+        "sign_in_methods": [
+            {
+                "provider": method.get_provider_display(),
+                "subject": method.subject,
+                "created_at": _taipei(method.created_at),
+                "used_to_register": method.used_to_register,
+            }
+            for method in user.sign_in_methods.order_by("created_at", "id")
+        ],
         "consents": [
             {"version": consent.version, "agreed_at": _taipei(consent.agreed_at)}
             for consent in user.consents.order_by("agreed_at", "id")

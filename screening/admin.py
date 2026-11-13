@@ -8,6 +8,7 @@ from .models import (
     QuestionLog,
     QuestionLogMonth,
     Questionnaire,
+    SignInMethod,
     Submission,
     User,
     count_and_delete_questions,
@@ -52,6 +53,13 @@ class QuestionAdmin(ViewOnlyAdmin):
 
 admin.site.register(Answer, ViewOnlyAdmin)
 admin.site.register(Submission, ViewOnlyAdmin)
+
+
+# Spec #505: a sign-in method is made and removed by its owner only; an admin edit could hand an
+# account to another Google.
+@admin.register(SignInMethod)
+class SignInMethodAdmin(ViewOnlyAdmin):
+    list_display = ("user", "provider", "created_at", "used_to_register")
 
 
 class MatchedFilter(admin.SimpleListFilter):

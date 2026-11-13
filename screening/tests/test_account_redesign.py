@@ -22,6 +22,7 @@ PRIVACY_SECTIONS = [
     ("who-title", "誰在蒐集"),
     ("why-title", "為什麼蒐集"),
     ("collected-title", "蒐集哪些資料"),
+    ("google-title", "用 Google 登入時"),  # spec #505
     ("question-log-title", "問答小助手的提問紀錄"),
     ("storage-title", "存放在哪裡、保存多久"),
     ("recipients-title", "會交給誰"),
