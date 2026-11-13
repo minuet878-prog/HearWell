@@ -255,12 +255,12 @@ def finish(request, provider):
     # An error only once it is known to be this trip's, in time: anyone can send `error`. Only
     # the user saying no is a cancel: Google sends access_denied, LINE ACCESS_DENIED; any other
     # (LINE's SERVER_ERROR, ...) is the provider not answering (#505 acceptance 20, #506
-    # acceptance 14).
+    # acceptance 14). Its text stays out of the exception, which goes to the logs: anyone with
+    # the state can write anything there (CODING_STANDARDS.md rule 4).
     if "error" in request.GET:
-        error = request.GET["error"]
-        if error.lower() == "access_denied":
-            raise Cancelled(error)
-        raise Unavailable(f"{provider} callback: {error}")
+        if request.GET["error"].lower() == "access_denied":
+            raise Cancelled("the user said no")
+        raise Unavailable(f"{provider} callback: an error")
     code = request.GET.get("code")
     if not code:
         raise Rejected("no code")

@@ -578,6 +578,21 @@ class CallbackSecurityTests(TestCase):
                 self.assertRejected(response, UNAVAILABLE_WORDS)
         self.assertEqual(self.line.calls, [])
 
+    def test_the_callbacks_error_text_never_reaches_the_logs(self):
+        # Anyone holding this trip's state can write anything into `error` (cross-review of
+        # #506, Standards 3): the log lines and their tracebacks are fixed words.
+        crafted = "SERVER_ERROR chen.lan@example.com"
+        query = {
+            "error": crafted,
+            "error_description": "chen.lan",
+            "state": self.line.authorize["state"],
+        }
+        with self.assertLogs("screening", "DEBUG") as logs:
+            self.assertRejected(self.line.come_back(query=query), UNAVAILABLE_WORDS)
+        output = "\n".join(logs.output)
+        self.assertIn("LINE token exchange failed", output)
+        self.assertNotIn("chen.lan", output)
+
     def test_an_error_on_a_callback_not_this_trips_is_rejected(self):
         with self.assertLogs("screening.views.sign_in", "ERROR") as logs:
             response = self.line.come_back(query={"error": "SERVER_ERROR", "state": "forged"})
