@@ -743,6 +743,29 @@ class Ticket482RoundsTests(test_care_journey.CareJourneyTestCase):
         aid.save()
         self.assertEqual(kinds(self.journey().card.todos)[0], ("step-4-adjust", True, False))
 
+    def test_two_saves_from_one_read_count_both_new_pairs(self):
+        # The cross review on #478: two requests read the row at pair 1, each moving the date
+        # later; the second still holds pair 1, yet is the third pair.
+        self.answer()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 3))
+        first, second = AidAndSubsidy.for_user(self.user), AidAndSubsidy.for_user(self.user)
+        first.fitted_on = date(2026, 10, 4)
+        first.save()
+        second.fitted_on = date(2026, 10, 5)
+        second.save()
+        self.assertEqual(AidAndSubsidy.for_user(self.user).pair_number, 3)
+
+    def test_a_save_from_an_earlier_read_keeps_the_pair_it_did_not_change(self):
+        # The same stale read with no later date: the pair stays the saved one, not the read's.
+        self.answer()
+        AidAndSubsidy.objects.create(user=self.user, fitted_on=date(2026, 10, 3))
+        first, second = AidAndSubsidy.for_user(self.user), AidAndSubsidy.for_user(self.user)
+        first.fitted_on = date(2026, 10, 4)
+        first.save()
+        second.form_25_done = True
+        second.save()
+        self.assertEqual(AidAndSubsidy.for_user(self.user).pair_number, 2)
+
     def test_another_s_rounds_are_their_own(self):
         # A new pair of one user's is no other user's (the round is read per account).
         other = consented_user(username="round_other")
