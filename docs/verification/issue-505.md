@@ -2,7 +2,7 @@
 
 日期：2026-11-13。分支：`feat/505-google-sign-in`（整合分支，從 #492 的分支開出，#517 合併後已把 `main` 合進來）。規格：[#505](https://github.com/minuet878-prog/HearWell/issues/505)；票：#507 設計圖、#508 用 Google 註冊與登入、#509 同 email 不合併、#510 確認本人與沒有密碼的人刪帳號、#511 帳號設定新增／移除 Google、#512 LINE 內建瀏覽器不顯示 Google、#513 用 Google 保存訪客結果、#514 本人在 Google 後台的設定。
 
-狀態：自動測試、自審、交叉審查（Codex，複核「沒有要修」）、本人在本機實際操作驗收都已通過。第 40、41 條要部署到正式站、Google 用戶端發布後才能測，移到 #514。
+狀態：自動測試、自審、交叉審查（Codex，複核「沒有要修」）、本人在本機實際操作驗收都已通過。第 40、41 條 2026-11-14 在正式站用 iPhone 測過，通過（#514）。
 
 ## 本人決定
 
@@ -132,8 +132,8 @@ Codex，`/code-review`，基準 `main`。Standards 5 項、Spec 8 項，加上�
 
 **真機（本人驗收）**
 
-- [ ] 40 正式站、iPhone Safari 第一次用 Google 登入，Google 畫面顯示「聽伴」與 logo（等 #514）
-- [ ] 41 從 LINE 打開正式站：沒有 Google 按鈕；用 Safari 打開後登入成功；記下 Safari 看不看得到 LINE 裡的訪客結果、Google 在 LINE 裡是不是真的會擋（等 #514）
+- [x] 40 正式站、iPhone Safari 第一次用 Google 登入，Google 畫面顯示「聽伴」與 logo（2026-11-14，品牌驗證通過並發布後）
+- [x] 41 從 LINE 打開正式站：沒有 Google 按鈕；「用 Safari／Chrome 打開」換到 Safari 後登入成功；Safari 看不到 LINE 裡沒保存的訪客結果（2026-11-14）。LINE 裡不顯示 Google 按鈕，所以「Google 在 LINE 裡是不是真的會擋」沒有實測
 
 ## 本人驗收
 
