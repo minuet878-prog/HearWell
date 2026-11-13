@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>遮蔽引導比較</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#1a2b44; --mask:#b35900; --border:#c9d1dc; --soft:#eef3fa; --surface:#f4f6f9; --right:#c62828; --left:#1f4e8c; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif; font-size:18px; line-height:1.6; color:var(--heading); background:#e8ebf0; }
+  h1 { font-size:1.4rem; margin:0 0 .25rem; }
+  .intro { max-width:1180px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .row { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; }
+  .col { width:360px; }
+  .col h2 { font-size:1.15rem; margin:0 0 .25rem; }
+  .col .why { font-size:.95rem; margin:0 0 .5rem; min-height:4.8em; }
+  .phone { background:#fff; border-radius:24px; padding:16px; border:1px solid var(--border); }
+  .step { font-weight:700; margin:0 0 .25rem; }
+  .bar { display:flex; gap:4px; margin-bottom:12px; } .bar span { flex:1; height:8px; border-radius:99px; background:var(--border); } .bar .on { background:var(--primary); }
+  .fold { border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:12px; font-weight:700; }
+  .fold small { font-weight:400; }
+  .syms { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .sym { border:2px solid var(--border); border-radius:10px; padding:10px; text-align:center; font-weight:700; color:var(--right); }
+  .sym.on { background:var(--soft); border-color:var(--right); }
+  .switch { display:flex; justify-content:space-between; align-items:center; border:2px solid #8a96a8; border-radius:10px; padding:10px 14px; font-weight:700; margin-bottom:8px; }
+  .track { display:inline-block; width:2.75rem; height:1.5rem; border-radius:99px; background:#c9d1dc; position:relative; vertical-align:middle; margin-right:6px; }
+  .track::after { content:""; position:absolute; top:3px; left:3px; width:1.1rem; height:1.1rem; border-radius:50%; background:#fff; }
+  .chart { height:180px; border:1px solid #555; background:linear-gradient(#e9f5ec 0 30%, #fff 30%); position:relative; margin:8px 0; }
+  .chart::after { content:"（聽力圖）"; position:absolute; inset:0; display:grid; place-items:center; color:#888; font-size:.9rem; }
+  .tip { background:var(--surface); border-radius:10px; padding:10px 12px; margin:0 0 8px; font-size:1rem; }
+  .tip strong { color:var(--heading); }
+  .new { outline:3px solid #f2a33a; outline-offset:2px; border-radius:10px; }
+  table.map { width:100%; border-collapse:collapse; font-size:1rem; margin:4px 0 0; }
+  table.map th, table.map td { border:1px solid var(--border); padding:4px 6px; text-align:center; }
+  table.map td.m { color:var(--mask); font-weight:700; }
+  details { margin:0 0 8px; } summary { font-weight:700; color:var(--primary); cursor:pointer; }
+  .label { display:inline-block; font-size:.8rem; background:#f2a33a; color:#000; border-radius:4px; padding:0 6px; margin-bottom:4px; }
+  .common { max-width:1180px; margin:20px auto 0; background:#fff; border-radius:12px; padding:12px 16px; }
+  .common h2 { font-size:1.15rem; margin:0 0 .25rem; }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>遮蔽引導：三種做法（以右耳步驟為例）</h1>
+  <p>橘框是新增的部分。文字是草稿，遮蔽的說法請你用聽力師的角度改。</p>
+</div>
+
+<div class="row">
+  <!-- A -->
+  <div class="col">
+    <h2>A　開關正下方：一句說明＋符號對照</h2>
+    <p class="why">說明一直顯示在開關下面，眼睛看開關時就會看到。代價：每一耳都多佔約 5 行。</p>
+    <div class="phone">
+      <p class="step">第 2 步／共 4 步：標右耳</p>
+      <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+      <div class="fold">ⓘ 怎麼標記 <small>（第一耳展開）</small></div>
+      <div class="syms"><div class="sym on">右耳氣導 ○</div><div class="sym">右耳骨導 &lt;</div></div>
+      <div class="switch">遮蔽 <span><span class="track"></span>關</span></div>
+      <div class="tip new">
+        <span class="label">新增</span><br>
+        <strong>報告上是這些符號，就打開遮蔽再標：</strong>
+        <table class="map">
+          <tr><th></th><th>沒遮蔽</th><th>有遮蔽</th></tr>
+          <tr><th>氣導</th><td>○</td><td class="m">△</td></tr>
+          <tr><th>骨導</th><td>&lt;</td><td class="m">[</td></tr>
+        </table>
+        <p style="margin:.5rem 0 0">遮蔽是檢查時在另一耳放雜音，不讓另一耳幫忙聽，結果比較準。</p>
+      </div>
+      <div class="chart"></div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="col">
+    <h2>B　開關下一行提示，細節收在「什麼是遮蔽？」</h2>
+    <p class="why">平常只多一行「什麼時候開」，想知道遮蔽是什麼再點開。代價：「是什麼」要多點一下才看得到。</p>
+    <div class="phone">
+      <p class="step">第 2 步／共 4 步：標右耳</p>
+      <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+      <div class="fold">ⓘ 怎麼標記 <small>（第一耳展開）</small></div>
+      <div class="syms"><div class="sym on">右耳氣導 ○</div><div class="sym">右耳骨導 &lt;</div></div>
+      <div class="switch">遮蔽 <span><span class="track"></span>關</span></div>
+      <div class="new" style="padding:6px 4px; margin-bottom:8px;">
+        <span class="label">新增</span>
+        <p style="margin:0 0 4px; font-size:1rem;">報告上是 <b style="color:var(--mask)">△</b> 或 <b style="color:var(--mask)">[</b>，就打開遮蔽再標。</p>
+        <details open>
+          <summary>什麼是遮蔽？（點開後）</summary>
+          <p style="margin:.25rem 0 0; font-size:1rem;">檢查時在另一耳放雜音，不讓另一耳幫忙聽，結果比較準。報告上會改用 △、[ 標示右耳（左耳是 □、]）。</p>
+        </details>
+      </div>
+      <div class="chart"></div>
+    </div>
+  </div>
+
+  <!-- C -->
+  <div class="col">
+    <h2>C　放進「怎麼標記」當第 4 步</h2>
+    <p class="why">跟其他步驟放一起，畫面最乾淨。代價：第二耳時「怎麼標記」是收起來的，標左耳時看不到。</p>
+    <div class="phone">
+      <p class="step">第 2 步／共 4 步：標右耳</p>
+      <div class="bar"><span class="on"></span><span class="on"></span><span></span><span></span></div>
+      <div class="tip" style="background:#fff; border:1px solid var(--border);">
+        <strong>怎麼標記</strong>
+        <ol style="margin:.25rem 0 0; padding-left:1.3rem; font-size:1rem;">
+          <li>選下面的符號</li>
+          <li>在圖上按住，上下拖到報告上的位置</li>
+          <li>放開就標好了；標錯就在那個點上點一下，可以刪除</li>
+          <li class="new"><span class="label">新增</span> 報告上是 <b style="color:var(--mask)">△ □ [ ]</b>，先打開遮蔽再標（遮蔽：檢查時在另一耳放雜音，不讓另一耳幫忙聽）</li>
+        </ol>
+      </div>
+      <div class="syms"><div class="sym on">右耳氣導 ○</div><div class="sym">右耳骨導 &lt;</div></div>
+      <div class="switch">遮蔽 <span><span class="track"></span>關</span></div>
+      <div class="chart"></div>
+    </div>
+  </div>
+</div>
+
+<div class="common">
+  <h2>三種做法都會一起改的</h2>
+  <ul>
+    <li>觸控改成<b>一按就標</b>：手指碰到圖就出現數值、上下拖、放開就標好；「怎麼標記」第 2、3 步和讀螢幕的說明改掉「按住不動一下」。</li>
+    <li>長按不再跳出 iPhone 的選字和放大鏡。</li>
+    <li>右耳標完按「換左耳」：<b>遮蔽自動關掉</b>，畫面<b>跳回最上面的步驟標題</b>，下面接著就是符號和聽力圖。從確認頁按「改右耳／改左耳」也一樣。</li>
+  </ul>
+</div>
+</body>
+</html>

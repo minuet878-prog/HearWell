@@ -7,9 +7,10 @@ import { CHART, x, y } from "./audiogram.js";
 const TODAY = "2026-10-16";
 let navigate;
 
-// jsdom has no layout: make one screen pixel equal one chart unit.
+// jsdom has no layout: make one screen pixel equal one chart unit, and scrolling a no-op.
 beforeEach(() => {
   navigate = vi.fn();
+  Element.prototype.scrollIntoView = vi.fn();
   SVGElement.prototype.getBoundingClientRect = () => ({
     left: 0,
     top: 0,
@@ -228,97 +229,43 @@ describe("input", () => {
   });
 });
 
-// #353: a finger marks only after resting 0.3 s, so a swipe that starts on the chart scrolls the page.
+// A finger marks the moment it lands, as a mouse does; the 0.3 s rest of #353 left a tap doing
+// nothing once the marking page no longer scrolled much.
 describe("touch", () => {
-  const finger = (frequency, db, dy = 0) => ({ ...at(frequency, db), clientY: y(db) + dy, pointerType: "touch" });
+  const finger = (frequency, db) => ({ ...at(frequency, db), pointerType: "touch" });
   const touchDown = (...args) => fireEvent.pointerDown(chart(), finger(...args));
   const touchMove = (...args) => fireEvent.pointerMove(chart(), finger(...args));
   const touchUp = (...args) => fireEvent.pointerUp(chart(), finger(...args));
-  const wait = (ms) => act(() => vi.advanceTimersByTime(ms));
   // fireEvent returns false when a listener called preventDefault, i.e. the page did not scroll.
   const scrolls = () => fireEvent.touchMove(chart());
 
-  beforeEach(() => vi.useFakeTimers());
-
-  it("a swipe scrolls the page and marks nothing (#353 acceptance 1)", () => {
+  it("a finger marks as it lands, and dragging does not scroll the page", () => {
     renderRight();
-    expect(chart().style.touchAction).toBe("manipulation");
+    expect(chart().style.touchAction).toBe("none");
     touchDown(1000, 40);
-    touchMove(1000, 40, 11);
-    wait(300);
-    expect(scrolls()).toBe(true);
-    expect(magnifier()).toBeNull();
-    touchUp(1000, 40, 200);
-    expect(point("right-air-1000")).toBeNull();
-
-    // Nor does a swipe that starts on a point delete it.
-    drag(1000, 40, 40);
-    touchDown(1000, 40);
-    touchMove(1000, 40, -11);
-    wait(300);
-    touchUp(1000, 40, -200);
-    expect(point("right-air-1000").dataset.db).toBe("40");
-  });
-
-  it("marks nothing when the browser takes the touch for scrolling", () => {
-    renderRight();
-    touchDown(1000, 40);
-    fireEvent.pointerCancel(chart(), finger(1000, 40));
-    wait(300);
-    expect(magnifier()).toBeNull();
-  });
-
-  it("a second finger (zooming) marks nothing", () => {
-    renderRight();
-    touchDown(1000, 40);
-    fireEvent.pointerDown(chart(), { ...finger(2000, 50), pointerId: 2 });
-    wait(300);
-    expect(magnifier()).toBeNull();
-    touchUp(1000, 40);
-    expect(point("right-air-1000")).toBeNull();
-    expect(point("right-air-2000")).toBeNull();
-  });
-
-  // Also acceptance 11 of the first audiogram spec: dragging does not scroll the page.
-  it("resting 0.3 s starts marking, then dragging does not scroll (#353 acceptance 2)", () => {
-    renderRight();
-    touchDown(1000, 40);
-    // A resting finger wobbles a little.
-    touchMove(1000, 40, 5);
-    wait(299);
-    expect(magnifier()).toBeNull();
-    wait(1);
     expect(magnifier().textContent).toBe("1000 Hz 40 dB");
     expect(scrolls()).toBe(false);
     touchMove(1000, 60);
     touchUp(1000, 60);
     expect(point("right-air-1000").dataset.db).toBe("60");
     expect(magnifier()).toBeNull();
-    expect(scrolls()).toBe(true);
   });
 
-  it("a quick tap neither marks nor deletes (#353 acceptance 3)", () => {
+  it("a tap marks, and a tap on the point deletes it", () => {
     renderRight();
     touchDown(1000, 40);
-    wait(100);
-    touchUp(1000, 40);
-    wait(300);
-    expect(point("right-air-1000")).toBeNull();
-    expect(magnifier()).toBeNull();
-
-    drag(1000, 40, 40);
-    touchDown(1000, 40);
-    wait(100);
     touchUp(1000, 40);
     expect(point("right-air-1000").dataset.db).toBe("40");
+    touchDown(1000, 40);
+    touchUp(1000, 40);
+    expect(point("right-air-1000")).toBeNull();
   });
 
-  it("resting on a point and letting go deletes it (#353 acceptance 4)", () => {
+  it("marks nothing when the browser takes the touch", () => {
     renderRight();
-    drag(1000, 40, 40);
     touchDown(1000, 40);
-    wait(300);
-    touchUp(1000, 40);
+    fireEvent.pointerCancel(chart(), finger(1000, 40));
+    expect(magnifier()).toBeNull();
     expect(point("right-air-1000")).toBeNull();
   });
 });
@@ -406,6 +353,35 @@ describe("masking", () => {
       { ear: "right", conduction: "air", frequency: 1000, db: 40, no_response: false, masked: true },
     ]);
   });
+
+  it("turns off when the next step opens, so the left ear starts unmasked", () => {
+    renderRight();
+    fireEvent.click(maskToggle());
+    forward();
+    expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+    expect(framed()).toBe(false);
+    fireEvent.click(maskToggle());
+    back();
+    expect(maskToggle().getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("says under the switch which of this ear's marks need it, and what it is", () => {
+    renderRight();
+    const guide = () => maskToggle().nextElementSibling;
+    expect(guide().querySelector("p").textContent).toBe("報告上是這些符號，就打開遮蔽再標：");
+    const rows = () => [...guide().querySelectorAll("tr")].map((tr) => [...tr.children].map((cell) => cell.textContent));
+    expect(rows()).toEqual([
+      ["", "沒遮蔽", "有遮蔽"],
+      ["氣導", "○", "△"],
+      ["骨導", "<", "["],
+    ]);
+    expect(guide().textContent).toContain("遮蔽是檢查時在另一耳放雜音，不讓另一耳幫忙聽，結果比較準。");
+    forward();
+    expect(rows().slice(1)).toEqual([
+      ["氣導", "✕", "□"],
+      ["骨導", ">", "]"],
+    ]);
+  });
 });
 
 // #199, #200 (spec #183 stories 80-93): one thing per step, checked only at the end.
@@ -423,8 +399,8 @@ describe("steps", () => {
     expect(screen.getByText("報告上的 O 是右耳（通常是紅色），X 是左耳（通常是藍色）")).toBeTruthy();
     expect([...document.querySelectorAll(".audiogram-howto .step-list-body")].map((li) => li.textContent)).toEqual([
       "選下面的符號",
-      "在圖上按住不動一下，等數值出現，再上下拖到報告上的位置",
-      "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
+      "在圖上按住，上下拖到報告上的位置",
+      "放開就標好了；標錯就在那個點上點一下，可以刪除",
     ]);
     expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
     const symbols = () => [...document.querySelectorAll(".audiogram-symbol")].map((b) => b.textContent.replace(/ .*/, ""));
@@ -473,6 +449,17 @@ describe("steps", () => {
     expect(document.activeElement).not.toBe(text);
     forward();
     expect(document.activeElement).toBe(document.querySelector(".step-progress-text"));
+  });
+
+  // An iPhone does not move focus to a tapped button, so the step text keeps focus from the last
+  // step and focusing it again scrolls nothing; the page stayed down at the 換左耳 button.
+  it("brings the step it opens to the top even when its text already has focus", () => {
+    renderRight();
+    expect(document.activeElement).toBe(document.querySelector(".step-progress-text"));
+    Element.prototype.scrollIntoView.mockClear();
+    forward();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(Element.prototype.scrollIntoView.mock.contexts[0]).toBe(document.querySelector(".step-progress-text"));
   });
 
   it("the confirm step shows the date, both ears and how many marks, no reading (#200)", () => {
