@@ -303,7 +303,7 @@ export default function AnswerApp({
     } else if (response?.status === 403) {
       setStatus({ type: "expired" });
     } else if (response?.status === 429) {
-      // A guest's 20 an hour (spec #492): the server's words; the answers stay on screen.
+      // A guest's 40 an hour (spec #492): the server's words; the answers stay on screen.
       const body = await response.json().catch(() => ({}));
       setStatus({ type: "error", message: body.detail ?? FAILED });
     } else if (response?.status === 409) {

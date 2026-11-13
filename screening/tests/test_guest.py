@@ -291,19 +291,20 @@ class GuestScoreTests(GuestTestCase):
                     self.guest_score(valid | {"just_finished": value}).status_code, 200
                 )
 
-    def test_the_21st_in_an_hour_from_one_address_gets_429(self):
+    def test_the_41st_in_an_hour_from_one_address_gets_429(self):
+        # 40, not the grill's 20 (implementation decision I1): one questionnaire scores twice.
         body = self.body(self.hhie_s, [0] * 10)
-        for _ in range(20):
+        for _ in range(40):
             self.assertEqual(self.guest_score(body).status_code, 200)
         response = self.guest_score(body)
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json(), {"detail": LIMIT})
         self.assertNotIn("scores", response.json())
-        # Another address still gets its own 20.
+        # Another address still gets its own 40.
         self.assertEqual(self.guest_score(body, REMOTE_ADDR="203.0.113.9").status_code, 200)
 
     def test_invalid_requests_count_too(self):
-        for _ in range(20):
+        for _ in range(40):
             self.assertEqual(self.guest_score({}).status_code, 400)
         self.assertEqual(self.guest_score(self.body(self.hhie_s, [0] * 10)).status_code, 429)
 
