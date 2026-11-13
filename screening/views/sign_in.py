@@ -162,9 +162,9 @@ def _signed_in_as(request, identity, method):
     return redirect("google_name")
 
 
-# What each purpose of a trip (oidc.PURPOSES) does with who came back, and where a trip that
-# ended without anyone goes (with the words for why): 確認本人 back to its own page (#510),
-# adding one to account settings (#511), the others to the login page.
+# The purposes a trip can have (oidc.begin), the only list of them: what each does with who came
+# back, and where a trip that ended without anyone goes (with the words for why): 確認本人 back
+# to its own page (#510), adding one to account settings (#511), the others to the login page.
 TRIPS = {
     "sign_in": (_sign_in, _back_to_login),
     "save_card": (_save_card, _back_to_login),

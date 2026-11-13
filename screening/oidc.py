@@ -41,9 +41,6 @@ PROVIDERS = {
     ),
 }
 
-# What this trip is for; the callback hands the identity on by it (spec #505).
-PURPOSES = ("sign_in", "add_method", "confirm_identity", "save_card")
-
 # The trip in the session: {"provider", "purpose", "state", "nonce", "code_verifier",
 # "started_at" (a Unix time), "next"}. One at a time; a new trip replaces an unfinished one.
 FLOW = "screening.oidc_flow"
@@ -97,8 +94,9 @@ def _code_challenge(verifier):
 
 
 def begin(request, provider, purpose, next_url=""):
-    """Keep a new trip in the session and give the provider's authorize URL to send the user to."""
-    assert purpose in PURPOSES
+    """Keep a new trip in the session and give the provider's authorize URL to send the user to.
+    purpose: what the trip is for, one of the callback's (views/sign_in.py TRIPS), which hands
+    the identity on by it."""
     state = secrets.token_urlsafe(32)
     nonce = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)  # 86 characters; PKCE allows 43 to 128
