@@ -108,7 +108,7 @@ class ButtonTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertContains(
             response,
-            f'<a class="btn btn-lg btn-google" href="{reverse("line_start")}">',
+            f'<a class="btn btn-lg btn-provider" href="{reverse("line_start")}">',
         )
         self.assertContains(response, 'class="btn-line-logo"')
 
