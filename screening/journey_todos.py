@@ -136,7 +136,7 @@ def _ticked(user, todos, round_now):
     manual = [todo.key for todo in todos if todo.rule is None]
     if not manual:
         return frozenset()
-    ticks = user.todo_ticks.filter(key__in=manual, round=round_now)
+    ticks = user.todo_ticks.filter(key__in=manual, round_key=round_now)
     return frozenset(ticks.values_list("key", flat=True))
 
 

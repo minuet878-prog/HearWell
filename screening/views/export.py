@@ -153,7 +153,7 @@ def download_my_data(request):
             {
                 "todo": TODO_TEXTS.get(tick.key, tick.key),
                 "ticked_at": _taipei(tick.ticked_at),
-                "current_round": rounds.get(tick.key) == tick.round,
+                "current_round": rounds.get(tick.key) == tick.round_key,
             }
             for tick in user.todo_ticks.order_by("ticked_at", "id")
         ],

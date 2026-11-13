@@ -62,9 +62,9 @@ def journey_todo_tick(request):
     life_impact = get_user_state(request.user, timezone.localdate()).life_impact
     current = current_rounds(AidAndSubsidy.for_user(request.user), life_impact)[key]
     if ticked == "1":
-        TodoTick.objects.get_or_create(user=request.user, key=key, round=current)
+        TodoTick.objects.get_or_create(user=request.user, key=key, round_key=current)
     else:
-        TodoTick.objects.filter(user=request.user, key=key, round=current).delete()
+        TodoTick.objects.filter(user=request.user, key=key, round_key=current).delete()
     # journey-todos.js asks for JSON and stays on the page; a plain form goes back to its row.
     if request.get_preferred_type(["text/html", "application/json"]) == "application/json":
         return JsonResponse({"ticked": ticked == "1"})

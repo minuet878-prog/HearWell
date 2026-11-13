@@ -546,7 +546,7 @@ class Ticket481TicksDoNotMoveTheJourneyTests(test_care_journey.CareJourneyTestCa
     def test_every_manual_to_do_ticked_leaves_form_9_the_stop(self):
         # 13.
         self.at_form_9()
-        TodoTick.objects.create(user=self.user, key="form-9-book", round=FIRST_ROUND)
+        TodoTick.objects.create(user=self.user, key="form-9-book", round_key=FIRST_ROUND)
         journey = self.journey()
         self.assertEqual(journey.current, 3)
         self.assertEqual(fitting_state(self.user, TODAY).stop, "form-9")
@@ -569,7 +569,7 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
     def test_the_download_lists_each_tick_with_its_words_and_time(self):
         # 24: an unticked one is not there; an earlier round's is Ticket482RoundDataTests'.
         other = consented_user(username="todo_export_other")
-        TodoTick.objects.create(user=other, key="audiogram-copy", round=FIRST_ROUND)
+        TodoTick.objects.create(user=other, key="audiogram-copy", round_key=FIRST_ROUND)
         for key, moment in (
             ("audiogram-test", datetime(2026, 11, 12, 9, 30)),
             ("form-9-book", datetime(2026, 11, 12, 9, 31)),
@@ -615,7 +615,7 @@ class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
     def test_deleting_the_account_takes_its_ticks(self):
         # 25: PROTECT, so delete_with_data deletes them first; another's stay.
         other = consented_user(username="todo_delete_other")
-        TodoTick.objects.create(user=other, key="audiogram-test", round=FIRST_ROUND)
+        TodoTick.objects.create(user=other, key="audiogram-test", round_key=FIRST_ROUND)
         self.user.set_password(test_account_deletion.PASSWORD)
         self.user.save()
         self.client.force_login(self.user)
