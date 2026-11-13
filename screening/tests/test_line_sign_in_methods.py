@@ -8,6 +8,7 @@ from contextlib import nullcontext
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
+from django.db import IntegrityError
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -325,6 +326,20 @@ class AddTests(TestCase):
             list(self.user.sign_in_methods.values_list("provider", "subject")),
             [("line", "line-first")],
         )
+
+    def test_any_other_clash_on_adding_is_a_real_error(self):
+        # Only the two races are answered with words (cross-review recheck on #506, item 4): an
+        # integrity error with neither this code taken nor a LINE already on the account is not
+        # hidden behind 「沒有完成新增」.
+        self.start_adding()
+        with (
+            mock.patch.object(
+                SignInMethod.objects, "create", side_effect=IntegrityError("something else")
+            ),
+            self.assertRaises(IntegrityError),
+        ):
+            self.line.come_back(sub="line-new")
+        self.assertFalse(self.user.sign_in_methods.filter(provider="line").exists())
 
     # 17: the other account takes it between the check and the insert.
     def test_a_line_added_to_another_account_meanwhile_is_not_added(self):

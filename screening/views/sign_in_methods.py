@@ -119,13 +119,16 @@ def came_back(request, identity):
                 used_to_register=False,
             )
     except IntegrityError:
-        # Another account took this code after the check; or this account got another of this
-        # provider's meanwhile, in another browser (one per account; cross-review of #506,
-        # Standards 4).
+        # Only the two clashes a race can make, known by what is now there: another account took
+        # this code after the check, or this account got another of this provider's meanwhile, in
+        # another browser (one per account; cross-review of #506, Standards 4). Any other is a
+        # real error.
         if SignInMethod.objects.for_identity(identity).exists():
             messages.error(request, WORDS[identity.provider].taken)
-        else:
+        elif user.sign_in_methods.filter(provider=identity.provider).exists():
             messages.error(request, WORDS[identity.provider].not_added)
+        else:
+            raise
     else:
         messages.success(request, WORDS[identity.provider].added)
     return redirect("account_settings")
