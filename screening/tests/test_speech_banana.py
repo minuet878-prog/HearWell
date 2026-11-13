@@ -417,7 +417,9 @@ class SpeechBananaPageTests(TestCase):
 
     def test_over_the_existing_limit_the_foot_has_the_guide_card_and_the_way_back(self):
         cards, _ = self._footer(*self._ears((500, 40), (1000, 40), (2000, 40), (4000, 40)))
-        self.assertEqual(cards, [(reverse("guide"), "看我的選配指引", "依您的聽力圖整理下一步")])
+        self.assertEqual(
+            cards, [(reverse("guide"), "看助聽器選配與補助", "依您的聽力圖整理下一步")]
+        )
 
     def test_under_the_existing_limit_the_foot_has_only_the_way_back(self):
         cards, _ = self._footer(*self._ears((500, 20), (1000, 20), (2000, 20), (4000, 20)))
@@ -431,7 +433,7 @@ class SpeechBananaPageTests(TestCase):
     def test_how_much_is_hard_to_hear_does_not_change_the_foot(self):
         # #436 story 38. Flat 30 dB: PTA 30, over the limit, and every group with a mark is heard.
         cards, audiogram = self._footer(*self._ears((500, 30), (1000, 30), (2000, 30), (4000, 30)))
-        self.assertEqual([title for _, title, _ in cards], ["看我的選配指引"])
+        self.assertEqual([title for _, title, _ in cards], ["看助聽器選配與補助"])
         self.assertNotIn("hard", self._statuses(audiogram))
         # A steep drop past 2000 Hz: PTA 22.5, under the limit, with groups 4 to 6 hard to hear.
         cards, audiogram = self._footer(

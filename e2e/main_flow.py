@@ -1509,7 +1509,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded).to_be_hidden()
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配指引")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -2756,7 +2756,7 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.switch().get_by_role("link", name="聽力圖").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/audiograms")
             self.assert_on("聽力圖")
-            expect(self.main().get_by_role("link", name="新增聽力圖")).to_be_visible()
+            expect(self.main().get_by_role("link", name="記錄聽力圖")).to_be_visible()
             self.switch().get_by_role("link", name="問卷").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/my_hearing?view=questionnaires")
             self.assert_on("問卷")
@@ -3157,10 +3157,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/")
             journey = self.page.get_by_role("region", name="照顧旅程")
             journey.locator(".journey-about summary").filter(has_text="記錄聽力圖").click()
-            journey.get_by_role("link", name="看我的選配指引").click()
+            journey.get_by_role("link", name="看助聽器選配與補助").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器選配與補助")
             # #260: the audiogram's numbers open the 選配 meter; #467: its date is their title.
             expect(
                 self.main().get_by_role("heading", name="依您 2026/10/01 的聽力圖")
@@ -3191,7 +3191,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(hospitals.first).to_be_in_viewport()
 
             # #367: the chapter's end leads back too; this is the one at its top.
-            self.main().get_by_role("link", name="回到我的選配指引").first.click()
+            self.main().get_by_role("link", name="回到助聽器選配與補助").first.click()
             self.main().get_by_role("region", name="身障鑑定門檻").get_by_text("看完整說明").click()
             self.main().get_by_role("link", name="看九號表的流程").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
@@ -3403,7 +3403,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # 1 記錄聽力圖, in its four steps.
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("記錄聽力圖")
-            self.here().get_by_role("link", name="記錄醫院的聽力圖").click()
+            self.here().locator("a.btn", has_text="記錄聽力圖").click()
             main = self.main()
             main.get_by_label("檢查日期").fill("2026-10-01")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
@@ -4116,7 +4116,7 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
     def test_cards_change_page_without_javascript(self):
         cards = (
-            ("了解助聽器選配與補助", "/guide", "我的選配指引"),
+            ("了解助聽器選配與補助", "/guide", "助聽器選配與補助"),
             ("家人專區：溝通與陪伴", "/family", "家人專區"),
             ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
         )
@@ -7938,7 +7938,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_on_white(self.main().get_by_role("link", name="登入", exact=True))
             self.visit(True, "/guide")
             self.assert_on_white(self.main().get_by_text("依您在聽伴最新的紀錄"))
-            for button in ("開始篩檢", "記錄醫院的聽力圖"):
+            for button in ("開始篩檢", "記錄聽力圖"):
                 with self.subTest(button=button):
                     self.assert_on_white(
                         self.main().get_by_role("link", name=button, exact=True).first
@@ -7949,10 +7949,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             audiogram = self.main().get_by_role("region", name="聽力圖")
             expect(self.assert_titled_part(audiogram)).to_have_text("聽力圖")
             # #467: the 您在這裡 card has the solid button, so this one is a link on white.
-            record = audiogram.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            record = audiogram.get_by_role("link", name="記錄聽力圖", exact=True)
             self.assert_on_white(record)
             here = self.main().locator(".route-stop[aria-current=step]")
-            button = here.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            button = here.locator("a.btn", has_text="記錄聽力圖")
             self.assertEqual(self.style(button, "backgroundColor"), self.PRIMARY)
 
     # #319, #320, #321 (#318 acceptance 13): on a phone at 200% text a long part title wraps
@@ -11706,7 +11706,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         return self.main().get_by_text(text)
 
     def guide_card(self):
-        return self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+        return self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
 
     def way_back(self):
         return self.main().get_by_role("link", name="回這張聽力圖")
@@ -11741,7 +11741,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
-                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
             ).to_be_visible()
             expect(self.way_back()).to_be_visible()
 
@@ -11760,7 +11760,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.page_for(20)
             expect(
-                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
             ).to_have_count(0)
             expect(self.way_back()).to_be_visible()
 
@@ -14563,10 +14563,10 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
         with self.saving_artifacts():
             self.guest_answers_hhie_s()
             self.register_from_the_card()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            # Saved without being asked, then 我的紀錄.
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：12")
+            self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
+            # Saved without being asked, then the home page's 照顧旅程 (the 2026-11-14 walkthrough).
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            expect(self.main().locator("a.journey-tile")).to_contain_text("12 分")
             record = Submission.objects.get(user__username="e2e_guest")
             self.assertEqual(record.result.total, 12)
             self.assertEqual(record.result.level["text"], "輕度到中度影響")
@@ -14980,9 +14980,9 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
             expect(self.page).to_have_url(f"{self.live_server_url}/login/{self.provider}/name")
             self.main().get_by_label("使用者名稱").fill(self.username)
             self.main().get_by_role("button", name="下一步").click()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            expect(self.main().locator("a.journey-tile")).to_contain_text("20 分")
             record = Submission.objects.get(user__username=self.username)
             self.assertEqual(record.result.total, 20)
             self.assertEqual(self.guest_results(), [])

@@ -1,13 +1,13 @@
 {% extends "screening/layout.html" %}
 {% load static %}
-{% block title %}我的選配指引｜聽伴{% endblock %}
+{% block title %}助聽器選配與補助｜聽伴{% endblock %}
 {% block extra_head %}
 {# #467: one route stop open at a time, and the route's entrance on the tab's first visit only. #}
 <script type="module" src="{% static 'screening/frontend/guide.js' %}"></script>
 {% endblock %}
 {% block body %}
 {# Wording finalised in #220; change it only after review (ADR 0013). #}
-<h1 class="h3 mt-4">我的選配指引</h1>
+<h1 class="h3 mt-4">助聽器選配與補助</h1>
 {% if not user.is_authenticated %}
 <p>登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'login' %}?next={{ request.path|urlencode }}">登入</a></p>
@@ -16,7 +16,7 @@
 {% if not has_records %}
 <p>這裡要用您的問卷或聽力圖才能整理。可以先做一份問卷，或把醫院給的聽力圖記錄下來。</p>
 <p><a class="btn btn-primary btn-lg" href="{% url 'questionnaire_list' %}">開始篩檢</a></p>
-<p><a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
+<p><a class="btn btn-outline-primary btn-lg" href="{% url 'audiogram_new' %}">記錄聽力圖</a></p>
 {% endif %}
 {% endif %}
 {# #467 (the #466 mockup A): the route first, its 您在這裡 card holding the page's one solid button. #}
@@ -49,7 +49,7 @@
                     <summary><span class="route-row"><span class="route-title">{{ stop.title }}</span>{% if stop.marks %}<span class="route-marks">{% for mark in stop.marks %}{% if not forloop.first %}・{% endif %}<span class="route-mark">{{ mark }}</span>{% endfor %}{% if stop.tested_on %}・{{ stop.tested_on|date:"Y/m/d" }} 的聽力圖{% endif %}</span>{% endif %}</span><span class="result-details-arrow" aria-hidden="true"></span></summary>
                     <div class="route-about-body">
                         <p>{{ stop.about }}</p>
-                        {% if stop.about_link %}<a class="tap-link" href="{{ stop.url }}">{{ stop.about_link }}<span class="visually-hidden">：{{ stop.title }}</span></a>{% endif %}
+                        {% if stop.about_link %}<a class="tap-link" href="{{ stop.url }}">{{ stop.about_link }}{% if stop.about_link != stop.title %}<span class="visually-hidden">：{{ stop.title }}</span>{% endif %}</a>{% endif %}
                     </div>
                 </details>
                 {% for note in stop.notes %}<p class="route-note">{{ note }}</p>{% endfor %}
@@ -74,7 +74,7 @@
     <h2 id="audiogram-title" class="h4">聽力圖</h2>
     {# #467: the 您在這裡 card has the same button, so this one is a link. #}
     <p>問卷反映的是您感受到的生活影響，不能判定聽損程度。建議先做聽力檢查，再把聽力圖記錄下來，這裡就能整理下一步。</p>
-    <p class="mb-0"><a href="{% url 'audiogram_new' %}">記錄醫院的聽力圖</a></p>
+    <p class="mb-0"><a href="{% url 'audiogram_new' %}">記錄聽力圖</a></p>
 </section>
 {% endif %}
 {% if audiogram %}

@@ -9,7 +9,7 @@ from screening.tests.helpers import consented_user
 from screening.views.guide import GUIDE_CHAPTERS
 
 # Wording finalised in #220 (draft comment and its follow-up).
-TITLE = "我的選配指引"
+TITLE = "助聽器選配與補助"
 LOGIN_NOTE = (
     "登入後，這裡會依您的問卷和聽力圖，整理出要不要找聽力師評估，"
     "以及有沒有達到身障鑑定門檻。下面的章節不用登入也能看。"
@@ -24,7 +24,7 @@ CHAPTERS = (
     "配戴助聽器之後",
     "二十五號表：使用效益驗證",
 )
-BACK = "回到我的選配指引"
+BACK = "回到助聽器選配與補助"
 # Shortened in the guide chapters tidy-up (2026-10-23, the owner's request): things to bring
 # as chips, the questions grouped under three labels. #467 (H2): the parts titled as questions,
 # the first question in sight before its group.

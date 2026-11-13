@@ -81,8 +81,8 @@ FAQS = (
             "查各縣市的醫院。</p>"
         ),
         sources=(
-            ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
-            ("我的選配指引：身障鑑定與鑑定醫院", "/guide/assessment"),
+            ("助聽器選配與補助：助聽器的種類與價格", "/guide/types-and-prices"),
+            ("助聽器選配與補助：身障鑑定與鑑定醫院", "/guide/assessment"),
         ),
         checked_on=date(2026, 10, 27),
         other_phrasings=("推薦哪個牌子", "去哪裡買助聽器", "哪家店比較好"),
@@ -129,7 +129,7 @@ FAQS = (
             "<p>誰可以申請、申請流程和補助多少，請看選配指引的"
             '<a href="/guide/form-9">「九號表：申請助聽器補助」</a>。</p>'
         ),
-        sources=(("我的選配指引：九號表：申請助聽器補助", "/guide/form-9"),),
+        sources=(("助聽器選配與補助：九號表：申請助聽器補助", "/guide/form-9"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("助聽器有補助嗎", "怎麼申請補助", "補助可以拿多少"),
         related=("sound-amplifier-vs-hearing-aid", "brands-and-shops"),
@@ -147,7 +147,7 @@ FAQS = (
             "「擴音器、輔聽器可以代替助聽器嗎？」</a>。</p>"
         ),
         sources=(
-            ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
+            ("助聽器選配與補助：助聽器的種類與價格", "/guide/types-and-prices"),
             (
                 "醫療器材管理法（全國法規資料庫）",
                 "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0030106",

@@ -14,7 +14,7 @@
 <h1 class="h3 mt-4">我的紀錄</h1>
 {% include "screening/records_switch.html" with side="audiograms" %}
 {# #465 (the #464 mockup 2A): adding is the page's one solid button, comparing the outlined one under it. #}
-<a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">新增聽力圖</a>
+<a class="btn btn-primary btn-lg w-full" href="{% url 'audiogram_new' %}">記錄聽力圖</a>
 {% if audiograms|length >= 2 %}
 <a class="btn btn-outline-primary btn-lg w-full mt-3" href="{% url 'audiogram_compare' %}">比較聽力圖</a>
 {% else %}
@@ -34,6 +34,6 @@
     {% endif %}
 </div>
 {% if not audiograms %}
-<p>還沒有聽力圖。拿著醫院的聽力檢查報告，按上面的「新增聽力圖」把它描進來。</p>
+<p>還沒有聽力圖。拿著醫院的聽力檢查報告，按上面的「記錄聽力圖」把它描進來。</p>
 {% endif %}
 {% endblock %}

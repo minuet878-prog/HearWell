@@ -131,7 +131,7 @@ class GradedResultPageTests(TestCase):
             '<div class="score-bar"',
             steps[1]["text"],
             steps[2]["text"],
-            "看助聽器選配指引",
+            "看助聽器選配與補助",
             get_advice("mild_to_moderate", hhie_s.CODE),
             "情緒分數：",
             "助聽器：沒戴",
@@ -147,7 +147,7 @@ class GradedResultPageTests(TestCase):
         step = hhie_s.NEXT_STEPS["severe"][0]
         one_line = main[main.index('<p class="result-one-line">') : main.index("result-next-label")]
         self.assertIn(step["text"], one_line)
-        self.assertIn(f'href="{reverse("guide")}">看助聽器選配指引</a>', one_line)
+        self.assertIn(f'href="{reverse("guide")}">看助聽器選配與補助</a>', one_line)
 
     def test_suggesting_sharing_or_printing_leaves_its_row_out(self):
         # Within the normal range the journey counts down: it suggests sharing, then printing

@@ -25,6 +25,9 @@ from screening.models import (
 from screening.scoring import RETEST_DUE_TEXT
 from screening.tests.helpers import consented_user, step_bar
 
+# The 2026-11-14 walkthrough: 「不必兩份都填」 named two questionnaires where the page offers one.
+OPTIONAL_SSQ12 = "日常聆聽能力問卷是選填的，不做也可以。"
+
 
 class RecommendationTests(TestCase):
     @classmethod
@@ -62,10 +65,10 @@ class RecommendationTests(TestCase):
                 page = self.client.get(reverse("result", args=[submission.pk]))
                 self.assertContains(page, "看我的紀錄")
                 if not wearing:
-                    self.assertContains(page, "不必兩份都填")
+                    self.assertContains(page, OPTIONAL_SSQ12)
                     self.assertContains(page, reverse("screening", args=[self.ssq.pk]))
                 else:
-                    self.assertNotContains(page, "不必兩份都填")
+                    self.assertNotContains(page, OPTIONAL_SSQ12)
 
     def test_anonymous_users_get_no_recommendation(self):
         # Spec #492: without an account the wizard asks the age alone (test_guest).

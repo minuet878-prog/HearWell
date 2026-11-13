@@ -5396,6 +5396,7 @@
   }
 
   .journey-tile-info {
+    container-type: inline-size;
     background-color: var(--color-surface);
     color: var(--color-heading);
   }
@@ -5438,9 +5439,13 @@
     line-height: 1;
   }
 
+  /* The 2026-11-14 walkthrough: on a 375 phone the tile's anywhere split 2027/05/14 as
+     2027/05/1 and 4. The day stays on one line and shrinks to the tile's width (the grey
+     tile is its container); with larger text the tiles stack, so it is back at its own size. */
   .journey-tile-date {
     margin-top: 0.4rem;
-    font-size: 1.4444rem;
+    white-space: nowrap;
+    font-size: min(1.4444rem, 17.5cqi);
     font-weight: 700;
     line-height: 1.25;
   }

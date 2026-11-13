@@ -7,7 +7,7 @@
 
 {% block body %}
 {# Spec #492: guest-save.js sends the guest results kept in this browser to the records API, each with its receipt number, then goes to 我的紀錄; one that is not saved stays, named here. Not come from the save card, it asks first (#497, the #493 mockup's F2): 要 saves them, 不要 clears them all. #}
-<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-done-url="{% url 'my_hearing' %}" data-home-url="{% url 'index' %}"{% if asking %} data-asking{% endif %}>
+<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-home-url="{% url 'index' %}"{% if asking %} data-asking{% endif %}>
     {% if asking %}
     <h1 class="h3 mt-4">要把這次結果存到這個帳號嗎？</h1>
     <div data-guest-ask hidden>

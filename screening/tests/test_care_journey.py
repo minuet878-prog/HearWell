@@ -89,7 +89,7 @@ class FirstStepsTests(CareJourneyTestCase):
         self.answer()
         journey = self.journey()
         self.assertEqual(self.states(), [DONE, CURRENT, LATER, LATER, LATER])
-        self.assertEqual(journey.card.button, ("記錄醫院的聽力圖", "/audiograms/new"))
+        self.assertEqual(journey.card.button, ("記錄聽力圖", "/audiograms/new"))
 
     def test_hhia_s_also_finishes_step_1(self):
         # Spec #453 Q7: either life-impact questionnaire.

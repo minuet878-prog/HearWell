@@ -148,6 +148,20 @@ class FromTheCardTests(GuestSaveTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "guest-save.js")
 
+    # The 2026-11-14 walkthrough: from the card the answers are in already, so the consent's
+    # button says it saves them; every other way in keeps 「我同意，開始篩檢」 (test_consent).
+    def test_the_consent_button_from_the_card_says_it_saves(self):
+        self.register_from_card()
+        response = self.client.get(self.consent_url())
+        self.assertContains(response, ">我同意，保存結果</button>")
+        self.assertNotContains(response, "開始篩檢</button>")
+
+    def test_the_consent_button_asked_later_still_says_start(self):
+        # Without from=card the save page asks first whether to keep them (#497).
+        self.register_from_card()
+        response = self.client.get(f"{reverse('consent')}?next={reverse('guest_save')}")
+        self.assertContains(response, ">我同意，開始篩檢</button>")
+
     def test_logging_in_goes_straight_to_the_save_page(self):
         consented_user(username="has_account", password=PASSWORD)
         response = self.client.post(
@@ -205,7 +219,9 @@ class SavePageTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertContains(response, f'data-submissions-url="{SUBMISSIONS}"')
-        self.assertContains(response, f'data-done-url="{reverse("my_hearing")}"')
+        # The 2026-11-14 walkthrough: saved, the home page's 照顧旅程 says what comes next.
+        self.assertContains(response, f'data-home-url="{reverse("index")}"')
+        self.assertNotContains(response, "data-done-url")
         self.assertContains(response, f'data-home-url="{reverse("index")}"')
         self.assertContains(response, 'name="csrfmiddlewaretoken"')
 

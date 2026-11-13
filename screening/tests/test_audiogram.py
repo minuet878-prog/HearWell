@@ -998,7 +998,7 @@ class AudiogramEditPageTests(TestCase):
 
     def test_new_page_has_no_initial_data(self):
         response = self.client.get(reverse("audiogram_new"))
-        self.assertContains(response, "新增聽力圖")
+        self.assertContains(response, "記錄聽力圖")
         self.assertNotContains(response, "audiogram-initial")
         self.assertNotContains(response, "data-audiogram-id")
 

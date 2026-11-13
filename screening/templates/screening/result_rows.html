@@ -26,7 +26,7 @@
 </a>
 {% endif %}
 {% if optional_ssq12 %}
-<p class="result-rows-note">您也可以選填日常聆聽能力問卷，或直接查看紀錄，不必兩份都填。</p>
+<p class="result-rows-note">日常聆聽能力問卷是選填的，不做也可以。</p>
 {# #363: the name's inline-block moves to a line of its own whole rather than breaking at its hyphen, and breaks only when wider than the row (200% text). #}
 <a class="link-card action-card" href="{% url 'screening' optional_ssq12.pk %}">
     {% include "screening/action_icon.html" with icon="clipboard" %}

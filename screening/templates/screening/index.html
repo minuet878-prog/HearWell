@@ -92,7 +92,7 @@
                     <p class="journey-when">上次結果：{{ journey.last_result.result.level.text }}</p>
                     <a href="{% url 'result' journey.last_result.id %}">看上次結果</a>
                     {% elif forloop.counter == 2 or forloop.counter == 3 %}
-                    <a href="{% url 'guide' %}">看我的選配指引</a>
+                    <a href="{% url 'guide' %}">看助聽器選配與補助</a>
                     {% elif forloop.counter == 5 and journey.next_screening and not journey.next_screening.due %}
                     <p class="journey-when">下次篩檢 {{ journey.next_screening.on|date:"Y/m/d" }}・還有 {{ journey.next_screening.days_left }} 天</p>
                     {% endif %}
@@ -133,7 +133,7 @@
 {# Without an account the list is the wizard's age step (#495). #}
 <a class="btn btn-primary btn-lg btn-start w-full" data-play-in-view href="{{ list_url }}">開始篩檢</a>
 {% if not user.is_authenticated %}
-<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}?next={{ list_url|urlencode }}">我已經有帳號，登入</a></p>
+<p class="mt-4 mb-0"><a class="home-login" href="{% url 'login' %}">我已經有帳號，登入</a></p>
 {% endif %}
 <ul class="home-links" role="list">
     <li><a href="{% url 'guide' %}">了解助聽器選配與補助</a></li>

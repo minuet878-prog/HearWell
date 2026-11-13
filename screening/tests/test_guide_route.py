@@ -80,7 +80,7 @@ class GuideRouteTests(TestCase):
         self.assertEqual([slug for slug, _ in stops], [slug for slug, _ in STOPS])
         for (slug, markup), (_, title) in zip(stops, STOPS, strict=True):
             if slug == "audiogram":
-                href, wording = reverse("audiogram_new"), "記錄醫院的聽力圖"
+                href, wording = reverse("audiogram_new"), "記錄聽力圖"
             elif slug in WAITS:
                 href = reverse("guide_chapter", args=["form-9"]) + "#steps-title"
                 wording = "看申請流程"
@@ -88,7 +88,11 @@ class GuideRouteTests(TestCase):
                 href, wording = reverse("guide_chapter", args=[slug]), "看這一章"
             with self.subTest(stop=slug):
                 self.assert_link(markup, href, wording)
-                self.assertIn(f'<span class="visually-hidden">：{title}</span></a>', markup)
+                if wording == title:
+                    # The 2026-11-14 walkthrough's one name: not read out twice.
+                    self.assertNotIn('<span class="visually-hidden">', markup)
+                else:
+                    self.assertIn(f'<span class="visually-hidden">：{title}</span></a>', markup)
 
     def test_each_stop_takes_the_focus_its_address_points_to(self):
         # Back from an answer at /guide#stop-<slug>, the focus lands on that stop.
@@ -130,7 +134,7 @@ class GuideRouteTests(TestCase):
         tags = self.tags()
         self.assertEqual(tags["audiogram"], [HERE])
         self.assertEqual(sum(t.count(HERE) for t in tags.values()), 1)
-        self.assert_link(self.stop("audiogram"), reverse("audiogram_new"), "記錄醫院的聽力圖")
+        self.assert_link(self.stop("audiogram"), reverse("audiogram_new"), "記錄聽力圖")
         self.assertRegex(self.page(), r'<li [^>]*data-stop="audiogram" aria-current="step"[^>]*>')
 
     def test_with_an_audiogram_recording_it_is_done_with_its_date(self):

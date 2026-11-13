@@ -17,7 +17,7 @@ from screening.tests import test_guide_summary, test_result_pages
 from screening.tests.helpers import consented_user
 
 SUGGESTIONS = (
-    "記錄醫院的聽力圖",
+    "記錄聽力圖",
     "修改這張聽力圖",
     "了解助聽器選配與補助",
     "分享報告給家人",
@@ -60,7 +60,7 @@ class ResultNextStepTests(TestCase):
     def suggest(self, suggestion):
         """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
         self.answer()
-        if suggestion == "記錄醫院的聽力圖":
+        if suggestion == "記錄聽力圖":
             return
         if suggestion == "修改這張聽力圖":
             audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -107,9 +107,9 @@ class ResultNextStepTests(TestCase):
 
     def expected(self, suggestion):
         """(title, button href, button text) a result page suggests now."""
-        if suggestion == "記錄醫院的聽力圖":
+        if suggestion == "記錄聽力圖":
             # Step 2, the route's 記錄聽力圖 stop and its button.
-            return ("記錄聽力圖", "/audiograms/new", "記錄醫院的聽力圖")
+            return ("記錄聽力圖", "/audiograms/new", "記錄聽力圖")
         if suggestion == "修改這張聽力圖":
             edit = reverse("audiogram_edit", args=[self.user.audiograms.get().pk])
             return ("記錄聽力圖", edit, "修改這張聽力圖")
@@ -195,7 +195,7 @@ class ResultNextStepTests(TestCase):
         submissions = self.answer_all()
         self.answer()
         before = self.next_step(self.result(submissions["thi"]))
-        self.assertEqual(before, self.expected("記錄醫院的聽力圖"))
+        self.assertEqual(before, self.expected("記錄聽力圖"))
         self.make((20, 20, 20, 20), (20, 20, 20, 20))
         for code, submission in submissions.items():
             with self.subTest(questionnaire=code):

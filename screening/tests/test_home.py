@@ -16,7 +16,7 @@ from screening.tests.helpers import consented_user
 class VisitorHomeTestCase(TestCase):
     def setUp(self):
         self.list_url = reverse("questionnaire_list")
-        self.login_url = f"{reverse('login')}?next={self.list_url}"
+        self.login_url = reverse("login")
 
     def _main(self):
         content = self.client.get(reverse("index")).content.decode()
@@ -143,17 +143,16 @@ class NewUserHomeTests(VisitorHomeTestCase):
                     r'<a class="btn btn-primary btn-lg btn-start w-full"[^>]*>開始篩檢</a>',
                 )
 
-    def test_login_button_logs_in_then_chooses_a_questionnaire(self):
+    # The 2026-11-14 walkthrough: someone with an account logs in to see their 照顧旅程, so the
+    # link no longer sends them on to the questionnaire list.
+    def test_login_button_logs_in_then_opens_the_home_page(self):
         consented_user(username="returning", password=self.PASSWORD)
-        page = self.client.get(self._link(self._main(), "我已經有帳號，登入"))
-        self.assertContains(
-            page, f'<input type="hidden" name="next" value="{self.list_url}">', html=True
-        )
+        login = self._link(self._main(), "我已經有帳號，登入")
+        self.assertEqual(login, reverse("login"))
         response = self.client.post(
-            reverse("login"),
-            {"username": "returning", "password": self.PASSWORD, "next": self.list_url},
+            login, {"username": "returning", "password": self.PASSWORD}, follow=True
         )
-        self.assertRedirects(response, self.list_url)
+        self.assertEqual(response.redirect_chain[-1][0], reverse("index"))
 
     def test_other_protected_pages_still_go_to_login_and_back(self):
         consented_user(username="tester", password=self.PASSWORD)

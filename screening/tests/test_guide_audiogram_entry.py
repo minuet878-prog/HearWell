@@ -11,7 +11,7 @@ from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (E3), written out so a changed template fails. #465 (the #464
 # mockup 3A, D4): the page's one solid button now.
-GUIDE_LINK = '<a class="btn btn-primary btn-lg w-full mt-4" href="/guide">看我的選配指引</a>'
+GUIDE_LINK = '<a class="btn btn-primary btn-lg w-full mt-4" href="/guide">看助聽器選配與補助</a>'
 
 
 def ear(side, values):

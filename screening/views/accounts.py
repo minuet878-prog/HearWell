@@ -173,7 +173,12 @@ def consent(request):
             return HttpResponseRedirect(urlunsplit(parts._replace(query=query)))
     if request.user.has_consented():
         return HttpResponseRedirect(next_url or reverse("index"))
-    return render(request, "screening/consent.html", {"next": next_url})
+    # The 2026-11-14 walkthrough: from the guest result's save card the answers are in already,
+    # so agreeing saves them rather than starts a screening.
+    parts = urlsplit(next_url)
+    saving = parts.path == reverse("guest_save") and ("from", "card") in parse_qsl(parts.query)
+    agree = "我同意，保存結果" if saving else "我同意，開始篩檢"
+    return render(request, "screening/consent.html", {"next": next_url, "agree": agree})
 
 
 @login_required

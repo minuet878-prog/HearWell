@@ -348,7 +348,7 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 no_audiogram,
                 "記錄聽力圖",
                 "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
-                ("/audiograms/new", "記錄醫院的聽力圖"),
+                ("/audiograms/new", "記錄聽力圖"),
             ),
             (
                 missing_frequency,
@@ -494,7 +494,7 @@ class StepInteractionTests(HomeJourneyTestCase):
             ),
         )
         self.assertEqual(
-            opened(1), ("選配指引要用聽力圖才能整理下一步。 看我的選配指引", ["/guide"])
+            opened(1), ("選配指引要用聽力圖才能整理下一步。 看助聽器選配與補助", ["/guide"])
         )
         self.assertEqual(
             opened(3),

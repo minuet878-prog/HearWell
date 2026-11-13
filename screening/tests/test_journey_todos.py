@@ -78,7 +78,7 @@ class Ticket480JourneyTodosTests(test_care_journey.CareJourneyTestCase):
         # Spec #478 acceptance 1.
         self.answer()
         card = self.journey().card
-        self.assertEqual(card.button, ("記錄醫院的聽力圖", "/audiograms/new"))
+        self.assertEqual(card.button, ("記錄聽力圖", "/audiograms/new"))
         self.assertEqual(
             kinds(card.todos),
             [
@@ -351,7 +351,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             ],
         )
         self.assertEqual(len(SOLID.findall(main)), 1)
-        button = card.index('href="/audiograms/new">記錄醫院的聽力圖</a>')
+        button = card.index('href="/audiograms/new">記錄聽力圖</a>')
         self.assertLess(button, card.index('<div class="todos">'))
         self.assertIn('<p class="todos-head" id="todos-title">要做的事</p>', card)
         # A 手動待辦 a box, a 自動待辦 an arrow (the owner's C on 2026-11-14); neither drawing
@@ -534,7 +534,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         # Spec #478 acceptance 7: the 建議下一步 is the card's one thing and button only.
         submission = self.answer()
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
-        self.assertIn("記錄醫院的聽力圖", content)
+        self.assertIn("記錄聽力圖", content)
         self.assertNotIn('class="todos', content)
         self.assertNotIn("要做的事", content)
 
