@@ -1322,4 +1322,39 @@ describe("guest", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalled());
     expect(JSON.parse(localStorage.getItem(DRAFT_KEY))).toEqual(draft);
   });
+
+  // Implementation decision I4: checked before answering, so nobody answers for nothing.
+  it("asks to register, with no question, when the browser cannot keep the result", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    await renderApp({
+      guest: true, questionnaireCode: "hhie-s", userId: 0, registerUrl: "/register?next=%2Fquestionnaire%2F1",
+    });
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("這個瀏覽器不能暫存結果，請改用一般模式或註冊後作答。");
+    expect(screen.getByRole("link", { name: "註冊新帳號" }).getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+    expect(screen.queryByRole("group")).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByText("這次填答時，您有沒有戴助聽器？")).toBeNull();
+  });
+
+  it("starts as usual when the browser can keep the result", async () => {
+    await renderGuest();
+    expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
+    expect(screen.queryByText(/這個瀏覽器不能暫存結果/)).toBeNull();
+    expect(kept()).toEqual([]);
+  });
+});
+
+// Signed in, nothing is checked: an account's answers are saved by the server (I4).
+describe("account and storage", () => {
+  it("answers as before when the browser cannot keep anything", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    await renderApp();
+    expect(legend()).toMatch(/這次填答時，您有沒有戴助聽器？/);
+    expect(screen.queryByText(/這個瀏覽器不能暫存結果/)).toBeNull();
+  });
 });

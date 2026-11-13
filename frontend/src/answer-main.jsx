@@ -53,6 +53,7 @@ if (container && fallback) {
       normToken={container.dataset.normToken}
       guest={"guest" in container.dataset}
       questionnaireCode={container.dataset.questionnaireCode}
+      registerUrl={container.dataset.registerUrl}
       onReady={() => {
         // Too late: the form is back and may already have answers in it, so React stays out.
         if (!page.contains("answer-loading")) {

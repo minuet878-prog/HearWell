@@ -257,4 +257,23 @@ describe("guest", () => {
     expect(note().hidden).toBe(true);
     expect(form().hidden).toBe(true);
   });
+
+  // I4: the page's register link goes to React for a browser that cannot keep the result.
+  it("hands the register link over for a browser that cannot keep the result", async () => {
+    const refused = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("refused", "QuotaExceededError");
+    });
+    try {
+      runInline();
+      respondWith(ok);
+      await startReact();
+      await waitFor(() => expect(app().textContent).toContain("這個瀏覽器不能暫存結果"));
+      expect(app().querySelector("a").getAttribute("href")).toBe("/register?next=%2Fquestionnaire%2F1");
+      expect(form().hidden).toBe(true);
+      expect(note().hidden).toBe(true);
+      expect(html().classList.contains("answer-loading")).toBe(false);
+    } finally {
+      refused.mockRestore();
+    }
+  });
 });
