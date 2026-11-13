@@ -22,12 +22,14 @@ from screening.tests import (
 )
 from screening.tests.helpers import (
     GOOGLE_AUTHORIZE,
+    GOOGLE_TOKEN,
     LINE_AUTHORIZE,
     LINE_ENDPOINTS,
     FakeGoogle,
     FakeLine,
     consented_user,
     google_on,
+    id_token,
     line_on,
 )
 from screening.views import confirm_identity
@@ -338,23 +340,29 @@ class RemovingAtTheSameMomentTests(TransactionTestCase):
 
     def test_one_of_two_removals_at_once_is_refused(self):
         user = line_and_google_user()
-        trips = []
-        for action in ("remove_line", "remove_google"):
+        # Each trip confirms with the method it removes, so whichever runs second is still
+        # confirmed by a method on the account and reaches the removal's check (cross-review
+        # recheck on #506, item 1): it must be refused there, not earlier.
+        trips = {}
+        for provider, authorize_url in (("line", LINE_AUTHORIZE), ("google", GOOGLE_AUTHORIZE)):
             client = Client()
             client.force_login(user)
-            trips.append((client, off_to(self, press(client, "line", action), LINE_AUTHORIZE)))
-        verified = {}
-        for _, authorize in trips:
-            line = FakeLine(None)
-            line.authorize = authorize
-            verified[authorize["nonce"]] = line.claims(OWN_LINE)
+            response = press(client, provider, f"remove_{provider}")
+            trips[provider] = (client, off_to(self, response, authorize_url))
+        line_trip, google_trip = trips["line"][1], trips["google"][1]
+        line = FakeLine(None)
+        line.authorize = line_trip
+        google = FakeGoogle(None)
+        google.authorize = google_trip
 
-        def line_answers(url, fields):
+        def answers(url, fields):
+            if url == GOOGLE_TOKEN:
+                return {"id_token": id_token(**google.claims(OWN_GOOGLE, "lin.mei@example.com"))}
             endpoint = LINE_ENDPOINTS[url]
             if endpoint == "token":
                 return {"access_token": "line-access-token", "id_token": "line-id-token"}
             if endpoint == "verify":
-                return verified[fields["nonce"]]
+                return line.claims(OWN_LINE)
             return {}
 
         # The first to check waits (at most a second) for the other to check too: without a
@@ -373,19 +381,21 @@ class RemovingAtTheSameMomentTests(TransactionTestCase):
             return answer
 
         errors = []
+        statuses = {}
 
-        def come_back(client, authorize):
+        def come_back(provider):
+            client, authorize = trips[provider]
             try:
-                query = {"code": "line-auth-code", "state": authorize["state"]}
-                client.get(reverse("line_callback"), query)
+                query = {"code": f"{provider}-auth-code", "state": authorize["state"]}
+                statuses[provider] = client.get(reverse(f"{provider}_callback"), query).status_code
             except Exception as error:
                 errors.append(error)
             finally:
                 connection.close()
 
-        threads = [threading.Thread(target=come_back, args=trip) for trip in trips]
+        threads = [threading.Thread(target=come_back, args=(p,)) for p in trips]
         with (
-            mock.patch("screening.oidc.post_to_provider", side_effect=line_answers),
+            mock.patch("screening.oidc.post_to_provider", side_effect=answers),
             mock.patch.object(SignInMethod, "can_be_removed", check_then_pause),
         ):
             for thread in threads:
@@ -393,6 +403,9 @@ class RemovingAtTheSameMomentTests(TransactionTestCase):
             for thread in threads:
                 thread.join()
         self.assertEqual(errors, [])
+        # Both came back confirmed and reached the check; one removed, the other refused.
+        self.assertEqual(set(checked), {"line", "google"})
+        self.assertEqual(sorted(statuses.values()), [302, 403])
         self.assertEqual(len(methods(user)), 1)
 
 
