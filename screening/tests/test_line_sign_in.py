@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from unittest import mock
 from urllib.parse import parse_qsl, urlsplit
 
+from django.contrib.staticfiles import finders
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -111,6 +112,15 @@ class ButtonTests(TestCase):
             f'<a class="btn btn-lg btn-provider" href="{reverse("line_start")}">',
         )
         self.assertContains(response, 'class="btn-line-logo"')
+
+    def test_the_icon_is_lines_own_file(self):
+        # LINE's guidelines forbid a redrawn or modified icon (cross-review on #506, Spec 2): the
+        # page shows images/DeskTop/2x/44dp/btn_base.png from LINE's button kit, byte for byte.
+        self.assertContains(self.client.get(reverse("login")), "screening/line-icon.png")
+        icon = finders.find("screening/line-icon.png")
+        with open(icon, "rb") as file:
+            digest = hashlib.sha256(file.read()).hexdigest()
+        self.assertEqual(digest, "04a40a1caf84a7bd0a9dd78ff3bd84ffecb5d855625ae7540995e67c87b3d1ba")
 
     def test_the_button_carries_next_on(self):
         for name in ("login", "register"):
