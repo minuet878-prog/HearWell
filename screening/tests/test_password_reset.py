@@ -30,6 +30,18 @@ class ForgotPasswordPageTests(TestCase):
     def _ask(self, email):
         return self.client.post(reverse("password_reset"), {"email": email})
 
+    def _as_typed(self, response, email):
+        """The page with the typed email and the per-request CSRF token taken out."""
+        content = response.content.decode().replace(email, "EMAIL")
+        return re.sub(r'name="csrfmiddlewaretoken" value="[^"]*"', "", content)
+
+    def _assert_same_as_not_registered(self, email):
+        unknown = "nobody@example.com"
+        self.assertEqual(
+            self._as_typed(self._ask(email), email),
+            self._as_typed(self._ask(unknown), unknown),
+        )
+
     def test_the_page_asks_for_the_email_and_offers_the_help_address(self):
         response = self.client.get(reverse("password_reset"))
         content = response.content.decode()
@@ -81,8 +93,8 @@ class ForgotPasswordPageTests(TestCase):
         User.objects.create_user(username="root", email="r@example.com", is_superuser=True)
         for email in ("s@example.com", "r@example.com"):
             with self.subTest(email=email):
-                response = self._ask(email)
-                self.assertContains(response, NOT_REGISTERED)
+                self.assertContains(self._ask(email), NOT_REGISTERED)
+                self._assert_same_as_not_registered(email)
         self.assertEqual(mail.outbox, [])
 
     def test_an_email_shared_with_an_admin_reaches_the_ordinary_account_only(self):
@@ -95,8 +107,8 @@ class ForgotPasswordPageTests(TestCase):
 
     def test_an_inactive_account_reads_as_not_registered(self):
         User.objects.create_user(username="gone", email="i@example.com", is_active=False)
-        response = self._ask("i@example.com")
-        self.assertContains(response, NOT_REGISTERED)
+        self.assertContains(self._ask("i@example.com"), NOT_REGISTERED)
+        self._assert_same_as_not_registered("i@example.com")
         self.assertEqual(mail.outbox, [])
 
 
@@ -304,3 +316,34 @@ class LinkOfAnAccountThatChangedTests(TestCase):
                 response = self.client.get(link, follow=True)
                 self.assertContains(response, "這個連結已經過期或用過了")
                 self.assertNotContains(response, 'type="password"')
+
+
+class ResetPagesSiteWideTests(TestCase):
+    """#527 (spec #355): the four pages pass the checks the login and register pages do: the
+    title, one h1 in main, the skip link, the footer, and the 登入 tab marked (mockup #524)."""
+
+    def _pages(self):
+        consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+        forgot = self.client.get(reverse("password_reset"))
+        sent = self.client.post(reverse("password_reset"), {"email": "a@example.com"}, follow=True)
+        link = _reset_link(mail.outbox[-1])
+        confirm = self.client.get(link, follow=True)
+        expired = self.client.get(reverse("password_reset_confirm", args=["MQ", "wrong-token"]))
+        return {
+            "忘記密碼": forgot,
+            "信寄出了": sent,
+            "設新密碼": confirm,
+            "連結不能用了": expired,
+        }
+
+    def test_each_page_passes_the_site_wide_checks(self):
+        for title, response in self._pages().items():
+            with self.subTest(title=title):
+                content = response.content.decode()
+                self.assertRegex(content, rf"<title>\s*{title}｜聽伴\s*</title>")  # noqa: RUF001
+                main = content[content.index("<main") : content.index("</main>")]
+                self.assertEqual(len(re.findall(r"<h1\b", content)), 1)
+                self.assertEqual(len(re.findall(r"<h1\b", main)), 1)
+                self.assertIn('href="#main-content"', content)
+                self.assertIn('<footer class="site-footer">', content)
+                self.assertRegex(content, rf'<a href="{reverse("login")}" aria-current="page">')
