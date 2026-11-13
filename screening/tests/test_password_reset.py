@@ -341,6 +341,27 @@ class SignedInBeforeAgreeingTests(TestCase):
         response = self.client.get(_reset_link(mail.outbox[-1]), follow=True)
         self.assertContains(response, 'name="new_password1"')
 
+    def test_without_the_right_link_another_account_stays_out_of_reach(self):
+        # Codex's re-check of 839e352: opening the pages must not open another account.
+        not_agreed = User.objects.create_user(username="not_agreed")
+        self.client.force_login(not_agreed)
+        other = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+        Client().post(reverse("password_reset"), {"email": "a@example.com"})
+        link = _reset_link(mail.outbox[-1])
+        uidb64, token = link.split("/")[-2:]
+        wrong_token = reverse("password_reset_confirm", args=[uidb64, token[:-1] + "0"])
+        if token.endswith("0"):
+            wrong_token = reverse("password_reset_confirm", args=[uidb64, token[:-1] + "1"])
+        no_token = reverse("password_reset_confirm", args=[uidb64, "set-password"])
+        new = {"new_password1": "Qz7!nw4Tlake", "new_password2": "Qz7!nw4Tlake"}
+        for url in (wrong_token, no_token):
+            with self.subTest(url=url):
+                self.assertNotContains(self.client.get(url, follow=True), "wang_ming")
+                self.assertNotContains(self.client.post(url, new, follow=True), "wang_ming")
+                other.refresh_from_db()
+                self.assertTrue(other.check_password(PASSWORD))
+                self.assertEqual(int(self.client.session["_auth_user_id"]), not_agreed.pk)
+
 
 class ResetPagesSiteWideTests(TestCase):
     """#527 (spec #355): the four pages pass the checks the login and register pages do: the
