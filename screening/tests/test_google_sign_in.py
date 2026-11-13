@@ -155,7 +155,10 @@ class FirstTimeTests(TestCase):
         self.assertRedirects(response, reverse("google_name"))
         self.assertEqual(User.objects.count(), 0)
         page = self.client.get(reverse("google_name"))
-        self.assertContains(page, "電子郵件（來自 Google）")
+        # The owner's call on the #505 review: the label says it becomes the account's email.
+        self.assertContains(
+            page, '<dt class="settings-row-note">帳號的電子郵件（來自 Google）</dt>', html=True
+        )
         self.assertContains(page, "lin.mei@example.com")
         self.assertContains(page, '<label for="id_username">使用者名稱</label>', html=True)
         self.assertContains(
