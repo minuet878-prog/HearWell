@@ -37,14 +37,14 @@ function fakeEngine() {
     stop() {
       this.calls.push(["stop"]);
     },
-    setBands(bands) {
-      this.calls.push(["bands", bands.map((band) => band.gain)]);
+    setCurve(thresholds) {
+      this.calls.push(["curve", thresholds]);
     },
     played() {
       return this.calls.filter(([what]) => what === "play").map(([, url]) => url);
     },
-    lastGains() {
-      return this.calls.filter(([what]) => what === "bands").at(-1)[1];
+    lastCurve() {
+      return this.calls.filter(([what]) => what === "curve").at(-1)[1];
     },
   };
 }
@@ -65,7 +65,7 @@ const lit = (container) => [...container.querySelectorAll(".simulator-bar")].map
 const line = (container) => container.querySelector(".simulator-line").textContent;
 const caption = (container) => container.querySelector(".simulator-caption").textContent;
 
-it("opens silent on 高頻下降 and 模擬, its bars and its bands", () => {
+it("opens silent on 高頻下降 and 模擬, its bars and its curve", () => {
   // #484 acceptance 4 and 21: nothing plays or loads before the play button.
   const { engine, container } = open();
   expect(engine.played()).toEqual([]);
@@ -73,7 +73,7 @@ it("opens silent on 高頻下降 and 模擬, its bars and its bands", () => {
   expect(pressed("怎麼聽")).toEqual(["模擬"]);
   expect(line(container)).toBe("高頻下降：尖細的聲音大多聽不到");
   expect(lit(container)).toEqual([7, 6, 6, 4, 3, 2]);
-  expect(engine.lastGains()).toEqual([-15, -20, -25, -45, -65, -75]);
+  expect(engine.lastCurve()).toEqual([15, 20, 25, 45, 65, 75]);
   expect(caption(container)).toBe("第 1 句・女聲（共 4 句）");
 });
 
@@ -83,7 +83,7 @@ it("plays the sentence and offers to pause it", () => {
   press("中度");
   press("播放");
   expect(engine.played()).toEqual(["/static/s1.m4a"]);
-  expect(engine.lastGains()).toEqual([-40, -45, -50, -55, -60, -65]);
+  expect(engine.lastCurve()).toEqual([40, 45, 50, 55, 60, 65]);
   press("暫停");
   expect(engine.calls.at(-1)).toEqual(["stop"]);
   expect(screen.getByRole("button", { name: "播放" })).toBeTruthy();
@@ -97,8 +97,8 @@ it("changes degree while playing without stopping or starting again", () => {
   const before = engine.calls.length;
   press("輕度");
   const after = engine.calls.slice(before);
-  expect(after.filter(([what]) => what !== "bands")).toEqual([]);
-  expect(engine.lastGains()).toEqual([-25, -30, -30, -35, -40, -40]);
+  expect(after.filter(([what]) => what !== "curve")).toEqual([]);
+  expect(engine.lastCurve()).toEqual([25, 30, 30, 35, 40, 40]);
   expect(line(container)).toBe("輕度：小聲就漏聽");
   expect(screen.getByRole("button", { name: "暫停" })).toBeTruthy();
 });
@@ -109,14 +109,14 @@ it("switches to 正常聽 and back while playing, the bars full, without startin
   press("播放");
   const before = engine.calls.length;
   press("正常聽");
-  expect(engine.lastGains()).toEqual([0, 0, 0, 0, 0, 0]);
+  expect(engine.lastCurve()).toEqual([0, 0, 0, 0, 0, 0]);
   expect(line(container)).toBe("正常聽：每一種聲音都聽得到");
   expect(lit(container)).toEqual([8, 8, 8, 8, 8, 8]);
   // The degree stays picked for when 模擬 comes back.
   expect(pressed("程度")).toEqual(["高頻下降"]);
   press("模擬");
-  expect(engine.lastGains()).toEqual([-15, -20, -25, -45, -65, -75]);
-  expect(engine.calls.slice(before).filter(([what]) => what !== "bands")).toEqual([]);
+  expect(engine.lastCurve()).toEqual([15, 20, 25, 45, 65, 75]);
+  expect(engine.calls.slice(before).filter(([what]) => what !== "curve")).toEqual([]);
 });
 
 it("goes back to 模擬 when a degree is picked during 正常聽", () => {
@@ -125,7 +125,7 @@ it("goes back to 模擬 when a degree is picked during 正常聽", () => {
   press("正常聽");
   press("中重度");
   expect(pressed("怎麼聽")).toEqual(["模擬"]);
-  expect(engine.lastGains()).toEqual([-55, -60, -65, -70, -75, -80]);
+  expect(engine.lastCurve()).toEqual([55, 60, 65, 70, 75, 80]);
 });
 
 it("plays the next sentence instead when moving on while playing, and wraps round", () => {
@@ -133,6 +133,8 @@ it("plays the next sentence instead when moving on while playing, and wraps roun
   const { engine, container } = open();
   press("播放");
   press("下一句");
+  // The first sentence stops before the second starts.
+  expect(engine.calls.filter(([what]) => what !== "curve").map(([what]) => what)).toEqual(["play", "stop", "play"]);
   expect(engine.played()).toEqual(["/static/s1.m4a", "/static/s2.m4a"]);
   expect(caption(container)).toBe("第 2 句・男聲（共 4 句）");
   press("暫停");
@@ -161,6 +163,10 @@ it("shows the sentence only when asked, and folds it again for the next one", ()
   expect(screen.getByText("星期四下午三點去看醫生。")).toBeTruthy();
   const fold = screen.getByRole("button", { name: "收起這句話" });
   expect(fold.getAttribute("aria-expanded")).toBe("true");
+  // A second press folds it again.
+  fireEvent.click(fold);
+  expect(screen.queryByText("星期四下午三點去看醫生。")).toBeNull();
+  press("顯示這句話");
   press("下一句");
   expect(screen.queryByText("這個藥飯後吃，一天三次。")).toBeNull();
   expect(screen.getByRole("button", { name: "顯示這句話" })).toBeTruthy();

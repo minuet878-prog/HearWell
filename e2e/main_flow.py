@@ -13933,10 +13933,13 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             expect(main.locator(".simulator-line")).to_have_text("中度：常聽不完整")
             # Acceptance 21: nothing downloads before the play button.
             self.assertEqual(audio, [])
+            # Held, so the sentence is still loading: playing, whatever the browser can decode.
+            self.page.route(re.compile(r"\.m4a$"), lambda route: None)
             with self.page.expect_request(re.compile(r"sentence-1\.m4a$")):
                 main.get_by_role("button", name="播放").click()
             self.assertEqual(len(audio), 1)
             self.assertTrue(audio[0].endswith("sentence-1.m4a"))
+            expect(main.get_by_role("button", name="暫停")).to_be_visible()
             main.get_by_role("button", name="顯示這句話").click()
             expect(main.get_by_text("星期四下午三點去看醫生。")).to_be_visible()
 
@@ -13953,3 +13956,69 @@ class HearingLossSimulatorTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     step = self.main().get_by_role("button", name=name).bounding_box()
                     self.assertGreaterEqual(step["y"], play["y"] + play["height"])
                     self.assertGreaterEqual(step["height"], 44)
+
+    def test_keyboard_alone_picks_a_degree_and_switches_to_normal_hearing(self):
+        # Acceptance 20: Tab and Enter or the space bar, each control saying its state.
+        with self.saving_artifacts():
+            self.open("/learn/simulator", signed_in=False)
+            main = self.main()
+            main.get_by_role("button", name="高頻下降").focus()
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Tab")
+            self.page.keyboard.press("Enter")
+            expect(main.get_by_role("button", name="中度")).to_have_attribute(
+                "aria-pressed", "true"
+            )
+            main.get_by_role("button", name="正常聽").focus()
+            self.page.keyboard.press(" ")
+            expect(main.get_by_role("button", name="正常聽")).to_have_attribute(
+                "aria-pressed", "true"
+            )
+            expect(main.locator(".simulator-line")).to_have_text("正常聽：每一種聲音都聽得到")
+
+    def test_every_control_is_big_enough_and_every_word_at_least_body_size(self):
+        # Acceptance 19 at a phone's width: 44 x 44 and 1rem (18px) at least.
+        with self.saving_artifacts():
+            self.open("/learn/simulator", signed_in=False)
+            player = self.main().locator(".simulator-chips, .simulator-player")
+            for button in player.get_by_role("button").all():
+                with self.subTest(button=button.get_attribute("aria-label") or button.inner_text()):
+                    box = button.bounding_box()
+                    self.assertGreaterEqual(box["width"], 44)
+                    self.assertGreaterEqual(box["height"], 44)
+            sizes = self.main().evaluate(
+                """main => [...main.querySelectorAll(".simulator-chips *, .simulator-player *")]
+                    .filter(el => [...el.childNodes].some(n => n.nodeType === 3 && n.data.trim()))
+                    .map(el => parseFloat(getComputedStyle(el).fontSize))"""
+            )
+            self.assertGreaterEqual(min(sizes), self.rem())
+
+    def test_controls_change_colour_when_pressed(self):
+        # ADR 0028: a phone shows a press by colour too, not only a mouse's hover.
+        with self.saving_artifacts():
+            self.open("/learn/simulator", signed_in=False)
+            self.main().locator(".simulator-play").wait_for()
+            devtools = self.context.new_cdp_session(self.page)
+            devtools.send("DOM.enable")
+            devtools.send("CSS.enable")
+            root = devtools.send("DOM.getDocument")["root"]["nodeId"]
+            for selector in (
+                '.simulator-chip[aria-pressed="false"]',
+                '.simulator-switch button[aria-pressed="false"]',
+                ".simulator-play",
+                ".simulator-step",
+                ".simulator-reveal",
+            ):
+                with self.subTest(selector=selector):
+                    node = devtools.send(
+                        "DOM.querySelector", {"nodeId": root, "selector": selector}
+                    )["nodeId"]
+                    control = self.page.locator(selector).first
+                    rest = self.style(control, "backgroundColor")
+                    devtools.send(
+                        "CSS.forcePseudoState", {"nodeId": node, "forcedPseudoClasses": ["active"]}
+                    )
+                    self.assertNotEqual(self.style(control, "backgroundColor"), rest)
+                    devtools.send(
+                        "CSS.forcePseudoState", {"nodeId": node, "forcedPseudoClasses": []}
+                    )

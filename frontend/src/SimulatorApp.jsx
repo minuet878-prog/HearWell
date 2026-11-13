@@ -1,10 +1,10 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
-import { filterBands, meterBlocks } from "./simulator.js";
+import { BLOCKS, meterBlocks } from "./simulator.js";
 
 // #487 (spec #484, the #485 mockup E1 + V1, ADR 0053): pick a typical degree, play one sentence
 // at a time, switch 模擬｜正常聽 while it plays. engine does the sound (simulator-engine.js; a
-// fake in tests): play(url, onEnded), stop() and setBands(bands).
+// fake in tests): play(url, onEnded), stop() and setCurve(thresholds), 正常聽 being all zeros.
 export default function SimulatorApp({ data, engine }) {
   const [levelIndex, setLevelIndex] = useState(0);
   const [normal, setNormal] = useState(false);
@@ -15,12 +15,15 @@ export default function SimulatorApp({ data, engine }) {
 
   const level = data.levels[levelIndex];
   const sentence = data.sentences[sentenceIndex];
-  const thresholds = normal ? null : level.thresholds;
+  const thresholds = useMemo(
+    () => (normal ? data.frequencies.map(() => 0) : level.thresholds),
+    [normal, data.frequencies, level],
+  );
 
-  // A new degree or 正常聽 changes the bands only: whatever plays goes on playing.
+  // A new degree or 正常聽 changes the curve only: whatever plays goes on playing.
   useEffect(() => {
-    engine.setBands(filterBands(data.frequencies, thresholds));
-  }, [engine, data.frequencies, thresholds]);
+    engine.setCurve(thresholds);
+  }, [engine, thresholds]);
 
   function play(index) {
     setPlaying(true);
@@ -69,7 +72,7 @@ export default function SimulatorApp({ data, engine }) {
           <div className="simulator-bars" aria-hidden="true">
             {meterBlocks(thresholds).map((count, band) => (
               <span key={data.frequencies[band]} className="simulator-bar">
-                {Array.from({ length: 8 }, (_, block) => (
+                {Array.from({ length: BLOCKS }, (_, block) => (
                   <span key={block} className={block < count ? "is-lit" : undefined} />
                 ))}
               </span>

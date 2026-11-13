@@ -10,7 +10,6 @@ from django.urls import reverse
 
 from screening.audiogram import degree, pta
 from screening.tests import test_family_zone, test_pages
-from screening.tests.helpers import consented_user
 
 TITLE = "聽損模擬"
 # The words the owner approved for #485 (phase-3-grill-decisions.md).
@@ -45,7 +44,7 @@ def _text(html):
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html))
 
 
-class SimulatorPageTests(TestCase):
+class SimulatorPageTests(test_family_zone.SignsInWithARecord, TestCase):
     def setUp(self):
         self.url = reverse("hearing_loss_simulator")
 
@@ -65,11 +64,16 @@ class SimulatorPageTests(TestCase):
         self.assertEqual(self.url, "/learn/simulator")
 
     def test_anyone_opens_it_and_it_marks_the_learn_tab(self):
-        # #484 acceptance 1 and 3: no login asked, and signed in it is the same page.
+        # #484 acceptance 1 and 3: no login asked, and signed in with a graded record it is the
+        # same page, none of the record on it.
         anonymous = self._page()
-        self.client.force_login(consented_user(username="simulator_reader"))
+        self.sign_in_with_a_record("simulator_reader")
         signed_in = self._page()
         self.assertEqual(_main(anonymous), _main(signed_in))
+        # The player's data is the same as a visitor's (above); leave its escaped characters,
+        # whose hex digits can spell the record's 16, out of the look for the record.
+        words = re.sub(r'<script id="simulator-data".*?</script>', "", signed_in, flags=re.S)
+        self.assert_shows_no_record(words, "simulator_reader")
         self.assertRegex(signed_in, rf"<title>\s*{TITLE}｜聽伴\s*</title>")  # noqa: RUF001
         nav = test_pages.RedesignLayoutTests.NAV.search(signed_in).group()
         self.assertEqual(

@@ -1,13 +1,11 @@
 """The hearing loss simulator's typical degrees and sentences (#487, spec #484, ADR 0052).
 
-Reviewed by the owner on the #485 mockup (phase-3-grill-decisions.md, 聽損模擬內容定稿); change the
-words or numbers only after review. A degree's thresholds are a representative audiogram in dB HL
-at FREQUENCIES: the player turns each band down by that much, and draws the sound bars from it.
+Reviewed by the owner on the #485 mockup on 2026-11-13 (phase-3-grill-decisions.md, 聽損模擬內容
+定稿); change the words or numbers only after review. A degree's thresholds are a representative
+audiogram in dB HL at FREQUENCIES: the player turns every frequency down along its line, and draws
+the sound bars from it.
 """
 
-from datetime import date
-
-SIMULATOR_CHECKED_ON = date(2026, 11, 13)
 FREQUENCIES = (250, 500, 1000, 2000, 4000, 8000)
 
 # 高頻下降 first: the commonest, picked on opening (#485).

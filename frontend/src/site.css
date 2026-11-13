@@ -6169,6 +6169,21 @@
     font-weight: 700;
   }
 
+  /* ADR 0028: pressed, colour only, on a phone too. */
+  .simulator-chip[aria-pressed="false"]:active {
+    background-color: var(--color-brand-soft-deep);
+  }
+
+  .simulator-switch button[aria-pressed="false"]:active,
+  .simulator-step:active,
+  .simulator-reveal:active {
+    background-color: rgb(255 255 255 / 0.32);
+  }
+
+  .simulator-play:active {
+    background-color: var(--color-brand-selected);
+  }
+
   /* #328 (A2): colour only, under a mouse. */
   @media (hover: hover) and (pointer: fine) {
     .simulator-chip[aria-pressed="false"]:hover {
