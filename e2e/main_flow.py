@@ -14302,6 +14302,12 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.register_from_the_card()
             self.main().get_by_role("button", name="不同意", exact=True).click()
             expect(self.page).to_have_url(f"{self.live_server_url}/")
+            # Self-review P2: and the logged-out home shows it, a tile opening its page.
+            tile = self.main().locator("#guest-home").get_by_role("link")
+            expect(tile).to_have_count(1)
+            expect(tile).to_contain_text("您有一份還沒保存的結果")
+            expect(tile).to_contain_text("12 分")
+            expect(tile).to_have_attribute("href", "/guest/result/hhie-s")
             self.assertEqual(self.guest_results(), ["hearwell:guest-result:hhie-s"])
             self.assertFalse(Submission.objects.exists())
 
