@@ -2778,9 +2778,16 @@ addEventListener("pagereveal", async (event) => {
     }
     try {
         await event.viewTransition.ready;
-    } catch {
-        // switch-reveal.js skipped it: the page painted before its switch was parsed.
+    } catch (error) {
+        // switch-reveal.js skipped it (AbortError: the page painted before its switch was
+        // parsed), or the browser gave up on it (TimeoutError). Noted so a failure says which.
         window.revealed = "skipped";
+        window.skipReason = {
+            error: error.name,
+            pill: Boolean(document.querySelector("main [aria-current]")),
+            parsed: document.getElementsByTagName("*").length,
+            ms: Math.round(performance.now()),
+        };
         return;
     }
     window.revealed = "transition";
@@ -2893,7 +2900,8 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         self.assertNotEqual(start, end)
 
     def assert_slid(self, current):
-        self.assertEqual(self.arrived(current), "transition")
+        arrived = self.arrived(current)
+        self.assertEqual(arrived, "transition", self.page.evaluate("window.skipReason"))
         self.assert_pill_slid()
 
     def slow_down(self):
