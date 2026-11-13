@@ -1,8 +1,10 @@
+import hashlib
 import unicodedata
 from datetime import date
 
 from django import forms
 from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm, UserCreationForm
+from django.core.cache import caches
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
@@ -110,6 +112,27 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
 HELP_ADDRESS = "hearwellweb@gmail.com"
 
 
+# #528 (spec #355): one address may send the forgot-password page 10 times an hour, whether the
+# email is registered or not, and one email gets at most 3 重設密碼信 an hour.
+TOO_MANY_RESETS = "試太多次了，請一小時後再試"
+RESETS_PER_ADDRESS = 10
+RESETS_PER_EMAIL = 3
+
+
+def _reset_count_key(kind, value):
+    # A hash, so the cache table never holds an address or an email as typed.
+    return f"{kind}:{hashlib.sha256(value.encode()).hexdigest()}"
+
+
+def reset_count(kind, value):
+    return caches["password_reset"].get(_reset_count_key(kind, value), 0)
+
+
+def count_reset(kind, value):
+    """One more attempt; the count lasts an hour from now (the cache's TIMEOUT)."""
+    caches["password_reset"].set(_reset_count_key(kind, value), reset_count(kind, value) + 1)
+
+
 def may_reset_password(user):
     """Spec #355: ordinary active accounts only; an administrator resets on the server."""
     return user.is_active and not user.is_staff and not user.is_superuser
@@ -146,6 +169,12 @@ class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
         if not self.get_users(email):
             raise forms.ValidationError("這個信箱沒有註冊，請檢查有沒有打錯")
         return email
+
+    def clean(self):
+        email = self.cleaned_data.get("email")
+        if email and reset_count("email", email.lower()) >= RESETS_PER_EMAIL:
+            raise forms.ValidationError(TOO_MANY_RESETS)
+        return self.cleaned_data
 
     def send_mail(
         self,

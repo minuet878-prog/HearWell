@@ -202,6 +202,12 @@ print(json.dumps({
         purge = lines.index("python manage.py purge_question_log")
         self.assertLess(lines.index("python manage.py migrate"), purge)
 
+    def test_build_creates_the_cache_table_after_migrating(self):
+        # #528: the forgot-password page's attempt counts live in a database cache table.
+        lines = (self.ROOT / "build.sh").read_text(encoding="utf-8").splitlines()
+        table = lines.index("python manage.py createcachetable")
+        self.assertLess(lines.index("python manage.py migrate"), table)
+
     def test_production_python_matches_tests(self):
         pinned = (self.ROOT / ".python-version").read_text(encoding="utf-8").strip()
         self.assertEqual(pinned, platform.python_version())

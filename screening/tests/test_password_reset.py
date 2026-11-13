@@ -5,8 +5,11 @@ from unittest import mock
 from django.conf import settings
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core import mail
+from django.core.cache import caches
+from django.db import connection
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.forms import PASSWORD_RULES
 from screening.models import User
@@ -347,3 +350,83 @@ class ResetPagesSiteWideTests(TestCase):
                 self.assertIn('href="#main-content"', content)
                 self.assertIn('<footer class="site-footer">', content)
                 self.assertRegex(content, rf'<a href="{reverse("login")}" aria-current="page">')
+
+
+TOO_MANY = "試太多次了，請一小時後再試"
+
+
+class AttemptLimitTests(TestCase):
+    """#528 (spec #355): 10 sendings an hour from one address, whether registered or not, and 3
+    emails an hour to one email. The address is X-Forwarded-For's last, which Nginx adds; the
+    ones before it come from the visitor and can be forged. Counts live in the database cache."""
+
+    def setUp(self):
+        caches["password_reset"].clear()
+        consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+
+    def _ask(self, email, forwarded=None, remote="127.0.0.1"):
+        extra = {"REMOTE_ADDR": remote}
+        if forwarded:
+            extra["HTTP_X_FORWARDED_FOR"] = forwarded
+        return self.client.post(reverse("password_reset"), {"email": email}, **extra)
+
+    def test_the_eleventh_from_one_address_is_refused_without_looking_up_the_email(self):
+        for _ in range(10):
+            self._ask("x@example.com")
+        response = self._ask("a@example.com")
+        self.assertContains(response, f'<div class="error-box" role="alert">{TOO_MANY}</div>')
+        self.assertNotContains(response, NOT_REGISTERED)
+        self.assertEqual(mail.outbox, [])
+        # Not looked up: an unknown email gets the same page, without 沒有註冊.
+        response = self._ask("y@example.com")
+        self.assertContains(response, TOO_MANY)
+        self.assertNotContains(response, NOT_REGISTERED)
+
+    def test_an_hour_later_it_works_again(self):
+        for _ in range(10):
+            self._ask("x@example.com")
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        # The database cache took its own name for now() when it loaded, so that is the one to move.
+        with mock.patch("django.core.cache.backends.db.tz_now", return_value=later):
+            response = self._ask("a@example.com")
+        self.assertRedirects(response, reverse("password_reset_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_address_is_the_last_one_forwarded(self):
+        for _ in range(10):
+            self._ask("x@example.com", forwarded="1.1.1.1, 9.9.9.9")
+        response = self._ask("a@example.com", forwarded="2.2.2.2, 9.9.9.9")
+        self.assertContains(response, TOO_MANY)
+        self.assertEqual(mail.outbox, [])
+
+    def test_two_addresses_behind_the_same_proxy_count_apart(self):
+        for _ in range(10):
+            self._ask("x@example.com", forwarded="8.8.8.8")
+        self.assertContains(self._ask("a@example.com", forwarded="8.8.8.8"), TOO_MANY)
+        response = self._ask("a@example.com", forwarded="7.7.7.7")
+        self.assertRedirects(response, reverse("password_reset_sent"))
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_the_fourth_email_to_one_email_in_an_hour_is_refused_from_any_address(self):
+        for number in range(3):
+            self._ask("a@example.com", forwarded=f"10.0.0.{number}")
+        self.assertEqual(len(mail.outbox), 3)
+        response = self._ask("A@example.com", forwarded="10.0.0.9")
+        self.assertContains(response, f'<div class="error-box" role="alert">{TOO_MANY}</div>')
+        self.assertEqual(len(mail.outbox), 3)
+
+    def test_an_unknown_email_does_not_count_against_the_email(self):
+        for _ in range(3):
+            self._ask("x@example.com", forwarded="10.0.0.1")
+        User.objects.create_user(username="late", email="x@example.com")
+        response = self._ask("x@example.com", forwarded="10.0.0.2")
+        self.assertRedirects(response, reverse("password_reset_sent"))
+
+    def test_the_cache_keeps_no_address_or_email_as_typed(self):
+        self._ask("a@example.com", forwarded="9.9.9.9")
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cache_key FROM password_reset_limits")
+            keys = " ".join(row[0] for row in cursor.fetchall())
+        self.assertTrue(keys)
+        self.assertNotIn("9.9.9.9", keys)
+        self.assertNotIn("a@example.com", keys)

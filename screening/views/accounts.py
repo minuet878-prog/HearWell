@@ -10,15 +10,20 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_http_methods
+from rest_framework.throttling import BaseThrottle
 
 from screening import models
 from screening.forms import (
+    RESETS_PER_ADDRESS,
     ROC_OFFSET,
+    TOO_MANY_RESETS,
     DeleteAccountForm,
     ForgotPasswordForm,
     RegisterForm,
     SetNewPasswordForm,
+    count_reset,
     may_reset_password,
+    reset_count,
 )
 from screening.models import User
 from screening.views.common import health_data_page, safe_next
@@ -73,8 +78,23 @@ class ForgotPasswordView(auth_views.PasswordResetView):
     html_email_template_name = "screening/password_reset_email.html"
     success_url = reverse_lazy("password_reset_sent")
 
+    def post(self, request, *args, **kwargs):
+        # #528: the address as the guest scoring limit takes it (NUM_PROXIES: X-Forwarded-For's
+        # last, which Nginx adds). Past the limit the email is not looked up at all, so the page
+        # cannot tell whether it is registered.
+        address = BaseThrottle().get_ident(request)
+        if reset_count("address", address) >= RESETS_PER_ADDRESS:
+            form = self.form_class(initial={"email": request.POST.get("email", "")})
+            return self.render_to_response(
+                self.get_context_data(form=form, too_many=TOO_MANY_RESETS)
+            )
+        count_reset("address", address)
+        return super().post(request, *args, **kwargs)
+
     def form_valid(self, form):
-        self.request.session[RESET_EMAIL] = form.cleaned_data["email"]
+        email = form.cleaned_data["email"]
+        count_reset("email", email.lower())
+        self.request.session[RESET_EMAIL] = email
         return super().form_valid(form)
 
 
