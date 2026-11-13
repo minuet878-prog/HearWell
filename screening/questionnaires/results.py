@@ -174,6 +174,8 @@ class GradedResult(Result):
             "max_score": max_score(code),
             "score_bar": score_bar(definition, self.total, level),
             "next_steps": definition.next_steps.get(level, ()),
+            # A guest's save card (spec #492); "" for a level it has no sentence for.
+            "save_reason": definition.save_reasons.get(level, ""),
             "advice": get_advice(level, code),
             "support_message": definition.support(
                 {answer.question.question_number: answer.score for answer in answers}

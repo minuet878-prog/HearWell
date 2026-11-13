@@ -36,6 +36,7 @@ export default defineConfig({
         "care-journey": "src/care-journey-main.js",
         "guide": "src/guide-main.js",
         "guest-result": "src/guest-result-main.js",
+        "guest-save": "src/guest-save-main.js",
       },
       output: { entryFileNames: "[name].js", assetFileNames: "[name][extname]" },
     },

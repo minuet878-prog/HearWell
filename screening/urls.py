@@ -54,6 +54,7 @@ urlpatterns = [
     path("questionnaire_list", answering.questionnaire_list, name="questionnaire_list"),
     path("questionnaire/<int:questionnaire_id>", answering.screening, name="screening"),
     path("guest/result/<slug:code>", guest.guest_result, name="guest_result"),
+    path("guest/save", guest.guest_save, name="guest_save"),
     path("my_hearing", my_hearing.my_hearing, name="my_hearing"),
     path("comparisons/<int:questionnaire_id>", answering.hhi_comparison, name="hhi_comparison"),
     path("report", reports.health_report, name="health_report"),
