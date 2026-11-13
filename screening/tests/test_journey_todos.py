@@ -16,7 +16,13 @@ from django.utils import timezone
 from screening import models
 from screening.care_journey import care_journey
 from screening.fitting_route import AUDIOGRAM, fitting_state
-from screening.journey_todos import MANUAL_KEYS, STOP_TODOS, current_rounds, stop_todos
+from screening.journey_todos import (
+    MANUAL_KEYS,
+    STEP_TODOS,
+    STOP_TODOS,
+    current_rounds,
+    stop_todos,
+)
 from screening.main_flow import get_user_state
 from screening.models import (
     FIRST_ROUND,
@@ -217,22 +223,34 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
         self.assertEqual(state.stop, "after-fitting")
         self.assertEqual(
             kinds(here_stop(state, self.user).todos),
-            [("after-fitting-date", False, True), ("after-fitting-adjust", True, False)],
+            [("after-fitting-adjust", True, False), ("after-fitting-date", False, True)],
         )
 
     def test_only_a_stop_s_whole_end_says_the_route_moves_on(self):
         # The owner on 2026-11-13: the fitting date is part of 配戴之後's end (#295), so undone
-        # it says it ticks itself; the one that is a stop's whole end says the route moves on.
-        hints = {
-            todo.key: todo.hint
+        # it says it ticks itself; the one that is a stop's whole end says the route moves on,
+        # in the sentence the owner picked on 2026-11-14 (C, mockup-479-auto-todo-compare.html).
+        lines = {
+            todo.key: (todo.outcome, todo.hint)
             for slug in ("before-you-go", "after-fitting")
             for todo in stop_todos(slug, fitting_state(self.user, TODAY), self.user)
             if not todo.manual
         }
         self.assertEqual(
-            hints,
-            {"before-you-go-read": "做完就會往下一站", "after-fitting-date": "做完會自動打勾"},
+            lines,
+            {
+                "before-you-go-read": ("，就會往下一站", "不用自己勾，網站會知道"),
+                "after-fitting-date": ("", "不用自己勾，做完網站會幫您打勾"),
+            },
         )
+
+    def test_every_list_puts_its_automatic_to_dos_last(self):
+        # The owner's C on 2026-11-14: what the user ticks comes first, what the site ticks
+        # closes the list as a sentence.
+        for todos in (*STOP_TODOS.values(), *STEP_TODOS.values()):
+            manual = [todo.rule is None for todo in todos]
+            with self.subTest(todos=[todo.key for todo in todos]):
+                self.assertEqual(manual, sorted(manual, reverse=True))
 
     def test_answering_form_25_done_ticks_its_answer(self):
         aid = AidAndSubsidy.objects.create(
@@ -250,6 +268,9 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
 # A listed to-do: its kind, whether done, and its key.
 TODO = re.compile(r'<li class="todo todo-(manual|auto)( is-done)?" data-todo="([^"]+)"[^>]*>')
 TODO_ITEM = re.compile(r'<li class="todo [^"]*" data-todo="([^"]+)"[^>]*>(.*?)</li>', re.S)
+# An 自動待辦's drawings: an arrow until done, then a tick (the owner's C on 2026-11-14).
+ARROW = 'd="M4 12h15M13 6l6 6-6 6"'
+TICK = 'd="M5 12.5l4.5 4.5L19 7.5"'
 
 
 def listed(html):
@@ -312,6 +333,10 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         """Each to-do's words as a screen reader reads them, by key."""
         return {key: self.text(body) for key, body in TODO_ITEM.findall(html)}
 
+    def mark(self, html):
+        """What the 自動待辦 in html draws before its words."""
+        return re.search(r'<span class="todo-mark" aria-hidden="true">(.*?)</span>', html, re.S)[1]
+
     def test_step_2_s_card_lists_its_to_dos_under_the_one_solid_button(self):
         # Spec #478 acceptance 1 and 27.
         self.answer()
@@ -329,13 +354,15 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         button = card.index('href="/audiograms/new">記錄醫院的聽力圖</a>')
         self.assertLess(button, card.index('<div class="todos">'))
         self.assertIn('<p class="todos-head" id="todos-title">要做的事</p>', card)
-        # A 手動待辦 a box, a 自動待辦 a ring (the mockup's look); neither drawing is read out.
+        # A 手動待辦 a box, a 自動待辦 an arrow (the owner's C on 2026-11-14); neither drawing
+        # is read out.
         self.assertEqual(card.count('<span class="todo-box" aria-hidden="true">'), 2)
-        self.assertEqual(card.count('<span class="todo-ring" aria-hidden="true">'), 1)
+        self.assertEqual(card.count('<span class="todo-mark" aria-hidden="true">'), 1)
 
     def test_each_to_do_is_read_by_its_words(self):
-        # Spec #478 acceptance 28: an automatic one's state in words; a manual one is named by
-        # its words, its state the checkbox's (#481, Ticket481TickTests).
+        # Spec #478 acceptance 28: an automatic one's state in words, its sentence and muted
+        # line (the owner's C on 2026-11-14); a manual one is named by its words, its state the
+        # checkbox's (#481, Ticket481TickTests).
         self.answer()
         todos = self.part(self.current_card(self.main()), "todos")
         self.assertEqual(
@@ -343,7 +370,9 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
             {
                 "audiogram-test": "到醫院或診所做聽力檢查",
                 "audiogram-copy": "跟醫院或診所要一份聽力圖",
-                "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完就會往下一站",
+                "audiogram-record": (
+                    "把聽力圖記到聽伴，就會往下一站 ，未完成。 不用自己勾，網站會知道"
+                ),
             },
         )
 
@@ -356,10 +385,11 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         )
         todos = self.part(self.current_card(self.main()), "todos")
         self.assertEqual(
-            self.words(todos)["step-4-ioi-ha"], "做完助聽器效益問卷 ，未完成。 做完這一步就完成"
+            self.words(todos)["step-4-ioi-ha"],
+            "做完助聽器效益問卷，這一步就完成 ，未完成。 不用自己勾，網站會知道",
         )
 
-    def test_a_done_automatic_to_do_is_a_ticked_ring_saying_so(self):
+    def test_a_done_automatic_to_do_is_a_tick_saying_so(self):
         # Spec #478 acceptance 8's look: the fitting date ticks its to-do before 配戴之後 is
         # done, which wants the subsidy too, so my guide's 您在這裡 shows it ticked.
         self.answer()
@@ -367,13 +397,12 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         here = self.here(self.guide())
         self.assertEqual(
             listed(here),
-            [("after-fitting-date", False, True), ("after-fitting-adjust", True, False)],
+            [("after-fitting-adjust", True, False), ("after-fitting-date", False, True)],
         )
         self.assertEqual(
-            self.words(here)["after-fitting-date"], "記下開始配戴的日期 ，已完成。 已自動打勾"
+            self.words(here)["after-fitting-date"], "記下開始配戴的日期 ，已完成。 網站已幫您打勾"
         )
-        ring = re.search(r'<span class="todo-ring" aria-hidden="true">(.*?)</span>', here, re.S)
-        self.assertIn("<svg", ring.group(1))
+        self.assertIn(TICK, self.mark(here))
 
     def test_step_4_s_home_card_lists_its_own_to_dos(self):
         # Spec #478 acceptance 4: fitted 40 days ago, no 二十五號表 (paying otherwise).
@@ -418,20 +447,21 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
                 self.assertNotIn('class="todo', body)
                 self.assertNotIn("要做的事", body)
 
-    def test_before_reading_before_you_go_its_chapter_waits_in_an_empty_ring(self):
-        # Spec #478 acceptance 8 as aligned on 2026-11-13 (phase-2-grill-decisions.md).
+    def test_before_reading_before_you_go_its_chapter_waits_after_an_arrow(self):
+        # Spec #478 acceptance 8 as aligned on 2026-11-13 (phase-2-grill-decisions.md), in the
+        # owner's C on 2026-11-14: last, an arrow and the sentence, nothing drawn to tick.
         self.answer()
         self.make(PTA_55, PTA_55)
         main, guide = self.main(), self.guide()
         self.assertEqual(self.here_slug(guide), "before-you-go")
         for card in (self.current_card(main), self.here(guide)):
-            self.assertEqual(listed(card)[0], ("before-you-go-read", False, False))
+            self.assertEqual(listed(card)[-1], ("before-you-go-read", False, False))
             self.assertEqual(
                 self.words(card)["before-you-go-read"],
-                "看完「去找聽力師之前」這一章 ，未完成。 做完就會往下一站",
+                "看完「去找聽力師之前」這一章，就會往下一站 ，未完成。 不用自己勾，網站會知道",
             )
-            ring = re.search(r'<span class="todo-ring" aria-hidden="true">(.*?)</span>', card, re.S)
-            self.assertEqual(ring.group(1), "")
+            self.assertIn(ARROW, self.mark(card))
+            self.assertNotIn(TICK, self.mark(card))
 
     def test_reading_before_you_go_moves_both_pages_on_without_its_to_do(self):
         # Spec #478 acceptance 8 as aligned: the chapter read, both 您在這裡 are the next stop
@@ -449,7 +479,7 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
     def test_answering_form_9_done_moves_both_pages_on_to_the_notice(self):
         # Spec #478 acceptance 9 as aligned (2026-11-13): 回答九號表完成了 on the route, both
         # pages are at 等待核定公文. A part of a stop done shows ticked instead:
-        # test_a_done_automatic_to_do_is_a_ticked_ring_saying_so.
+        # test_a_done_automatic_to_do_is_a_tick_saying_so.
         self.at_form_9()
         self.client.post(reverse("route_answer"), {"stop": "form-9", "form_9_done": "True"})
         main, guide = self.main(), self.guide()

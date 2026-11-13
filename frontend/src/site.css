@@ -5844,7 +5844,7 @@
   }
 
   .todo-box,
-  .todo-ring {
+  .todo-mark {
     flex: none;
     display: grid;
     place-items: center;
@@ -5868,25 +5868,36 @@
     display: none;
   }
 
-  /* 自動: no frame and no white, a ring (the muted grey, 6.9:1, as the line grey is 2.75:1 on
-     the card), the journey's blue frame and tick once done, and a muted line under the words. */
+  /* 自動 (the owner's C on 2026-11-14): no frame, no white and nothing drawn to tick. Last,
+     past a thin line when 手動待辦 come first, a blue arrow (a tick once done) and its
+     sentence, dark and bold until done, over a muted line. */
   .todo-auto {
     padding: 0.25rem calc(0.75rem + 1px) 0;
+    color: var(--color-heading);
   }
 
-  .todo-ring {
-    border: 2px solid var(--color-muted);
-    border-radius: 50%;
+  .todo-manual ~ .todo-auto {
+    margin-top: 0.25rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--color-brand-soft-deep);
+  }
+
+  .todo-mark {
     color: var(--color-primary);
   }
 
-  .todo-auto.is-done .todo-ring {
-    border-color: var(--color-primary);
-    background-color: #fff;
+  .todo-sentence {
+    display: block;
+    font-weight: 700;
+  }
+
+  .todo-auto.is-done .todo-sentence {
+    color: var(--color-body);
+    font-weight: 400;
   }
 
   .todo-box svg,
-  .todo-ring svg {
+  .todo-mark svg {
     width: 80%;
     height: 80%;
     fill: none;
@@ -5896,9 +5907,9 @@
     stroke-linejoin: round;
   }
 
-  .todo-ring svg {
-    width: 70%;
-    height: 70%;
+  .todo-mark svg {
+    width: 100%;
+    height: 100%;
   }
 
   .todo-box svg {

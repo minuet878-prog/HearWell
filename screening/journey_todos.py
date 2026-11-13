@@ -15,7 +15,10 @@ class JourneyTodo:
     text: str
     manual: bool  # 手動待辦, ticked by the user; else 自動待辦, ticked from the records
     done: bool
-    hint: str = ""  # an 自動待辦's muted line under its words; a 手動待辦 has none
+    # An 自動待辦's sentence is its words and its outcome, what doing it brings, and its muted
+    # line the hint (the owner's C on 2026-11-14); a 手動待辦 has neither.
+    outcome: str = ""
+    hint: str = ""
     # A 手動待辦's round as listed (current_rounds), sent back with a tick so a page left open
     # from an earlier round changes nothing in this one (the cross review on #478); None for
     # an 自動待辦.
@@ -30,7 +33,8 @@ class _Todo:
     # for a step's; None for a 手動待辦.
     rule: Callable | None = None
     # 自動待辦: whether done is its stop's or step's being done, or only a part of it, which the
-    # muted line says apart (the owner on 2026-11-13, phase-2-grill-decisions.md).
+    # sentence and muted line say apart (the owner on 2026-11-13 and 2026-11-14,
+    # phase-2-grill-decisions.md).
     completes: bool = True
 
 
@@ -38,7 +42,8 @@ def _stop_done(slug):
     return lambda state: slug in state.done
 
 
-# Wordings the owner settled on #479 (phase-2-grill-decisions.md), in the order listed.
+# Wordings the owner settled on #479 (phase-2-grill-decisions.md), in the order listed: the
+# 手動待辦 first, the 自動待辦 last (the owner's C on 2026-11-14).
 STOP_TODOS = {
     AUDIOGRAM: (
         _Todo("audiogram-test", "到醫院或診所做聽力檢查"),
@@ -46,8 +51,8 @@ STOP_TODOS = {
         _Todo("audiogram-record", "把聽力圖記到聽伴", _stop_done(AUDIOGRAM)),
     ),
     "before-you-go": (
-        _Todo("before-you-go-read", "看完「去找聽力師之前」這一章", _stop_done("before-you-go")),
         _Todo("before-you-go-book", "預約聽力師"),
+        _Todo("before-you-go-read", "看完「去找聽力師之前」這一章", _stop_done("before-you-go")),
     ),
     "assessment": (
         _Todo("assessment-book", "預約鑑定醫院"),
@@ -59,19 +64,19 @@ STOP_TODOS = {
     ),
     "notice": (_Todo("notice-answer", "記下核定的耳朵與等級", _stop_done("notice")),),
     "types-and-prices": (
+        _Todo("types-and-prices-try", "試戴過助聽器"),
         _Todo(
             "types-and-prices-read",
             "看完「助聽器的種類與價格」這一章",
             _stop_done("types-and-prices"),
         ),
-        _Todo("types-and-prices-try", "試戴過助聽器"),
     ),
     "after-fitting": (
+        _Todo("after-fitting-adjust", "配戴後第一次回去調整"),
         # The date alone, where the stop is done only with the subsidy answered too (#295).
         _Todo(
             "after-fitting-date", "記下開始配戴的日期", lambda state: state.fitted, completes=False
         ),
-        _Todo("after-fitting-adjust", "配戴後第一次回去調整"),
     ),
     "form-25": (
         _Todo("form-25-book", "預約開二十五號表"),
@@ -90,13 +95,15 @@ STEP_TODOS = {
 }
 
 
-# An 自動待辦's muted line, the owner's on 2026-11-13 (phase-2-grill-decisions.md): one that is
-# its stop's or step's whole end says the route moves on or the step is done, as done the card
-# moves on and never shows it ticked; one that is only a part says it ticks itself.
-DONE_HINT = "已自動打勾"
-STOP_HINT = "做完就會往下一站"
-STEP_HINT = "做完這一步就完成"
-PART_HINT = "做完會自動打勾"
+# An 自動待辦's sentence and muted line, the owner's C on 2026-11-14 (after
+# phase-2-grill-decisions.md's of 2026-11-13): one that is its stop's or step's whole end says
+# the route moves on or the step is done, as done the card moves on and never shows it ticked;
+# one that is only a part says the site ticks it.
+STOP_OUTCOME = "，就會往下一站"
+STEP_OUTCOME = "，這一步就完成"
+UNDONE_HINT = "不用自己勾，網站會知道"
+PART_HINT = "不用自己勾，做完網站會幫您打勾"
+DONE_HINT = "網站已幫您打勾"
 
 
 # Every to-do's wording by its key, and which are 手動待辦, the only ones a tick is kept for (#481).
@@ -155,7 +162,7 @@ def stop_todos(slug, state, user):
     """A route stop's 待辦, judged on state (user's FittingState)."""
     todos = STOP_TODOS.get(slug, ())
     round_now = _stop_round(slug, state.aid)
-    return _judged(todos, state, _ticked(user, todos, round_now), round_now, STOP_HINT)
+    return _judged(todos, state, _ticked(user, todos, round_now), round_now, STOP_OUTCOME)
 
 
 def step_todos(number, done, user, aid, life_impact):
@@ -163,14 +170,14 @@ def step_todos(number, done, user, aid, life_impact):
     current_rounds takes them."""
     todos = STEP_TODOS.get(number, ())
     round_now = _step_round(number, aid, life_impact)
-    return _judged(todos, done, _ticked(user, todos, round_now), round_now, STEP_HINT)
+    return _judged(todos, done, _ticked(user, todos, round_now), round_now, STEP_OUTCOME)
 
 
-def _judged(todos, judged_on, manual_ticked, round_now, undone_hint):
+def _judged(todos, judged_on, manual_ticked, round_now, outcome):
     # judged_on: what each 自動待辦's rule reads, a stop's FittingState or whether a step is
     # done; manual_ticked: the keys of the 手動待辦 ticked in round_now, the list's round;
-    # undone_hint: the muted line
-    # under an 自動待辦 not done yet that completes its stop or step, STOP_HINT or STEP_HINT.
+    # outcome: what an 自動待辦 not done yet that completes its stop or step brings,
+    # STOP_OUTCOME or STEP_OUTCOME.
     listed = []
     for todo in todos:
         if todo.rule is None:
@@ -178,6 +185,11 @@ def _judged(todos, judged_on, manual_ticked, round_now, undone_hint):
             listed.append(JourneyTodo(todo.key, todo.text, True, ticked, round_key=round_now))
         else:
             done = bool(todo.rule(judged_on))
-            hint = DONE_HINT if done else undone_hint if todo.completes else PART_HINT
-            listed.append(JourneyTodo(todo.key, todo.text, False, done, hint))
+            if done:
+                todo_outcome, hint = "", DONE_HINT
+            elif todo.completes:
+                todo_outcome, hint = outcome, UNDONE_HINT
+            else:
+                todo_outcome, hint = "", PART_HINT
+            listed.append(JourneyTodo(todo.key, todo.text, False, done, todo_outcome, hint))
     return tuple(listed)

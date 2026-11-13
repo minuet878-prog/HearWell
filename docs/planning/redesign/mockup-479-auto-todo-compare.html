@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>自動待辦改法比較</title>
+<style>
+  /* tokens from frontend/src/site.css */
+  :root {
+    --primary: #1f4e8c; --primary-soft: #eef3fa; --soft-deep: #d6e2f2;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+    --line-strong: #8a94a3; --input-border: #6c757d; --annot: #7e22ce;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  .sheet { max-width: 1760px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 30px; color: var(--heading); margin: 0 0 8px; }
+  .lead { margin: 0 0 8px; color: var(--muted); max-width: 1100px; }
+  .intro { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 16px; max-width: 1100px; }
+  .intro h2 { font-size: 22px; color: var(--heading); margin: 0 0 6px; }
+  .intro ol, .intro ul { margin: 0 0 8px; padding-left: 1.3em; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin-top: 32px; }
+  .opt { width: 400px; }
+  .opt-label { font-weight: 700; font-size: 22px; color: var(--heading); margin: 0 0 4px; }
+  .rec { color: #fff; background: var(--primary); border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 3px; }
+  .bad { color: #fff; background: #9b2c2c; border-radius: 999px; font-size: 14px; padding: 2px 10px; margin-left: 6px; vertical-align: 3px; }
+  .state { font-size: 15px; font-weight: 700; color: var(--annot); margin: 14px 0 4px; }
+  .note { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.55; }
+  .note p { margin: 0 0 6px; }
+  .note b { color: var(--heading); }
+
+  /* the 現在這一步 card, cropped to its button's lower edge */
+  .card { --r: 18px; background: var(--primary-soft); border-radius: calc(.75 * var(--r)); padding: calc(.75 * var(--r)) var(--r) var(--r); font-size: var(--r); line-height: 1.5; }
+  .btn-crop { height: 10px; margin: 0 0 calc(.75 * var(--r)); border-radius: 0 0 10px 10px; background: var(--primary); }
+  .head { margin: 0 0 calc(.5 * var(--r)); font-weight: 700; color: var(--muted); }
+  .card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(.5 * var(--r)); }
+  .todo { display: flex; align-items: flex-start; column-gap: calc(.625 * var(--r)); }
+  .manual { border: 1px solid var(--input-border); border-radius: calc(.5 * var(--r)); background: #fff; padding: calc(.625 * var(--r)) calc(.75 * var(--r)); min-height: calc(2.75 * var(--r)); }
+  .box { flex: none; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border: 2px solid var(--primary); border-radius: 4px; background: #fff; margin-top: 1px; }
+  .txt { flex: 1; min-width: 0; }
+  .hint { display: block; color: var(--muted); }
+  svg { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* current */
+  .cur-auto { padding: calc(.25 * var(--r)) calc(.75 * var(--r) + 1px) 0; }
+  .ring { flex: none; display: grid; place-items: center; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); border: 2px solid var(--muted); border-radius: 50%; color: var(--primary); margin-top: 1px; }
+  .ring.done { border-color: var(--primary); background: #fff; }
+  .ring svg { width: 70%; height: 70%; }
+
+  /* A: a framed row on the card's own blue, never white (white = can be pressed, ADR 0022) */
+  .a-auto { border: 1px solid var(--soft-deep); border-radius: calc(.5 * var(--r)); background: var(--soft-deep); padding: calc(.625 * var(--r)) calc(.75 * var(--r)); min-height: calc(2.75 * var(--r)); color: var(--heading); }
+  .a-icon { flex: none; display: grid; place-items: center; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); color: var(--primary); margin-top: 1px; }
+  .a-icon svg { width: 100%; height: 100%; stroke-width: 2.5; }
+
+  /* B: no frame, a blue arrow where the ring was, words lined up with the boxed rows' words */
+  .b-auto { padding: calc(.25 * var(--r)) calc(.75 * var(--r) + 1px) 0; color: var(--heading); }
+  .b-icon { flex: none; display: grid; place-items: center; width: calc(1.5 * var(--r)); height: calc(1.5 * var(--r)); color: var(--primary); margin-top: 1px; }
+  .b-icon svg { width: 100%; height: 100%; stroke-width: 3; }
+
+  /* C: under the list, one sentence after a thin line */
+  .c-next { display: flex; align-items: flex-start; column-gap: calc(.5 * var(--r)); margin: calc(.75 * var(--r)) 0 0; padding-top: calc(.625 * var(--r)); border-top: 1px solid var(--soft-deep); color: var(--heading); font-weight: 700; }
+  .c-next .b-icon { margin-top: 2px; }
+  .c-next.done { font-weight: 400; color: var(--body); }
+  .c-sub { display: block; font-weight: 400; color: var(--muted); }
+
+  .callout { outline: 3px solid var(--annot); outline-offset: 3px; border-radius: 6px; }
+  table.words { border-collapse: collapse; margin-top: 8px; font-size: 16px; }
+  table.words th, table.words td { border: 1px solid #ced4da; padding: 6px 10px; text-align: left; vertical-align: top; }
+  table.words th { background: #f4f6f8; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>自動待辦那一列：三種改法</h1>
+  <p class="lead">首頁「現在這一步」與我的選配指引「您在這裡」的「要做的事」。只改<b>自動待辦</b>（網站自己打勾、按了沒反應的那一列）；上面白框方框的手動待辦都不動。</p>
+
+  <div class="intro">
+    <h2>你點出的四個問題</h2>
+    <ol>
+      <li>空心圓像單選鈕，會想去按、以為只能選一個</li>
+      <li>上兩列有白框、這列沒有，像排版跑掉</li>
+      <li>灰圈加灰字，像壞掉或停用</li>
+      <li>「做完就會往下一站」看不懂在說什麼</li>
+    </ol>
+    <h2>三種改法共通的地方</h2>
+    <ul>
+      <li>不用圓圈，也不用空心的框。沒做完時不畫任何「可以勾」的形狀。</li>
+      <li>字改成深色（跟上面兩列一樣），不再整列灰。</li>
+      <li>小字改寫成講清楚「誰來勾、勾了會怎樣」（見最下面的表）。</li>
+      <li>白底仍只給「可以按」的東西（ADR 0022），所以自動待辦不用白底。</li>
+    </ul>
+  </div>
+
+  <div class="row">
+
+    <!-- current -->
+    <div class="opt">
+      <p class="opt-label">現在<span class="bad">要改</span></p>
+      <p class="state">沒做完（第 2 步：記錄聽力圖）</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo manual"><span class="box"></span><span class="txt">到醫院或診所做聽力檢查</span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">跟醫院或診所要一份聽力圖</span></li>
+          <li class="todo cur-auto callout"><span class="ring"></span><span class="txt">把聽力圖記到聽伴<span class="hint">做完就會往下一站</span></span></li>
+        </ul>
+      </div>
+      <p class="state">已自動打勾（配戴之後：記下開始配戴的日期）</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo cur-auto"><span class="ring done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="txt">記下開始配戴的日期<span class="hint">已自動打勾</span></span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">配戴後第一次回去調整</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- A -->
+    <div class="opt">
+      <p class="opt-label">A　加淡藍底框、左邊換箭頭</p>
+      <p class="state">沒做完</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo manual"><span class="box"></span><span class="txt">到醫院或診所做聽力檢查</span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">跟醫院或診所要一份聽力圖</span></li>
+          <li class="todo a-auto"><span class="a-icon"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span><span class="txt">把聽力圖記到聽伴<span class="hint">記好了網站會知道，帶您到下一站</span></span></li>
+        </ul>
+      </div>
+      <p class="state">已自動打勾</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo a-auto"><span class="a-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="txt">記下開始配戴的日期<span class="hint">網站已幫您打勾</span></span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">配戴後第一次回去調整</span></li>
+        </ul>
+      </div>
+      <div class="note">
+        <p><b>好處：</b>三列一樣高、一樣有框，最整齊（解決 2）。</p>
+        <p><b>代價：</b>有框就有人想按。淡藍底跟白底的差別不大，視力差的長輩可能分不出來，還是會去按（1 只解決一半）。</p>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div class="opt">
+      <p class="opt-label">B　不加框，圓圈換成藍色箭頭</p>
+      <p class="state">沒做完</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo manual"><span class="box"></span><span class="txt">到醫院或診所做聽力檢查</span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">跟醫院或診所要一份聽力圖</span></li>
+          <li class="todo b-auto"><span class="b-icon"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span><span class="txt">把聽力圖記到聽伴<span class="hint">記好了網站會知道，帶您到下一站</span></span></li>
+        </ul>
+      </div>
+      <p class="state">已自動打勾</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo b-auto"><span class="b-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="txt">記下開始配戴的日期<span class="hint">網站已幫您打勾</span></span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">配戴後第一次回去調整</span></li>
+        </ul>
+      </div>
+      <div class="note">
+        <p><b>好處：</b>改動最小（只換圖示、字色、小字）。箭頭不像可以按的東西（解決 1、3）。</p>
+        <p><b>代價：</b>還是「兩列有框、一列沒有」，只是沒那麼突兀（2 只解決一半）。</p>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div class="opt">
+      <p class="opt-label">C　移到清單下面，變成一句話<span class="rec">建議</span></p>
+      <p class="state">沒做完</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo manual"><span class="box"></span><span class="txt">到醫院或診所做聽力檢查</span></li>
+          <li class="todo manual"><span class="box"></span><span class="txt">跟醫院或診所要一份聽力圖</span></li>
+        </ul>
+        <p class="c-next"><span class="b-icon"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span><span class="txt">把聽力圖記到聽伴，就會往下一站<span class="c-sub">不用自己勾，記好了網站會知道</span></span></p>
+      </div>
+      <p class="state">已自動打勾</p>
+      <div class="card">
+        <div class="btn-crop"></div>
+        <p class="head">要做的事</p>
+        <ul>
+          <li class="todo manual"><span class="box"></span><span class="txt">配戴後第一次回去調整</span></li>
+        </ul>
+        <p class="c-next done"><span class="b-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><span class="txt">已記下開始配戴的日期<span class="c-sub">網站已幫您打勾；還要回答補助，才會往下一站</span></span></p>
+      </div>
+      <div class="note">
+        <p><b>好處：</b>清單裡只剩「自己勾的」，一看就知道每一列都能按；網站會自己做的那件事變成一句「做完會怎樣」，四點都解決。</p>
+        <p><b>代價：</b>改得最多：每個自動待辦要寫一句話版本（見下表），ADR 0047 和 GLOSSARY 的「待辦」要補一句；自動待辦固定放最下面，例如「看完這一章」原本排第一，會改到「預約聽力師」後面。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="intro" style="margin-top:40px">
+    <h2>小字改寫（A、B 用左欄；C 用右欄，整句取代原本的字＋小字）</h2>
+    <table class="words">
+      <tr><th>情況</th><th>現在</th><th>A、B 的小字</th><th>C 的一句話（以聽力圖為例）</th></tr>
+      <tr><td>做完就往下一站（多數）</td><td>做完就會往下一站</td><td>記好了網站會知道，帶您到下一站</td><td>把聽力圖記到聽伴，就會往下一站<br><small>不用自己勾，記好了網站會知道</small></td></tr>
+      <tr><td>第 4、5 步自己的</td><td>做完這一步就完成</td><td>做完網站會知道，這一步就完成</td><td>做完助聽器效益問卷，這一步就完成<br><small>不用自己勾，做完網站會知道</small></td></tr>
+      <tr><td>只是部分條件（開始配戴日期）</td><td>做完會自動打勾</td><td>記好了網站會幫您打勾</td><td>記下開始配戴的日期<br><small>不用自己勾，記好了網站會幫您打勾</small></td></tr>
+      <tr><td>已打勾</td><td>已自動打勾</td><td>網站已幫您打勾</td><td>已記下開始配戴的日期<br><small>網站已幫您打勾</small></td></tr>
+    </table>
+    <p class="note">字只是草稿，選定版型後再一起定稿。</p>
+  </div>
+</div>
+</body>
+</html>

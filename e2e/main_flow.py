@@ -3683,7 +3683,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
 
     # Spec #478 acceptance 27 and 29 (the owner's pick B on #479): at form 9 the home page's
     # 現在這一步 card and my guide's 您在這裡 card list the same to-dos under their one solid
-    # button, a manual one a white framed row with a box and an automatic one a ring off white;
+    # button, a manual one a white framed row with a box and an automatic one last, off white,
+    # an arrow and its sentence past a thin line (the owner's C on 2026-11-14);
     # 390px wide at 200% text nothing scrolls sideways, every manual row is at least 44px each
     # way and every word at least 18px.
     def test_to_dos_sit_under_the_button_and_fit_a_phone_at_double_text_size(self):
@@ -3702,7 +3703,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     todos = card.locator(".todos")
                     # #481: a manual one's state is its checkbox's, not words.
                     expect(todos.get_by_role("listitem")).to_have_text(
-                        ["預約開九號表", "回答九號表完成了，未完成。做完就會往下一站"]
+                        [
+                            "預約開九號表",
+                            "回答九號表完成了，就會往下一站，未完成。不用自己勾，網站會知道",
+                        ]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
                     self.assertEqual(self.main().locator(".btn-primary").count(), 1)
@@ -3711,9 +3715,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertEqual(style(manual, "backgroundColor"), "rgb(255, 255, 255)")
                     self.assertEqual(style(manual, "borderTopWidth"), "1px")
                     self.assertEqual(style(auto, "backgroundColor"), "rgba(0, 0, 0, 0)")
-                    self.assertEqual(style(auto, "borderTopWidth"), "0px")
-                    self.assertNotEqual(style(manual.locator(".todo-box"), "borderRadius"), "50%")
-                    self.assertEqual(style(auto.locator(".todo-ring"), "borderRadius"), "50%")
+                    self.assertEqual(style(auto, "borderTopWidth"), "1px")
+                    self.assertEqual(style(auto, "borderLeftWidth"), "0px")
+                    self.assertEqual(style(auto.locator(".todo-mark"), "borderTopWidth"), "0px")
+                    self.assertEqual(style(auto.locator(".todo-mark"), "color"), "rgb(31, 78, 140)")
+                    self.assertEqual(style(auto.locator(".todo-sentence"), "fontWeight"), "700")
                     self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
                     # #481: what takes the press is the row's checkbox, as big as the row.
                     for row in todos.get_by_role("checkbox").all():
