@@ -589,8 +589,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 # line at acceptance.
                 "<li>照顧旅程的待辦打勾",
                 # #526's 忘記密碼時 and its lines under 為什麼蒐集, 存放在哪裡 and 會交給誰
-                # (consent version 6); the owner approved the Resend line on 2026-11-13 and
-                # reviews the rest at acceptance. The row's tags are in the digest.
+                # (consent version 6); on 2026-11-13 the owner approved the Resend line, the 30
+                # days after deleting the account, and the new highlight, and reviews the rest at
+                # acceptance. The row's tags are in the digest.
                 "{# #526 (spec #355): the 重設密碼信",
                 '<summary><h2 id="password-reset-title"',
                 "<p>您在「忘記密碼」頁輸入電子郵件後",
