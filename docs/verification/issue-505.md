@@ -15,7 +15,7 @@
 
 ## 實作時的做法（請本人知道）
 
-- 同意書從第 5 版升到第 6 版，隱私權說明多一段「用 Google 登入時」。
+- 同意書升到第 7 版，隱私權說明多一段「用 Google 登入時」。原本是第 6 版，但 #355 忘記密碼已先合併、用掉第 6 版並上線，不是同時上線，照拷問 Q12 不併成一版。
 - 有設 `GOOGLE_CLIENT_ID` 卻沒設 `SITE_URL` 時網站不啟動，避免回呼網址組錯。三個環境變數與回呼網址 `https://tingpal.tw/login/google/callback` 寫在 [部署說明](../deployment/README.md)。
 - Google 不支援強制重新登入（沒有 `max_age`、`prompt=login`），確認本人與新增 Google 時帶 `prompt=select_account`，一定跳出選帳號畫面；拿著本人已解鎖手機的人擋不住（規格「其他說明」已寫）。查證寫在 [登入研究](../planning/open-access/login-research.md) 第 8 節。
 - LINE 內建瀏覽器用 User-Agent 裡的 `Line/版本號` 認（跟 LINE 官方 LIFF 套件同一條規則），寫在登入研究第 9 節；2025 年後的 Android 實際字串沒有公開樣本，靠第 41 條確認。
@@ -125,7 +125,7 @@ Codex，`/code-review`，基準 `main`。Standards 5 項、Spec 8 項，加上�
 
 **同意書與隱私權說明**
 
-- [x] 38 隱私權說明的 Google 段落、同意書第 6 版：GS
+- [x] 38 隱私權說明的 Google 段落、同意書第 7 版：GS
 - [x] 39 同意舊版的人被請再同意：GS
 
 **真機（本人驗收）**

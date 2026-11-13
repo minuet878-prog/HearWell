@@ -169,8 +169,11 @@ describe("setUpJumpHighlight", () => {
   });
 
   it("takes the light off one box at once when a jump goes to another", () => {
-    setUpJumpHighlight(fakeWindow({ hash: "#stop-form-9" }));
+    const win = fakeWindow({ hash: "#stop-form-9" });
+    setUpJumpHighlight(win);
+    win.dispatchEvent(new Event("load"));
     vi.advanceTimersByTime(150);
+    expect(lit()).toEqual([byId("stop-form-9")]);
     click("看沒有身障證明時");
     expect(lit()).toEqual([]);
     vi.advanceTimersByTime(150);
@@ -178,9 +181,38 @@ describe("setUpJumpHighlight", () => {
   });
 
   it("lights the box an address with a # lands on when the page opens", () => {
-    setUpJumpHighlight(fakeWindow({ hash: "#stop-form-9" }));
+    const win = fakeWindow({ hash: "#stop-form-9" });
+    setUpJumpHighlight(win);
+    win.dispatchEvent(new Event("load"));
     vi.advanceTimersByTime(150);
     expect(lit()).toEqual([byId("stop-form-9")]);
+  });
+
+  // #531: when the browser scrolls to the # as the page opens is up to it; by the time the page
+  // has loaded it has. On a slow machine that may be well after the short wait: the box, already
+  // in view at the top of the page, must not light before the page jumps to it.
+  it("waits for the page to load before waiting for the jump to the # to stop", () => {
+    const win = fakeWindow({ hash: "#stop-form-9", scrollEnd: true });
+    setUpJumpHighlight(win);
+    vi.advanceTimersByTime(1000);
+    expect(lit()).toEqual([]);
+    win.dispatchEvent(new Event("load"));
+    win.dispatchEvent(new Event("scroll"));
+    vi.advanceTimersByTime(1000);
+    expect(lit()).toEqual([]);
+    win.dispatchEvent(new Event("scrollend"));
+    expect(lit()).toEqual([byId("stop-form-9")]);
+  });
+
+  // A link on the page used while it is still loading: its box lights, and the page's load does
+  // not take the light over for the # the page opened at.
+  it("keeps to a jump made before the page has loaded", () => {
+    const win = fakeWindow({ hash: "#stop-form-9" });
+    setUpJumpHighlight(win);
+    click("看沒有身障證明時");
+    win.dispatchEvent(new Event("load"));
+    vi.advanceTimersByTime(150);
+    expect(lit()).toEqual([titledBy("without-certificate")]);
   });
 
   it("lights nothing when the page opens at the skip link's landing", () => {

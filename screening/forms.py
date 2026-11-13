@@ -1,9 +1,15 @@
+import hashlib
+import time
+import unicodedata
 from datetime import date
 
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import PasswordResetForm, SetPasswordForm, UserCreationForm
+from django.core.cache import caches
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.forms import BaseFormSet, formset_factory
+from django.template import loader
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
@@ -37,6 +43,13 @@ ROC_OFFSET = 1911  # 民國 year + 1911 = Western year
 PASSWORD_RULES = ("至少 8 個字", "不要全部是數字", "不要跟您的使用者名稱太像", "不要用太常見的密碼")
 # The site's own words in place of Django's username help; its validator and 150 limit stay.
 USERNAME_HELP = "登入時要輸入的名字，可以用中文、英文或數字，不要有空格。不用寫真實姓名。"
+# The help under a new password and its second typing: the register page and, since #527, the
+# page that sets a new password from a 重設密碼信.
+PASSWORD_HELP = format_html(
+    "設定密碼時，請您注意：<ul>{}</ul>",
+    format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
+)
+PASSWORD_AGAIN_HELP = "請再輸入一次同樣的密碼。"
 
 
 def latest_roc_birth_year():
@@ -72,11 +85,8 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         if not self.is_bound:
             self.fields["username"].widget.attrs.pop("autofocus", None)
         self.fields["username"].help_text = USERNAME_HELP
-        self.fields["password1"].help_text = format_html(
-            "設定密碼時，請您注意：<ul>{}</ul>",
-            format_html_join("", "<li>{}</li>", ((rule,) for rule in PASSWORD_RULES)),
-        )
-        self.fields["password2"].help_text = "請再輸入一次同樣的密碼。"
+        self.fields["password1"].help_text = PASSWORD_HELP
+        self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
         # #332 (spec #326 D6): the page's green tick checks against the same latest year.
         self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
 
@@ -128,6 +138,128 @@ class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
         user.set_unusable_password()
         user.save()
         return user
+
+
+# Spec #355: the 重設密碼信 is answered by mail to the owner's mailbox.
+HELP_ADDRESS = "hearwellweb@gmail.com"
+
+
+# #528 (spec #355): one address may send the forgot-password page 10 times an hour, whether the
+# email is registered or not, and one email gets at most 3 重設密碼信 an hour.
+TOO_MANY_RESETS = "試太多次了，請一小時後再試"
+RESETS_PER_ADDRESS = 10
+RESETS_PER_EMAIL = 3
+
+
+RESET_WINDOW = 60 * 60
+
+
+def _attempts_key(kind, value):
+    # A hash, so the cache table never holds an address or an email as typed; an email in any
+    # letter case counts as one.
+    return f"{kind}:{hashlib.sha256(value.lower().encode()).hexdigest()}"
+
+
+def attempts(kind, value):
+    """How many this hour; the hour starts at the first attempt."""
+    count, _ = caches["password_reset"].get(_attempts_key(kind, value), (0, None))
+    return count
+
+
+def add_attempt(kind, value):
+    # The hour's end is kept with the count, so a later attempt does not move it. Reading and
+    # writing are two steps, so requests at the very same moment may count once between them;
+    # the owner accepted the limits being about right (2026-11-13) over a new table for it.
+    key = _attempts_key(kind, value)
+    now = time.time()
+    count, ends = caches["password_reset"].get(key, (0, now + RESET_WINDOW))
+    caches["password_reset"].set(key, (count + 1, ends), timeout=ends - now)
+
+
+def may_reset_password(user):
+    """Spec #355: ordinary active accounts only; an administrator resets on the server."""
+    return user.is_active and not user.is_staff and not user.is_superuser
+
+
+def _same_email(typed, stored):
+    # Django's own check after its case-insensitive query: letters that only look alike after
+    # NFKC folding must still match, so a look-alike address cannot reach someone else's account.
+    return (
+        unicodedata.normalize("NFKC", typed).casefold()
+        == unicodedata.normalize("NFKC", stored).casefold()
+    )
+
+
+class ResetEmailNotSent(Exception):
+    """#529: the mail service did not take a 重設密碼信."""
+
+
+class ForgotPasswordForm(NoLabelSuffix, PasswordResetForm):
+    """Spec #355: every ordinary account on the email gets a 重設密碼信, with or without a
+    password (one made with Google or LINE gains one); staff, superusers and inactive accounts
+    read as not registered, which the page says outright (ADR 0038)."""
+
+    email = forms.EmailField(
+        label="電子郵件",
+        max_length=254,
+        widget=forms.EmailInput(attrs={"autocomplete": "email", "class": "form-control"}),
+    )
+
+    def get_users(self, email):
+        users = User.objects.filter(email__iexact=email)
+        return [
+            user for user in users if may_reset_password(user) and _same_email(email, user.email)
+        ]
+
+    def clean_email(self):
+        email = self.cleaned_data["email"]
+        if not self.get_users(email):
+            raise forms.ValidationError("這個信箱沒有註冊，請檢查有沒有打錯")
+        return email
+
+    def clean(self):
+        email = self.cleaned_data.get("email")
+        if email and attempts("email", email) >= RESETS_PER_EMAIL:
+            raise forms.ValidationError(TOO_MANY_RESETS)
+        return self.cleaned_data
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        # Django's, with replies going to the owner's mailbox and a failed send passed on.
+        subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
+        message = EmailMultiAlternatives(
+            subject,
+            loader.render_to_string(email_template_name, context),
+            from_email,
+            [to_email],
+            reply_to=[HELP_ADDRESS],
+        )
+        message.attach_alternative(
+            loader.render_to_string(html_email_template_name, context), "text/html"
+        )
+        # Django's own catches every failure to send and only logs it; the page must say so (#529).
+        try:
+            message.send()
+        except Exception as error:
+            raise ResetEmailNotSent from error
+
+
+class SetNewPasswordForm(NoLabelSuffix, SetPasswordForm):
+    """Spec #355: Django's 新密碼 and 新密碼確認 with the register page's rules and help."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "form-control"
+        self.fields["new_password1"].help_text = PASSWORD_HELP
+        self.fields["new_password2"].help_text = PASSWORD_AGAIN_HELP
 
 
 def answer_choices(question):

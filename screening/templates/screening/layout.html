@@ -113,7 +113,8 @@
             {% else %}
             {% include "screening/nav_learn.html" %}
             <li>
-                <a href="{% url 'login' %}"{% if page == "login" %} aria-current="page"{% endif %}>
+                {# #527 (mockup #524): the password reset pages come from the login page and stay on its tab. #}
+                <a href="{% url 'login' %}"{% if page == "login" or page|slice:":14" == "password_reset" %} aria-current="page"{% endif %}>
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6"/></svg>
                     <span>登入</span>
                 </a>

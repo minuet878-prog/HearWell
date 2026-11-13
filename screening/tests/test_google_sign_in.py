@@ -749,15 +749,16 @@ class PrivacyTests(TestCase):
         self.assertContains(response, "不保留 Google 給的任何權杖")
         self.assertContains(response, "登入完成後，不會再跟 Google 拿任何資料。")
 
-    def test_version_6_dated_the_day_it_changed(self):
-        self.assertEqual(models.CONSENT_VERSION, 6)
-        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 13))
-        self.assertContains(self.client.get(reverse("privacy")), "第 6 版，2026/11/13 更新")
+    def test_version_7_dated_the_day_it_changed(self):
+        # #526 (spec #355) took version 6 for the 重設密碼信 first.
+        self.assertEqual(models.CONSENT_VERSION, 7)
+        self.assertEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 14))
+        self.assertContains(self.client.get(reverse("privacy")), "第 7 版，2026/11/14 更新")
 
     # 39
-    def test_who_agreed_to_version_5_agrees_again(self):
-        user = User.objects.create_user(username="agreed_to_5")
-        Consent.objects.create(user=user, version=5)
+    def test_who_agreed_to_version_6_agrees_again(self):
+        user = User.objects.create_user(username="agreed_to_6")
+        Consent.objects.create(user=user, version=6)
         self.client.force_login(user)
         url = reverse("my_hearing")
         self.assertRedirects(self.client.get(url), test_consent._consent_url(url))

@@ -20,7 +20,8 @@ TEMPLATES = Path(__file__).resolve().parents[1] / "templates" / "screening"
 HIGHLIGHTS = (
     "只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。",
     "照顧旅程的待辦打勾也會保存，跟其他紀錄一樣可以下載或刪除。",  # version 5 (spec #478)
-    "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # version 6 (#505)
+    "忘記密碼時，才會寄重設密碼信到您的信箱；寄信服務 Resend 在美國，信保存 30 天。",  # 6 (#526)
+    "用 Google 登入時，只拿 Google 給您的代號和 email，不拿名稱、大頭貼。",  # 7 (#505)
     "資料存在網站主機和資料庫；網站出錯時送去錯誤監控的內容，不包含您的名稱、作答或分數。",
     "您可以隨時要求查詢、更正或刪除您的資料。",
     "結果只是參考，不是醫療診斷。",
@@ -128,7 +129,7 @@ class PrivacyHighlightsTests(TestCase):
         files = [
             path.name
             for path in TEMPLATES.rglob("*.html")
-            if HIGHLIGHTS[2] in path.read_text(encoding="utf-8")
+            if HIGHLIGHTS[3] in path.read_text(encoding="utf-8")
         ]
         self.assertEqual(files, ["consent_highlights.html"])
 
@@ -506,7 +507,7 @@ class PrivacyPageT361Tests(TestCase):
         # #471 (mockup #470 privacy B): the open sections' titles and the folded rows' titles,
         # each kind alike; all are level 2.
         classes = {anchor: kind for anchor, kind, _ in self._headings()}
-        self.assertEqual(len(classes), 14)  # #400 added the question log, #505 Google
+        self.assertEqual(len(classes), 15)  # #400 the question log, #526 忘記密碼時, #505 Google
         open_ones = {classes.pop("highlights-title"), classes.pop("contact-title")}
         self.assertEqual(open_ones, {"h4"})
         self.assertEqual(set(classes.values()), {"fold-row-title"})
@@ -586,5 +587,80 @@ class VpsPrivacyTests(TestCase):
         versions = (
             Consent.objects.filter(user=user).order_by("id").values_list("version", flat=True)
         )
-        # The current version, 5 since spec #478.
+        # The current version, 5 since spec #478 and 6 since #526.
         self.assertEqual(list(versions), [3, models.CONSENT_VERSION])
+
+
+# The highlight naming the 重設密碼信 (#526), on the privacy notice's top and the consent page.
+RESET_HIGHLIGHT = HIGHLIGHTS[2]
+# Its line under 會交給誰, word for word as the owner approved it on 2026-11-13, with 不會 in
+# <strong> as Sentry's.
+RESEND_RECIPIENT = (
+    "<li>Resend（寄信服務，資料存放在美國）：只在您申請重設密碼時，經手收件信箱和信的內容"
+    "（使用者名稱、重設連結），保存 30 天後自動刪除。<strong>不會</strong>拿到您的出生年、"
+    "作答或分數。</li>"
+)
+
+
+class PasswordResetPrivacyTests(TestCase):
+    """#526 (spec #355): the notice says the email is used for the 重設密碼信 only, names Resend
+    in the United States and its 30 days, and what the forgot-password page keeps for an hour;
+    what is collected and who receives it changed, so everyone agrees again to version 6."""
+
+    def setUp(self):
+        content = self.client.get(reverse("privacy")).content.decode()
+        self.main = content[content.index("<main") : content.index("</main>")]
+
+    def _section(self, start, end):
+        html = self.main[self.main.index(f'id="{start}"') : self.main.index(f'id="{end}"')]
+        return test_layout._text(html)
+
+    def test_why_it_is_collected_includes_the_reset_email(self):
+        why = self._section("why-title", "collected-title")
+        self.assertIn("您忘記密碼時，寄重設密碼信給您。", why)
+
+    def test_a_section_of_its_own_says_when_it_writes_and_what_it_keeps(self):
+        section = self._section("password-reset-title", "question-log-title")
+        for words in (
+            "忘記密碼時",
+            "只有您自己申請時才寄，網站不寄其他信。",
+            "信裡有您的使用者名稱和設新密碼的連結",
+            "Resend（資料存放在美國）",
+            "保存 30 天後自動刪除",
+            "刪除帳號時，已寄出的信也要到 30 天才會刪除。",
+            "暫存您的 IP 位址和輸入的電子郵件",
+            "換算過的代碼（不是原文），一小時後自動清除。",
+        ):
+            with self.subTest(words=words):
+                self.assertIn(words, section)
+
+    def test_where_it_is_kept_says_the_reset_email_goes_to_the_united_states(self):
+        storage = self._section("storage-title", "recipients-title")
+        self.assertIn("重設密碼信會傳到美國的寄信服務 Resend，保存 30 天後自動刪除。", storage)
+
+    def test_who_receives_it_adds_resend_after_vultr_and_sentry(self):
+        self.assertIn(RESEND_RECIPIENT, self.main)
+        services = re.findall(r"<li>(\w+)（", self.main[self.main.index('id="recipients-title"') :])
+        self.assertEqual(services[:3], ["Vultr", "Sentry", "Resend"])
+
+    def test_the_highlights_name_the_reset_email(self):
+        self.assertContains(self.client.get(reverse("privacy")), f"<li>{RESET_HIGHLIGHT}</li>")
+        self.client.force_login(User.objects.create_user(username="reset_highlights"))
+        self.assertContains(self.client.get(reverse("consent")), f"<li>{RESET_HIGHLIGHT}</li>")
+
+    def test_version_6(self):
+        # Spec #505 raised it to 7 for Google (test_google_sign_in).
+        self.assertGreaterEqual(models.CONSENT_VERSION, 6)
+
+    def test_who_agreed_to_version_5_agrees_again(self):
+        user = User.objects.create_user(username="reset_agreed_to_version_5")
+        Consent.objects.create(user=user, version=5)
+        self.client.force_login(user)
+        url = reverse("my_hearing")
+        self.assertRedirects(self.client.get(url), _consent_url(url))
+        response = self.client.post(reverse("consent"), {"agree": "", "next": url})
+        self.assertRedirects(response, url)
+        versions = Consent.objects.filter(user=user).order_by("id")
+        self.assertEqual(
+            list(versions.values_list("version", flat=True)), [5, models.CONSENT_VERSION]
+        )

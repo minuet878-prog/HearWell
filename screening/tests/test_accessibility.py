@@ -66,7 +66,7 @@ class AccessibilityPageTests(TestCase):
             reverse("qa_topic", args=["hearing-aids"]),
         ]
         self.client.logout()
-        for url in (reverse("login"), reverse("register")):
+        for url in (reverse("login"), reverse("register"), reverse("password_reset")):
             with self.subTest(url=url):
                 page = self.client.get(url).content.decode()
                 self.assertEqual(len(re.findall(r"<h1\b", page)), 1)

@@ -588,7 +588,19 @@ class ReviewedPagesTests(SimpleTestCase):
                 # Spec #478 named the to-do ticks (consent version 5); the owner reviews the
                 # line at acceptance.
                 "<li>照顧旅程的待辦打勾",
-                # Spec #505's 用 Google 登入時 (consent version 6); the owner reviews it at
+                # #526's 忘記密碼時 and its lines under 為什麼蒐集, 存放在哪裡 and 會交給誰
+                # (consent version 6); on 2026-11-13 the owner approved the Resend line, the 30
+                # days after deleting the account, and the new highlight, and reviews the rest at
+                # acceptance. The row's tags are in the digest.
+                "{# #526 (spec #355): the 重設密碼信",
+                '<summary><h2 id="password-reset-title"',
+                "<p>您在「忘記密碼」頁輸入電子郵件後",
+                "<li>寄信服務：Resend",
+                "<li>為了防止有人大量試信箱",
+                "<li>您忘記密碼時，寄重設密碼信給您",
+                "<li>重設密碼信會傳到美國",
+                "<li>Resend（寄信服務",
+                # Spec #505's 用 Google 登入時 (consent version 7); the owner reviews it at
                 # acceptance. Its row's tags (details, summary's body, ul) are in the digest.
                 "{# Spec #505 acceptance 38",
                 '<summary><h2 id="google-title"',
@@ -600,9 +612,9 @@ class ReviewedPagesTests(SimpleTestCase):
                 "<li>登入方式：用 Google 登入時",
             ),
             # #471 (the #470 mockup B) folded each part into a row and dropped the 這一頁的段落
-            # list; the visible words are the same as main's apart from that list's title. Spec
-            # #505 added the tags of the 用 Google 登入時 row.
-            "bf7c007bbe37a430b592bea3a26914dd8e68133070b4a0ba5ea176d030990ccf",
+            # list; the visible words are the same as main's apart from that list's title.
+            # #526 and spec #505 added the tags of the 忘記密碼時 and 用 Google 登入時 rows.
+            "2a35523b567e184051525015de33f9998274b4dbf088889b9f19bb8782430cd9",
         ),
     )
 

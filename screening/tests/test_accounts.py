@@ -256,17 +256,16 @@ class LoginViewTests(TestCase):
         self.assertEqual(register.group(1), "註冊新帳號")
         self.assertLess(main.index('type="submit">登入</button>'), register.start())
 
-    # #360 (spec #354): until people can reset it themselves, a forgotten password has a way out.
-    def test_forgotten_password_line_with_a_mail_link_under_the_login_button(self):
+    # #527 (spec #355, mockup #524 D1): 忘記密碼？ under the login button leads to the
+    # forgot-password page, in place of #360's line asking people to write in.
+    def test_forgotten_password_link_under_the_login_button(self):
         main = self.client.get(self.url).content.decode().split('id="main-content"', 1)[1]
-        line = re.search(r"<p[^>]*>忘記密碼？請寫信到 (<a [^>]*>[^<]*</a>)</p>", main)
-        self.assertIsNotNone(line)
-        self.assertRegex(
-            line.group(1),
-            r'<a [^>]*href="mailto:hearwellweb@gmail.com"[^>]*>hearwellweb@gmail.com</a>',
-        )
-        self.assertLess(main.index('type="submit">登入</button>'), line.start())
-        self.assertLess(line.start(), main.index("還沒有帳號？"))
+        link = re.search(r'<a class="inline-link" href="([^"]*)">忘記密碼？</a>', main)
+        self.assertIsNotNone(link)
+        self.assertEqual(link.group(1), reverse("password_reset"))
+        self.assertLess(main.index('type="submit">登入</button>'), link.start())
+        self.assertLess(link.start(), main.index("還沒有帳號？"))
+        self.assertNotIn("請寫信到", main)
 
     def test_title_greets_and_field_icons_stay_silent(self):
         content = self.client.get(self.url).content.decode()
