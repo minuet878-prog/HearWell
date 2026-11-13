@@ -3419,7 +3419,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # 9 等待補助發放: here, asking nothing and never 已完成; the eight before it done.
             expect(self.here()).to_contain_text("等待補助發放")
             expect(self.here().locator(".route-mark")).to_have_text(["您在這裡"])
-            expect(self.here().locator("form")).to_have_count(0)
+            # No question; its 手動待辦 is a form of its own (#481).
+            expect(self.here().locator("form.stop-question")).to_have_count(0)
             done = self.main().locator(".route-stop").filter(has_text="已完成")
             expect(done).to_have_count(8)
             self.assert_fits_a_phone_at_double_text_size("/guide at the payout")
@@ -3631,8 +3632,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.page.goto(f"{self.live_server_url}{path}")
                     card = self.main().locator(card)
                     todos = card.locator(".todos")
+                    # #481: a manual one's state is its checkbox's, not words.
                     expect(todos.get_by_role("listitem")).to_have_text(
-                        ["預約開九號表，未完成", "回答九號表完成了，未完成。做完會自動打勾"]
+                        ["預約開九號表", "回答九號表完成了，未完成。做完會自動打勾"]
                     )
                     button = card.get_by_role("link", name="看九號表的流程")
                     self.assertEqual(self.main().locator(".btn-primary").count(), 1)
@@ -3645,7 +3647,8 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     self.assertNotEqual(style(manual.locator(".todo-box"), "borderRadius"), "50%")
                     self.assertEqual(style(auto.locator(".todo-ring"), "borderRadius"), "50%")
                     self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
-                    for row in todos.locator(".todo-manual").all():
+                    # #481: what takes the press is the row's checkbox, as big as the row.
+                    for row in todos.get_by_role("checkbox").all():
                         box = row.bounding_box()
                         self.assertGreaterEqual(min(box["width"], box["height"]), 44, path)
                     sizes = todos.evaluate(
@@ -3654,6 +3657,56 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                         ".map(e => parseFloat(getComputedStyle(e).fontSize))"
                     )
                     self.assertGreaterEqual(min(sizes), 18, path)
+
+    # #481 (spec #478 acceptance 11, 12, 28, 30): on the home page a 手動待辦 is a checkbox;
+    # pressed, it is ticked without leaving the page, ✓ 已儲存 showing on its row for a while,
+    # and is still ticked after a reload. With reduced motion pressing it again unticks it,
+    # nothing plays, and ✓ 已儲存 shows all the same.
+    def test_ticking_a_to_do_on_the_home_page_saves_it_in_place(self):
+        animations = "e => e.getAnimations({subtree: true}).length"
+        self.open(390)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/")
+            card = self.main().locator(".journey-card")
+            box = card.get_by_role("checkbox", name="預約開九號表")
+            row = card.locator('[data-todo="form-9-book"]')
+            expect(box).not_to_be_checked()
+            self.page.evaluate("window.notReloaded = true")
+            box.click()
+            expect(box).to_be_checked()
+            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
+            self.assertTrue(self.page.evaluate("window.notReloaded"))
+            self.assertGreater(row.evaluate(animations), 0)  # the tick draws, ✓ 已儲存 fades
+            # On the row's right, beside its words (the owner's D5 on #479).
+            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
+            self.assertLess(saved["y"], words["y"] + words["height"])
+            self.assertGreater(saved["x"], words["x"])
+            expect(row.locator(".todo-saved")).to_have_count(0)  # gone after 1.5 s
+            self.page.reload()
+            expect(box).to_be_checked()
+            self.page.emulate_media(reduced_motion="reduce")
+            box.click()
+            expect(box).not_to_be_checked()
+            box.click()
+            expect(box).to_be_checked()
+            expect(row.locator(".todo-saved")).to_have_text("✓ 已儲存")
+            self.assertEqual(row.evaluate(animations), 0)
+            self.page.reload()
+            expect(box).to_be_checked()
+            # At 200% text it drops to a second line, under the words.
+            self.double_text()
+            box.click()
+            expect(box).not_to_be_checked()
+            words, saved = row.locator(".todo-text").bounding_box(), self.saved_box(row)
+            self.assertGreaterEqual(saved["y"], words["y"] + words["height"] - 1)
+
+    def saved_box(self, row):
+        saved = row.locator(".todo-saved")
+        expect(saved).to_have_text("✓ 已儲存")
+        return saved.bounding_box()
 
     # #261 self-review: the action cards (#256) on the result pages, 320px wide at 200% text,
     # keep room for four characters a line in their titles. The home page has none since #459.

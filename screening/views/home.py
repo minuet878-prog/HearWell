@@ -1,9 +1,16 @@
+from django.contrib.auth.decorators import login_required
+from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.views.decorators.http import require_http_methods
 
 from screening.care_journey import care_journey
+from screening.journey_todos import MANUAL_KEYS, TODO_TEXTS
+from screening.models import FIRST_ROUND, TodoTick
 from screening.views.answering import continue_notice
+from screening.views.common import health_data_page, safe_next
 
 
 def greeting(hour):
@@ -37,6 +44,27 @@ def index(request):
     # The home page shows this account's own records (ticket #159): never cached.
     add_never_cache_headers(response)
     return response
+
+
+@login_required
+@require_http_methods(["POST"])
+@health_data_page
+def journey_todo_tick(request):
+    # #481 (spec #478 acceptance 10–18): a 手動待辦 ticked (ticked=1) or unticked (0), on
+    # request.user's own account only. An 自動待辦 is judged from the records, so never ticked.
+    key, ticked = request.POST.get("todo"), request.POST.get("ticked")
+    if key not in TODO_TEXTS:
+        raise Http404
+    if key not in MANUAL_KEYS or ticked not in ("0", "1"):
+        return HttpResponseBadRequest()
+    if ticked == "1":
+        TodoTick.objects.get_or_create(user=request.user, key=key, round=FIRST_ROUND)
+    else:
+        TodoTick.objects.filter(user=request.user, key=key, round=FIRST_ROUND).delete()
+    # journey-todos.js asks for JSON and stays on the page; a plain form goes back to its row.
+    if request.get_preferred_type(["text/html", "application/json"]) == "application/json":
+        return JsonResponse({"ticked": ticked == "1"})
+    return HttpResponseRedirect(f"{safe_next(request) or reverse('index')}#todo-{key}")
 
 
 def family_guide(request):

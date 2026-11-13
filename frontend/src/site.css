@@ -5602,13 +5602,69 @@
   /* 手動: a white row in the fields' edge (4.2:1 on the card, ADR 0022's white = can be
      pressed), a square box in a 2px blue frame, blue with a white tick once ticked. */
   .todo-manual {
-    flex-wrap: wrap;
-    min-height: var(--spacing-touch);
-    padding: 0.625rem 0.75rem;
+    display: block;
     border: 1px solid var(--color-input-border);
     border-radius: var(--radius-medium);
     background-color: #fff;
     color: var(--color-body);
+  }
+
+  /* #481: the whole row is its form's button (a checkbox to screen readers), so all of it is
+     the target. Pressed, it only changes colour, as an answer's choice does (ADR 0028). */
+  .todo-form {
+    margin: 0;
+  }
+
+  .todo-button {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    column-gap: 0.625rem;
+    width: 100%;
+    min-height: var(--spacing-touch);
+    padding: 0.625rem 0.75rem;
+    border: 0;
+    border-radius: calc(var(--radius-medium) - 1px);
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .todo-button:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .todo-manual:hover {
+      border-color: var(--color-primary);
+    }
+  }
+
+  .todo-manual:has(.todo-button:active) {
+    border-color: var(--color-primary);
+  }
+
+  .todo-button:active {
+    background-color: var(--color-brand-soft);
+  }
+
+  /* Its words keep room before ✓ 已儲存, which drops to a second line at large text sizes
+     (the owner's D5 on #479). */
+  .todo-button .todo-text {
+    flex-basis: 6em;
+  }
+
+  /* #481 (ADR 0028, as the answer page's): the success green, then faded in its last 0.3 s;
+     with reduced motion it is simply there until it goes. */
+  .todo-saved {
+    flex: none;
+    margin-left: auto;
+    color: var(--color-normal);
+    font-weight: 700;
+    white-space: nowrap;
   }
 
   .todo-box,
@@ -5662,6 +5718,22 @@
   .todo-ring svg {
     width: 70%;
     height: 70%;
+  }
+
+  .todo-box svg {
+    stroke-dasharray: 1;
+  }
+
+  /* #481 (the mockup's note ⑧): the tick just pressed draws itself once, as a route stop's
+     (ADR 0028); with reduced motion it is simply there. */
+  @media (prefers-reduced-motion: no-preference) {
+    .todo-saved {
+      animation: saved-fade 1.5s linear both;
+    }
+
+    .todo-tick path {
+      animation: gauge-draw 0.45s ease-out both;
+    }
   }
 
   .todo-text {

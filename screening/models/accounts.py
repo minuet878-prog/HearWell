@@ -48,6 +48,7 @@ class User(AbstractUser):
         self.report_shares.all().delete()
         AidAndSubsidy.objects.filter(user=self).delete()
         self.guide_views.all().delete()
+        self.todo_ticks.all().delete()
         self.delete()
 
 

@@ -1,15 +1,28 @@
 """Spec #478 (ADR 0047): the 待辦 under the 現在這一步 and the 您在這裡 stop. The wordings are
 the owner's to change, so the to-dos are found by their key and kind, not their words."""
 
+import json
 import re
-from datetime import date
+from datetime import date, datetime
+from unittest.mock import patch
 
 from django.urls import reverse
+from django.utils import timezone
 
 from screening.fitting_route import fitting_state
 from screening.journey_todos import stop_todos
-from screening.models import AidAndSubsidy, AidLevel, Certificate, GuideChapterView, Subsidy
-from screening.tests import test_care_journey, test_home_journey
+from screening.models import (
+    FIRST_ROUND,
+    AidAndSubsidy,
+    AidLevel,
+    Certificate,
+    GuideChapterView,
+    Subsidy,
+    TodoTick,
+    User,
+)
+from screening.tests import test_account_deletion, test_care_journey, test_home_journey
+from screening.tests.helpers import consented_user
 from screening.views.guide import here_stop
 
 SOLID = test_home_journey.SOLID
@@ -189,8 +202,8 @@ class Ticket480AutomaticTodosTests(test_care_journey.CareJourneyTestCase):
 
 
 # A listed to-do: its kind, whether done, and its key.
-TODO = re.compile(r'<li class="todo todo-(manual|auto)( is-done)?" data-todo="([^"]+)">')
-TODO_ITEM = re.compile(r'<li class="todo [^"]*" data-todo="([^"]+)">(.*?)</li>', re.S)
+TODO = re.compile(r'<li class="todo todo-(manual|auto)( is-done)?" data-todo="([^"]+)"[^>]*>')
+TODO_ITEM = re.compile(r'<li class="todo [^"]*" data-todo="([^"]+)"[^>]*>(.*?)</li>', re.S)
 
 
 def listed(html):
@@ -248,21 +261,19 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.assertEqual(card.count('<span class="todo-box" aria-hidden="true">'), 2)
         self.assertEqual(card.count('<span class="todo-ring" aria-hidden="true">'), 1)
 
-    def test_each_to_do_is_read_as_done_or_not_and_none_can_be_pressed_yet(self):
-        # Spec #478 acceptance 28, as far as #480 goes: the state in words; ticking a manual one
-        # and saving it is #481's, so nothing in the list takes the focus or a press yet.
+    def test_each_to_do_is_read_by_its_words(self):
+        # Spec #478 acceptance 28: an automatic one's state in words; a manual one is named by
+        # its words, its state the checkbox's (#481, Ticket481TickTests).
         self.answer()
         todos = self.part(self.current_card(self.main()), "todos")
         self.assertEqual(
             self.words(todos),
             {
-                "audiogram-test": "到醫院或診所做聽力檢查 ，未完成",
-                "audiogram-copy": "跟醫院或診所要一份聽力圖 ，未完成",
+                "audiogram-test": "到醫院或診所做聽力檢查",
+                "audiogram-copy": "跟醫院或診所要一份聽力圖",
                 "audiogram-record": "把聽力圖記到聽伴 ，未完成。 做完會自動打勾",
             },
         )
-        for control in ("<a ", "<button", "<input", "<form", "tabindex", 'role="checkbox"'):
-            self.assertNotIn(control, todos)
 
     def test_a_done_automatic_to_do_is_a_ticked_ring_saying_so(self):
         # Spec #478 acceptance 8's look: the fitting date ticks its to-do before 配戴之後 is
@@ -312,3 +323,251 @@ class Ticket480TodoPagesTests(test_home_journey.HomeJourneyTestCase):
         self.assertIn("記錄醫院的聽力圖", content)
         self.assertNotIn('class="todos', content)
         self.assertNotIn("要做的事", content)
+
+
+class Ticket481TickTests(test_home_journey.HomeJourneyTestCase):
+    """#481: a 手動待辦 ticked and unticked by its owner, kept, and shown alike on the home page
+    and my guide; an automatic one never takes a tick."""
+
+    at_form_9 = Ticket480TodoPagesTests.at_form_9
+    guide = Ticket480TodoPagesTests.guide
+    here = Ticket480TodoPagesTests.here
+    current_card = Ticket480TodoPagesTests.current_card
+
+    def tick(self, key, ticked=True, next_url="/", **headers):
+        return self.client.post(
+            reverse("journey_todo_tick"),
+            {"todo": key, "ticked": "1" if ticked else "0", "next": next_url},
+            headers=headers,
+        )
+
+    def test_a_tick_is_kept_on_the_home_page_and_my_guide(self):
+        # Spec #478 acceptance 11.
+        self.at_form_9()
+        self.tick("form-9-book")
+        ticked = [("form-9-book", True, True), ("form-9-answer", False, False)]
+        self.assertEqual(listed(self.current_card(self.main())), ticked)
+        self.assertEqual(listed(self.here(self.guide())), ticked)
+
+    def test_pressing_it_again_unticks_it(self):
+        # Spec #478 acceptance 12; ticking twice keeps the one tick.
+        self.at_form_9()
+        self.tick("form-9-book")
+        self.tick("form-9-book")
+        self.assertEqual(TodoTick.objects.filter(user=self.user).count(), 1)
+        self.tick("form-9-book", ticked=False)
+        unticked = [("form-9-book", True, False), ("form-9-answer", False, False)]
+        self.assertEqual(listed(self.current_card(self.main())), unticked)
+        self.assertEqual(listed(self.here(self.guide())), unticked)
+        self.assertFalse(TodoTick.objects.exists())
+
+    def test_step_4_and_5_s_own_manual_to_dos_tick_too(self):
+        # Their cards are no route stop's, yet ticked the same way.
+        self.answer(on=date(2026, 9, 12))
+        self.make(NORMAL, NORMAL)
+        self.tick("step-5-calendar")
+        self.assertEqual(listed(self.current_card(self.main())), [("step-5-calendar", True, True)])
+
+    def test_an_automatic_to_do_is_refused(self):
+        # Spec #478 acceptance 10: ticked or unticked, nothing changes.
+        self.at_form_9()
+        for ticked in (True, False):
+            with self.subTest(ticked=ticked):
+                self.assertEqual(self.tick("form-9-answer", ticked).status_code, 400)
+        self.assertFalse(TodoTick.objects.exists())
+        self.assertEqual(
+            listed(self.current_card(self.main())),
+            [("form-9-book", True, False), ("form-9-answer", False, False)],
+        )
+
+    def test_an_unknown_to_do_is_404(self):
+        # Spec #478 acceptance 16.
+        self.at_form_9()
+        for key in ("no-such-to-do", ""):
+            with self.subTest(key=key):
+                self.assertEqual(self.tick(key).status_code, 404)
+        self.assertFalse(TodoTick.objects.exists())
+
+    def test_signed_out_goes_to_login_writing_nothing(self):
+        # Spec #478 acceptance 15.
+        self.client.logout()
+        url = reverse("journey_todo_tick")
+        self.assertRedirects(
+            self.tick("form-9-book"),
+            f"{reverse('login')}?next={url}",
+            fetch_redirect_response=False,
+        )
+        self.assertFalse(TodoTick.objects.exists())
+
+    def test_a_tick_is_the_sender_s_own(self):
+        # Spec #478 acceptance 17: 甲 ticking and unticking touches 乙's ticks of the same to-do
+        # in no way.
+        self.at_form_9()
+        first = self.user
+        self.fresh_user("todo_other")
+        self.at_form_9()
+        self.tick("form-9-book")
+        other = self.user
+        self.client.force_login(first)
+        self.user = first
+        self.assertEqual(
+            listed(self.current_card(self.main())),
+            [("form-9-book", True, False), ("form-9-answer", False, False)],
+        )
+        self.tick("form-9-book")
+        self.tick("form-9-book", ticked=False)
+        self.assertEqual(
+            list(TodoTick.objects.values_list("user", "key")), [(other.pk, "form-9-book")]
+        )
+
+    def test_only_a_post_ticks(self):
+        # Spec #478 acceptance 26.
+        self.at_form_9()
+        url = reverse("journey_todo_tick")
+        for method in ("get", "put", "delete"):
+            with self.subTest(method=method):
+                self.assertEqual(getattr(self.client, method)(url).status_code, 405)
+        self.assertFalse(TodoTick.objects.exists())
+
+    def test_without_javascript_it_goes_back_to_the_row_ticked(self):
+        # Spec #478 acceptance 18: the form the row is, sent as a browser sends it, goes back to
+        # the page it was on, at the row, which is ticked.
+        self.at_form_9()
+        for path, card in ((reverse("index"), self.main), (reverse("guide"), self.guide)):
+            with self.subTest(path=path):
+                row = TODO_ROW.search(card()).group(0)
+                form = re.search(r'<form [^>]*action="([^"]+)"', row)
+                fields = dict(re.findall(r'<input type="hidden" name="(\w+)" value="([^"]*)"', row))
+                self.assertEqual(form.group(1), reverse("journey_todo_tick"))
+                self.assertEqual(fields["todo"], "form-9-book")
+                response = self.client.post(form.group(1), fields, headers={"accept": BROWSER})
+                self.assertRedirects(
+                    response, f"{path}#todo-form-9-book", fetch_redirect_response=False
+                )
+                content = self.client.get(path).content.decode()
+                self.assertIn('id="todo-form-9-book"', content)
+                ticked = fields["ticked"] == "1"
+                self.assertEqual(listed(content)[0], ("form-9-book", True, ticked))
+
+    def test_another_site_is_no_place_to_go_back_to(self):
+        self.at_form_9()
+        response = self.tick("form-9-book", next_url="https://example.com/")
+        self.assertRedirects(response, "/#todo-form-9-book", fetch_redirect_response=False)
+
+    def test_with_javascript_it_answers_in_place(self):
+        # journey-todos.js asks for JSON: no page to go to, the state saved said back.
+        self.at_form_9()
+        response = self.tick("form-9-book", accept="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"ticked": True})
+        response = self.tick("form-9-book", ticked=False, accept="application/json")
+        self.assertEqual(response.json(), {"ticked": False})
+        self.assertFalse(TodoTick.objects.exists())
+
+    def test_a_manual_to_do_is_a_checkbox_saying_its_state(self):
+        # Spec #478 acceptance 28: each row a button read as a checkbox, ticked or not, named by
+        # its words; an automatic one stays words, with nothing to press or focus.
+        self.at_form_9()
+        self.tick("form-9-book")
+        for card in (self.current_card(self.main()), self.here(self.guide())):
+            row = TODO_ROW.search(card).group(0)
+            self.assertEqual(
+                re.findall(r'<button [^>]*role="checkbox" aria-checked="(\w+)"', row), ["true"]
+            )
+            self.assertIn('value="0"', row)  # pressed again, it unticks
+            button = re.search(r"<button .*?</button>", row, re.S).group(0)
+            self.assertEqual(self.text(button), "預約開九號表")
+            auto = re.search(r'<li class="todo todo-auto.*?</li>', card, re.S).group(0)
+            for control in ("<a ", "<button", "<input", "<form", "tabindex", "role="):
+                self.assertNotIn(control, auto)
+        self.tick("form-9-book", ticked=False)
+        row = TODO_ROW.search(self.current_card(self.main())).group(0)
+        self.assertIn('role="checkbox" aria-checked="false"', row)
+        self.assertIn('value="1"', row)
+
+    def test_the_pages_stay_uncached(self):
+        # Spec #478 acceptance 26: 健康資料頁面 with a tick on them, and the answer to one.
+        self.at_form_9()
+        self.tick("form-9-book")
+        for response in (
+            self.client.get(reverse("index")),
+            self.client.get(reverse("guide")),
+            self.tick("form-9-book"),
+            self.tick("form-9-book", accept="application/json"),
+        ):
+            with self.subTest(url=response.request["PATH_INFO"]):
+                self.assertIn("no-store", response["Cache-Control"])
+
+
+# A browser's own form post, which prefers a page (Chrome's Accept).
+BROWSER = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+TODO_ROW = re.compile(r'<li class="todo todo-manual[^"]*" data-todo="form-9-book".*?</li>', re.S)
+
+
+class Ticket481TicksDoNotMoveTheJourneyTests(test_care_journey.CareJourneyTestCase):
+    """Spec #478 acceptance 13–14 (ADR 0047): a stop is done by its records, ticks or none."""
+
+    at_form_9 = Ticket480JourneyTodosTests.at_form_9
+
+    def test_every_manual_to_do_ticked_leaves_form_9_the_stop(self):
+        # 13.
+        self.at_form_9()
+        TodoTick.objects.create(user=self.user, key="form-9-book", round=FIRST_ROUND)
+        journey = self.journey()
+        self.assertEqual(journey.current, 3)
+        self.assertEqual(fitting_state(self.user, TODAY).stop, "form-9")
+        self.assertEqual(kinds(journey.card.todos)[0], ("form-9-book", True, True))
+
+    def test_none_ticked_form_9_done_moves_on(self):
+        # 14.
+        self.at_form_9()
+        AidAndSubsidy.objects.filter(user=self.user).update(form_9_done=True)
+        state = fitting_state(self.user, TODAY)
+        self.assertIn("form-9", state.done)
+        self.assertEqual(state.stop, "notice")
+
+
+class Ticket481TickDataTests(test_home_journey.HomeJourneyTestCase):
+    """Spec #478 acceptance 24–25: the ticks in 下載我的資料, and gone with the account."""
+
+    tick = Ticket481TickTests.tick
+
+    def test_the_download_lists_each_tick_with_its_words_and_time(self):
+        # 24, as far as #481 goes: an unticked one is not there; 是不是目前這一輪 is #482's.
+        other = consented_user(username="todo_export_other")
+        TodoTick.objects.create(user=other, key="audiogram-copy", round=FIRST_ROUND)
+        for key, moment in (
+            ("audiogram-test", datetime(2026, 11, 12, 9, 30)),
+            ("form-9-book", datetime(2026, 11, 12, 9, 31)),
+            ("step-5-calendar", datetime(2026, 11, 13, 8, 5)),
+        ):
+            with patch("django.utils.timezone.now", return_value=timezone.make_aware(moment)):
+                self.tick(key)
+        self.tick("form-9-book", ticked=False)
+        data = json.loads(self.client.get(reverse("download_my_data")).content)
+        self.assertEqual(
+            data["journey_todos"],
+            [
+                {"todo": "到醫院或診所做聽力檢查", "ticked_at": "2026-11-12T09:30:00+08:00"},
+                {
+                    "todo": "把下次篩檢日期記在月曆或手機上",
+                    "ticked_at": "2026-11-13T08:05:00+08:00",
+                },
+            ],
+        )
+
+    def test_deleting_the_account_takes_its_ticks(self):
+        # 25: PROTECT, so delete_with_data deletes them first; another's stay.
+        other = consented_user(username="todo_delete_other")
+        TodoTick.objects.create(user=other, key="audiogram-test", round=FIRST_ROUND)
+        self.user.set_password(test_account_deletion.PASSWORD)
+        self.user.save()
+        self.client.force_login(self.user)
+        self.tick("audiogram-test")
+        self.tick("form-9-book")
+        response = self.client.post(
+            reverse("delete_account"), {"password": test_account_deletion.PASSWORD}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+        self.assertEqual(list(TodoTick.objects.values_list("user", flat=True)), [other.pk])

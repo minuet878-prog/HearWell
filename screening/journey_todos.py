@@ -79,18 +79,30 @@ STEP_TODOS = {
 }
 
 
+# Every to-do's wording by its key, and which are 手動待辦, the only ones a tick is kept for (#481).
+_ALL_TODOS = tuple(todo for todos in (*STOP_TODOS.values(), *STEP_TODOS.values()) for todo in todos)
+TODO_TEXTS = {todo.key: todo.text for todo in _ALL_TODOS}
+MANUAL_KEYS = frozenset(todo.key for todo in _ALL_TODOS if todo.rule is None)
+
+
 def stop_todos(slug, state):
-    """A route stop's 待辦, judged on state (a FittingState); manual ones are left unticked."""
-    return _judged(STOP_TODOS.get(slug, ()), state)
+    """A route stop's 待辦, judged on state (a FittingState), its ticks the manual ones'."""
+    return _judged(STOP_TODOS.get(slug, ()), state, state.ticked)
 
 
-def step_todos(number, done):
-    """A 照顧旅程 step's own 待辦; done, whether the step is done."""
-    return _judged(STEP_TODOS.get(number, ()), done)
+def step_todos(number, done, ticked):
+    """A 照顧旅程 step's own 待辦; done, whether the step is done; ticked, the keys of the
+    手動待辦 ticked (FittingState.ticked)."""
+    return _judged(STEP_TODOS.get(number, ()), done, ticked)
 
 
-def _judged(todos, subject):
+def _judged(todos, subject, ticked):
     return tuple(
-        JourneyTodo(todo.key, todo.text, todo.rule is None, bool(todo.rule and todo.rule(subject)))
+        JourneyTodo(
+            todo.key,
+            todo.text,
+            todo.rule is None,
+            todo.key in ticked if todo.rule is None else bool(todo.rule(subject)),
+        )
         for todo in todos
     )
