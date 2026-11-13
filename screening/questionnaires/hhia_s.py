@@ -100,6 +100,7 @@ DEFINITION = Definition(
     source_template="screening/hhia_s_source.html",
     result=GradedResult,
     life_impact=True,
+    guest=True,
     concern=LIFE_IMPACT,
     records_tab_age="65 歲以下",
     intro_audience="適合 18–64 歲成人；若您持續使用原問卷追蹤，也可以繼續填寫。",

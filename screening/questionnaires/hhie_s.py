@@ -108,6 +108,7 @@ DEFINITION = Definition(
     intro_template="screening/questionnaires/hhie_s_intro.html",
     result=GradedResult,
     life_impact=True,
+    guest=True,
     concern=LIFE_IMPACT,
     choices=choices,
     thresholds=THRESHOLDS,

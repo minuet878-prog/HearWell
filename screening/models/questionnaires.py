@@ -8,6 +8,9 @@ class QuestionnaireQuerySet(models.QuerySet):
         # Only questionnaires with a definition are offered (ADR 0005).
         return self.filter(code__in=questionnaires.offered())
 
+    def for_guests(self):
+        return self.filter(code__in=questionnaires.for_guests())
+
 
 class Questionnaire(models.Model):
     questionnaire_name = models.CharField(max_length=64, unique=True)

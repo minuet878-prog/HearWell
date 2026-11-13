@@ -101,6 +101,39 @@ paths:
           description: Invalid points or date; nothing changed
         '404':
           description: Not this user's audiogram
+  /api/guest-scores/:
+    post:
+      operationId: guest_scores_create
+      description: |-
+        Scores a guest's HHIE-S or HHIA-S answers without saving anything (spec #492, ADR 0055):
+        no account, no consent, nothing written.
+      tags:
+      - guest-scores
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuestAnswers'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GuestAnswers'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GuestAnswers'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuestScore'
+          description: ''
+        '400':
+          description: Invalid answers, or not HHIE-S or HHIA-S
+        '429':
+          description: More than 20 in an hour from this address
   /api/questionnaires/:
     get:
       operationId: questionnaires_list
@@ -383,6 +416,63 @@ components:
       - no_response
       - pta
       - type
+    GuestAnswers:
+      type: object
+      description: |-
+        A guest's answers to score without saving (spec #492): HHIE-S or HHIA-S only, checked by
+        the same rules and in the same words as an account's submission.
+      properties:
+        questionnaire:
+          type: integer
+        wearing_hearing_aid:
+          type: boolean
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerInput'
+        just_finished:
+          type: boolean
+      required:
+      - answers
+      - just_finished
+      - questionnaire
+    GuestLevel:
+      type: object
+      properties:
+        code:
+          type: string
+        text:
+          type: string
+        color:
+          type: string
+      required:
+      - code
+      - color
+      - text
+    GuestScore:
+      type: object
+      description: 'A guest''s result: its scores and level, and the result page''s
+        section drawn from them.'
+      properties:
+        questionnaire:
+          $ref: '#/components/schemas/QuestionnaireSummary'
+        wearing_hearing_aid:
+          type: boolean
+        wearing_text:
+          type: string
+        scores:
+          $ref: '#/components/schemas/Scores'
+        level:
+          $ref: '#/components/schemas/GuestLevel'
+        html:
+          type: string
+      required:
+      - html
+      - level
+      - questionnaire
+      - scores
+      - wearing_hearing_aid
+      - wearing_text
     Interpretation:
       type: object
       properties:

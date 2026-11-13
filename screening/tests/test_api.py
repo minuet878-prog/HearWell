@@ -335,8 +335,10 @@ class ApiQuestionnaireDetailTests(TestCase):
         return f"/api/questionnaires/{pk}/"
 
     def test_anonymous_gets_403(self):
+        # HHIE-S and HHIA-S are open to a guest since spec #492 (test_guest); the rest are not.
+        thi = Questionnaire.objects.create(questionnaire_name="THI", code="thi")
         self.client.logout()
-        self.assertEqual(self.client.get(self._url(self.questionnaire.pk)).status_code, 403)
+        self.assertEqual(self.client.get(self._url(thi.pk)).status_code, 403)
 
     def test_returns_questions_in_order_with_choices(self):
         response = self.client.get(self._url(self.questionnaire.pk))

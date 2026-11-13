@@ -65,6 +65,9 @@ class Definition:
     # reminder, and 我的紀錄's 「和上一次比」 against the last record worn the same way. Graded
     # is not enough: a graded questionnaire about something else (THI) is not one.
     life_impact: bool = False
+    # Answered without an account (spec #492): the guest's wizard, answer page and result page
+    # score it without saving (ADR 0055).
+    guest: bool = False
     # Which of the recommendation wizard's first answers it tells about: LIFE_IMPACT, TINNITUS,
     # LISTENING or HEARING_AID (ADR 0030). "": none.
     concern: str = ""
