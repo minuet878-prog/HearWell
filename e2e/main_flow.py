@@ -3612,6 +3612,49 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
                     scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
                     self.assertLessEqual(scroll_width, 390, state)
 
+    # Spec #478 acceptance 27 and 29 (the owner's pick B on #479): at form 9 the home page's
+    # 現在這一步 card and my guide's 您在這裡 card list the same to-dos under their one solid
+    # button, a manual one a white framed row with a box and an automatic one a ring off white;
+    # 390px wide at 200% text nothing scrolls sideways, every manual row is at least 44px each
+    # way and every word at least 18px.
+    def test_to_dos_sit_under_the_button_and_fit_a_phone_at_double_text_size(self):
+        def style(locator, name):
+            return locator.evaluate("(e, name) => getComputedStyle(e)[name]", name)
+
+        self.open(390, 640)
+        user = User.objects.get(username="guide_e2e")
+        GuideChapterView.objects.create(user=user, chapter="before-you-go")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        with self.saving_artifacts():
+            for path, card in (("/", ".journey-card"), ("/guide", ".route-card")):
+                with self.subTest(path=path):
+                    self.page.goto(f"{self.live_server_url}{path}")
+                    card = self.main().locator(card)
+                    todos = card.locator(".todos")
+                    expect(todos.get_by_role("listitem")).to_have_text(
+                        ["預約開九號表，未完成", "回答九號表完成了，未完成。做完會自動打勾"]
+                    )
+                    button = card.get_by_role("link", name="看九號表的流程")
+                    self.assertEqual(self.main().locator(".btn-primary").count(), 1)
+                    self.assertLess(button.bounding_box()["y"], todos.bounding_box()["y"])
+                    manual, auto = todos.locator(".todo-manual"), todos.locator(".todo-auto")
+                    self.assertEqual(style(manual, "backgroundColor"), "rgb(255, 255, 255)")
+                    self.assertEqual(style(manual, "borderTopWidth"), "1px")
+                    self.assertEqual(style(auto, "backgroundColor"), "rgba(0, 0, 0, 0)")
+                    self.assertEqual(style(auto, "borderTopWidth"), "0px")
+                    self.assertNotEqual(style(manual.locator(".todo-box"), "borderRadius"), "50%")
+                    self.assertEqual(style(auto.locator(".todo-ring"), "borderRadius"), "50%")
+                    self.assert_fits_a_phone_at_double_text_size(f"{path} to-dos", width=390)
+                    for row in todos.locator(".todo-manual").all():
+                        box = row.bounding_box()
+                        self.assertGreaterEqual(min(box["width"], box["height"]), 44, path)
+                    sizes = todos.evaluate(
+                        "list => [...list.querySelectorAll('*')].filter(e => e.childNodes.length"
+                        " && [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()))"
+                        ".map(e => parseFloat(getComputedStyle(e).fontSize))"
+                    )
+                    self.assertGreaterEqual(min(sizes), 18, path)
+
     # #261 self-review: the action cards (#256) on the result pages, 320px wide at 200% text,
     # keep room for four characters a line in their titles. The home page has none since #459.
     def test_action_card_titles_keep_four_characters_a_line_at_double_text_size(self):
@@ -9077,9 +9120,12 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
         .filter(a => a.effect.target.closest(within))
         .map(a => ({ name: a.animationName, state: a.playState, time: a.currentTime }))"""
     STOP = '[aria-current="step"]'
+    # #480: what waits to be in view is the card's top, the to-dos and question below it left out.
+    STOP_MARK = '[aria-current="step"] [data-play-in-view]'
     JOURNEY = ".journey-steps"
-    # The journey waits for its 現在這一步 (#459), and its first tick shows the end.
-    JOURNEY_HERE = '.journey-step[aria-current="step"]'
+    # The journey waits for its 現在這一步's one thing (#459, #480), and its first tick shows the
+    # end.
+    JOURNEY_HERE = '.journey-step[aria-current="step"] [data-play-in-view]'
     TICK = ".journey-step.is-done .journey-dot path"
     WAVE = ".site-wave"
 
@@ -9144,10 +9190,11 @@ class PlayInViewTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLiveSer
 
     # #338 acceptance 7: below the screen the ring waits; partly showing, or with its foot under
     # the tab bar, it still waits; wholly in view it plays once, and coming back does not replay.
+    # #480: what has to be in view is the card's top (STOP_MARK), not the whole stop.
     def test_current_stop_ring_plays_once_in_view(self):
         self.open("/guide")
         with self.saving_artifacts():
-            here = self.main().locator(self.STOP)
+            here = self.main().locator(self.STOP_MARK)
             expect(here).to_contain_text("助聽器的種類與價格")
             expect(here).not_to_be_in_viewport()
             self.assertEqual(

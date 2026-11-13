@@ -1,0 +1,15 @@
+{# Spec #478 (ADR 0047, the owner's pick B on #479): the 現在這一步's or the 您在這裡 stop's 待辦, under its button. A 手動待辦 is a white framed row with a box, a 自動待辦 a ring and a muted line saying it ticks itself; the drawings are hidden and the state is read in words. Ticking a manual one is #481's, so for now nothing here takes a press. #}
+{% if todos %}
+<div class="todos">
+    <p class="todos-head" id="todos-title">要做的事</p>
+    <ul class="todo-list" role="list" aria-labelledby="todos-title">
+        {% for todo in todos %}
+        {% if todo.manual %}
+        <li class="todo todo-manual{% if todo.done %} is-done{% endif %}" data-todo="{{ todo.key }}"><span class="todo-box" aria-hidden="true">{% if todo.done %}<svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% endif %}</span><span class="todo-text">{{ todo.text }}<span class="visually-hidden">，{% if todo.done %}已完成{% else %}未完成{% endif %}</span></span></li>
+        {% else %}
+        <li class="todo todo-auto{% if todo.done %} is-done{% endif %}" data-todo="{{ todo.key }}"><span class="todo-ring" aria-hidden="true">{% if todo.done %}<svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% endif %}</span><span class="todo-text">{{ todo.text }}<span class="visually-hidden">，{% if todo.done %}已完成{% else %}未完成{% endif %}。</span><span class="todo-hint">{% if todo.done %}已自動打勾{% else %}做完會自動打勾{% endif %}</span></span></li>
+        {% endif %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

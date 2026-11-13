@@ -4882,8 +4882,12 @@
      the animation shorthand: that would set the play state back to running and so outrank the
      hold until in view. */
   @media (prefers-reduced-motion: no-preference) {
-    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-check path,
-    :root.play-in-view .route:has(> [data-play-in-view]:not([data-in-view])) .route-stop::after {
+    /* #480: the 目前這一站's mark is on its card's top, not the whole stop, which the to-dos and
+       the question under it made too tall to be in view on arrival; so the ring on its number,
+       outside the mark now, is held here too. */
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-number,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-check path,
+    :root.play-in-view .route:has([data-play-in-view]:not([data-in-view])) .route-stop::after {
       animation-play-state: paused;
     }
 
@@ -5494,10 +5498,13 @@
   @media (prefers-reduced-motion: no-preference) {
     /* Held, as in-view.js holds any, until the 現在這一步 (data-play-in-view) is in view: the
        whole list is taller than half a phone's screen and would wait for a scroll, yet the way
-       walked ends at that card. */
-    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+       walked ends at that card. #480: the mark is on the card's one thing, not the whole step,
+       which the to-dos under it made too tall to be in view on arrival; so the ring on the dot,
+       outside the mark now, is held here too. */
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view])) .journey-dot,
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
       .journey-dot path,
-    :root.play-in-view .journey-steps:has(> [data-play-in-view]:not([data-in-view]))
+    :root.play-in-view .journey-steps:has([data-play-in-view]:not([data-in-view]))
       .journey-step::after {
       animation-play-state: paused;
     }
@@ -5564,6 +5571,108 @@
     min-height: var(--spacing-touch);
     margin-top: 0.25rem;
     font-weight: 700;
+  }
+
+  /* Spec #478 (the owner's pick B on #479): the 待辦 under the button, on the home page's
+     現在這一步 card and my guide's 您在這裡 card alike. */
+  .todos {
+    margin-top: 1rem;
+  }
+
+  .todos-head {
+    margin: 0 0 0.375rem;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  .todo-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .todo {
+    display: flex;
+    align-items: flex-start;
+    column-gap: 0.625rem;
+  }
+
+  /* 手動: a white row in the fields' edge (4.2:1 on the card, ADR 0022's white = can be
+     pressed), a square box in a 2px blue frame, blue with a white tick once ticked. */
+  .todo-manual {
+    flex-wrap: wrap;
+    min-height: var(--spacing-touch);
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--color-input-border);
+    border-radius: var(--radius-medium);
+    background-color: #fff;
+    color: var(--color-body);
+  }
+
+  .todo-box,
+  .todo-ring {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .todo-box {
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    color: #fff;
+  }
+
+  .todo-manual.is-done .todo-box {
+    background-color: var(--color-primary);
+  }
+
+  /* 自動: no frame and no white, a ring (the muted grey, 6.9:1, as the line grey is 2.75:1 on
+     the card), the journey's blue frame and tick once done, and a muted line under the words. */
+  .todo-auto {
+    padding: 0.25rem calc(0.75rem + 1px) 0;
+  }
+
+  .todo-ring {
+    border: 2px solid var(--color-muted);
+    border-radius: 50%;
+    color: var(--color-primary);
+  }
+
+  .todo-auto.is-done .todo-ring {
+    border-color: var(--color-primary);
+    background-color: #fff;
+  }
+
+  .todo-box svg,
+  .todo-ring svg {
+    width: 80%;
+    height: 80%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .todo-ring svg {
+    width: 70%;
+    height: 70%;
+  }
+
+  .todo-text {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .todo-hint {
+    display: block;
+    color: var(--color-muted);
   }
 
   /* At large text sizes the card drops under its dot instead of shrinking to a few characters a

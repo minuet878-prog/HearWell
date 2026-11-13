@@ -9,7 +9,11 @@ from screening.tests import test_guide, test_guide_summary
 from screening.tests.helpers import consented_user
 
 PTA_55 = test_guide_summary.PTA_55
-STOP = r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+STOP = (
+    r'<li class="route-stop[^"]*" data-stop="([^"]+)"[^>]*>(.*?)</li>'
+    # A stop's own end, not one of the 您在這裡 card's to-dos (spec #478).
+    r'(?=\s*(?:<li class="route-stop|</ol>))'
+)
 SOLID = re.compile(r'class="btn btn-primary[ "]')
 FOLD = '<details class="result-details">'
 
