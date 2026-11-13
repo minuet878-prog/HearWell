@@ -2778,9 +2778,16 @@ addEventListener("pagereveal", async (event) => {
     }
     try {
         await event.viewTransition.ready;
-    } catch {
-        // switch-reveal.js skipped it: the page painted before its switch was parsed.
+    } catch (error) {
+        // switch-reveal.js skipped it (AbortError: the page painted before its switch was
+        // parsed), or the browser gave up on it (TimeoutError). Noted so a failure says which.
         window.revealed = "skipped";
+        window.skipReason = {
+            error: error.name,
+            pill: Boolean(document.querySelector("main [aria-current]")),
+            parsed: document.getElementsByTagName("*").length,
+            ms: Math.round(performance.now()),
+        };
         return;
     }
     window.revealed = "transition";
@@ -2821,6 +2828,16 @@ const drop = (rules) => {
 };
 addEventListener("load", () => [...document.styleSheets].forEach(drop));
 """
+# A browser without render-blocking (Safari, Firefox): the head's <link rel="expect"> is taken out
+# as it is parsed, so a slow page paints before its switch again.
+NO_RENDER_BLOCKING = """
+new MutationObserver(() => {
+    for (const link of document.querySelectorAll("link[rel=expect]")) {
+        link.remove();
+        window.removedExpect = true;
+    }
+}).observe(document, { childList: true, subtree: true });
+"""
 
 
 class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
@@ -2858,13 +2875,15 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             "url": self.live_server_url,
         }
 
-    def open(self, reduced_motion="no-preference", view_transitions=True):
+    def open(self, reduced_motion="no-preference", view_transitions=True, render_blocking=True):
         self.context = self.browser.new_context(
             viewport={"width": 390, "height": 844}, reduced_motion=reduced_motion
         )
         self.addCleanup(self.context.close)
         self.context.add_cookies([self.cookie])
         self.context.add_init_script(REVEAL_WATCH if view_transitions else NO_VIEW_TRANSITIONS)
+        if not render_blocking:
+            self.context.add_init_script(NO_RENDER_BLOCKING)
         self.context.tracing.start(screenshots=True, snapshots=True)
         self.page = self.context.new_page()
 
@@ -2880,30 +2899,56 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
         start, end = self.page.evaluate("window.pill")
         self.assertNotEqual(start, end)
 
-    def assert_slid_unless_too_slow(self, current):
-        """The pill slides; a machine too slow to parse the switch before the first paint (as CI
-        can be) changes page without the transition instead, never fading the pill out."""
+    def assert_slid(self, current):
         arrived = self.arrived(current)
-        self.assertIn(arrived, ("transition", "skipped"))
-        if arrived == "transition":
-            self.assert_pill_slid()
+        self.assertEqual(arrived, "transition", self.page.evaluate("window.skipReason"))
+        self.assert_pill_slid()
 
-    # #334: on a slow phone the next page paints before its switch is parsed; it changes page
-    # without the transition (switch-reveal.js) rather than fade the old pill out.
-    def test_slow_page_changes_page_without_fading_the_pill(self):
-        self.open()
+    def slow_down(self):
         cdp = self.context.new_cdp_session(self.page)
         cdp.send("Emulation.setCPUThrottlingRate", {"rate": 6})
+
+    # On a slow phone the next page used to paint before its switch was parsed, and then
+    # switch-reveal.js skipped the slide (measured by hand at 4x slower CPU: 22 of 30 changes).
+    # The page now holds its first paint until the switch is parsed, so the pill slides every time.
+    def test_pill_slides_on_a_slow_phone(self):
+        self.open()
+        self.slow_down()
         with self.saving_artifacts():
-            for start, switch, side in (
-                ("/my_hearing?view=questionnaires", "紀錄種類", "聽力圖"),
-                ("/audiograms/compare", "選耳朵", "左耳"),
+            for start, switch, sides in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", ("聽力圖", "問卷")),
+                ("/audiograms/compare", "選耳朵", ("左耳", "右耳")),
             ):
                 with self.subTest(switch=switch):
                     self.page.goto(f"{self.live_server_url}{start}")
                     nav = self.main().get_by_role("navigation", name=switch)
-                    nav.get_by_role("link", name=side).click()
-                    self.assert_slid_unless_too_slow(side)
+                    # Back and forth: one change can slide by luck on a fast enough machine.
+                    for side in sides * 3:
+                        nav.get_by_role("link", name=side).click()
+                        self.assert_slid(side)
+
+    # #334: without render-blocking a slow page still paints before its switch is parsed; then
+    # it changes page without the transition (switch-reveal.js) rather than fade the old pill out.
+    def test_slow_page_without_render_blocking_never_fades_the_pill(self):
+        self.open(render_blocking=False)
+        self.slow_down()
+        with self.saving_artifacts():
+            for start, switch, sides in (
+                ("/my_hearing?view=questionnaires", "紀錄種類", ("聽力圖", "問卷")),
+                ("/audiograms/compare", "選耳朵", ("左耳", "右耳")),
+            ):
+                with self.subTest(switch=switch):
+                    self.page.goto(f"{self.live_server_url}{start}")
+                    nav = self.main().get_by_role("navigation", name=switch)
+                    arrivals = []
+                    for side in sides * 3:
+                        nav.get_by_role("link", name=side).click()
+                        arrivals.append(self.arrived(side))
+                        self.assertTrue(self.page.evaluate("window.removedExpect"))
+                        if arrivals[-1] == "transition":
+                            self.assert_pill_slid()
+                    self.assertIn("skipped", arrivals)
+                    self.assertLessEqual(set(arrivals), {"transition", "skipped"})
 
     def test_pill_slides_between_questionnaires_and_audiograms(self):
         self.open()
@@ -2911,9 +2956,9 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
             records = self.main().get_by_role("navigation", name="紀錄種類")
             records.get_by_role("link", name="聽力圖").click()
-            self.assert_slid_unless_too_slow("聽力圖")
+            self.assert_slid("聽力圖")
             records.get_by_role("link", name="問卷").click()
-            self.assert_slid_unless_too_slow("問卷")
+            self.assert_slid("問卷")
 
     def test_pill_slides_between_ears(self):
         self.open()
@@ -2921,9 +2966,9 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             self.page.goto(f"{self.live_server_url}/audiograms/compare")
             ears = self.main().get_by_role("navigation", name="選耳朵")
             ears.get_by_role("link", name="左耳").click()
-            self.assert_slid_unless_too_slow("左耳")
+            self.assert_slid("左耳")
             ears.get_by_role("link", name="右耳").click()
-            self.assert_slid_unless_too_slow("右耳")
+            self.assert_slid("右耳")
 
     def test_reduced_motion_changes_page_without_sliding(self):
         self.open(reduced_motion="reduce")
@@ -2978,7 +3023,7 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
             records.get_by_role("link", name="聽力圖").click(no_wait_after=True)
             self.page.wait_for_timeout(1000)
             held[0].continue_()
-            self.assert_slid_unless_too_slow("聽力圖")
+            self.assert_slid("聽力圖")
             waiting = self.page.evaluate("sessionStorage.getItem('waiting')")
             self.assertEqual(waiting, "loading-slide 載入中…")
 
@@ -3014,7 +3059,7 @@ class SlidingPillTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase)
                 self.page.goto(f"{self.live_server_url}/my_hearing?view=questionnaires")
                 records = self.main().get_by_role("navigation", name="紀錄種類")
                 records.get_by_role("link", name="聽力圖").click()
-                self.assert_slid_unless_too_slow("聽力圖")
+                self.assert_slid("聽力圖")
                 self.assertEqual(self.changes_page(self.page.go_back), "none")
                 expect(self.main().locator("[aria-current]")).to_have_text("問卷")
 
