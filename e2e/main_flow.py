@@ -2399,6 +2399,13 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.goto(f"{self.live_server_url}/questionnaire_list?choose=self")
             card = self.page.locator("a.link-card").first
             card.hover()
+            # #491: the card fades to blue over 0.15 s but the circle turns white at once, so
+            # compare only after the fade has started and finished.
+            self.page.wait_for_function(
+                """el => getComputedStyle(el).backgroundColor !== "rgb(255, 255, 255)"
+                    && el.getAnimations().length === 0""",
+                arg=card.element_handle(),
+            )
             colour = "el => getComputedStyle(el).backgroundColor"
             card_bg = card.evaluate(colour)
             icon_bg = card.locator(".questionnaire-icon").evaluate(colour)
