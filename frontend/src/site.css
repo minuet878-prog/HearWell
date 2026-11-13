@@ -60,6 +60,12 @@
   --color-ear-right-old: #e8a59d;
   --color-ear-left-old: #9db5d6;
   --color-masking: #b35900;
+  /* A hearing aid's right-ear mark in the 分左右 drawing (ADR 0058, 5.6:1 on white); its left mark
+     is the site blue. */
+  --color-aid-right: #c62828;
+  /* The aids' parts in the 怎麼戴上、拿下 drawings (#503): a deeper blue than the ear, the
+     lines on it 4.9:1. */
+  --color-aid-part: #b5c9e6;
   --radius-small: 0.25rem;
   /* The site-wide redesign (ADR 0043, #454's picks T1, E, S1, P3): a white page, thin grey
      lines in place of boxes, and sizes for the title levels and buttons. The muted grey is for
@@ -3808,6 +3814,36 @@
   .care-drawing .tube { stroke-width: 8; }
   .care-drawing .tube-in { stroke: var(--color-pull); stroke-width: 3.6; }
   .care-drawing .lens { fill: var(--color-pull); fill-opacity: 0.25; }
+  /* 怎麼戴上、拿下 (#504, the #503 drawings): the fingertips white under their lines, the aids'
+     parts deeper blue, and 分左右's marks and words. The fingertips reach past the frame on
+     purpose: keep the drawing's overflow hidden. */
+  .care-drawing .paper { fill: #fff; stroke: none; }
+  .care-drawing .part { fill: var(--color-aid-part); }
+  .care-drawing .mark-right { fill: var(--color-aid-right); stroke: none; }
+  .care-drawing .mark-left { fill: var(--color-primary); stroke: none; }
+  .care-drawing text { fill: var(--color-primary); stroke: none; font-weight: 700; }
+
+  /* 怎麼戴上、拿下's 戴上 and 拿下 (the #503 mockup A): a title over each group of steps, the
+     squeal sentence in a grey box between them, and a link under a step lined up with its words
+     past the box. */
+  .care-steps-title {
+    margin: 1.1rem 0 0;
+    color: var(--color-heading);
+    font-size: var(--text-button);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .care-steps-note {
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.9rem;
+    background: var(--color-surface);
+  }
+
+  .care-step-link {
+    margin-left: 2.25rem;
+  }
 
   /* The Q&A assistant's 依主題找 (the owner's pick 2026-10-27, B): a tile a topic, the
      .link-card look with its icon above its name. Two a row on a phone; at large text sizes a

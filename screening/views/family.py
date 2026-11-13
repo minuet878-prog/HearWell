@@ -21,6 +21,7 @@ from screening.family_zone import (
     HEARING_AID_PROBLEMS,
     HEARING_AID_SOURCES,
     HEARING_AID_STAGES,
+    HEARING_AID_WEAR,
     RELUCTANT_CHECKED_ON,
     RELUCTANT_SITUATIONS,
     RELUCTANT_SOURCES,
@@ -75,7 +76,7 @@ def family_hearing_aids(request):
     # and is for family members who have no account. The same words for everyone. The survey's
     # address needs its id, so this looks up the questionnaire and no one's answers (#434). #435:
     # the care steps' ticks stay on the page in the browser: nothing is sent or kept, and
-    # never_cache keeps 上一頁 on a shared phone from showing them.
+    # never_cache keeps 上一頁 on a shared phone from showing them. #504: so do 怎麼戴上、拿下's.
     return render(
         request,
         "screening/family/hearing_aids.html",
@@ -84,6 +85,7 @@ def family_hearing_aids(request):
             "care_reminders": HEARING_AID_CARE_REMINDERS,
             "problems": HEARING_AID_PROBLEMS,
             "stages": HEARING_AID_STAGES,
+            "wear": HEARING_AID_WEAR,
             "survey": Questionnaire.objects.filter(code=IOI_HA).first(),
             "sources": HEARING_AID_SOURCES,
             "checked_on": HEARING_AID_CHECKED_ON,

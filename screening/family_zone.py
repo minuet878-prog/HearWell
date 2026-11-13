@@ -8,12 +8,24 @@ from datetime import date
 @dataclass(frozen=True)
 class CareStep:
     title: str
-    # How often, or when: shown in brackets after the title.
-    frequency: str
     words: str
     # The file's name in templates/screening/family/care_drawings/. Never all a step says: the
     # words above say everything, and the drawing is hidden from screen readers.
     drawing: str
+    # How often, or when: shown in brackets after the title. Putting an aid in has none (#502).
+    frequency: str = ""
+    # A link under the step's box: (words, path#anchor) (#502).
+    link: tuple = ()
+
+
+@dataclass(frozen=True)
+class StepGroup:
+    # Steps under a title of their own, numbered from 1 (#502: 戴上 and 拿下, the #503 mockup A).
+    title: str
+    steps: tuple
+    # A sentence under the steps with a link inside it, cut where the link goes:
+    # (words before, link words, path#anchor, words after).
+    note: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -36,6 +48,8 @@ class Option:
     # Steps to follow, each with a drawing and a box to tick (#435), and a sentence after them.
     steps: tuple = ()
     steps_note: str = ""
+    # Steps in titled groups, in place of steps (#502).
+    step_groups: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -567,6 +581,181 @@ HEARING_AID_CARE = PickExplain(
         ),
     ),
 )
+# Reviewed by the owner 2026-11-13 (#503, docs/planning/redesign/wear-wording.md): the words, the
+# order (switch on before putting it in) and the 18 drawings. General to every maker, like the
+# care steps: where makers differ, the words say 照說明書.
+_LEFT_RIGHT = CareStep(
+    title="分左右",
+    words="看助聽器上的顏色：紅色戴右耳、藍色戴左耳。沒有顏色的，問聽力師怎麼分。",
+    drawing="wear_left_right",
+)
+_SWITCH_ON_WORDS = "裝電池的：關上電池門。充電的：長按按鍵幾秒，照說明書。"
+_PUT_AWAY_WORDS = "裝電池的：打開電池門，放進盒子。充電的：插進充電座，照說明書。"
+_PUT_AWAY_LINK = ("怎麼收，看「日常保養」", "#care-title")
+_HOOK_ON_WORDS = "把機身掛到耳朵上方，放在耳朵後面。"
+_LIFT_OFF_WORDS = "把機身從耳朵後面拿下來。"
+_PUSH_IN_NOTE = (
+    "戴好後一直嘯叫（尖尖的叫聲），通常是沒推到位：拿出來再推一次，還是叫就看",
+    "「助聽器怪怪的」",
+    "#problems-title",
+    "。",
+)
+_PUT_IN = "戴上"
+_TAKE_OUT = "拿下"
+HEARING_AID_WEAR = PickExplain(
+    code="hearing-aid-wear",
+    prompt="他的助聽器是哪一種？",
+    options=(
+        Option(
+            label="耳掛（有耳模）",
+            step_groups=(
+                StepGroup(
+                    title=_PUT_IN,
+                    steps=(
+                        _LEFT_RIGHT,
+                        CareStep(
+                            title="開機", words=_SWITCH_ON_WORDS, drawing="behind_ear_switch_on"
+                        ),
+                        CareStep(
+                            title="耳模轉進去",
+                            words="拿著耳模，把伸進耳道的那一端對準耳道，輕輕轉著推進去，直到貼平。",
+                            drawing="behind_ear_mould_twist_in",
+                        ),
+                        CareStep(
+                            title="機身掛到耳後",
+                            words=_HOOK_ON_WORDS,
+                            drawing="behind_ear_mould_hook_on",
+                        ),
+                    ),
+                    note=_PUSH_IN_NOTE,
+                ),
+                StepGroup(
+                    title=_TAKE_OUT,
+                    steps=(
+                        CareStep(
+                            title="先拿下機身",
+                            words=_LIFT_OFF_WORDS,
+                            drawing="behind_ear_mould_lift_off",
+                        ),
+                        CareStep(
+                            title="轉出耳模",
+                            words="捏住耳模，輕輕轉出來。不要拉導管。",
+                            drawing="behind_ear_mould_twist_out",
+                        ),
+                        CareStep(
+                            title="關機收好",
+                            words=_PUT_AWAY_WORDS,
+                            drawing="behind_ear_put_away",
+                            link=_PUT_AWAY_LINK,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        Option(
+            label="耳掛（耳塞和細線）",
+            step_groups=(
+                StepGroup(
+                    title=_PUT_IN,
+                    steps=(
+                        _LEFT_RIGHT,
+                        CareStep(
+                            title="開機", words=_SWITCH_ON_WORDS, drawing="behind_ear_switch_on"
+                        ),
+                        CareStep(
+                            title="先掛機身",
+                            words=_HOOK_ON_WORDS,
+                            drawing="behind_ear_dome_hook_on",
+                        ),
+                        CareStep(
+                            title="推進耳塞",
+                            words=(
+                                "捏住細線靠近耳塞的地方，把耳塞輕輕推進耳道，細線貼著頭的側邊。"
+                            ),
+                            drawing="behind_ear_dome_push_in",
+                        ),
+                        CareStep(
+                            title="塞好固定線",
+                            words="有固定線的，把它塞進耳殼的凹處，耳塞比較不會掉出來。",
+                            drawing="behind_ear_dome_tuck_line",
+                        ),
+                    ),
+                    note=_PUSH_IN_NOTE,
+                ),
+                StepGroup(
+                    title=_TAKE_OUT,
+                    steps=(
+                        CareStep(
+                            title="拉出固定線",
+                            words="有固定線的，先把它從耳殼的凹處拉出來。",
+                            drawing="behind_ear_dome_untuck_line",
+                        ),
+                        CareStep(
+                            title="拉出耳塞",
+                            words=(
+                                "捏住細線靠近耳塞的地方，輕輕拉出來。不要拉離耳塞遠的那段細線。"
+                            ),
+                            drawing="behind_ear_dome_pull_out",
+                        ),
+                        CareStep(
+                            title="拿下機身",
+                            words=_LIFT_OFF_WORDS,
+                            drawing="behind_ear_dome_lift_off",
+                        ),
+                        CareStep(
+                            title="關機收好",
+                            words=_PUT_AWAY_WORDS,
+                            drawing="behind_ear_put_away",
+                            link=_PUT_AWAY_LINK,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        Option(
+            label="耳內",
+            step_groups=(
+                StepGroup(
+                    title=_PUT_IN,
+                    steps=(
+                        _LEFT_RIGHT,
+                        CareStep(title="開機", words=_SWITCH_ON_WORDS, drawing="in_ear_switch_on"),
+                        CareStep(
+                            title="對準耳道",
+                            words="拿著機身，拉線朝下、朝後，出聲的那一端對準耳道。",
+                            drawing="in_ear_line_up",
+                        ),
+                        CareStep(
+                            title="轉著推進去",
+                            words=(
+                                "輕輕轉著推進去，推到不鬆、也不痛。另一手可以把耳朵往後上拉一點。"
+                            ),
+                            drawing="in_ear_twist_in",
+                        ),
+                    ),
+                    note=_PUSH_IN_NOTE,
+                ),
+                StepGroup(
+                    title=_TAKE_OUT,
+                    steps=(
+                        CareStep(
+                            title="轉出來",
+                            words="捏住拉線或機身邊緣，輕輕轉出來。",
+                            drawing="in_ear_twist_out",
+                        ),
+                        CareStep(
+                            title="關機收好",
+                            words=_PUT_AWAY_WORDS,
+                            drawing="in_ear_put_away",
+                            link=_PUT_AWAY_LINK,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    ),
+)
+
 HEARING_AID_CARE_REMINDERS = (
     "戴著助聽器時不要噴髮膠或用其他美髮產品。",
     "沒電的電池馬上換；電池放在小孩和寵物拿不到的地方。",
@@ -600,7 +789,29 @@ HEARING_AID_SOURCES = (
         "https://www.hampshirehospitals.nhs.uk/our-services/az-departments-and-specialties/"
         "audiology-1/adult-services/hearing-aid-troubleshooting-guide",
     ),
+    # 怎麼戴上、拿下 (#504), the four the owner reviewed in wear-wording.md.
+    (
+        "RNID：Your hearing aid fitting appointment（2026/06/03 更新）",
+        "https://rnid.org.uk/information-and-support/hearing-aids/getting-used-to-hearing-aids/"
+        "fitting-appointment/",
+    ),
+    (
+        "Cambridge University Hospitals：Hearing aids and audiology services guide – earmould"
+        "（2025/01/14 核定）",
+        "https://www.cuh.nhs.uk/patient-information/hearing-aids-and-audiology-services-guide-earmould/",
+    ),
+    (
+        "Cambridge University Hospitals：Hearing aid and audiology services guide – thin tube"
+        "（2026/06/03 核定）",
+        "https://www.cuh.nhs.uk/patient-information/hearing-aid-and-audiology-services-guide-thin-tube/",
+    ),
+    (
+        "East Kent Hospitals：Inserting your hearing aid with LifeTips（2024/10 審閱）",
+        "https://leaflets.ekhuft.nhs.uk/inserting-your-hearing-aid-with-lifetips/html",
+    ),
     ("聽伴選配指引「配戴之後」的審定內容", "/guide/after-fitting"),
     ("家人專區的審定內容", "/family"),
 )
-HEARING_AID_CHECKED_ON = date(2026, 11, 6)
+# One date for the whole page: with #504's four, every source above was checked again (the owner,
+# #502's comment of 2026-11-13).
+HEARING_AID_CHECKED_ON = date(2026, 11, 14)

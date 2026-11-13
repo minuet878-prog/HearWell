@@ -31,6 +31,7 @@ from screening.family_zone import (
     HEARING_AID_CARE_REMINDERS,
     HEARING_AID_PROBLEMS,
     HEARING_AID_STAGES,
+    HEARING_AID_WEAR,
     RELUCTANT_SITUATIONS,
     VISIT_BRING,
     VISIT_QUESTIONS,
@@ -12942,7 +12943,12 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
     STORED = "JSON.stringify([{...localStorage}, {...sessionStorage}])"
 
     def group(self):
-        return self.main().get_by_role("group", name=HEARING_AID_CARE.prompt)
+        # 怎麼戴上、拿下 (#504) asks the same question: find it under its own section's title.
+        return (
+            self.main()
+            .get_by_role("region", name="日常保養")
+            .get_by_role("group", name=HEARING_AID_CARE.prompt)
+        )
 
     def live(self):
         return self.group().locator('[aria-live="polite"]')
@@ -13210,6 +13216,90 @@ class FamilyCareTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTest
                     self.assertLessEqual(box["x"] + box["width"], 320)
                     self.assertGreater(box["width"], 150)
                     self.assertAlmostEqual(box["height"] / box["width"], 160 / 240, delta=0.01)
+
+
+class FamilyWearTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#504 (spec #502): 怎麼戴上、拿下 in a real browser. It is 日常保養's question and boxes,
+    whose script and keyboard are tested in FamilyCareTest; this is what is new: a shape's two
+    groups, only its own, ticks cleared on a change, and a phone at 200% text."""
+
+    PATH = "/family/hearing-aids"
+
+    def group(self):
+        # 日常保養 asks the same question: find it under its own section's title.
+        return (
+            self.main()
+            .get_by_role("region", name="怎麼戴上、拿下")
+            .get_by_role("group", name=HEARING_AID_WEAR.prompt)
+        )
+
+    def live(self):
+        return self.group().locator('[aria-live="polite"]')
+
+    def boxes(self):
+        return self.live().get_by_role("checkbox")
+
+    def assert_shows(self, chosen):
+        """The chosen shape's 戴上 and 拿下, each step with its box and drawing, and none of the
+        other shapes' steps. Some words are in more than one shape: count the chosen one's."""
+        steps = [step for group in chosen.step_groups for step in group.steps]
+        chosen_words = [step.words for step in steps]
+        for option in HEARING_AID_WEAR.options:
+            for group in option.step_groups:
+                for step in group.steps:
+                    with self.subTest(shape=option.label, words=step.words):
+                        shown = self.group().get_by_text(step.words).locator("visible=true")
+                        expect(shown).to_have_count(chosen_words.count(step.words))
+        expect(self.live().get_by_role("heading")).to_have_text(["戴上", "拿下"])
+        expect(self.boxes()).to_have_count(len(steps))
+        expect(self.live().locator("svg")).to_have_count(len(steps))
+
+    # Acceptance 5, 6 and 13: from the jump link, each shape in turn on a 390px phone at 200% text.
+    def test_a_shape_shows_only_its_steps_clears_ticks_on_a_change_and_fits_a_phone(self):
+        with self.saving_artifacts():
+            self.open(self.PATH, signed_in=False)
+            self.main().get_by_role("navigation", name="這一頁的內容").get_by_role(
+                "link", name="怎麼戴上、拿下"
+            ).click()
+            expect(self.page).to_have_url(re.compile("#wear-title$"))
+            expect(self.live()).to_have_text("")
+            expect(self.group().get_by_role("checkbox")).to_have_count(0)
+
+            previous = None
+            for option in HEARING_AID_WEAR.options:
+                with self.subTest(shape=option.label):
+                    self.double_text(on=False)
+                    if previous:
+                        for box in self.boxes().all():
+                            box.check()
+                    self.group().get_by_label(option.label).check()
+                    self.assert_shows(option)
+                    expect(self.live().locator("input[type=checkbox]:checked")).to_have_count(0)
+                    self.assert_fits_a_phone_at_double_text_size(
+                        f"{self.PATH}, {option.label}", width=390
+                    )
+                    rem = self.rem()
+                    for target in (
+                        *self.group().locator(".choice-group label").all(),
+                        *self.live().locator("label").all(),
+                        *self.live().get_by_role("link").all(),
+                    ):
+                        box = target.bounding_box()
+                        self.assertGreaterEqual(box["height"], 44)
+                        self.assertGreaterEqual(box["width"], 44)
+                    for words in (
+                        self.group().locator("legend"),
+                        *self.live().get_by_role("heading").all(),
+                        *self.live().locator("label > span").all(),
+                        *self.live().locator("strong").all(),
+                        *self.live().locator("p").all(),
+                    ):
+                        self.assertGreaterEqual(self.font_size(words), rem)
+                    for drawing in self.live().locator("svg").all():
+                        box = drawing.bounding_box()
+                        self.assertGreaterEqual(box["x"], 0)
+                        self.assertLessEqual(box["x"] + box["width"], 390)
+                    previous = option
 
 
 class PickExplainBackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
