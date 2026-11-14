@@ -29,6 +29,7 @@
       "Bash(git push*)",
       "Bash(gh pr create*)",
       "Bash(gh pr merge*)",
+      "Bash(python3 scripts/ship_docs.py*)",
       "Bash(python manage.py migrate*)",
       "Bash(py313/bin/python manage.py migrate*)",
       "Bash(python manage.py shell*)",

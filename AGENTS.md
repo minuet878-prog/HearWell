@@ -74,6 +74,7 @@ Claude Code 與 Codex 共用這份指引（Claude Code 經 `CLAUDE.md` 匯入）
    - 不直接改 `main`，一律在分支上工作。
    - 功能分支（和 `/implement-spec` 的子分支）上可以自己 commit、合併子分支，Conventional Commits 格式。
    - **push、開 PR、合併回 `main` 都要先問我。** `/implement-spec` 要開 draft PR 時也一樣。
+   - 例外：分支只改 `docs/`、`GLOSSARY.md` 時，commit 完跑 `python3 scripts/ship_docs.py "<PR 標題>" <PR 內文檔>`，問我一次就好（Claude Code 是權限視窗按允許，Codex 在對話裡問）。腳本會確認沒動到別的檔，再 push、開 PR、等 CI 全綠後合併；CI 要跑幾分鐘，放背景跑。合併後照樣看 `main` 的 CI。
    - commit 作者用我的 git 設定；沒有設定時先問我。
    - 同時有別的 session 在主資料夾工作時，實作開 worktree（`.claude/worktrees/`），不在主資料夾切分支。
 2. **不擅自動我的資料**：不刪除、不覆寫、不批次修改真實資料（資料庫、資料檔、匯出檔）。需要時先說明影響，等我同意。
