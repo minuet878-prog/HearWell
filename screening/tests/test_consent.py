@@ -359,6 +359,34 @@ class GateTests(TestCase):
         response = self.client.post(reverse("consent"), {"agree": "", "next": target})
         self.assertRedirects(response, target)
 
+    def test_a_form_sent_before_agreeing_comes_back_to_its_page(self):
+        # tingpal.tw, 2026-11-13: a tick on the home page before agreeing to version 8 came back
+        # after agreeing as GET /journey_todo_tick, which takes only POST: 405. A form's address
+        # is no page to come back to; the page it was on (its next) is, else the home page.
+        self.client.force_login(self.user)
+        sent = (
+            (reverse("journey_todo_tick"), {"next": "/"}, "/"),
+            (reverse("route_answer"), {"next": reverse("guide")}, reverse("guide")),
+            (reverse("report_share_create"), {}, reverse("index")),
+            (reverse("report_share_cancel", args=[1]), {}, reverse("index")),
+            (reverse("journey_todo_tick"), {"next": "https://evil.example.com"}, reverse("index")),
+        )
+        for url, data, back in sent:
+            with self.subTest(url=url, data=data):
+                self.assertRedirects(
+                    self.client.post(url, data), _consent_url(back), fetch_redirect_response=False
+                )
+
+    def test_agreeing_after_a_tick_lands_on_the_home_page(self):
+        self.client.force_login(self.user)
+        data = {"todo": "form-9-book", "ticked": "1", "next": "/", "round": "0"}
+        consent_page = self.client.post(reverse("journey_todo_tick"), data, follow=True)
+        agreed = self.client.post(
+            reverse("consent"), {"agree": "", "next": consent_page.context["next"]}, follow=True
+        )
+        self.assertEqual(agreed.status_code, 200)
+        self.assertEqual(agreed.request["PATH_INFO"], reverse("index"))
+
     def test_open_pages_stay_open(self):
         self.client.force_login(self.user)
         for name in ("index", "privacy", "add_to_home", "consent"):

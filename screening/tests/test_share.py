@@ -248,7 +248,8 @@ class ReportShareTests(TestCase):
         ):
             with self.subTest(url=url):
                 response = self.client.post(url, {"confirm": "1"})
-                self.assertRedirects(response, f"{login}?next={url}", fetch_redirect_response=False)
+                # Not back to the address, which takes only POST: the home page.
+                self.assertRedirects(response, f"{login}?next=/", fetch_redirect_response=False)
         self.assertEqual(ReportShare.objects.count(), 1)
         self.assertTrue(ReportShare.objects.active().filter(pk=share.pk).exists())
 
@@ -436,8 +437,9 @@ class ReportShareTests(TestCase):
         ):
             with self.subTest(url=url):
                 response = self.client.post(url, {"confirm": "1"})
+                # Not back to the address, which takes only POST: the home page.
                 self.assertRedirects(
-                    response, f"{reverse('consent')}?next={url}", fetch_redirect_response=False
+                    response, f"{reverse('consent')}?next=/", fetch_redirect_response=False
                 )
         self.assertEqual(ReportShare.objects.count(), 1)
         self.assertTrue(ReportShare.objects.active().filter(pk=share.pk).exists())

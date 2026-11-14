@@ -2,13 +2,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpRequest, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
-from django.views.decorators.http import require_http_methods
 
 from screening import assessment_hospitals, models
 from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
@@ -18,7 +16,7 @@ from screening.main_flow import get_user_state
 from screening.models import Ear, Questionnaire
 from screening.questionnaires.ssq12_tw import CODE as SSQ12
 from screening.views.answering import list_order, wearing_follow_ups
-from screening.views.common import health_data_page, safe_next
+from screening.views.common import form_address, health_data_page, safe_next
 
 
 def _assessment_context(request):
@@ -441,8 +439,7 @@ def _chapter_page(request, chapter, question=None):
     return response
 
 
-@login_required
-@require_http_methods(["POST"])
+@form_address
 @health_data_page
 def route_answer(request):
     # #293 (spec #291 acceptance 28): a stop's answer, request.user's own only; back to the
