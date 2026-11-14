@@ -63,6 +63,9 @@ Phase 0–10 的舊規格見[規格索引](specs/README.md)。
   `docs/verification/footer-arch.md`）、
   手機上在聽力圖上往下滑會誤標（#353：手指按住不動 0.3 秒才開始標，直接滑就是捲動，滑鼠照舊；本人 iPhone 實機
   驗收，驗證見 `docs/verification/audiogram-hold-to-mark.md`）、
+  聽力圖改回一按就標、補遮蔽說明（#465 改版後頁面不太捲動，#353 的 0.3 秒等待反而變成點了沒反應；保留兩指放大、
+  長按不跳出選字、換步驟時關遮蔽並捲回上方、開關下方加符號對照與「遮蔽是什麼」；本人在比較頁選 A，iPhone 實機驗收，
+  驗證見 `docs/verification/audiogram-touch-and-masking-guide.md`）、
   逐頁設計整理（母規格 #354，#357–#367：要讀的字至少 1rem、小於 1rem 只限出處類與本人選過的小字、日期一律
   年/月/日、欄位名稱不加冒號、短頁面頁尾貼底、每頁有回去的路、作答與精靈按鈕手機撐滿等約 100 點；不換品牌色、
   不改版面；ADR 0031；本人略過交叉審查直接驗收，驗證見 `docs/verification/issue-354.md`）、

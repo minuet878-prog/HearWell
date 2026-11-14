@@ -4,7 +4,7 @@
 
 基準：`main` `570728f`；分支：`fix/audiogram-touch-masking`。
 
-狀態：自動測試全部通過，等本人用 iPhone 實際操作。只動畫面和觸控，沒碰計分、門檻、migration、權限，**不需要交叉審查**。沒有操作真實資料。
+狀態：自動測試全部通過；2026-11-14 本人回覆「iPhone 驗收通過」。只動畫面和觸控，沒碰計分、門檻、migration、權限，**不需要交叉審查**。沒有操作真實資料。
 
 ## 原因
 
@@ -55,19 +55,21 @@
 |---|---|---|---|
 | 1 | 手指一碰到圖就出現數值、可以上下拖，拖的時候頁面不捲動；讀螢幕的說明拿掉「按住不動一下」 | ✅ 自動 | `a:242` `a finger marks as it lands, and dragging does not scroll the page`（`touchAction` 是 `pinch-zoom`、`aria-label` 全文、按下就有放大鏡、`touchmove` 被擋） |
 | 2 | 點一下就標；點在點上就刪除 | ✅ 自動 | `a:255` `a tap marks, and a tap on the point deletes it` |
-| 3 | 兩指捏（放大）不標 | ✅ 自動＋⏳ 本人 iPhone | `a:266` `a second finger (zooming) cancels the mark` |
+| 3 | 兩指捏（放大）不標 | ✅ 自動＋本人 iPhone | `a:266` `a second finger (zooming) cancels the mark` |
 | 3b | 瀏覽器收回觸控時不標 | ✅ 自動 | `a:277` `marks nothing when the browser takes the touch` |
-| 4 | 長按不跳出選字和選單 | ⏳ 本人 iPhone | jsdom 不會選字；建置後的 `site.css` 有 `-webkit-user-select: none`、`-webkit-touch-callout: none` |
+| 4 | 長按不跳出選字和選單 | ✅ 本人 iPhone | jsdom 不會選字；建置後的 `site.css` 有 `-webkit-user-select: none`、`-webkit-touch-callout: none` |
 | 5 | 換下一步、上一步、從確認頁回去改時，遮蔽自動關掉 | ✅ 自動 | `a:370` `turns off when the next step opens, so the left ear starts unmasked`（含「改右耳」） |
-| 6 | 換步驟時跳回最上面的步驟標題 | ✅ 自動＋⏳ 本人 iPhone | `a:478` `brings the step it opens to the top even when its text already has focus`（標題已有焦點時仍呼叫 `scrollIntoView({ block: "start" })`）；從確認頁回去也會捲，見 `a:370` 最後一行 |
+| 6 | 換步驟時跳回最上面的步驟標題 | ✅ 自動＋本人 iPhone | `a:478` `brings the step it opens to the top even when its text already has focus`（標題已有焦點時仍呼叫 `scrollIntoView({ block: "start" })`）；從確認頁回去也會捲，見 `a:370` 最後一行 |
 | 7 | 開關下面說明什麼時候開、遮蔽是什麼，符號跟著這一耳 | ✅ 自動 | `a:390` `says under the switch which of this ear's marks need it, and what it is` |
 | 8 | 「怎麼標記」的字跟新操作一致 | ✅ 自動 | `a:411` `each step shows only what it needs (#199 acceptance 1)` |
 
 ## 本人實際操作（iPhone）
 
-- [ ] 點一下圖就標上，按住上下拖可以改，點在點上可以刪
-- [ ] 按久一點不會跳出選字或選單
-- [ ] 兩指在圖上捏可以放大，放開後不會多標一個點
-- [ ] 橫拿手機時，從圖外還捲得動頁面
-- [ ] 右耳打開遮蔽，按「右耳標完了，換左耳」：遮蔽變成關，畫面跳回最上面的「第 3 步」
-- [ ] 遮蔽說明看得懂；說法對不對（聽力師角度）
+2026-11-14 本人回覆「iPhone 驗收通過」（iPhone Safari 連到這個分支 worktree 的 runserver，`0.0.0.0:8002`）。
+
+- [x] 點一下圖就標上，按住上下拖可以改，點在點上可以刪
+- [x] 按久一點不會跳出選字或選單
+- [x] 兩指在圖上捏可以放大，放開後不會多標一個點
+- [x] 橫拿手機時，從圖外還捲得動頁面
+- [x] 右耳打開遮蔽，按「右耳標完了，換左耳」：遮蔽變成關，畫面跳回最上面的「第 3 步」
+- [x] 遮蔽說明看得懂；說法對不對（聽力師角度）
