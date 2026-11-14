@@ -16,10 +16,11 @@ const STEPS = ["檢查日期", "標右耳", "標左耳", "確認存檔"];
 const STEP_EAR = { 2: "right", 3: "left" };
 const EAR_STEP = { right: 2, left: 3 };
 const EAR_LABEL = { right: "右耳", left: "左耳" };
+const CONDUCTION_LABEL = { air: "氣導", bone: "骨導" };
 const HOW_TO = [
   "選下面的符號",
-  "在圖上按住不動一下，等數值出現，再上下拖到報告上的位置",
-  "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
+  "在圖上按住，上下拖到報告上的位置",
+  "放開就標好了；標錯就在那個點上點一下，可以刪除",
 ];
 const FORWARD = { 1: "下一步：標右耳", 2: "右耳標完了，換左耳", 3: "左耳標完了，確認存檔" };
 // The 2026-11-14 walkthrough (mockup 12A): the date is typed as a Taiwanese report writes it,
@@ -114,7 +115,8 @@ export default function AudiogramApp({
 }) {
   const [step, setStep] = useState(1);
   const [symbolKey, setSymbolKey] = useState("right-air");
-  // Stays as set until switched off (spec question 18).
+  // Stays as set within a step; every step opens with it off (this replaces spec question 18,
+  // which kept it on across steps).
   const [masked, setMasked] = useState(false);
   const [points, setPoints] = useState(() =>
     Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
@@ -134,11 +136,15 @@ export default function AudiogramApp({
   const symbol = SYMBOLS.find((s) => s.key === symbolKey);
   const ear = STEP_EAR[step];
   const earSymbols = SYMBOLS.filter((s) => s.ear === ear);
-  // Focus follows the step the user opens (65+ SPA risk), never on first load.
+  // Focus follows the step the user opens (65+ SPA risk), never on first load. Scrolled to as well:
+  // an iPhone does not focus a tapped button, so the text may still have focus from the last step,
+  // and focusing it again does not scroll.
   const stepText = useRef(null);
   const moved = useRef(false);
   useEffect(() => {
-    if (moved.current) stepText.current?.focus();
+    if (!moved.current) return;
+    stepText.current?.focus();
+    stepText.current?.scrollIntoView({ block: "start" });
   }, [step]);
 
   const goTo = (next) => {
@@ -146,6 +152,7 @@ export default function AudiogramApp({
     setErrors([]);
     setLast(null);
     if (STEP_EAR[next]) setSymbolKey(`${STEP_EAR[next]}-air`);
+    setMasked(false);
     setStep(next);
   };
 
@@ -343,6 +350,29 @@ export default function AudiogramApp({
               <span className="audiogram-mask-state">{masked ? "開" : "關"}</span>
             </span>
           </button>
+          {/* Under the switch, where the eyes are when deciding whether to turn it on. */}
+          <div className="tip-box">
+            <p className="font-bold mb-1">報告上是這些符號，就打開遮蔽再標：</p>
+            <table className="audiogram-mask-table">
+              <thead>
+                <tr>
+                  <td />
+                  <th scope="col">沒遮蔽</th>
+                  <th scope="col">有遮蔽</th>
+                </tr>
+              </thead>
+              <tbody>
+                {earSymbols.map((s) => (
+                  <tr key={s.key}>
+                    <th scope="row">{CONDUCTION_LABEL[s.conduction]}</th>
+                    <td>{s.mark}</td>
+                    <td className="audiogram-mask-mark">{s.maskedMark}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p>遮蔽是檢查時在另一耳放雜音，不讓另一耳幫忙聽，結果比較準。</p>
+          </div>
           {/* The dashed frame keeps masking in sight while the eyes are on the chart. */}
           <div className={`audiogram-chart${masked ? " masking" : ""}`}>
             <AudiogramChart points={Object.values(points)} symbol={symbol} masked={masked} onCommit={(f, level) => commit(symbol, f, level)} />

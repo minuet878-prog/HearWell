@@ -3184,11 +3184,15 @@
     margin-inline: calc(-1 * var(--chart-frame));
   }
 
+  /* iPhone Safari takes only the -webkit- names: without them a long press on the chart selects
+     its numbers and opens the callout. */
   .audiogram-svg {
     display: block;
     width: 100%;
     height: auto;
+    -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
   }
 
   /* The speech banana page (#436). The words in its chart scale with the chart (ADR 0040); these
@@ -3376,6 +3380,25 @@
     .audiogram-mask-knob {
       transition: transform 0.2s ease-in-out;
     }
+  }
+
+  /* Which of this ear's marks mean masked, under the 遮蔽 switch. */
+  /* Full width at the usual size; the cells' padding stays small so three columns fit 320px at
+     200% text. */
+  .audiogram-mask-table {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .audiogram-mask-table :is(th, td) {
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+  }
+
+  /* Bold, not orange: orange is for the switch while it is on (ADR 0007). */
+  .audiogram-mask-mark {
+    font-weight: 700;
   }
 
   .audiogram-chart.masking {
