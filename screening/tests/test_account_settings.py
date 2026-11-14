@@ -128,6 +128,9 @@ class AccountSettingsTests(TestCase):
         self._hhie_s(self.user, test_report.AIDED, wearing=True, days_ago=2)
         main = self._main(reverse("my_hearing"))
         self.assertNotIn('class="history-tabs"', main)
+        # The 2026-11-14 walkthrough (mockup 10): with no tabs, the one questionnaire is named
+        # where they would be.
+        self.assertIn('<h2 class="records-questionnaire h4">聽力對生活的影響（HHIE-S）</h2>', main)
         basis = self._hhie_s(self.user, test_report.UNAIDED, wearing=False, days_ago=3)
         self._ioi_ha(self.user, basis, days_ago=1)
         main = self._main(f"{reverse('my_hearing')}?questionnaire=hhie-s")
@@ -138,6 +141,7 @@ class AccountSettingsTests(TestCase):
             ["聽力對生活的影響，HHIE-S（65 歲以上）", "助聽器使用成效（IOI-HA）"],
         )
         self.assertIn('aria-current="page"', links[0][0])
+        self.assertNotIn("records-questionnaire", main)
         self.assertNotIn("aria-current", links[1][0])
 
     # 12

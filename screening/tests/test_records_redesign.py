@@ -166,7 +166,7 @@ class AudiogramListTests(Records):
     def test_add_is_the_only_solid_button(self):
         self.make(date(2026, 10, 3))
         main = self.main(reverse("audiogram_list"))
-        self.assertEqual(solid_buttons(main), ["新增聽力圖"])
+        self.assertEqual(solid_buttons(main), ["記錄聽力圖"])
 
     def test_the_newest_three_show_and_the_rest_fold_with_their_dates(self):
         # 8E: 「看以前的 N 張」 (draft).
@@ -219,14 +219,14 @@ class AudiogramDetailTests(Audiograms):
 
     def test_the_guide_is_the_solid_button_when_an_ear_is_over_25(self):
         main = self.detail(self.make((40, 40, 45, 40), (30, 35, 35, 35)))
-        self.assertEqual(solid_buttons(main), ["看我的選配指引"])
+        self.assertEqual(solid_buttons(main), ["看助聽器選配與補助"])
         self.assertIn('<span class="link-card-title">看語言香蕉區</span>', main)
 
     def test_the_speech_banana_is_the_solid_button_without_the_guide(self):
         # Both ears within 25 dB: recommends_fitting_assessment is False, no guide.
         main = self.detail(self.make((20, 20, 20, 20), (15, 15, 15, 15)))
         self.assertEqual(solid_buttons(main), ["看語言香蕉區"])
-        self.assertNotIn("看我的選配指引", main)
+        self.assertNotIn("看助聽器選配與補助", main)
         self.assertNotIn('<span class="link-card-title">看語言香蕉區</span>', main)
 
     def test_type_no_response_and_reading_the_chart_wait_in_the_full_explanation(self):
@@ -261,8 +261,8 @@ class SpeechBananaTests(Audiograms):
     def test_the_guide_is_a_pale_blue_card_with_the_one_solid_button(self):
         main = self.banana(self.make((40, 40, 45, 40), (30, 35, 35, 35)))
         card = re.search(r'<div class="result-next">(.*?)</div>', main, re.S).group(1)
-        self.assertEqual(text(card), "依您的聽力圖整理下一步 看我的選配指引")
-        self.assertEqual(solid_buttons(main), ["看我的選配指引"])
+        self.assertEqual(text(card), "依您的聽力圖整理下一步 看助聽器選配與補助")
+        self.assertEqual(solid_buttons(main), ["看助聽器選配與補助"])
 
     def test_no_guide_no_solid_button(self):
         main = self.banana(self.make((20, 20, 20, 20), (15, 15, 15, 15)))

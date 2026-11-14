@@ -253,7 +253,7 @@ describe("saveGuestResults (the save page)", () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/my_hearing" data-home-url="/">
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/">
         <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
           <div role="alert" tabindex="-1" data-guest-failed-list></div>
@@ -292,7 +292,7 @@ describe("saveGuestResults (the save page)", () => {
     });
   });
 
-  it("saves both, clears them and goes to 我的紀錄", async () => {
+  it("saves both, clears them and goes home saying so", async () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     // 200: sent again, the record already there; saved all the same.
@@ -301,7 +301,7 @@ describe("saveGuestResults (the save page)", () => {
     expect(fetchSave).toHaveBeenCalledTimes(2);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).toBeNull();
-    expect(navigate).toHaveBeenCalledWith("/my_hearing");
+    expect(navigate).toHaveBeenCalledWith("/?from=save");
   });
 
   it("keeps one not saved and says which, clearing the one saved", async () => {
@@ -328,7 +328,7 @@ describe("saveGuestResults (the save page)", () => {
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
     expect(root.querySelector("[data-guest-failed-list]").textContent).toContain("「聽力對生活的影響（HHIE-S）」沒有存成");
     root.querySelector("[data-guest-retry]").click();
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/my_hearing"));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
     expect(fetchSave).toHaveBeenCalledTimes(2);
     // The same receipt number both times, so a lost reply cannot make two records.
     expect(fetchSave.mock.calls[1][1].headers["Idempotency-Key"]).toBe(guestResult().key);
@@ -346,8 +346,8 @@ describe("saveGuestResults (the save page)", () => {
     expect(line.textContent).toBe("正在保存，請稍候。");
     reply({ ok: true, status: 201, json: () => Promise.resolve({}) });
     await saving;
-    expect(line.textContent).toBe("已保存，正在打開我的紀錄。");
-    expect(navigate).toHaveBeenCalledWith("/my_hearing");
+    expect(line.textContent).toBe("已保存，正在打開首頁。");
+    expect(navigate).toHaveBeenCalledWith("/?from=save");
   });
 
   it("moves focus to what was not saved, and back to the saving line on 再試一次", async () => {
@@ -508,7 +508,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
 
   beforeEach(() => {
     document.body.innerHTML = `
-      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/my_hearing" data-home-url="/" data-asking>
+      <div id="guest-save" data-submissions-url="/api/submissions/" data-done-url="/?from=save" data-home-url="/" data-asking>
         <h1>要把這次結果存到這個帳號嗎？</h1>
         <div data-guest-ask hidden>
           <p data-guest-ask-lead></p>
@@ -563,7 +563,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     ]);
   });
 
-  it("要，存進這個帳號 saves them as from the save card and goes to 我的紀錄", async () => {
+  it("要，存進這個帳號 saves them as from the save card and goes home saying so", async () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
     const fetchSave = created();
@@ -572,7 +572,7 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     expect(root.querySelector("[data-guest-ask]").hidden).toBe(true);
     // Self-review B2: not left on the button just hidden.
     expect(document.activeElement).toBe(root.querySelector("[data-guest-saving]"));
-    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/my_hearing"));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/?from=save"));
     expect(fetchSave).toHaveBeenCalledTimes(2);
     const keys = fetchSave.mock.calls.map(([, options]) => options.headers["Idempotency-Key"]).sort();
     expect(keys).toEqual([HHIA_S.key, guestResult().key].sort());

@@ -179,7 +179,8 @@ export async function showGuestResult({
 // The save page (guest_save.html, spec #492): every guest result sent to the records API as the
 // answer page sends an account's answers, with its own receipt number (a resend makes no second
 // record) and the guest mark. One saved leaves this browser; one not saved stays and is named.
-// All saved: 我的紀錄; none here: home.
+// All saved: home saying so (the 2026-11-14 walkthrough), whose 照顧旅程 says what comes
+// next; none here: home.
 export async function saveGuestResults({
   root,
   now = Date.now(),
@@ -222,7 +223,7 @@ export async function saveGuestResults({
     else failed.push(result);
   }
   if (failed.length === 0) {
-    saving.textContent = "已保存，正在打開我的紀錄。";
+    saving.textContent = "已保存，正在打開首頁。";
     return navigate(doneUrl);
   }
   const names = JSON.parse(root.querySelector("#guest-names").textContent);

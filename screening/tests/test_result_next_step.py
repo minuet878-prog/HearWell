@@ -17,7 +17,7 @@ from screening.tests import test_guide_summary, test_result_pages
 from screening.tests.helpers import consented_user
 
 SUGGESTIONS = (
-    "記錄醫院的聽力圖",
+    "記錄聽力圖",
     "修改這張聽力圖",
     "了解助聽器選配與補助",
     "分享報告給家人",
@@ -28,7 +28,8 @@ SHARE_ROW = (reverse("share_report"), "分享給家人")
 NEXT_STEP = re.compile(
     r'<div class="result-next">\s*<p class="result-next-label">建議您下一步</p>\s*'
     r'<h2 class="result-next-title">([^<]*)</h2>\s*'
-    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*</div>',
+    r'<a class="btn btn-primary btn-lg w-full" href="([^"]*)">([^<]*)</a>\s*'
+    r'(?:<a class="btn btn-outline-primary btn-lg w-full" href="[^"]*">[^<]*</a>\s*)?</div>',
     re.S,
 )
 ROW = re.compile(
@@ -60,7 +61,7 @@ class ResultNextStepTests(TestCase):
     def suggest(self, suggestion):
         """Records that make the 建議您下一步 `suggestion` (a card title, as #261 named them)."""
         self.answer()
-        if suggestion == "記錄醫院的聽力圖":
+        if suggestion == "記錄聽力圖":
             return
         if suggestion == "修改這張聽力圖":
             audiogram = self.make((20, 20, 20, 20), (20, 20, 20, 20))
@@ -105,11 +106,13 @@ class ResultNextStepTests(TestCase):
         content = self.client.get(reverse("result", args=[submission.pk])).content.decode()
         return content[content.index("<main") : content.index("</main>")]
 
-    def expected(self, suggestion):
-        """(title, button href, button text) a result page suggests now."""
-        if suggestion == "記錄醫院的聽力圖":
-            # Step 2, the route's 記錄聽力圖 stop and its button.
-            return ("記錄聽力圖", "/audiograms/new", "記錄醫院的聽力圖")
+    def expected(self, suggestion, submission=None):
+        """(title, button href, button text) a result page suggests now, on `submission`'s."""
+        if suggestion == "記錄聽力圖":
+            # Step 2, the route's 記錄聽力圖 stop and its button, which comes back to the page
+            # (the 2026-11-14 walkthrough).
+            back = f"?next=/submission/{submission.pk}" if submission else ""
+            return ("記錄聽力圖", f"/audiograms/new{back}", "有，記錄聽力圖")
         if suggestion == "修改這張聽力圖":
             edit = reverse("audiogram_edit", args=[self.user.audiograms.get().pk])
             return ("記錄聽力圖", edit, "修改這張聽力圖")
@@ -136,7 +139,23 @@ class ResultNextStepTests(TestCase):
                     self.assertEqual((card.title, card.button[1]), expected[:2])
                 for code, submission in submissions.items():
                     with self.subTest(questionnaire=code):
-                        self.assertEqual(self.next_step(self.result(submission)), expected)
+                        self.assertEqual(
+                            self.next_step(self.result(submission)),
+                            self.expected(suggestion, submission),
+                        )
+
+    def test_without_a_report_yet_a_second_outline_button(self):
+        # The 2026-11-14 walkthrough (mockup 2A): the result page's card has the home card's 還沒.
+        self.sign_in("result second way")
+        submissions = self.answer_all()
+        self.answer()
+        main = self.result(submissions["thi"])
+        card = re.search(r'<div class="result-next">.*?</div>', main, re.S)
+        self.assertIn(
+            '<a class="btn btn-outline-primary btn-lg w-full" '
+            'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>',
+            card.group(0),
+        )
 
     def test_the_suggestion_comes_before_the_list_rows(self):
         # R1: the card, then 看完整說明, sharing and printing, then the page's extras (the optional
@@ -195,7 +214,7 @@ class ResultNextStepTests(TestCase):
         submissions = self.answer_all()
         self.answer()
         before = self.next_step(self.result(submissions["thi"]))
-        self.assertEqual(before, self.expected("記錄醫院的聽力圖"))
+        self.assertEqual(before, self.expected("記錄聽力圖", submissions["thi"]))
         self.make((20, 20, 20, 20), (20, 20, 20, 20))
         for code, submission in submissions.items():
             with self.subTest(questionnaire=code):

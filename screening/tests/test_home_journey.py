@@ -179,6 +179,29 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
                 self.assertEqual("我已經有帳號，登入" in main, signed_out)
 
 
+class SavedNoteTests(HomeJourneyTestCase):
+    """The 2026-11-14 walkthrough (mockup 6): a guest result saved, the save page opens home with
+    from=save, and the home page says so once above its greeting."""
+
+    NOTE = '<p class="saved-note" role="status">✓ 已保存這次結果</p>'
+
+    def test_from_the_save_page_the_note_is_above_the_greeting(self):
+        self.answer()
+        content = self.client.get(f"{reverse('index')}?from=save").content.decode()
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertIn(self.NOTE, main)
+        self.assertLess(main.index(self.NOTE), main.index("今天只要做一件事"))
+
+    def test_any_other_way_home_has_no_note(self):
+        self.answer()
+        self.assertNotIn("saved-note", self.main())
+
+    def test_without_an_account_no_note(self):
+        self.client.logout()
+        response = self.client.get(f"{reverse('index')}?from=save")
+        self.assertNotContains(response, "saved-note")
+
+
 class JourneyHomeTests(HomeJourneyTestCase):
     def test_only_an_audiogram_shows_the_journey_with_both_tiles_not_yet(self):
         # Spec #453 acceptance 2, #458 D6: grey tiles that are not links.
@@ -347,8 +370,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
             (
                 no_audiogram,
                 "記錄聽力圖",
-                "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
-                ("/audiograms/new", "記錄醫院的聽力圖"),
+                "手上有醫院的聽力檢查報告了嗎？",
+                ("/audiograms/new?next=/", "有，記錄聽力圖"),
             ),
             (
                 missing_frequency,
@@ -392,6 +415,21 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 if href == "edit":
                     href = reverse("audiogram_edit", args=[audiogram.pk])
                 self.assertEqual(buttons, [(href, text)])
+
+    def test_without_a_report_yet_the_card_has_a_second_way(self):
+        # The 2026-11-14 walkthrough (mockup 2A): 還沒 is an outline button under the solid one,
+        # to where a hearing test is done; an audiogram missing a frequency has none.
+        self.answer()
+        card = self.card(self.main())
+        solid = card.index('href="/audiograms/new?next=/">有，記錄聽力圖</a>')
+        outline = card.index(
+            '<a class="btn btn-outline-primary btn-lg w-full" '
+            'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>'
+        )
+        self.assertLess(solid, outline)
+        audiogram = self.make(NORMAL, NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        self.assertNotIn("還沒，看要去哪裡檢查", self.main())
 
     def test_done_steps_say_their_day(self):
         # #458 D7: step 3 its fitting date, step 4 its IOI-HA's.
@@ -494,7 +532,7 @@ class StepInteractionTests(HomeJourneyTestCase):
             ),
         )
         self.assertEqual(
-            opened(1), ("選配指引要用聽力圖才能整理下一步。 看我的選配指引", ["/guide"])
+            opened(1), ("選配指引要用聽力圖才能整理下一步。 看助聽器選配與補助", ["/guide"])
         )
         self.assertEqual(
             opened(3),

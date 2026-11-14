@@ -120,9 +120,9 @@ class MyGuideRedesignTests(TestCase):
         page = self.page()
         self.assertEqual(len(SOLID.findall(page)), 1)
         here = self.stops(page)["audiogram"]
-        self.assertRegex(here, r'class="btn btn-primary btn-lg w-full[^"]*"[^>]*>記錄醫院的聽力圖<')
+        self.assertRegex(here, r'class="btn btn-primary btn-lg w-full[^"]*"[^>]*>記錄聽力圖<')
         audiogram = page[page.index('id="audiogram-title"') :]
-        self.assertIn(f'<a href="{reverse("audiogram_new")}">記錄醫院的聽力圖</a>', audiogram)
+        self.assertIn(f'<a href="{reverse("audiogram_new")}">記錄聽力圖</a>', audiogram)
 
     def test_without_records_the_start_button_is_the_one_solid(self):
         page = self.page()

@@ -220,7 +220,9 @@ class HeaderBrandTests(TestCase):
 class RedesignLayoutTests(TestCase):
     NAV = re.compile(r'<nav aria-label="主要導覽".*?</nav>', re.DOTALL)
     LOGGED_IN_ITEMS = ("首頁", "篩檢", "紀錄", "了解")
-    LOGGED_OUT_ITEMS = ("首頁", "了解", "登入", "註冊")
+    # The 2026-11-14 walkthrough (mockup 11A): a visitor can answer without an account, so 篩檢
+    # takes 註冊's place, the first three where they are once logged in; 註冊 is on the login page.
+    LOGGED_OUT_ITEMS = ("首頁", "篩檢", "了解", "登入")
 
     @classmethod
     def setUpTestData(cls):
@@ -297,7 +299,7 @@ class RedesignLayoutTests(TestCase):
                 self.assertRegex(nav, rf'(?s)aria-current="page"[^>]*>.*?<span[^>]*>{label}</span>')
         self.client.logout()
         # #527 (mockup #524): the forgot-password page comes from the login page and stays on it.
-        for name, label in (("login", "登入"), ("register", "註冊"), ("password_reset", "登入")):
+        for name, label in (("login", "登入"), ("register", "登入"), ("password_reset", "登入")):
             with self.subTest(url=name):
                 nav = self._nav(self.client.get(reverse(name)))
                 self.assertEqual(nav.count('aria-current="page"'), 1)
@@ -318,7 +320,7 @@ class RedesignLayoutTests(TestCase):
     def test_page_titles(self):
         suffix = "\uff5c聽伴"  # U+FF5C FULLWIDTH VERTICAL LINE, as written in the spec
         expected = {
-            reverse("questionnaire_list"): "選擇問卷" + suffix,
+            reverse("questionnaire_list"): "選問卷" + suffix,
             reverse("screening", args=[self.questionnaire.id]): "HHIE-S 作答" + suffix,
             reverse("result", args=[self.submission.id]): "HHIE-S 結果" + suffix,
             reverse("my_hearing"): "我的紀錄" + suffix,
@@ -612,8 +614,9 @@ class PageFlowTests(TestCase):
         self._assert_in_order(
             main,
             (
-                "自行選擇問卷",
-                "聽力對生活的影響（HHIE-S）",
+                "選問卷",
+                "聽力對生活的影響",
+                "65 歲以上（HHIE-S）",
                 "適合 65 歲以上的長輩。",
                 # One line of muted words since #463 (tags since phase9 4b 4.1).
                 "<span>10 題・約 3 分鐘</span>",
@@ -622,7 +625,7 @@ class PageFlowTests(TestCase):
         self.assertRegex(
             main,
             rf'<a[^>]*href="{reverse("screening", args=[self.hhie_s.id])}"[^>]*>'
-            r"(\s*<[^>]+>)*\s*聽力對生活的影響（HHIE-S）",
+            r"(\s*<[^>]+>)*\s*65 歲以上（HHIE-S）",
         )
 
     def test_question_count_is_not_hard_coded(self):

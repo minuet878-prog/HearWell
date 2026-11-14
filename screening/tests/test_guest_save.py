@@ -5,6 +5,7 @@ sends every guest result kept in the browser to the records API."""
 import json
 import uuid
 from io import StringIO
+from typing import ClassVar
 from urllib.parse import quote
 
 from django.core.management import call_command
@@ -21,6 +22,7 @@ GUEST_SCORE = "/api/guest-scores/"
 SUBMISSIONS = "/api/submissions/"
 SAVE_FROM_CARD = "/guest/save?from=card"
 PASSWORD = "Fake-pass-2468"
+SAVE_TITLE = '<h2 class="result-next-title">註冊保存</h2>'
 MORE = "註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。"
 REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
@@ -52,10 +54,10 @@ class GuestSaveTestCase(TestCase):
             **extra,
         }
 
-    def guest_html(self, scores):
+    def guest_html(self, scores, questionnaire=None):
         response = self.client.post(
             GUEST_SCORE,
-            json.dumps(self.body(self.hhie_s, scores, just_finished=False)),
+            json.dumps(self.body(questionnaire or self.hhie_s, scores, just_finished=False)),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200)
@@ -95,7 +97,7 @@ class SaveCardTests(GuestSaveTestCase):
         ):
             with self.subTest(level=level):
                 html = self.guest_html(scores)
-                self.assertIn('<h2 class="result-next-title">註冊保存這次結果</h2>', html)
+                self.assertIn(SAVE_TITLE, html)
                 self.assertIn(REASONS[level], html)
                 for other in set(REASONS) - {level}:
                     self.assertNotIn(REASONS[other], html)
@@ -127,9 +129,61 @@ class SaveCardTests(GuestSaveTestCase):
     def test_after_the_one_sentence_where_the_journey_card_is(self):
         # B1: in the 照顧旅程 card's place, after the level's one sentence and before the fold.
         html = self.guest_html([0] * 10)
-        card = html.index("註冊保存這次結果")
+        card = html.index(SAVE_TITLE)
         self.assertLess(html.index('class="result-one-line"'), card)
         self.assertLess(card, html.index('class="result-list"'))
+
+
+class GuestAdviceTests(GuestSaveTestCase):
+    """The 2026-11-14 walkthrough (mockup 3A): the level's reviewed advice, which was behind
+    看完整說明, is said between the one sentence and the save card, once; the save card is
+    asked as 想留下這次結果？, since saving is no health advice."""
+
+    LEVELS: ClassVar = {
+        "normal": [0] * 10,
+        "mild_to_moderate": [4, 4, 2, 0, 0, 0, 4, 0, 0, 2],
+        "severe": [4] * 10,
+    }
+    # (questionnaire, level): the step that says to have the hearing checked.
+    ADVICE: ClassVar = {
+        ("hhie-s", "normal"): hhie_s.NEXT_STEPS["normal"][1]["text"],
+        ("hhie-s", "mild_to_moderate"): hhie_s.NEXT_STEPS["mild_to_moderate"][1]["text"],
+        ("hhie-s", "severe"): hhie_s.NEXT_STEPS["severe"][0]["text"],
+        ("hhia-s", "normal"): hhia_s.NEXT_STEPS["normal"][1]["text"],
+        ("hhia-s", "mild_to_moderate"): hhia_s.NEXT_STEPS["mild_to_moderate"][1]["text"],
+        ("hhia-s", "severe"): hhia_s.NEXT_STEPS["severe"][1]["text"],
+    }
+
+    def test_the_advice_is_said_once_before_the_save_card(self):
+        for (code, level), advice in self.ADVICE.items():
+            questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
+            with self.subTest(questionnaire=code, level=level):
+                html = self.guest_html(self.LEVELS[level], questionnaire)
+                # Once before the fold, and not again as a step in it (看完整建議's whole
+                # paragraph may quote it).
+                self.assertEqual(html[: html.index('class="result-list"')].count(advice), 1)
+                fold = html[html.index('class="result-list"') :]
+                self.assertNotIn(f"<p>{advice}</p>", fold)
+                box = html.index('class="result-advice')
+                self.assertLess(box, html.index(advice))
+                self.assertLess(html.index(advice), html.index(SAVE_TITLE))
+
+    def test_its_links_are_the_open_guide_only(self):
+        # 記錄聽力圖 and 看／印聽力報告 need an account; the save card is the way to one.
+        for code, level in self.ADVICE:
+            questionnaire = self.hhie_s if code == hhie_s.CODE else self.hhia_s
+            with self.subTest(questionnaire=code, level=level):
+                html = self.guest_html(self.LEVELS[level], questionnaire)
+                start = html.index('class="result-advice')
+                box = html[start : html.index('class="result-next"', start)]
+                self.assertIn(f'href="{reverse("guide")}"', box)
+                for name in ("audiogram_new", "health_report"):
+                    self.assertNotIn(f'href="{reverse(name)}"', html)
+
+    def test_the_save_card_is_asked_not_advised(self):
+        html = self.guest_html([0] * 10)
+        self.assertIn('<p class="result-next-label">想留下這次結果？</p>', html)
+        self.assertNotIn("建議您下一步", html)
 
 
 class FromTheCardTests(GuestSaveTestCase):
@@ -147,6 +201,20 @@ class FromTheCardTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "guest-save.js")
+
+    # The 2026-11-14 walkthrough: from the card the answers are in already, so the consent's
+    # button says it saves them; every other way in keeps 「我同意，開始篩檢」 (test_consent).
+    def test_the_consent_button_from_the_card_says_it_saves(self):
+        self.register_from_card()
+        response = self.client.get(self.consent_url())
+        self.assertContains(response, ">我同意，保存結果</button>")
+        self.assertNotContains(response, "開始篩檢</button>")
+
+    def test_the_consent_button_asked_later_still_says_start(self):
+        # Without from=card the save page asks first whether to keep them (#497).
+        self.register_from_card()
+        response = self.client.get(f"{reverse('consent')}?next={reverse('guest_save')}")
+        self.assertContains(response, ">我同意，開始篩檢</button>")
 
     def test_logging_in_goes_straight_to_the_save_page(self):
         consented_user(username="has_account", password=PASSWORD)
@@ -205,7 +273,10 @@ class SavePageTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertContains(response, f'data-submissions-url="{SUBMISSIONS}"')
-        self.assertContains(response, f'data-done-url="{reverse("my_hearing")}"')
+        # The 2026-11-14 walkthrough: saved, the home page's 照顧旅程 says what comes next, with
+        # a note that it was saved.
+        self.assertContains(response, f'data-done-url="{reverse("index")}?from=save"')
+        self.assertContains(response, f'data-home-url="{reverse("index")}"')
         self.assertContains(response, f'data-home-url="{reverse("index")}"')
         self.assertContains(response, 'name="csrfmiddlewaretoken"')
 

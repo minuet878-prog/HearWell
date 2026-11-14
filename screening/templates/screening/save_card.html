@@ -2,8 +2,9 @@
 {% url 'guest_save' as save_url %}
 {% with next=save_url|add:"?from=card"|urlencode:"" %}
 <div class="result-next">
-    <p class="result-next-label">建議您下一步</p>
-    <h2 class="result-next-title">註冊保存這次結果</h2>
+    {# The 2026-11-14 walkthrough (mockup 3A): asked, not advised; the advice is above it. #}
+    <p class="result-next-label">想留下這次結果？</p>
+    <h2 class="result-next-title">註冊保存</h2>
     {% if save_reason %}<p class="mb-2">{{ save_reason }}</p>{% endif %}
     <p class="mb-3">註冊後還有耳鳴、在吵雜環境聽不聽得清楚等問卷可以做。</p>
     <div class="flex flex-col gap-2">

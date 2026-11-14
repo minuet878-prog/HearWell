@@ -83,25 +83,61 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
         self.assertIn("<span>7 題・約 2 分鐘</span>", cards[self.answer_url("ioi-ha")])
         self.assertNotIn("card-tag", self.catalogue())
 
-    def test_all_questionnaires_has_a_title_after_the_recommendation(self):
-        user = self.login()
-        self.record(user, "hhie-s", wearing=False, days_ago=200)
-        main = self.catalogue()
-        title = '<h2 id="catalogue-all" class="h4">全部問卷</h2>'
-        self.assertEqual(main.count(title), 1)
-        self.assertLess(main.index("</section>"), main.index(title))
-        self.assertLess(main.index(title), main.index('class="link-card questionnaire-card"'))
+    # The 2026-11-14 walkthrough (mockup 8A): 幫我選 under the title, the questionnaires in
+    # three groups after any recommendation.
+    GROUPS = (
+        ("聽力對生活的影響", ("hhie-s", "hhia-s")),
+        ("其他困擾", ("ssq12-tw", "thi")),
+        ("已經戴助聽器", ("ioi-ha", "sadl")),
+    )
+    HELP = (
+        '<a class="btn btn-outline-primary btn-lg w-full" href="/questionnaire_list?wizard=1">'
+        "不確定做哪一份？幫我選</a>"
+    )
 
-    def test_help_me_choose_is_the_lists_last_row(self):
+    def groups(self, main):
+        return re.findall(
+            r'<h2 class="catalogue-group h4">([^<]+)</h2>(.*?)(?=<h2 class="catalogue-group|$)',
+            main,
+            re.S,
+        )
+
+    def test_help_me_choose_is_a_button_under_the_title(self):
         user = self.login()
         self.record(user, "thi")
         main = self.catalogue()
-        rows = test_layout.LINK_CARD.findall(main)
-        wizard = f'href="{reverse("questionnaire_list")}?wizard=1"'
-        self.assertIn(wizard, rows[-1])
-        self.assertEqual(test_layout._text(rows[-1]), f"幫我選問卷 不確定做哪一份？ {ARROW}")
-        self.assertEqual(main.count("幫我選問卷"), 1)
-        self.assertEqual(len(rows), 7)
+        self.assertIn('<h1 class="h3 mt-2">選問卷</h1>', main)
+        self.assertEqual(main.count(self.HELP), 1)
+        self.assertLess(main.index("選問卷</h1>"), main.index(self.HELP))
+        self.assertLess(main.index(self.HELP), main.index('class="link-card questionnaire-card"'))
+        self.assertEqual(len(test_layout.LINK_CARD.findall(main)), 6)
+        self.assertNotIn("全部問卷", main)
+
+    def test_the_questionnaires_in_three_groups(self):
+        user = self.login()
+        self.record(user, "thi")
+        groups = self.groups(self.catalogue())
+        self.assertEqual([title for title, _ in groups], [title for title, _ in self.GROUPS])
+        for (title, part), (_, codes) in zip(groups, self.GROUPS, strict=True):
+            with self.subTest(group=title):
+                self.assertEqual(
+                    [href for href, _ in CARD.findall(part)],
+                    [self.answer_url(code) for code in codes],
+                )
+
+    def test_the_life_impact_pair_is_named_by_age(self):
+        user = self.login()
+        self.record(user, "thi")
+        _, part = self.groups(self.catalogue())[0]
+        titles = re.findall(r'<span class="link-card-title">([^<]+)</span>', part)
+        self.assertEqual(titles, ["65 歲以上（HHIE-S）", "65 歲以下（HHIA-S）"])
+
+    def test_the_groups_come_after_the_recommendation(self):
+        user = self.login()
+        self.record(user, "hhie-s", wearing=False, days_ago=200)
+        main = self.catalogue()
+        self.assertLess(main.index(self.HELP), main.index("</section>"))
+        self.assertLess(main.index("</section>"), main.index('class="catalogue-group'))
 
     def test_one_recommendation_is_a_pale_blue_block_with_the_only_solid_button(self):
         user = self.login()
@@ -146,10 +182,9 @@ class CatalogueTests(ScreeningPagesMixin, TestCase):
     def test_a_new_users_choose_yourself_ends_with_help_me_choose_too(self):
         self.login()
         main = _main(self.client.get(reverse("questionnaire_list"), {"choose": "self"}))
-        rows = test_layout.LINK_CARD.findall(main)
-        self.assertIn("幫我選問卷", rows[-1])
+        self.assertIn(self.HELP, main)
         self.assertNotIn("推薦您做這一份", main)
-        self.assertIn("全部問卷", main)
+        self.assertEqual(len(self.groups(main)), 3)
 
 
 class WizardTests(ScreeningPagesMixin, TestCase):

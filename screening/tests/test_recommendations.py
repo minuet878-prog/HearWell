@@ -25,6 +25,9 @@ from screening.models import (
 from screening.scoring import RETEST_DUE_TEXT
 from screening.tests.helpers import consented_user, step_bar
 
+# The 2026-11-14 walkthrough: 「不必兩份都填」 named two questionnaires where the page offers one.
+OPTIONAL_SSQ12 = "日常聆聽能力問卷是選填的，不做也可以。"
+
 
 class RecommendationTests(TestCase):
     @classmethod
@@ -62,10 +65,10 @@ class RecommendationTests(TestCase):
                 page = self.client.get(reverse("result", args=[submission.pk]))
                 self.assertContains(page, "看我的紀錄")
                 if not wearing:
-                    self.assertContains(page, "不必兩份都填")
+                    self.assertContains(page, OPTIONAL_SSQ12)
                     self.assertContains(page, reverse("screening", args=[self.ssq.pk]))
                 else:
-                    self.assertNotContains(page, "不必兩份都填")
+                    self.assertNotContains(page, OPTIONAL_SSQ12)
 
     def test_anonymous_users_get_no_recommendation(self):
         # Spec #492: without an account the wizard asks the age alone (test_guest).
@@ -416,7 +419,7 @@ class ConcernWizardTests(TestCase):
     def test_choose_yourself_lists_every_questionnaire(self):
         self.login_age(None)
         page = self.wizard(choose="self")
-        self.assertContains(page, '<h1 class="h3 mt-2">自行選擇問卷</h1>', html=False)
+        self.assertContains(page, '<h1 class="h3 mt-2">選問卷</h1>', html=False)
         self.assertNotContains(page, 'name="concern"')
         self.assert_catalog(page.content.decode())
 
@@ -473,7 +476,7 @@ class ConcernWizardTests(TestCase):
         choose = f"{reverse('questionnaire_list')}?choose=self"
         response = self.register_and_agree(choose)
         self.assertRedirects(response, f"{choose}&from=consent")
-        self.assertContains(self.client.get(response.url), "自行選擇問卷")
+        self.assertContains(self.client.get(response.url), "選問卷</h1>")
 
     def test_a_new_account_with_an_outside_next_still_goes_home(self):
         for bad in ("https://evil.example.com/questionnaire_list", "//evil.example.com"):
@@ -564,11 +567,12 @@ class ReturningCatalogueTests(TestCase):
         page = self.catalogue()
         self.assertNotContains(page, 'name="concern"')
         self.assertNotContains(page, "step-progress")
+        # In the 2026-11-14 walkthrough's three groups.
+        grouped = ("hhie-s", "hhia-s", "ssq12-tw", "thi", "ioi-ha", "sadl")
         self.assertEqual(
             [href for href, _ in self.cards(page)],
-            [reverse("screening", args=[q.pk]) for q in self.ordered],
+            [reverse("screening", args=[self.by_code[code].pk]) for code in grouped],
         )
-        self.assertEqual(len(self.cards(page)), 6)
         self.assertContains(page, f'<a href="{reverse("questionnaire_list")}" aria-current="page">')
 
     def test_answered_questionnaires_show_the_taipei_date_of_their_latest_record(self):
@@ -614,9 +618,8 @@ class ReturningCatalogueTests(TestCase):
         self.login("hhie-s")
         catalogue = reverse("questionnaire_list")
         main = self.catalogue().content.decode()
-        # #463 (ADR 0030): the list's last row, and said once.
-        rows = re.findall(r'<a class="link-card questionnaire-card" href="([^"]+)">', main)
-        self.assertEqual(rows[-1], f"{catalogue}?wizard=1")
+        # The 2026-11-14 walkthrough: a button under the title (it was #463's last row), said once.
+        self.assertIn(f'href="{catalogue}?wizard=1">不確定做哪一份？幫我選</a>', main)
         self.assertEqual(main.count("不確定做哪一份？"), 1)
         page = self.catalogue(wizard="1")
         self.assertContains(
@@ -650,14 +653,14 @@ class ReturningCatalogueTests(TestCase):
         self.assertEqual(len(self.cards(page)), 6)
         self.assertNotContains(page, "上次")
         wizard = f"{reverse('questionnaire_list')}?wizard=1"
-        self.assertContains(page, f'<a class="link-card questionnaire-card" href="{wizard}">')
+        self.assertContains(page, f'href="{wizard}">不確定做哪一份？幫我選</a>')
 
     def test_a_returning_users_choose_yourself_is_the_same_catalogue(self):
         # The wizard's 自己選問卷 link, followed by a returning user who came in by 「幫我選問卷」.
         self.login("thi")
         page = self.catalogue(choose="self")
         self.assertContains(page, "上次 ")
-        self.assertContains(page, "幫我選問卷")
+        self.assertContains(page, "不確定做哪一份？幫我選")
         self.assertNotContains(page, 'name="concern"')
 
 

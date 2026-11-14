@@ -76,7 +76,7 @@ class RecordsSwitchTests(TestCase):
             [(QUESTIONNAIRES, "問卷", False), (reverse("audiogram_list"), "聽力圖", True)],
         )
         # The audiogram list's own buttons and cards stay below the switch.
-        self.assertLess(main.index('aria-label="紀錄種類"'), main.index("新增聽力圖"))
+        self.assertLess(main.index('aria-label="紀錄種類"'), main.index("記錄聽力圖"))
 
     def test_first_paint_waits_for_the_blue_pill(self):
         # A slow phone painted before the pill was parsed, so it never slid. Chrome can let the

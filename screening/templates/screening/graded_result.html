@@ -12,6 +12,7 @@
 </div>
 {% endwith %}
 {% with first=next_steps.0 %}
+{% if first is not advice_step %}
 {# The reviewed step 1, with its links where it has them; 「無法判讀」 has no steps, so its advice is the sentence. #}
 <p class="result-one-line">{% if first %}{{ first.text }}{% else %}{{ advice }}{% endif %}</p>
 {% if first.action_label or first.second_label %}
@@ -20,7 +21,15 @@
     {% if first.second_label %}<a class="next-steps-link" href="{% url first.second_url %}">{{ first.second_label }}</a>{% endif %}
 </p>
 {% endif %}
+{% endif %}
 {% endwith %}
+{% if advice_step %}
+{# The 2026-11-14 walkthrough (mockup 3A): a guest's advice to have the hearing checked, before the save card; only the guide's link, as the others need an account. #}
+<div class="result-advice result-advice-{{ submission.result.level.color }}">
+    <p>{{ advice_step.text }}</p>
+    <p class="next-steps-links mb-0"><a class="next-steps-link" href="{% url advice_step.second_url %}">{{ advice_step.second_label }}</a></p>
+</div>
+{% endif %}
 {% if support_message %}
 <p class="mt-4 mb-0">{{ support_message }}</p>
 {% endif %}
@@ -32,7 +41,7 @@
         {% if score_bar %}
         {% include "screening/score_bar.html" with bar=score_bar %}
         {% endif %}
-        {% for step in next_steps|slice:"1:" %}
+        {% for step in fold_steps %}
         <p>{{ step.text }}</p>
         {% if step.action_label or step.second_label %}
         <p class="next-steps-links">

@@ -200,7 +200,7 @@ class LayoutTests(TestCase):
         cases = {
             reverse("questionnaire_list") + "?choose=self": (
                 reverse("screening", args=[self.hhie_s.pk]),
-                ["HHIE-S", "聽力對生活的影響"],
+                ["HHIE-S", "65 歲以上"],
             ),
             reverse("my_hearing"): (
                 reverse("result", args=[submission.pk]),

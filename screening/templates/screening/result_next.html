@@ -2,5 +2,7 @@
 <div class="result-next">
     <p class="result-next-label">建議您下一步</p>
     <h2 class="result-next-title">{{ next_step.card.title }}</h2>
-    <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}">{{ next_step.button }}</a>
+    <a class="btn btn-primary btn-lg w-full" href="{{ next_step.card.href }}{% if next_step.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ next_step.button }}</a>
+    {# The 2026-11-14 walkthrough (mockup 2A): the home card's second way, in outline. #}
+    {% if next_step.second %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ next_step.second.1 }}">{{ next_step.second.0 }}</a>{% endif %}
 </div>

@@ -222,7 +222,7 @@ ROUTE_REMINDERS = {"types-and-prices": ("收到核定通知後 6 個月內要買
 ROUTE_ABOUT = {
     AUDIOGRAM: (
         "把醫院給的聽力圖記下來，這裡就能整理要不要找聽力師評估，和有沒有達到身障鑑定門檻。",
-        "記錄醫院的聽力圖",
+        "記錄聽力圖",
     ),
     "before-you-go": ("第一次去評估選配助聽器前，先看要帶什麼、可以問聽力師哪些問題。", "看這一章"),
     "assessment": (
@@ -341,7 +341,7 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
     elif slug == state.stop:
         # The waits and types and prices have no button: the title is the only link.
         action = {
-            AUDIOGRAM: ("記錄醫院的聽力圖", url),
+            AUDIOGRAM: ("記錄聽力圖", url),
             "before-you-go": ("去之前要準備什麼", url),
             "assessment": ("找鑑定醫院", url),
             "form-9": ("看九號表的流程", url),

@@ -24,7 +24,7 @@
 {{ chart_points|json_script:"audiogram-points" }}
 {# #465 (D4 甲): the guide is the one solid button while recommends_fitting_assessment says so (either ear over 25 dB); otherwise the speech banana is. #}
 {% if fitting_guide %}
-<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'guide' %}">看我的選配指引</a>
+<a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'guide' %}">看助聽器選配與補助</a>
 {% elif has_air_marks %}
 <a class="btn btn-primary btn-lg w-full mt-4" href="{% url 'audiogram_speech_banana' audiogram.id %}">看語言香蕉區</a>
 {% endif %}

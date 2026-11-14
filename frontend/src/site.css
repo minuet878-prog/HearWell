@@ -1800,6 +1800,36 @@
     font-size: 1rem;
   }
 
+  /* The 2026-11-14 walkthrough (mockup 12A): an audiogram's date as 民國 [ ] 年 [ ] 月 [ ] 日,
+     each box as wide as its digits; with larger text the pieces wrap rather than shrink. */
+  .date-parts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--text-button);
+  }
+
+  .date-part {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .date-parts .form-control {
+    padding-inline: 0.5em;
+    text-align: center;
+  }
+
+  .date-parts .date-part-year {
+    width: calc(3ch + 1.25em);
+  }
+
+  .date-parts .date-part-month,
+  .date-parts .date-part-day {
+    width: calc(2ch + 1.25em);
+  }
+
   /* A 提示框, P3 (#454, ADR 0043): pale grey, no frame and no line down its side. */
   .tip-box {
     margin: 0 0 1rem;
@@ -4413,6 +4443,34 @@
     color: var(--color-heading);
   }
 
+  /* The 2026-11-14 walkthrough (mockup 3A): a guest's advice to have the hearing checked, a bar
+     in its level's colour beside it. Not a card: nothing but its link is clickable. */
+  .result-advice {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-left: 0.3125rem solid var(--color-primary);
+    border-radius: var(--radius-small);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .result-advice > p:first-child {
+    margin-top: 0;
+  }
+
+  .result-advice-normal {
+    border-left-color: var(--color-normal);
+  }
+
+  .result-advice-mild_to_moderate {
+    border-left-color: var(--color-mild);
+  }
+
+  .result-advice-severe {
+    border-left-color: var(--color-severe);
+  }
+
   /* Pale blue, no frame: the 現在這一步's card (ADR 0043); only its button is clickable. */
   .result-next {
     margin-top: 1.25rem;
@@ -4425,6 +4483,11 @@
     margin: 0;
     color: var(--color-primary);
     font-weight: 700;
+  }
+
+  /* The 2026-11-14 walkthrough (mockup 2A): 還沒 under the solid button. */
+  .result-next > .btn + .btn {
+    margin-top: 0.75rem;
   }
 
   .result-next-title {
@@ -5398,6 +5461,21 @@
    空狀態首頁's dashed preview. */
 @layer components {
   /* Side by side on a phone, one under the other once the text is large (#458 D1). */
+  /* The 2026-11-14 walkthrough (mockup 10): 我的紀錄's one questionnaire, where its tabs would be. */
+  .records-questionnaire {
+    margin: 1rem 0 0;
+  }
+
+  /* The 2026-11-14 walkthrough (mockup 6): a guest result just saved, said once on top. */
+  .saved-note {
+    margin: 0 0 1rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
   .journey-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
@@ -5419,6 +5497,7 @@
   }
 
   .journey-tile-info {
+    container-type: inline-size;
     background-color: var(--color-surface);
     color: var(--color-heading);
   }
@@ -5461,9 +5540,13 @@
     line-height: 1;
   }
 
+  /* The 2026-11-14 walkthrough: on a 375 phone the tile's anywhere split 2027/05/14 as
+     2027/05/1 and 4. The day stays on one line and shrinks to the tile's width (the grey
+     tile is its container); with larger text the tiles stack, so it is back at its own size. */
   .journey-tile-date {
     margin-top: 0.4rem;
-    font-size: 1.4444rem;
+    white-space: nowrap;
+    font-size: min(1.4444rem, 17.5cqi);
     font-weight: 700;
     line-height: 1.25;
   }
@@ -6106,7 +6189,8 @@
     background-color: var(--color-brand-selected);
   }
 
-  #catalogue-all {
+  /* The 2026-11-14 walkthrough (mockup 8A): each group's title, as 全部問卷's was. */
+  .catalogue-group {
     margin-top: 2rem;
   }
 

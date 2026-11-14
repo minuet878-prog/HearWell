@@ -77,6 +77,13 @@ ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
 
 
+def type_audiogram_date(main, year, month, day):
+    """The audiogram's date, typed as on a report (the 2026-11-14 walkthrough, mockup 12A)."""
+    main.get_by_label("民國年").fill(year)
+    main.get_by_label("月", exact=True).fill(month)
+    main.get_by_label("日", exact=True).fill(day)
+
+
 class SavesFailureArtifacts:
     """On failure, keep the screenshot and trace of that moment for debugging (CI uploads them)."""
 
@@ -1396,7 +1403,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             nav.get_by_role("link", name="篩檢").click()
             expect(nav.locator('a[aria-current="page"]')).to_have_text("篩檢")
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_have_count(0)
-            # The six questionnaires, then #463's 幫我選問卷 row.
+            # The six questionnaires in the walkthrough's three groups, 幫我選 above them.
             cards = self.main().locator('a.questionnaire-card[href^="/questionnaire/"]')
             expect(cards).to_have_count(6)
             expect(cards.first).to_contain_text("HHIE-S")
@@ -1412,7 +1419,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             tag = cards.first.locator(".inline-block")
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
             self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
-            self.main().get_by_role("link", name="幫我選問卷").click()
+            self.main().get_by_role("link", name="不確定做哪一份？幫我選").click()
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
@@ -1509,7 +1516,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
         expect(folded).to_be_hidden()
         self.main().locator(".result-details > summary").click()
         expect(folded).to_contain_text("建議前往醫院耳鼻喉科進行聽力相關檢查")
-        expect(folded.get_by_role("link", name="看助聽器選配指引")).to_be_visible()
+        expect(folded.get_by_role("link", name="看助聽器選配與補助")).to_be_visible()
         expect(folded.get_by_role("link", name="看／印聽力報告")).to_have_count(0)
         expect(folded).to_contain_text("半年後再做一次，時間到了首頁會提醒您。")
         # Ticket #158: 20 of 40 sits halfway along the bar, inside the 輕度到中度 segment
@@ -2205,7 +2212,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.goto(f"{self.live_server_url}/audiograms/new")
             main = self.main()
             expect(main.get_by_text("第 1 步／共 4 步：檢查日期", exact=True)).to_be_visible()
-            main.get_by_label("檢查日期").fill("2026-10-01")
+            type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
                 expect(main.get_by_role("button", name=re.compile(f"^{ear}氣導"))).to_be_visible()
@@ -2756,7 +2763,7 @@ class RecordsSwitchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.switch().get_by_role("link", name="聽力圖").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/audiograms")
             self.assert_on("聽力圖")
-            expect(self.main().get_by_role("link", name="新增聽力圖")).to_be_visible()
+            expect(self.main().get_by_role("link", name="記錄聽力圖")).to_be_visible()
             self.switch().get_by_role("link", name="問卷").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/my_hearing?view=questionnaires")
             self.assert_on("問卷")
@@ -3157,10 +3164,10 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             self.page.goto(f"{self.live_server_url}/")
             journey = self.page.get_by_role("region", name="照顧旅程")
             journey.locator(".journey-about summary").filter(has_text="記錄聽力圖").click()
-            journey.get_by_role("link", name="看我的選配指引").click()
+            journey.get_by_role("link", name="看助聽器選配與補助").click()
 
             expect(self.page).to_have_url(f"{self.live_server_url}/guide")
-            expect(self.main().get_by_role("heading", level=1)).to_have_text("我的選配指引")
+            expect(self.main().get_by_role("heading", level=1)).to_have_text("助聽器選配與補助")
             # #260: the audiogram's numbers open the 選配 meter; #467: its date is their title.
             expect(
                 self.main().get_by_role("heading", name="依您 2026/10/01 的聽力圖")
@@ -3191,7 +3198,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(hospitals.first).to_be_in_viewport()
 
             # #367: the chapter's end leads back too; this is the one at its top.
-            self.main().get_by_role("link", name="回到我的選配指引").first.click()
+            self.main().get_by_role("link", name="回到助聽器選配與補助").first.click()
             self.main().get_by_role("region", name="身障鑑定門檻").get_by_text("看完整說明").click()
             self.main().get_by_role("link", name="看九號表的流程").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/form-9")
@@ -3403,9 +3410,9 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             # 1 記錄聽力圖, in its four steps.
             self.page.goto(f"{self.live_server_url}/guide")
             expect(self.here()).to_contain_text("記錄聽力圖")
-            self.here().get_by_role("link", name="記錄醫院的聽力圖").click()
+            self.here().locator("a.btn", has_text="記錄聽力圖").click()
             main = self.main()
-            main.get_by_label("檢查日期").fill("2026-10-01")
+            type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
                 if ear == "右耳":
@@ -4116,7 +4123,7 @@ class LearnPageTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
 
     def test_cards_change_page_without_javascript(self):
         cards = (
-            ("了解助聽器選配與補助", "/guide", "我的選配指引"),
+            ("了解助聽器選配與補助", "/guide", "助聽器選配與補助"),
             ("家人專區：溝通與陪伴", "/family", "家人專區"),
             ("問答小助手：常見問題一次查", "/qa", "問答小助手"),
         )
@@ -4590,7 +4597,12 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             self.click_through(
                 self.nav(),
-                (("了解", "/learn"), ("登入", "/login"), ("註冊", "/register"), ("首頁", "/")),
+                (
+                    ("篩檢", "/questionnaire_list"),
+                    ("了解", "/learn"),
+                    ("登入", "/login"),
+                    ("首頁", "/"),
+                ),
             )
 
 
@@ -5279,20 +5291,15 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
             # #199: the date is step 1.
             self.page.get_by_role("button", name="上一步").click()
-            date_field = self.page.get_by_label("檢查日期")
+            # The 2026-11-14 walkthrough (mockup 12A): the 民國 year box, inside 民國…年, so its
+            # corners are the group's.
+            date_field = self.page.get_by_label("民國年")
             self.assertEqual(
-                self.styles(
-                    date_field,
-                    "padding",
-                    "fontSize",
-                    "borderTopLeftRadius",
-                    "borderTopWidth",
-                    "borderTopColor",
-                ),
+                self.styles(date_field, "padding", "fontSize", "borderTopWidth", "borderTopColor"),
                 {
-                    "padding": "9px 18px",
+                    # Half an em each side, so three digits fit a narrow box.
+                    "padding": "9px 11.25px",
                     "fontSize": "22.5px",
-                    "borderTopLeftRadius": "13.5px",
                     "borderTopWidth": "1px",
                     "borderTopColor": border,
                 },
@@ -7613,7 +7620,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator(".journey-card")
             self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
             self.assertEqual(self.style(card, "boxShadow"), "none")
-            self.assertEqual(self.style(card.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline.
+            self.assertEqual(
+                self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
+            )
+            second = card.locator("a.btn-outline-primary")
+            expect(second).to_have_text("還沒，看要去哪裡檢查")
+            self.assertEqual(self.style(second, "backgroundColor"), "rgb(255, 255, 255)")
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")
@@ -7674,8 +7687,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
         self.assertEqual(self.style(box, "borderTopWidth"), "0px")
         expect(box.get_by_text("因為：", exact=False)).to_have_count(0)
-        self.assertEqual(box.get_by_role("link").count(), 1)
-        self.assertEqual(self.style(box.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+        # The 2026-11-14 walkthrough (mockup 2A): without an audiogram, 還沒 in outline too.
+        links = box.get_by_role("link")
+        self.assertEqual(
+            links.count(), 1 + box.locator("a.btn-outline-primary").count(), "only the buttons"
+        )
+        self.assertLessEqual(box.locator("a.btn-outline-primary").count(), 1)
+        self.assertEqual(self.style(box.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY)
         # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
         expect(self.main().locator(".btn-primary")).to_have_count(1)
 
@@ -7938,7 +7956,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.assert_on_white(self.main().get_by_role("link", name="登入", exact=True))
             self.visit(True, "/guide")
             self.assert_on_white(self.main().get_by_text("依您在聽伴最新的紀錄"))
-            for button in ("開始篩檢", "記錄醫院的聽力圖"):
+            for button in ("開始篩檢", "記錄聽力圖"):
                 with self.subTest(button=button):
                     self.assert_on_white(
                         self.main().get_by_role("link", name=button, exact=True).first
@@ -7949,10 +7967,10 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             audiogram = self.main().get_by_role("region", name="聽力圖")
             expect(self.assert_titled_part(audiogram)).to_have_text("聽力圖")
             # #467: the 您在這裡 card has the solid button, so this one is a link on white.
-            record = audiogram.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            record = audiogram.get_by_role("link", name="記錄聽力圖", exact=True)
             self.assert_on_white(record)
             here = self.main().locator(".route-stop[aria-current=step]")
-            button = here.get_by_role("link", name="記錄醫院的聽力圖", exact=True)
+            button = here.locator("a.btn", has_text="記錄聽力圖")
             self.assertEqual(self.style(button, "backgroundColor"), self.PRIMARY)
 
     # #319, #320, #321 (#318 acceptance 13): on a phone at 200% text a long part title wraps
@@ -11706,7 +11724,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         return self.main().get_by_text(text)
 
     def guide_card(self):
-        return self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+        return self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
 
     def way_back(self):
         return self.main().get_by_role("link", name="回這張聽力圖")
@@ -11741,7 +11759,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             expect(self.page.locator(".audiogram-plot")).to_have_count(0)
             self.assert_the_reminders_show()
             expect(
-                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
             ).to_be_visible()
             expect(self.way_back()).to_be_visible()
 
@@ -11760,7 +11778,7 @@ class SpeechBananaReminderTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.page_for(20)
             expect(
-                self.main().get_by_role("link", name=re.compile("^看我的選配指引"))
+                self.main().get_by_role("link", name=re.compile("^看助聽器選配與補助"))
             ).to_have_count(0)
             expect(self.way_back()).to_be_visible()
 
@@ -14550,7 +14568,7 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
 
     def register_from_the_card(self):
         card = self.main().locator(".result-next")
-        expect(card.get_by_role("heading", name="註冊保存這次結果")).to_be_visible()
+        expect(card.get_by_role("heading", name="註冊保存", exact=True)).to_be_visible()
         expect(card).to_contain_text("還留 7 天")
         card.get_by_role("link", name="註冊保存").click()
         self.page.get_by_label("使用者名稱").fill("e2e_guest")
@@ -14563,10 +14581,11 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
         with self.saving_artifacts():
             self.guest_answers_hhie_s()
             self.register_from_the_card()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            # Saved without being asked, then 我的紀錄.
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：12")
+            self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
+            # Saved without being asked, then the home page's 照顧旅程 (the 2026-11-14 walkthrough).
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
+            expect(self.main().locator("a.journey-tile")).to_contain_text("12 分")
             record = Submission.objects.get(user__username="e2e_guest")
             self.assertEqual(record.result.total, 12)
             self.assertEqual(record.result.level["text"], "輕度到中度影響")
@@ -14980,9 +14999,10 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
             expect(self.page).to_have_url(f"{self.live_server_url}/login/{self.provider}/name")
             self.main().get_by_label("使用者名稱").fill(self.username)
             self.main().get_by_role("button", name="下一步").click()
-            self.main().get_by_role("button", name="我同意，開始篩檢", exact=True).click()
-            expect(self.page).to_have_url(re.compile(r"/my_hearing$"))
-            expect(self.main().locator("a.link-card:not(.action-card)")).to_contain_text("總分：20")
+            self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
+            expect(self.main().locator("a.journey-tile")).to_contain_text("20 分")
             record = Submission.objects.get(user__username=self.username)
             self.assertEqual(record.result.total, 20)
             self.assertEqual(self.guest_results(), [])

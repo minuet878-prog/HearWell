@@ -81,8 +81,8 @@ FAQS = (
             "查各縣市的醫院。</p>"
         ),
         sources=(
-            ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
-            ("我的選配指引：身障鑑定與鑑定醫院", "/guide/assessment"),
+            ("助聽器選配與補助：助聽器的種類與價格", "/guide/types-and-prices"),
+            ("助聽器選配與補助：身障鑑定與鑑定醫院", "/guide/assessment"),
         ),
         checked_on=date(2026, 10, 27),
         other_phrasings=("推薦哪個牌子", "去哪裡買助聽器", "哪家店比較好"),
@@ -118,6 +118,30 @@ FAQS = (
         related=("diagnosis-and-medication", "my-results"),
         referral=True,
     ),
+    # The 2026-11-14 walkthrough (mockup 2A): where the care journey's 還沒，看要去哪裡檢查 leads.
+    # Reviewed and approved by the owner, an audiologist, on 2026-11-14.
+    Faq(
+        code="where-to-get-a-hearing-test",
+        topic="hearing-health",
+        question="還沒做過聽力檢查，要去哪裡做？",
+        answer=(
+            "<p>一般來說，可以到醫院或診所掛<strong>耳鼻喉科</strong>，"
+            "跟醫師說想做聽力檢查。耳鼻喉科醫師會找出耳朵的問題，"
+            "聽力檢查常由聽力師來做。</p>"
+            "<p>聽力檢查通常在安靜的隔音室裡做：戴上耳機聽聲音，聽到就按按鈕或舉手。</p>"
+            "<p>做完可以跟醫院或診所要一份聽力檢查報告（聽力圖），"
+            '回來<a href="/audiograms/new">記到聽伴</a>，首頁就會往下一步。</p>'
+        ),
+        sources=(
+            (
+                "NIDCD〈Age-Related Hearing Loss (Presbycusis)〉",
+                "https://www.nidcd.nih.gov/health/age-related-hearing-loss",
+            ),
+        ),
+        checked_on=date(2026, 11, 14),
+        other_phrasings=("去哪裡做聽力檢查", "哪裡可以檢查聽力", "聽力檢查要掛哪一科"),
+        related=("sudden-hearing-loss", "diagnosis-and-medication"),
+    ),
     Faq(
         code="hearing-aid-subsidy",
         topic="hearing-aids",
@@ -129,7 +153,7 @@ FAQS = (
             "<p>誰可以申請、申請流程和補助多少，請看選配指引的"
             '<a href="/guide/form-9">「九號表：申請助聽器補助」</a>。</p>'
         ),
-        sources=(("我的選配指引：九號表：申請助聽器補助", "/guide/form-9"),),
+        sources=(("助聽器選配與補助：九號表：申請助聽器補助", "/guide/form-9"),),
         checked_on=date(2026, 10, 27),
         other_phrasings=("助聽器有補助嗎", "怎麼申請補助", "補助可以拿多少"),
         related=("sound-amplifier-vs-hearing-aid", "brands-and-shops"),
@@ -147,7 +171,7 @@ FAQS = (
             "「擴音器、輔聽器可以代替助聽器嗎？」</a>。</p>"
         ),
         sources=(
-            ("我的選配指引：助聽器的種類與價格", "/guide/types-and-prices"),
+            ("助聽器選配與補助：助聽器的種類與價格", "/guide/types-and-prices"),
             (
                 "醫療器材管理法（全國法規資料庫）",
                 "https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=L0030106",

@@ -11,7 +11,7 @@ from screening.tests import test_result_next_steps
 from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (E4), written out so a changed definition fails.
-GUIDE_LINK = 'href="/guide">看助聽器選配指引</a>'
+GUIDE_LINK = 'href="/guide">看助聽器選配與補助</a>'
 
 # The step that recommends a hearing check or assessment, by questionnaire and level
 # (0-based): the second step everywhere but HHIE-S's severe level, where it is the first.

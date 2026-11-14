@@ -17,7 +17,7 @@ RETEST_MONTHS = 6
 RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您。"}
 # The hearing-aid guide link (#220 E4) after the button of the life-impact step that recommends
 # a hearing check or assessment (spec #218, ticket #229).
-GUIDE_ACTION = {"second_label": "看助聽器選配指引", "second_url": "guide"}
+GUIDE_ACTION = {"second_label": "看助聽器選配與補助", "second_url": "guide"}
 # The guest result's save card (spec #492): what saving brings at each level of HHIE-S and HHIA-S,
 # which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them.
 SAVE_REASONS = {

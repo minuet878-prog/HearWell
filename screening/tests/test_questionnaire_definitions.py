@@ -184,8 +184,9 @@ class RealDefinitionsTests(TestCase):
         cards = test_layout._cards(main)
         hrefs = [
             f'href="{reverse("screening", args=[self.questionnaires[code].pk])}"'
-            # No birth year, so nothing is recommended ahead of the list order.
-            for code in ("hhie-s", "ioi-ha", "hhia-s", "ssq12-tw")
+            # No birth year, so nothing is recommended ahead of the 2026-11-14 walkthrough's
+            # groups: life impact, 其他困擾, hearing aids.
+            for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha")
         ]
         self.assertEqual(
             [next(i for i, c in enumerate(cards) if h in c) for h in hrefs], [0, 1, 2, 3]
