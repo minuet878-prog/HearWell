@@ -119,7 +119,7 @@ FAQS = (
         referral=True,
     ),
     # The 2026-11-14 walkthrough (mockup 2A): where the care journey's 還沒，看要去哪裡檢查 leads.
-    # A draft for the owner to review as an audiologist.
+    # Reviewed and approved by the owner, an audiologist, on 2026-11-14.
     Faq(
         code="where-to-get-a-hearing-test",
         topic="hearing-health",
