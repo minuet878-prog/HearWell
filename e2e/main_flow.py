@@ -5297,7 +5297,8 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(
                 self.styles(date_field, "padding", "fontSize", "borderTopWidth", "borderTopColor"),
                 {
-                    "padding": "9px 18px",
+                    # Half an em each side, so three digits fit a narrow box.
+                    "padding": "9px 11.25px",
                     "fontSize": "22.5px",
                     "borderTopWidth": "1px",
                     "borderTopColor": border,
@@ -7619,7 +7620,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             card = self.main().locator(".journey-card")
             self.assertEqual(self.style(card, "backgroundColor"), self.BLUE_SOFT)
             self.assertEqual(self.style(card, "boxShadow"), "none")
-            self.assertEqual(self.style(card.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+            # The 2026-11-14 walkthrough (mockup 2A): its solid button, then 還沒 in outline.
+            self.assertEqual(
+                self.style(card.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY
+            )
+            second = card.locator("a.btn-outline-primary")
+            expect(second).to_have_text("還沒，看要去哪裡檢查")
+            self.assertEqual(self.style(second, "backgroundColor"), "rgb(255, 255, 255)")
             tile = self.main().locator("a.journey-tile")
             self.assertEqual(self.style(tile, "boxShadow"), "none")
             arrow = tile.locator(".journey-tile-arrow")
@@ -7680,8 +7687,13 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         self.assertEqual(self.style(box, "backgroundColor"), self.BLUE_SOFT)
         self.assertEqual(self.style(box, "borderTopWidth"), "0px")
         expect(box.get_by_text("因為：", exact=False)).to_have_count(0)
-        self.assertEqual(box.get_by_role("link").count(), 1)
-        self.assertEqual(self.style(box.get_by_role("link"), "backgroundColor"), self.PRIMARY)
+        # The 2026-11-14 walkthrough (mockup 2A): without an audiogram, 還沒 in outline too.
+        links = box.get_by_role("link")
+        self.assertEqual(
+            links.count(), 1 + box.locator("a.btn-outline-primary").count(), "only the buttons"
+        )
+        self.assertLessEqual(box.locator("a.btn-outline-primary").count(), 1)
+        self.assertEqual(self.style(box.locator("a.btn-primary"), "backgroundColor"), self.PRIMARY)
         # In the page's content: 回到頂端 is the site's own, out of sight until scrolled.
         expect(self.main().locator(".btn-primary")).to_have_count(1)
 

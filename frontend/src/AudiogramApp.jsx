@@ -272,15 +272,17 @@ export default function AudiogramApp({
       {step === 1 && (
         <fieldset className="mb-4">
           <legend className="form-label text-xl/normal font-bold">檢查日期</legend>
+          {/* Each word and box its own piece, so at 200% text they wrap rather than run off a phone. */}
           <div className="date-parts">
+            <span>民國</span>
             {[
-              ["year", "民國年", "民國", "年", 3],
-              ["month", "月", null, "月", 2],
-              ["day", "日", null, "日", 2],
-            ].map(([part, name, before, after, length]) => (
-              <div key={part} className="input-group">
-                {before && <span className="input-group-text">{before}</span>}
+              ["year", "民國年", "年", 3, "tested-on"],
+              ["month", "月", "月", 2],
+              ["day", "日", "日", 2],
+            ].map(([part, name, after, length, id]) => (
+              <span key={part} className="date-part">
                 <input
+                  id={id}
                   aria-label={name}
                   className={`form-control form-control-lg date-part-${part}`}
                   inputMode="numeric"
@@ -288,8 +290,8 @@ export default function AudiogramApp({
                   value={date[part]}
                   onChange={(e) => setDate({ ...date, [part]: e.target.value.trim() })}
                 />
-                <span className="input-group-text">{after}</span>
-              </div>
+                <span aria-hidden="true">{after}</span>
+              </span>
             ))}
           </div>
           <p className="field-help mt-2 mb-0">照報告上的日期填。報告寫西元的話，{thisYear} 年就是民國 {thisYear - ROC_OFFSET} 年。</p>
