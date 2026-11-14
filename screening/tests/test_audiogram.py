@@ -1529,6 +1529,20 @@ class AudiogramPagesT365Test(TestCase):
         self.assertEqual(back.group(1), reverse("audiogram_list"))
         self.assertLess(main.index('id="audiogram-app"'), back.start())
 
+    def test_from_the_care_journey_the_way_back_is_to_the_page_it_came_from(self):
+        # The 2026-11-14 walkthrough (mockup 2A): sent from the home page or a result page with
+        # next, someone without a report yet goes back there; anything else, to the list.
+        for next_url, text, href in (
+            ("/", "還沒有報告，回首頁", "/"),
+            ("/submission/12", "還沒有報告，回結果", "/submission/12"),
+            ("https://example.com/", "不新增了，回聽力圖清單", reverse("audiogram_list")),
+            ("/my_hearing", "不新增了，回聽力圖清單", reverse("audiogram_list")),
+        ):
+            with self.subTest(next=next_url):
+                main = self._main(self.client.get(reverse("audiogram_new"), {"next": next_url}))
+                back = self._link(main, text)
+                self.assertEqual(back.group(1), href)
+
     def test_edit_page_names_the_saved_date_and_goes_back_to_that_audiogram(self):
         audiogram = self._make(_four(_air, "right", (40,) * 4), tested_on=date(2026, 9, 1))
         main = self._main(self.client.get(reverse("audiogram_edit", args=[audiogram.id])))

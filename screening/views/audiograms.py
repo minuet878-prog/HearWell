@@ -1,6 +1,9 @@
+from urllib.parse import urlsplit
+
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
@@ -15,7 +18,7 @@ from screening.audiogram import (
 )
 from screening.audiogram_thumbnail import thumbnail
 from screening.models import Ear
-from screening.views.common import RECENT_SHOWN, health_data_page, older_fold
+from screening.views.common import RECENT_SHOWN, health_data_page, older_fold, safe_next
 
 
 @login_required
@@ -52,7 +55,25 @@ def _chart_points(points):
 
 @login_required
 def audiogram_new(request):
-    return render(request, "screening/audiogram_new.html", {"today": timezone.localdate()})
+    return render(
+        request,
+        "screening/audiogram_new.html",
+        {"today": timezone.localdate(), "back": way_back(request)},
+    )
+
+
+# The 2026-11-14 walkthrough (mockup 2A): sent here by the care journey's 有，記錄聽力圖, someone
+# who finds they have no report yet goes back to that page; None: the list, as before.
+WAYS_BACK = {"index": "還沒有報告，回首頁", "result": "還沒有報告，回結果"}
+
+
+def way_back(request):
+    next_url = safe_next(request)
+    try:
+        name = resolve(urlsplit(next_url).path).url_name if next_url else None
+    except Resolver404:
+        return None
+    return (WAYS_BACK[name], next_url) if name in WAYS_BACK else None
 
 
 def _own_audiogram(request, audiogram_id):

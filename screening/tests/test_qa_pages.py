@@ -232,6 +232,18 @@ class QaAnswerTests(TestCase):
         self.assertIn(f'href="{reverse("guide_chapter", args=["assessment"])}"', footer)
         self.assertIn('<p class="guide-checked">本頁資料查核於 2026/10/27。</p>', footer)
 
+    def test_where_to_get_a_hearing_test(self):
+        # The 2026-11-14 walkthrough (mockup 2A): where the care journey's 還沒 leads, a general
+        # answer (no 您) with a source and a check date; a draft for the owner to review.
+        response = self.client.get(reverse("qa_answer", args=["where-to-get-a-hearing-test"]))
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(response.content.decode(), r"<h1[^>]*>還沒做過聽力檢查，要去哪裡做？</h1>")
+        answer = answer_part(response)
+        self.assertIn("耳鼻喉科", answer)
+        self.assertIn("聽力圖", answer)
+        self.assertNotIn("您", content.BY_CODE["where-to-get-a-hearing-test"].answer)
+        self.assertContains(response, "https://www.nidcd.nih.gov/health/age-related-hearing-loss")
+
     def test_a_code_never_used_is_not_found(self):
         response = self.client.get(reverse("qa_answer", args=["no-such-question"]))
         self.assertEqual(response.status_code, 404)

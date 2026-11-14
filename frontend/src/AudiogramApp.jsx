@@ -22,6 +22,24 @@ const HOW_TO = [
   "放開就標好了；標錯就在那個點上按住一下再放開，可以刪除",
 ];
 const FORWARD = { 1: "下一步：標右耳", 2: "右耳標完了，換左耳", 3: "左耳標完了，確認存檔" };
+// The 2026-11-14 walkthrough (mockup 12A): the date is typed as a Taiwanese report writes it,
+// 民國 year, month and day, and sent in the western calendar.
+const ROC_OFFSET = 1911;
+const WRONG_DATE = "檢查日期不對，請照報告再填一次";
+const dateParts = (iso) => {
+  if (!iso) return { year: "", month: "", day: "" };
+  const [year, month, day] = iso.split("-").map(Number);
+  return { year: String(year - ROC_OFFSET), month: String(month), day: String(day) };
+};
+// "" when nothing is typed, null when it is not a day on the calendar, else YYYY-MM-DD.
+const isoDate = ({ year, month, day }) => {
+  if (!year && !month && !day) return "";
+  if (![year, month, day].every((part) => /^\d+$/.test(part))) return null;
+  const [y, m, d] = [Number(year) + ROC_OFFSET, Number(month), Number(day)];
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+};
 
 // "氣導 n 個、骨導 n 個" for one ear, with no total: a report rarely tests every frequency.
 function earCount(points, ear) {
@@ -102,7 +120,9 @@ export default function AudiogramApp({
     Object.fromEntries(initialPoints.map((p) => [pointKey(p.ear, p.conduction, p.frequency), p])),
   );
   const [last, setLast] = useState(null);
-  const [testedOn, setTestedOn] = useState(initialTestedOn);
+  const [date, setDate] = useState(() => dateParts(initialTestedOn));
+  const testedOn = isoDate(date);
+  const thisYear = Number(today.slice(0, 4));
   const [errors, setErrors] = useState([]);
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -165,7 +185,8 @@ export default function AudiogramApp({
     if (busy.current) return;
     const problems = [];
     if (Object.keys(points).length === 0) problems.push("請至少標記一個點");
-    if (!testedOn) problems.push("請填寫檢查日期");
+    if (testedOn === "") problems.push("請填寫檢查日期");
+    else if (testedOn === null) problems.push(WRONG_DATE);
     else if (testedOn > today) problems.push("檢查日期不能是未來");
     setErrors(problems);
     if (problems.length > 0) return;
@@ -249,10 +270,30 @@ export default function AudiogramApp({
       </div>
 
       {step === 1 && (
-        <div className="mb-4">
-          <label htmlFor="tested-on" className="form-label text-xl/normal font-bold">檢查日期</label>
-          <input id="tested-on" type="date" className="form-control form-control-lg" max={today} value={testedOn} onChange={(e) => setTestedOn(e.target.value)} />
-        </div>
+        <fieldset className="mb-4">
+          <legend className="form-label text-xl/normal font-bold">檢查日期</legend>
+          <div className="date-parts">
+            {[
+              ["year", "民國年", "民國", "年", 3],
+              ["month", "月", null, "月", 2],
+              ["day", "日", null, "日", 2],
+            ].map(([part, name, before, after, length]) => (
+              <div key={part} className="input-group">
+                {before && <span className="input-group-text">{before}</span>}
+                <input
+                  aria-label={name}
+                  className={`form-control form-control-lg date-part-${part}`}
+                  inputMode="numeric"
+                  maxLength={length}
+                  value={date[part]}
+                  onChange={(e) => setDate({ ...date, [part]: e.target.value.trim() })}
+                />
+                <span className="input-group-text">{after}</span>
+              </div>
+            ))}
+          </div>
+          <p className="field-help mt-2 mb-0">照報告上的日期填。報告寫西元的話，{thisYear} 年就是民國 {thisYear - ROC_OFFSET} 年。</p>
+        </fieldset>
       )}
 
       {ear && (
@@ -317,7 +358,7 @@ export default function AudiogramApp({
       {step === 4 && (
         <>
           <p className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold">檢查日期：{testedOn ? testedOn.replaceAll("-", "/") : "未填"}</span>
+            <span className="font-bold">檢查日期：{testedOn ? testedOn.replaceAll("-", "/") : testedOn === null ? "日期不對" : "未填"}</span>
             <button type="button" className="btn btn-link" onClick={() => goTo(1)}>改日期</button>
           </p>
           {/* Both ears, read only: nothing to mark with and no reading before saving. */}

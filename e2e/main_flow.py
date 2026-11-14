@@ -77,6 +77,13 @@ ARTIFACTS = settings.BASE_DIR / "e2e-artifacts"
 QUESTION_COUNT = 10
 
 
+def type_audiogram_date(main, year, month, day):
+    """The audiogram's date, typed as on a report (the 2026-11-14 walkthrough, mockup 12A)."""
+    main.get_by_label("民國年").fill(year)
+    main.get_by_label("月", exact=True).fill(month)
+    main.get_by_label("日", exact=True).fill(day)
+
+
 class SavesFailureArtifacts:
     """On failure, keep the screenshot and trace of that moment for debugging (CI uploads them)."""
 
@@ -2205,7 +2212,7 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             self.page.goto(f"{self.live_server_url}/audiograms/new")
             main = self.main()
             expect(main.get_by_text("第 1 步／共 4 步：檢查日期", exact=True)).to_be_visible()
-            main.get_by_label("檢查日期").fill("2026-10-01")
+            type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
                 expect(main.get_by_role("button", name=re.compile(f"^{ear}氣導"))).to_be_visible()
@@ -3405,7 +3412,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.here()).to_contain_text("記錄聽力圖")
             self.here().locator("a.btn", has_text="記錄聽力圖").click()
             main = self.main()
-            main.get_by_label("檢查日期").fill("2026-10-01")
+            type_audiogram_date(main, "115", "10", "1")
             main.get_by_role("button", name="下一步：標右耳", exact=True).click()
             for ear, button in (("右耳", "右耳標完了，換左耳"), ("左耳", "左耳標完了，確認存檔")):
                 if ear == "右耳":
@@ -5284,20 +5291,14 @@ class StyleInBrowserTest(SavesFailureArtifacts, StaticLiveServerTestCase):
             self.assertEqual(self.style(mask, "backgroundColor"), "rgb(13, 110, 253)")
             # #199: the date is step 1.
             self.page.get_by_role("button", name="上一步").click()
-            date_field = self.page.get_by_label("檢查日期")
+            # The 2026-11-14 walkthrough (mockup 12A): the 民國 year box, inside 民國…年, so its
+            # corners are the group's.
+            date_field = self.page.get_by_label("民國年")
             self.assertEqual(
-                self.styles(
-                    date_field,
-                    "padding",
-                    "fontSize",
-                    "borderTopLeftRadius",
-                    "borderTopWidth",
-                    "borderTopColor",
-                ),
+                self.styles(date_field, "padding", "fontSize", "borderTopWidth", "borderTopColor"),
                 {
                     "padding": "9px 18px",
                     "fontSize": "22.5px",
-                    "borderTopLeftRadius": "13.5px",
                     "borderTopWidth": "1px",
                     "borderTopColor": border,
                 },

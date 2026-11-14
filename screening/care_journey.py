@@ -21,6 +21,8 @@ from screening.scoring import (
     LIFE_IMPACT_BECAUSE,
     LIFE_IMPACT_BUTTON,
     NEXT_STEP_REASONS,
+    NO_REPORT_YET,
+    RECORD_AUDIOGRAM_YES,
     RETEST_BUTTON_TEXT,
     RETEST_COUNTDOWN_TEXT,
     RETEST_DUE_TEXT,
@@ -39,6 +41,7 @@ FITTING_STEPS = (3, 4)
 WEARING_FROM = 3  # someone wearing hearing aids looks for the 現在這一步 from step 3 on
 LAST_STEP = 5
 FITTING_MONTHS = 3  # IOI-HA once hearing aids are worn 3 months (spec #453 Q8)
+WHERE_TO_TEST = "where-to-get-a-hearing-test"  # the Q&A answer step 2's 還沒 opens
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,8 @@ class NextStep:
     card: HomeCard
     button: str
     suggested: str | None  # "print" or "share" off the journey, so the page drops that card
+    second: tuple | None = None  # the card's outline button (text, url), as JourneyCard's
+    come_back: bool = False  # as JourneyCard's
 
 
 @dataclass(frozen=True)
@@ -77,6 +82,10 @@ class JourneyCard:
     # Its 待辦 under the button (spec #478), apart from the one thing: a result page's 建議下一步
     # takes the card without them.
     todos: tuple = field(default=(), compare=False)
+    # The 2026-11-14 walkthrough (mockup 2A): an outline button (text, url) under the solid one,
+    # and whether the solid one's page leads back here (the page adds ?next=).
+    second: tuple | None = None
+    come_back: bool = False
 
 
 @dataclass(frozen=True)
@@ -253,11 +262,25 @@ def _route_card(route, user):
         because = because.format(deadline=route.form_25[1])
     icon = "audiogram" if stop.slug == AUDIOGRAM else "guide"
     button = stop.action
+    second, come_back = None, False
+    if stop.slug == AUDIOGRAM and not route.insufficient:
+        button = (RECORD_AUDIOGRAM_YES, stop.action[1])
+        second = (NO_REPORT_YET, reverse("qa_answer", args=[WHERE_TO_TEST]))
+        come_back = True
     if stop.slug == "types-and-prices":
         # The owner on #455: a chapter to read, so the card has a button the route lacks;
         # 等待核定公文 stays without one, as there is nothing to do but wait.
         button = (TYPES_AND_PRICES_BUTTON, stop.url)
-    return JourneyCard(stop.title, because, icon, href=stop.url, button=button, todos=stop.todos)
+    return JourneyCard(
+        stop.title,
+        because,
+        icon,
+        href=stop.url,
+        button=button,
+        todos=stop.todos,
+        second=second,
+        come_back=come_back,
+    )
 
 
 def next_step(user, today):
@@ -266,7 +289,7 @@ def next_step(user, today):
     card = care_journey(user, today).card
     if card.button is not None:
         text, href = card.button
-        return NextStep(HomeCard(card.title, href), text, None)
+        return NextStep(HomeCard(card.title, href), text, None, card.second, card.come_back)
     if user.report_shares.exists():
         print_card = HomeCard("印聽力報告給醫師看", reverse("health_report"))
         return NextStep(print_card, "去印報告", "print")

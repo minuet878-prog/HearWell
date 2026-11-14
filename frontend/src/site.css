@@ -1800,6 +1800,33 @@
     font-size: 1rem;
   }
 
+  /* The 2026-11-14 walkthrough (mockup 12A): an audiogram's date as 民國 [ ] 年 [ ] 月 [ ] 日,
+     each box as wide as its digits; with larger text the three wrap rather than shrink. */
+  .date-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .date-parts > .input-group {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+
+  .date-parts > .input-group > .form-control {
+    flex: none;
+    text-align: center;
+  }
+
+  .date-parts .date-part-year {
+    width: 4.5em;
+  }
+
+  .date-parts .date-part-month,
+  .date-parts .date-part-day {
+    width: 3.5em;
+  }
+
   /* A 提示框, P3 (#454, ADR 0043): pale grey, no frame and no line down its side. */
   .tip-box {
     margin: 0 0 1rem;
@@ -4430,6 +4457,11 @@
     margin: 0;
     color: var(--color-primary);
     font-weight: 700;
+  }
+
+  /* The 2026-11-14 walkthrough (mockup 2A): 還沒 under the solid button. */
+  .result-next > .btn + .btn {
+    margin-top: 0.75rem;
   }
 
   .result-next-title {

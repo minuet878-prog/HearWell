@@ -76,7 +76,8 @@
                     <h3 class="journey-card-title">{{ card.title }}</h3>
                     <p class="journey-card-because">{{ card.because }}</p>
                     {% if card.button %}
-                    <a class="btn btn-primary btn-lg w-full" href="{{ card.button.1 }}">{{ card.button.0 }}</a>
+                    <a class="btn btn-primary btn-lg w-full" href="{{ card.button.1 }}{% if card.come_back %}?next={{ request.path|urlencode }}{% endif %}">{{ card.button.0 }}</a>
+                    {% if card.second %}<a class="btn btn-outline-primary btn-lg w-full" href="{{ card.second.1 }}">{{ card.second.0 }}</a>{% endif %}
                     {% elif card.href %}
                     <a class="journey-card-link" href="{{ card.href }}">看這一站的說明</a>
                     {% endif %}

@@ -119,7 +119,8 @@ CATALOGUE_REASONS = {
 # Why the home page suggests its 建議下一步 (#261), word for word from spec #257's table; the
 # owner settles the drafted ones on review.
 NEXT_STEP_REASONS = {
-    "record": "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
+    # The 2026-11-14 walkthrough (mockup 2A): asked, as the two buttons answer it.
+    "record": "手上有醫院的聽力檢查報告了嗎？",
     "edit": "這張聽力圖缺少頻率，資料不足，無法判斷。",
     # 了解助聽器選配與補助, by the 目前這一站 (a stop's slug), spec #291's drafts; none
     # judges the audiogram, as the route no longer does. Form 25's takes its deadline, the
@@ -147,6 +148,10 @@ LIFE_IMPACT_BUTTON = "去做問卷"
 IOI_HA_BUTTON = "做效益問卷"
 # Step 3's card on 助聽器的種類與價格 (the owner on #455): the route itself has no button.
 TYPES_AND_PRICES_BUTTON = "去看助聽器種類與價格"
+# Step 2's two answers to 「手上有醫院的聽力檢查報告了嗎？」 (the 2026-11-14 walkthrough,
+# mockup 2A); 還沒 opens the Q&A on where a hearing test is done.
+RECORD_AUDIOGRAM_YES = "有，記錄聽力圖"
+NO_REPORT_YET = "還沒，看要去哪裡檢查"
 IOI_HA_DUE_BECAUSE = "您已經戴滿 3 個月，可以做使用效益問卷（IOI-HA），看助聽器幫了多少。"
 
 

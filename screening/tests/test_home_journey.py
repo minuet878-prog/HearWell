@@ -370,8 +370,8 @@ class JourneyHomeTests(HomeJourneyTestCase):
             (
                 no_audiogram,
                 "記錄聽力圖",
-                "您還沒有記錄聽力圖，選配指引要用聽力圖才能整理下一步。",
-                ("/audiograms/new", "記錄聽力圖"),
+                "手上有醫院的聽力檢查報告了嗎？",
+                ("/audiograms/new?next=/", "有，記錄聽力圖"),
             ),
             (
                 missing_frequency,
@@ -415,6 +415,21 @@ class JourneyHomeTests(HomeJourneyTestCase):
                 if href == "edit":
                     href = reverse("audiogram_edit", args=[audiogram.pk])
                 self.assertEqual(buttons, [(href, text)])
+
+    def test_without_a_report_yet_the_card_has_a_second_way(self):
+        # The 2026-11-14 walkthrough (mockup 2A): 還沒 is an outline button under the solid one,
+        # to where a hearing test is done; an audiogram missing a frequency has none.
+        self.answer()
+        card = self.card(self.main())
+        solid = card.index('href="/audiograms/new?next=/">有，記錄聽力圖</a>')
+        outline = card.index(
+            '<a class="btn btn-outline-primary btn-lg w-full" '
+            'href="/qa/where-to-get-a-hearing-test">還沒，看要去哪裡檢查</a>'
+        )
+        self.assertLess(solid, outline)
+        audiogram = self.make(NORMAL, NORMAL)
+        audiogram.points.filter(ear="left", frequency=4000).delete()
+        self.assertNotIn("還沒，看要去哪裡檢查", self.main())
 
     def test_done_steps_say_their_day(self):
         # #458 D7: step 3 its fitting date, step 4 its IOI-HA's.

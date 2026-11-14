@@ -18,5 +18,5 @@
 {% if audiogram %}{{ initial|json_script:"audiogram-initial" }}{% endif %}
 <noscript><p class="text-xl/normal font-bold">需要開啟 JavaScript 才能輸入聽力圖。</p></noscript>
 {# #365: a quiet way out, so it does not compete with the step buttons above it. #}
-<p class="quiet-links mt-4">{% if audiogram %}<a href="{% url 'audiogram_detail' audiogram.id %}">不修改了，回到這張聽力圖</a>{% else %}<a href="{% url 'audiogram_list' %}">不新增了，回聽力圖清單</a>{% endif %}</p>
+<p class="quiet-links mt-4">{% if audiogram %}<a href="{% url 'audiogram_detail' audiogram.id %}">不修改了，回到這張聽力圖</a>{% elif back %}<a href="{{ back.1 }}">{{ back.0 }}</a>{% else %}<a href="{% url 'audiogram_list' %}">不新增了，回聽力圖清單</a>{% endif %}</p>
 {% endblock %}

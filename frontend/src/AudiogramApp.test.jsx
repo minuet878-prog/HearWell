@@ -58,7 +58,17 @@ const pickSymbol = (name) => fireEvent.click(screen.getByRole("button", { name: 
 const point = (key) => chart().querySelector(`[data-point="${key}"]`);
 const magnifier = () => document.querySelector(".audiogram-magnifier");
 const select = (name) => screen.getByRole("combobox", { name });
-const setDate = (value) => fireEvent.change(screen.getByLabelText("檢查日期"), { target: { value } });
+// The 2026-11-14 walkthrough (mockup 12A): the date is typed as on a report, 民國 year, month, day.
+const dateGroup = () => screen.queryByRole("group", { name: "檢查日期" });
+const typeDate = (year, month, day) => {
+  fireEvent.change(screen.getByLabelText("民國年"), { target: { value: year } });
+  fireEvent.change(screen.getByLabelText("月"), { target: { value: month } });
+  fireEvent.change(screen.getByLabelText("日"), { target: { value: day } });
+};
+const setDate = (iso) => {
+  const [year, month, day] = iso.split("-").map(Number);
+  typeDate(String(year - 1911), String(month), String(day));
+};
 const save = () => fireEvent.click(screen.getByRole("button", { name: "存檔" }));
 // #333 (D4): a switch named 遮蔽, with 開 or 關 written beside it.
 const maskToggle = () => screen.getByRole("switch", { name: "遮蔽" });
@@ -68,7 +78,7 @@ const maskBox = (name) => screen.getByRole("checkbox", { name: `${name} 遮蔽` 
 describe("input", () => {
   it("starts empty with right-ear air selected (acceptance 1)", () => {
     renderApp();
-    expect(screen.getByLabelText("檢查日期").getAttribute("max")).toBe(TODAY);
+    expect(dateGroup()).toBeTruthy();
     forward();
     expect(chart().querySelectorAll("[data-point]")).toHaveLength(0);
     expect(screen.getByRole("button", { name: /右耳氣導/ }).getAttribute("aria-pressed")).toBe("true");
@@ -413,7 +423,7 @@ describe("steps", () => {
   it("each step shows only what it needs (#199 acceptance 1)", () => {
     renderApp();
     expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
-    expect(screen.getByLabelText("檢查日期")).toBeTruthy();
+    expect(dateGroup()).toBeTruthy();
     expect(screen.queryByRole("img", { name: /聽力圖/ })).toBeNull();
     expect(document.querySelectorAll(".step-progress-segment")).toHaveLength(4);
     expect(document.querySelectorAll(".step-progress-segment.is-done")).toHaveLength(1);
@@ -429,7 +439,7 @@ describe("steps", () => {
     expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
     const symbols = () => [...document.querySelectorAll(".audiogram-symbol")].map((b) => b.textContent.replace(/ .*/, ""));
     expect(symbols()).toEqual(["右耳氣導", "右耳骨導"]);
-    expect(screen.queryByLabelText("檢查日期")).toBeNull();
+    expect(dateGroup()).toBeNull();
     expect(screen.queryByRole("combobox", { name: "左耳氣導 1000 Hz" })).toBeNull();
     expect(maskToggle()).toBeTruthy();
     expect(screen.getByRole("button", { name: /清除/ })).toBeTruthy();
@@ -601,6 +611,35 @@ describe("save", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it("types the date in 民國 years and sends it in the western calendar (walkthrough 12A)", async () => {
+    renderApp();
+    expect(document.querySelector(".audiogram-app").textContent).toContain(
+      "照報告上的日期填。報告寫西元的話，2026 年就是民國 115 年。",
+    );
+    for (const name of ["民國年", "月", "日"]) {
+      expect(screen.getByLabelText(name).getAttribute("inputmode")).toBe("numeric");
+    }
+    typeDate("115", "10", "1");
+    forward();
+    drag(1000, 40, 40);
+    confirmAndSave();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(JSON.parse(fetch.mock.calls[0][1].body).tested_on).toBe("2026-10-01");
+  });
+
+  it("says a date that is not on the calendar, or half typed, is not right (walkthrough 12A)", () => {
+    for (const [year, month, day] of [["115", "2", "30"], ["115", "", ""], ["一一五", "1", "1"]]) {
+      cleanup();
+      renderApp();
+      typeDate(year, month, day);
+      forward();
+      drag(1000, 40, 40);
+      confirmAndSave();
+      expect(screen.getByRole("alert").textContent).toContain("檢查日期不對，請照報告再填一次");
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("needs a date that is not in the future (acceptance 13)", () => {
     renderRight();
     drag(1000, 40, 40);
@@ -694,7 +733,9 @@ describe("edit", () => {
   it("opens with the saved points and date, in four steps (acceptance 1, #200 acceptance 2)", () => {
     renderEdit();
     expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
-    expect(screen.getByLabelText("檢查日期").value).toBe("2026-01-10");
+    expect(screen.getByLabelText("民國年").value).toBe("115");
+    expect(screen.getByLabelText("月").value).toBe("1");
+    expect(screen.getByLabelText("日").value).toBe("10");
     forward();
     expect(point("right-air-1000").dataset.masked).toBe("true");
     expect(point("right-air-1000").querySelector("polygon")).not.toBeNull();

@@ -118,6 +118,30 @@ FAQS = (
         related=("diagnosis-and-medication", "my-results"),
         referral=True,
     ),
+    # The 2026-11-14 walkthrough (mockup 2A): where the care journey's 還沒，看要去哪裡檢查 leads.
+    # A draft for the owner to review as an audiologist.
+    Faq(
+        code="where-to-get-a-hearing-test",
+        topic="hearing-health",
+        question="還沒做過聽力檢查，要去哪裡做？",
+        answer=(
+            "<p>一般來說，可以到醫院或診所掛<strong>耳鼻喉科</strong>，"
+            "跟醫師說想做聽力檢查。耳鼻喉科醫師會找出耳朵的問題，"
+            "聽力檢查常由聽力師來做。</p>"
+            "<p>聽力檢查通常在安靜的隔音室裡做：戴上耳機聽聲音，聽到就按按鈕或舉手。</p>"
+            "<p>做完可以跟醫院或診所要一份聽力檢查報告（聽力圖），"
+            '回來<a href="/audiograms/new">記到聽伴</a>，首頁就會往下一步。</p>'
+        ),
+        sources=(
+            (
+                "NIDCD〈Age-Related Hearing Loss (Presbycusis)〉",
+                "https://www.nidcd.nih.gov/health/age-related-hearing-loss",
+            ),
+        ),
+        checked_on=date(2026, 11, 14),
+        other_phrasings=("去哪裡做聽力檢查", "哪裡可以檢查聽力", "聽力檢查要掛哪一科"),
+        related=("sudden-hearing-loss", "diagnosis-and-medication"),
+    ),
     Faq(
         code="hearing-aid-subsidy",
         topic="hearing-aids",
