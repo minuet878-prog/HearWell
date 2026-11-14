@@ -2,7 +2,7 @@
 
 日期：2026-11-14。基準：`570728f`（origin/main）；分支：`fix/flow-walkthrough-wording`。依據：[動線走查筆記](../planning/flow-walkthrough-2026-11-14.md)。
 
-狀態：自動測試全過，**等本人實際操作驗收**。
+狀態：2026-11-14 本人回覆「驗收通過」。自動測試全過。
 
 - 本人 2026-11-14 回覆「跳過交叉」：這批改到登入後要去哪一頁，照 AGENTS.md 原本要交叉審查，本人決定略過。
 - 沒改計分、分級、門檻，沒有 migration。
@@ -62,7 +62,7 @@
 | 12 320px、200% 字級不超出 | ✅ 自動 | `e2e/main_flow.py:2287`（第一次跑抓到 448px 超出，已修） |
 | 13 日期不斷在數字中間 | ⚠️ 手動量測 | 320／375／390／768 寬與 200% 字級都在同一行（Playwright 量測，沒寫成測試） |
 | 14 選填句改寫 | ✅ 自動 | `screening/tests/test_recommendations.py:29` |
-| 實際走起來順不順 | ⚠️ 要人工 | 請本人實際操作 |
+| 實際走起來順不順 | ✅ 本人 | 2026-11-14 本人回覆「驗收通過」 |
 
 ## 測試與審查
 
@@ -75,7 +75,7 @@
 
 ## 人工驗收
 
-在 worktree 開 8001：
+2026-11-14 本人回覆「驗收通過」，以下操作範圍確認通過（8001 開在這個分支的 worktree）。
 
 ```bash
 cd /Users/huangweizhe/HearWell/.claude/worktrees/flow-walkthrough && /Users/huangweizhe/HearWell/py313/bin/python manage.py runserver 8001
