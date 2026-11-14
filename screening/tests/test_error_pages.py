@@ -76,5 +76,7 @@ class ServerErrorWithoutDatabaseTests(SimpleTestCase):
         self.assertEqual(response.status_code, 500)
         content = response.content.decode()
         self.assertIn(ERROR_TITLE, content)
-        # Without a user the tab bar is the visitor's.
-        self.assertIn(f'href="{reverse("register")}"', content)
+        # Without a user the tab bar is the visitor's (its 登入 since the 2026-11-14 walkthrough
+        # took 註冊's tab).
+        self.assertIn(f'href="{reverse("login")}"', content)
+        self.assertNotIn(f'href="{reverse("my_hearing")}"', content)

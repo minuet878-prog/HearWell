@@ -1,13 +1,15 @@
 {% extends "screening/layout.html" %}
 
-{% block title %}選擇問卷｜聽伴{% endblock %}
+{% block title %}選問卷｜聽伴{% endblock %}
 
 {% block extra_head %}{% include "screening/continue_notice.html" %}{% endblock %}
 
 {% block body %}
 {% if continue_notice %}<div id="continue-notice"></div>{% endif %}
 {% if not step %}
-<h1 class="h3 mt-2">自行選擇問卷</h1>
+<h1 class="h3 mt-2">選問卷</h1>
+{# The 2026-11-14 walkthrough (mockup 8A): 幫我選 under the title, where it was the list's last row (ADR 0030, #462). #}
+<a class="btn btn-outline-primary btn-lg w-full" href="{% url 'questionnaire_list' %}?wizard=1">不確定做哪一份？幫我選</a>
 {# The catalogue (ADR 0030), the returning user's 推薦問卷 above the list when one fits (#347), in a pale blue block (#463). #}
 {% if recommendation %}
 <section aria-labelledby="catalogue-recommended" class="recommended-block mt-6">
@@ -21,17 +23,10 @@
     {% endif %}
 </section>
 {% endif %}
-<h2 id="catalogue-all" class="h4">全部問卷</h2>
-{% for questionnaire in questionnaires %}{% include "screening/questionnaire_card.html" %}{% endfor %}
-{# 幫我選問卷 the list's last row, where ADR 0030 put it (#462). #}
-<a class="link-card questionnaire-card" href="{% url 'questionnaire_list' %}?wizard=1">
-    {% include "screening/action_icon.html" with icon="help" %}
-    <span class="link-card-body">
-        <span class="link-card-title">幫我選問卷</span>
-        <span>不確定做哪一份？</span>
-    </span>
-    <span class="link-card-arrow" aria-hidden="true">›</span>
-</a>
+{% for title, members in groups %}
+<h2 class="catalogue-group h4">{{ title }}</h2>
+{% for questionnaire, card_title in members %}{% include "screening/questionnaire_card.html" with title=card_title %}{% endfor %}
+{% endfor %}
 {% else %}
 {% if from_consent %}<p class="questionnaire-guide">帳號建好了！接下來幫您找適合的問卷</p>{% endif %}
 {# A guest's wizard is the age alone (spec #492): no steps to count. #}

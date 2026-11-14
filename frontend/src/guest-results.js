@@ -179,14 +179,15 @@ export async function showGuestResult({
 // The save page (guest_save.html, spec #492): every guest result sent to the records API as the
 // answer page sends an account's answers, with its own receipt number (a resend makes no second
 // record) and the guest mark. One saved leaves this browser; one not saved stays and is named.
-// All saved, or none here: home, whose 照顧旅程 says what comes next.
+// All saved: home saying so (the 2026-11-14 walkthrough), whose 照顧旅程 says what comes
+// next; none here: home.
 export async function saveGuestResults({
   root,
   now = Date.now(),
   fetchSave = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
-  const { submissionsUrl, homeUrl } = root.dataset;
+  const { submissionsUrl, doneUrl, homeUrl } = root.dataset;
   const results = loadGuestResults(now);
   if (results.length === 0) return navigate(homeUrl);
   const saving = root.querySelector("[data-guest-saving]");
@@ -223,7 +224,7 @@ export async function saveGuestResults({
   }
   if (failed.length === 0) {
     saving.textContent = "已保存，正在打開首頁。";
-    return navigate(homeUrl);
+    return navigate(doneUrl);
   }
   const names = JSON.parse(root.querySelector("#guest-names").textContent);
   root.querySelector("[data-guest-failed-list]").replaceChildren(

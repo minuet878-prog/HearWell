@@ -25,6 +25,9 @@
     <a href="{% url 'my_hearing' %}?questionnaire={{ questionnaire.code }}"{% if questionnaire == current %} aria-current="page"{% endif %}>{{ questionnaire.definition.topic }}<span class="history-tab-code">{% if questionnaire.definition.records_tab_age %}<span class="visually-hidden">，</span>{{ questionnaire.questionnaire_name }}（{{ questionnaire.definition.records_tab_age }}）{% else %}<span class="visually-hidden">（</span>{{ questionnaire.questionnaire_name }}<span class="visually-hidden">）</span>{% endif %}</span></a>
     {% endfor %}
 </nav>
+{% elif current and submissions %}
+{# The 2026-11-14 walkthrough (mockup 10): no tabs to say which questionnaire, so its name. #}
+<h2 class="records-questionnaire h4">{{ current.definition.topic }}（{{ current.questionnaire_name }}）</h2>
 {% endif %}
 {# Ticket #162: the home page's retest reminder, shown here only once it is due; then its button is the page's one solid button (#465, the #464 mockup) and the report a list row. #}
 {% if user_state.retest_due %}

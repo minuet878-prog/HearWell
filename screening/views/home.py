@@ -51,6 +51,8 @@ def index(request):
             "journey": journey,
             "greeting": greeting(timezone.localtime().hour),
             "continue_notice": continue_notice(user),
+            # The 2026-11-14 walkthrough (mockup 6): the save page sends a saved guest result here.
+            "saved": request.GET.get("from") == "save",
         },
     )
     # The home page shows this account's own records (ticket #159): never cached.

@@ -75,6 +75,44 @@ def list_order(questionnaire):
     return (questionnaire.definition.list_rank, questionnaire.pk)
 
 
+# The 2026-11-14 walkthrough (mockup 8A): the catalogue's groups, by what each questionnaire
+# tells about (ADR 0030's concerns), each in list order. One with no concern of these is
+# 其他困擾's, so none is left off.
+CATALOGUE_GROUPS = (
+    ("聽力對生活的影響", (LIFE_IMPACT,)),
+    ("其他困擾", ()),
+    ("已經戴助聽器", (HEARING_AID,)),
+)
+OTHER_GROUP = "其他困擾"
+
+
+def catalogue_groups(questionnaires):
+    """(title, [(questionnaire, card title)]) for each group; a life-impact card is named by its
+    age, as the group's title already says the topic; None keeps the card's own title."""
+    grouped = {concern for _, concerns in CATALOGUE_GROUPS for concern in concerns}
+
+    def belongs(questionnaire, title, concerns):
+        concern = questionnaire.definition.concern
+        return concern in concerns or (title == OTHER_GROUP and concern not in grouped)
+
+    return [
+        (
+            title,
+            [
+                (
+                    q,
+                    f"{q.definition.records_tab_age}（{q}）"
+                    if q.definition.concern == LIFE_IMPACT
+                    else None,
+                )
+                for q in questionnaires
+                if belongs(q, title, concerns)
+            ],
+        )
+        for title, concerns in CATALOGUE_GROUPS
+    ]
+
+
 # The recommendation wizard's GET parameters: `wizard` from the catalogue's 「幫我選問卷」, the rest
 # its answers. Without any, a returning user sees the catalogue.
 WIZARD_PARAMS = ("wizard", "concern", "chosen", "age_group")
@@ -121,7 +159,7 @@ def questionnaire_list(request):
             request,
             "screening/questionnaire.html",
             {
-                "questionnaires": questionnaires,
+                "groups": catalogue_groups(questionnaires),
                 "continue_notice": continue_notice(user, questionnaires),
                 # A new user has no record to recommend by.
                 "recommendation": catalogue_recommendation(user, questionnaires, state)

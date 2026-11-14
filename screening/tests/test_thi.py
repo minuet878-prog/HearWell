@@ -69,11 +69,11 @@ def scores_for(total):
 
 
 class ThiCatalogTests(ThiTestCase):
-    def test_production_catalog_lists_thi_last_with_its_audience_and_minutes(self):
+    def test_production_catalog_lists_thi_with_its_audience_and_minutes(self):
         # Tests run with DEBUG=False, as the production site does.
         content = self.client.get(reverse("questionnaire_list"), {"choose": "self"})
-        # The last questionnaire, before #463's 幫我選問卷 row.
-        cards = test_layout._cards(content.content.decode())[:-1]
+        # The last of the walkthrough's 其他困擾 group, before 已經戴助聽器's two.
+        cards = test_layout._cards(content.content.decode())[:-2]
         self.assertIn(f'href="{reverse("screening", args=[self.thi.pk])}"', cards[-1])
         text = test_layout._text(cards[-1])
         for part in ("耳鳴對生活的影響（THI）", "給有耳鳴的人，不限年齡。", "25 題", "約 5 分鐘"):

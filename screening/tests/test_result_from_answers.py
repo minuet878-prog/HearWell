@@ -144,7 +144,7 @@ class SectionTests(ResultFromAnswersTestCase):
                 self.assertNotIn("result-since-last", html)
                 # The 照顧旅程's 建議下一步 place holds the save card instead (#496).
                 self.assertEqual(html.count('<div class="result-next">'), 1)
-                self.assertIn('<h2 class="result-next-title">註冊保存這次結果</h2>', html)
+                self.assertIn('<h2 class="result-next-title">註冊保存</h2>', html)
                 for name in ("share_report", "health_report", "my_hearing"):
                     self.assertNotIn(f'href="{reverse(name)}', html)
                 self.assertNotIn("SSQ12-TW", html)

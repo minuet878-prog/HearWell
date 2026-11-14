@@ -173,12 +173,23 @@ class GradedResult(Result):
         code = submission.questionnaire.code
         answers = self._answers()
         level = self.level["level"]
+        next_steps = definition.next_steps.get(level, ())
+        # The 2026-11-14 walkthrough (mockup 3A): a guest sees the step that says to have the
+        # hearing checked outside the fold, in place of the 照顧旅程 card's advice. It is the
+        # reviewed step carrying the guide's link; the fold then leaves it out.
+        advice_step = (
+            next((step for step in next_steps if step.get("second_url") == "guide"), None)
+            if self.is_guest
+            else None
+        )
         # The page reads its total, subscores and level from submission.result itself.
         return {
             "answers": answers,
             "max_score": max_score(code),
             "score_bar": score_bar(definition, self.total, level),
-            "next_steps": definition.next_steps.get(level, ()),
+            "next_steps": next_steps,
+            "advice_step": advice_step,
+            "fold_steps": [step for step in next_steps[1:] if step is not advice_step],
             # A guest's save card (spec #492); "" for a level it has no sentence for.
             "save_reason": definition.save_reasons.get(level, ""),
             "advice": get_advice(level, code),

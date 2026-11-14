@@ -4390,6 +4390,34 @@
     color: var(--color-heading);
   }
 
+  /* The 2026-11-14 walkthrough (mockup 3A): a guest's advice to have the hearing checked, a bar
+     in its level's colour beside it. Not a card: nothing but its link is clickable. */
+  .result-advice {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-left: 0.3125rem solid var(--color-primary);
+    border-radius: var(--radius-small);
+    background-color: var(--color-surface);
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .result-advice > p:first-child {
+    margin-top: 0;
+  }
+
+  .result-advice-normal {
+    border-left-color: var(--color-normal);
+  }
+
+  .result-advice-mild_to_moderate {
+    border-left-color: var(--color-mild);
+  }
+
+  .result-advice-severe {
+    border-left-color: var(--color-severe);
+  }
+
   /* Pale blue, no frame: the 現在這一步's card (ADR 0043); only its button is clickable. */
   .result-next {
     margin-top: 1.25rem;
@@ -5375,6 +5403,21 @@
    空狀態首頁's dashed preview. */
 @layer components {
   /* Side by side on a phone, one under the other once the text is large (#458 D1). */
+  /* The 2026-11-14 walkthrough (mockup 10): 我的紀錄's one questionnaire, where its tabs would be. */
+  .records-questionnaire {
+    margin: 1rem 0 0;
+  }
+
+  /* The 2026-11-14 walkthrough (mockup 6): a guest result just saved, said once on top. */
+  .saved-note {
+    margin: 0 0 1rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--radius-medium);
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
   .journey-tiles {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(8.5rem, 100%), 1fr));
@@ -6088,7 +6131,8 @@
     background-color: var(--color-brand-selected);
   }
 
-  #catalogue-all {
+  /* The 2026-11-14 walkthrough (mockup 8A): each group's title, as 全部問卷's was. */
+  .catalogue-group {
     margin-top: 2rem;
   }
 

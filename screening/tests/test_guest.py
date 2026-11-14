@@ -155,10 +155,15 @@ class AnswerPageTests(GuestTestCase):
             reverse("guest_result", args=[self.hhie_s.code]),
         ):
             with self.subTest(url=url):
+                response = self.client.get(url)
                 self.assertEqual(
-                    self.nav_labels(self.client.get(url)),
+                    self.nav_labels(response),
                     list(test_pages.RedesignLayoutTests.LOGGED_OUT_ITEMS),
                 )
+                # The walkthrough's 篩檢 tab: a guest's answering and result sit under it.
+                content = response.content.decode()
+                nav = re.search(r'<nav aria-label="主要導覽".*?</nav>', content, re.S).group(0)
+                self.assertRegex(nav, r'(?s)aria-current="page"[^>]*>.*?<span>篩檢</span>')
 
     def test_its_questions_are_open_to_a_guest(self):
         # The React answer page reads them from the API.
@@ -380,7 +385,7 @@ class GuestResultPageTests(GuestTestCase):
         self.assertNotIn("result-since-last", html)
         # The 照顧旅程 card's place holds the save card instead (#496).
         self.assertEqual(html.count('<div class="result-next">'), 1)
-        self.assertIn('<h2 class="result-next-title">註冊保存這次結果</h2>', html)
+        self.assertIn('<h2 class="result-next-title">註冊保存</h2>', html)
         for name in ("share_report", "health_report", "my_hearing"):
             self.assertNotIn(f'href="{reverse(name)}', html)
 

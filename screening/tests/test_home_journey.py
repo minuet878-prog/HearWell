@@ -179,6 +179,29 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
                 self.assertEqual("我已經有帳號，登入" in main, signed_out)
 
 
+class SavedNoteTests(HomeJourneyTestCase):
+    """The 2026-11-14 walkthrough (mockup 6): a guest result saved, the save page opens home with
+    from=save, and the home page says so once above its greeting."""
+
+    NOTE = '<p class="saved-note" role="status">✓ 已保存這次結果</p>'
+
+    def test_from_the_save_page_the_note_is_above_the_greeting(self):
+        self.answer()
+        content = self.client.get(f"{reverse('index')}?from=save").content.decode()
+        main = content[content.index("<main") : content.index("</main>")]
+        self.assertIn(self.NOTE, main)
+        self.assertLess(main.index(self.NOTE), main.index("今天只要做一件事"))
+
+    def test_any_other_way_home_has_no_note(self):
+        self.answer()
+        self.assertNotIn("saved-note", self.main())
+
+    def test_without_an_account_no_note(self):
+        self.client.logout()
+        response = self.client.get(f"{reverse('index')}?from=save")
+        self.assertNotContains(response, "saved-note")
+
+
 class JourneyHomeTests(HomeJourneyTestCase):
     def test_only_an_audiogram_shows_the_journey_with_both_tiles_not_yet(self):
         # Spec #453 acceptance 2, #458 D6: grey tiles that are not links.

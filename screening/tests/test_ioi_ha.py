@@ -352,7 +352,7 @@ class IoiHaTests(TestCase):
     # Entry (21-22)
     def test_questionnaire_list_card(self):
         response = self.client.get(reverse("questionnaire_list") + "?choose=self")
-        self.assertContains(response, "<title>選擇問卷\uff5c聽伴</title>")
+        self.assertContains(response, "<title>選問卷\uff5c聽伴</title>")
         main = self._main(response)
         self.assertRegex(
             main, rf'<a[^>]*href="{self.url}"[^>]*>(\s*<[^>]+>)*\s*助聽器使用成效（IOI-HA）'

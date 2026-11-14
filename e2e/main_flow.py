@@ -1396,7 +1396,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             nav.get_by_role("link", name="篩檢").click()
             expect(nav.locator('a[aria-current="page"]')).to_have_text("篩檢")
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_have_count(0)
-            # The six questionnaires, then #463's 幫我選問卷 row.
+            # The six questionnaires in the walkthrough's three groups, 幫我選 above them.
             cards = self.main().locator('a.questionnaire-card[href^="/questionnaire/"]')
             expect(cards).to_have_count(6)
             expect(cards.first).to_contain_text("HHIE-S")
@@ -1412,7 +1412,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             tag = cards.first.locator(".inline-block")
             self.assertEqual(tag.evaluate("e => e.getClientRects().length"), 1)
             self.assertLessEqual(tag.evaluate("e => e.getBoundingClientRect().right"), 320)
-            self.main().get_by_role("link", name="幫我選問卷").click()
+            self.main().get_by_role("link", name="不確定做哪一份？幫我選").click()
             expect(self.main().get_by_role("group", name="您最想了解什麼？")).to_be_visible()
             self.main().get_by_role("link", name="上一步").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/questionnaire_list")
@@ -4590,7 +4590,12 @@ class BottomTabsTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.page.goto(f"{self.live_server_url}/")
             self.click_through(
                 self.nav(),
-                (("了解", "/learn"), ("登入", "/login"), ("註冊", "/register"), ("首頁", "/")),
+                (
+                    ("篩檢", "/questionnaire_list"),
+                    ("了解", "/learn"),
+                    ("登入", "/login"),
+                    ("首頁", "/"),
+                ),
             )
 
 
@@ -14550,7 +14555,7 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
 
     def register_from_the_card(self):
         card = self.main().locator(".result-next")
-        expect(card.get_by_role("heading", name="註冊保存這次結果")).to_be_visible()
+        expect(card.get_by_role("heading", name="註冊保存", exact=True)).to_be_visible()
         expect(card).to_contain_text("還留 7 天")
         card.get_by_role("link", name="註冊保存").click()
         self.page.get_by_label("使用者名稱").fill("e2e_guest")
@@ -14565,7 +14570,8 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.register_from_the_card()
             self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
             # Saved without being asked, then the home page's 照顧旅程 (the 2026-11-14 walkthrough).
-            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
             expect(self.main().locator("a.journey-tile")).to_contain_text("12 分")
             record = Submission.objects.get(user__username="e2e_guest")
             self.assertEqual(record.result.total, 12)
@@ -14981,7 +14987,8 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
             self.main().get_by_label("使用者名稱").fill(self.username)
             self.main().get_by_role("button", name="下一步").click()
             self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/")
+            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
             expect(self.main().locator("a.journey-tile")).to_contain_text("20 分")
             record = Submission.objects.get(user__username=self.username)
             self.assertEqual(record.result.total, 20)

@@ -8,7 +8,7 @@ from screening.tests import test_layout
 from screening.tests.helpers import consented_user, fake_definition, register
 from screening.views.answering import list_order
 
-GUIDE = "自行選擇問卷"
+GUIDE = "選問卷</h1>"
 ICON = re.compile(r'<span class="questionnaire-icon" aria-hidden="true" data-icon="([a-z]+)">')
 # #463: the count and minutes in one line of muted words, where they were tags.
 FACTS = re.compile(r"<span>(\d+ 題・約 \d+ 分鐘)</span>")
@@ -76,14 +76,16 @@ class QuestionnaireCardTests(TestCase):
         card = self._card(self.hhie_s)
         self.assertEqual(card.count("<a"), 1)
         text = test_layout._text(card)
-        for part in ("聽力對生活的影響（HHIE-S）", "適合 65 歲以上的長輩。", "10 題", "約 3 分鐘"):
+        # The 2026-11-14 walkthrough: under 聽力對生活的影響, named by its age.
+        for part in ("65 歲以上（HHIE-S）", "適合 65 歲以上的長輩。", "10 題", "約 3 分鐘"):
             self.assertIn(part, text)
 
-    # 5
-    def test_order_hhie_s_then_ioi_ha_then_others(self):
+    # 5, as grouped since the 2026-11-14 walkthrough: life impact, 其他困擾 (one with no concern
+    # among them), then hearing aids.
+    def test_order_hhie_s_then_others_then_ioi_ha(self):
         hrefs = re.findall(r'class="link-card[^"]*" href="(/questionnaire/[^"]+)"', self._main())
         expected = [
-            reverse("screening", args=[q.pk]) for q in (self.hhie_s, self.ioi_ha, self.other)
+            reverse("screening", args=[q.pk]) for q in (self.hhie_s, self.other, self.ioi_ha)
         ]
         self.assertEqual(hrefs, expected)
 
