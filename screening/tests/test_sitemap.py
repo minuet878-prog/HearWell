@@ -24,6 +24,7 @@ class SitemapTests(TestCase):
     def test_the_sitemap_lists_the_public_pages_and_nothing_else(self):
         response = self.client.get("/sitemap.xml")
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/xml")
         locations = [entry["loc"] for entry in sitemap_entries(response)]
         expected = [f"https://testserver{path}" for path in public_pages.public_urls()]
         self.assertCountEqual(locations, expected)
@@ -55,10 +56,13 @@ class SitemapTests(TestCase):
     def test_a_topic_listing_no_question_is_left_out(self):
         # Spec #583 acceptance 6: 網站怎麼用 has no question yet (2026-11-16).
         locations = [entry["loc"] for entry in sitemap_entries(self.client.get("/sitemap.xml"))]
+        listing = {}
         for slug, _name in content.TOPICS:
-            listed = bool(self.client.get(f"/qa/topic/{slug}").context["faqs"])
+            listing[slug] = bool(self.client.get(f"/qa/topic/{slug}").context["faqs"])
             with self.subTest(topic=slug):
-                self.assertEqual(f"https://testserver/qa/topic/{slug}" in locations, listed)
+                self.assertEqual(f"https://testserver/qa/topic/{slug}" in locations, listing[slug])
+        # The topic that checks the empty side; change this line the day it gets a question.
+        self.assertIn(False, listing.values())
 
 
 class RobotsTxtTests(TestCase):

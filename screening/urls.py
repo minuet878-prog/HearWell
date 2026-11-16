@@ -2,7 +2,6 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import path
 from django.views.generic import TemplateView
 
-from .public_pages import PublicPagesSitemap
 from .views import (
     accounts,
     answering,
@@ -27,7 +26,12 @@ from .views import (
 urlpatterns = [
     path("", home.index, name="index"),
     # The 公開頁面 for search engines (spec #583); Django marks the sitemap itself noindex.
-    path("sitemap.xml", sitemap, {"sitemaps": {"public": PublicPagesSitemap}}, name="sitemap"),
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": {"public": crawlers.PublicPagesSitemap}},
+        name="sitemap",
+    ),
     path("robots.txt", crawlers.robots_txt, name="robots_txt"),
     path("login", sign_in.LoginView.as_view(), name="login"),
     path("login/google", sign_in.google_start, name="google_start"),
