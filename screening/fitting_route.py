@@ -29,7 +29,7 @@ STOPS = (
 WEARING_STOPS = STOPS[STOPS.index("after-fitting") :]
 # The stops a 看過 makes 已完成 (spec #291 Q4); the other chapters are done by an answer.
 DONE_BY_VIEWING = frozenset({"before-you-go", "types-and-prices"})
-# The certificate answers that finish 身障鑑定與鑑定醫院 (spec #291 Q2); 正在申請鑑定 stays.
+# The certificate answers that finish 身障鑑定與鑑定醫院 (spec #291 Q2); 正在申請 stays.
 CERTIFICATE_DONE = frozenset({Certificate.YES, Certificate.NO_SUBSIDY})
 # The 補助站 (GLOSSARY, ADR 0063): folded away until the person answers that they have a
 # certificate or are applying, or answers one of them; 沒有 keeps them folded.

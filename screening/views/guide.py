@@ -181,6 +181,7 @@ class RouteStop:
     action: tuple[str, str] | None = None  # the 目前這一站's button
     notes: tuple[str, ...] = ()  # dated (#288) or fixed (#294) wordings under the title
     answer: str = ""  # the user's answer in short (#293)
+    answer_links: tuple[tuple[str, str], ...] = ()  # (wording, url) under the answer (#597)
     questions: tuple = ()  # the stop's question forms shown open (#293, #294)
     editable: bool = False  # 修改 opens questions answered but not shown (#294)
     gap: str = ""  # said on the line on to the next stop (#296)
@@ -223,8 +224,8 @@ class RouteStop:
 # #293: each answer in short, under its stop.
 CERTIFICATE_ANSWERS = {
     models.Certificate.YES: "有身障證明",
-    models.Certificate.APPLYING: "正在申請鑑定",
-    models.Certificate.NO_SUBSIDY: "不申請身障補助",
+    models.Certificate.APPLYING: "打算申請或正在申請鑑定",  # #597 (spec #593)
+    models.Certificate.NO_SUBSIDY: "沒有身障證明",
 }
 FORM_9_ANSWERS = {True: "九號表完成了", False: "九號表還沒完成"}  # #294
 FORM_25_ANSWERS = {True: "二十五號表完成了", False: "二十五號表還沒完成"}  # #296
@@ -365,6 +366,11 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
     ):
         marks.append("估算未達門檻")
         links.append(("看沒有身障證明時", f"{form_9}#without-certificate"))
+    # #597 (spec #593 acceptance 21, the #595 mockup): 沒有 always leads on to the help there is
+    # without a certificate, under the answer, whatever the estimate.
+    answer_links = ()
+    if slug == "assessment" and subsidy_declined(state.aid):
+        answer_links = (("看沒有身障證明時", f"{form_9}#without-certificate"),)
     if slug == "form-9" and state.reapply_on:
         notes.append(f"{state.reapply_on:%Y/%m/%d} 起可以再申請補助")  # #284 acceptance 17
     if slug == "form-9" and state.wearing:
@@ -405,6 +411,7 @@ def _route_stop(state, user, slug, title, url, edit=None, question=None):
         action=action,
         notes=tuple(notes),
         answer=answer,
+        answer_links=answer_links,
         questions=shown,
         editable=editable,
         gap=gap,

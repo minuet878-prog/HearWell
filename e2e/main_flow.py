@@ -3306,11 +3306,11 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             card = self.main().get_by_role("region", name="看完了嗎？")
             expect(card.get_by_role("group", name=question)).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment question card")
-            card.get_by_role("button", name="還沒有，正在申請鑑定").click()
+            card.get_by_role("button", name="還沒有，打算申請或正在申請鑑定").click()
             expect(self.page).to_have_url(f"{self.live_server_url}/guide/assessment#stop-question")
             expect(self.main().get_by_role("region", name="看完了嗎？")).to_have_count(0)
             # #294: the card says what was kept, and its button goes back to the route.
-            kept = self.main().get_by_role("region", name="已記下：正在申請鑑定")
+            kept = self.main().get_by_role("region", name="已記下：打算申請或正在申請鑑定")
             expect(kept).to_be_in_viewport()
             expect(kept.get_by_role("link", name="修改身障鑑定與鑑定醫院的回答")).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide/assessment answered card")
@@ -3319,7 +3319,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.page).to_have_url(f"{self.live_server_url}/guide#contents-title")
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("身障鑑定與鑑定醫院")
-            expect(here.locator(".route-answer")).to_have_text("正在申請鑑定")
+            expect(here.locator(".route-answer")).to_have_text("打算申請或正在申請鑑定")
             expect(here.get_by_role("group", name=question)).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide open question")
             here.get_by_role("button", name="有", exact=True).click()
@@ -3339,7 +3339,7 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             assessment = self.main().locator('[data-stop="assessment"]')
             expect(assessment.get_by_role("group", name=question)).to_be_visible()
             self.assert_fits_a_phone_at_double_text_size("/guide editing the question")
-            assessment.get_by_role("button", name="沒有，不申請身障補助").click()
+            assessment.get_by_role("button", name="沒有", exact=True).click()
 
             # #596 (ADR 0063): the 補助站 fold away into the line under the route.
             for slug in ("form-9", "notice", "form-25", "payout"):
@@ -3348,6 +3348,13 @@ class HearingAidGuideTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestC
             expect(self.main().locator(".is-na")).to_have_count(0)
             here = self.main().locator('[aria-current="step"]')
             expect(here).to_contain_text("助聽器的種類與價格")
+            # #597 (spec #593 acceptance 21): under the answer, the help without a certificate.
+            assessment = self.main().locator('[data-stop="assessment"]')
+            expect(assessment.locator(".route-answer")).to_have_text("沒有身障證明 修改")
+            assessment.get_by_role("link", name="看沒有身障證明時").click()
+            expect(self.page).to_have_url(
+                f"{self.live_server_url}/guide/form-9#without-certificate"
+            )
 
     # #294 (spec #291 e2e, acceptance 8, 9, 10, 27; no JavaScript, story 40): with a
     # certificate, answer 九號表 on the route, then 等待核定公文 one question at a time.
@@ -7930,7 +7937,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             self.visit(True, "/guide/assessment")
             question = self.main().get_by_role("region", name="看完了嗎？")
             self.assert_titled_part(question)
-            for answer in ("有", "還沒有，正在申請鑑定", "沒有，不申請身障補助"):
+            for answer in ("有", "還沒有，打算申請或正在申請鑑定", "沒有"):
                 with self.subTest(answer=answer):
                     expect(question.get_by_role("button", name=answer, exact=True)).to_be_visible()
             self.visit(True, lambda test: test.answered_chapter())
