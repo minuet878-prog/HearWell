@@ -14366,6 +14366,33 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                         else:
                             expect(opened).to_have_count(folds.count())
 
+    # Readability batch 2 (the owner's A): 要怎麼辦？ shows the six steps' titles and time limits
+    # and step 4's warning; each step's words show once 看每一步的說明 is opened.
+    def test_form_9_steps_in_sight_their_words_behind_the_fold(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            section = self.main().locator("section", has=self.page.locator("#steps-title"))
+            expect(section.locator("ol.step-list > li")).to_have_count(6)
+            for words in (
+                "做評估，拿到九號表",
+                "到公所申請",
+                "等核定通知",
+                "購買並請款",
+                "使用效益驗證",
+                "核銷",
+                "3 個月內有效",
+                "6 個月內",
+                "先拿到核定通知再買，沒核定就先買的不補助。",
+            ):
+                with self.subTest(words=words):
+                    expect(section.get_by_text(words, exact=True)).to_be_visible()
+            words = section.get_by_text("找聽力師或縣市輔具中心。九號表 3 個月內有效。")
+            expect(words).to_be_hidden()
+            section.get_by_text("看每一步的說明", exact=True).click()
+            expect(words).to_be_visible()
+            expect(section.get_by_text("身心障礙者輔具費用補助辦法").first).to_be_visible()
+
     def test_a_chapter_opened_at_its_top_has_its_parts_folded(self):
         self.open()
         with self.saving_artifacts():

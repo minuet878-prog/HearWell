@@ -16,8 +16,8 @@ FORM_9 = (
     "中度以上視覺障礙，而且好的那一耳聽力損失大於 40 dB 的人。",
     "最近一年在國內住超過 183 天。",
     "要怎麼辦？",
-    # #467 (H2): the sentence in sight, the six steps behind 看更多.
-    "重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
+    # Readability batch 2 (the owner's A): the six steps in sight, their words behind
+    # 看每一步的說明, the warning once, in step 4.
     "做評估，拿到九號表",
     "找聽力師或縣市輔具中心。九號表 3 個月內有效。",
     "到公所申請",
@@ -26,6 +26,7 @@ FORM_9 = (
     "主管機關收到評估報告後，10 天內會核定。",
     "購買並請款",
     "收到核定通知後 6 個月內。",
+    "先拿到核定通知再買，沒核定就先買的不補助。",
     "使用效益驗證",
     "買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，"
     "拿到二十五號表。 看二十五號表",
@@ -80,7 +81,7 @@ PORTAL = ("輔具資源入口網", "https://newrepat.sfaa.gov.tw/home/repat-cent
 # that must be linked before its section ends (research.md §2, §3).
 SOURCED_BLOCKS = (
     ("最近一年在國內住超過 183 天。", (RULES, TABLE)),
-    ("重要：一定要先拿到核定通知再買，沒核定就先買的不補助。", (RULES, TABLE)),
+    ("先拿到核定通知再買，沒核定就先買的不補助。", (RULES, TABLE)),
     ("雙耳一起申請或分開申請，都算同一項。", (RULES, TABLE)),
     ("再次申請簡易型，不需要重新評估。", (TABLE,)),
     ("向設籍或居住的縣市政府申請。", (LOW_INCOME_ELDERLY,)),
@@ -182,31 +183,44 @@ class Form9ChapterTests(TestCase):
         content = self.client.get(self.url).content.decode()
         start = content.index('<h2 id="steps-title"')
         steps = content[start : content.index("</section>", start)]
-        self.assertIn("重要：一定要先拿到核定通知再買，沒核定就先買的不補助。", steps)
+        self.assertIn("先拿到核定通知再買，沒核定就先買的不補助。", steps)
         form_25 = reverse("guide_chapter", args=["form-25"])
         self.assertIn(f'<a href="{form_25}">看二十五號表</a>', steps)
 
-    # #467 (H2): the warning is the sentence in sight, the six steps one list behind 看更多 (it
-    # was a list split by the warning after step 3, #259).
-    def test_process_is_the_warning_then_a_step_list_behind_more(self):
+    # Readability batch 2 (the owner's A, mockup-readability-batch2.html): one list of the six
+    # steps in sight, each step's words folded behind 看每一步的說明 after it (the fold holds the
+    # sources; site.css hides the words while it is shut); the warning once, inside step 4. It
+    # was the warning in sight and the list behind 看更多 (#467 H2).
+    def test_process_is_the_six_steps_in_sight_their_words_behind_a_fold(self):
         content = self.client.get(self.url).content.decode()
         start = content.index('<h2 id="steps-title"')
         steps = content[start : content.index("</section>", start)]
-        warning = steps.index("重要：一定要先拿到核定通知再買")
-        fold = steps.index("<summary>看更多</summary>")
+        self.assertNotIn("tip-box", steps)
+        self.assertEqual(steps.count('<ol class="step-list"'), 1)
         first = steps.index('<ol class="step-list" role="list">')
-        self.assertLess(warning, fold)
-        self.assertLess(fold, first)
-        self.assertEqual(steps[first:].count("<li>"), 6)
+        fold = steps.index("<details")
+        self.assertLess(first, fold)
+        self.assertIn("data-step-details", steps[fold : steps.index(">", fold)])
+        self.assertIn("<summary>看每一步的說明</summary>", steps[fold:])
+        self.assertIn("來源：", steps[fold:])
+        items = re.findall(r"<li>(.*?)</li>", steps[first:fold], re.S)
+        self.assertEqual(len(items), 6)
         # The circles carry the numbers for screen readers too: the list's own markers are off.
         numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
         self.assertEqual(numbers, ["1", "2", "3", "4", "5", "6"])
+        for number, item in enumerate(items, 1):
+            with self.subTest(step=number):
+                self.assertEqual(item.count('<span class="step-detail">'), 1)
+        self.assertEqual(steps.count("先拿到核定通知再買"), 1)
+        self.assertIn("先拿到核定通知再買，沒核定就先買的不補助。", items[3])
 
     def test_each_step_has_its_time_limit_tag(self):
         content = self.client.get(self.url).content.decode()
         start = content.index('<h2 id="steps-title"')
         steps = content[start : content.index("</section>", start)]
         items = re.findall(r"<li>(.*?)</li>", steps, re.S)
+        # Not hidden from screen readers: with the words folded, the tag is the time limit.
+        self.assertNotIn('class="step-when" aria-hidden', steps)
         tags = [re.findall(r'<span class="step-when"[^>]*>(.*?)</span>', item) for item in items]
         expected = [
             ["3 個月內有效"],
