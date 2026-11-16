@@ -16032,3 +16032,109 @@ class AudiogramDemoTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerT
                 self.assertGreaterEqual(box["height"], 44)
                 self.assertGreaterEqual(box["width"], 44)
                 self.assertGreaterEqual(self.font_size(self.demo_button()), self.rem())
+
+
+class AudiogramMissedMarksTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#619 (spec #611 R1, the #613 mockup's 6A): on 確認存檔, which air frequencies one ear has
+    and the other has not, in a tip box under the counts and over 存檔. Every combination of the
+    rule is audiogram.test.js's; this is the page in a real browser: saving goes ahead, marks
+    added on the way back change it, and it fits a phone."""
+
+    open_step = AudiogramReadingTest.open_step
+    TABLE = AudiogramReadingTest.TABLE
+    SIX = (250, 500, 1000, 2000, 4000, 8000)
+    LAST = "報告上本來就沒有的話，直接存檔就好。"
+
+    def setUp(self):
+        self.sign_in(consented_user(username="audiogram_missed_e2e"))
+
+    def tip(self):
+        return self.main().locator(".audiogram-missed")
+
+    def mark(self, symbol, frequencies):
+        """In the value table, which the confirm step and each ear step have."""
+        for frequency in frequencies:
+            self.main().get_by_label(f"{symbol} {frequency} Hz", exact=True).select_option("40")
+
+    def confirm_with(self, right, left, width=390):
+        self.open_step(4, width)
+        self.main().get_by_text(self.TABLE).click()
+        self.mark("右耳氣導", right)
+        self.mark("左耳氣導", left)
+
+    # Acceptance 50, 57, 58 and 59.
+    def test_says_what_one_ear_is_missing_and_saves_as_usual(self):
+        self.open("/audiograms/new")
+        with self.saving_artifacts():
+            for name, value in (("民國年", "115"), ("月", "1"), ("日", "10")):
+                self.main().get_by_label(name, exact=True).fill(value)
+            for _ in range(2):
+                self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            # Acceptance 59: the same kind of box as 遮蔽's tip on the ear step.
+            mask_tip = self.main().locator(".tip-box").filter(has_text="遮蔽是檢查時")
+            other_tip = self.style(mask_tip, "backgroundColor")
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            self.main().get_by_text(self.TABLE).click()
+            self.mark("右耳氣導", self.SIX)
+            self.mark("左耳氣導", (250, 500, 1000))
+            expect(self.tip().locator("p")).to_have_text(
+                ["左耳沒有標 2000、4000、8000 Hz。", self.LAST]
+            )
+            self.assertEqual(self.style(self.tip(), "backgroundColor"), other_tip)
+            expect(self.main().get_by_role("alert")).to_have_count(0)
+            # Under the two ears' counts, over 存檔.
+            left_count = self.main().get_by_text("左耳：氣導 3 個、骨導 0 個")
+            save = self.main().get_by_role("button", name="存檔", exact=True)
+            tip = self.tip().bounding_box()
+            count_box = left_count.bounding_box()
+            self.assertGreaterEqual(tip["y"], count_box["y"] + count_box["height"])
+            self.assertLessEqual(tip["y"] + tip["height"], save.bounding_box()["y"])
+
+            # Acceptance 58: back to the left ear for 2000, then on to confirm again.
+            self.main().get_by_role("button", name="改左耳").click()
+            self.main().get_by_text(self.TABLE).click()
+            self.mark("左耳氣導", (2000,))
+            self.main().get_by_role("button", name=AUDIOGRAM_FORWARD).click()
+            expect(self.tip().locator("p")).to_have_text(["左耳沒有標 4000、8000 Hz。", self.LAST])
+
+            # Acceptance 57: one press saves, nothing else asked.
+            save.click()
+            expect(self.page).to_have_url(re.compile(r"/audiograms/\d+$"))
+            audiogram = self.user.audiograms.get()
+            self.assertEqual(audiogram.points.count(), 10)
+
+    # Acceptance 52, 53 and 54 on the page: a sentence each ear, nothing when they match or one
+    # ear has nothing marked.
+    def test_both_ears_matching_and_one_ear_empty(self):
+        self.confirm_with(right=(250, 500, 1000, 2000, 4000, 6000), left=(250, 500, 1000, 8000))
+        with self.saving_artifacts():
+            expect(self.tip().locator("p")).to_have_text(
+                ["右耳沒有標 8000 Hz。", "左耳沒有標 2000、4000、6000 Hz。", self.LAST]
+            )
+            self.mark("右耳氣導", (8000,))
+            self.mark("左耳氣導", (2000, 4000, 6000))
+            expect(self.tip()).to_have_count(0)
+        self.confirm_with(right=self.SIX, left=())
+        with self.saving_artifacts():
+            expect(self.main().get_by_text("左耳：還沒有標任何點")).to_be_visible()
+            expect(self.tip()).to_have_count(0)
+
+    # Acceptance 60: at 320 and 390px, at the usual and at 200% text, nothing scrolls sideways.
+    def test_fits_a_phone_at_double_text_size(self):
+        for width in (320, 390):
+            for double in (False, True):
+                with self.subTest(width=width, double_text=double):
+                    self.confirm_with(
+                        right=(250, 500, 1000, 2000, 4000, 6000), left=(250, 8000), width=width
+                    )
+                    if double:
+                        self.double_text()
+                    expect(self.tip().locator("p")).to_have_count(3)
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+                    box = self.tip().bounding_box()
+                    self.assertGreaterEqual(box["x"], 0)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    widths = self.tip().evaluate("el => [el.scrollWidth, el.clientWidth]")
+                    self.assertLessEqual(widths[0], widths[1])

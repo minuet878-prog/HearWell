@@ -1060,3 +1060,86 @@ describe("demo under 怎麼標記 (#618)", () => {
     expect(screen.getByText("報告上符號下面有箭頭（無反應），就往下拖出圖外。")).toBeTruthy();
   });
 });
+
+// #619 (spec #611 R1, the #613 mockup's 6A): on the confirm step, which air frequencies one ear
+// has and the other has not; only a tip, never in the way of saving.
+describe("missed marks on the confirm step (#619)", () => {
+  const air = (ear, frequencies) =>
+    frequencies.map((frequency) => ({ ear, conduction: "air", frequency, db: 40, no_response: false, masked: false }));
+  const renderConfirm = (initialPoints) => {
+    render(
+      <AudiogramApp
+        today={TODAY}
+        csrfToken="csrf-token"
+        navigate={navigate}
+        audiogramId={7}
+        initialPoints={initialPoints}
+        initialTestedOn="2026-01-10"
+      />,
+    );
+    forward();
+    forward();
+    forward();
+  };
+  const tip = () => document.querySelector(".audiogram-missed");
+  const sentences = () => [...tip().querySelectorAll("p")].map((p) => p.textContent);
+  const SIX = [250, 500, 1000, 2000, 4000, 8000];
+  const LAST = "報告上本來就沒有的話，直接存檔就好。";
+
+  it("says what the left ear is missing under the counts, over 存檔, as a tip box (acceptance 50, 59)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    expect(sentences()).toEqual(["左耳沒有標 2000、4000、8000 Hz。", LAST]);
+    expect(tip().classList.contains("tip-box")).toBe(true);
+    expect(tip().classList.contains("alert")).toBe(false);
+    expect(tip().closest("[role=alert]")).toBeNull();
+    expect(tip().querySelector("[role]")).toBeNull();
+    expect(tip().querySelector("svg")).toBeNull();
+    const leftCount = screen.getByText("左耳：氣導 3 個、骨導 0 個").closest("p");
+    const saveButton = screen.getByRole("button", { name: "存檔" });
+    expect(leftCount.compareDocumentPosition(tip()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tip().compareDocumentPosition(saveButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("each ear missing different frequencies is a sentence each, the last one once (acceptance 52)", () => {
+    renderConfirm([...air("right", [250, 500, 1000, 2000, 4000, 6000]), ...air("left", [250, 500, 1000, 8000])]);
+    expect(sentences()).toEqual(["右耳沒有標 8000 Hz。", "左耳沒有標 2000、4000、6000 Hz。", LAST]);
+  });
+
+  it("no tip when the air frequencies match, or an ear has nothing marked (acceptance 53, 54)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", SIX)]);
+    expect(tip()).toBeNull();
+    cleanup();
+    renderConfirm(air("right", SIX));
+    expect(tip()).toBeNull();
+    expect(screen.getByText("左耳：還沒有標任何點")).toBeTruthy();
+  });
+
+  it("is above the error list, and saves as usual with it shown (acceptance 57)", async () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 500 }));
+    save();
+    const error = await screen.findByRole("alert");
+    expect(tip().compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(error.textContent).not.toContain("沒有標");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ id: 7 }) }));
+    save();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/audiograms/7"));
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows marks added on the way back, and goes once they match (acceptance 58)", () => {
+    renderConfirm([...air("right", SIX), ...air("left", [250, 500, 1000])]);
+    fireEvent.click(screen.getByRole("button", { name: "改左耳" }));
+    pickSymbol("左耳氣導");
+    drag(2000, 40, 40);
+    forward();
+    expect(sentences()).toEqual(["左耳沒有標 4000、8000 Hz。", LAST]);
+    fireEvent.click(screen.getByRole("button", { name: "改左耳" }));
+    pickSymbol("左耳氣導");
+    drag(4000, 40, 40);
+    drag(8000, 40, 40);
+    forward();
+    expect(tip()).toBeNull();
+  });
+});

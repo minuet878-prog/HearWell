@@ -4,7 +4,7 @@ import AudiogramChart from "./AudiogramChart.jsx";
 import AudiogramDemo from "./AudiogramDemo.jsx";
 import AudiogramReading, { readingText } from "./AudiogramReading.jsx";
 import FoldSummary from "./FoldSummary.jsx";
-import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, place, pointKey } from "./audiogram.js";
+import { DB_MAX, DB_MIN, SYMBOLS, frequenciesFor, missedAir, place, pointKey } from "./audiogram.js";
 import { newReceiptKey } from "./receipt-key.js";
 
 const FAILED = "存檔失敗，請再按一次存檔";
@@ -267,6 +267,17 @@ export default function AudiogramApp({
     </>
   );
 
+  // #619 (R1, the #613 mockup's 6A): a tip, not a check; saving goes ahead with it shown.
+  const missed = missedAir(Object.values(points));
+  const missedTip = missed.length > 0 && (
+    <div className="tip-box audiogram-missed">
+      {missed.map(({ ear, frequencies }) => (
+        <p key={ear} className="mb-0">{`${EAR_LABEL[ear]}沒有標 ${frequencies.join("、")} Hz。`}</p>
+      ))}
+      <p>報告上本來就沒有的話，直接存檔就好。</p>
+    </div>
+  );
+
   const errorList = errors.length > 0 && (
     <div role="alert" className="alert alert-danger">
       {errors.map((message) => (
@@ -418,6 +429,7 @@ export default function AudiogramApp({
               <button type="button" className="btn btn-link" onClick={() => goTo(EAR_STEP[side])}>{`改${EAR_LABEL[side]}`}</button>
             </p>
           ))}
+          {missedTip}
           {errorList}
           <button type="button" className={`btn btn-primary btn-lg w-full mb-2${saved ? " is-sent" : ""}`} disabled={sending} onClick={save}>
             {saved ? (
