@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest import mock
 
 from django.conf import settings
@@ -10,7 +10,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from screening.models import Feedback, FeedbackNotice, ReportShare, User
+from screening import models
+from screening.forms import RESET_WINDOW
+from screening.models import Consent, Feedback, FeedbackNotice, ReportShare, User
+from screening.models.feedback import FEEDBACK_KEPT_FOR
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 
 
@@ -334,3 +338,71 @@ class FeedbackNoticeTests(TestCase):
         Feedback.objects.bulk_create(Feedback(text="之前的") for _ in range(100))
         self.send(REMOTE_ADDR="10.0.0.3")
         self.assertEqual(mail.outbox, [])
+
+
+class FeedbackPrivacyTests(TestCase):
+    """Spec #633 (#641, acceptance 44-47, ADR 0064): the privacy notice says how 意見回饋 is kept,
+    in the owner's approved words; the date moves but the version stays 8."""
+
+    def setUp(self):
+        page = self.client.get(reverse("privacy")).content.decode()
+        self.main = page[page.index("<main") : page.index("</main>")]
+
+    def part(self, title_id, next_id):
+        return self.main[self.main.index(f'id="{title_id}"') : self.main.index(f'id="{next_id}"')]
+
+    def test_a_part_of_its_own_after_the_question_log(self):
+        self.assertIn('<h2 id="feedback-title" class="fold-row-title">意見回饋</h2>', self.main)
+        self.assertLess(
+            self.main.index('id="question-log-title"'), self.main.index('id="feedback-title"')
+        )
+        self.assertLess(
+            self.main.index('id="feedback-title"'), self.main.index('id="storage-title"')
+        )
+
+    def test_it_says_what_is_kept_anonymously_how_long_and_how_to_delete(self):
+        part = test_layout._text(self.part("feedback-title", "storage-title"))
+        for words in (
+            "您寫的內容",
+            "您填的 email（有填才有）",
+            "您是從哪一種頁面過來的，例如「結果頁」（不含網址）",
+            "送出的時間",
+            "意見回饋是匿名的：不記錄您的帳號、IP 位址",
+            "「下載我的資料」不包含意見回饋",
+            "我們會提早刪除那一則",
+            "附上當時填的 email",
+            "請不要在意見回饋裡輸入姓名、電話、身分證字號、病歷號碼",
+            "通知信給營運者，信裡不包含您寫的內容和 email",
+        ):
+            with self.subTest(words=words):
+                self.assertIn(words, part)
+
+    def test_the_days_and_the_hour_are_the_programs(self):
+        part = test_layout._text(self.part("feedback-title", "storage-title"))
+        self.assertIn(f"意見回饋保存 {FEEDBACK_KEPT_FOR.days} 天後自動刪除", part)
+        self.assertEqual(RESET_WINDOW, 60 * 60)
+        self.assertIn("IP 位址換算過的代碼（不是原文），一小時後自動清除", part)
+        storage = self.part("storage-title", "recipients-title")
+        self.assertIn(f"<li>意見回饋保存 {FEEDBACK_KEPT_FOR.days} 天後自動刪除。</li>", storage)
+        self.assertIn("超過 90 天的提問紀錄和意見回饋），在備份中最多再保留 10 天", storage)
+
+    def test_why_it_is_kept(self):
+        why = self.part("why-title", "collected-title")
+        self.assertIn("<li>看大家在意見回饋寫了什麼，修正網站，並回覆想收到回覆的人。</li>", why)
+
+    def test_the_forgot_password_part_still_holds(self):
+        part = test_layout._text(self.part("password-reset-title", "question-log-title"))
+        self.assertIn("只有您自己申請時才寄，網站不寄其他信。", part)
+
+    def test_the_date_moved_and_the_version_stays_8(self):
+        self.assertEqual(models.CONSENT_VERSION, 8)
+        self.assertGreaterEqual(models.PRIVACY_UPDATED_ON, date(2026, 11, 16))
+        updated_on = f"{models.PRIVACY_UPDATED_ON:%Y/%m/%d}"
+        self.assertIn(f"第 8 版，{updated_on} 更新", self.main)
+
+    def test_who_agreed_to_version_8_before_is_not_asked_again(self):
+        user = User.objects.create_user(username="feedback_agreed_before")
+        Consent.objects.create(user=user, version=8)
+        Consent.objects.filter(user=user).update(agreed_at=timezone.now() - timedelta(days=30))
+        self.client.force_login(user)
+        self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
