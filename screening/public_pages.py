@@ -13,6 +13,9 @@ from screening.qa_assistant import content
 from screening.views.guide import GUIDE_CHAPTERS
 from screening.views.qa_assistant import topic_faqs
 
+# The protocol of every full address this site gives out: canonical links, the sitemap, robots.txt.
+PROTOCOL = "https"
+
 # One address each, by URL name: (title, description) as the owner confirmed them (#587).
 SINGLE_PAGES = {
     "index": (
@@ -88,7 +91,7 @@ def pages():
     """{path: PublicPage} of every 公開頁面. Pages are defined in code, so they never change while
     the site runs."""
     pages = [
-        *(PublicPage(reverse(name), *words) for name, words in SINGLE_PAGES.items()),
+        *(PublicPage(reverse(name), *head) for name, head in SINGLE_PAGES.items()),
         *(
             PublicPage(
                 reverse("guide_chapter", args=[chapter.slug]),

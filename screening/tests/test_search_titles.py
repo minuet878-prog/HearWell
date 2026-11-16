@@ -11,7 +11,6 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.qa_assistant import content
-from screening.qa_assistant.content import Faq
 
 TABLE = Path(settings.BASE_DIR) / "docs/planning/found-by-family/search-basics-titles.md"
 UNCHANGED = "（不改）"
@@ -19,20 +18,20 @@ UNCHANGED = "（不改）"
 
 def table_rows():
     """The table's rows as lists of cells, the row's key (A1, D6…) first."""
-    for line in TABLE.read_text().splitlines():
+    for line in TABLE.read_text(encoding="utf-8").splitlines():
         if re.match(r"\| [A-E]\d+ \|", line):
             yield [cell.strip() for cell in line.strip("|").split("|")]
 
 
 def confirmed_pages():
-    """{path: (title, description)} for each page row with an address; an unchanged title is
-    None. Rows the owner confirmed only: 可 in the last cell."""
+    """{path: (title, description)} for each page row with an address; an unchanged title is the
+    current one. Rows the owner confirmed only: 可 in the last cell."""
     pages = {}
-    for _key, address, _current, title, description, status in (
+    for _key, address, current, title, description, status in (
         row for row in table_rows() if len(row) == 6
     ):
         if address.startswith("`") and status == "可" and description != "—":
-            pages[address.strip("`")] = (None if title == UNCHANGED else title, description)
+            pages[address.strip("`")] = (current if title == UNCHANGED else title, description)
     return pages
 
 
@@ -51,10 +50,7 @@ class ConfirmedWordingTests(TestCase):
         self.assertEqual(len(pages), 22)  # A1–A4, B1–B7, C1–C7, D1, D3–D5
         for path, (title, description) in pages.items():
             with self.subTest(path=path):
-                shown_title, shown_description = head_of(self.client.get(path))
-                if title is not None:
-                    self.assertEqual(shown_title, title)
-                self.assertEqual(shown_description, description)
+                self.assertEqual(head_of(self.client.get(path)), (title, description))
 
     def test_each_answer_shows_its_question_and_the_confirmed_description(self):
         # Spec #583 acceptance 16: the title is the question and 聽伴, the description its sentence.
@@ -72,10 +68,12 @@ class ConfirmedWordingTests(TestCase):
 
     def test_a_question_without_a_description_cannot_be_written(self):
         # A new question must say its description: leaving it out stops the site from starting.
-        written = {field.name: getattr(content.FAQS[0], field.name) for field in fields(Faq)}
+        written = {
+            field.name: getattr(content.FAQS[0], field.name) for field in fields(content.Faq)
+        }
         del written["description"]
         with self.assertRaises(TypeError):
-            Faq(**written)
+            content.Faq(**written)
 
     def test_the_home_page_says_screening_not_testing(self):
         # Spec #583 acceptance 18 (grill Q10): the home page asks questions, it is no hearing test.
@@ -90,6 +88,7 @@ class PageHeadingTests(TestCase):
 
     def test_the_big_headings_are_the_ones_before(self):
         headings = {
+            "/": "從一份問卷開始",
             "/learn": "了解",
             "/learn/simulator": "聽損模擬",
             "/privacy": "隱私權說明",
@@ -112,10 +111,11 @@ class PageHeadingTests(TestCase):
             "/qa/topic/hearing-aids": "助聽器選配與補助",
             "/qa/topic/hearing-health": "聽力保健常識",
         }
+        headings |= {f"/qa/{faq.code}": faq.question for faq in content.FAQS}
         for path, heading in headings.items():
             with self.subTest(path=path):
-                content_ = self.client.get(path).content.decode()
-                h1 = re.search(r"<h1[^>]*>\s*(.*?)\s*</h1>", content_, re.S).group(1)
+                page = self.client.get(path).content.decode()
+                h1 = re.search(r"<h1[^>]*>\s*(.*?)\s*</h1>", page, re.S).group(1)
                 self.assertEqual(re.sub(r"<[^>]+>", "", h1).strip(), heading)
 
 

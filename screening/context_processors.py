@@ -1,4 +1,4 @@
-from screening.public_pages import page_at
+from screening.public_pages import PROTOCOL, page_at
 
 
 def public_page(request):
@@ -7,6 +7,5 @@ def public_page(request):
     page = page_at(request.path)
     if page is None:
         return {"public_page": None}
-    # The address without query parameters, so /guide?edit=x is not a second page; https as in the
-    # sitemap.
-    return {"public_page": page, "canonical_url": f"https://{request.get_host()}{page.path}"}
+    # The address without query parameters, so /guide?edit=x is not a second page.
+    return {"public_page": page, "canonical_url": f"{PROTOCOL}://{request.get_host()}{page.path}"}

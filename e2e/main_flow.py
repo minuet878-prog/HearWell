@@ -609,7 +609,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             self.page.get_by_role("button", name="傳給家人").click()
             shared = self.page.evaluate("window.shared")
             self.assertEqual(shared["url"], url)
-            self.assertTrue(shared["title"].startswith("家人專區"))
+            # The page's title, in family's words since spec #583 (#589).
+            self.assertEqual(shared["title"], "家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴")  # noqa: RUF001
 
     def test_family_guide_marks_the_urgent_one(self):
         """#240: the urgent topic and 119 stand out. #469 (the #468 mockup A): the list has no

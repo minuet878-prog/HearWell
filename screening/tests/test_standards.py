@@ -581,6 +581,15 @@ class NotIndexedTests(TestCase):
         self.assertEqual(repeated(titles), [])
         self.assertEqual(repeated(descriptions), [])
 
+    def test_every_public_page_names_its_address_without_parameters(self):
+        # Spec #583 acceptance 17, for each page: the same canonical with parameters added.
+        client = Client()
+        for url in public_pages.public_urls():
+            canonical = f'<link rel="canonical" href="https://testserver{url}">'
+            for opened in (url, f"{url}?from=search"):
+                with self.subTest(url=opened):
+                    self.assertContains(client.get(opened), canonical, html=True)
+
     def test_a_repeated_title_is_caught(self):
         self.assertEqual(repeated(["家人專區", "聽損模擬", "家人專區"]), ["家人專區"])
 
