@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#588 LINE 預覽圖設計圖</title>
+<style>
+  /* ---- tokens: values from frontend/src/site.css ---- */
+  :root {
+    --primary: #1f4e8c; --primary-2: #1d6f99; --primary-soft: #eef3fa; --primary-soft-deep: #d6e2f2;
+    --heading: #212529; --body: #343a40; --muted: #4a5460;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ecef; font-family: "Noto Sans TC", "PingFang TC", sans-serif; color: var(--body); font-size: 18px; line-height: 1.6; }
+  .sheet { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; }
+  .sheet > h1 { font-size: 30px; color: var(--heading); margin: 0 0 8px; }
+  .intro { background: #fff; border-radius: 16px; padding: 18px 24px; margin-top: 16px; }
+  .intro h2 { font-size: 24px; color: var(--heading); margin: 0 0 6px; }
+  .intro ul { margin: 0; padding-left: 1.3em; }
+  .group { margin: 44px 0 0; }
+  .group > h2 { font-size: 26px; color: var(--heading); margin: 0 0 4px; }
+  .q { margin: 0 0 16px; color: var(--muted); }
+  .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin: 0 0 24px; }
+  figure { margin: 0; }
+  figcaption { font-size: 16px; color: var(--muted); margin: 0 0 6px; }
+
+  /* ---- the preview image: every length is a share of its width (--w), so one design draws at any size ---- */
+  .og { width: var(--w); height: calc(var(--w) * .525); font-size: calc(var(--w) / 60); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; flex: none; }
+  .og .stack { display: flex; flex-direction: column; align-items: center; position: relative; }
+  .og .name { font-weight: 700; font-size: 6.6em; line-height: 1.15; letter-spacing: .06em; margin-right: -.06em; }
+  .og .tag { font-size: 2.7em; font-weight: 500; line-height: 1.3; letter-spacing: .12em; margin-right: -.12em; }
+  .og .by { font-size: 1.45em; line-height: 1.3; margin-top: .9em; }
+  .og .tile { width: 10.5em; height: 10.5em; border-radius: 2.4em; background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; display: flex; align-items: center; justify-content: center; margin-bottom: .6em; }
+  .og .tile .bird { width: 7.6em; height: auto; }
+
+  .og-a { background: #fff; color: var(--primary); }
+  .og-a .name { color: var(--heading); }
+  .og-a .tint, .og-c .tint { color: var(--primary); }
+  .og-a .tag { color: var(--body); }
+
+  .og-b { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; }
+  .og-b .bird { width: 12em; height: auto; margin-bottom: .2em; }
+
+  .og-c { background: var(--primary-soft); color: var(--primary); }
+  .og-c .name { color: var(--heading); }
+  .og-c .tag { color: var(--body); }
+  .og-c .by { color: var(--muted); }
+  .og-c .tile { width: 9em; height: 9em; border-radius: 2em; margin-bottom: .4em; }
+  .og-c .tile .bird { width: 6.5em; }
+  .og-c .name { font-size: 5.8em; }
+  .og-c .tag { font-size: 2.5em; }
+  /* Sound waves: arcs outside the centre square, decoration only. */
+  .waves { position: absolute; top: 50%; width: 0; height: 0; }
+  .waves.left { left: 13.5em; }
+  .waves.right { right: 13.5em; }
+  .waves i { position: absolute; top: 0; border: .55em solid var(--primary-soft-deep); border-radius: 50%; transform: translate(-50%, -50%); clip-path: inset(0 0 0 62%); }
+  .waves.left i { clip-path: inset(0 62% 0 0); }
+  .waves i:nth-child(1) { width: 9em; height: 9em; }
+  .waves i:nth-child(2) { width: 15em; height: 15em; }
+  .waves i:nth-child(3) { width: 21em; height: 21em; }
+  .waves.left i { left: 9em; }
+  .waves.right i { left: -9em; }
+
+  /* The centre 630x630 of the image: the dashed guide, and the crop. */
+  .guide { position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .guide .safe { position: absolute; top: 0; bottom: 0; left: 23.75%; width: 52.5%; border: 2px dashed #7e22ce; pointer-events: none; }
+  .crop { width: calc(var(--w) * .525); height: calc(var(--w) * .525); overflow: hidden; flex: none; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .crop .og { margin-left: calc(var(--w) * -.2375); }
+
+  /* ---- a LINE chat, roughly: the link, then the preview card under it ---- */
+  .chat { width: 360px; background: #8cabd9; border-radius: 16px; padding: 14px 12px; }
+  .msg { background: #fff; border-radius: 16px; padding: 8px 12px; font-size: 15px; color: #1a4fb5; width: fit-content; margin: 0 0 6px; }
+  .card { background: #fff; border-radius: 12px; overflow: hidden; width: 300px; }
+  .card .txt { padding: 10px 12px; min-width: 0; }
+  .card p { margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; }
+  .card .t { font-size: 15px; font-weight: 700; color: #111; line-height: 1.35; -webkit-line-clamp: 2; }
+  .card .d { font-size: 13px; color: #666; line-height: 1.4; margin-top: 3px; -webkit-line-clamp: 2; }
+  .card .u { font-size: 12px; color: #999; margin-top: 4px; }
+  .card.side { display: flex; align-items: center; width: 336px; }
+  .card.side .txt { flex: 1; }
+  .card.side .crop { box-shadow: none; margin: 10px 10px 10px 0; border-radius: 8px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <mask id="bird">
+    <path fill="#fff" fill-rule="evenodd" d="M12 50c1-3 3-6 5-9 0-14 9-24 21-24a11 11 0 0 1 11 9l7 4-7 3c-2 11-10 17-21 17zM40 25a2.8 2.8 0 1 0 .01 0z"/>
+    <path fill="none" stroke="#000" stroke-width="3.9" stroke-linecap="round" stroke-linejoin="round" transform="translate(28 33.5) scale(.9) translate(-28.5 -35)" d="M22 33a6.5 6.5 0 0 1 13 0c0 4-4 5-4 8.5a3.3 3.3 0 0 1-6 2"/>
+  </mask>
+</defs></svg>
+<div class="sheet">
+  <h1>#588 LINE 預覽圖設計圖</h1>
+  <div class="intro">
+    <h2>怎麼看</h2>
+    <ul>
+      <li>全站共用一張圖（拷問 Q6）。分享報告連結、家人專區、聽損模擬都用同一張，所以圖上只放品牌，不放只適合某一頁的句子。</li>
+      <li>圖是 1200×630。LINE 沒有公布會怎麼裁，所以每個方案都畫「完整」和「只留中央正方形」兩種；紫色虛線框是中央 630×630，重點都要在框裡。</li>
+      <li>LINE 訊息框是照大概的樣子畫的，不是實際截圖。LINE 現在用橫式還是正方形小圖要上線後實測，兩種都畫了。</li>
+      <li>訊息框裡的標題與描述是建議表的草稿（#587 確認後才定稿）。圖上的字只用站上已經有的：「聽伴」「聽力自我照護」「內容由台灣執業聽力師設計與審定」。</li>
+      <li>正式的圖會用網站的字型（Noto Sans TC）輸出；這一頁在沒裝那個字型的電腦上會用系統字型，筆畫粗細略有不同。</li>
+    </ul>
+  </div>
+  
+<section class="group" id="opt-A">
+  <h2>方案 A：白底，圖示在上</h2>
+  <p class="q">跟網站白底頁首同一個樣子（ADR 0012、0043）。在 LINE 的白色訊息框裡邊界不明顯，圖和字會連成一片。</p>
+  <div class="row">
+    <figure><figcaption>完整的圖（1200×630，這裡縮小顯示）；虛線框是中央 630×630</figcaption>
+      <div class="guide"><div class="og og-a" style="--w:640px"><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div></div></div><span class="safe"></span></div></figure>
+    <figure><figcaption>只留中央正方形（被裁切時）</figcaption>
+      <div class="crop" style="--w:640px"><div class="og og-a" style="--w:640px"><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div></div></div></div></figure>
+  </div>
+  <div class="row">
+    <figure><figcaption>LINE 橫式預覽：首頁</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-a" style="--w:300px"><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div></div></div><div class="txt"><p class="t">聽伴｜3 分鐘聽力自我篩檢，不用註冊</p><p class="d">聽力變化很慢，自己常常沒發現。花 3 分鐘回答問題，馬上看到聽力對生活的影響和建議，不用註冊。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+    <figure><figcaption>LINE 正方形小圖：家人專區</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card side"><div class="txt"><p class="t">家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴</p><p class="d">家人有聽力困難時，日常對話常常要講好幾次。這裡整理怎麼跟他說話、陪診要帶什麼、長輩不肯去怎麼說。</p><p class="u">tingpal.tw</p></div><div class="crop" style="--w:171.43px"><div class="og og-a" style="--w:171.43px"><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div></div></div></div></div></div></figure>
+    <figure><figcaption>LINE 橫式預覽：聽損模擬</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-a" style="--w:300px"><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div></div></div><div class="txt"><p class="t">聽力不好的人聽到的聲音是什麼樣子？聽損模擬｜聽伴</p><p class="d">選一種聽損程度，聽同一句話變成什麼樣子，再切回正常聽比一比。聽聽看他聽到的聲音。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+  </div>
+</section>
+<section class="group" id="opt-B">
+  <h2>方案 B：品牌藍底，白色小鳥</h2>
+  <p class="q">跟手機主畫面的圖示同一個樣子，在訊息列表裡最顯眼。整張都是藍色，比 A、C 重。</p>
+  <div class="row">
+    <figure><figcaption>完整的圖（1200×630，這裡縮小顯示）；虛線框是中央 630×630</figcaption>
+      <div class="guide"><div class="og og-b" style="--w:640px"><div class="stack"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg><div class="name">聽伴</div><div class="tag">聽力自我照護</div></div></div><span class="safe"></span></div></figure>
+    <figure><figcaption>只留中央正方形（被裁切時）</figcaption>
+      <div class="crop" style="--w:640px"><div class="og og-b" style="--w:640px"><div class="stack"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg><div class="name">聽伴</div><div class="tag">聽力自我照護</div></div></div></div></figure>
+  </div>
+  <div class="row">
+    <figure><figcaption>LINE 橫式預覽：首頁</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-b" style="--w:300px"><div class="stack"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg><div class="name">聽伴</div><div class="tag">聽力自我照護</div></div></div><div class="txt"><p class="t">聽伴｜3 分鐘聽力自我篩檢，不用註冊</p><p class="d">聽力變化很慢，自己常常沒發現。花 3 分鐘回答問題，馬上看到聽力對生活的影響和建議，不用註冊。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+    <figure><figcaption>LINE 正方形小圖：家人專區</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card side"><div class="txt"><p class="t">家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴</p><p class="d">家人有聽力困難時，日常對話常常要講好幾次。這裡整理怎麼跟他說話、陪診要帶什麼、長輩不肯去怎麼說。</p><p class="u">tingpal.tw</p></div><div class="crop" style="--w:171.43px"><div class="og og-b" style="--w:171.43px"><div class="stack"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg><div class="name">聽伴</div><div class="tag">聽力自我照護</div></div></div></div></div></div></figure>
+    <figure><figcaption>LINE 橫式預覽：聽損模擬</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-b" style="--w:300px"><div class="stack"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg><div class="name">聽伴</div><div class="tag">聽力自我照護</div></div></div><div class="txt"><p class="t">聽力不好的人聽到的聲音是什麼樣子？聽損模擬｜聽伴</p><p class="d">選一種聽損程度，聽同一句話變成什麼樣子，再切回正常聽比一比。聽聽看他聽到的聲音。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+  </div>
+</section>
+<section class="group" id="opt-C">
+  <h2>方案 C：淡藍底，左右有聲波</h2>
+  <p class="q">淡藍底讓圖在白色訊息框裡看得出邊界；聲波是裝飾，被裁成正方形時只剩一部分，中間的內容不受影響。最下面那行小字在正方形小圖裡會小到看不清楚。</p>
+  <div class="row">
+    <figure><figcaption>完整的圖（1200×630，這裡縮小顯示）；虛線框是中央 630×630</figcaption>
+      <div class="guide"><div class="og og-c" style="--w:640px"><div class="waves left"><i></i><i></i><i></i></div><div class="waves right"><i></i><i></i><i></i></div><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div><div class="by">內容由台灣執業聽力師設計與審定</div></div></div><span class="safe"></span></div></figure>
+    <figure><figcaption>只留中央正方形（被裁切時）</figcaption>
+      <div class="crop" style="--w:640px"><div class="og og-c" style="--w:640px"><div class="waves left"><i></i><i></i><i></i></div><div class="waves right"><i></i><i></i><i></i></div><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div><div class="by">內容由台灣執業聽力師設計與審定</div></div></div></div></figure>
+  </div>
+  <div class="row">
+    <figure><figcaption>LINE 橫式預覽：首頁</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-c" style="--w:300px"><div class="waves left"><i></i><i></i><i></i></div><div class="waves right"><i></i><i></i><i></i></div><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div><div class="by">內容由台灣執業聽力師設計與審定</div></div></div><div class="txt"><p class="t">聽伴｜3 分鐘聽力自我篩檢，不用註冊</p><p class="d">聽力變化很慢，自己常常沒發現。花 3 分鐘回答問題，馬上看到聽力對生活的影響和建議，不用註冊。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+    <figure><figcaption>LINE 正方形小圖：家人專區</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card side"><div class="txt"><p class="t">家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴</p><p class="d">家人有聽力困難時，日常對話常常要講好幾次。這裡整理怎麼跟他說話、陪診要帶什麼、長輩不肯去怎麼說。</p><p class="u">tingpal.tw</p></div><div class="crop" style="--w:171.43px"><div class="og og-c" style="--w:171.43px"><div class="waves left"><i></i><i></i><i></i></div><div class="waves right"><i></i><i></i><i></i></div><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div><div class="by">內容由台灣執業聽力師設計與審定</div></div></div></div></div></div></figure>
+    <figure><figcaption>LINE 橫式預覽：聽損模擬</figcaption><div class="chat"><div class="msg">https://tingpal.tw/…</div><div class="card wide"><div class="og og-c" style="--w:300px"><div class="waves left"><i></i><i></i><i></i></div><div class="waves right"><i></i><i></i><i></i></div><div class="stack"><div class="tile"><svg class="bird" viewBox="9 14 50 39" aria-hidden="true"><rect x="0" y="0" width="64" height="64" fill="currentColor" mask="url(#bird)"/></svg></div><div class="name">聽<span class="tint">伴</span></div><div class="tag">聽力自我照護</div><div class="by">內容由台灣執業聽力師設計與審定</div></div></div><div class="txt"><p class="t">聽力不好的人聽到的聲音是什麼樣子？聽損模擬｜聽伴</p><p class="d">選一種聽損程度，聽同一句話變成什麼樣子，再切回正常聽比一比。聽聽看他聽到的聲音。</p><p class="u">tingpal.tw</p></div></div></div></figure>
+  </div>
+</section>
+</div>
+</body>
+</html>
