@@ -1,4 +1,4 @@
-{# Ticket #158's score position bar; shared by the result page and the home page's example. #}
+{# Ticket #158's score position bar, in the graded result page's result box (readability batch 3). #}
 <div class="score-bar" aria-hidden="true">
     <div class="score-bar-track">
         <div class="score-bar-segments">
@@ -8,7 +8,6 @@
         </div>
         <div class="score-bar-marker" style="--position: {{ bar.position|floatformat:2 }}%"></div>
     </div>
-    {# Text-heavy pages tidy-up: only this score's level under the marker, and the two ends. #}
-    <div class="score-bar-current" style="--position: {{ bar.position|floatformat:2 }}%"><span>{{ bar.current_text }}</span></div>
+    {# Readability batch 3: only the two ends; the level is in large type over the bar. #}
     <div class="score-bar-ends"><span>0</span><span>{{ bar.ceiling }}</span></div>
 </div>

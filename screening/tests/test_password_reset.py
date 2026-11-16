@@ -16,7 +16,7 @@ from django.utils import timezone
 from screening import forms
 from screening.forms import PASSWORD_RULES
 from screening.models import User
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, minimum_password_length
 from screening.views.accounts import RESET_EMAIL
 
 PASSWORD = "Xk9#mPq2vLw"
@@ -217,6 +217,19 @@ class SetNewPasswordTests(TestCase):
         buttons = re.findall(r"<button[^>]*>顯示</button>", content)
         self.assertEqual(len(buttons), 2)
         self.assertIn("screening/password-toggle.js", content)
+
+    def test_the_new_password_has_the_register_pages_count(self):
+        # Readability batch 3 (C1 B): the count under 新密碼 too, not under its second typing.
+        user = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)
+        content = self._open_link(user).content.decode()
+        self.assertIn("screening/password-count.js", content)
+        lines = re.findall(r'<p class="password-count[^"]*"[^>]*>', content)
+        self.assertEqual(len(lines), 1)
+        self.assertIn('data-for="id_new_password1"', lines[0])
+        self.assertIn(f'data-min="{minimum_password_length()}"', lines[0])
+        self.assertRegex(lines[0], r"\shidden[\s>]")  # without JavaScript, the page as before
+        statuses = re.findall(r'class="[^"]*password-count-status[^"]*" role="status"', content)
+        self.assertEqual(len(statuses), 1)
 
     def test_a_password_against_the_rules_is_refused(self):
         user = consented_user(username="wang_ming", email="a@example.com", password=PASSWORD)

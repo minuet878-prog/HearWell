@@ -110,7 +110,7 @@ class GradedResultTests(ResultTestCase):
         )
         context = self.assert_page(record, "screening/result.html")
         self.assertEqual(context["max_score"], 40)
-        self.assertEqual(context["score_bar"]["current_text"], "輕度到中度影響")
+        self.assertEqual(context["score_bar"]["position"], 40)
         # The total, subscores and level the page shows are the result object's, not copies.
         self.assert_no_copies(context)
         page = self.client.get(reverse("result", args=[record.pk]))

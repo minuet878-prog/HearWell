@@ -1820,6 +1820,20 @@
     font-size: 1rem;
   }
 
+  /* Readability batch 3 (the owner's C1 B): under a new password, how many characters are in
+     (password-count.js), on the register page and the 設新密碼 page; the success green
+     (--color-normal, ADR 0007) with its tick once there are enough. */
+  .password-count {
+    margin: 0.25rem 0 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .password-count.is-enough {
+    color: var(--color-normal);
+  }
+
   /* The 2026-11-14 walkthrough (mockup 12A): an audiogram's date as 民國 [ ] 年 [ ] 月 [ ] 日,
      each box as wide as its digits; with larger text the pieces wrap rather than shrink. */
   .date-parts {
@@ -2921,7 +2935,7 @@
     line-height: 1;
   }
 
-  /* Score position bar (ticket #158), on the result page and the home page's example: no fill or
+  /* Score position bar (ticket #158), in the graded result page's result box: no fill or
      entrance animation (ADR 0006). Since round 4 each pale segment has a level-coloured lower edge. */
   .score-bar {
     position: relative;
@@ -2983,25 +2997,6 @@
     /* Shifted by its own width in proportion, so 0 and full marks sit flush inside the bar. */
     left: var(--position);
     transform: translateX(calc(-1 * var(--position)));
-  }
-
-  /* Text-heavy pages tidy-up: this score's level under the marker, placed and shifted like the
-     marker so it stays inside the bar at either end; then 0 and the top score. */
-  .score-bar-current {
-    position: relative;
-    height: 1.5rem;
-    margin-top: 0.25rem;
-    font-size: 1rem;
-    line-height: 1.5rem;
-  }
-
-  .score-bar-current span {
-    position: absolute;
-    left: var(--position);
-    transform: translateX(calc(-1 * var(--position)));
-    color: var(--color-heading);
-    font-weight: 700;
-    white-space: nowrap;
   }
 
   .score-bar-ends {
@@ -4479,6 +4474,15 @@
     margin: 0;
   }
 
+  /* Readability batch 3 (the owner's B6 A): the score bar in the result box, on white so its
+     pale segments show against the level's pale colour. */
+  .result-banner .score-bar {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.75rem 0.25rem;
+    border-radius: var(--radius-small);
+    background-color: #fff;
+  }
+
   /* Not graded: a 提示框's pale grey (P3), the words in the heading colour. */
   .result-summary {
     padding: 1rem 1.25rem;
@@ -4640,10 +4644,6 @@
   .result-details-body {
     padding: 0 0.25rem 1rem;
     overflow-wrap: anywhere;
-  }
-
-  .result-details-body .score-bar {
-    margin-top: 0.5rem;
   }
 
   /* #498 (the #493 mockup's E1): a guest's 清除這次結果 row is red, as 刪除帳號 is; its question
@@ -4915,9 +4915,10 @@
     margin-bottom: 0;
   }
 
-  /* The privacy notice's highlights in a 提示框: room for their bullets inside it. */
-  ul.tip-box {
-    padding-inline-start: 2.25rem;
+  /* The privacy notice's highlights in a 提示框: room for their bullets inside it, 2.25rem from
+     the box's edge as before readability batch 3 put them in three titled lists. */
+  .privacy .tip-box > ul {
+    padding-inline-start: 1.25rem;
   }
 
   /* A link inside a sentence in a 提示框 (deleting the account's 下載我的資料) keeps its negative

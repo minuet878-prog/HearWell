@@ -216,15 +216,13 @@ def score_bar(definition, score, level):
     ceiling = thresholds[-1][0]
     segments = []
     start = 0
-    for upper, text, segment_level in thresholds:
+    for upper, _text, segment_level in thresholds:
         segments.append(
             {
                 "level": segment_level,
                 "color": definition.color(segment_level),
                 "shade": definition.shade(segment_level),
-                "text": text,
                 "width": (upper - start) / ceiling * 100,
-                "current": segment_level == level,
             }
         )
         start = upper
@@ -233,7 +231,6 @@ def score_bar(definition, score, level):
         "segments": segments,
         "position": position,
         "ceiling": ceiling,
-        "current_text": next(segment["text"] for segment in segments if segment["current"]),
     }
 
 
