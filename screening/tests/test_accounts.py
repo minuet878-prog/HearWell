@@ -468,9 +468,12 @@ class RegisterFormTests(TestCase):
         for name in ("roc_birth_year", "password2"):
             with self.subTest(field=name):
                 self.assertRegex(by_name[name], r'<p class="visually-hidden" role="status"></p>')
-        for name in ("username", "email", "password1"):
+        for name in ("username", "email"):
             with self.subTest(field=name):
                 self.assertNotIn('role="status"', by_name[name])
+        # 密碼 has no tick's status, only its character count's (readability batch 3).
+        self.assertNotIn('<p class="visually-hidden" role="status"></p>', by_name["password1"])
+        self.assertIn('class="visually-hidden password-count-status"', by_name["password1"])
 
     def test_password_mismatch_keeps_input(self):
         response = self._post(password2="Different#123", roc_birth_year="44")

@@ -157,7 +157,8 @@ class PrivacyNoticeTests(TestCase):
         self.assertEqual(folds, PRIVACY_SECTIONS)
         self.assertNotIn("<details open", main)
         highlights = main[main.index("先看重點</h2>") : main.index("</section>")]
-        self.assertIn('<ul class="tip-box">', highlights)
+        # Readability batch 3: the 提示框 holds the three titled groups (test_consent).
+        self.assertIn('<div class="tip-box">', highlights)
         self.assertNotIn("這一頁的段落", main)
 
     def test_the_contact_section_stays_open_at_the_end(self):

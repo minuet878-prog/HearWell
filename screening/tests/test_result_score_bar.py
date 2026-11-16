@@ -80,7 +80,9 @@ class ScoreBarTests(TestCase):
     # top score stay. Text-heavy pages tidy-up had put it behind the fold.
     def test_sits_in_the_result_box_under_the_level_with_only_the_two_ends(self):
         page = self._get(self._hhie_s(12))
-        banner = page[page.index('<div class="result-banner') : page.index('class="result-one-line"')]
+        banner = page[
+            page.index('<div class="result-banner') : page.index('class="result-one-line"')
+        ]
         self.assertLess(
             banner.index('<h2 class="result-block-level"'),
             banner.index('<div class="score-bar" aria-hidden="true">'),
@@ -99,7 +101,9 @@ class ScoreBarTests(TestCase):
             submission.wearing_hearing_aid = False
             submission.save()
         page = self._get(submission)
-        banner = page[page.index('<div class="result-banner') : page.index('class="result-one-line"')]
+        banner = page[
+            page.index('<div class="result-banner') : page.index('class="result-one-line"')
+        ]
         self.assertLess(
             banner.index('class="score-bar"'), banner.index('class="result-since-last"')
         )

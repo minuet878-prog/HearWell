@@ -1246,6 +1246,46 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 if size:
                     self.assert_fits_a_phone_at_double_text_size("register with ticks", width)
 
+    COUNT_GREY = "rgb(74, 84, 96)"  # --color-muted
+    COUNT_GREEN = "rgb(20, 87, 60)"  # --color-normal, the success green
+
+    # Readability batch 3 (the owner's C1 B): how many characters 密碼 has, and how many are
+    # still missing, under it; green with a tick from 8. The 設新密碼 page uses the same include
+    # and script (test_password_reset); its counting rules are in password-count.test.js.
+    def test_register_counts_the_passwords_characters(self):
+        count = self.page.locator(".password-count")
+        for width, size in ((390, None), (320, "225%")):
+            with self.subTest(width=width, text_size=size):
+                self.open(width=width, height=640)
+                self.page.goto(f"{self.live_server_url}/register")
+                self.page.wait_for_load_state("load")
+                if size:
+                    self.page.locator("html").evaluate(
+                        f"html => html.style.setProperty('font-size', '{size}', 'important')"
+                    )
+                password = self.page.get_by_label("密碼", exact=True)
+                expect(count).to_be_hidden()
+                password.fill("Fake-")
+                expect(count).to_have_text("已經輸入 5 個字，還差 3 個")
+                colour = count.evaluate("el => getComputedStyle(el).color")
+                self.assertEqual(colour, self.COUNT_GREY)
+                # Right under the field, over the rules.
+                field = password.bounding_box()
+                line = count.bounding_box()
+                rules = self.page.locator("#id_password1_helptext").bounding_box()
+                self.assertGreaterEqual(line["y"], field["y"] + field["height"])
+                self.assertLessEqual(line["y"] + line["height"], rules["y"])
+                password.fill("Fake-pas")
+                expect(count).to_have_text("✓ 已經輸入 8 個字")
+                colour = count.evaluate("el => getComputedStyle(el).color")
+                self.assertEqual(colour, self.COUNT_GREEN)
+                # Screen readers hear it once typing pauses.
+                expect(self.page.locator(".password-count-status")).to_have_text(
+                    "✓ 已經輸入 8 個字"
+                )
+                if size:
+                    self.assert_fits_a_phone_at_double_text_size("register with a count", width)
+
     RED_BG = "rgb(254, 236, 231)"  # --color-severe-bg, the wrong field's fill
 
     # Owner's call (2026-10-24, #326 self-review): the tick takes the server's red frame and
