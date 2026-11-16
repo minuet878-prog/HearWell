@@ -160,6 +160,11 @@ export default function TrendChart({ code, fittedOn }) {
   // The root font size: the box's rem, read as the chart draws. 18 if it cannot be read: the
   // site's base size (site.css --root-font-size, 112.5% of the browser's 16px).
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 18;
+  // #668: room beside the first and last points for half their score, which is 1rem: 16px at
+  // the base size, in rem so a score at 200% text is not cut by the chart's edge. Whole pixels:
+  // the first and last points sit on the plot's edges, and a pointer on a point at a fractional
+  // edge (a 16px root, as in the unit tests) can miss the plot and show no tooltip.
+  const side = Math.round((16 / 18) * rem);
 
   // The latest point is only bigger: filled vs hollow already means the hearing aid status.
   // Each series calls this for every day; only days with a record of its status get a shape.
@@ -205,7 +210,7 @@ export default function TrendChart({ code, fittedOn }) {
       <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height: 320 }}>
         <LineChart
           data={days}
-          margin={{ top: fitting ? FITTING_TOP * rem : 24, right: 16, bottom: 8, left: 16 }}
+          margin={{ top: fitting ? FITTING_TOP * rem : 24, right: side, bottom: 8, left: side }}
           accessibilityLayer={false}
         >
           {levels.map((level, i) => (

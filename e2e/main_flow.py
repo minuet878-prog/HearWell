@@ -16917,9 +16917,8 @@ class LastResultT649Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
                         last = f"上次 {self.days[code]}" + (f"・{said}" if said else "")
                         expect(card.locator(".inline-block")).to_have_text(last)
                     self.assert_fits_a_phone_at_double_text_size("catalogue", width)
-                    # Each 上次 and its words end inside their card or the recommended block. At
-                    # 320px the date alone is wider than the recommended block's words (as it was
-                    # before #649), so it may run into the block's padding, never past it.
+                    # Each 上次 and its words end inside their card or the recommended block; the
+                    # recommended block's words alone in NarrowOverflowsT668Test (#668).
                     for tag in self.main().locator(".inline-block", has_text="上次").all():
                         words_end, box_end = tag.evaluate(self.WORDS_END)
                         self.assertLessEqual(words_end, box_end, tag.text_content())
@@ -17007,8 +17006,116 @@ class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
         expect(sentence).to_have_text("2026/05/01 開始戴助聽器。")
         scroll_width, client_width = sentence.evaluate("e => [e.scrollWidth, e.clientWidth]")
         self.assertLessEqual(scroll_width, client_width, where)
-        # The chart's section and the sentence end inside the phone. Not the whole page: at 320px
-        # and 200% the questionnaire tabs above already run past it (found in #650, not its own).
-        for part in (self.main().locator("#trend-chart"), sentence):
-            edge = part.bounding_box()
-            self.assertLessEqual(edge["x"] + edge["width"], width, where)
+        # The whole page inside the phone: #668 fixed the questionnaire tabs that ran past it.
+        scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+        self.assertLessEqual(scroll_width, width, where)
+
+
+class NarrowOverflowsT668Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#668: three overflows on a 320px phone at 200% text, found in #644 and older than it: the
+    questionnaire tabs on 我的紀錄, the trend chart's first score, and 上次's date in the
+    recommended block."""
+
+    fixtures = ("questions_fixture.json",)
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    record = ResultPagesT461Test.record
+    DOUBLE_FROM_THE_START = ChangeLabelT646Test.DOUBLE_FROM_THE_START
+    # Where the words' last line ends, and where the room for words in their paragraph ends.
+    WORDS_END = """e => {
+        const range = document.createRange();
+        range.selectNodeContents(e);
+        const words = e.closest("p");
+        return [
+            Math.max(...[...range.getClientRects()].map((r) => r.right)),
+            words.getBoundingClientRect().left + words.clientWidth,
+        ];
+    }"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="narrow_overflows_t668", birth_year=1956))
+
+    def test_the_records_tabs_fit_the_phone(self):
+        # Acceptance 1: two questionnaires, so two tabs; no sideways scrolling, every tab's words
+        # inside it.
+        self.record("hhie-s", [2] * 10, (2026, 3, 1), wearing_hearing_aid=False)
+        self.record("thi", [2] * 25, (2026, 3, 1), wearing_hearing_aid=False)
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/my_hearing", (width, 844), script=self.DOUBLE_FROM_THE_START)
+                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+                    tabs = self.main().locator(".history-tabs a")
+                    expect(tabs).to_have_count(2)
+                    for tab in tabs.all():
+                        edge = tab.bounding_box()
+                        self.assertLessEqual(edge["x"] + edge["width"], width, tab.text_content())
+                        content, room = tab.evaluate("e => [e.scrollWidth, e.clientWidth]")
+                        self.assertLessEqual(content, room, tab.text_content())
+        # Acceptance 4: at the usual size on a 390px phone the two tabs stay side by side (at
+        # 320px they were one under the other already).
+        with self.subTest(size="usual"):
+            self.open("/my_hearing")
+            first, second = (
+                tab.bounding_box() for tab in self.main().locator(".history-tabs a").all()
+            )
+            self.assertEqual(first["y"], second["y"])
+            self.assertLess(first["x"], second["x"])
+
+    def test_every_score_on_the_trend_chart_stays_inside_it(self):
+        # Acceptance 2: THI's first score (50) was cut by the chart's left edge; HHIE-S too.
+        for code, items in {"hhie-s": 10, "thi": 25}.items():
+            self.record(code, [2] * items, (2026, 3, 1), wearing_hearing_aid=False)
+            self.record(code, [4] * items, (2026, 9, 1), wearing_hearing_aid=True)
+            self.record(code, [0] * items, (2026, 10, 14), wearing_hearing_aid=True)
+        with self.saving_artifacts():
+            for code in ("hhie-s", "thi"):
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width):
+                        self.open(
+                            f"/my_hearing?questionnaire={code}",
+                            (width, 844),
+                            script=self.DOUBLE_FROM_THE_START,
+                        )
+                        expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                        chart = self.page.locator(".recharts-wrapper").bounding_box()
+                        scores = self.page.locator(".trend-score").all()
+                        self.assertEqual(len(scores), 3)
+                        for score in scores:
+                            edge = score.bounding_box()
+                            said = f"{code} {score.text_content()} at {width}px: {edge} in {chart}"
+                            self.assertGreaterEqual(edge["x"], chart["x"], said)
+                            self.assertLessEqual(
+                                edge["x"] + edge["width"], chart["x"] + chart["width"], said
+                            )
+            # Acceptance 4: at the usual size the first point is 16px in from the chart's edge, as
+            # before.
+            for width in (320, 390):
+                with self.subTest(code=code, width=width, size="usual"):
+                    self.open(f"/my_hearing?questionnaire={code}", (width, 844))
+                    expect(self.page.locator(".recharts-wrapper")).to_be_visible()
+                    first = self.page.locator(".trend-dot").first
+                    self.assertEqual(float(first.get_attribute("data-cx")), 16)
+
+    def test_the_recommended_date_stays_inside_its_words(self):
+        # Acceptance 3: HHIE-S 200 days ago, so it is recommended (retest due) with 上次 and its
+        # date; the date ends inside the block's words, not in its padding.
+        old = datetime.now(self.TAIPEI) - timedelta(days=200)
+        hhie_s = self.record("hhie-s", [4, 4, 2, 2] + [0] * 6, wearing_hearing_aid=False)
+        Submission.objects.filter(pk=hhie_s.pk).update(created_at=old)
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/questionnaire_list", (width, 844))
+                    self.assert_fits_a_phone_at_double_text_size("catalogue", width)
+                    facts = self.main().locator(".recommended-block .recommended-facts")
+                    expect(facts).to_contain_text(f"上次 {old:%Y/%m/%d}")
+                    words_end, room_end = facts.locator(".inline-block").evaluate(self.WORDS_END)
+                    self.assertLessEqual(words_end, room_end + 0.5, f"{width}px")
+                    # Acceptance 4: at the usual size the block keeps its 1.125rem sides.
+                    self.double_text(on=False)
+                    block = self.main().locator(".recommended-block")
+                    for side in ("paddingLeft", "paddingRight"):
+                        self.assertEqual(self.style(block, side), "20.25px", f"{width}px")
