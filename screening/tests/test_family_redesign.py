@@ -129,7 +129,10 @@ class FamilyTalkPageTests(TestCase):
         self._page()
         self.client.force_login(User.objects.create_user(username="talk_no_consent"))
         content = self._page()
-        self.assertRegex(content, r"<title>\s*怎麼跟聽損的家人說話｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            content,
+            r"<title>\s*怎麼跟聽力不好的家人說話？不用大喊的溝通方法｜聽伴\s*</title>",  # noqa: RUF001
+        )
         self.assertRegex(content, r'aria-current="page"[^>]*>\s*<svg.*?</svg>\s*<span>了解</span>')
 
 

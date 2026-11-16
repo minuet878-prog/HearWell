@@ -150,7 +150,10 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
     def assert_zone_home(self):
         content = self._zone()
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", content), ["家人專區"])
-        self.assertRegex(content, r"<title>\s*家人專區｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            content,
+            r"<title>\s*家人聽力不好怎麼辦？給家屬的溝通與陪伴方法｜聽伴\s*</title>",  # noqa: RUF001
+        )
         self.assertEqual(
             ENTRY.findall(self._entries(content)),
             [
@@ -469,7 +472,10 @@ class FamilyReluctantTests(SignsInWithARecord, TestCase):
 
     def test_page_has_one_heading_its_title_and_the_learn_tab(self):
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", self.content), ["長輩不肯去怎麼說"])
-        self.assertRegex(self.content, r"<title>\s*長輩不肯去怎麼說｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            self.content,
+            r"<title>\s*長輩不肯檢查聽力、不肯戴助聽器，怎麼開口？｜聽伴\s*</title>",  # noqa: RUF001
+        )
         nav = test_pages.RedesignLayoutTests.NAV.search(self.content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),

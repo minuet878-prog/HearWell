@@ -330,7 +330,7 @@ class RedesignLayoutTests(TestCase):
         self.client.logout()
         expected.update(
             {
-                reverse("index"): "聽伴 聽力自我照護",
+                reverse("index"): "聽伴｜3 分鐘聽力自我篩檢，不用註冊",  # noqa: RUF001
                 reverse("login"): "登入" + suffix,
                 reverse("register"): "註冊" + suffix,
                 reverse("password_reset"): "忘記密碼" + suffix,

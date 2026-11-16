@@ -46,8 +46,8 @@ class SitemapTests(TestCase):
     def test_a_question_taken_out_leaves_the_sitemap(self):
         # Spec #583 acceptance 7 (ADR 0033): a question taken out is no longer in FAQS.
         kept, taken_out = content.FAQS[:-1], content.FAQS[-1]
-        public_pages.public_urls.cache_clear()
-        self.addCleanup(public_pages.public_urls.cache_clear)
+        public_pages.pages.cache_clear()
+        self.addCleanup(public_pages.pages.cache_clear)
         with mock.patch.object(content, "FAQS", kept):
             locations = [entry["loc"] for entry in sitemap_entries(self.client.get("/sitemap.xml"))]
         self.assertNotIn(f"https://testserver/qa/{taken_out.code}", locations)

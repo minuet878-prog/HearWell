@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 from django.http import Http404, HttpRequest, HttpResponseBadRequest, HttpResponseRedirect
@@ -78,27 +78,60 @@ class GuideChapter:
     title: str
     template: str
     extra_context: Callable[[HttpRequest], dict] | None = None
+    # In the browser tab and search results, in the words family type (spec #583, #587); the
+    # chapter's own heading stays `title`.
+    search_title: str = field(kw_only=True)
+    description: str = field(kw_only=True)
 
 
 # The hearing-aid guide's chapters in reading order (spec #218).
 GUIDE_CHAPTERS = (
-    GuideChapter("before-you-go", "去找聽力師之前", "screening/guide/before_you_go.html"),
     GuideChapter(
-        "assessment", "身障鑑定與鑑定醫院", "screening/guide/assessment.html", _assessment_context
+        "before-you-go",
+        "去找聽力師之前",
+        "screening/guide/before_you_go.html",
+        search_title="第一次配助聽器要準備什麼？去找聽力師之前｜聽伴",  # noqa: RUF001
+        description="去找聽力師之前要帶什麼、可以問聽力師什麼。",
     ),
     GuideChapter(
-        "form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html", _form_9_context
+        "assessment",
+        "身障鑑定與鑑定醫院",
+        "screening/guide/assessment.html",
+        _assessment_context,
+        search_title="聽力要多差才能申請身障證明？鑑定門檻與鑑定醫院｜聽伴",  # noqa: RUF001
+        description="聽力要到多少才達到門檻、鑑定時要做哪些檢查、要怎麼申請，以及各縣市可以鑑定的醫院。",
     ),
-    GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
+    GuideChapter(
+        "form-9",
+        "九號表：申請助聽器補助",
+        "screening/guide/form_9.html",
+        _form_9_context,
+        search_title="助聽器補助怎麼申請？可以補助多少錢｜聽伴",  # noqa: RUF001
+        description="誰可以申請、要怎麼辦、九號表去哪裡開、可以補助多少錢、用了幾年可以換新的，以及沒有身障證明怎麼辦。",
+    ),
+    GuideChapter(
+        "types-and-prices",
+        "助聽器的種類與價格",
+        "screening/guide/types_and_prices.html",
+        search_title="助聽器是不是都很貴？種類、價格與補助上限｜聽伴",  # noqa: RUF001
+        description="助聽器有哪幾種外型、擴音器和輔聽器可不可以代替、補助分哪幾級、要去哪裡買。",
+    ),
     # F5: the first weeks wearing them come before the visit 1 to 3 months in.
     GuideChapter(
         "after-fitting",
         "配戴助聽器之後",
         "screening/guide/after_fitting.html",
         _after_fitting_context,
+        search_title="剛戴助聽器不習慣怎麼辦？配戴之後｜聽伴",  # noqa: RUF001
+        description="剛開始戴會怎麼樣、怎麼記錄戴了之後的感受。",
     ),
     GuideChapter(
-        "form-25", "二十五號表：使用效益驗證", "screening/guide/form_25.html", _form_25_context
+        "form-25",
+        "二十五號表：使用效益驗證",
+        "screening/guide/form_25.html",
+        _form_25_context,
+        search_title="助聽器補助核銷要做什麼？二十五號表｜聽伴",  # noqa: RUF001
+        description="二十五號表誰要做、什麼時候做，以及回診前可以先準備什麼。",
     ),
 )
 

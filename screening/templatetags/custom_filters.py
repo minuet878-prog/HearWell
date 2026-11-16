@@ -1,9 +1,33 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 from screening.audiogram import degree_level as get_degree_level
 from screening.middleware import OPEN_PAGES
 
 register = template.Library()
+
+
+class CaptureNode(template.Node):
+    # Its nodelist, like any Node's, is searched for {% block %}: a page's title block inside
+    # still overrides the layout's.
+    def __init__(self, nodelist, name):
+        self.nodelist = nodelist
+        self.name = name
+
+    def render(self, context):
+        # Already escaped as it rendered, so shown again as it is.
+        context[self.name] = mark_safe(self.nodelist.render(context).strip())
+        return ""
+
+
+@register.tag
+def capture(parser, token):
+    """{% capture name %}…{% endcapture %}: render once, use as {{ name }} several times.
+    layout.html shows a page's title in <title> and in its LINE preview (spec #583, #590)."""
+    _tag, name = token.split_contents()
+    nodelist = parser.parse(("endcapture",))
+    parser.delete_first_token()
+    return CaptureNode(nodelist, name)
 
 
 @register.filter

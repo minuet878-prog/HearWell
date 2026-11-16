@@ -3,13 +3,13 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.views.decorators.http import require_safe
 
-from screening.public_pages import public_urls
+from screening.public_pages import PROTOCOL, public_urls
 
 
 class PublicPagesSitemap(Sitemap):
     # The addresses only: Google ignores changefreq and priority, and takes lastmod only when it is
     # always right (spec #583). The host is the request's, as the sites framework is not installed.
-    protocol = "https"
+    protocol = PROTOCOL
 
     def items(self):
         return public_urls()
@@ -27,6 +27,6 @@ def robots_txt(request):
         "User-agent: *",
         "Allow: /",
         "",
-        f"Sitemap: {PublicPagesSitemap.protocol}://{request.get_host()}{reverse('sitemap')}",
+        f"Sitemap: {PROTOCOL}://{request.get_host()}{reverse('sitemap')}",
     )
     return HttpResponse("\n".join(lines) + "\n", content_type="text/plain; charset=utf-8")

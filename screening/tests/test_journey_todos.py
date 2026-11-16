@@ -1194,7 +1194,9 @@ class Ticket481PrivacyListTests(TestCase):
 
     def test_the_privacy_notice_lists_the_ticks(self):
         content = self.client.get(reverse("privacy")).content.decode()
-        collected = content[content.index("蒐集哪些資料") : content.index("存放在哪裡、保存多久")]
+        # In the body: the head's description (spec #583) uses the same words.
+        body = content[content.index("<body") :]
+        collected = body[body.index("蒐集哪些資料") : body.index("存放在哪裡、保存多久")]
         self.assertIn(
             "<li>照顧旅程的待辦打勾：您自己勾了哪幾件要做的事，以及勾的時間。</li>", collected
         )

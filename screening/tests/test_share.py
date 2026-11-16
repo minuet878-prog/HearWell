@@ -16,7 +16,8 @@ from screening.tests.helpers import consented_user
 
 # #361: the title alone; what to do now is in the paragraph under it.
 INVALID_TEXT = "這個連結已經失效"
-SCORE = re.compile(r"\d+ 分")
+# A score such as 12 分; not 3 分鐘, a length of time, as in the site's description (spec #583).
+SCORE = re.compile(r"\d+ 分(?!鐘)")
 COVER_TEXT = "家人分享了一份<wbr>聽伴聽力報告給您"
 TOKEN_WITH_DB = "XKCHYOI8__zeol2dBAdjP9Vp19URZ_MGg9va6Do_KVs"
 
