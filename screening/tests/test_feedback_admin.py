@@ -6,7 +6,9 @@ from zoneinfo import ZoneInfo
 
 from django.contrib.admin.models import LogEntry
 from django.core.management import call_command
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from screening.models import Feedback, User, purge_feedback
@@ -127,6 +129,24 @@ class FeedbackAdminTests(TestCase):
         self.assertTrue(history.strip())
         self.assertNotIn("報告印不出來", history)
         self.assertNotIn("wang@example.com", history)
+
+
+class FeedbackAdminQueryTests(TestCase):
+    """CODING_STANDARDS 15: feedback grows each day, its list takes the same queries."""
+
+    def test_two_or_many_take_the_same_queries(self):
+        self.client.force_login(User.objects.create_superuser(username="feedback_owner"))
+        changelist = reverse("admin:screening_feedback_changelist")
+        Feedback.objects.bulk_create(Feedback(text=f"意見 {n}") for n in range(2))
+        self.client.get(changelist)  # the first request also looks up what the admin caches
+        with CaptureQueriesContext(connection) as two:
+            self.assertEqual(self.client.get(changelist).status_code, 200)
+        Feedback.objects.bulk_create(
+            Feedback(text=f"多的意見 {n}", email=f"m{n}@example.com", page="結果頁", handled=n % 2)
+            for n in range(20)
+        )
+        with self.assertNumQueries(len(two)):
+            self.assertEqual(self.client.get(changelist).status_code, 200)
 
 
 class FeedbackPurgeTests(TestCase):

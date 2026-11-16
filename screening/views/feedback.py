@@ -35,9 +35,12 @@ PAGE_NAMES = {
     "password_reset_sent": "忘記密碼",
     "password_reset_confirm": "設新密碼",
     "google_name": "用 Google 註冊",
+    "google_same_email": "用 Google 註冊",
     "line_name": "用 LINE 註冊",
     "consent": "同意書",
     "privacy": "隱私權說明",
+    "feedback": "意見回饋",
+    "feedback_sent": "意見回饋",
     "about": "關於聽伴",
     "add_to_home": "加到手機主畫面",
     "learn": "了解",
@@ -72,6 +75,8 @@ PAGE_NAMES = {
     "audiogram_compare": "聽力圖比較",
     "audiogram_detail": "聽力圖",
     "audiogram_edit": "修改聽力圖",
+    "audiogram_delete": "刪除聽力圖",
+    "audiogram_speech_banana": "聽力圖的語言香蕉區",
 }
 GUIDE_CHAPTER_TITLES = {chapter.slug: chapter.title for chapter in GUIDE_CHAPTERS}
 
@@ -106,11 +111,6 @@ def notify_owner(request):
         logger.exception("A feedback notice could not be sent")
 
 
-def kept_today():
-    """How many 意見回饋 the site kept today, Taipei time (#637)."""
-    return Feedback.objects.filter(created_at__date=timezone.localdate()).count()
-
-
 @require_http_methods(["GET", "POST"])
 def feedback(request):
     """Spec #633 (#636): the 意見回饋 page, open to everyone, signed in or not."""
@@ -135,7 +135,9 @@ def feedback(request):
             add_attempt("feedback", address)
             return redirect(sent)
         elif form.is_valid():
-            if kept_today() >= FEEDBACKS_PER_DAY:
+            # #637: the site's whole day, Taipei time.
+            kept_today = Feedback.objects.filter(created_at__date=timezone.localdate()).count()
+            if kept_today >= FEEDBACKS_PER_DAY:
                 too_many = "day"
             else:
                 add_attempt("feedback", address)

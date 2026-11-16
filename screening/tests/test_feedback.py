@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, date, datetime, timedelta
 from unittest import mock
 
@@ -11,11 +12,14 @@ from django.urls import reverse
 from django.utils import timezone
 
 from screening import models
+from screening import urls as screening_urls
+from screening.context_processors import NAMED_BY_CODE
 from screening.forms import RESET_WINDOW
 from screening.models import Consent, Feedback, FeedbackNotice, ReportShare, User
 from screening.models.feedback import FEEDBACK_KEPT_FOR
 from screening.tests import test_layout
 from screening.tests.helpers import consented_user
+from screening.views import feedback as feedback_views
 
 
 def footer_of(response):
@@ -156,6 +160,21 @@ class SendFeedbackTests(TestCase):
         response = self.send()
         self.assertRedirects(response, reverse("feedback_sent"))
         self.assertEqual(Feedback.objects.count(), 1)
+
+    def test_the_download_has_no_feedback_even_with_its_email(self):
+        user = consented_user(username="feedback_download", email="download@example.com")
+        self.client.force_login(user)
+        self.send(text="報告印不出來", email="download@example.com")
+        response = self.client.get(reverse("download_my_data"))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertNotIn("報告印不出來", json.dumps(data, ensure_ascii=False))
+        self.assertFalse({"feedback", "feedbacks"} & set(data))
+
+    def test_its_pages_are_kept_out_of_search(self):
+        for url in (reverse("feedback"), reverse("feedback_sent")):
+            with self.subTest(url):
+                self.assertIn("noindex", self.client.get(url)["X-Robots-Tag"])
 
     def test_deleting_an_account_leaves_feedback_with_its_email(self):
         user = consented_user(username="feedback_leaving", email="leaving@example.com")
@@ -332,6 +351,12 @@ class FeedbackNoticeTests(TestCase):
         self.assertNotIn("wang@example.com", record.getMessage())
         self.assertEqual(record.args, ())
 
+    def test_one_refused_for_the_hour_sends_nothing(self):
+        for _ in range(5):
+            self.send(website="http://spam.example")
+        self.assertContains(self.send(), "這一小時送太多次了")
+        self.assertEqual(mail.outbox, [])
+
     def test_nothing_kept_sends_nothing(self):
         self.send(website="http://spam.example")
         self.send(text="")
@@ -435,3 +460,49 @@ class OwnersWordsTests(TestCase):
             notice.body,
             f"今天有新的意見回饋，到後台看：\n{ADMIN_LIST}\n今天之後的回饋不會再寄信通知。\n",
         )
+
+
+# Spec #633 (self-review): addresses that never show a page with the footer, so no feedback link
+# names them: redirects, form addresses, files and what only machines read.
+NOT_PAGES = {
+    "sitemap",
+    "robots_txt",
+    "uptime_check",
+    "monitoring_test",
+    "logout",
+    "google_start",
+    "google_callback",
+    "google_save_card",
+    "google_add",
+    "line_start",
+    "line_callback",
+    "line_save_card",
+    "line_add",
+    "qa_search",
+    "route_answer",
+    "journey_todo_tick",
+    "report_share_create",
+    "report_share_cancel",
+    "download_my_data",
+}
+
+
+class PageNamesTests(TestCase):
+    """Spec #633 acceptance 10, 23 (self-review): every page with the footer has words for
+    「您是從…過來的」, so none sends feedback without saying where from."""
+
+    def test_every_page_is_named(self):
+        names = {pattern.name for pattern in screening_urls.urlpatterns if pattern.name}
+        named = set(feedback_views.PAGE_NAMES) | set(NAMED_BY_CODE)
+        self.assertEqual(names - named - NOT_PAGES, set())
+        self.assertEqual(NOT_PAGES - names, set())
+        self.assertEqual(NOT_PAGES & named, set())
+
+    def test_an_audiogram_page_is_named_without_its_number(self):
+        for page, words in (
+            ("audiogram_detail", "聽力圖"),
+            ("audiogram_speech_banana", "聽力圖的語言香蕉區"),
+        ):
+            with self.subTest(page):
+                self.client.post(reverse("feedback"), {"text": "看不懂", "page": page})
+                self.assertEqual(Feedback.objects.latest("pk").page, words)
