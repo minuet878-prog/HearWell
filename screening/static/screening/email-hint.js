@@ -18,11 +18,12 @@
     "msa.hinet.net",
   ];
   // Real ones that look like one of the seven: Yahoo's other address, the free mail.com and
-  // email.com, Yahoo elsewhere (yahoo.com.hk...), HiNet's other mail hosts ms1 to ms99.
+  // email.com, Yahoo in nine other places (listed, so yahoo.com.wt is still asked about), HiNet's
+  // other mail hosts ms1 to ms99.
   const REAL = [
     /^ymail\.com$/,
     /^e?mail\.com$/,
-    /^yahoo\.com\.[a-z]{2}$/,
+    /^yahoo\.com\.(hk|sg|au|my|ph|vn|br|mx|ar)$/,
     /^ms[1-9][0-9]?\.hinet\.net$/,
   ];
 

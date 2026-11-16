@@ -108,6 +108,9 @@ describe("email typo hint", () => {
     ["msa.hient.net", "msa.hinet.net"],
     ["msa.hinet.ne", "msa.hinet.net"],
     ["mas.hinet.net", "msa.hinet.net"],
+    // Not Yahoo elsewhere: tw with the letters swapped, or one letter wrong.
+    ["yahoo.com.wt", "yahoo.com.tw"],
+    ["yahoo.com.te", "yahoo.com.tw"],
     // Two letters off: two swaps, a swap and a wrong one, two missing.
     ["gmial.cmo", "gmail.com"],
     ["gmial.con", "gmail.com"],
@@ -161,6 +164,12 @@ describe("email typo hint", () => {
     "yahoo.com.hk",
     "yahoo.com.sg",
     "yahoo.com.au",
+    "yahoo.com.my",
+    "yahoo.com.ph",
+    "yahoo.com.vn",
+    "yahoo.com.br",
+    "yahoo.com.mx",
+    "yahoo.com.ar",
     "YAHOO.COM.HK",
     "ms1.hinet.net",
     "ms12.hinet.net",
