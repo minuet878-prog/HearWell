@@ -43,6 +43,7 @@
    做對了會看到：兩行的 commit 編號（前 7 碼）一樣。不一樣的話，先照平常的方式把正式站部署到最新 `main`，或等下次部署後再演練。
 
 3. 主資料夾切到最新 `main`：`git switch main && git pull`。
+   停下來說 `untracked working tree files would be overwritten`：主資料夾有一個沒進版控的檔，`main` 上又有同名的檔。先把它移到家目錄保留（`mv <那個檔> ~/<檔名>.local.md`），再 `git pull` 一次。2026-11-16 第一次演練時遇到過。
 4. 關掉平常在跑的本機開發伺服器（第 5 步會用 8002 埠，避開平常的 8000 和預覽用的 8001）。
 
 ### 1. 選備份
@@ -108,10 +109,10 @@ ssh hearwell-vps psql -h localhost -U <正式資料庫使用者> -d <正式資�
 
 ### 5. 讓本機網站暫時接上還原的資料庫
 
-在 repo 主資料夾。把 `<本機 DATABASE_URL>` 最後一段的資料庫名稱換成 `hearwell_restore_test`，其他照抄：
+在 repo 主資料夾貼這一行。它從 `.env` 取出 `<本機 DATABASE_URL>`、只把最後一段的資料庫名稱換成 `hearwell_restore_test`，畫面上不會出現密碼：
 
 ```bash
-DATABASE_URL=postgres://…/hearwell_restore_test py313/bin/python manage.py runserver 8002
+DATABASE_URL="$(grep '^DATABASE_URL=' .env | cut -d= -f2- | tr -d '"' | sed 's#/[^/]*$#/hearwell_restore_test#')" py313/bin/python manage.py runserver 8002
 ```
 
 - 環境變數寫在指令前面，只對這一次執行有效；`.env` 不會被改，網站讀環境變數時以指令前面這個為準（`load_dotenv` 不蓋掉已經有的）。
