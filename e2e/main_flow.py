@@ -61,6 +61,8 @@ from screening.tests.helpers import (
     LINE_AUTHORIZE,
     LINE_CHANNEL_ID,
     LINE_ENDPOINTS,
+    FakeGoogle,
+    FakeLine,
     consented_user,
     fake_definition,
     google_on,
@@ -16263,3 +16265,156 @@ class EmailTypoHintTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             expect(self.email()).to_have_value(self.TYPO)
             expect(self.hint()).to_be_empty()
             self.assertEqual(self.hint().bounding_box()["height"], 0)
+
+
+@google_on
+@line_on
+class BirthAgeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """Spec #611 J4 (ticket #615; mockup-613-filling.html 二 A): with 出生年's green tick,
+    今年滿 76 歲 on its own line right under the 民國 ... 年 row, on 註冊, 用 LINE 取名稱 and 用
+    Google 取名稱. Which years get it is in register-checks.test.js; the pages as sent are in
+    test_birth_age."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the tick's green
+    PASSWORD = "Fake-pass-2468"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def open(self, path, width=390):
+        """path: /register, or line or google for that provider's name page, reached as a new
+        LINE or Google account is (the provider played by FakeLine, FakeGoogle)."""
+        self.context = self.browser.new_context(viewport={"width": width, "height": 800})
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+        if path in ("line", "google"):
+            client = Client()
+            if path == "line":
+                provider = FakeLine(client)
+                provider.start()
+                provider.come_back(sub="line-age-e2e")
+            else:
+                provider = FakeGoogle(client)
+                provider.start()
+                provider.come_back(sub="google-age-e2e", email="age_e2e@example.com")
+            self.context.add_cookies(
+                [
+                    {
+                        "name": settings.SESSION_COOKIE_NAME,
+                        "value": client.cookies[settings.SESSION_COOKIE_NAME].value,
+                        "url": self.live_server_url,
+                    }
+                ]
+            )
+            path = f"/login/{path}/name"
+        self.page.goto(f"{self.live_server_url}{path}")
+        self.page.wait_for_load_state("load")
+
+    def year(self):
+        return self.main().get_by_label("出生年（選填）", exact=True)
+
+    def age(self):
+        return self.page.locator("#id_roc_birth_year_age")
+
+    @staticmethod
+    def words(roc):
+        """This year (民國) less the birth year, as User.age counts it."""
+        return f"今年滿 {date.today().year - 1911 - roc} 歲"
+
+    def row(self):
+        """The 民國 ... 年 row's three pieces and the age line, measured in one go, from the
+        page's top: typing scrolls the field into view."""
+        return self.page.evaluate(
+            """() => {
+                const year = document.getElementById("id_roc_birth_year");
+                const age = document.getElementById("id_roc_birth_year_age");
+                const pieces = [...year.closest(".input-group").children, age];
+                return pieces.map((el) => {
+                    const r = el.getBoundingClientRect();
+                    const [top, bottom] = [r.top + scrollY, r.bottom + scrollY];
+                    return { left: r.left, right: r.right, top, bottom };
+                });
+            }"""
+        )
+
+    # Acceptance 13, 14, 15, 17, 19.
+    def test_the_age_comes_with_the_tick_on_the_three_pages(self):
+        for path in ("/register", "line", "google"):
+            with self.subTest(page=path):
+                self.open(path)
+                # Sent empty: no room taken, nothing said.
+                expect(self.age()).to_be_hidden()
+                self.year().fill("39")
+                expect(self.year()).to_have_class(re.compile(r"\bis-right\b"))
+                expect(self.age()).to_have_text(self.words(39))
+                expect(self.age()).to_have_css("color", self.GREEN)
+                expect(self.age()).to_have_css("font-weight", "700")
+                # Said once by the status area; the line itself is not read again.
+                said = self.main().get_by_role("status").filter(has_text=self.words(39))
+                expect(said).to_have_count(1)
+                expect(said).to_have_text(f"格式正確，{self.words(39)}")
+                expect(self.age()).to_have_attribute("aria-hidden", "true")
+                # Right under the row.
+                *pieces, line = self.row()
+                self.assertGreaterEqual(line["top"], max(piece["bottom"] for piece in pieces))
+                self.year().fill("40")
+                expect(self.age()).to_have_text(self.words(40))
+                for wrong in ("195", "0", ""):
+                    self.year().fill(wrong)
+                    expect(self.age()).to_be_hidden()
+                    expect(self.year()).not_to_have_class(re.compile(r"\bis-right\b"))
+
+    # Acceptance 21: at 390px and 200% text, no sideways scroll and the 民國 ... 年 row stays one
+    # row, the age on the line under it.
+    def test_fits_a_phone_at_double_text_size(self):
+        for path in ("/register", "line", "google"):
+            with self.subTest(page=path):
+                self.open(path)
+                self.double_text()
+                before = self.row()[:3]
+                self.year().fill("39")
+                expect(self.age()).to_have_text(self.words(39))
+                self.assertLessEqual(
+                    self.page.evaluate("document.documentElement.scrollWidth"), 390
+                )
+                *pieces, line = self.row()
+                # The row as it was before the age came: not moved, not squeezed.
+                self.assertEqual(pieces, before)
+                self.assertEqual({piece["top"] for piece in pieces}, {pieces[0]["top"]})
+                for left, right in pairwise(pieces):
+                    self.assertLessEqual(left["right"], right["left"] + 2)
+                self.assertGreaterEqual(line["top"], pieces[0]["bottom"])
+                self.assertGreaterEqual(line["left"], 0)
+                self.assertLessEqual(line["right"], 390)
+                expect(self.year()).to_have_value("39")
+
+    # Acceptance 18, 20: a right year sent back with another mistake shows its age on arrival,
+    # and the account made then has that age.
+    def test_the_age_shown_is_the_accounts(self):
+        self.open("/register")
+        with self.saving_artifacts():
+            self.main().get_by_label("使用者名稱").fill("age_e2e")
+            self.main().get_by_label("電子郵件").fill("age_e2e@example.com")
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill("Fake-pass-246")
+            self.year().fill("39")
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            self.page.wait_for_load_state("load")
+            expect(self.page.locator("#id_password2_error")).to_be_visible()
+            expect(self.age()).to_have_text(self.words(39))
+            shown = int(re.fullmatch(r"今年滿 (\d+) 歲", self.age().inner_text()).group(1))
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill(self.PASSWORD)
+            self.main().get_by_role("button", name="註冊", exact=True).click()
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(User.objects.get(username="age_e2e").age, shown)

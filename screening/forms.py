@@ -52,9 +52,14 @@ PASSWORD_HELP = format_html(
 PASSWORD_AGAIN_HELP = "請再輸入一次同樣的密碼。"
 
 
+def this_roc_year():
+    """This year in 民國 years; less a 民國 birth year, it is User.age."""
+    return date.today().year - ROC_OFFSET
+
+
 def latest_roc_birth_year():
     """The latest 民國 birth year registering accepts: someone who turns 18 this year."""
-    return date.today().year - 18 - ROC_OFFSET
+    return this_roc_year() - 18
 
 
 class NoLabelSuffix:
@@ -92,8 +97,10 @@ class RegisterForm(NoLabelSuffix, UserCreationForm):
         self.fields["username"].help_text = USERNAME_HELP
         self.fields["password1"].help_text = PASSWORD_HELP
         self.fields["password2"].help_text = PASSWORD_AGAIN_HELP
-        # #332 (spec #326 D6): the page's green tick checks against the same latest year.
+        # #332 (spec #326 D6): the page's green tick checks against the same latest year; spec
+        # #611 J4 (#615): its age is this year less the birth year, as User.age.
         self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
+        self.fields["roc_birth_year"].widget.attrs["data-this-year"] = this_roc_year()
 
     def clean_roc_birth_year(self):
         value = self.cleaned_data["roc_birth_year"]
@@ -134,6 +141,7 @@ class GoogleNameForm(NoLabelSuffix, forms.ModelForm):
             field.widget.attrs.setdefault("class", "form-control")
         self.fields["username"].help_text = USERNAME_HELP
         self.fields["roc_birth_year"].widget.attrs["data-max"] = latest_roc_birth_year()
+        self.fields["roc_birth_year"].widget.attrs["data-this-year"] = this_roc_year()
 
     def save(self, *, email):
         user = super().save(commit=False)

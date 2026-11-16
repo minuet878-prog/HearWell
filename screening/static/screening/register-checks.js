@@ -2,8 +2,11 @@
 // right, and the words in the field's status area for screen readers. Nothing is said when
 // they are not: mistakes are still the server's to show. 密碼 itself gets no tick; only the
 // server can say it is good enough.
+// Spec #611 J4 (ticket #615; mockup-613-filling.html 二 A): with 出生年's tick, 今年滿 76 歲 under
+// the 民國［　］年 row, on 用 LINE／Google 取名稱 too, which have 出生年 but no password.
 (function () {
   const year = document.getElementById("id_roc_birth_year");
+  const age = document.getElementById("id_roc_birth_year_age");
   const password = document.getElementById("id_password1");
   const confirmation = document.getElementById("id_password2");
 
@@ -41,12 +44,15 @@
 
   // The server's rule (RegisterForm.clean_roc_birth_year), whose latest year the page gives:
   // whole digits, spaces around trimmed, full-width digits read as digits, 1 to the latest.
+  // The age is this 民國 year, also the page's, less it: User.age's count, not the device's date.
   function checkYear() {
     const digits = year.value
       .trim()
       .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xfee0));
     const value = Number(digits);
-    show(year, /^[0-9]+$/.test(digits) && value >= 1 && value <= Number(year.dataset.max), "格式正確");
+    const right = /^[0-9]+$/.test(digits) && value >= 1 && value <= Number(year.dataset.max);
+    age.textContent = right ? `今年滿 ${Number(year.dataset.thisYear) - value} 歲` : "";
+    show(year, right, `格式正確，${age.textContent}`);
   }
 
   function checkConfirmation() {
@@ -56,9 +62,11 @@
   }
 
   year.addEventListener("input", checkYear);
-  password.addEventListener("input", checkConfirmation);
-  confirmation.addEventListener("input", checkConfirmation);
   // A year the server kept after a mistake elsewhere on the form is checked on arrival.
   checkYear();
+  // 註冊 only: 用 LINE／Google 取名稱 have no password to confirm.
+  if (!confirmation) return;
+  password.addEventListener("input", checkConfirmation);
+  confirmation.addEventListener("input", checkConfirmation);
   checkConfirmation();
 })();

@@ -1511,6 +1511,15 @@
     background-position: right 0.75rem center;
     background-size: 1.25rem 1.25rem;
   }
+  /* Spec #611 J4 (#615, mockup-613-filling.html 二 A): with 出生年's tick, 今年滿 76 歲 on its own
+     line right under the 民國／年 row, so the row is never squeezed; the tick's green, bold. Sent
+     empty, it takes no room. */
+  .birth-age {
+    margin: 0.25rem 0 0;
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+  .birth-age:empty { display: none; }
   .auth-alt {
     margin-top: 1.25rem;
     padding-top: 1.25rem;

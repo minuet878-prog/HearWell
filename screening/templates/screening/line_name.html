@@ -4,6 +4,7 @@
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
 
 {% block extra_head %}
+<script defer src="{% static 'screening/register-checks.js' %}"></script>
 <script defer src="{% static 'screening/email-hint.js' %}"></script>
 {% endblock %}
 
@@ -30,6 +31,10 @@
                     {{ form.roc_birth_year }}
                     <span class="input-group-text">年</span>
                 </div>
+                {# Spec #611 J4 (#615, mockup-613-filling.html 二 A): register-checks.js writes 今年滿 76 歲 here with the tick. #}
+                <p class="birth-age" id="id_roc_birth_year_age" aria-hidden="true"></p>
+                {# #332 (spec #326 D6), here since #615: register-checks.js says here what the green tick shows. #}
+                <p class="visually-hidden" role="status"></p>
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
             <div class="mb-4 auth-field">

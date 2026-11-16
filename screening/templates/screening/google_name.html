@@ -1,6 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}幫帳號取個名字｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/register-checks.js' %}"></script>
+{% endblock %}
 
 {% block body %}
 {# Spec #505 acceptance 5-7 (the #507 mockup 3, W8, W9): the register page's name and birth year; the email is Google's and cannot be changed, so it is a row, not a field. No account until 下一步. #}
@@ -31,6 +36,10 @@
                     {{ form.roc_birth_year }}
                     <span class="input-group-text">年</span>
                 </div>
+                {# Spec #611 J4 (#615, mockup-613-filling.html 二 A): register-checks.js writes 今年滿 76 歲 here with the tick. #}
+                <p class="birth-age" id="id_roc_birth_year_age" aria-hidden="true"></p>
+                {# #332 (spec #326 D6), here since #615: register-checks.js says here what the green tick shows. #}
+                <p class="visually-hidden" role="status"></p>
                 {% include "screening/field_messages.html" with field=form.roc_birth_year help_class="field-help" %}
             </div>
             <p>下一步請您閱讀並同意<a class="inline-link" href="{% url 'privacy' %}">隱私權說明</a>。</p>
