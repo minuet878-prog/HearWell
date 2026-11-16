@@ -99,7 +99,10 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
 
     def test_page_has_one_heading_its_title_and_the_learn_tab(self):
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", self.content), ["助聽器"])
-        self.assertRegex(self.content, r"<title>\s*助聽器｜聽伴\s*</title>")  # noqa: RUF001
+        self.assertRegex(
+            self.content,
+            r"<title>\s*爸媽的助聽器怪怪的、戴不習慣怎麼辦？｜聽伴\s*</title>",  # noqa: RUF001
+        )
         nav = test_pages.RedesignLayoutTests.NAV.search(self.content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),
