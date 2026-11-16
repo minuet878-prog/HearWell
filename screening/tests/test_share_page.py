@@ -130,10 +130,12 @@ class SharePageTests(TestCase):
         share = self._share(self.user)
         path = reverse("shared_cover", args=[share.token])
         plain = self._page().content.decode()
-        self.assertIn(f'data-url="http://testserver{path}"', plain)
+        # Both buttons (再傳一次給家人, 複製連結) carry it.
+        self.assertEqual(plain.count(f'data-url="http://testserver{path}"'), 2)
         self.assertIn(f">http://testserver{path}</span>", plain)
         secure = self.client.get(self.url, secure=True).content.decode()
-        self.assertIn(f'data-url="https://testserver{path}"', secure)
+        # Both buttons (再傳一次給家人, 複製連結) carry it.
+        self.assertEqual(secure.count(f'data-url="https://testserver{path}"'), 2)
         self.assertIn(f">https://testserver{path}</span>", secure)
 
     # Acceptance 13
