@@ -2,7 +2,7 @@
 
 日期：2026-11-16。基準：`ac89d53`（origin/main）；分支：`feat/readability-batch3`。依據：[可讀性檢查](../planning/readability-review-2026-11-16.md)「第 3 批選定」、[第 3 批設計圖](../planning/redesign/mockup-readability-batch3.html)。
 
-狀態：等本人實際操作驗收。
+狀態：本人實際操作驗收通過（2026-11-16）。
 
 - 本人在設計圖選定：密碼規則 B、分數色帶 A、同意書 A（2026-11-16）。換題淡入已經有了，這批不做。
 - 開工前本人決定（2026-11-16）：同意書只分組不改字，**不升版**（[ADR 0061](../adr/0061-regrouping-consent-highlights-keeps-the-version.md)）；三個小標「用來做什麼」「登入和寄信時」「存在哪裡、您的權利」照草稿定稿；訪客保存後的大確認框（回饋感 F3）留給回饋感那批；色帶只搬位置，**不需要交叉審查**（沒改計分、分級、門檻，沒有 migration，沒碰權限）。
@@ -46,7 +46,7 @@
 | 重點只寫在一個檔案 | ✅ 自動 | `screening/tests/test_consent.py:177`（原有） |
 | 不升版 | ✅ 自動 | `screening/tests/test_consent.py:172` |
 | 隱私權說明的提示框照舊；兩頁平面、標題樣式照舊；320px、200% 不超出 | ✅ 自動 | `screening/tests/test_account_redesign.py:150`；`e2e/main_flow.py:8193`、`:8213` |
-| 實際走起來 | ⬜ 本人 | 見下方「人工驗收」 |
+| 實際走起來 | ✅ 本人 | 見下方「人工驗收」 |
 
 ## 測試與審查
 
@@ -84,4 +84,4 @@ cd /Users/huangweizhe/HearWell/.claude/worktrees/readability-batch3 && /Users/hu
 4. （同意頁要等同意書升版才會看到；這次不升版，跟隱私權說明是同一塊，看 3 即可。）
 5. 字放大到 200% 再看 1、2：不會左右捲動。
 
-結果：（待本人回覆）
+結果：2026-11-16 本人在 8001 實際操作，回覆「全部通過」。分級有變時主按鈕要稍微往下捲這一點，本人看過後一併接受，維持設計圖 A。
