@@ -45,7 +45,7 @@ SINGLE_PAGES = {
         "隱私權說明｜聽伴",  # noqa: RUF001
         "聽伴蒐集哪些資料、為什麼蒐集、存放在哪裡、保存多久，以及您可以要求什麼。",
     ),
-    # Spec #633 (#640): drafts until the owner confirms its row in the titles table (#635).
+    # Spec #633 (#640): the owner confirmed its row (A5) in #635.
     "about": (
         "關於聽伴：誰做的、內容怎麼查核｜聽伴",  # noqa: RUF001
         "聽伴是誰做的、內容怎麼查核、資料怎麼處理，以及為什麼不能取代聽力檢查。",

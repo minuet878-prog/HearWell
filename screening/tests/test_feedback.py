@@ -406,3 +406,32 @@ class FeedbackPrivacyTests(TestCase):
         Consent.objects.filter(user=user).update(agreed_at=timezone.now() - timedelta(days=30))
         self.client.force_login(user)
         self.assertEqual(self.client.get(reverse("my_hearing")).status_code, 200)
+
+
+REMINDER = (
+    "這裡不是諮詢，不會馬上回覆。您寫的內容會匿名保存 90 天，"
+    "請不要輸入姓名、電話、身分證字號、病歷號碼。"
+)
+SENT_LINE = "我們會看每一則意見，但不一定會回覆。有填 email 的，需要時會寫信給您。"
+
+
+class OwnersWordsTests(TestCase):
+    """Spec #633 (#642, acceptance 11, 48): the owner's words from #635, as they were chosen."""
+
+    def test_the_reminder_comes_before_the_urgent_box(self):
+        page = self.client.get(reverse("feedback")).content.decode()
+        self.assertIn(f'<p class="tip-box">{REMINDER}</p>', page)
+        self.assertLess(page.index(REMINDER), page.index("突然聽不到、耳朵流血？請盡快就醫"))
+
+    def test_the_sent_page_says_what_happens_next(self):
+        response = self.client.get(reverse("feedback_sent"))
+        self.assertContains(response, f"<p>{SENT_LINE}</p>")
+
+    def test_the_notice_says_one_a_day(self):
+        self.client.post(reverse("feedback"), {"text": "字太小了"})
+        (notice,) = mail.outbox
+        self.assertEqual(notice.subject, "聽伴：有新的意見回饋")
+        self.assertEqual(
+            notice.body,
+            f"今天有新的意見回饋，到後台看：\n{ADMIN_LIST}\n今天之後的回饋不會再寄信通知。\n",
+        )

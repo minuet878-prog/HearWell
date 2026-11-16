@@ -97,8 +97,8 @@ def family_guide(request):
     return render(request, "screening/family_guide.html", context)
 
 
-# Spec #633 (#640): the day the owner last checked 關於聽伴; on the yearly review list. #642 sets
-# it to the day the owner's words are final.
+# Spec #633 (#640): the day the owner last checked 關於聽伴; on the yearly review list. The
+# owner's words were final that day (#635, #642).
 ABOUT_CHECKED_ON = date(2026, 11, 16)
 
 

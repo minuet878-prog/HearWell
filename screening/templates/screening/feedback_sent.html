@@ -8,6 +8,8 @@
     <div class="guest-saved">
         <h1 class="guest-saved-title"><span aria-hidden="true">✓ </span>已送出，謝謝您</h1>
     </div>
+    {# #642: the owner's line, chosen in #635. #}
+    <p>我們會看每一則意見，但不一定會回覆。有填 email 的，需要時會寫信給您。</p>
     {% if next %}<a class="btn btn-primary btn-lg w-full" href="{{ next }}">回到剛才那一頁</a>{% else %}<a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回到首頁</a>{% endif %}
 </div>
 {% endblock %}

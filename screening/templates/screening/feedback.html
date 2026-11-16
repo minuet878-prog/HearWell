@@ -7,7 +7,8 @@
 <div class="narrow-form">
     <h1 class="h3 mt-4">意見回饋</h1>
     {% if page_words %}<p class="tip-box">您是從「{{ page_words }}」過來的。</p>{% endif %}
-    {# #642: the owner's reminder (not a consultation, no reply at once, what not to type, how it is kept) goes here, from #635. #}
+    {# #642: the owner's reminder, chosen in #635. #}
+    <p class="tip-box">這裡不是諮詢，不會馬上回覆。您寫的內容會匿名保存 90 天，請不要輸入姓名、電話、身分證字號、病歷號碼。</p>
     {% include "screening/qa/urgent_box.html" %}
     {# #637: refused, in the login page's red box above the form; the words stay in the box. #}
     {% if too_many == "hour" %}<div class="error-box" role="alert">{{ too_many_an_hour }}</div>{% endif %}
