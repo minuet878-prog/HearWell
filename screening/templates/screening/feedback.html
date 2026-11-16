@@ -1,0 +1,35 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}意見回饋｜聽伴{% endblock %}
+
+{% block body %}
+{# Spec #633 (#636), the #634 mockup's A: the reminder and the urgent box come before the form, so they are read before writing. #}
+<div class="narrow-form">
+    <h1 class="h3 mt-4">意見回饋</h1>
+    {% if page_words %}<p class="tip-box">您是從「{{ page_words }}」過來的。</p>{% endif %}
+    {# #642: the owner's reminder (not a consultation, no reply at once, what not to type, how it is kept) goes here, from #635. #}
+    {% include "screening/qa/urgent_box.html" %}
+    <form method="post" action="{% url 'feedback' %}">
+        {% csrf_token %}
+        {# Q5: the kind of page, kept in words; next only makes the sent page's way back. #}
+        <input type="hidden" name="page" value="{{ page }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="mb-4">
+            <label for="{{ form.text.id_for_label }}" class="form-label font-bold text-heading">{{ form.text.label }}</label>
+            <textarea {% if form.text.errors %}autofocus aria-invalid="true" aria-describedby="{{ form.text.auto_id }}_error {{ form.text.auto_id }}_helptext" {% else %}aria-describedby="{{ form.text.auto_id }}_helptext" {% endif %}class="form-control" id="{{ form.text.id_for_label }}" name="{{ form.text.html_name }}" rows="6" maxlength="{{ form.text.field.max_length }}" required>{{ form.text.value|default:'' }}</textarea>
+            {% include "screening/field_messages.html" with field=form.text help_class="field-help" %}
+        </div>
+        <div class="mb-4">
+            <label for="{{ form.email.id_for_label }}" class="form-label font-bold text-heading">{{ form.email.label }}</label>
+            <input {% if form.email.errors %}{% if not form.text.errors %}autofocus {% endif %}aria-invalid="true" aria-describedby="{{ form.email.auto_id }}_error {{ form.email.auto_id }}_helptext" {% else %}aria-describedby="{{ form.email.auto_id }}_helptext" {% endif %}class="form-control" id="{{ form.email.id_for_label }}" type="email" name="{{ form.email.html_name }}" autocomplete="email" value="{{ form.email.value|default:'' }}">
+            {% include "screening/field_messages.html" with field=form.email help_class="field-help" %}
+        </div>
+        {# Q9: only robots fill this. hidden keeps it from sight, screen readers and the Tab key alike. #}
+        <div hidden>
+            <label for="id_website">網站</label>
+            <input id="id_website" type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg w-full">送出</button>
+    </form>
+</div>
+{% endblock %}

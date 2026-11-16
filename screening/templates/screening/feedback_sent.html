@@ -1,0 +1,13 @@
+{% extends "screening/layout.html" %}
+
+{% block title %}意見回饋已送出｜聽伴{% endblock %}
+
+{% block body %}
+{# Spec #633 (#636), the #634 mockup's A: the guest save's green box, then back to the page it came from. It never shows what was sent. #}
+<div class="narrow-form">
+    <div class="guest-saved">
+        <h1 class="guest-saved-title"><span aria-hidden="true">✓ </span>已送出，謝謝您</h1>
+    </div>
+    {% if next %}<a class="btn btn-primary btn-lg w-full" href="{{ next }}">回到剛才那一頁</a>{% else %}<a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">回到首頁</a>{% endif %}
+</div>
+{% endblock %}
