@@ -188,9 +188,10 @@ class Form9ChapterTests(TestCase):
         self.assertIn(f'<a href="{form_25}">看二十五號表</a>', steps)
 
     # Readability batch 2 (the owner's A, mockup-readability-batch2.html): one list of the six
-    # steps in sight, each step's words folded behind 看每一步的說明 after it (the fold holds the
-    # sources; site.css hides the words while it is shut); the warning once, inside step 4. It
-    # was the warning in sight and the list behind 看更多 (#467 H2).
+    # steps in sight, each step's words shown while 看每一步的說明 over it is open (site.css; the
+    # toggle above the list, so a screen reader reads on into the words; the sources in sight
+    # under the list); the warning once, inside step 4. It was the warning in sight and the list
+    # behind 看更多 (#467 H2).
     def test_process_is_the_six_steps_in_sight_their_words_behind_a_fold(self):
         content = self.client.get(self.url).content.decode()
         start = content.index('<h2 id="steps-title"')
@@ -198,12 +199,13 @@ class Form9ChapterTests(TestCase):
         self.assertNotIn("tip-box", steps)
         self.assertEqual(steps.count('<ol class="step-list"'), 1)
         first = steps.index('<ol class="step-list" role="list">')
-        fold = steps.index("<details")
-        self.assertLess(first, fold)
-        self.assertIn("data-step-details", steps[fold : steps.index(">", fold)])
-        self.assertIn("<summary>看每一步的說明</summary>", steps[fold:])
-        self.assertIn("來源：", steps[fold:])
-        items = re.findall(r"<li>(.*?)</li>", steps[first:fold], re.S)
+        last = steps.index("</ol>")
+        toggle = re.search(r"<details([^>]*)><summary>看每一步的說明</summary></details>", steps)
+        self.assertIsNotNone(toggle)
+        self.assertIn("data-step-details", toggle.group(1))
+        self.assertLess(toggle.end(), first)
+        self.assertIn("來源：", steps[last:])
+        items = re.findall(r"<li>(.*?)</li>", steps[first:last], re.S)
         self.assertEqual(len(items), 6)
         # The circles carry the numbers for screen readers too: the list's own markers are off.
         numbers = re.findall(r'<span class="step-list-number">(\d+)</span>', steps)
@@ -220,7 +222,7 @@ class Form9ChapterTests(TestCase):
         steps = content[start : content.index("</section>", start)]
         items = re.findall(r"<li>(.*?)</li>", steps, re.S)
         # Not hidden from screen readers: with the words folded, the tag is the time limit.
-        self.assertNotIn('class="step-when" aria-hidden', steps)
+        self.assertEqual(re.findall(r'<span class="step-when"([^>]*)>', steps), [""] * 5)
         tags = [re.findall(r'<span class="step-when"[^>]*>(.*?)</span>', item) for item in items]
         expected = [
             ["3 個月內有效"],

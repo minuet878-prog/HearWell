@@ -187,6 +187,7 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
     def test_old_anchors_land_on_their_original_sections_with_the_reviewed_words(self):
         content = self._zone()
         self.assertIn(INTRO, content)
+        self.assertNotIn(TALK_INTRO, content)
         # #469: talk-title went with its tips to family_talk (test_family_redesign); readability
         # batch 2: aid-title with its tips to family_hearing_aids.
         self.assertNotIn('id="aid-title"', content)
@@ -568,7 +569,7 @@ class ReviewedPagesTests(SimpleTestCase):
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "4ec60e6a8b5e39280898d8688faed94ca6aae6747c5f39fb8b3333b429e69f4b",
+            "5528429633f9a489db6b5cbfacef0d0bc98ee1127def4505fef27972932ae5d1",
         ),
         (
             "guide/form_25.html",

@@ -26,19 +26,17 @@
 </section>
 <section data-jump-box aria-labelledby="steps-title">
     <h2 id="steps-title" class="h4">要怎麼辦？</h2>
-    {# #259: a step list. Readability batch 2 (the owner's A): the six steps in sight with their time limits, the warning once inside step 4; each step's words show while 看每一步的說明 below is open (site.css), which a jump or no JavaScript leaves open. The tags are read out: with the words folded they are the time limits. #}
+    {# #259: a step list. Readability batch 2 (the owner's A): the six steps in sight with their time limits, the warning once inside step 4; each step's words show while 看每一步的說明 is open (site.css), which a jump or no JavaScript leaves open. The toggle is above the list, so a screen reader reads on into what it shows; the sources stay in sight under it. The tags are read out: with the words folded they are the time limits. #}
+    <details class="dropdown-line" data-guide-fold data-step-details open><summary>看每一步的說明</summary></details>
     <ol class="step-list" role="list">
         <li><span class="step-list-number">1</span><span class="step-list-body"><span class="step-list-title">做評估，拿到九號表</span><span class="step-detail">找聽力師或縣市輔具中心。九號表 3 個月內有效。</span><span class="step-when">3 個月內有效</span></span></li>
         <li><span class="step-list-number">2</span><span class="step-list-body"><span class="step-list-title">到公所申請</span><span class="step-detail">帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。</span></span></li>
         <li><span class="step-list-number">3</span><span class="step-list-body"><span class="step-list-title">等核定通知</span><span class="step-detail">主管機關收到評估報告後，10 天內會核定。</span><span class="step-when">10 天內核定</span></span></li>
-        <li><span class="step-list-number">4</span><span class="step-list-body"><span class="step-list-title">購買並請款</span><span class="step-detail">收到核定通知後 6 個月內。</span><span class="step-warning">先拿到核定通知再買，沒核定就先買的不補助。</span><span class="step-when">6 個月內</span></span></li>
+        <li><span class="step-list-number">4</span><span class="step-list-body"><span class="step-list-title">購買並請款</span><span class="step-detail">收到核定通知後 6 個月內。</span><span class="mt-1.5 block rounded-(--radius-small) bg-(--color-surface) px-2.5 py-1.5 font-bold text-(--color-heading)">先拿到核定通知再買，沒核定就先買的不補助。</span><span class="step-when">6 個月內</span></span></li>
         <li><span class="step-list-number">5</span><span class="step-list-body"><span class="step-list-title">使用效益驗證</span><span class="step-detail">買中階型、進階型或雙對側傳聲型的人，配戴滿 1 個月到 3 個月內要做，拿到二十五號表。<a href="{% url 'guide_chapter' 'form-25' %}">看二十五號表</a></span><span class="step-when">配戴 1–3 個月內</span></span></li>
         <li><span class="step-list-number">6</span><span class="step-list-body"><span class="step-list-title">核銷</span><span class="step-detail">帶購買憑證、保固書影本（和二十五號表）。受理後 1 個月內撥款。</span><span class="step-when">1 個月內撥款</span></span></li>
     </ol>
-    <details class="dropdown-line" data-guide-fold data-step-details open>
-        <summary>看每一步的說明</summary>
-        <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060">身心障礙者輔具費用補助辦法</a>、<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
-    </details>
+    <p class="guide-source">來源：<a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?PCODE=D0050060">身心障礙者輔具費用補助辦法</a>、<a href="https://law.moj.gov.tw/LawClass/LawGetFile.ashx?FileId=0000326887&amp;lan=C">身心障礙者輔具費用補助基準表</a></p>
 </section>
 <section data-jump-box aria-labelledby="issuer-title">
     <h2 id="issuer-title" class="h4">九號表去哪裡開？</h2>

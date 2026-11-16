@@ -2283,23 +2283,16 @@
   }
 
   /* Readability batch 2 (the owner's A): form 9's steps, each one's words under its title and
-     shown while 看每一步的說明 after the list is open; the warning, a grey line in step 4. */
+     shown while 看每一步的說明 over the list is open. The words are outside that fold, so they
+     also wait unseen while the guide's folds are pending (guide.js below), not showing and then
+     shrinking. */
   .step-detail {
     display: block;
   }
 
-  section:has(> details[data-step-details]:not([open])) .step-detail {
+  section:has(> details[data-step-details]:not([open])) .step-detail,
+  :root.guide-folds-pending section:has(> details[data-step-details]) .step-detail {
     display: none;
-  }
-
-  .step-warning {
-    display: block;
-    margin-top: 0.35rem;
-    padding: 0.4rem 0.6rem;
-    border-radius: var(--radius-small);
-    background-color: var(--color-surface);
-    color: var(--color-heading);
-    font-weight: 700;
   }
 
   /* Numbers that matter (a threshold, a subsidy limit) large on the left, what they mean on the

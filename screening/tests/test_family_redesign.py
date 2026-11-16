@@ -227,11 +227,10 @@ class FamilyZoneHomeRedesignTests(TestCase):
     def test_sources_of_what_stays_on_the_page_folded(self):
         fold = SOURCES_FOLD.search(self.main)
         self.assertIsNotNone(fold)
-        for topic in ("什麼時候要馬上就醫",):
-            for wording, url in TOPICS[topic]:
-                with self.subTest(url=url):
-                    self.assertIn(f'href="{url}"', fold.group(1))
-                    self.assertIn(wording, _text(fold.group(1)))
+        for wording, url in TOPICS["什麼時候要馬上就醫"]:
+            with self.subTest(url=url):
+                self.assertIn(f'href="{url}"', fold.group(1))
+                self.assertIn(wording, _text(fold.group(1)))
         for _, url in (*TOPICS[TALK_TITLE], *TOPICS["陪伴配戴助聽器"]):
             self.assertNotIn(url, self.main)
 

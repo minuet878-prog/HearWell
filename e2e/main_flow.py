@@ -10461,6 +10461,14 @@ class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
         expect(tips).to_have_count(9)
         return tips.all()
 
+    @staticmethod
+    def plain_stroke(tip):
+        # A line that is not .thin, .thick or a .dot has the plain width.
+        return tip.locator("svg.care-drawing").evaluate(
+            "svg => getComputedStyle(svg.querySelector("
+            "':scope > :not(.thin):not(.thick):not(.dot)')).strokeWidth"
+        )
+
     def test_on_a_phone_each_drawing_is_at_the_left_of_its_words(self):
         with self.saving_artifacts():
             for width in (320, 390):
@@ -10473,6 +10481,8 @@ class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
                             self.assertAlmostEqual(drawing["width"], 96, delta=2)
                             self.assertLessEqual(drawing["x"] + drawing["width"], point["x"])
                             self.assertAlmostEqual(drawing["y"], point["y"], delta=24)
+                            # Lighter lines at that size: 1.8 for the plain ones, not 2.4.
+                            self.assertEqual(self.plain_stroke(tip), "1.8px")
 
     def test_double_text_size_puts_the_drawing_back_over_the_words(self):
         with self.saving_artifacts():
@@ -10483,6 +10493,7 @@ class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSe
                 point = tip.locator("strong").bounding_box()
                 with self.subTest(tip=tip.locator("strong").inner_text()):
                     self.assertLessEqual(drawing["y"] + drawing["height"], point["y"] + 1)
+                    self.assertEqual(self.plain_stroke(tip), "2.4px")
 
 
 class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -14377,7 +14388,13 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(threshold.get_by_text("怎麼算的", exact=True)).to_be_visible()
 
     LINKED_PARTS = (
-        ("form-9", "steps-title", "做評估，拿到九號表"),
+        # A step's words, shown only with the fold open (readability batch 2); step 1's are on
+        # a key card too, so step 2's.
+        (
+            "form-9",
+            "steps-title",
+            "帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。",
+        ),
         ("form-9", "issuer-title", "各縣市輔具中心"),
         ("form-9", "reapply", "再次申請簡易型，不需要重新評估。"),
         ("form-9", "without-certificate", "低收入戶老人配戴助聽器補助"),
@@ -14425,16 +14442,36 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                 "使用效益驗證",
                 "核銷",
                 "3 個月內有效",
+                "10 天內核定",
                 "6 個月內",
+                "配戴 1–3 個月內",
+                "1 個月內撥款",
                 "先拿到核定通知再買，沒核定就先買的不補助。",
             ):
                 with self.subTest(words=words):
                     expect(section.get_by_text(words, exact=True)).to_be_visible()
             words = section.get_by_text("找聽力師或縣市輔具中心。九號表 3 個月內有效。")
             expect(words).to_be_hidden()
+            expect(section.get_by_text("身心障礙者輔具費用補助辦法").first).to_be_visible()
             section.get_by_text("看每一步的說明", exact=True).click()
             expect(words).to_be_visible()
-            expect(section.get_by_text("身心障礙者輔具費用補助辦法").first).to_be_visible()
+
+    # The steps' words are outside their fold, so they wait unseen while the guide's folds are
+    # pending too (the self-review): with guide.js held back they never show before the page's
+    # 3-second fallback, then show as the open fold says.
+    def test_form_9_steps_words_do_not_flash_before_the_folds_settle(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.route("**/guide.js", lambda route: route.abort())
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            expect(self.page.locator("html")).to_have_class(re.compile(r"\bguide-folds-pending\b"))
+            words = self.main().get_by_text("帶申請表、身分證正本和九號表")
+            expect(words).to_be_hidden()
+            expect(self.main().get_by_text("做評估，拿到九號表", exact=True)).to_be_visible()
+            expect(self.page.locator("html")).not_to_have_class(
+                re.compile(r"\bguide-folds-pending\b"), timeout=5000
+            )
+            expect(words).to_be_visible()
 
     def test_a_chapter_opened_at_its_top_has_its_parts_folded(self):
         self.open()

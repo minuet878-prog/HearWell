@@ -456,8 +456,8 @@ HEARING_AID_PROBLEMS = PickExplain(
 )
 
 # Drafts for the owner's review (#434, batch-3-wording.md section 2). What /family/reluctant covers
-# is linked, not written again; 陪伴配戴助聽器 (on this page since readability batch 2) stays as
-# reviewed.
+# is linked, not written again; 陪伴配戴助聽器 (on /family/hearing-aids since readability
+# batch 2) stays as reviewed.
 _YOU_CAN_DO = "您可以做的事"
 HEARING_AID_STAGES = PickExplain(
     code="hearing-aid-stage",

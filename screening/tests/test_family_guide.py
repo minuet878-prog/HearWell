@@ -109,10 +109,9 @@ def tips(html):
     return tuple((point, re.sub(r"<[^>]+>", "", words)) for point, words in TIP.findall(html))
 
 
-# The shared report's help cards link to these (#194); #469 moved 怎麼跟聽損的家人說話 to its own
-# page (family_talk), readability batch 2 陪伴配戴助聽器 to family_hearing_aids, each with its
-# tips and their sources.
-ANCHORS = ("urgent-title",)
+# The shared report's help cards link to the zone's sections (#194); #469 moved
+# 怎麼跟聽損的家人說話 to its own page (family_talk), readability batch 2 陪伴配戴助聽器 to
+# family_hearing_aids (test_aid_sources_moved_with_the_tips), each with its tips and sources.
 # Each page and the topics whose sources it lists, in order, under each topic's title.
 PAGE_TOPICS = (
     ("family_talk", ("怎麼跟聽損的家人說話",)),
@@ -140,9 +139,6 @@ class FamilyGuideTests(TestCase):
     # 2; #240 moved the sources to the page's end, one group per topic under its title. #469: in
     # a 出處 fold, each page with its own topics' sources.
     def test_topics_in_order_with_sources_grouped_at_the_end(self):
-        content = self.client.get(self.url).content.decode()
-        headings = [content.index(f'id="{anchor}"') for anchor in ANCHORS]
-        self.assertEqual(headings, sorted(headings))
         for name, topics in PAGE_TOPICS:
             content = self.client.get(reverse(name)).content.decode()
             start = content.index('<details class="result-details family-sources">')
@@ -166,10 +162,11 @@ class FamilyGuideTests(TestCase):
         content = self.client.get(reverse("family_hearing_aids")).content.decode()
         start = content.index('<details class="result-details family-sources">')
         sources = content[start : content.index("</details>", start)]
+        home = self.client.get(self.url).content.decode()
         for wording, url in TOPICS["陪伴配戴助聽器"]:
             with self.subTest(url=url):
                 self.assertIn(f'<a href="{url}">{wording}</a>', sources)
-                self.assertNotIn(url, self.client.get(self.url).content.decode())
+                self.assertNotIn(url, home)
 
     # #354: a heading names the section, without a colon after it. #469: the 出處 fold's row.
     def test_sources_heading_has_no_colon(self):
