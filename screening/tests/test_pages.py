@@ -473,17 +473,26 @@ class RedesignLayoutTests(TestCase):
         # The 顯示 button on the password fields (#151; on the login page too since 2026-10-23).
         # register-checks.js: the green ticks on the register page (#332); password-count.js: how
         # many characters 密碼 has (readability batch 3); email-hint.js: asks when the email looks
-        # mistyped (#614).
+        # mistyped (#614); enter-next.js: Enter moves to the next field (#616).
         register_js = [
             "screening/register-checks.js",
             "screening/password-count.js",
             "screening/email-hint.js",
         ]
+        enter_next = "screening/enter-next.js"
         for name, extra in (("login", []), ("register", register_js)):
             with self.subTest(url=name):
                 self.assertEqual(
                     scripts(reverse(name)),
-                    [*every, "screening/password-toggle.js", *extra, wave, play_in_view, smooth],
+                    [
+                        *every,
+                        "screening/password-toggle.js",
+                        *extra,
+                        enter_next,
+                        wave,
+                        play_in_view,
+                        smooth,
+                    ],
                 )
         self.client.force_login(empty_user)
         with self.subTest(url="my_hearing without records"):

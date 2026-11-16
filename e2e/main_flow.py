@@ -16418,3 +16418,82 @@ class BirthAgeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             self.main().get_by_role("button", name="註冊", exact=True).click()
             expect(self.page).to_have_url(re.compile(r"/consent"))
             self.assertEqual(User.objects.get(username="age_e2e").age, shown)
+
+
+class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #611 N3 (ticket #616): in a form with several text fields, Enter (the phone
+    keyboard's 下一個) moves to the next one without sending; the last one sends. Each form's
+    fields and the Enter that picks a character are in enter-next.test.js; which pages load the
+    script in test_enter_next."""
+
+    PASSWORD = "Fake-pass-2468"
+
+    def posts(self):
+        """Every form sent from now on."""
+        sent = []
+        self.page.on("request", lambda r: sent.append(r.url) if r.method == "POST" else None)
+        return sent
+
+    # Acceptance 22-24, 26.
+    def test_register_goes_field_by_field_and_the_last_sends(self):
+        self.open("/register", signed_in=False)
+        with self.saving_artifacts():
+            fields = [
+                self.main().get_by_label("使用者名稱"),
+                self.main().get_by_label("電子郵件"),
+                self.page.get_by_label("密碼", exact=True),
+                self.page.get_by_label("密碼確認", exact=True),
+                self.main().get_by_label("出生年"),
+            ]
+            for field in fields[:-1]:
+                expect(field).to_have_attribute("enterkeyhint", "next")
+            self.assertIsNone(fields[-1].get_attribute("enterkeyhint"))
+            sent = self.posts()
+            values = ["enter_e2e", "enter_e2e@example.com", self.PASSWORD, self.PASSWORD]
+            for field, value, following in zip(fields[:-1], values, fields[1:], strict=True):
+                field.fill(value)
+                field.press("Enter")
+                # 密碼 goes to 密碼確認, past the 顯示 button between them.
+                expect(following).to_be_focused()
+            self.assertEqual(sent, [])
+            fields[-1].press("Enter")
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(sent, [f"{self.live_server_url}/register"])
+
+    # Acceptance 30: without JavaScript nothing says 下一個 and Enter sends, as before.
+    def test_without_javascript_enter_sends_as_before(self):
+        self.open("/register", signed_in=False, java_script_enabled=False)
+        with self.saving_artifacts():
+            expect(self.page.locator("[enterkeyhint]")).to_have_count(0)
+            sent = self.posts()
+            username = self.main().get_by_label("使用者名稱")
+            username.fill("enter_e2e")
+            self.main().get_by_label("電子郵件").fill("enter_e2e@example.com")
+            self.page.get_by_label("密碼", exact=True).fill(self.PASSWORD)
+            self.page.get_by_label("密碼確認", exact=True).fill(self.PASSWORD)
+            # Enter in the first field sends the whole form.
+            username.press("Enter")
+            expect(self.page).to_have_url(re.compile(r"/consent"))
+            self.assertEqual(sent, [f"{self.live_server_url}/register"])
+
+    # Acceptance 28: 年 → 月 → 日; 日 is the last and Enter there still does nothing.
+    def test_audiogram_date_goes_year_month_day(self):
+        self.sign_in(consented_user(username="enter_next_e2e"))
+        self.open("/audiograms/new")
+        with self.saving_artifacts():
+            year, month, day = (
+                self.main().get_by_label(name, exact=True) for name in ("民國年", "月", "日")
+            )
+            expect(year).to_have_attribute("enterkeyhint", "next")
+            expect(month).to_have_attribute("enterkeyhint", "next")
+            self.assertIsNone(day.get_attribute("enterkeyhint"))
+            year.fill("115")
+            year.press("Enter")
+            expect(month).to_be_focused()
+            month.fill("10")
+            month.press("Enter")
+            expect(day).to_be_focused()
+            day.fill("1")
+            day.press("Enter")
+            expect(day).to_be_focused()
+            expect(self.main().get_by_text("第 1 步／共 4 步：檢查日期")).to_be_visible()

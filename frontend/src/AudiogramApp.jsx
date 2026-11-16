@@ -43,6 +43,13 @@ const isoDate = ({ year, month, day }) => {
   if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 };
+// Spec #611 N3 (ticket #616): Enter on 年 or 月 (the phone keyboard's 下一個) moves to the next
+// box; the Enter that picks a character in 注音 or another input method only picks it.
+const nextOnEnter = (e) => {
+  if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) return;
+  e.preventDefault();
+  e.currentTarget.closest(".date-part").nextElementSibling.querySelector("input").focus();
+};
 
 // "氣導 n 個、骨導 n 個" for one ear, with no total: a report rarely tests every frequency.
 function earCount(points, ear) {
@@ -316,6 +323,9 @@ export default function AudiogramApp({
                   aria-label={name}
                   className={`form-control form-control-lg date-part-${part}`}
                   inputMode="numeric"
+                  // 日 is the last: that step sends nothing, so its key is left to the phone.
+                  enterKeyHint={part === "day" ? undefined : "next"}
+                  onKeyDown={part === "day" ? undefined : nextOnEnter}
                   maxLength={length}
                   value={date[part]}
                   onChange={(e) => setDate({ ...date, [part]: e.target.value.trim() })}

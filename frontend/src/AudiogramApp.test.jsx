@@ -1143,3 +1143,40 @@ describe("missed marks on the confirm step (#619)", () => {
     expect(tip()).toBeNull();
   });
 });
+
+// Spec #611 N3 (acceptance 28), ticket #616: 年 and 月 say 下一個 on the phone keyboard and
+// Enter there moves on; 日 is the last, and with no sending on that step Enter still does nothing.
+describe("Enter in the date (#616)", () => {
+  const part = (name) => screen.getByLabelText(name);
+  // fireEvent returns false when the app stopped what Enter would do.
+  const enter = (name, init = {}) => {
+    part(name).focus();
+    return fireEvent.keyDown(part(name), { key: "Enter", ...init });
+  };
+
+  it("says 下一個 on 年 and 月, not on 日", () => {
+    renderApp();
+    expect(part("民國年").getAttribute("enterkeyhint")).toBe("next");
+    expect(part("月").getAttribute("enterkeyhint")).toBe("next");
+    expect(part("日").hasAttribute("enterkeyhint")).toBe(false);
+  });
+
+  it("goes 年 to 月 to 日, and 日 stays as it was", () => {
+    renderApp();
+    expect(enter("民國年")).toBe(false);
+    expect(document.activeElement).toBe(part("月"));
+    expect(enter("月")).toBe(false);
+    expect(document.activeElement).toBe(part("日"));
+    expect(enter("日")).toBe(true);
+    expect(document.activeElement).toBe(part("日"));
+    expect(progress()).toBe("第 1 步／共 4 步：檢查日期");
+  });
+
+  it("leaves the Enter that picks a character alone", () => {
+    renderApp();
+    expect(enter("民國年", { isComposing: true })).toBe(true);
+    expect(document.activeElement).toBe(part("民國年"));
+    expect(enter("月", { keyCode: 229 })).toBe(true);
+    expect(document.activeElement).toBe(part("月"));
+  });
+});
