@@ -135,8 +135,8 @@ function rememberSaveCardPress(root, clock) {
   if (!card) return;
   card.addEventListener("click", (event) => {
     if (!event.target.closest("a")) return;
-    const keys = loadGuestResults(clock()).map((result) => result.key);
-    attempt(() => sessionStorage.setItem(SAVE_INTENT, JSON.stringify(keys)));
+    const receipts = loadGuestResults(clock()).map((result) => result.key);
+    attempt(() => sessionStorage.setItem(SAVE_INTENT, JSON.stringify(receipts)));
   });
 }
 
@@ -203,18 +203,18 @@ export async function showGuestResult({
 // All saved: home saying so (the 2026-11-14 walkthrough), whose 照顧旅程 says what comes
 // next; none here: home.
 //
-// keys: the receipt numbers to save, the ones the person said yes to (Codex cross review of #492,
+// receipts: the receipt numbers to save, the ones the person said yes to (Codex cross review of #492,
 // Spec 2); a result in their place since, done again in another tab, is not theirs to save.
 export async function saveGuestResults({
   root,
-  keys,
+  receipts,
   now = Date.now(),
   clock = () => Date.now(),
   fetchSave = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
   const { submissionsUrl, doneUrl, homeUrl } = root.dataset;
-  const results = loadGuestResults(now).filter((result) => keys.includes(result.key));
+  const results = loadGuestResults(now).filter((result) => receipts.includes(result.key));
   if (results.length === 0) return navigate(homeUrl);
   const saving = root.querySelector("[data-guest-saving]");
   const failedBox = root.querySelector("[data-guest-failed]");
@@ -268,7 +268,7 @@ export async function saveGuestResults({
     .addEventListener(
       "click",
       // Looks again: what is kept may have changed in another tab, or run out of days.
-      () => saveGuestResults({ root, keys: failed.map((result) => result.key), now: clock(), clock, fetchSave, navigate }),
+      () => saveGuestResults({ root, receipts: failed.map((result) => result.key), now: clock(), clock, fetchSave, navigate }),
       { once: true },
     );
 }
@@ -332,7 +332,7 @@ export function askToSaveGuestResults({
     .replaceChildren(...results.map((result) => askTile(result, results.length === 1, names, topics)));
   root.querySelector("[data-guest-ask-yes]").addEventListener("click", () => {
     ask.hidden = true;
-    saveGuestResults({ root, keys: results.map((result) => result.key), now: clock(), clock, fetchSave, navigate });
+    saveGuestResults({ root, receipts: results.map((result) => result.key), now: clock(), clock, fetchSave, navigate });
   }, { once: true });
   root.querySelector("[data-guest-ask-no]").addEventListener("click", () => {
     for (const result of results) clearGuestResult(result.code, result.key);
@@ -354,7 +354,7 @@ export function startSavePage({
   const remembered = parse(attempt(() => sessionStorage.getItem(SAVE_INTENT)));
   attempt(() => sessionStorage.removeItem(SAVE_INTENT));
   if (!("asking" in root.dataset) && Array.isArray(remembered)) {
-    return saveGuestResults({ root, keys: remembered, now, clock, fetchSave, navigate });
+    return saveGuestResults({ root, receipts: remembered, now, clock, fetchSave, navigate });
   }
   return askToSaveGuestResults({ root, now, clock, fetchSave, navigate });
 }

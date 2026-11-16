@@ -14653,6 +14653,12 @@ class GuestClearTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
             score = self.main().get_by_text("總分 20 分")
             expect(score).to_be_visible()
             self.assertIsNotNone(self.kept())
+            # Codex cross review of #492, acceptance 7: with the result on screen, and again once
+            # the result page has scored it anew (opened again, not just finished), no record.
+            self.assertEqual((Submission.objects.count(), Answer.objects.count()), (0, 0))
+            self.page.reload()
+            expect(score).to_be_visible()
+            self.assertEqual((Submission.objects.count(), Answer.objects.count()), (0, 0))
 
             clear_row = self.main().locator("details[data-guest-clear] > summary")
             question = self.main().get_by_text(self.CONFIRM)
