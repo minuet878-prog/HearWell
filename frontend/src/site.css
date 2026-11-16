@@ -1191,21 +1191,6 @@
     font-weight: 700;
   }
 
-  /* #580: the contact address and its 複製信箱, side by side where there is room (a computer);
-     on a phone the button takes the line under the address. The address may break anywhere at
-     large text sizes, so its part may shrink. */
-  .site-footer-contact {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem 0.75rem;
-  }
-
-  .site-footer-contact > span {
-    min-width: 0;
-  }
-
   /* Centred like the rest of the footer, the links in one row (readability batch 1, the owner's
      A). Phones: equal columns, each icon over its words; a column is never narrower than its
      words, so at large text sizes the row wraps rather than breaking a name. From 48em each link
@@ -2877,20 +2862,9 @@
     --btn-disabled-bg: var(--color-normal);
     --btn-disabled-border-color: var(--color-normal);
   }
-  /* #580 (spec #576, the owner's A in the #577 mockup): 複製信箱, an outline button with its
-     icon in the button's colour; pressed, it is .is-copied like the share page's. */
-  .copy-address:not(.is-copied) > svg {
-    width: 1.2em;
-    height: 1.2em;
-    margin-right: 0.35em;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .is-copied > svg, .is-sent > svg {
+  /* .copy-address (#580, the owner's A in the #577 mockup): 複製信箱, an outline button with
+     its icon drawn like the tick that takes its place, in a thinner line. */
+  .is-copied > svg, .is-sent > svg, .copy-address > svg {
     width: 1.25em;
     height: 1.25em;
     margin-right: 0.35em;
@@ -2900,6 +2874,9 @@
     stroke-width: 3;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+  .copy-address:not(.is-copied) > svg {
+    stroke-width: 2;
   }
 
   /* A thin grey line between the parts of a group (the result page's advice, a family topic's

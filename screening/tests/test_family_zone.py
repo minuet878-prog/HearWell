@@ -572,7 +572,7 @@ class ReviewedPagesTests(SimpleTestCase):
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "dd9a70b6888da9b44d78cf21e7b425291b3aabb5de7c47759189e05cab98fdbe",
+            "c9fc2ee68415fa6a68a4c1720ae57f006754f70cc53b62d31ab502e152e56d16",
         ),
         (
             "guide/form_25.html",

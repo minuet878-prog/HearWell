@@ -10331,10 +10331,10 @@ class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
     tests, the button's every state in copy-link.test.js."""
 
     ADDRESS = "hearwellweb@gmail.com"
-    COPIED_GREEN = "rgb(20, 87, 60)"
-    BOXES = (
-        "els => els.map(el => { const b = el.getBoundingClientRect(); return [b.top, b.bottom]; })"
-    )
+    BOXES = """els => els.map(el => {
+        const b = el.getBoundingClientRect();
+        return [b.top, b.bottom, b.width];
+    })"""
 
     def setUp(self):
         # Email left blank: the account page then says where to write, with its own button.
@@ -10357,9 +10357,10 @@ class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
             self.open("/guide/form-9", self.PHONE, signed_in=False)
             numbers = self.centre_numbers()
             boxes = numbers.evaluate_all(self.BOXES)
-            for index, (top, bottom) in enumerate(boxes):
+            for index, (top, bottom, width) in enumerate(boxes):
                 self.assertGreaterEqual(bottom - top, 44, index)
-            for (_, bottom), (next_top, _) in pairwise(boxes):
+                self.assertGreaterEqual(width, 44, index)
+            for (_, bottom, _), (next_top, _, _) in pairwise(boxes):
                 self.assertLessEqual(bottom, next_top + 0.5)
             first = numbers.first
             expect(first).to_have_accessible_name("撥打基隆市輔具資源中心 (02)2469-6966")
@@ -10431,7 +10432,7 @@ class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
                     )
             button.click()
             copied = footer.get_by_role("button", name="已複製")
-            expect(copied).to_have_css("background-color", self.COPIED_GREEN)
+            expect(copied).to_have_css("background-color", CopyPasswordRegisterFeedbackTest.GREEN)
             expect(copied.locator("svg")).to_be_visible()
             self.assertEqual(self.page.evaluate("navigator.clipboard.readText()"), self.ADDRESS)
             status = footer.locator("[data-copy-status]")

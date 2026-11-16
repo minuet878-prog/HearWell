@@ -10,14 +10,16 @@
 // sheet is not; its address has no id="share-url" and stays on the page above the button.
 // #580 (spec #576): 複製信箱 (data-copy, the address to copy) in every page's footer and beside
 // the account page's sentence; several on a page, each its own, saying 已複製 in the footer's
-// status area (data-copy-status).
+// status area (data-copy-status). One the browser refuses goes away, so no button does
+// nothing; the address is still beside it.
 (function () {
   if (!navigator.clipboard || !window.isSecureContext) return;
   const tick =
     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
-  // Shows button; a press copies text and says so on the button and in status.
-  function copies(button, text, status, refused) {
+  // Shows button; a press copies text and says so on the button and in status, or, when the
+  // browser refuses, calls onRefused.
+  function showCopyButton(button, text, status, onRefused) {
     const label = button.innerHTML;
     let timer;
     button.hidden = false;
@@ -34,22 +36,22 @@
           button.classList.remove("is-copied");
           button.innerHTML = label;
         }, 2000);
-      }, refused);
+      }, onRefused);
     });
   }
 
-  const link = document.getElementById("copy-link");
-  if (link && !("withoutShareSheet" in link.dataset && navigator.share)) {
+  const linkButton = document.getElementById("copy-link");
+  if (linkButton && !("withoutShareSheet" in linkButton.dataset && navigator.share)) {
     const address = document.getElementById("share-url");
     if (address) address.hidden = true;
-    if (!navigator.share) link.classList.replace("btn-outline-primary", "btn-primary");
-    copies(link, link.dataset.url, document.getElementById("copy-status"), () => {
+    if (!navigator.share) linkButton.classList.replace("btn-outline-primary", "btn-primary");
+    showCopyButton(linkButton, linkButton.dataset.url, document.getElementById("copy-status"), () => {
       if (address) address.hidden = false;
     });
   }
 
-  const said = document.querySelector("[data-copy-status]");
+  const addressStatus = document.querySelector("[data-copy-status]");
   for (const button of document.querySelectorAll("[data-copy]")) {
-    copies(button, button.dataset.copy, said);
+    showCopyButton(button, button.dataset.copy, addressStatus, () => { button.hidden = true; });
   }
 })();

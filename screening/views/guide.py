@@ -36,7 +36,7 @@ def _assessment_context(request):
 
 
 def _form_9_context(request):
-    return {"centre_counties": device_centres.CENTRES}
+    return {"centres_by_county": device_centres.CENTRES_BY_COUNTY}
 
 
 def _after_fitting_context(request):

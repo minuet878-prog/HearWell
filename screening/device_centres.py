@@ -12,7 +12,7 @@ from dataclasses import dataclass
 class Phone:
     number: str  # as shown, (area code)number
     after: str = ""  # its extension or what it is for, plain words after the link
-    before: str = ""  # which number this is, plain words before the link
+    before: str = ""  # plain words before the link: which number this is, or 或 between two
 
     @property
     def dial(self):
@@ -29,7 +29,7 @@ class Centre:
 
 
 # (county, its centres), north to south as the source lists them.
-CENTRES = (
+CENTRES_BY_COUNTY = (
     (
         "基隆市",
         (Centre("基隆市輔具資源中心", (Phone("(02)2469-6966", after="轉 211"),)),),

@@ -218,10 +218,14 @@ describe("contact address copy buttons", () => {
     expect(inPage.classList.contains("is-copied")).toBe(false);
   });
 
-  it("says 已複製 again on every press, whichever button", async () => {
+  it("says 已複製 again on every press, the same button or the other", async () => {
     pageWithTwo();
     const [inPage, inFooter] = buttons();
     await press(inPage);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(said().textContent).toBe("已複製");
+    await press(inPage);
+    expect(said().textContent).toBe("");
     await vi.advanceTimersByTimeAsync(100);
     expect(said().textContent).toBe("已複製");
     await press(inFooter);
@@ -234,6 +238,18 @@ describe("contact address copy buttons", () => {
     pageWithTwo();
     await press(buttons()[0]);
     expect(document.querySelector("footer a").getAttribute("href")).toBe(`mailto:${ADDRESS}`);
+  });
+
+  // Spec #576 user story 28: no button that does nothing. The address is still beside it.
+  it("goes away when the browser refuses to copy, the other one staying", async () => {
+    navigator.clipboard.writeText.mockImplementation(() => Promise.reject(new Error("denied")));
+    pageWithTwo();
+    const [inPage, inFooter] = buttons();
+    await press(inPage);
+    expect(inPage.hidden).toBe(true);
+    expect(inFooter.hidden).toBe(false);
+    expect(said().textContent).toBe("");
+    expect(document.body.textContent).toContain(ADDRESS);
   });
 
   it("stay hidden where the browser cannot copy", () => {

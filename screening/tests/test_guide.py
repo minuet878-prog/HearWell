@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import AidAndSubsidy, User
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 from screening.views.guide import GUIDE_CHAPTERS
 
@@ -269,7 +270,7 @@ def next_rows(content):
 
 def text_without_hidden(html):
     html = re.sub(r'<span[^>]*aria-hidden="true"[^>]*>.*?</span>', "", html, flags=re.S)
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+    return test_layout._text(html)
 
 
 class NextChapterTests(TestCase):
@@ -329,7 +330,21 @@ class NextChapterTests(TestCase):
         solid = main.index('class="btn btn-primary btn-lg w-full mt-2"')
         self.assertIn(">回選配路線看下一站</a>", main[solid:])
         self.assertLess(solid, self.row_at(main))
-        # The chapter's end has the one solid button (the chapter itself may have its own,
-        # as 鑑定醫院's 查詢 does).
+        # The chapter's end has the one solid button (this chapter has its own above, 查詢).
         self.assertEqual(main[main.index("</article>") :].count("btn-primary"), 1)
         self.assertLess(self.row_at(main), main.index("<summary>資料來源</summary>"))
+        # Acceptance 13: well along the route, the next chapter is still the one in reading
+        # order.
+        self.assertEqual(next_rows(main), [("/guide/form-9", "下一章 九號表：申請助聽器補助")])
+
+    # Acceptance 15 on a chapter with no button of its own: one solid button on the page.
+    def test_answered_a_chapter_without_its_own_button_has_one_solid_button(self):
+        user = consented_user(username="next_one_solid")
+        AidAndSubsidy.objects.create(user=user, certificate="yes", form_9_done=True)
+        self.client.force_login(user)
+        main = self.main("form-9")
+        self.assertIn("已記下：九號表完成了", main)
+        self.assertEqual(main.count("btn-primary"), 1)
+        self.assertEqual(
+            next_rows(main), [("/guide/types-and-prices", "下一章 助聽器的種類與價格")]
+        )

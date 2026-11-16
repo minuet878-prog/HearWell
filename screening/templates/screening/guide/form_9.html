@@ -46,15 +46,15 @@
     <details class="dropdown-box mb-0">
     <summary>看各縣市輔具中心電話</summary>
     <p>資料來源：<a href="https://newrepat.sfaa.gov.tw/home/repat-center">輔具資源入口網</a></p>
-    {# #578 (spec #576, the owner's A in the #577 mockup): a centre's name, then each number on a line of its own, a dial link; an extension or a note is plain words beside it and never dialled. The rows are device_centres.CENTRES; role="list" keeps them a list for VoiceOver without their bullets. #}
+    {# #578 (spec #576, the owner's A in the #577 mockup): a centre's name, then each number on a line of its own, a dial link; an extension or a note is plain words beside it and never dialled. A link is named by its centre, with the county where the centre's name does not say it (苗栗縣's two), for a screen reader going link by link. The rows are device_centres.CENTRES_BY_COUNTY; role="list" keeps them a list for VoiceOver without their bullets. #}
     <ul class="centre-list" role="list" aria-labelledby="centres-title">
-        {% for county, centres in centre_counties %}
+        {% for county, centres in centres_by_county %}
         <li><span class="centre-county">{{ county }}</span>
             <ul role="list">
                 {% for centre in centres %}
                 <li>{{ centre.name }}
                     {% for phone in centre.phones %}
-                    <span class="centre-phone">{% if phone.before %}<span>{{ phone.before }}</span> {% endif %}<a href="{{ phone.dial }}" aria-label="撥打{{ centre.name }} {{ phone.number }}">{% include "screening/guide/icon.html" with icon="phone" %}{{ phone.number }}</a>{% if phone.after %} <span>{{ phone.after }}</span>{% endif %}</span>
+                    <span class="centre-phone">{% if phone.before %}<span>{{ phone.before }}</span> {% endif %}<a href="{{ phone.dial }}" aria-label="撥打{% if county not in centre.name %}{{ county }}{% endif %}{{ centre.name }} {{ phone.number }}">{% include "screening/guide/icon.html" with icon="phone" %}{{ phone.number }}</a>{% if phone.after %} <span>{{ phone.after }}</span>{% endif %}</span>
                     {% endfor %}
                 </li>
                 {% endfor %}

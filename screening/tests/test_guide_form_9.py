@@ -4,7 +4,7 @@ import re
 from django.test import TestCase
 from django.urls import reverse
 
-from screening.tests import test_guide
+from screening.tests import test_guide, test_layout
 from screening.tests.helpers import consented_user
 
 # Wording finalised in #220 (C2–C31; C31 names the New Taipei centre), shortened in the guide
@@ -164,7 +164,7 @@ class Form9ChapterTests(TestCase):
         ]
         self.assertEqual(positions, sorted(positions))
         self.assertEqual(centres.count("<li>") - len(COUNTIES), CENTRE_COUNT)
-        rows = [without_tags(row) for row in CENTRE_ROW.findall(centres)]
+        rows = [test_layout._text(row) for row in CENTRE_ROW.findall(centres)]
         for entry in CENTRES_SAMPLE:
             with self.subTest(entry=entry):
                 self.assertIn(entry, rows)
@@ -368,10 +368,6 @@ def centre_list(response):
     return content[start : content.index("</details>", start)]
 
 
-def without_tags(html):
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
-
-
 class CentrePhoneLinksTests(TestCase):
     """#578 (spec #576): every phone number of the assistive device centres dials."""
 
@@ -390,15 +386,17 @@ class CentrePhoneLinksTests(TestCase):
                     name = re.match(r"\s*([^<]+)", row).group(1).strip()
                     links = DIAL_LINK.findall(row)
                     for href, shown in links:
-                        number = without_tags(shown)
+                        number = test_layout._text(shown)
                         # The link is the number alone, as (area code)number.
                         self.assertRegex(number, r"^\(0\d{1,3}\)\d[\d-]*\d$")
                         # It dials that number from anywhere: +886, the leading 0 dropped.
                         self.assertEqual(href, "tel:+886" + re.sub(r"\D", "", number)[1:])
-                    rows.append((name, tuple(re.sub(r"\D", "", without_tags(s)) for _, s in links)))
+                    rows.append(
+                        (name, tuple(re.sub(r"\D", "", test_layout._text(s)) for _, s in links))
+                    )
                 self.assertEqual(tuple(rows), NUMBERS_BEFORE)
                 # No number is left as plain words: outside the links, nothing as long as one.
-                self.assertNotRegex(without_tags(DIAL_LINK.sub("", block)), r"\d[\d-]{5,}")
+                self.assertNotRegex(test_layout._text(DIAL_LINK.sub("", block)), r"\d[\d-]{5,}")
 
     # Spec #576 acceptance 4 to 6, each kind of row the owner read in the #577 mockup: an
     # extension is 轉 after its number, a range whole; several numbers are several links; a
@@ -420,7 +418,7 @@ class CentrePhoneLinksTests(TestCase):
 
     def test_extensions_and_notes_are_plain_words_beside_their_number(self):
         block = centre_list(self.client.get(self.url))
-        rows = [without_tags(row) for row in CENTRE_ROW.findall(block)]
+        rows = [test_layout._text(row) for row in CENTRE_ROW.findall(block)]
         for row in self.ROWS:
             with self.subTest(row=row):
                 self.assertIn(row, rows)
@@ -433,13 +431,21 @@ class CentrePhoneLinksTests(TestCase):
             '<a href="tel:+88678151500" aria-label="撥打高雄市南區輔具資源中心 總站 (07)815-1500">',
             block,
         )
+        # Two centres' names in the source do not say their county (苗栗縣's); read one link
+        # at a time, the name does (the owner's call, 2026-11-16). The words in sight stay.
+        self.assertIn(
+            '<a href="tel:+88637268462" aria-label="撥打苗栗縣北區輔具資源中心 (037)268-462">',
+            block,
+        )
+        self.assertNotIn("撥打基隆市基隆市", block)
         links = re.findall(r'<a href="tel:[^"]*" aria-label="([^"]*)">(.*?)</a>', block, re.S)
         self.assertEqual(len(links), 56)
         for name, shown in links:
             with self.subTest(name=name):
+                self.assertTrue(any(county in name for county in COUNTIES))
                 # The words in sight are part of the name, for voice control.
                 self.assertTrue(name.startswith("撥打"))
-                self.assertTrue(name.endswith(without_tags(shown)))
+                self.assertTrue(name.endswith(test_layout._text(shown)))
                 self.assertEqual(shown.count("<svg"), 1)
                 self.assertIn(
                     '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">', shown
@@ -454,6 +460,6 @@ class CentrePhoneLinksTests(TestCase):
 
     def test_the_rows_read_as_the_owner_accepted_them(self):
         block = centre_list(self.client.get(self.url))
-        rows = [without_tags(row) for row in CENTRE_ROW.findall(block)]
+        rows = [test_layout._text(row) for row in CENTRE_ROW.findall(block)]
         self.assertEqual(len(rows), CENTRE_COUNT)
         self.assertEqual(hashlib.sha256("\n".join(rows).encode()).hexdigest(), self.ROWS_DIGEST)
