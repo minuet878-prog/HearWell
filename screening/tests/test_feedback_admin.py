@@ -191,3 +191,63 @@ class FeedbackPurgePermissionTests(TestCase):
             response = self.client.get(reverse("admin:screening_feedback_changelist"))
         self.assertEqual(response.status_code, 403)
         self.assertTrue(Feedback.objects.filter(pk=old.pk).exists())
+
+
+class FeedbackAdminEvidenceTests(TestCase):
+    """Cross review of spec #633 (acceptance 37, 39, 40, 41): the evidence asked for."""
+
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser(username="feedback_evidence"))
+        self.changelist = reverse("admin:screening_feedback_changelist")
+
+    def test_each_row_shows_when_it_was_sent_and_whether_handled(self):
+        kept("已經回了", days_ago=2, handled=True)
+        kept("還沒回", days_ago=1)
+        with at_now():
+            page = self.client.get(self.changelist).content.decode()
+        body = page[page.index("<tbody>") : page.index("</tbody>")]
+        rows = re.findall(r"<tr>.*?</tr>", body, re.S)
+        self.assertIn("還沒回", rows[0])
+        self.assertIn('alt="False"', rows[0])
+        self.assertIn('alt="True"', rows[1])
+        # Taipei time: 2026-11-15 10:00 and 2026-11-14 10:00.
+        self.assertIn("2026年11月15日 10:00", test_layout._text(rows[0]))
+        self.assertIn("2026年11月14日 10:00", test_layout._text(rows[1]))
+
+    def test_a_forged_time_is_not_kept(self):
+        feedback = kept("字太小了", days_ago=1)
+        with at_now():
+            self.client.post(
+                reverse("admin:screening_feedback_change", args=[feedback.pk]),
+                {"handled": "on", "created_at_0": "2020-01-01", "created_at_1": "00:00:00"},
+            )
+        self.assertEqual(Feedback.objects.get(pk=feedback.pk).created_at, feedback.created_at)
+
+    def test_several_selected_are_deleted_and_the_history_keeps_no_words(self):
+        rows = [kept(words, days_ago=1, email="many@example.com") for words in ("一則", "二則")]
+        stays = kept("三則", days_ago=1)
+        with at_now():
+            self.client.post(
+                self.changelist,
+                {
+                    "action": "delete_selected",
+                    "_selected_action": [row.pk for row in rows],
+                    "post": "yes",
+                },
+            )
+        self.assertEqual(list(Feedback.objects.all()), [stays])
+        history = " ".join(
+            f"{entry.object_repr} {entry.change_message}" for entry in LogEntry.objects.all()
+        )
+        self.assertEqual(LogEntry.objects.count(), 2)
+        for words in ("一則", "二則", "many@example.com"):
+            self.assertNotIn(words, history)
+
+    def test_the_command_keeps_exactly_90_days_and_purges_one_second_more(self):
+        stays = kept("剛好 90 天", days_ago=90)
+        Feedback.objects.filter(pk=kept("多一秒").pk).update(
+            created_at=NOW - timedelta(days=90, seconds=1)
+        )
+        with at_now():
+            call_command("purge_feedback", stdout=StringIO())
+        self.assertEqual(list(Feedback.objects.all()), [stays])

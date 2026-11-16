@@ -1,6 +1,9 @@
+import html
 import json
+import re
 from datetime import UTC, date, datetime, timedelta
 from unittest import mock
+from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.core import mail
@@ -15,10 +18,10 @@ from screening import models
 from screening import urls as screening_urls
 from screening.context_processors import NAMED_BY_CODE
 from screening.forms import FEEDBACKS_PER_ADDRESS, RESET_WINDOW
-from screening.models import Consent, Feedback, FeedbackNotice, ReportShare, User
+from screening.models import Audiogram, Consent, Feedback, FeedbackNotice, ReportShare, User
 from screening.models.feedback import FEEDBACK_KEPT_FOR
 from screening.tests import test_layout
-from screening.tests.helpers import consented_user
+from screening.tests.helpers import consented_user, submission_with_answers
 from screening.views import feedback as feedback_views
 
 
@@ -424,7 +427,7 @@ class FeedbackPrivacyTests(TestCase):
             "意見回饋是匿名的：不記錄您的帳號、IP 位址",
             "「下載我的資料」不包含意見回饋",
             "我們會提早刪除那一則",
-            "附上當時填的 email",
+            "請寫信到 hearwellweb@gmail.com，附上當時填的 email",
             "請不要在意見回饋裡輸入姓名、電話、身分證字號、病歷號碼",
             "通知信給營運者，信裡不包含您寫的內容和 email",
         ):
@@ -537,3 +540,138 @@ class PageNamesTests(TestCase):
             with self.subTest(page):
                 self.client.post(reverse("feedback"), {"text": "看不懂", "page": page})
                 self.assertEqual(Feedback.objects.latest("pk").page, words)
+
+
+def feedback_link(response):
+    """The footer's 意見回饋 link on a page, as a browser would follow it."""
+    found = re.search(r'<a href="(/feedback\?[^"]*)">', footer_of(response))
+    return html.unescape(found.group(1))
+
+
+class FromARealFooterTests(TestCase):
+    """Cross review of spec #633 (acceptance 23, 24): from each page's own footer to a row kept,
+    with no record number, share code or address in it."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def send_from(self, url, signed_in=None):
+        if signed_in:
+            self.client.force_login(signed_in)
+        link = feedback_link(self.client.get(url))
+        form = self.client.get(link)
+        self.assertEqual(form.status_code, 200)
+        query = parse_qs(urlparse(link).query)
+        data = {"text": "這頁看不懂", **{key: values[0] for key, values in query.items()}}
+        response = self.client.post(reverse("feedback"), data, REMOTE_ADDR="10.9.0.1")
+        self.assertEqual(response.status_code, 302)
+        return Feedback.objects.latest("pk")
+
+    def assert_kept_words_only(self, feedback, words, *secrets):
+        self.assertEqual(feedback.page, words)
+        values = " ".join(
+            str(value) for value in Feedback.objects.values().get(pk=feedback.pk).values()
+        )
+        for secret in secrets:
+            with self.subTest(secret=secret):
+                self.assertNotIn(secret, values)
+
+    def test_from_a_result_page(self):
+        user = consented_user(username="footer_result")
+        submission = submission_with_answers(user, "hhie-s", [4] * 10)
+        feedback = self.send_from(reverse("result", args=[submission.pk]), signed_in=user)
+        self.assert_kept_words_only(feedback, "結果頁", f"/submission/{submission.pk}")
+
+    def test_from_an_audiogram_page(self):
+        user = consented_user(username="footer_audiogram")
+        audiogram = Audiogram.objects.create(user=user, tested_on=date(2026, 1, 10))
+        feedback = self.send_from(reverse("audiogram_detail", args=[audiogram.pk]), signed_in=user)
+        self.assert_kept_words_only(feedback, "聽力圖", f"/audiograms/{audiogram.pk}")
+
+    def test_from_a_shared_report_page(self):
+        share = ReportShare.objects.create(user=consented_user(username="footer_share"))
+        feedback = self.send_from(reverse("shared_report", args=[share.token]))
+        self.assert_kept_words_only(feedback, "家人看的聽力報告", share.token)
+
+    def test_from_a_question_page(self):
+        feedback = self.send_from(reverse("qa_answer", args=["sudden-hearing-loss"]))
+        self.assert_kept_words_only(
+            feedback, "問答小助手：突然聽不到、耳朵流血，該怎麼辦？", "/qa/sudden-hearing-loss"
+        )
+
+
+class FormDetailsTests(TestCase):
+    """Cross review of spec #633 (acceptance 9, 12, 14, 16, 19, 22, 25): the evidence asked for."""
+
+    def page(self):
+        return self.client.get(reverse("feedback")).content.decode()
+
+    def test_one_box_one_optional_email_one_button(self):
+        page = self.page()
+        self.assertEqual(len(re.findall(r'<textarea[^>]*name="text"', page)), 1)
+        emails = re.findall(r'<input[^>]*name="email"[^>]*>', page)
+        self.assertEqual(len(emails), 1)
+        self.assertNotIn("required", emails[0])
+        main = page[page.index("<main") : page.index("</main>")]
+        self.assertEqual(re.findall(r"<button[^>]*>([^<]*)</button>", main), ["送出"])
+
+    def test_signed_in_the_email_box_is_empty(self):
+        self.client.force_login(consented_user(username="empty_email", email="e@example.com"))
+        (email,) = re.findall(r'<input[^>]*name="email"[^>]*>', self.page())
+        self.assertIn('value=""', email)
+
+    def test_the_sent_page_has_its_tick(self):
+        response = self.client.get(reverse("feedback_sent"))
+        self.assertContains(response, '<span aria-hidden="true">✓ </span>已送出，謝謝您')
+
+    def test_an_empty_box_keeps_nothing(self):
+        response = self.client.post(reverse("feedback"), {"text": ""})
+        self.assertContains(response, "請先寫下想說的話")
+        self.assertFalse(Feedback.objects.exists())
+
+    def test_no_way_back_leads_off_the_site(self):
+        for next_url in (
+            "javascript:alert(1)",
+            "\\\\evil.example",
+            "http:///evil.example",
+            "https:evil",
+        ):
+            with self.subTest(next_url):
+                response = self.client.get(reverse("feedback_sent"), {"next": next_url})
+                self.assertContains(
+                    response, f'<a class="btn btn-primary btn-lg w-full" href="{reverse("index")}">'
+                )
+                self.assertNotContains(response, "回到剛才那一頁")
+
+    def test_a_way_off_the_site_is_dropped_when_sending(self):
+        response = self.client.post(
+            reverse("feedback"), {"text": "字太小了", "next": "https://evil.example/"}
+        )
+        self.assertRedirects(response, reverse("feedback_sent"))
+
+    def test_signed_in_what_is_kept_is_the_words_email_and_kind(self):
+        self.client.force_login(consented_user(username="kept_fields"))
+        self.client.post(
+            reverse("feedback"),
+            {
+                "text": "字太小了",
+                "email": "k@example.com",
+                "page": "result",
+                "next": "/submission/9",
+            },
+        )
+        feedback = Feedback.objects.get()
+        self.assertEqual(
+            (feedback.text, feedback.email, feedback.page, feedback.handled),
+            ("字太小了", "k@example.com", "結果頁", False),
+        )
+
+    def test_deleting_the_account_on_its_page_leaves_the_feedback(self):
+        user = consented_user(
+            username="leaving_page", email="lp@example.com", password="Xk9#mPq2vLw"
+        )
+        self.client.post(reverse("feedback"), {"text": "再見", "email": "lp@example.com"})
+        self.client.force_login(user)
+        response = self.client.post(reverse("delete_account"), {"password": "Xk9#mPq2vLw"})
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=user.pk).exists())
+        self.assertEqual(Feedback.objects.get().email, "lp@example.com")

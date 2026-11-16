@@ -41,11 +41,11 @@ class AboutPageTests(TestCase):
         self.assertIn(f'href="{reverse("privacy")}"', about)
         self.assertLess(about.index("用來做什麼"), about.index(f'href="{reverse("privacy")}"'))
 
-    def test_it_says_when_it_was_checked(self):
-        self.assertRegex(
-            test_layout._text(main_of(self.client.get(reverse("about")))),
-            r"本頁資料查核於 \d{4}/\d{2}/\d{2}",
-        )
+    def test_it_says_when_it_was_checked_at_the_bottom(self):
+        main = main_of(self.client.get(reverse("about")))
+        self.assertRegex(test_layout._text(main), r"本頁資料查核於 \d{4}/\d{2}/\d{2}。$")
+        # Cross review of spec #633 (acceptance 4): after the last part, the page's end.
+        self.assertLess(main.rindex("</section>"), main.index("本頁資料查核於"))
 
     def test_one_who_has_not_agreed_to_the_new_version_can_still_read_it(self):
         self.client.force_login(User.objects.create_user("about_new_version", password="x"))

@@ -16654,6 +16654,19 @@ class FeedbackTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCa
         feedback = Feedback.objects.get()
         self.assertEqual((feedback.text, feedback.page), ("字太小了", "隱私權說明"))
 
+    def test_the_robots_box_is_never_met_by_eye_tab_or_screen_reader(self):
+        # Cross review of spec #633 (acceptance 31).
+        with self.saving_artifacts():
+            self.open("/feedback", signed_in=False)
+            expect(self.page.locator("#id_website")).to_be_hidden()
+            self.main().get_by_label("想跟我們說的話").focus()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_label("Email（選填）")).to_be_focused()
+            self.page.keyboard.press("Tab")
+            expect(self.main().get_by_role("button", name="送出")).to_be_focused()
+            tree = self.page.locator("main").aria_snapshot()
+            self.assertNotIn("網站", tree)
+
     def test_the_about_page_fits_a_phone_at_double_text_size(self):
         with self.saving_artifacts():
             for width in (320, 390):
