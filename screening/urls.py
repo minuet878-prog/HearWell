@@ -1,3 +1,4 @@
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path
 from django.views.generic import TemplateView
 
@@ -6,6 +7,7 @@ from .views import (
     answering,
     audiograms,
     confirm_identity,
+    crawlers,
     export,
     family,
     guest,
@@ -23,6 +25,14 @@ from .views import (
 
 urlpatterns = [
     path("", home.index, name="index"),
+    # The 公開頁面 for search engines (spec #583); Django marks the sitemap itself noindex.
+    path(
+        "sitemap.xml",
+        sitemap,
+        {"sitemaps": {"public": crawlers.PublicPagesSitemap}},
+        name="sitemap",
+    ),
+    path("robots.txt", crawlers.robots_txt, name="robots_txt"),
     path("login", sign_in.LoginView.as_view(), name="login"),
     path("login/google", sign_in.google_start, name="google_start"),
     path("login/google/callback", sign_in.google_callback, name="google_callback"),

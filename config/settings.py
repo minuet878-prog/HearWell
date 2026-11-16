@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Only for its sitemap.xml template (spec #583); it adds no tables.
+    "django.contrib.sitemaps",
     "rest_framework",
     "drf_spectacular",
     "anymail",
