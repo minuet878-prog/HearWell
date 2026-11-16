@@ -252,7 +252,7 @@ export async function saveGuestResults({
     // The feedback batch (the owner's F3): the page stays and the saving line gives way to the
     // box with what comes next; the title above it goes, the box's own saying it is saved.
     saving.hidden = true;
-    root.querySelector("[data-guest-title]")?.setAttribute("hidden", "");
+    root.querySelector("[data-guest-title]").hidden = true;
     root.querySelector("[data-guest-done]").hidden = false;
     root.querySelector("[data-guest-done-title]").focus();
     return;

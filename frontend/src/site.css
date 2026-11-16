@@ -1416,7 +1416,7 @@
     stroke-width: 2.5;
   }
 
-  .action-card.is-download-started [data-download-words] {
+  .action-card.is-download-started .download-words {
     color: var(--color-normal);
     font-weight: 700;
   }
@@ -4829,8 +4829,6 @@
     background-color: var(--color-severe-bg);
   }
 
-  /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
-     bold in the red, a warning mark before them; never by colour alone. */
   /* The feedback batch (the owner's F1 A): the words a page shows at its top after something was
      done, a whole bar: done on the success green's pale (ADR 0007, 0028), failed on the form
      error box's red, a note on the brand's pale blue; a white mark in a filled circle leads, as
@@ -4847,6 +4845,17 @@
 
   .system-message p {
     margin: 0;
+  }
+
+  /* Focused when the page opens (system-message.js), so screen readers say it: the site's blue
+     ring for a keyboard, none for a finger or a mouse. */
+  .system-message:focus {
+    outline: 0;
+  }
+
+  .system-message:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
   }
 
   .system-message-mark {
@@ -4897,6 +4906,8 @@
     background-color: var(--color-primary);
   }
 
+  /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
+     bold in the red, a warning mark before them; never by colour alone. */
   .error-box {
     margin: 0 0 1rem;
     padding: 0.875rem 1rem;

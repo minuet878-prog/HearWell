@@ -179,16 +179,6 @@ class EmptyStateHomeTests(HomeJourneyTestCase):
                 self.assertEqual("我已經有帳號，登入" in main, signed_out)
 
 
-class SavedNoteTests(HomeJourneyTestCase):
-    """The 2026-11-14 walkthrough's note on the home page went with the feedback batch (the
-    owner's F3): the save page shows its own box instead (test_guest_save)."""
-
-    def test_from_save_in_the_address_shows_no_note(self):
-        self.answer()
-        response = self.client.get(f"{reverse('index')}?from=save")
-        self.assertNotContains(response, "已保存這次結果")
-
-
 class JourneyHomeTests(HomeJourneyTestCase):
     def test_only_an_audiogram_shows_the_journey_with_both_tiles_not_yet(self):
         # Spec #453 acceptance 2, #458 D6: grey tiles that are not links.

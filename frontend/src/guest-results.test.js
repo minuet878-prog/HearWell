@@ -309,6 +309,7 @@ describe("saveGuestResults (the save page)", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="guest-save" data-submissions-url="/api/submissions/" data-home-url="/">
+        <h1 data-guest-title>保存這次結果</h1>
         <div data-guest-done hidden><h1 tabindex="-1" data-guest-done-title>✓ 結果已經保存</h1></div>
         <p data-guest-saving role="status" tabindex="-1">正在保存，請稍候。</p>
         <div data-guest-failed hidden>
@@ -400,6 +401,8 @@ describe("saveGuestResults (the save page)", () => {
     expect(loadGuestResult("hhia-s", NOW)).toEqual(HHIA_S);
     expect(navigate).not.toHaveBeenCalled();
     expect(root.querySelector("[data-guest-failed]").hidden).toBe(false);
+    // The feedback batch (F3): not all saved, no box.
+    expect(savedShown(root)).toBe(false);
     expect(root.querySelector("[data-guest-saving]").hidden).toBe(true);
     const list = root.querySelector("[data-guest-failed-list]").textContent;
     expect(list).toContain("「聽力對生活的影響（HHIA-S）」沒有存成");

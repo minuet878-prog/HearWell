@@ -15106,6 +15106,8 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             expect(saved).to_be_visible()
             expect(saved).to_be_focused()
             expect(self.page).to_have_url(re.compile(r"/guest/save"))
+            self.assert_fits_a_phone_at_double_text_size("the save page's box", 412)
+            self.double_text(on=False)
             self.main().get_by_role("link", name="看我的下一步").click()
             expect(self.main().locator("a.journey-tile")).to_contain_text("12 分")
             record = Submission.objects.get(user__username="e2e_guest")
@@ -15706,8 +15708,11 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
         }
 
     def open(self, width):
+        # Motion allowed, so a slide or fade on the bar (ADR 0006: none) would show.
         self.context = self.browser.new_context(
-            viewport={"width": width, "height": 800}, reduced_motion="reduce", accept_downloads=True
+            viewport={"width": width, "height": 800},
+            reduced_motion="no-preference",
+            accept_downloads=True,
         )
         self.context.add_cookies([self.cookie])
         self.context.tracing.start(screenshots=True, snapshots=True)
@@ -15729,6 +15734,11 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 self.assertEqual(self.style(bar, "color"), self.GREEN)
                 mark = bar.locator(".system-message-mark")
                 self.assertEqual(self.style(mark, "backgroundColor"), self.GREEN)
+                # The owner's call: the bar has the focus, so a screen reader says it; it does not
+                # move or fade in.
+                expect(bar).to_be_focused()
+                self.assertEqual(self.style(bar, "animationName"), "none")
+                self.assertEqual(self.style(bar, "transitionDuration"), "0s")
                 # Above the page's own first words, and still there a while later (no fading).
                 first = self.main().locator("h1").first
                 self.assertLess(bar.bounding_box()["y"], first.bounding_box()["y"])
@@ -15739,6 +15749,33 @@ class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                 # Signed in again for the next round: logging out ended this session.
                 self.client.force_login(self.user)
                 self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+
+    # The failed and the note bars, drawn on a page as system_message.html draws them: no flow on
+    # the site sends one this test can reach without a provider's sign-in.
+    def test_a_failed_bar_is_red_and_a_note_blue_each_with_its_mark(self):
+        self.open(390)
+        self.page.goto(f"{self.live_server_url}/")
+        expected = {
+            "error": ("rgb(254, 236, 231)", "rgb(143, 42, 18)", "rgb(143, 42, 18)"),
+            "info": ("rgb(238, 243, 250)", "rgb(33, 37, 41)", "rgb(31, 78, 140)"),
+        }
+        for kind, (fill, words, mark) in expected.items():
+            with self.subTest(kind=kind):
+                bar = self.page.evaluate_handle(
+                    """(kind) => {
+                        const bar = document.createElement("div");
+                        bar.className = `system-message system-message-${kind}`;
+                        bar.innerHTML = '<span class="system-message-mark"></span><p>字</p>';
+                        document.querySelector("main").prepend(bar);
+                        return bar;
+                    }""",
+                    kind,
+                ).as_element()
+                self.assertEqual(self.style(bar, "backgroundColor"), fill)
+                self.assertEqual(self.style(bar, "color"), words)
+                mark_box = bar.query_selector(".system-message-mark")
+                colour = mark_box.evaluate("el => getComputedStyle(el).backgroundColor")
+                self.assertEqual(colour, mark)
 
     def test_download_says_it_has_started_and_where_the_file_goes(self):
         for width, double in ((390, False), (320, True)):

@@ -15,7 +15,7 @@ from screening.models import Audiogram, ReportShare
 from screening.tests.helpers import consented_user
 
 BANNER = re.compile(
-    r'<div class="system-message system-message-(\w+)" role="(\w+)">(.*?)</div>', re.S
+    r'<div class="system-message system-message-(\w+)" role="(\w+)" tabindex="-1">(.*?)</div>', re.S
 )
 
 
@@ -46,6 +46,23 @@ class SystemMessageTests(TestCase):
     def test_a_note_is_a_blue_bar(self):
         html = drawn(Message(constants.INFO, "這份作答剛才已經送出。"))
         self.assertEqual(banners(html), [("info", "status", "這份作答剛才已經送出。")])
+
+    def test_each_kind_has_its_own_mark_not_only_its_colour(self):
+        marks = {
+            constants.SUCCESS: "M5 12.5l4.5 4.5L19 7.5",  # a tick
+            constants.ERROR: "M12 6v8M12 18v.5",  # !
+            constants.INFO: "M12 10.5v7.5M12 6v.5",  # i
+        }
+        for level, path in marks.items():
+            with self.subTest(level=level):
+                self.assertIn(f'<path d="{path}"/>', drawn(Message(level, "字")))
+
+    def test_the_bar_takes_the_focus_when_the_page_opens(self):
+        # The owner's call (2026-11-16): screen readers do not read out words already on a page.
+        html = drawn(Message(constants.SUCCESS, "已登出。"))
+        self.assertIn('tabindex="-1"', html)
+        self.assertIn("screening/system-message.js", html)
+        self.assertNotIn("system-message.js", drawn())
 
     def test_one_bar_a_page_the_latest(self):
         # GOV.UK: at most one a page.
@@ -103,7 +120,8 @@ class DownloadNoteTests(TestCase):
         link = re.search(r"<a [^>]*data-download-note[^>]*>(.*?)</a>", content, re.S)
         self.assertIn(f'href="{reverse("download_my_data")}"', link.group(0))
         self.assertIn(
-            "<span data-download-words>把您在聽伴的所有資料下載成一個檔案保存。</span>",
+            '<span class="download-words" data-download-words>'
+            "把您在聽伴的所有資料下載成一個檔案保存。</span>",
             link.group(1),
         )
         self.assertRegex(

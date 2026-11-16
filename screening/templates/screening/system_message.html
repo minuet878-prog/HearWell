@@ -1,7 +1,9 @@
-{# The feedback batch (the owner's F1 A, mockup-feedback.html): the words a page shows at its top after something was done, as a whole bar in its colour with its mark: done green with a tick, failed red with !, a note blue with i. At most one a page, the latest (GOV.UK); it stays until the next page, never fading by itself (Atlassian: some need longer to read). Failed is read out at once (alert), the others politely (status); the mark is not read, the words say it all. No motion (ADR 0006). #}
+{# The feedback batch (the owner's F1 A, mockup-feedback.html): the words a page shows at its top after something was done, as a whole bar in its colour with its mark: done (success) green with a tick, failed (error) red with !, a note (info, the only other kind the site sends) blue with i. At most one a page, the latest (GOV.UK); it stays until the next page, never fading by itself (Atlassian: some need longer to read). Failed is read out at once (alert), the others politely (status); and, as GOV.UK's success banner, system-message.js puts the focus on it when the page opens, as screen readers do not read out words already there (the owner's call, 2026-11-16). The mark is not read, the words say it all. No motion (ADR 0006). #}
+{% load static %}
 {% for message in messages %}{% if forloop.last %}
-<div class="system-message system-message-{% if message.level_tag == "success" %}success{% elif message.level_tag == "error" %}error{% else %}info{% endif %}" role="{% if message.level_tag == "error" %}alert{% else %}status{% endif %}">
-    <span class="system-message-mark" aria-hidden="true">{% if message.level_tag == "success" %}<svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% elif message.level_tag == "error" %}<svg viewBox="0 0 24 24" focusable="false"><path d="M12 6v8M12 18v.5"/></svg>{% else %}<svg viewBox="0 0 24 24" focusable="false"><path d="M12 10.5v7.5M12 6v.5"/></svg>{% endif %}</span>
+<div class="system-message system-message-{{ message.level_tag }}" role="{% if message.level_tag == "error" %}alert{% else %}status{% endif %}" tabindex="-1">
+    <span class="system-message-mark" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="{% if message.level_tag == "success" %}M5 12.5l4.5 4.5L19 7.5{% elif message.level_tag == "error" %}M12 6v8M12 18v.5{% else %}M12 10.5v7.5M12 6v.5{% endif %}"/></svg></span>
     <p>{{ message }}</p>
 </div>
+<script defer src="{% static 'screening/system-message.js' %}"></script>
 {% endif %}{% endfor %}
