@@ -1,6 +1,11 @@
 {% extends "screening/layout.html" %}
+{% load static %}
 
 {% block title %}帳號設定｜聽伴{% endblock %}
+
+{% block extra_head %}
+<script defer src="{% static 'screening/download-note.js' %}"></script>
+{% endblock %}
 
 {% block body %}
 {# Spec phase9_ui_refresh_3_structure.md 4.1: look only; deleting comes last, set apart. #}
@@ -96,13 +101,15 @@
         </a></li>
         {# A download, not another page: the icon says so and there is no arrow. #}
         {# The whole card is one link, so it is a clickable card all the same. #}
-        <li><a class="link-card action-card" href="{% url 'download_my_data' %}" download>
+        {# The feedback batch (the owner's F4 B): download-note.js says here it has started and where the file goes; screen readers hear it in the status area beside the row. #}
+        <li><a class="link-card action-card" href="{% url 'download_my_data' %}" download data-download-note>
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg></span>
             <span class="link-card-body">
                 <span class="link-card-title">下載我的資料</span>
-                <span>把您在聽伴的所有資料下載成一個檔案保存。</span>
+                <span class="download-words" data-download-words>把您在聽伴的所有資料下載成一個檔案保存。</span>
             </span>
-        </a></li>
+        </a>
+        <span class="visually-hidden" role="status" data-download-status></span></li>
         {% if not consent %}
         <li><a class="link-card action-card" href="{% url 'consent' %}">
             <span class="action-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 12l5 5 9-10"/></svg></span>

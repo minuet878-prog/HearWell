@@ -288,12 +288,24 @@ class SavePageTests(GuestSaveTestCase):
         response = self.client.get(SAVE_FROM_CARD)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertContains(response, f'data-submissions-url="{SUBMISSIONS}"')
-        # The 2026-11-14 walkthrough: saved, the home page's 照顧旅程 says what comes next, with
-        # a note that it was saved.
-        self.assertContains(response, f'data-done-url="{reverse("index")}?from=save"')
         self.assertContains(response, f'data-home-url="{reverse("index")}"')
         self.assertContains(response, f'data-home-url="{reverse("index")}"')
         self.assertContains(response, 'name="csrfmiddlewaretoken"')
+
+    def test_saved_its_box_waits_with_the_next_steps(self):
+        # The feedback batch (the owner's F3): saved, the page stays and shows this box (shown by
+        # guest-results.js), in place of going home with a note.
+        response = self.client.get(SAVE_FROM_CARD)
+        content = response.content.decode()
+        box = content[content.index("data-guest-done") : content.index("data-guest-saving")]
+        self.assertRegex(box, r"^data-guest-done hidden>")
+        self.assertRegex(box, r'<h1 [^>]*tabindex="-1"[^>]*data-guest-done-title[^>]*>')
+        self.assertIn("結果已經保存", box)
+        self.assertIn("<strong>接下來</strong>　首頁會告訴您現在該做哪一步。", box)
+        self.assertIn(f'href="{reverse("index")}">看我的下一步</a>', box)
+        self.assertIn(f'href="{reverse("my_hearing")}">看這次的紀錄</a>', box)
+        self.assertNotIn("帳號也建好了", box)  # the owner's call: the same for all
+        self.assertNotContains(response, "data-done-url")
 
     def test_names_each_guest_questionnaire_for_a_failure(self):
         response = self.client.get(SAVE_FROM_CARD)

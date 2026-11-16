@@ -2222,17 +2222,15 @@ class SharedLayoutTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase
             # #332: the button itself says it now.
             expect(self.main().get_by_role("button", name="已複製", exact=True)).to_be_visible()
             copied = self.page.evaluate("navigator.clipboard.readText()")
-            # The site always serves HTTPS; the test server only speaks HTTP, so the family
-            # opens the copied path on it.
-            host = self.page.evaluate("location.host")
-            self.assertEqual(copied, f"https://{host}/shared/{share.token}")
+            # The link takes the page's own scheme: http on the test server, https on the site.
+            self.assertEqual(copied, f"{self.live_server_url}/shared/{share.token}")
             # The copy button takes the address's place; it comes back only if copying fails.
             expect(self.page.locator("#share-url")).to_be_hidden()
 
             family = self.browser.new_context(viewport={"width": 390, "height": 900})
             self.addCleanup(family.close)
             family_page = family.new_page()
-            family_page.goto(copied.replace(f"https://{host}", self.live_server_url))
+            family_page.goto(copied)
             expect(
                 family_page.get_by_role("heading", name="家人分享了一份聽伴聽力報告給您")
             ).to_be_visible()
@@ -11507,7 +11505,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, script=self.NO_SHARE_SHEET)
             section = self.main()
-            address = section.get_by_text(re.compile(r"^https://.*/family$"))
+            address = section.get_by_text(re.compile(r"^http://.*/family$"))
             # Found by id: its name turns into 已複製 once pressed.
             button = section.locator("#copy-link")
             expect(address).to_be_visible()
@@ -11535,7 +11533,7 @@ class FamilyAndAccountT361Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLive
         with self.saving_artifacts():
             self.open("/family", self.DESKTOP, java_script_enabled=False)
             section = self.main()
-            expect(section.get_by_text(re.compile(r"^https://.*/family$"))).to_be_visible()
+            expect(section.get_by_text(re.compile(r"^http://.*/family$"))).to_be_visible()
             expect(section.get_by_role("button", name="複製網址")).to_be_hidden()
 
     # Acceptance 6: on a desktop the password field and the buttons start where the text does,
@@ -15144,9 +15142,15 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.guest_answers_hhie_s()
             self.register_from_the_card()
             self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
-            # Saved without being asked, then the home page's 照顧旅程 (the 2026-11-14 walkthrough).
-            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
-            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
+            # Saved without being asked. The feedback batch (F3): the page stays with its box,
+            # focus on its title, and 看我的下一步 opens the home page's 照顧旅程.
+            saved = self.main().get_by_role("heading", name="結果已經保存")
+            expect(saved).to_be_visible()
+            expect(saved).to_be_focused()
+            expect(self.page).to_have_url(re.compile(r"/guest/save"))
+            self.assert_fits_a_phone_at_double_text_size("the save page's box", 412)
+            self.double_text(on=False)
+            self.main().get_by_role("link", name="看我的下一步").click()
             expect(self.main().locator("a.journey-tile")).to_contain_text("12 分")
             record = Submission.objects.get(user__username="e2e_guest")
             self.assertEqual(record.result.total, 12)
@@ -15201,7 +15205,7 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             self.guest_answers_hhie_s()
             self.main().locator(".result-next").get_by_role("link", name="登入保存").click()
             self.log_in("card_login_e2e")
-            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().get_by_role("heading", name="結果已經保存")).to_be_visible()
             record = Submission.objects.get()
             self.assertEqual(record.user.username, "card_login_e2e")
             self.assertEqual(record.result.total, 12)
@@ -15228,7 +15232,10 @@ class GuestSaveFromCardTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTes
             ).to_be_visible()
             self.assertFalse(Submission.objects.exists())
             self.main().get_by_role("button", name="要，存進這個帳號").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
+            expect(self.main().get_by_role("heading", name="結果已經保存")).to_be_visible()
+            # 看這次的紀錄 opens 我的紀錄 (the feedback batch, F3).
+            self.main().get_by_role("link", name="看這次的紀錄").click()
+            expect(self.page).to_have_url(f"{self.live_server_url}/my_hearing")
             record = Submission.objects.get()
             self.assertEqual(record.user.username, "top_register_e2e")
             self.assertEqual(record.result.total, 12)
@@ -15633,8 +15640,8 @@ class GuestSavesFromTheCard(SavesFailureArtifacts, OnAPhone):
             self.main().get_by_label("使用者名稱").fill(self.username)
             self.main().get_by_role("button", name="下一步").click()
             self.main().get_by_role("button", name="我同意，保存結果", exact=True).click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/?from=save")
-            expect(self.main().locator(".saved-note")).to_have_text("✓ 已保存這次結果")
+            expect(self.main().get_by_role("heading", name="結果已經保存")).to_be_visible()
+            self.main().get_by_role("link", name="看我的下一步").click()
             expect(self.main().locator("a.journey-tile")).to_contain_text("20 分")
             record = Submission.objects.get(user__username=self.username)
             self.assertEqual(record.result.total, 20)
@@ -15711,3 +15718,120 @@ class GuestSaveWithLineTest(GuestSavesFromTheCard, StaticLiveServerTestCase):
             "revoke": {},
         }
         return answers[LINE_ENDPOINTS[url]]
+
+
+class FeedbackBatchTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCase):
+    """The feedback batch (the owner's picks in mockup-feedback.html, 2026-11-16): the bar a page
+    shows after something was done (F1 A), 已登出 (F2) and 下載我的資料's line (F4 B). The save
+    page's box (F3) is in GuestSaveTest's flows."""
+
+    GREEN = "rgb(20, 87, 60)"  # --color-normal, the success green
+    GREEN_BG = "rgb(227, 244, 236)"  # --color-normal-bg
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        super().tearDownClass()
+
+    def setUp(self):
+        self.user = consented_user(username="feedback_e2e")
+        self.client.force_login(self.user)
+        self.cookie = {
+            "name": settings.SESSION_COOKIE_NAME,
+            "value": self.client.cookies[settings.SESSION_COOKIE_NAME].value,
+            "url": self.live_server_url,
+        }
+
+    def open(self, width):
+        # Motion allowed, so a slide or fade on the bar (ADR 0006: none) would show.
+        self.context = self.browser.new_context(
+            viewport={"width": width, "height": 800},
+            reduced_motion="no-preference",
+            accept_downloads=True,
+        )
+        self.context.add_cookies([self.cookie])
+        self.context.tracing.start(screenshots=True, snapshots=True)
+        self.page = self.context.new_page()
+        self.addCleanup(self.context.close)
+
+    def style(self, locator, prop):
+        return locator.evaluate("(el, prop) => getComputedStyle(el)[prop]", prop)
+
+    def test_logging_out_shows_a_green_bar_read_out_above_the_page(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double), self.saving_artifacts():
+                self.open(width)
+                self.page.goto(f"{self.live_server_url}/")
+                self.page.get_by_role("button", name="登出").click()
+                bar = self.main().get_by_role("status").filter(has_text="已登出。")
+                expect(bar).to_be_visible()
+                self.assertEqual(self.style(bar, "backgroundColor"), self.GREEN_BG)
+                self.assertEqual(self.style(bar, "color"), self.GREEN)
+                mark = bar.locator(".system-message-mark")
+                self.assertEqual(self.style(mark, "backgroundColor"), self.GREEN)
+                # The owner's call: the bar has the focus, so a screen reader says it; it does not
+                # move or fade in.
+                expect(bar).to_be_focused()
+                self.assertEqual(self.style(bar, "animationName"), "none")
+                self.assertEqual(self.style(bar, "transitionDuration"), "0s")
+                # Above the page's own first words, and still there a while later (no fading).
+                first = self.main().locator("h1").first
+                self.assertLess(bar.bounding_box()["y"], first.bounding_box()["y"])
+                self.page.wait_for_timeout(1500)
+                expect(bar).to_be_visible()
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size("home after logging out", width)
+                # Signed in again for the next round: logging out ended this session.
+                self.client.force_login(self.user)
+                self.cookie["value"] = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+
+    # The failed and the note bars, drawn on a page as system_message.html draws them: no flow on
+    # the site sends one this test can reach without a provider's sign-in.
+    def test_a_failed_bar_is_red_and_a_note_blue_each_with_its_mark(self):
+        self.open(390)
+        self.page.goto(f"{self.live_server_url}/")
+        expected = {
+            "error": ("rgb(254, 236, 231)", "rgb(143, 42, 18)", "rgb(143, 42, 18)"),
+            "info": ("rgb(238, 243, 250)", "rgb(33, 37, 41)", "rgb(31, 78, 140)"),
+        }
+        for kind, (fill, words, mark) in expected.items():
+            with self.subTest(kind=kind):
+                bar = self.page.evaluate_handle(
+                    """(kind) => {
+                        const bar = document.createElement("div");
+                        bar.className = `system-message system-message-${kind}`;
+                        bar.innerHTML = '<span class="system-message-mark"></span><p>字</p>';
+                        document.querySelector("main").prepend(bar);
+                        return bar;
+                    }""",
+                    kind,
+                ).as_element()
+                self.assertEqual(self.style(bar, "backgroundColor"), fill)
+                self.assertEqual(self.style(bar, "color"), words)
+                mark_box = bar.query_selector(".system-message-mark")
+                colour = mark_box.evaluate("el => getComputedStyle(el).backgroundColor")
+                self.assertEqual(colour, mark)
+
+    def test_download_says_it_has_started_and_where_the_file_goes(self):
+        for width, double in ((390, False), (320, True)):
+            with self.subTest(width=width, double_text=double), self.saving_artifacts():
+                self.open(width)
+                self.page.goto(f"{self.live_server_url}/account")
+                row = self.main().get_by_role("link", name=re.compile("下載我的資料"))
+                with self.page.expect_download():
+                    row.click()
+                words = row.locator("[data-download-words]")
+                expect(words).to_have_text("✓ 已開始下載，請到手機的「下載項目」找。")
+                self.assertEqual(self.style(words, "color"), self.GREEN)
+                expect(self.page.locator("[data-download-status]")).to_have_text(
+                    "已開始下載，請到手機的「下載項目」找。"
+                )
+                if double:
+                    self.assert_fits_a_phone_at_double_text_size("account after a download", width)

@@ -35,6 +35,9 @@ from screening.views.common import health_data_page, safe_next, sign_in_choices
 @require_http_methods(["POST"])
 def logout_view(request):
     logout(request)
+    # The feedback batch (F2, the owner's words): someone sharing a phone wants to be sure. Added
+    # after logout(), which empties the session; the message waits in its cookie.
+    messages.success(request, "已登出。")
     return HttpResponseRedirect(reverse("index"))
 
 

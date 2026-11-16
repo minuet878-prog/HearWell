@@ -218,7 +218,17 @@ class FamilyGuideTests(TestCase):
         self.assertIn('id="share-button"', content)
         self.assertIn("screening/share-button.js", content)
         # Shown as text, so it can be copied without JavaScript.
-        self.assertIn(f"https://testserver{self.url}", content)
+        self.assertIn(f"http://testserver{self.url}", content)
+
+    # The address takes the scheme the page was opened with: https on tingpal.tw, http on a
+    # local preview (it used to say https:// whatever the request was).
+    def test_address_scheme_follows_the_request(self):
+        plain = self.client.get(self.url).content.decode()
+        self.assertIn(f'data-url="http://testserver{self.url}"', plain)
+        self.assertIn(f">http://testserver{self.url}</span>", plain)
+        secure = self.client.get(self.url, secure=True).content.decode()
+        self.assertIn(f'data-url="https://testserver{self.url}"', secure)
+        self.assertIn(f">https://testserver{self.url}</span>", secure)
 
     # 7
     def test_no_user_data_on_the_page(self):
@@ -242,7 +252,7 @@ class CopyAddressT361Tests(TestCase):
         self.content = content
 
     def test_copy_button_hidden_until_the_script_shows_it_the_address_below(self):
-        address = "https://testserver" + reverse("family_guide")
+        address = "http://testserver" + reverse("family_guide")
         button = re.search(r'<button id="copy-link"([^>]*)>(.*?)</button>', self.share)
         self.assertIsNotNone(button)
         attrs, words = button.groups()

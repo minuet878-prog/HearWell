@@ -1,7 +1,9 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import F, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_http_methods
@@ -96,10 +98,15 @@ def health_report(request):
 def share_report(request):
     # #193: what the family will see, then one press makes the link; only the user's own link.
     user = request.user
+    share = user.report_shares.active().first()
     context = {
         "has_records": user.submissions.exists() or user.audiograms.exists(),
-        "share": user.report_shares.active().first(),
+        "share": share,
     }
+    if share:
+        # The link to pass on takes the scheme the page was opened with (https on tingpal.tw).
+        path = reverse("shared_cover", args=[share.token])
+        context["share_url"] = request.build_absolute_uri(path)
     return render(request, "screening/share_report.html", context)
 
 
@@ -122,6 +129,8 @@ def report_share_cancel(request, share_id):
     share = get_object_or_404(models.ReportShare.objects.active(), pk=share_id, user=request.user)
     share.revoked_at = timezone.now()
     share.save(update_fields=["revoked_at"])
+    # The feedback batch (F2, the owner's words): the page looks as before sharing, so say it.
+    messages.success(request, "已取消分享，原本的連結不能再打開。")
     return redirect("share_report")
 
 

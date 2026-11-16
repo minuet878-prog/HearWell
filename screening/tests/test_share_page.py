@@ -122,7 +122,21 @@ class SharePageTests(TestCase):
         return share
 
     def _share_url(self, share):
-        return f"https://testserver{reverse('shared_cover', args=[share.token])}"
+        return f"http://testserver{reverse('shared_cover', args=[share.token])}"
+
+    # The link takes the scheme the page was opened with: https on tingpal.tw, http on a local
+    # preview (it used to say https:// whatever the request was).
+    def test_link_scheme_follows_the_request(self):
+        share = self._share(self.user)
+        path = reverse("shared_cover", args=[share.token])
+        plain = self._page().content.decode()
+        # Both buttons (再傳一次給家人, 複製連結) carry it.
+        self.assertEqual(plain.count(f'data-url="http://testserver{path}"'), 2)
+        self.assertIn(f">http://testserver{path}</span>", plain)
+        secure = self.client.get(self.url, secure=True).content.decode()
+        # Both buttons (再傳一次給家人, 複製連結) carry it.
+        self.assertEqual(secure.count(f'data-url="https://testserver{path}"'), 2)
+        self.assertIn(f">https://testserver{path}</span>", secure)
 
     # Acceptance 13
     def test_active_link_shows_expiry_with_time_opens_and_actions(self):

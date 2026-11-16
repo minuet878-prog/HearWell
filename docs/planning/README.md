@@ -20,6 +20,6 @@
 | 開放階段（免註冊先篩檢、Google 與 LINE 登入） | [規劃](open-access/plan.md)、[第 1 項拷問決定](open-access/grill-decisions.md)、[登入研究](open-access/login-research.md)、[登入拷問決定](open-access/login-grill-decisions.md) | 免註冊先篩檢 [#492](https://github.com/minuet878-prog/HearWell/issues/492)；Google 登入 [#505](https://github.com/minuet878-prog/HearWell/issues/505)；LINE 登入 [#506](https://github.com/minuet878-prog/HearWell/issues/506) |
 | 自助重設密碼（忘記密碼寄信） | [設計圖選定](password-reset/mockup-524-decisions.md) | [#355](https://github.com/minuet878-prog/HearWell/issues/355) |
 | 讓家屬找得到（收尾、搜尋、關於與回饋、重測提醒、家屬頁面、診間小卡） | [規劃](found-by-family/plan.md)、[第 1 項拷問決定](found-by-family/closing-grill-decisions.md)、[外部監控研究](found-by-family/monitoring-research.md) | 待開 |
-| 可讀性檢查與互動盤點 2（三批小改動、回饋感、盤點 45 項） | [檢查與選定總表](readability-review-2026-11-16.md)、[互動盤點 2](redesign/interaction-inventory-2.html)、[盤點 15 項拷問決定](redesign/interaction-grill-decisions.md) | 待開（三份：內容與聯絡、填寫、結果與紀錄） |
+| 可讀性檢查與互動盤點 2（三批小改動、回饋感、盤點 45 項） | [檢查與選定總表](readability-review-2026-11-16.md)、[互動盤點 2](redesign/interaction-inventory-2.html)、[盤點 15 項拷問決定](redesign/interaction-grill-decisions.md) | 內容與聯絡 [#576](https://github.com/minuet878-prog/HearWell/issues/576)（已完成）；填寫、結果與紀錄待開 |
 
 此處保存需求討論與來源研究，正式工作票及驗收進度在 GitHub Issues。歸檔不代表新增功能已上線。
