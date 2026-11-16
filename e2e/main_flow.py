@@ -16706,7 +16706,8 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
 
 class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """#647 (spec #644 H3, acceptance 18): 這是您第 N 次做這份問卷。 under every result page's
-    header line fits a phone, and moves the result box down by that one line only."""
+    header line fits a phone, moves the result box down by that one line only, and leaves the
+    solid button above the tab bar (the owner's pick A)."""
 
     fixtures = ("questions_fixture.json",)
     record = ResultPagesT461Test.record
@@ -16762,3 +16763,28 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     moved, line = self.page.evaluate(self.MOVED)
                     self.assertGreater(moved, 0, code)
                     self.assertLessEqual(moved, line + 0.5, code)
+
+    def test_the_solid_button_stays_above_the_tab_bar(self):
+        # The owner's pick A (2026-11-16): with the sentence added, the space outside the boxes
+        # shrinks so the one solid button stays on a 390 x 844 phone's first screen, above the
+        # floating tab bar, as ResultPagesT461Test asks of HHIE-S. Its records: 18, then 14.
+        # A short name: a long one wraps 目前登入 at the top onto a second line.
+        self.sign_in(consented_user(username="t647_first"))
+        latest = {}
+        for code, earlier, now in (
+            ("hhie-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
+            ("hhia-s", [4, 4, 4, 4, 2] + [0] * 5, [4, 4, 4, 2] + [0] * 6),
+            ("thi", [2] * 24 + [0], [2] * 21 + [0] * 4),
+        ):
+            self.record(code, earlier, (2026, 3, 26), wearing_hearing_aid=False)
+            latest[code] = self.record(code, now, wearing_hearing_aid=False)
+        with self.saving_artifacts():
+            for code, record in latest.items():
+                with self.subTest(code=code):
+                    self.open(f"/submission/{record.pk}")
+                    expect(self.main().locator(".result-attempt")).to_have_text(
+                        "這是您第 2 次做這份問卷。"
+                    )
+                    button = self.main().locator(".btn-primary").bounding_box()
+                    tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
+                    self.assertLessEqual(button["y"] + button["height"], tab_bar["y"], code)

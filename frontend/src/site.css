@@ -2550,6 +2550,21 @@
     margin-bottom: 0;
   }
 
+  /* The owner's pick A (2026-11-16): for that line, less space outside the boxes, so the solid
+     button stays above the tab bar on a 390 x 844 phone; inside the boxes nothing changes. Only
+     after the sentence, so on a record's six result pages and nowhere else (not a guest's). */
+  .result-attempt {
+    margin-bottom: 0.5rem;
+  }
+
+  .result-attempt ~ .result-one-line {
+    margin-top: 0.5rem;
+  }
+
+  .result-attempt ~ .result-next {
+    margin-top: 0.75rem;
+  }
+
   /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
      the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
