@@ -4815,6 +4815,72 @@
 
   /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
      bold in the red, a warning mark before them; never by colour alone. */
+  /* The feedback batch (the owner's F1 A): the words a page shows at its top after something was
+     done, a whole bar: done on the success green's pale (ADR 0007, 0028), failed on the form
+     error box's red, a note on the brand's pale blue; a white mark in a filled circle leads, as
+     in the mockup. Still: no fade or slide (ADR 0006). */
+  .system-message {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-medium);
+    font-weight: 700;
+  }
+
+  .system-message p {
+    margin: 0;
+  }
+
+  .system-message-mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.1rem;
+    border-radius: 50%;
+    color: #fff;
+  }
+
+  .system-message-mark svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .system-message-success {
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+  }
+
+  .system-message-success .system-message-mark {
+    background-color: var(--color-normal);
+  }
+
+  .system-message-error {
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  .system-message-error .system-message-mark {
+    background-color: var(--color-severe);
+  }
+
+  .system-message-info {
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .system-message-info .system-message-mark {
+    background-color: var(--color-primary);
+  }
+
   .error-box {
     margin: 0 0 1rem;
     padding: 0.875rem 1rem;

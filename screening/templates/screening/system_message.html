@@ -1,0 +1,7 @@
+{# The feedback batch (the owner's F1 A, mockup-feedback.html): the words a page shows at its top after something was done, as a whole bar in its colour with its mark: done green with a tick, failed red with !, a note blue with i. At most one a page, the latest (GOV.UK); it stays until the next page, never fading by itself (Atlassian: some need longer to read). Failed is read out at once (alert), the others politely (status); the mark is not read, the words say it all. No motion (ADR 0006). #}
+{% for message in messages %}{% if forloop.last %}
+<div class="system-message system-message-{% if message.level_tag == "success" %}success{% elif message.level_tag == "error" %}error{% else %}info{% endif %}" role="{% if message.level_tag == "error" %}alert{% else %}status{% endif %}">
+    <span class="system-message-mark" aria-hidden="true">{% if message.level_tag == "success" %}<svg viewBox="0 0 24 24" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% elif message.level_tag == "error" %}<svg viewBox="0 0 24 24" focusable="false"><path d="M12 6v8M12 18v.5"/></svg>{% else %}<svg viewBox="0 0 24 24" focusable="false"><path d="M12 10.5v7.5M12 6v.5"/></svg>{% endif %}</span>
+    <p>{{ message }}</p>
+</div>
+{% endif %}{% endfor %}

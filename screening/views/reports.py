@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import F, Prefetch
@@ -122,6 +123,8 @@ def report_share_cancel(request, share_id):
     share = get_object_or_404(models.ReportShare.objects.active(), pk=share_id, user=request.user)
     share.revoked_at = timezone.now()
     share.save(update_fields=["revoked_at"])
+    # The feedback batch (F2, the owner's words): the page looks as before sharing, so say it.
+    messages.success(request, "已取消分享，原本的連結不能再打開。")
     return redirect("share_report")
 
 
