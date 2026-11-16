@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from screening.models import AidAndSubsidy, User
+from screening.tests import test_layout
 from screening.tests.helpers import consented_user
 from screening.views.guide import GUIDE_CHAPTERS
 
@@ -243,4 +244,107 @@ class ChapterTidyT367Tests(TestCase):
             '<dd>配戴滿 1 個月後、3 個月內。<span class="step-when" aria-hidden="true">'
             "配戴 1–3 個月內</span></dd>",
             who_how,
+        )
+
+
+# The chapters' addresses in reading order, beside CHAPTERS' titles.
+CHAPTER_SLUGS = (
+    "before-you-go",
+    "assessment",
+    "form-9",
+    "types-and-prices",
+    "after-fitting",
+    "form-25",
+)
+NEXT_ROW = re.compile(r'<a class="link-card" href="(/guide/[^"]*)">(.*?)</a>', re.S)
+
+
+def next_rows(content):
+    """Every 下一章 row of a chapter page: (address, the words a screen reader says)."""
+    return [
+        (href, text_without_hidden(row))
+        for href, row in NEXT_ROW.findall(content)
+        if "下一章" in row
+    ]
+
+
+def text_without_hidden(html):
+    html = re.sub(r'<span[^>]*aria-hidden="true"[^>]*>.*?</span>', "", html, flags=re.S)
+    return test_layout._text(html)
+
+
+class NextChapterTests(TestCase):
+    """#579 (spec #576): a chapter ends by naming the next one in reading order."""
+
+    def chapter(self, slug):
+        return self.client.get(reverse("guide_chapter", args=[slug])).content.decode()
+
+    def test_each_chapter_but_the_last_leads_to_the_next_in_reading_order(self):
+        signed_in = consented_user(username="next_chapter_user")
+        for user in (None, signed_in):
+            if user:
+                self.client.force_login(user)
+            for (slug, _), (next_slug, next_title) in pairwise(
+                zip(CHAPTER_SLUGS, CHAPTERS, strict=True)
+            ):
+                with self.subTest(chapter=slug, signed_in=bool(user)):
+                    self.assertEqual(
+                        next_rows(self.chapter(slug)),
+                        [(f"/guide/{next_slug}", f"下一章 {next_title}")],
+                    )
+            with self.subTest(chapter="form-25", signed_in=bool(user)):
+                self.assertEqual(next_rows(self.chapter("form-25")), [])
+
+    BACK_BUTTON = ChapterTidyT367Tests.BACK_BUTTON
+
+    def main(self, slug):
+        content = self.chapter(slug)
+        return content[content.index("<main") : content.index("</main>")]
+
+    def row_at(self, main):
+        return main.index('<a class="link-card" href="/guide/')
+
+    # Spec #576 acceptance 16: what a chapter's end had is still there, after the row.
+    def test_signed_out_the_row_is_before_the_way_back_and_the_sources(self):
+        main = self.main("assessment")
+        self.assertIn(f'<p class="mt-4 mb-0"><a href="/guide">{BACK}</a></p>', main)
+        self.assertLess(main.index("</article>"), self.row_at(main))
+        self.assertLess(self.row_at(main), main.index(self.BACK_BUTTON))
+        self.assertLess(main.index(self.BACK_BUTTON), main.index("<summary>資料來源</summary>"))
+
+    # Acceptance 14: the stop's question first, so the row never passes over what to answer.
+    def test_with_a_question_the_row_is_between_it_and_the_way_back(self):
+        self.client.force_login(consented_user(username="next_with_question"))
+        main = self.main("assessment")
+        question = main.index('id="stop-question"')
+        self.assertIn("看完了嗎？", main[question:])
+        self.assertLess(main.index("答了之後，選配路線會往下一站走。"), self.row_at(main))
+        self.assertLess(self.row_at(main), main.index(self.BACK_BUTTON))
+
+    # Acceptance 15: answered, the solid button is still the route's; the row is one more way on.
+    def test_answered_the_row_follows_the_card_and_is_no_second_solid_button(self):
+        user = consented_user(username="next_answered")
+        AidAndSubsidy.objects.create(user=user, certificate="yes")
+        self.client.force_login(user)
+        main = self.main("assessment")
+        solid = main.index('class="btn btn-primary btn-lg w-full mt-2"')
+        self.assertIn(">回選配路線看下一站</a>", main[solid:])
+        self.assertLess(solid, self.row_at(main))
+        # The chapter's end has the one solid button (this chapter has its own above, 查詢).
+        self.assertEqual(main[main.index("</article>") :].count("btn-primary"), 1)
+        self.assertLess(self.row_at(main), main.index("<summary>資料來源</summary>"))
+        # Acceptance 13: well along the route, the next chapter is still the one in reading
+        # order.
+        self.assertEqual(next_rows(main), [("/guide/form-9", "下一章 九號表：申請助聽器補助")])
+
+    # Acceptance 15 on a chapter with no button of its own: one solid button on the page.
+    def test_answered_a_chapter_without_its_own_button_has_one_solid_button(self):
+        user = consented_user(username="next_one_solid")
+        AidAndSubsidy.objects.create(user=user, certificate="yes", form_9_done=True)
+        self.client.force_login(user)
+        main = self.main("form-9")
+        self.assertIn("已記下：九號表完成了", main)
+        self.assertEqual(main.count("btn-primary"), 1)
+        self.assertEqual(
+            next_rows(main), [("/guide/types-and-prices", "下一章 助聽器的種類與價格")]
         )

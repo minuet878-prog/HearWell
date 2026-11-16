@@ -561,15 +561,18 @@ class ReviewedPagesTests(SimpleTestCase):
     of them, mockup #470 privacy B; and by readability batch 2, which put form 9's six steps in
     sight with their words behind 看每一步的說明, moved the warning into step 4 and shortened it and
     the first key card's line, as the owner picked in mockup-readability-batch2.html on
-    2026-11-16). Failing here means reviewed words changed: have the owner review them before
-    updating the digest."""
+    2026-11-16; and by #578, which made the county centres' numbers dial links and moved their
+    rows out of form 9's template into device_centres.py, in the wording the owner accepted in
+    mockup-577-content-contact.html on 2026-11-16: test_guide_form_9's CentrePhoneLinksTests
+    holds those rows now). Failing here means reviewed words changed: have the owner review them
+    before updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "5528429633f9a489db6b5cbfacef0d0bc98ee1127def4505fef27972932ae5d1",
+            "c9fc2ee68415fa6a68a4c1720ae57f006754f70cc53b62d31ab502e152e56d16",
         ),
         (
             "guide/form_25.html",

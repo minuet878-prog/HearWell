@@ -2876,7 +2876,9 @@
     --btn-disabled-bg: var(--color-normal);
     --btn-disabled-border-color: var(--color-normal);
   }
-  .is-copied > svg, .is-sent > svg {
+  /* .copy-address (#580, the owner's A in the #577 mockup): 複製信箱, an outline button with
+     its icon drawn like the tick that takes its place, in a thinner line. */
+  .is-copied > svg, .is-sent > svg, .copy-address > svg {
     width: 1.25em;
     height: 1.25em;
     margin-right: 0.35em;
@@ -2886,6 +2888,9 @@
     stroke-width: 3;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+  .copy-address:not(.is-copied) > svg {
+    stroke-width: 2;
   }
 
   /* A thin grey line between the parts of a group (the result page's advice, a family topic's
@@ -5312,6 +5317,56 @@
 
   .guide-sources li {
     padding-block: 0.6rem;
+  }
+
+  /* #578 (spec #576, the owner's A in the #577 mockup): the county centres. A county's name in
+     bold over its centres, a line between counties; under a centre's name each number on a row
+     of its own, 44px tall to tap, its phone icon in the link's blue. */
+  .centre-list,
+  .centre-list ul {
+    margin-block: 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .centre-list > li {
+    padding-block: 0.6rem 0.2rem;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .centre-county {
+    color: var(--color-heading);
+    font-weight: 700;
+  }
+
+  .centre-list ul > li {
+    padding-top: 0.35rem;
+  }
+
+  .centre-phone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.6rem;
+    min-height: var(--spacing-touch);
+  }
+
+  .centre-phone > a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: var(--spacing-touch);
+    font-weight: 700;
+  }
+
+  .centre-phone svg {
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
   }
 }
 

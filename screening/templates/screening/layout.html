@@ -24,6 +24,8 @@
     <script type="module" src="{% static 'screening/frontend/switch-slide.js' %}"></script>
     {# Scroll helpers (spec #338): the back-to-top button, entrance animations played in view, the box a jump lands on lit up, the line over a table that scrolls sideways, and the phone's tab bar making way while scrolling down (#457). #}
     <script type="module" src="{% static 'screening/frontend/scroll-helpers.js' %}"></script>
+    {# Copy buttons: every page's 複製信箱 in the footer (#580), the share and family pages' own. A plain static file, as it was on those two pages. #}
+    <script defer src="{% static 'screening/copy-link.js' %}"></script>
     {# Header wave (#138, ADR 0006): only a tab's first page plays it; runs before the page is drawn. #}
     <script>
         if (sessionStorage.getItem("header-wave-played")) {
@@ -141,7 +143,9 @@
                 {% if user.is_authenticated %}<li><a href="{% url 'account_settings' %}"><svg class="site-footer-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>{% endif %}
             </ul>
             <p>結果僅供參考，不能取代聽力檢查與醫師診斷。</p>
-            <p>聯絡我們：<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+            {# #580: the address still opens the phone's mail; the button copies it for those with no mail set up, beside the address where there is room (a computer) and under it on a phone; the address may break anywhere at large text sizes, so its part may shrink. Its 已複製 is said in the status area, for the account page's button too. #}
+            <p class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5"><span class="min-w-0">聯絡我們：<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></span> {% include "screening/copy_address_button.html" %}</p>
+            <p class="visually-hidden" aria-live="polite" data-copy-status></p>
         </div>
     </footer>
 </body>

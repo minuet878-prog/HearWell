@@ -450,7 +450,9 @@ class RedesignLayoutTests(TestCase):
         # Every page: the inline mark that holds entrance animations until in view (#341).
         play_in_view = "<inline>"
         smooth = "<inline>"
-        every = [pwa_js, loading_js, slide_js, scroll_js]
+        # And the copy buttons' script, for 複製信箱 in every page's footer (#580).
+        copy_js = "screening/copy-link.js"
+        every = [pwa_js, loading_js, slide_js, scroll_js, copy_js]
         # Signed in, after logout.js: guest results kept here go to the save page's question
         # (#497).
         signed_in = [logout_js, "screening/frontend/guest-ask.js"]

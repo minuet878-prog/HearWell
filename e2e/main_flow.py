@@ -10366,6 +10366,169 @@ class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTe
                     self.assertLessEqual(link["x"] + link["width"], 320)
 
 
+class ContentAndContact576Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #576 (the #577 mockup, the owner's A each time): the county centres' numbers dial
+    (#578), a chapter ends with the next one (#579), and 複製信箱 is beside the contact address
+    (#580). Here the layout and the press in a real browser; what the pages say is in the page
+    tests, the button's every state in copy-link.test.js."""
+
+    ADDRESS = "hearwellweb@gmail.com"
+    BOXES = """els => els.map(el => {
+        const b = el.getBoundingClientRect();
+        return [b.top, b.bottom, b.width];
+    })"""
+
+    def setUp(self):
+        # Email left blank: the account page then says where to write, with its own button.
+        self.user = consented_user(username="content_contact_e2e", password="Fake-pass-2468")
+        self.sign_in(self.user)
+
+    def centre_numbers(self):
+        self.main().locator("summary").filter(has_text="看各縣市輔具中心電話").click()
+        numbers = self.main().locator(".centre-list a[href^='tel:']")
+        expect(numbers).to_have_count(56)
+        return numbers
+
+    def copy_button(self, within):
+        return within.get_by_role("button", name="複製信箱")
+
+    # #578 (acceptance 7, 9, 10): each number 44px tall to tap and clear of the next, named by
+    # its centre, with a focus ring under the keyboard.
+    def test_centre_numbers_are_tall_enough_to_tap_and_apart(self):
+        with self.saving_artifacts():
+            self.open("/guide/form-9", self.PHONE, signed_in=False)
+            numbers = self.centre_numbers()
+            boxes = numbers.evaluate_all(self.BOXES)
+            for index, (top, bottom, width) in enumerate(boxes):
+                self.assertGreaterEqual(bottom - top, 44, index)
+                self.assertGreaterEqual(width, 44, index)
+            for (_, bottom, _), (next_top, _, _) in pairwise(boxes):
+                self.assertLessEqual(bottom, next_top + 0.5)
+            first = numbers.first
+            expect(first).to_have_accessible_name("撥打基隆市輔具資源中心 (02)2469-6966")
+            expect(first).to_have_attribute("href", "tel:+886224696966")
+            expect(first.locator("svg")).to_be_visible()
+            # Its extension is beside it, outside the link.
+            expect(first.locator("xpath=..")).to_have_text(re.compile(r"\(02\)2469-6966\s*轉 211"))
+            # From the list's source link, the Tab key lands on the first number.
+            self.main().get_by_role("link", name="輔具資源入口網").first.focus()
+            self.page.keyboard.press("Tab")
+            expect(first).to_be_focused()
+            self.assertNotEqual(self.style(first, "outlineStyle"), "none")
+
+    # #578 (acceptance 8): nothing is cut off or scrolls sideways on a small phone, at the
+    # usual text size or doubled.
+    def test_centre_list_fits_small_phones_and_double_text(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/guide/form-9", (width, 844), signed_in=False)
+                    numbers = self.centre_numbers()
+                    scroll_width = self.page.evaluate("document.documentElement.scrollWidth")
+                    self.assertLessEqual(scroll_width, width)
+                    self.assert_fits_a_phone_at_double_text_size("/guide/form-9 centres", width)
+                    rights = numbers.evaluate_all(
+                        "els => els.map(el => el.getBoundingClientRect().right)"
+                    )
+                    self.assertLessEqual(max(rights), width)
+                    expect(self.main().get_by_text("轉 2000～2020")).to_be_visible()  # noqa: RUF001
+
+    # #579 (acceptance 11, 17, 18): the row is named 下一章 and the chapter, tall enough to tap,
+    # and leads there; the last chapter has none.
+    def test_next_chapter_row_leads_on_and_fits(self):
+        with self.saving_artifacts():
+            self.open("/guide/assessment", self.PHONE, signed_in=False)
+            row = self.main().get_by_role("link", name="下一章 九號表：申請助聽器補助", exact=True)
+            self.assertGreaterEqual(row.bounding_box()["height"], 44)
+            back = self.main().get_by_role("link", name="回到助聽器選配與補助").last
+            self.assertLess(row.bounding_box()["y"], back.bounding_box()["y"])
+            self.assert_fits_a_phone_at_double_text_size("/guide/assessment next chapter", 390)
+            self.double_text(False)
+            row.click()
+            expect(self.main().get_by_role("heading", level=1)).to_have_text(
+                "九號表：申請助聽器補助"
+            )
+            self.open("/guide/form-25", self.PHONE, signed_in=False)
+            expect(self.main().get_by_role("link", name=re.compile("^下一章"))).to_have_count(0)
+
+    # #580 (acceptance 19, 21, 25): on a phone the button is under the address, at least 44px
+    # each way and in 18px words; a press copies the address and turns it green for 2 seconds.
+    def test_footer_button_copies_the_address_on_a_phone(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/privacy", (width, 844), signed_in=False)
+                    footer = self.page.locator(".site-footer")
+                    address = footer.get_by_role("link", name=self.ADDRESS)
+                    expect(address).to_have_attribute("href", f"mailto:{self.ADDRESS}")
+                    button = self.copy_button(footer)
+                    box = button.bounding_box()
+                    self.assertGreaterEqual(box["height"], 44)
+                    self.assertGreaterEqual(box["width"], 44)
+                    self.assertGreaterEqual(self.font_size(button), 18)
+                    self.assertLessEqual(box["x"] + box["width"], width)
+                    below = address.bounding_box()
+                    self.assertGreaterEqual(box["y"], below["y"] + below["height"] - 0.5)
+                    self.assertLessEqual(
+                        self.page.evaluate("document.documentElement.scrollWidth"), width
+                    )
+            button.click()
+            copied = footer.get_by_role("button", name="已複製")
+            expect(copied).to_have_css("background-color", CopyPasswordRegisterFeedbackTest.GREEN)
+            expect(copied.locator("svg")).to_be_visible()
+            self.assertEqual(self.page.evaluate("navigator.clipboard.readText()"), self.ADDRESS)
+            status = footer.locator("[data-copy-status]")
+            expect(status).to_have_text("已複製")
+            self.assertLessEqual(status.bounding_box()["width"], 1)
+            expect(self.copy_button(footer)).to_be_visible(timeout=3000)
+            expect(self.copy_button(footer).locator("svg")).to_be_visible()
+
+    def test_footer_button_is_beside_the_address_on_a_computer(self):
+        with self.saving_artifacts():
+            self.open("/privacy", self.DESKTOP, signed_in=False)
+            footer = self.page.locator(".site-footer")
+            address = footer.get_by_role("link", name=self.ADDRESS).bounding_box()
+            button = self.copy_button(footer).bounding_box()
+            self.assertGreaterEqual(button["x"], address["x"] + address["width"])
+            self.assertLess(button["y"], address["y"] + address["height"])
+            self.assertGreater(button["y"] + button["height"], address["y"])
+
+    def test_footer_fits_a_small_phone_at_double_text_size_with_the_button(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 640), signed_in=False)
+            self.assert_fits_a_phone_at_double_text_size("/privacy footer with 複製信箱")
+            box = self.copy_button(self.page.locator(".site-footer")).bounding_box()
+            self.assertGreaterEqual(box["height"], 44)
+            self.assertLessEqual(box["x"] + box["width"], 320)
+
+    # #580 (acceptance 24): without JavaScript there is no button that does nothing.
+    def test_no_button_without_java_script(self):
+        with self.saving_artifacts():
+            self.open("/privacy", self.PHONE, signed_in=False, java_script_enabled=False)
+            footer = self.page.locator(".site-footer")
+            expect(footer.get_by_role("link", name=self.ADDRESS)).to_be_visible()
+            expect(footer.locator("[data-copy]")).to_be_hidden()
+
+    # #580 (acceptance 20, 22): the account page's own button, under its sentence; pressing it
+    # leaves the footer's as it was.
+    def test_account_page_button_copies_and_leaves_the_footer_one_alone(self):
+        with self.saving_artifacts():
+            self.open("/account", self.PHONE)
+            sentence = self.main().get_by_text("要修改請寫信到")
+            button = self.copy_button(self.main())
+            self.assertGreaterEqual(
+                button.bounding_box()["y"],
+                sentence.bounding_box()["y"] + sentence.bounding_box()["height"] - 0.5,
+            )
+            self.assertGreaterEqual(button.bounding_box()["height"], 44)
+            footer = self.page.locator(".site-footer")
+            button.click()
+            expect(self.main().get_by_role("button", name="已複製")).to_be_visible()
+            expect(self.copy_button(footer)).to_be_visible()
+            expect(footer.get_by_role("button", name="已複製")).to_have_count(0)
+            self.assertEqual(self.page.evaluate("navigator.clipboard.readText()"), self.ADDRESS)
+
+
 class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
     """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
     the answer page's title, count and guest line above the first screen only; after it each
