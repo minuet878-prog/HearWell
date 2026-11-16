@@ -6672,8 +6672,10 @@
     margin-bottom: 2rem;
   }
 
-  /* The answer page's line under its title: the code, count and minutes in the muted grey. */
-  .answer-meta {
+  /* The answer page's line under its title: the code, count and minutes in the muted grey; the
+     reassurance under it the same (spec #611 Q2, the #613 mockup's A). */
+  .answer-meta,
+  .answer-reassure {
     color: var(--color-muted);
   }
 

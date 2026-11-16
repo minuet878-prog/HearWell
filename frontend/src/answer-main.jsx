@@ -17,15 +17,17 @@ introWithoutNorm?.querySelector("[data-intro-norm]")?.remove();
 // Why 沒戴 is already chosen (#154): the Django form's sentence, there only when preselected.
 const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
-// The page's title, count and guest line: above the first screen only (readability batch 1).
-// Past it the title and count are left for screen readers, so the page keeps its heading; the
-// guest line goes, its link with it.
+// The page's title, count, reassurance and guest line: above the first screen only (readability
+// batch 1, spec #611 Q2). Past it the title and count are left for screen readers, so the page
+// keeps its heading; the reassurance and the guest line go, the guest line's link with it.
 const head = document.getElementById("answer-head");
 const foldHead = (past) => {
   head?.querySelectorAll("h1, .answer-meta").forEach((el) => el.classList.toggle("visually-hidden", past));
-  const guestLine = head?.querySelector(".answer-guest-line");
-  if (guestLine) guestLine.hidden = past;
+  head?.querySelectorAll(".answer-reassure, .answer-guest-line").forEach((el) => (el.hidden = past));
 };
+// The reassurance's second sentence (#611 Q2): drawn only where a draft is kept, shown once
+// React takes over, so the form given back says the first sentence only.
+const draftLine = head?.querySelector("[data-draft-line]");
 const page = document.documentElement.classList;
 
 // A guest's note asking to register (I3): the form saves records, so it is not given back to them.
@@ -71,6 +73,7 @@ if (container && fallback) {
         }
         fallback.hidden = true;
         intro.hidden = true;
+        if (draftLine) draftLine.hidden = false;
         showForm();
       }}
       onFail={giveUp}

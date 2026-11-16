@@ -16497,3 +16497,87 @@ class EnterNextFieldTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
             day.press("Enter")
             expect(day).to_be_focused()
             expect(self.main().get_by_text("第 1 步／共 4 步：檢查日期")).to_be_visible()
+
+
+class AnswerReassuranceTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Spec #611 Q2 (the #613 mockup's A): under the count on the answer page's first screen, in
+    its grey; both sentences when signed in, the first only for a guest; gone past the first
+    screen; the first question and 下一題 still on a 390 phone's first screen (acceptance 67)."""
+
+    fixtures = ("questions_fixture.json",)
+    FIRST = "這不是考試，沒有對錯。"
+    SECOND = "答到一半離開，答案會留在這支手機，7 天內回來可以接著答。"
+    # SADL and IOI-HA start on question 1, whose answers already took 下一題 under a 390 x 844
+    # first screen before the line was added (about 950px down); their question stays in it.
+    NEXT_BELOW_ALREADY = ("sadl", "ioi-ha")
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+
+    def answer_page(self, code):
+        return f"/questionnaire/{Questionnaire.objects.get(code=code).pk}"
+
+    def reassure(self):
+        return self.main().locator("#answer-head .answer-reassure")
+
+    def wait_for_questions(self):
+        expect(self.page.locator("html.answer-loading")).to_have_count(0)
+        expect(self.main().locator(".answer-app legend")).to_be_visible()
+
+    def assert_first_screen_holds_the_question(self, where, with_next=True):
+        app = self.main().locator(".answer-app")
+        parts = [app.locator("legend")]
+        if with_next:
+            parts.append(app.get_by_role("button", name="下一題"))
+        for part in parts:
+            box = part.bounding_box()
+            self.assertLessEqual(box["y"] + box["height"], self.PHONE[1], where)
+
+    def test_signed_in_every_questionnaire_says_both_sentences_then_folds_them(self):
+        self.sign_in(consented_user(username="reassurance_e2e", birth_year=1950))
+        with self.saving_artifacts():
+            for code in ("hhie-s", "hhia-s", "thi", "ssq12-tw", "sadl", "ioi-ha"):
+                with self.subTest(code=code):
+                    self.open(self.answer_page(code))
+                    self.wait_for_questions()
+                    line = self.reassure()
+                    expect(line).to_be_visible()
+                    expect(line).to_have_text(self.FIRST + self.SECOND)
+                    meta = self.main().locator(".answer-meta")
+                    self.assertGreaterEqual(
+                        line.bounding_box()["y"],
+                        meta.bounding_box()["y"] + meta.bounding_box()["height"],
+                    )
+                    # The count's grey and size.
+                    for prop in ("color", "fontSize"):
+                        self.assertEqual(self.style(line, prop), self.style(meta, prop))
+                    self.assert_first_screen_holds_the_question(
+                        code, with_next=code not in self.NEXT_BELOW_ALREADY
+                    )
+                    self.main().locator(".answer-app").get_by_role("radio").first.check()
+                    self.next()
+                    expect(self.main().locator(".answer-app .question-progress")).to_be_visible()
+                    expect(line).to_be_hidden()
+
+    def test_a_guest_says_the_first_sentence_above_the_guest_line(self):
+        with self.saving_artifacts():
+            self.open(self.answer_page("hhie-s"), signed_in=False)
+            self.wait_for_questions()
+            line = self.reassure()
+            expect(line).to_have_text(self.FIRST)
+            guest = self.main().locator(".answer-guest-line")
+            expect(guest).to_be_visible()
+            self.assertLess(line.bounding_box()["y"], guest.bounding_box()["y"])
+            self.assert_first_screen_holds_the_question("guest")
+
+    def test_fits_a_phone_at_double_text_size(self):
+        self.sign_in(consented_user(username="reassurance_200_e2e", birth_year=1950))
+        with self.saving_artifacts():
+            for signed_in in (True, False):
+                for width in (320, 390):
+                    where = f"{'signed in' if signed_in else 'guest'} at {width}px"
+                    with self.subTest(where=where):
+                        self.open(self.answer_page("hhie-s"), (width, 844), signed_in=signed_in)
+                        self.wait_for_questions()
+                        expect(self.reassure()).to_be_visible()
+                        self.assert_fits_a_phone_at_double_text_size(where, width)
