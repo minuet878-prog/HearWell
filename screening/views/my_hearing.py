@@ -3,6 +3,7 @@ from django.db.models import Prefetch
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
+from screening.care_journey import life_impact_url
 from screening.main_flow import get_user_state
 from screening.models import Answer, NormGroup, shared_days
 from screening.questionnaires.ioi_ha import CODE as IOI_HA
@@ -136,7 +137,10 @@ def my_hearing(request):
         # empty page; the switch's 問卷 link (view=questionnaires) always stays here.
         if request.GET.get("view") != "questionnaires" and request.user.audiograms.exists():
             return redirect("audiogram_list")
-        return render(request, "screening/my_hearing.html", {"submissions": []})
+        state = get_user_state(request.user, timezone.localdate())
+        href = life_impact_url(request.user, state)
+        context = {"submissions": [], "first_questionnaire_href": href}
+        return render(request, "screening/my_hearing.html", context)
     # One tab per questionnaire this user has answered, in questionnaire order (HHIE-S first).
     questionnaires = sorted({s.questionnaire for s in submissions}, key=lambda q: q.id)
     # Default: the newest record's questionnaire; an unknown or empty choice falls back to it.

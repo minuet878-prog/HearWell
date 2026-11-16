@@ -16788,3 +16788,68 @@ class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
                     button = self.main().locator(".btn-primary").bounding_box()
                     tab_bar = self.page.get_by_role("navigation", name="主要導覽").bounding_box()
                     self.assertLessEqual(button["y"] + button["height"], tab_bar["y"], code)
+
+
+class EmptyStatesT648Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#648 (spec #644 H4, acceptance 26-27, the #645 mockup's 3A): the four pages with nothing
+    yet read their title first, past the icon, and fit a phone at 200% text with buttons a finger
+    can press."""
+
+    # Each page, its empty state's words in reading order and its solid button.
+    PAGES = (
+        (
+            "/my_hearing",
+            '- heading "還沒有紀錄" [level=2]\n'
+            "- paragraph: 做完第一份問卷，分數和變化會出現在這裡。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+        (
+            "/audiograms",
+            '- heading "還沒有聽力圖" [level=2]\n'
+            "- paragraph: 拿著醫院的聽力檢查報告，按上面的「記錄聽力圖」把它描進來。",
+            "記錄聽力圖",
+        ),
+        (
+            "/report",
+            '- heading "還沒有報告" [level=2]\n'
+            "- paragraph: 做完第一份問卷或記錄聽力圖，報告就會有內容，可以印出來給醫師看。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+        (
+            "/share",
+            '- heading "還沒有可以分享的紀錄" [level=2]\n'
+            "- paragraph: 做完第一份問卷或記錄聽力圖，就能傳給家人看。\n"
+            '- link "做第一份問卷"',
+            "做第一份問卷",
+        ),
+    )
+
+    def setUp(self):
+        self.sign_in(consented_user(username="empty_states_t648"))
+
+    def test_the_title_is_read_first_and_the_icon_not_at_all(self):
+        # Acceptance 26: the icon is in the page but not in what a screen reader reads.
+        with self.saving_artifacts():
+            for path, read, _ in self.PAGES:
+                with self.subTest(path=path):
+                    self.open(path)
+                    empty = self.main().locator(".empty-state")
+                    expect(empty.locator(".action-card-icon svg")).to_be_visible()
+                    expect(empty).to_match_aria_snapshot(read)
+                    solid = self.main().locator(".btn-primary")
+                    expect(solid).to_have_count(1)
+
+    def test_fits_a_phone_at_double_text_size(self):
+        # Acceptance 27: no sideways scrolling, the solid button at least 44px high.
+        with self.saving_artifacts():
+            for path, _, button in self.PAGES:
+                for width in (320, 390):
+                    with self.subTest(path=path, width=width):
+                        self.open(path, (width, 844))
+                        self.assert_fits_a_phone_at_double_text_size(path, width)
+                        solid = self.main().get_by_role("link", name=button, exact=True)
+                        self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)
+                        self.double_text(on=False)
+                        self.assertGreaterEqual(solid.bounding_box()["height"], 44, path)

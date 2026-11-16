@@ -157,7 +157,7 @@ def care_journey(user, today):
             zip(CARE_JOURNEY_STEPS, CARE_JOURNEY_ABOUT, strict=True), start=1
         )
     )
-    life_impact_href = _life_impact_href(user, main)
+    life_impact_href = life_impact_url(user, main)
     if life_impact is None:
         next_screening = None
     elif main.retest_due:
@@ -197,11 +197,12 @@ def _state(number, current, done, not_needed):
     return CURRENT if number == current else LATER
 
 
-def _life_impact_href(user, main):
-    # The one to do again, or by age; the catalogue, which recommends one, while the age is
-    # unknown.
+def life_impact_url(user, state):
+    """Step 1's 去做問卷, also the empty pages' 做第一份問卷 (#648), so both go to one place: the
+    one to do again, or by age; the catalogue, which recommends one, while the age is unknown.
+    state: the user's get_user_state()."""
     questionnaire = life_impact_questionnaire(
-        user, list(Questionnaire.objects.defined()), main, None
+        user, list(Questionnaire.objects.defined()), state, None
     )
     if questionnaire is None:
         return reverse("questionnaire_list")

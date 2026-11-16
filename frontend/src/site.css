@@ -1451,6 +1451,32 @@
     }
   }
 
+  /* #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, all in the middle: the
+     action card's pale blue circle grown large, then the title, a sentence and its button. */
+  .empty-state {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  .empty-state .action-card-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: 0 auto 0.75rem;
+  }
+
+  .empty-state .action-card-icon svg {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .empty-state .h4 {
+    margin: 0;
+  }
+
+  .empty-state p {
+    margin: 0.25rem 0 1rem;
+  }
+
   /* Login and register forms */
   .narrow-form {
     max-width: var(--container-form);

@@ -79,7 +79,7 @@ class TrendChartPageTests(TestCase):
 
     def test_history_page_without_submissions_has_no_chart(self):
         response = self.client.get(reverse("my_hearing"))
-        self.assertContains(response, "您還沒有做過篩檢紀錄")
+        self.assertContains(response, '<h2 class="h4">還沒有紀錄</h2>')
         self.assertNotContains(response, 'id="trend-chart"')
         self.assertNotContains(response, self.CHART_JS)
 
@@ -244,7 +244,7 @@ class HistoryTabsTests(TestCase):
     def test_no_records(self):
         response = self.client.get(self.url)
         main = self._main_html(response)
-        self.assertIn("您還沒有做過篩檢紀錄", main)
+        self.assertIn('<h2 class="h4">還沒有紀錄</h2>', main)
         self.assertIsNone(self._tabs(main))
         self.assertNotIn("trend-chart", main)
         self.assertNotIn("ioi-chart", main)
