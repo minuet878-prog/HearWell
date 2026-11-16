@@ -2,9 +2,18 @@ from urllib.parse import urlencode
 
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
+from rest_framework.throttling import BaseThrottle
 
-from screening.forms import FeedbackForm
+from screening.forms import (
+    FEEDBACKS_PER_ADDRESS,
+    FEEDBACKS_PER_DAY,
+    TOO_MANY_FEEDBACKS_AN_HOUR,
+    FeedbackForm,
+    add_attempt,
+    attempts,
+)
 from screening.models import Feedback
 from screening.qa_assistant import content
 from screening.views.common import safe_next
@@ -70,6 +79,11 @@ def page_words(page):
     return "" if code else PAGE_NAMES.get(name, "")
 
 
+def kept_today():
+    """How many 意見回饋 the site kept today, Taipei time (#637)."""
+    return Feedback.objects.filter(created_at__date=timezone.localdate()).count()
+
+
 @require_http_methods(["GET", "POST"])
 def feedback(request):
     """Spec #633 (#636): the 意見回饋 page, open to everyone, signed in or not."""
@@ -80,25 +94,39 @@ def feedback(request):
     sent = reverse("feedback_sent")
     if next_url:
         sent = f"{sent}?{urlencode({'next': next_url})}"
+    too_many = ""
     if request.method == "POST":
+        # #637: the address as the guest scoring limit takes it (NUM_PROXIES: X-Forwarded-For's
+        # last, which Nginx adds). Only its hashed count is kept, for an hour. A mistake to fix
+        # is no sending, so it does not count.
+        address = BaseThrottle().get_ident(request)
+        if attempts("feedback", address) >= FEEDBACKS_PER_ADDRESS:
+            too_many = "hour"
         # Q9: the box only robots fill. Told it was sent, whatever else it sent, so it learns
-        # nothing; nothing is kept.
-        if request.POST.get("website"):
+        # nothing; nothing is kept. It counts as a sending.
+        elif request.POST.get("website"):
+            add_attempt("feedback", address)
             return redirect(sent)
-        if form.is_valid():
-            # ADR 0064: anonymous, signed in or not.
-            Feedback.objects.create(
-                text=form.cleaned_data["text"],
-                email=form.cleaned_data["email"],
-                page=page_words(page),
-            )
-            # Post/Redirect/Get: reloading the sent page sends nothing again.
-            return redirect(sent)
+        elif form.is_valid():
+            if kept_today() >= FEEDBACKS_PER_DAY:
+                too_many = "day"
+            else:
+                add_attempt("feedback", address)
+                # ADR 0064: anonymous, signed in or not.
+                Feedback.objects.create(
+                    text=form.cleaned_data["text"],
+                    email=form.cleaned_data["email"],
+                    page=page_words(page),
+                )
+                # Post/Redirect/Get: reloading the sent page sends nothing again.
+                return redirect(sent)
     return render(
         request,
         "screening/feedback.html",
         {
             "form": form,
+            "too_many": too_many,
+            "too_many_an_hour": TOO_MANY_FEEDBACKS_AN_HOUR,
             "page": page,
             "page_words": page_words(page),
             "next": next_url,

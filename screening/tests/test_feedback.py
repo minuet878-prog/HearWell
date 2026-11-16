@@ -1,3 +1,8 @@
+from datetime import UTC, datetime, timedelta
+from unittest import mock
+
+from django.core.cache import caches
+from django.db import connection
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -163,3 +168,92 @@ class SendFeedbackTests(TestCase):
         box = page[: page.index('name="website"')]
         self.assertIn("hidden", box[box.rindex("<div") :])
         self.assertIn('tabindex="-1"', page[page.index('name="website"') - 200 :][:400])
+
+
+TOO_MANY_AN_HOUR = "這一小時送太多次了，請一小時後再試。您寫的字還在下面。"
+TOO_MANY_TODAY = "今天收到的意見太多了，請明天再試，或寫信到"
+
+
+class FeedbackLimitTests(TestCase):
+    """Spec #633 (#637): 5 an hour from one address, as the forgot-password page counts it
+    (NUM_PROXIES), and 100 kept a day on the whole site; the words stay in the box."""
+
+    def setUp(self):
+        caches["password_reset"].clear()
+
+    def send(self, text="字太小了", forwarded=None, remote="127.0.0.1", **data):
+        extra = {"REMOTE_ADDR": remote}
+        if forwarded:
+            extra["HTTP_X_FORWARDED_FOR"] = forwarded
+        return self.client.post(reverse("feedback"), {"text": text, **data}, **extra)
+
+    def assert_refused(self, response, said, text="字太小了"):
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, said)
+        self.assertContains(response, f">{text}</textarea>")
+
+    def test_the_sixth_in_an_hour_from_one_address_is_refused_with_the_words_kept(self):
+        for _ in range(5):
+            self.send()
+        response = self.send(text="還有一件事")
+        self.assert_refused(response, TOO_MANY_AN_HOUR, text="還有一件事")
+        self.assertEqual(Feedback.objects.count(), 5)
+
+    def test_an_hour_later_it_works_again(self):
+        for _ in range(5):
+            self.send()
+        later = timezone.now() + timedelta(hours=1, seconds=1)
+        # The database cache took its own name for now() when it loaded, so that is the one to move.
+        with mock.patch("django.core.cache.backends.db.tz_now", return_value=later):
+            self.assertRedirects(self.send(), reverse("feedback_sent"))
+        self.assertEqual(Feedback.objects.count(), 6)
+
+    def test_mistakes_do_not_count(self):
+        for _ in range(5):
+            self.send(text="")
+        self.assertRedirects(self.send(), reverse("feedback_sent"))
+
+    def test_the_robots_box_counts_too(self):
+        for _ in range(5):
+            self.send(website="http://spam.example")
+        self.assert_refused(self.send(), TOO_MANY_AN_HOUR)
+        self.assertFalse(Feedback.objects.exists())
+
+    def test_the_address_is_the_last_one_forwarded(self):
+        for _ in range(5):
+            self.send(forwarded="1.1.1.1, 9.9.9.9")
+        self.assert_refused(self.send(forwarded="2.2.2.2, 9.9.9.9"), TOO_MANY_AN_HOUR)
+
+    def test_two_addresses_behind_the_same_proxy_count_apart(self):
+        for _ in range(5):
+            self.send(forwarded="8.8.8.8")
+        self.assert_refused(self.send(forwarded="8.8.8.8"), TOO_MANY_AN_HOUR)
+        self.assertRedirects(self.send(forwarded="7.7.7.7"), reverse("feedback_sent"))
+
+    def test_the_count_keeps_no_address_as_typed(self):
+        self.send(forwarded="203.0.113.7")
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cache_key FROM password_reset_limits")
+            keys = [row[0] for row in cursor.fetchall()]
+        self.assertTrue(keys)
+        self.assertFalse([key for key in keys if "203.0.113.7" in key])
+
+    def make_kept(self, count, days_ago=0):
+        Feedback.objects.bulk_create(Feedback(text="之前的") for _ in range(count))
+        if days_ago:
+            Feedback.objects.update(created_at=timezone.now() - timedelta(days=days_ago))
+
+    def test_the_hundred_and_first_today_is_refused_with_the_words_kept(self):
+        self.make_kept(100)
+        response = self.send()
+        self.assert_refused(response, TOO_MANY_TODAY)
+        self.assertContains(response, "hearwellweb@gmail.com")
+        self.assertEqual(Feedback.objects.count(), 100)
+
+    def test_a_day_is_taipeis(self):
+        # 2026-11-16 23:30 in Taipei is 15:30 UTC; the next day starts half an hour later there.
+        evening = datetime(2026, 11, 16, 15, 30, tzinfo=UTC)
+        with mock.patch("django.utils.timezone.now", return_value=evening):
+            self.make_kept(100)
+        with mock.patch("django.utils.timezone.now", return_value=evening + timedelta(minutes=45)):
+            self.assertRedirects(self.send(), reverse("feedback_sent"))

@@ -9,6 +9,9 @@
     {% if page_words %}<p class="tip-box">您是從「{{ page_words }}」過來的。</p>{% endif %}
     {# #642: the owner's reminder (not a consultation, no reply at once, what not to type, how it is kept) goes here, from #635. #}
     {% include "screening/qa/urgent_box.html" %}
+    {# #637: refused, in the login page's red box above the form; the words stay in the box. #}
+    {% if too_many == "hour" %}<div class="error-box" role="alert">{{ too_many_an_hour }}</div>{% endif %}
+    {% if too_many == "day" %}<div class="error-box wrap-anywhere" role="alert"><span>今天收到的意見太多了，請明天再試，或寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>。您寫的字還在下面。</span></div>{% endif %}
     <form method="post" action="{% url 'feedback' %}">
         {% csrf_token %}
         {# Q5: the kind of page, kept in words; next only makes the sent page's way back. #}

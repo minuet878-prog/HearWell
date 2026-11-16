@@ -675,6 +675,13 @@ class SubsidyCheckForm(NoLabelSuffix, forms.Form):
             )
 
 
+# Spec #633 (#637): one address may send 5 意見回饋 an hour, counted as the forgot-password page
+# counts (attempts, add_attempt); the whole site keeps at most 100 a day, Taipei time.
+FEEDBACKS_PER_ADDRESS = 5
+FEEDBACKS_PER_DAY = 100
+TOO_MANY_FEEDBACKS_AN_HOUR = "這一小時送太多次了，請一小時後再試。您寫的字還在下面。"
+
+
 class FeedbackForm(NoLabelSuffix, forms.Form):
     # Spec #633 (#636): the 意見回饋 page's form; the words are the owner's to change (#634
     # mockup, marked draft).
