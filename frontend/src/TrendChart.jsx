@@ -75,8 +75,8 @@ const FITTING_BOX = { width: 4, height: 1.75, gap: 0.75 };
 const FITTING_TOP = FITTING_BOX.height + FITTING_BOX.gap + 0.25;
 
 // The line on the fitting day: midway between the records around it, as the axis has one column
-// per record day, not a time scale. Neutral colours in site.css (.trend-fitting-*), never a
-// level's; under the score lines and points.
+// per record day, not a time scale. Its look in site.css (.trend-fitting-*): neutral colours,
+// never a level's, the dashes and the box's rounded corners. Under the score lines and points.
 function FittingLine({ between, rem }) {
   const xScale = useXAxisScale();
   const plot = usePlotArea();
@@ -99,9 +99,8 @@ function FittingLine({ between, rem }) {
           x2={x}
           y1={boxY + height}
           y2={plot.y + plot.height}
-          strokeDasharray="6 4"
         />
-        <rect className="trend-fitting-box" x={boxX} y={boxY} width={width} height={height} rx={4} />
+        <rect className="trend-fitting-box" x={boxX} y={boxY} width={width} height={height} />
         <text
           className="trend-fitting-text"
           x={boxX + width / 2}
@@ -158,7 +157,8 @@ export default function TrendChart({ code, fittedOn }) {
   const latestIndex = days.length - 1;
   const latestWearing = points.at(-1).wearing;
   const fitting = fittingDays(days, fittedOn);
-  // The root font size: the box's rem, read as the chart draws.
+  // The root font size: the box's rem, read as the chart draws. 18 if it cannot be read: the
+  // site's base size (site.css --root-font-size, 112.5% of the browser's 16px).
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 18;
 
   // The latest point is only bigger: filled vs hollow already means the hearing aid status.

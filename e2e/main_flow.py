@@ -16983,6 +16983,9 @@ class FittingDayT650Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
         self.assertEqual(self.style(box, "stroke"), self.MUTED, where)
         self.assertEqual(self.style(box, "fill"), self.WHITE, where)
         self.assertEqual(self.style(words, "fill"), self.HEADING, where)
+        # Dashed, the box's corners rounded: site.css (.trend-fitting-*), with the colours.
+        self.assertEqual(self.style(line, "strokeDasharray"), "6px, 4px", where)
+        self.assertEqual(self.style(box, "rx"), "4px", where)
         # Acceptance 47: the words inside their box, the box inside the chart, clear of the
         # dates, the points and the scores.
         frame, inner = box.bounding_box(), words.bounding_box()

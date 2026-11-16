@@ -522,10 +522,13 @@ describe("TrendChart", () => {
       expect(lineX(container)).toBe((march + september) / 2);
       const line = marker(container).querySelector(".trend-fitting-line");
       expect(line.getAttribute("x2")).toBe(line.getAttribute("x1"));
-      expect(line.getAttribute("stroke-dasharray")).toBeTruthy();
+      // Dashed in site.css (.trend-fitting-line), with its colour; the e2e checks it drawn.
+      expect(line.getAttribute("stroke-dasharray")).toBeNull();
       // Acceptance 45: the words alone, in a small box above the plot, clear of every point.
       expect(marker(container).textContent).toBe("開始戴");
       const box = marker(container).querySelector(".trend-fitting-box");
+      // Its rounded corners there too.
+      expect(box.getAttribute("rx")).toBeNull();
       const boxBottom = Number(box.getAttribute("y")) + Number(box.getAttribute("height"));
       expect(boxBottom).toBeLessThan(plotTop(container));
       // From the box down to the bottom of the plot.
