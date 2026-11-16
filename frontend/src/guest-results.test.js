@@ -17,6 +17,11 @@ import {
 const NOW = Date.parse("2026-11-13T10:00:00+08:00");
 const DAY = 24 * 60 * 60 * 1000;
 
+// Codex cross review of #492, Spec 2: the same questionnaire done again in another tab while a page
+// still shows the older result; only its receipt number tells the two apart.
+const NEWER_KEY = "5d4c3b2a-1f0e-4d9c-8b7a-695847362514";
+const newerResult = () => guestResult({ key: NEWER_KEY, finishedAt: NOW + 60_000, total: 30 });
+
 function guestResult(overrides = {}) {
   return {
     code: "hhie-s",
@@ -105,9 +110,15 @@ describe("clearGuestResult", () => {
   it("clears only that questionnaire's", () => {
     saveGuestResult(guestResult());
     saveGuestResult(guestResult({ code: "hhia-s" }));
-    clearGuestResult("hhie-s");
+    clearGuestResult("hhie-s", guestResult().key);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).not.toBeNull();
+  });
+
+  it("clears only the result with that receipt number, not a newer one in its place", () => {
+    saveGuestResult(newerResult());
+    clearGuestResult("hhie-s", guestResult().key);
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(newerResult());
   });
 });
 
@@ -250,6 +261,8 @@ describe("saveGuestResults (the save page)", () => {
     code: "hhia-s", questionnaireId: 3, answers: [{ question: 31, score: 2 }], wearing: true,
     key: "1f0e2d3c-4b5a-4968-8776-655443322110",
   });
+  // Both receipt numbers said yes to, as the save card or 要 gives them.
+  const BOTH = [guestResult().key, HHIA_S.key];
   let root;
   let navigate;
 
@@ -276,10 +289,36 @@ describe("saveGuestResults (the save page)", () => {
       : Promise.resolve({ ok: status < 300, status, json: () => Promise.resolve({}) });
   });
 
+  it("clears only what it saved, keeping a newer one made in another tab meanwhile", async () => {
+    saveGuestResult(guestResult());
+    const fetchSave = vi.fn(() => {
+      saveGuestResult(newerResult());
+      return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) });
+    });
+    await saveGuestResults({ root, keys: [guestResult().key], now: NOW, clock: () => NOW, fetchSave, navigate });
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(newerResult());
+  });
+
+  it("sends only the receipt numbers it was given, and 再試一次 looks again before sending", async () => {
+    saveGuestResult(guestResult());
+    saveGuestResult(HHIA_S);
+    const fetchSave = replies({ 1: new TypeError("offline") });
+    await saveGuestResults({ root, keys: [guestResult().key], now: NOW, clock: () => NOW, fetchSave, navigate });
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchSave.mock.calls[0][1].body).questionnaire).toBe(1);
+    saveGuestResult(newerResult()); // done again in another tab before 再試一次
+    root.querySelector("[data-guest-retry]").click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/"));
+    expect(fetchSave).toHaveBeenCalledTimes(1);
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(newerResult());
+    expect(loadGuestResult("hhia-s", NOW)).toEqual(HHIA_S);
+  });
+
   it("sends each with its receipt number and the guest mark, as the answer page would", async () => {
     saveGuestResult(guestResult());
     const fetchSave = replies({ 1: 201 });
-    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(fetchSave).toHaveBeenCalledTimes(1);
     const [url, options] = fetchSave.mock.calls[0];
     expect(url).toBe("/api/submissions/");
@@ -299,7 +338,7 @@ describe("saveGuestResults (the save page)", () => {
     saveGuestResult(HHIA_S);
     // 200: sent again, the record already there; saved all the same.
     const fetchSave = replies({ 1: 201, 3: 200 });
-    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(fetchSave).toHaveBeenCalledTimes(2);
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).toBeNull();
@@ -309,7 +348,7 @@ describe("saveGuestResults (the save page)", () => {
   it("keeps one not saved and says which, clearing the one saved", async () => {
     saveGuestResult(guestResult());
     saveGuestResult(HHIA_S);
-    await saveGuestResults({ root, now: NOW, fetchSave: replies({ 1: 201, 3: 500 }), navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave: replies({ 1: 201, 3: 500 }), navigate });
     expect(loadGuestResult("hhie-s", NOW)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW)).toEqual(HHIA_S);
     expect(navigate).not.toHaveBeenCalled();
@@ -326,7 +365,7 @@ describe("saveGuestResults (the save page)", () => {
     const fetchSave = vi.fn()
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockResolvedValueOnce({ ok: true, status: 201, json: () => Promise.resolve({}) });
-    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(loadGuestResult("hhie-s", NOW)).toEqual(guestResult());
     expect(root.querySelector("[data-guest-failed-list]").textContent).toContain("「聽力對生活的影響（HHIE-S）」沒有存成");
     root.querySelector("[data-guest-retry]").click();
@@ -342,7 +381,7 @@ describe("saveGuestResults (the save page)", () => {
     saveGuestResult(guestResult());
     let reply;
     const fetchSave = vi.fn(() => new Promise((resolve) => { reply = resolve; }));
-    const saving = saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    const saving = saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     const line = root.querySelector("[data-guest-saving]");
     expect(document.activeElement).toBe(line);
     expect(line.textContent).toBe("正在保存，請稍候。");
@@ -357,7 +396,7 @@ describe("saveGuestResults (the save page)", () => {
     const fetchSave = vi.fn()
       .mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve({}) })
       .mockReturnValueOnce(new Promise(() => {}));
-    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(document.activeElement).toBe(root.querySelector("[data-guest-failed-list]"));
     root.querySelector("[data-guest-retry]").click();
     expect(document.activeElement).toBe(root.querySelector("[data-guest-saving]"));
@@ -365,7 +404,7 @@ describe("saveGuestResults (the save page)", () => {
 
   it("goes home when there is nothing to save", async () => {
     const fetchSave = replies({});
-    await saveGuestResults({ root, now: NOW, fetchSave, navigate });
+    await saveGuestResults({ root, keys: BOTH, now: NOW, clock: () => NOW, fetchSave, navigate });
     expect(fetchSave).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("/");
   });
@@ -436,6 +475,14 @@ describe("清除這次結果 (the guest result page)", () => {
     // Nothing of it left for the browser's cache of this page to show.
     expect(root.querySelector("[data-guest-shown]").hidden).toBe(true);
     expect(root.querySelector("[data-guest-section]").innerHTML).toBe("");
+  });
+
+  it("does not forget a newer result made in another tab since the page opened", async () => {
+    await opened();
+    saveGuestResult(newerResult());
+    root.querySelector("[data-guest-clear-yes]").click();
+    expect(loadGuestResult("hhie-s", NOW)).toEqual(newerResult());
+    expect(navigate).toHaveBeenCalledWith("/");
   });
 
   it("goes home again when the page comes back from the browser's cache after 清除", async () => {
@@ -581,6 +628,26 @@ describe("askToSaveGuestResults (the save page's question)", () => {
     for (const [, options] of fetchSave.mock.calls) expect(JSON.parse(options.body).from_guest).toBe(true);
     expect(loadGuestResult("hhie-s", NOW + DAY)).toBeNull();
     expect(loadGuestResult("hhia-s", NOW + DAY)).toBeNull();
+  });
+
+  it("要 saves only the result shown, not a newer one made in another tab since", async () => {
+    saveGuestResult(guestResult());
+    const fetchSave = created();
+    askToSaveGuestResults({ root, now: NOW, clock: () => NOW + 120_000, fetchSave, navigate });
+    saveGuestResult(newerResult());
+    root.querySelector("[data-guest-ask-yes]").click();
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith("/"));
+    expect(fetchSave).not.toHaveBeenCalled();
+    expect(loadGuestResult("hhie-s", NOW + 120_000)).toEqual(newerResult());
+  });
+
+  it("不要 clears only the results shown, keeping a newer one made in another tab since", () => {
+    saveGuestResult(guestResult());
+    askToSaveGuestResults({ root, now: NOW, fetchSave: created(), navigate });
+    saveGuestResult(newerResult());
+    root.querySelector("[data-guest-ask-no]").click();
+    expect(loadGuestResult("hhie-s", NOW + 120_000)).toEqual(newerResult());
+    expect(navigate).toHaveBeenCalledWith("/");
   });
 
   it("不要，清掉這次結果 clears every guest result, saves none and goes home, the drafts kept", () => {

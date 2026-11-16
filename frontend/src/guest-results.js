@@ -54,8 +54,12 @@ export function canKeepGuestResults() {
   }) ?? false;
 }
 
-export function clearGuestResult(code) {
-  attempt(() => localStorage.removeItem(GUEST_PREFIX + code));
+// Only the result with this receipt number (Codex cross review of #492, Spec 2): the same
+// questionnaire done again in another tab since is a newer result, and stays.
+export function clearGuestResult(code, key) {
+  attempt(() => {
+    if (parse(localStorage.getItem(GUEST_PREFIX + code))?.key === key) localStorage.removeItem(GUEST_PREFIX + code);
+  });
 }
 
 // Every guest result kept, by its code; each one that must not stay (expired or broken) is
@@ -101,7 +105,7 @@ function emptyPage(root) {
 // #498 (the #493 mockup's E1): 清除這次結果 opens its question under it, with focus there and its
 // buttons in view; 不要 folds it back to the row, 清除 forgets only this questionnaire's result and
 // goes home (navigate replaces this page in the history, so going back skips it).
-function offerClearing(root, navigate) {
+function offerClearing(root, navigate, key) {
   const { code, homeUrl } = root.dataset;
   const row = root.querySelector("[data-guest-clear]");
   const no = row.querySelector("[data-guest-clear-no]");
@@ -115,7 +119,7 @@ function offerClearing(root, navigate) {
     row.querySelector("summary").focus();
   });
   row.querySelector("[data-guest-clear-yes]").addEventListener("click", () => {
-    clearGuestResult(code);
+    clearGuestResult(code, key);
     emptyPage(root);
     navigate(homeUrl);
   });
@@ -164,12 +168,12 @@ export async function showGuestResult({
     // The save card's days left (save_card.html): only this browser knows when it was finished.
     const days = root.querySelector("[data-guest-days-left]");
     if (days) days.textContent = String(daysLeft(result.finishedAt, now));
-    offerClearing(root, navigate);
+    offerClearing(root, navigate, result.key);
     root.querySelector("[data-guest-shown]").hidden = false;
     error.textContent = "";
   } else if (response?.status === 400) {
     // Kept answers the server cannot score (changed by hand, or a questionnaire gone).
-    clearGuestResult(code);
+    clearGuestResult(code, result.key);
     navigate(homeUrl);
   } else {
     error.textContent = response?.status === 429 && body.detail ? body.detail : LOAD_FAILED;
@@ -181,14 +185,19 @@ export async function showGuestResult({
 // record) and the guest mark. One saved leaves this browser; one not saved stays and is named.
 // All saved: home saying so (the 2026-11-14 walkthrough), whose 照顧旅程 says what comes
 // next; none here: home.
+//
+// keys: the receipt numbers to save, the ones the person said yes to (Codex cross review of #492,
+// Spec 2); a result in their place since, done again in another tab, is not theirs to save.
 export async function saveGuestResults({
   root,
+  keys,
   now = Date.now(),
+  clock = () => Date.now(),
   fetchSave = (...args) => fetch(...args),
   navigate = (url) => window.location.replace(url),
 }) {
   const { submissionsUrl, doneUrl, homeUrl } = root.dataset;
-  const results = loadGuestResults(now);
+  const results = loadGuestResults(now).filter((result) => keys.includes(result.key));
   if (results.length === 0) return navigate(homeUrl);
   const saving = root.querySelector("[data-guest-saving]");
   const failedBox = root.querySelector("[data-guest-failed]");
@@ -219,7 +228,7 @@ export async function saveGuestResults({
     } catch {
       // Network failure: it stays, for 再試一次 with the same receipt number.
     }
-    if (response?.ok) clearGuestResult(result.code);
+    if (response?.ok) clearGuestResult(result.code, result.key);
     else failed.push(result);
   }
   if (failed.length === 0) {
@@ -239,7 +248,12 @@ export async function saveGuestResults({
   root.querySelector("[data-guest-failed-list]").focus();
   root
     .querySelector("[data-guest-retry]")
-    .addEventListener("click", () => saveGuestResults({ root, fetchSave, navigate }), { once: true });
+    .addEventListener(
+      "click",
+      // Looks again: what is kept may have changed in another tab, or run out of days.
+      () => saveGuestResults({ root, keys: failed.map((result) => result.key), now: clock(), clock, fetchSave, navigate }),
+      { once: true },
+    );
 }
 
 // #497: on every page someone signed in opens (layout.html's guest-ask.js, not on the save page
@@ -301,10 +315,10 @@ export function askToSaveGuestResults({
     .replaceChildren(...results.map((result) => askTile(result, results.length === 1, names, topics)));
   root.querySelector("[data-guest-ask-yes]").addEventListener("click", () => {
     ask.hidden = true;
-    saveGuestResults({ root, now: clock(), fetchSave, navigate });
+    saveGuestResults({ root, keys: results.map((result) => result.key), now: clock(), clock, fetchSave, navigate });
   }, { once: true });
   root.querySelector("[data-guest-ask-no]").addEventListener("click", () => {
-    for (const result of results) clearGuestResult(result.code);
+    for (const result of results) clearGuestResult(result.code, result.key);
     navigate(root.dataset.homeUrl);
   }, { once: true });
   ask.hidden = false;
