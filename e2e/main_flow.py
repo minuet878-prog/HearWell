@@ -16702,3 +16702,63 @@ class ChangeLabelT646Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServe
                         self.assertLessEqual(tag["x"] + tag["width"], box["x"] + box["width"] + 0.5)
                         width_now, room = label.evaluate("e => [e.scrollWidth, e.clientWidth]")
                         self.assertLessEqual(width_now, room, path)
+
+
+class AttemptNumberT647Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """#647 (spec #644 H3, acceptance 18): 這是您第 N 次做這份問卷。 under every result page's
+    header line fits a phone, and moves the result box down by that one line only."""
+
+    fixtures = ("questions_fixture.json",)
+    record = ResultPagesT461Test.record
+    TAIPEI = ResultPagesT461Test.TAIPEI
+    ITEMS: ClassVar = {
+        "hhie-s": 10,
+        "hhia-s": 10,
+        "thi": 25,
+        "ssq12-tw": 12,
+        "ioi-ha": 7,
+        "sadl": 15,
+    }
+    # The result box is the element after the sentence; its top with the sentence, then without.
+    MOVED = """() => {
+        const sentence = document.querySelector("main .result-attempt");
+        const box = sentence.nextElementSibling;
+        const withIt = box.getBoundingClientRect().top;
+        const line = parseFloat(getComputedStyle(sentence).lineHeight);
+        sentence.remove();
+        return [withIt - box.getBoundingClientRect().top, line];
+    }"""
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="attempt_number_t647"))
+        self.latest = {}
+        for code, items in self.ITEMS.items():
+            score = ResultPagesT461Test.SCORES[code]
+            aided = code in ("ioi-ha", "sadl")
+            norm_group = NormGroup.UNGROUPED if code == "ioi-ha" else ""
+            for day in ((2026, 3, 1), None):
+                self.latest[code] = self.record(
+                    code, [score] * items, day, wearing_hearing_aid=aided, norm_group=norm_group
+                )
+
+    def test_fits_a_phone_at_double_text_size(self):
+        with self.saving_artifacts():
+            for code, record in self.latest.items():
+                for width in (320, 390):
+                    with self.subTest(code=code, width=width):
+                        self.open(f"/submission/{record.pk}", (width, 844))
+                        expect(self.main().locator(".result-attempt")).to_have_text(
+                            "這是您第 2 次做這份問卷。"
+                        )
+                        self.assert_fits_a_phone_at_double_text_size(code, width)
+
+    def test_the_result_box_moves_down_one_line_at_most(self):
+        # At 390px and the usual text size, the sentence takes one line and no more.
+        with self.saving_artifacts():
+            for code, record in self.latest.items():
+                with self.subTest(code=code):
+                    self.open(f"/submission/{record.pk}")
+                    moved, line = self.page.evaluate(self.MOVED)
+                    self.assertGreater(moved, 0, code)
+                    self.assertLessEqual(moved, line + 0.5, code)

@@ -1,4 +1,6 @@
 {# Every result page's title and the line under it (result pages tidy-up): the topic, then the #}
-{# questionnaire, the date and, where it was asked, whether hearing aids were worn. #}
+{# questionnaire, the date and, where it was asked, whether hearing aids were worn; then which time #}
+{# this is (spec #644 H3; a guest's result page has its own header, without it). #}
 <h1 class="h3 mt-2 mb-1">{{ submission.questionnaire.definition.topic }}</h1>
 <p>{{ submission.questionnaire.questionnaire_name }}・{{ submission.created_at|date:"Y/m/d" }} 作答{% if wearing_text %}・{{ wearing_text }}{% endif %}</p>
+<p class="result-attempt">這是您第 {{ attempt_number }} 次做這份問卷。</p>

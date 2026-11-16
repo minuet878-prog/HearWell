@@ -2544,6 +2544,12 @@
     display: none;
   }
 
+  /* Result page header (spec #644 H3): which time this is sits right under the line before it, so
+     the result box moves down by that one line only. */
+  p:has(+ .result-attempt) {
+    margin-bottom: 0;
+  }
+
   /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
      the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
