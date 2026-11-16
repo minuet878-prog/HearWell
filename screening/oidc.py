@@ -34,6 +34,9 @@ class Provider:
     scope: str
     # Added to the authorize URL for 確認本人 and for adding a sign-in method: (name, value) pairs.
     reauthenticate: tuple = ()
+    # Added to the authorize URL in the iPhone home-screen app (HOME_SCREEN_APP): (name, value)
+    # pairs that keep the trip in the page it started in.
+    in_home_screen_app: tuple = ()
     # Where the provider itself checks its ID token; empty when the token endpoint's ID token
     # is read as it comes (Google).
     verify_url: str = ""
@@ -70,8 +73,17 @@ PROVIDERS = {
         revoke_url="https://api.line.me/oauth2/v2.1/revoke",
         # No reauthenticate: LINE could force a fresh login (prompt=login, max_age), but the owner
         # chose not to (login-research.md section 10): elders need not remember their LINE password.
+        # LINE's auto login opens the LINE app, which hands the way back to Safari; the home-screen
+        # app keeps its own cookies, so the trip is not in that session. Without it LINE's own
+        # page signs in, in the home-screen app (developers.line.biz/en/docs/line-login/
+        # integrate-line-login/, checked 2026-11-16).
+        in_home_screen_app=(("disable_auto_login", "true"),),
     ),
 }
+
+# The cookie pwa-nav.js leaves in the iPhone home-screen app ("1"), whose requests look like
+# Safari's in every other way.
+HOME_SCREEN_APP = "home_screen_app"
 
 # The trip in the session: {"provider", "purpose", "state", "nonce", "code_verifier",
 # "started_at" (a Unix time), "next"}. One at a time; a new trip replaces an unfinished one.
@@ -154,6 +166,8 @@ def begin(request, provider, purpose, next_url=""):
     }
     if purpose in ("confirm_identity", "add_method"):
         query.update(PROVIDERS[provider].reauthenticate)
+    if request.COOKIES.get(HOME_SCREEN_APP) == "1":
+        query.update(PROVIDERS[provider].in_home_screen_app)
     return f"{PROVIDERS[provider].authorize_url}?{urlencode(query)}"
 
 

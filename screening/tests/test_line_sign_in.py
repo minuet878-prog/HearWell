@@ -225,6 +225,19 @@ class StartTests(TestCase):
         query = dict(parse_qsl(urlsplit(response["Location"]).query))
         self.assertEqual(query["redirect_uri"], "https://tingpal.test/login/line/callback")
 
+    # The iPhone home-screen app keeps its own cookies. LINE's auto login opens the LINE app,
+    # which hands the way back to Safari: no trip in that session, 「登入沒有完成」.
+    def test_the_iphone_home_screen_app_asks_line_to_stay_out_of_its_app(self):
+        self.client.cookies[oidc.HOME_SCREEN_APP] = "1"
+        for view in ("line_start", "line_save_card"):
+            with self.subTest(view=view):
+                self.line.start(view)
+                self.assertEqual(self.line.authorize["disable_auto_login"], "true")
+
+    def test_a_browser_keeps_lines_auto_login(self):
+        self.line.start()
+        self.assertNotIn("disable_auto_login", self.line.authorize)
+
 
 @line_on
 class FirstTimeTests(TestCase):

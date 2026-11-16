@@ -56,6 +56,12 @@ function setUpPullToRefresh(win) {
 
 export function setUpPwaNav(win = window) {
   if (!isStandalone(win)) return;
+  // The iPhone home-screen app keeps its own cookies, apart from Safari's: the server reads
+  // this one when a LINE trip starts (screening/oidc.py HOME_SCREEN_APP). Written again on
+  // every page, as an iPhone keeps a cookie a script wrote for 7 days.
+  if (win.navigator.standalone === true) {
+    win.document.cookie = "home_screen_app=1; path=/; max-age=31536000; samesite=lax";
+  }
   // Ticket #160: e.g. the home page's "加到手機主畫面"; without JavaScript they stay.
   for (const item of win.document.querySelectorAll("[data-hide-in-app]")) item.hidden = true;
   const back = win.document.getElementById("pwa-back");
