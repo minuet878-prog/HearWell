@@ -20,7 +20,8 @@ from screening.views.common import form_page
 # there is part of it (#399). The zone's page on how to talk with him came out of the family guide
 # with the same words (#469). The forgot-password pages are part of signing in, like the login and
 # register pages (owner's acceptance of spec #355, 2026-11-14); so is signing in or up with Google
-# or LINE, which makes nothing before the name page (spec #505, #506).
+# or LINE, which makes nothing before the name page (spec #505, #506). The 運作檢查 shows no one's
+# data and answers the same for everyone (spec #561).
 OPEN_PAGES = {
     "index",
     "privacy",
@@ -57,6 +58,7 @@ OPEN_PAGES = {
     "qa_answer",
     "qa_search",
     "qa_results",
+    "uptime_check",
 }
 
 

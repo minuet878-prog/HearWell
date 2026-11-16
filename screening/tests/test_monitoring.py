@@ -8,11 +8,12 @@ from pathlib import Path
 from unittest import mock
 
 import sentry_sdk
+from django.contrib.sessions.models import Session
 from django.core.cache import caches
 from django.core.handlers.wsgi import WSGIHandler
 from django.core.management.utils import get_random_secret_key
 from django.core.signals import request_finished, request_started
-from django.db import IntegrityError, close_old_connections
+from django.db import IntegrityError, OperationalError, close_old_connections
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from sentry_sdk.transport import Transport
@@ -283,6 +284,15 @@ class MonitoringTests(TestCase):
         self.assertNotIn("user", event)
 
 
+    # Spec #561 acceptance 2: the 運作檢查 with the database down answers 503 itself, and the
+    # outside monitor raises the alarm; nothing goes to Sentry every minute.
+    def test_uptime_check_with_the_database_down_answers_503_and_sends_nothing(self):
+        with mock.patch("screening.views.monitoring.connection") as connection:
+            connection.cursor.side_effect = OperationalError("connection refused")
+            status, _ = self._send("get", reverse("uptime_check"))
+        self.assertEqual(status, 503)
+        self.assertEqual(self._events(), [])
+
 class MonitoringSwitchTests(SimpleTestCase):
     """Spec docs/specs/phase-06/phase6_error_monitoring.md, acceptance 5."""
 
@@ -329,3 +339,39 @@ print(json.dumps({"active": sentry_sdk.get_client().is_active()}))
     def test_off_in_this_test_run(self):
         # The monitoring tests swap in a client without a DSN afterwards; nothing can be sent.
         self.assertIsNone(sentry_sdk.get_client().transport)
+
+
+class UptimeCheckTests(TestCase):
+    """Spec #561 (#562): the 運作檢查 an outside monitor opens every minute, acceptance 1-5."""
+
+    # 1
+    def test_answers_ok_in_plain_text_with_nobody_signed_in(self):
+        response = self.client.get(reverse("uptime_check"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/plain; charset=utf-8")
+        self.assertEqual(response.content, b"ok")
+
+    # 3
+    def test_never_indexed_never_cached_and_sets_no_cookie(self):
+        with mock.patch("screening.views.monitoring.connection") as down:
+            down.cursor.side_effect = OperationalError("connection refused")
+            unavailable = self.client.get(reverse("uptime_check"))
+        for response in (self.client.get(reverse("uptime_check")), unavailable):
+            with self.subTest(status=response.status_code):
+                self.assertEqual(response["X-Robots-Tag"], "noindex, nofollow")
+                self.assertIn("no-store", response["Cache-Control"])
+                self.assertEqual(response.cookies, {})
+        self.assertEqual(unavailable.status_code, 503)
+        self.assertEqual(Session.objects.count(), 0)
+
+    # 4
+    def test_post_is_refused(self):
+        self.assertEqual(self.client.post(reverse("uptime_check")).status_code, 405)
+        self.assertEqual(self.client.head(reverse("uptime_check")).status_code, 200)
+
+    # 5
+    def test_signed_in_before_agreeing_is_not_sent_to_the_consent_page(self):
+        self.client.force_login(User.objects.create_user(username="not_agreed_yet"))
+        response = self.client.get(reverse("uptime_check"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"ok")
