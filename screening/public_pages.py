@@ -16,6 +16,16 @@ from screening.views.qa_assistant import topic_faqs
 # The protocol of every full address this site gives out: canonical links, the sitemap, robots.txt.
 PROTOCOL = "https"
 
+# Every other page's description in a LINE preview (the titles table's E1, #587).
+SITE_DESCRIPTION = (
+    "聽伴是聽力自我照護工具：花 3 分鐘回答問題，看聽力對生活的影響。"
+    "內容由台灣執業聽力師設計與審定。"
+)
+
+# The one LINE preview image (#588's design C, #590), 1200x630, exported from
+# docs/planning/found-by-family/line-preview-image.html.
+PREVIEW_IMAGE = "screening/line-preview.png"
+
 # One address each, by URL name: (title, description) as the owner confirmed them (#587).
 SINGLE_PAGES = {
     "index": (
