@@ -19,13 +19,13 @@ RETEST_STEP = {"text": "半年後再做一次，時間到了首頁會提醒您�
 # a hearing check or assessment (spec #218, ticket #229).
 GUIDE_ACTION = {"second_label": "看助聽器選配與補助", "second_url": "guide"}
 # The guest result's save card (spec #492): what saving brings at each level of HHIE-S and HHIA-S,
-# which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them.
+# which share their levels; the #493 mockup's rows 6-8, as the owner reviewed them. #598 (spec
+# #593, the owner's wording on #595): the fitting only, as a questionnaire cannot tell who can
+# have the subsidy.
 SAVE_REASONS = {
     "normal": "註冊保存後，半年後會提醒您再做一次，跟這次的結果比一比。",
-    "mild_to_moderate": (
-        "註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配與補助。"
-    ),
-    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配與補助申請。",
+    "mild_to_moderate": "註冊保存後，看完醫師可以接著記下聽力圖，網站會一步步帶您走助聽器選配。",
+    "severe": "註冊保存後，就醫拿到聽力圖可以記下來，網站會一步步帶您走助聽器選配。",
 }
 
 
