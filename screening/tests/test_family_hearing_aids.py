@@ -236,6 +236,16 @@ class FamilyHearingAidsTests(test_family_zone.SignsInWithARecord, TestCase):
                     "hearing-aid-troubleshooting-guide",
                     "Hampshire Hospitals：Hearing Aid Troubleshooting Guide（沒有標日期）",
                 ),
+                # Readability batch 2: 陪伴配戴助聽器's two, moved here with its tips.
+                (
+                    "https://www.asha.org/practice-portal/professional-issues/"
+                    "hearing-aids-for-adults/",
+                    "美國聽語學會（ASHA）〈Hearing Aids for Adults〉",
+                ),
+                (
+                    "https://www.nidcd.nih.gov/sites/default/files/hearing-aids.pdf",
+                    "美國國家耳聾及其他溝通障礙研究院（NIDCD）〈Hearing Aids〉",
+                ),
                 (
                     "https://rnid.org.uk/information-and-support/hearing-aids/"
                     "getting-used-to-hearing-aids/fitting-appointment/",

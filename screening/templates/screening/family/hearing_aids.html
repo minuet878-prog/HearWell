@@ -6,6 +6,7 @@
 {% block extra_head %}
 <script defer src="{% static 'screening/pick-explain.js' %}"></script>
 <script type="module" src="{% static 'screening/frontend/wear-motion.js' %}"></script>
+{% include "screening/guide/folds_pending.html" %}
 {% endblock %}
 
 {% block body %}
@@ -51,6 +52,18 @@
 <section class="mb-6" data-jump-box aria-labelledby="adjusting-title">
     <h2 id="adjusting-title" class="h4">陪長輩適應</h2>
     {% include "screening/family/pick_explain.html" with pick=stages %}
+    {# Readability batch 2 (the owner's A): 陪伴配戴助聽器 moved here from the zone's home page, its six tips as reviewed on 2026-10-17 and the name the shared report's link carries (#194). A jump lights it (ADR 0029) and opens it; it comes open for a page without JavaScript, and guide.js folds it unless the jump is to it (the owner, 2026-11-12). #}
+    <details id="aid-title" class="result-details" data-jump-box data-guide-fold open>
+        {% include "screening/result_details_summary.html" with icon="ear" title="陪伴配戴助聽器" note="剛開始不習慣、回診和保養時可以怎麼陪" %}
+        <div class="result-details-body"><ul class="tips divided-rows">
+            <li><strong class="tip-point tint-subhead">剛開始不習慣是正常的</strong>前幾週可能覺得自己的聲音怪怪的、環境的聲音很吵，大腦需要時間重新適應聲音。</li>
+            <li><strong class="tip-point tint-subhead">鼓勵每天戴</strong>照聽力師建議，從安靜的地方、短時間開始，再慢慢拉長；戴得越規律，越容易適應。</li>
+            <li><strong class="tip-point tint-subhead">陪他回診調整</strong>覺得太吵、太小聲或不舒服，都可以回去請聽力師調整，不用勉強忍耐。可以一起記下哪些場合聽不清楚，回診時告訴聽力師。</li>
+            <li><strong class="tip-point tint-subhead">助聽器不是「戴上就跟以前一樣」</strong>在吵雜的餐廳、多人聊天時還是可能聽不清楚，<a class="tap-link" href="{% url 'family_talk' %}">「怎麼跟他說話」</a>裡的方法依然有用。</li>
+            <li><strong class="tip-point tint-subhead">幫忙注意日常保養</strong>電池或充電、清潔、收納，長輩手指不靈活時特別需要幫忙。</li>
+            <li><strong class="tip-point tint-subhead">多肯定他的努力</strong>願意配戴本身就不容易，注意到他聽得比較好時，可以告訴他。</li>
+        </ul></div>
+    </details>
     {% if survey %}<p class="mb-0">想記錄戴起來的效果，可以做<a class="tap-link" href="{% url 'screening' survey.pk %}">配戴效果問卷</a>（要先註冊或登入）。</p>{% endif %}
 </section>
 

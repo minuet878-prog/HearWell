@@ -337,7 +337,21 @@ exit
 
 ### 5-2 建 uptime 監控
 
-在 Sentry 網站，到 Monitors（監控）頁新增一個 Uptime Monitor：
+先確認正式站的錯誤監控是開的（2026-11-16 第一次做時發現搬到 VPS 後一直沒設）。在 VPS 上，只數行數、不印值：
+
+```bash
+grep -c '^SENTRY_DSN=' ~/hearwell/.env
+```
+
+印 `0` 就先補：Sentry 專案設定的 **Client Keys (DSN)** 複製 DSN，`nano ~/hearwell/.env` 在最後加一行 `SENTRY_DSN=<DSN>`，重啟 `sudo systemctl restart hearwell`。重啟前先用 `cut -d= -f1 ~/hearwell/.env` 確認原本的變數都還在（`SECURE_HSTS_SECONDS` 沒有值的話網站不會啟動）。確認收得到：在 `~/hearwell`、`source .venv/bin/activate` 後跑
+
+```bash
+python -c "import os, django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings'); django.setup(); import sentry_sdk; sentry_sdk.capture_message('VPS Sentry check'); sentry_sdk.flush(); print('sent')"
+```
+
+一兩分鐘內 Sentry 的 Issues 頁出現這一筆。
+
+在 Sentry 網站，到 Monitors（監控）頁新增一個 Uptime Monitor（用原本 Render 時期那個 python-django 專案就可以）：
 
 | 欄位 | 填什麼 |
 |---|---|
@@ -348,13 +362,14 @@ exit
 | Headers、Body | 空白 |
 | Failure Tolerance（失敗幾次才開問題） | 預設 3 |
 | Recovery Tolerance（成功幾次才算恢復） | 預設 1 |
+| Environment | `production`（程式沒指定環境名稱時 Sentry 的預設；`prod` 是 Render 時期留下的） |
 
 - Sentry 說明寫它可能已經依錯誤紀錄裡最常出現的網址，自動建了一個監控。有的話，把那一個的 URL 改成上表的網址，不要留兩個（免費方案只有一個）。
-- 建好之後，監控頁應該顯示它在檢查、狀態是正常。
+- 建好之後，監控頁應該顯示它在檢查、狀態是正常。也可以在 VPS 上看 Sentry 有沒有來敲門：`sudo grep -i sentryuptimebot /var/log/nginx/access.log | tail -3`，大約每分鐘一行、每次不同 IP、都是 `200`。
 
 ### 5-3 建寄 email 的警示
 
-Sentry 說明寫：要另外建一條「警示」（Alert），條件對到 uptime 的問題（outage／downtime），動作選寄 email，才會收到通知。
+Sentry 說明寫：要另外建一條「警示」（Alert），條件對到 uptime 的問題（outage／downtime），動作選寄 email，才會收到通知。2026-11-16 實際做法：建警示時直接連到 5-2 建的那個監控，不用另外選類型。
 
 - 收件人：你自己的 Sentry 帳號 email。
 - 建好之後在警示清單看得到這一條。

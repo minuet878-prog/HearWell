@@ -251,3 +251,30 @@ class LayoutTests(TestCase):
         share = reverse("share_report")
         link = rf'<a class="link-card action-card" href="{share}" id="report-share">'
         self.assertRegex(main, "(?s)" + link + r".*?分享報告給家人<")
+
+
+class FooterOneRowTests(TestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
+    the footer's links in one row on a phone, the family zone's link in its short name."""
+
+    def _links(self, content):
+        return re.findall(r"<a href=\"([^\"]+)\">.*?</svg>([^<]*)</a>", _footer(content), re.S)
+
+    def test_a_visitor_sees_two_links_with_short_names(self):
+        content = self.client.get(reverse("index")).content.decode()
+        self.assertEqual(
+            self._links(content),
+            [(reverse("family_guide"), "家人專區"), (reverse("privacy"), "隱私權說明")],
+        )
+
+    def test_a_signed_in_user_also_sees_account_settings(self):
+        self.client.force_login(consented_user(username="footer_row"))
+        content = self.client.get(reverse("index")).content.decode()
+        self.assertEqual(
+            self._links(content),
+            [
+                (reverse("family_guide"), "家人專區"),
+                (reverse("privacy"), "隱私權說明"),
+                (reverse("account_settings"), "帳號設定"),
+            ],
+        )

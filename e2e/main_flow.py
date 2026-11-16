@@ -67,6 +67,7 @@ from screening.tests.helpers import (
     id_token,
     line_on,
     register,
+    submission_with_answers,
 )
 
 # Playwright runs an event loop in this thread, which makes Django refuse database calls.
@@ -612,7 +613,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def test_family_guide_marks_the_urgent_one(self):
         """#240: the urgent topic and 119 stand out. #469 (the #468 mockup A): the list has no
-        jump links left; 怎麼跟他說話 is a page of its own and 陪伴配戴助聽器 folds in its row."""
+        jump links left; 怎麼跟他說話 is a page of its own. Readability batch 2: every row opens a
+        page, the urgent box set apart from them."""
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             entries = self.page.get_by_role("navigation", name="專區內容")
@@ -621,14 +623,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             for link in entries.get_by_role("link").all():
                 self.assertNotIn("#", link.get_attribute("href"))
             urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
-            calm = self.main().locator("#aid-title")
+            calm = entries.get_by_role("link").first
 
             def style(locator, prop):
                 return locator.evaluate(f"el => getComputedStyle(el).{prop}")
 
             self.assertNotEqual(style(urgent, "backgroundColor"), style(calm, "backgroundColor"))
             title = urgent.locator("#urgent-title")
-            calm_title = calm.get_by_text("陪伴配戴助聽器", exact=True)
+            calm_title = calm.locator(".link-card-title")
             self.assertNotEqual(style(title, "color"), style(calm_title, "color"))
             number = urgent.get_by_text("119", exact=True)
             body = urgent.get_by_text("如果同時出現", exact=False)
@@ -1390,7 +1392,7 @@ class ReturningUserRetestTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerT
             self.step3_retest()
             self.assert_fits_a_phone_at_double_text_size("result")
             self.page.goto(self.live_server_url)
-            expect(self.main().locator(".journey-tiles")).to_contain_text("還有")
+            expect(self.main().locator(".journey-tiles")).to_contain_text("離下次篩檢")
             self.assert_fits_a_phone_at_double_text_size("home, next date")
 
     def test_screening_tab_shows_the_catalogue_with_last_dates(self):
@@ -4169,12 +4171,13 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            # #469: rows to other pages (#487: the hearing loss simulator first, so five), then
-            # 陪伴配戴助聽器's fold row.
+            # #469: rows to other pages (#487: the hearing loss simulator first, so five);
+            # readability batch 2 moved 陪伴配戴助聽器's fold row to the hearing aids page.
             zone = self.main().get_by_role("navigation", name="專區內容")
             entries = zone.get_by_role("link")
             expect(entries).to_have_count(5)
-            for entry in [*entries.all(), zone.locator("summary")]:
+            expect(zone.locator("summary")).to_have_count(0)
+            for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             # The line under a title is words to read: at least the 18px body text's 1rem.
@@ -8051,14 +8054,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for signed_in in (False, True):
                 with self.subTest(signed_in=signed_in):
                     # #469: the talk tips on their own page under its title, each under a
-                    # drawing; the aid tips in their fold on /family, opened.
+                    # drawing; the aid tips in their fold, opened (on the hearing aids page since
+                    # readability batch 2).
                     for path, name in (
                         ("/family/talk", "怎麼跟聽損的家人說話"),
-                        ("/family", "陪伴配戴助聽器"),
+                        ("/family/hearing-aids", "陪伴配戴助聽器"),
                     ):
                         with self.subTest(topic=name):
                             self.visit(signed_in, path)
-                            if path == "/family":
+                            if path == "/family/hearing-aids":
                                 self.main().locator("#aid-title > summary").click()
                                 tips = self.main().locator("#aid-title ul.tips")
                             else:
@@ -8078,6 +8082,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                     # The heading colour, not link blue.
                                     self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
                     # #469: the sources fold into a row; 傳給家人 is a button, not a part.
+                    self.visit(signed_in, "/family")
                     fold = self.main().locator("details.family-sources")
                     fold.locator("summary").click()
                     self.assertGreater(fold.get_by_role("link").count(), 0)
@@ -8138,7 +8143,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             cards = help_block.get_by_role("link")
             self.assertEqual(
                 [card.get_attribute("href") for card in cards.all()],
-                ["/family/talk", "/family#aid-title", "/family#urgent-title"],
+                ["/family/talk", "/family/hearing-aids#aid-title", "/family#urgent-title"],
             )
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
@@ -9926,8 +9931,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                         self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
     # Acceptance 14: the family page's topics from the shared report light up whole. #469: the
-    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold row that lights as one, and
-    # 怎麼跟聽損的家人說話 opens a page of its own.
+    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold that lights as one (on the
+    # hearing aids page since readability batch 2), and 怎麼跟聽損的家人說話 opens a page of its
+    # own.
     def test_family_topic_lights_from_the_shared_report(self):
         share = ReportShare.objects.create(user=self.user)
         report = f"{self.live_server_url}/shared/{share.token}/report"
@@ -9936,7 +9942,7 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             self.page.goto(report)
             self.sample_next_page("details#aid-title")
             self.page.get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(re.compile(r"/family#aid-title$"))
+            expect(self.page).to_have_url(re.compile(r"/family/hearing-aids#aid-title$"))
             self.assert_lights(self.samples())
 
             self.page.goto(report)
@@ -10239,6 +10245,255 @@ class FooterPinButtonRowsT359Test(SavesFailureArtifacts, LayoutOnAPhone, StaticL
             audiogram = Audiogram.objects.create(user=self.user, tested_on=date(2026, 10, 1))
             self.open(f"/audiograms/{audiogram.pk}/delete", self.PHONE)
             self.assert_words_wide((("button", "確定刪除"), ("link", "取消")))
+
+
+class FooterOneRowTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
+    on a phone the footer's links share one row, each icon over its words; a computer keeps the
+    icon beside the words. The links stay at least 44px tall to tap."""
+
+    LINKS = ("家人專區", "隱私權說明", "帳號設定")
+    # The box of a link's words alone, without its icon.
+    WORDS = """el => {
+        const words = [...el.childNodes].find((n) => n.nodeType === 3 && n.data.trim());
+        const range = document.createRange();
+        range.selectNodeContents(words);
+        const box = range.getBoundingClientRect();
+        return { x: box.left, y: box.top, width: box.width, height: box.height };
+    }"""
+
+    def setUp(self):
+        self.sign_in(consented_user(username="footer_row_e2e", password="Fake-pass-2468"))
+
+    def boxes(self):
+        """Each link's box, its icon's box and its words' box, in LINKS order."""
+        footer = self.page.locator(".site-footer")
+        boxes = []
+        for name in self.LINKS:
+            link = footer.get_by_role("link", name=name, exact=True)
+            boxes.append(
+                (
+                    link.bounding_box(),
+                    link.locator("svg").bounding_box(),
+                    link.evaluate(self.WORDS),
+                )
+            )
+        return boxes
+
+    def test_a_phone_puts_the_links_in_one_row_icons_over_words(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/privacy", (width, 844))
+                    boxes = self.boxes()
+                    tops = {round(link["y"]) for link, _, _ in boxes}
+                    self.assertEqual(len(tops), 1, tops)
+                    for (link, icon, words), name in zip(boxes, self.LINKS, strict=True):
+                        self.assertGreaterEqual(link["height"], 44, name)
+                        self.assertLessEqual(icon["y"] + icon["height"], words["y"] + 1, name)
+                        # One line of words, the name not broken.
+                        self.assertLess(words["height"], self.rem() * 2, name)
+
+    def test_a_visitor_has_two_links_in_one_row(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 844), signed_in=False)
+            footer = self.page.locator(".site-footer")
+            expect(footer.get_by_role("link", name="帳號設定")).to_have_count(0)
+            boxes = [
+                footer.get_by_role("link", name=name, exact=True).bounding_box()
+                for name in self.LINKS[:2]
+            ]
+            self.assertEqual(len({round(box["y"]) for box in boxes}), 1)
+            for box in boxes:
+                self.assertGreaterEqual(box["height"], 44)
+
+    def test_a_computer_keeps_the_icon_beside_the_words(self):
+        with self.saving_artifacts():
+            self.open("/privacy", self.DESKTOP)
+            for (_, icon, words), name in zip(self.boxes(), self.LINKS, strict=True):
+                with self.subTest(link=name):
+                    self.assertLessEqual(icon["x"] + icon["width"], words["x"] + 1)
+
+    def test_double_text_size_on_a_small_phone_spills_nothing(self):
+        with self.saving_artifacts():
+            self.open("/privacy", (320, 640))
+            self.assert_fits_a_phone_at_double_text_size("/privacy footer")
+            for (link, _, _), name in zip(self.boxes(), self.LINKS, strict=True):
+                with self.subTest(link=name):
+                    self.assertGreaterEqual(link["height"], 44)
+                    self.assertLessEqual(link["x"] + link["width"], 320)
+
+
+class AnswerHeadFirstScreenTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's A):
+    the answer page's title, count and guest line above the first screen only; after it each
+    question has just the progress above it. The title stays for screen readers."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+
+    def head(self):
+        main = self.main()
+        return (
+            main.get_by_role("heading", level=1, name="聽力對生活的影響"),
+            main.locator(".answer-meta"),
+            main.locator(".answer-guest-line"),
+        )
+
+    def assert_head_shown(self):
+        title, meta, guest = self.head()
+        for part in (title, meta, guest):
+            expect(part).to_be_visible()
+            self.assertGreater(part.bounding_box()["height"], 10)
+
+    def assert_head_folded(self):
+        title, meta, guest = self.head()
+        # Still there for screen readers, one pixel on screen.
+        expect(title).to_have_count(1)
+        for part in (title, meta):
+            self.assertLessEqual(part.bounding_box()["height"], 1)
+        expect(guest).to_be_hidden()
+
+    def legend_top(self):
+        return self.main().locator(".answer-app legend").bounding_box()["y"]
+
+    def test_a_guest_sees_the_head_on_the_first_screen_only(self):
+        with self.saving_artifacts():
+            self.open("/questionnaire_list", signed_in=False)
+            self.main().get_by_label("65 歲以上", exact=True).check()
+            self.main().get_by_role("button", name="下一步").click()
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_head_shown()
+            first_top = self.legend_top()
+            self.answer("沒戴")
+            self.next()
+            expect(self.main().get_by_role("group")).to_contain_text("第 1 題／共 10 題")
+            self.assert_head_folded()
+            # The question moves up by what the head took.
+            self.assertLess(self.legend_top(), first_top - 80)
+            self.answer("常常", number=1)
+            self.next()
+            self.assert_head_folded()
+            # Back on the first screen, the head is back.
+            self.main().get_by_role("button", name="上一題").click()
+            self.main().get_by_role("button", name="上一題").click()
+            expect(self.main().get_by_role("group")).to_contain_text("有沒有戴助聽器")
+            self.assert_head_shown()
+
+    def test_every_questionnaire_folds_its_head_after_the_first_screen(self):
+        # Six answer pages share screening.html; SADL and IOI-HA start on question 1.
+        self.sign_in(consented_user(username="answer_head_all", birth_year=1950))
+        with self.saving_artifacts():
+            for code in ("hhie-s", "hhia-s", "ssq12-tw", "ioi-ha", "sadl", "thi"):
+                with self.subTest(code=code):
+                    questionnaire = Questionnaire.objects.get(code=code)
+                    self.open(f"/questionnaire/{questionnaire.pk}")
+                    expect(self.page.locator("html.answer-loading")).to_have_count(0)
+                    title = self.main().get_by_role("heading", level=1)
+                    expect(title).to_be_visible()
+                    self.assertGreater(title.bounding_box()["height"], 10)
+                    self.main().locator(".answer-app").get_by_role("radio").first.check()
+                    self.next()
+                    expect(title).to_have_class(re.compile(r"\bvisually-hidden\b"))
+                    self.assertLessEqual(title.bounding_box()["height"], 1)
+
+    def test_without_javascript_the_form_keeps_its_head(self):
+        self.sign_in(consented_user(username="answer_head_nojs", birth_year=1950))
+        with self.saving_artifacts():
+            questionnaire = Questionnaire.objects.get(code="hhie-s")
+            self.open(f"/questionnaire/{questionnaire.pk}", java_script_enabled=False)
+            title = self.main().get_by_role("heading", level=1, name="聽力對生活的影響")
+            expect(title).to_be_visible()
+            self.assertGreater(title.bounding_box()["height"], 10)
+
+
+class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 1 (docs/planning/redesign/mockup-readability-batch1.html, the owner's B):
+    the home page's 離下次篩檢 tile, the days left big on one line, the day small under them."""
+
+    fixtures = ("questions_fixture.json",)
+
+    def setUp(self):
+        call_command("seed_questionnaires", verbosity=0)
+        self.sign_in(consented_user(username="next_tile_e2e", birth_year=1950))
+        record = submission_with_answers(
+            self.user, "hhie-s", [0] * QUESTION_COUNT, wearing_hearing_aid=False
+        )
+        Submission.objects.filter(pk=record.pk).update(
+            created_at=timezone.now() - timedelta(days=10)
+        )
+
+    def tile(self):
+        return self.main().locator(".journey-tile-info")
+
+    def assert_one_line(self, locator):
+        # By height: 天 is smaller than the number and sits lower, which a line count by each
+        # character's top would take for a second line.
+        self.assertLess(locator.bounding_box()["height"], self.font_size(locator) * 1.6)
+
+    def test_the_days_left_stay_on_one_line_on_small_phones(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/", (width, 844))
+                    expect(self.tile()).to_contain_text("離下次篩檢")
+                    days = self.tile().locator(".journey-tile-score")
+                    self.assert_one_line(days)
+                    self.assertRegex(days.inner_text(), r"^\d+ 天$")
+                    self.assert_one_line(self.tile().locator(".journey-tile-small"))
+
+    def test_double_text_size_spills_nothing(self):
+        with self.saving_artifacts():
+            self.open("/", (320, 640))
+            self.assert_fits_a_phone_at_double_text_size("/ 離下次篩檢")
+            self.assert_one_line(self.tile().locator(".journey-tile-score"))
+
+
+class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 2 (docs/planning/redesign/mockup-readability-batch2.html, the owner's A):
+    怎麼跟他說話's nine tips each with its drawing 96px wide at the left and its words at the right;
+    at large text sizes the drawing goes back over the words."""
+
+    def tips(self):
+        tips = self.main().locator("ul.tips > li")
+        expect(tips).to_have_count(9)
+        return tips.all()
+
+    @staticmethod
+    def plain_stroke(tip):
+        # A line that is not .thin, .thick or a .dot has the plain width.
+        return tip.locator("svg.care-drawing").evaluate(
+            "svg => getComputedStyle(svg.querySelector("
+            "':scope > :not(.thin):not(.thick):not(.dot)')).strokeWidth"
+        )
+
+    def test_on_a_phone_each_drawing_is_at_the_left_of_its_words(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/family/talk", (width, 844), signed_in=False)
+                    for tip in self.tips():
+                        drawing = tip.locator("svg.care-drawing").bounding_box()
+                        point = tip.locator("strong").bounding_box()
+                        with self.subTest(tip=tip.locator("strong").inner_text()):
+                            self.assertAlmostEqual(drawing["width"], 96, delta=2)
+                            self.assertLessEqual(drawing["x"] + drawing["width"], point["x"])
+                            self.assertAlmostEqual(drawing["y"], point["y"], delta=24)
+                            # Lighter lines at that size: 1.8 for the plain ones, not 2.4.
+                            self.assertEqual(self.plain_stroke(tip), "1.8px")
+
+    def test_double_text_size_puts_the_drawing_back_over_the_words(self):
+        with self.saving_artifacts():
+            self.open("/family/talk", (320, 640), signed_in=False)
+            self.assert_fits_a_phone_at_double_text_size("/family/talk")
+            for tip in self.tips():
+                drawing = tip.locator("svg.care-drawing").bounding_box()
+                point = tip.locator("strong").bounding_box()
+                with self.subTest(tip=tip.locator("strong").inner_text()):
+                    self.assertLessEqual(drawing["y"] + drawing["height"], point["y"] + 1)
+                    self.assertEqual(self.plain_stroke(tip), "2.4px")
 
 
 class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -11939,9 +12194,13 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     # still lands on its section.
     def test_old_links_land_on_their_sections(self):
         with self.saving_artifacts():
-            for anchor in ("aid-title", "urgent-title"):
+            # Readability batch 2: aid-title went to the hearing aids page.
+            for path, anchor in (
+                ("/family/hearing-aids", "aid-title"),
+                ("/family", "urgent-title"),
+            ):
                 with self.subTest(anchor=anchor):
-                    self.open(f"/family#{anchor}", signed_in=False)
+                    self.open(f"{path}#{anchor}", signed_in=False)
                     self.page.wait_for_function(
                         "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
                         " < 10 && window.scrollY > 0",
@@ -14129,7 +14388,13 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(threshold.get_by_text("怎麼算的", exact=True)).to_be_visible()
 
     LINKED_PARTS = (
-        ("form-9", "steps-title", "做評估，拿到九號表"),
+        # A step's words, shown only with the fold open (readability batch 2); step 1's are on
+        # a key card too, so step 2's.
+        (
+            "form-9",
+            "steps-title",
+            "帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。",
+        ),
         ("form-9", "issuer-title", "各縣市輔具中心"),
         ("form-9", "reapply", "再次申請簡易型，不需要重新評估。"),
         ("form-9", "without-certificate", "低收入戶老人配戴助聽器補助"),
@@ -14160,6 +14425,53 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                             expect(opened).to_have_count(mine.count())
                         else:
                             expect(opened).to_have_count(folds.count())
+
+    # Readability batch 2 (the owner's A): 要怎麼辦？ shows the six steps' titles and time limits
+    # and step 4's warning; each step's words show once 看每一步的說明 is opened.
+    def test_form_9_steps_in_sight_their_words_behind_the_fold(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            section = self.main().locator("section", has=self.page.locator("#steps-title"))
+            expect(section.locator("ol.step-list > li")).to_have_count(6)
+            for words in (
+                "做評估，拿到九號表",
+                "到公所申請",
+                "等核定通知",
+                "購買並請款",
+                "使用效益驗證",
+                "核銷",
+                "3 個月內有效",
+                "10 天內核定",
+                "6 個月內",
+                "配戴 1–3 個月內",
+                "1 個月內撥款",
+                "先拿到核定通知再買，沒核定就先買的不補助。",
+            ):
+                with self.subTest(words=words):
+                    expect(section.get_by_text(words, exact=True)).to_be_visible()
+            words = section.get_by_text("找聽力師或縣市輔具中心。九號表 3 個月內有效。")
+            expect(words).to_be_hidden()
+            expect(section.get_by_text("身心障礙者輔具費用補助辦法").first).to_be_visible()
+            section.get_by_text("看每一步的說明", exact=True).click()
+            expect(words).to_be_visible()
+
+    # The steps' words are outside their fold, so they wait unseen while the guide's folds are
+    # pending too (the self-review): with guide.js held back they never show before the page's
+    # 3-second fallback, then show as the open fold says.
+    def test_form_9_steps_words_do_not_flash_before_the_folds_settle(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.route("**/guide.js", lambda route: route.abort())
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            expect(self.page.locator("html")).to_have_class(re.compile(r"\bguide-folds-pending\b"))
+            words = self.main().get_by_text("帶申請表、身分證正本和九號表")
+            expect(words).to_be_hidden()
+            expect(self.main().get_by_text("做評估，拿到九號表", exact=True)).to_be_visible()
+            expect(self.page.locator("html")).not_to_have_class(
+                re.compile(r"\bguide-folds-pending\b"), timeout=5000
+            )
+            expect(words).to_be_visible()
 
     def test_a_chapter_opened_at_its_top_has_its_parts_folded(self):
         self.open()
@@ -14213,7 +14525,8 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     def test_pages_fit_a_phone_at_double_text_size_with_their_folds_open(self):
         pages = (
             ("/learn", ()),
-            ("/family", ("#aid-title", "details.family-sources")),
+            ("/family", ("details.family-sources",)),
+            ("/family/hearing-aids", ("#aid-title", "details.family-sources")),
             ("/family/talk", ("details.family-sources",)),
             ("/family/visits", ("details.family-sources",)),
             ("/qa", ()),
@@ -14270,15 +14583,16 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         with self.saving_artifacts():
             self.open(f"/shared/{share.token}/report", (390, 844), signed_in=False)
             self.main().get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/family#aid-title")
+            expect(self.page).to_have_url(f"{self.live_server_url}/family/hearing-aids#aid-title")
             expect(aid()).to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_visible()
 
-            self.open("/family", (390, 844), signed_in=False)
+            self.open("/family/hearing-aids", (390, 844), signed_in=False)
             expect(aid()).not_to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_hidden()
 
-            self.open("/family", (390, 844), signed_in=False, java_script_enabled=False)
+            aids = "/family/hearing-aids"
+            self.open(aids, (390, 844), signed_in=False, java_script_enabled=False)
             expect(aid().get_by_text(tip)).to_be_visible()
 
     # The assistant's urgent answer: the whole red box is one link, big enough to tap.

@@ -31,6 +31,7 @@ from screening.tests.test_family_zone import (
     HEARING_AIDS_NOTE,
     INTRO,
     RELUCTANT_NOTE,
+    TALK_INTRO,
     TALK_NOTE,
     URGENT,
     VISITS_NOTE,
@@ -80,7 +81,7 @@ class FamilyTalkPageTests(TestCase):
     def test_the_nine_tips_each_under_a_drawing_with_the_reviewed_words(self):
         main = _main(self._page())
         self.assertEqual(re.findall(r"<h1[^>]*>([^<]*)</h1>", main), [TALK_TITLE])
-        self.assertIn(INTRO, main)
+        self.assertIn(TALK_INTRO, main)
         self.assertEqual(tuple(TIP.findall(main)), TIPS["talk-title"])
         # Nine drawings, all different, none read out.
         drawings = re.findall(r'<svg class="care-drawing".*?</svg>', main, re.S)
@@ -133,8 +134,9 @@ class FamilyTalkPageTests(TestCase):
 
 
 class FamilyZoneHomeRedesignTests(TestCase):
-    """The zone's home page (the #468 mockup A): the list with 陪伴配戴助聽器 folded among its
-    rows, then 傳給家人, then the red 馬上就醫 box, never folded; the sources folded at the end."""
+    """The zone's home page (the #468 mockup A): the list, then 傳給家人, then the red 馬上就醫 box,
+    never folded; the sources folded at the end. Readability batch 2: one sentence over the list,
+    whose rows all open pages; 陪伴配戴助聽器's fold moved to the hearing aids page."""
 
     def setUp(self):
         response = self.client.get(reverse("family_guide"))
@@ -165,11 +167,18 @@ class FamilyZoneHomeRedesignTests(TestCase):
         self.assertNotIn('id="scenarios-title"', self.main)
         self.assertNotIn('id="talk-title"', self.main)
 
-    def test_aid_tips_folded_in_the_last_row_with_the_reviewed_words(self):
+    # Readability batch 2 (the owner's A and words): the six tips, word for word, in a fold of
+    # the same name under 陪長輩適應's three stages on the hearing aids page, before the survey.
+    def test_aid_tips_folded_under_adjusting_on_the_hearing_aids_page(self):
+        self.assertNotIn('id="aid-title"', self.main)
+        self.assertNotIn("<details", self._entries())
+        aids = _main(self.client.get(reverse("family_hearing_aids")).content.decode())
+        start = aids.index('id="adjusting-title"')
+        adjusting = aids[start : aids.index("</section>", start)]
         fold = re.search(
             r'<details id="aid-title" class="result-details" data-jump-box data-guide-fold open>'
             r"(.*?)</details>",
-            self._entries(),
+            adjusting,
             re.S,
         )
         self.assertIsNotNone(fold)
@@ -179,7 +188,7 @@ class FamilyZoneHomeRedesignTests(TestCase):
             re.findall(r'<span class="[^"]*">([^<]+)</span>', summary), ["陪伴配戴助聽器", AID_NOTE]
         )
         self.assertEqual(tips(body), TIPS["aid-title"])
-        self.assertNotIn("<details", self.main[: self.main.index('aria-label="專區內容"')])
+        self.assertLess(adjusting.index("他現在是哪個階段？"), fold.start())
 
     def test_share_then_the_urgent_box_open_then_the_rest_in_order(self):
         markers = (
@@ -218,12 +227,11 @@ class FamilyZoneHomeRedesignTests(TestCase):
     def test_sources_of_what_stays_on_the_page_folded(self):
         fold = SOURCES_FOLD.search(self.main)
         self.assertIsNotNone(fold)
-        for topic in ("陪伴配戴助聽器", "什麼時候要馬上就醫"):
-            for wording, url in TOPICS[topic]:
-                with self.subTest(url=url):
-                    self.assertIn(f'href="{url}"', fold.group(1))
-                    self.assertIn(wording, _text(fold.group(1)))
-        for _, url in TOPICS[TALK_TITLE]:
+        for wording, url in TOPICS["什麼時候要馬上就醫"]:
+            with self.subTest(url=url):
+                self.assertIn(f'href="{url}"', fold.group(1))
+                self.assertIn(wording, _text(fold.group(1)))
+        for _, url in (*TOPICS[TALK_TITLE], *TOPICS["陪伴配戴助聽器"]):
             self.assertNotIn(url, self.main)
 
 
@@ -430,7 +438,7 @@ class AidTipPointsToTalkTests(TestCase):
     fourth tip names that page and links to it, instead of 「上面的說話方法」."""
 
     def test_the_fourth_aid_tip_links_to_the_talk_page(self):
-        main = _main(self.client.get(reverse("family_guide")).content.decode())
+        main = _main(self.client.get(reverse("family_hearing_aids")).content.decode())
         fold = main[main.index('<details id="aid-title"') : main.index("</details>")]
         self.assertNotIn("上面的說話方法", fold)
         self.assertIn(
@@ -448,9 +456,14 @@ class AidFoldOpensOnAJumpTests(TestCase):
     to it. What the browser does: e2e.main_flow.LearnFamilyQaT469Test."""
 
     def test_the_aid_fold_is_a_guide_fold_with_the_guide_script(self):
-        content = self.client.get(reverse("family_guide")).content.decode()
+        # Readability batch 2: on the hearing aids page now, and the zone's home page, with no
+        # such fold left, no longer loads the script.
+        content = self.client.get(reverse("family_hearing_aids")).content.decode()
         self.assertRegex(content, r'<details id="aid-title"[^>]*\sdata-guide-fold open>')
         self.assertRegex(content, r'<script type="module" src="[^"]*/frontend/guide\.js">')
         self.assertIn('classList.add("guide-folds-pending")', content)
         # Only that fold: the sources stay folded.
         self.assertEqual(content.count("data-guide-fold"), 1)
+        home = self.client.get(reverse("family_guide")).content.decode()
+        self.assertNotIn("data-guide-fold", home)
+        self.assertNotIn("guide.js", home)

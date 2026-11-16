@@ -17,6 +17,15 @@ introWithoutNorm?.querySelector("[data-intro-norm]")?.remove();
 // Why 沒戴 is already chosen (#154): the Django form's sentence, there only when preselected.
 const hint = document.getElementById("hearing-aid-hint");
 const note = document.getElementById("answer-loading");
+// The page's title, count and guest line: above the first screen only (readability batch 1).
+// Past it the title and count are left for screen readers, so the page keeps its heading; the
+// guest line goes, its link with it.
+const head = document.getElementById("answer-head");
+const foldHead = (past) => {
+  head?.querySelectorAll("h1, .answer-meta").forEach((el) => el.classList.toggle("visually-hidden", past));
+  const guestLine = head?.querySelector(".answer-guest-line");
+  if (guestLine) guestLine.hidden = past;
+};
 const page = document.documentElement.classList;
 
 // A guest's note asking to register (I3): the form saves records, so it is not given back to them.
@@ -65,6 +74,7 @@ if (container && fallback) {
         showForm();
       }}
       onFail={giveUp}
+      onPastFirst={foldHead}
     />,
   );
 }

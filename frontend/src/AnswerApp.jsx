@@ -58,6 +58,9 @@ export default function AnswerApp({
   registerUrl,
   onReady,
   onFail = () => {},
+  // Readability batch 1 (the owner's A): told whether a question past the first screen is shown,
+  // so the page shows its title, count and guest line above the first screen only.
+  onPastFirst = () => {},
   navigate = (url) => window.location.assign(url),
 }) {
   // I4: a guest's result lives in this browser only, so a browser that cannot keep it (some
@@ -173,6 +176,12 @@ export default function AnswerApp({
     if (moved.current) legend.current?.focus();
     moved.current = false;
   }, [form?.step, form === null]);
+
+  // Not while asking whether to carry on: that question stands in for the first screen.
+  const pastFirst = form !== null && saved === null && form.step > groundFloor;
+  useEffect(() => {
+    onPastFirst(pastFirst);
+  }, [pastFirst, onPastFirst]);
 
   if (cannotKeep) {
     return (
