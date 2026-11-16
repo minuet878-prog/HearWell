@@ -178,3 +178,16 @@ class FeedbackPurgeTests(TestCase):
             response = self.client.get(reverse("admin:screening_feedback_changelist"))
         self.assertNotContains(response, "舊的")
         self.assertEqual(list(Feedback.objects.all()), [stays])
+
+
+class FeedbackPurgePermissionTests(TestCase):
+    """Cross review of spec #633 (S1, CODING_STANDARDS 1): opening the list purges only for one
+    who may see it; staff without the permission are refused and delete nothing."""
+
+    def test_staff_without_the_permission_purge_nothing(self):
+        old = kept("舊的", days_ago=91)
+        self.client.force_login(User.objects.create_user("feedback_staff", is_staff=True))
+        with at_now():
+            response = self.client.get(reverse("admin:screening_feedback_changelist"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Feedback.objects.filter(pk=old.pk).exists())

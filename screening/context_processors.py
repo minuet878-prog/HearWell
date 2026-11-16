@@ -8,6 +8,9 @@ from screening.public_pages import PREVIEW_IMAGE, PROTOCOL, SITE_DESCRIPTION, pa
 # Spec #633 Q5: the pages whose footer link names which one, by its code; every other page is
 # named by its kind alone, so no record number or share code goes with it.
 NAMED_BY_CODE = {"guide_chapter": "chapter", "qa_answer": "code"}
+# A shared report's address is its share code: no way back from there, so the code never rides
+# into the feedback pages' addresses (cross review of spec #633, P2).
+NO_WAY_BACK = {"shared_cover", "shared_report"}
 
 
 def feedback_link(request):
@@ -17,7 +20,10 @@ def feedback_link(request):
     page = match.url_name if match and match.url_name else ""
     if page in NAMED_BY_CODE:
         page = f"{page}:{match.kwargs[NAMED_BY_CODE[page]]}"
-    query = urlencode({"page": page, "next": request.get_full_path()})
+    query = {"page": page}
+    if page not in NO_WAY_BACK:
+        query["next"] = request.get_full_path()
+    query = urlencode(query)
     return {"feedback_url": f"{reverse('feedback')}?{query}"}
 
 

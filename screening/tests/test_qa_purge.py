@@ -136,6 +136,20 @@ class PurgeOnAdminListTests(TestCase):
         self.assertEqual(stats(), [(date(2026, 8, 1), 1, 0, 0, 0, 0)])
 
 
+class PurgePermissionTests(TestCase):
+    """Cross review of spec #633 (S1, CODING_STANDARDS 1): the same cause as the feedback list's;
+    staff without the permission are refused and nothing is purged or counted."""
+
+    def test_staff_without_the_permission_purge_nothing(self):
+        old = log(91)
+        self.client.force_login(User.objects.create_user("qa_log_staff", is_staff=True))
+        with at_now():
+            response = self.client.get(reverse("admin:screening_questionlog_changelist"))
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(QuestionLog.objects.filter(pk=old.pk).exists())
+        self.assertEqual(stats(), [])
+
+
 class EarlyDeleteTests(TestCase):
     """The owner's call (2026-10-27): one deleted early in the admin, alone or with others,
     is counted into its month first, the same way the 90-day purge counts."""

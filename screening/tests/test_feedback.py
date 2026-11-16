@@ -7,14 +7,14 @@ from django.core import mail
 from django.core.cache import caches
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import IntegrityError, connection, transaction
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from screening import models
 from screening import urls as screening_urls
 from screening.context_processors import NAMED_BY_CODE
-from screening.forms import RESET_WINDOW
+from screening.forms import FEEDBACKS_PER_ADDRESS, RESET_WINDOW
 from screening.models import Consent, Feedback, FeedbackNotice, ReportShare, User
 from screening.models.feedback import FEEDBACK_KEPT_FOR
 from screening.tests import test_layout
@@ -128,12 +128,16 @@ class SendFeedbackTests(TestCase):
                 "page=guide_chapter%3Aassessment&amp;next=%2Fguide%2Fassessment"
             ),
             f"{reverse('family_talk')}?x=1": "page=family_talk&amp;next=%2Ffamily%2Ftalk%3Fx%3D1",
-            reverse("shared_cover", args=[share.token]): "page=shared_cover&amp;next=",
+            # Cross review of spec #633 (P2): a shared report's way back would carry its share
+            # code into the feedback pages' addresses, so it has none.
+            reverse("shared_cover", args=[share.token]): "page=shared_cover",
+            reverse("shared_report", args=[share.token]): "page=shared_report",
         }
         for url, query in cases.items():
             with self.subTest(url):
                 footer = footer_of(self.client.get(url))
-                self.assertIn(f'href="{reverse("feedback")}?{query}', footer)
+                self.assertIn(f'href="{reverse("feedback")}?{query}"', footer)
+                self.assertNotIn(share.token, footer)
 
     def test_no_account_address_or_session_is_kept(self):
         self.client.force_login(consented_user(username="feedback_sender"))
@@ -245,6 +249,14 @@ class FeedbackLimitTests(TestCase):
         self.assert_refused(self.send(), TOO_MANY_AN_HOUR)
         self.assertFalse(Feedback.objects.exists())
 
+    def test_the_robots_box_seems_sent_past_the_limit_too(self):
+        # Cross review of spec #633 (P5): acceptance 29 holds whatever the count.
+        for _ in range(5):
+            self.send()
+        response = self.send(website="http://spam.example")
+        self.assertRedirects(response, reverse("feedback_sent"))
+        self.assertEqual(Feedback.objects.count(), 5)
+
     def test_the_address_is_the_last_one_forwarded(self):
         for _ in range(5):
             self.send(forwarded="1.1.1.1, 9.9.9.9")
@@ -339,6 +351,23 @@ class FeedbackNoticeTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             FeedbackNotice.objects.create(day=timezone.localdate())
 
+    def test_one_kept_just_before_midnight_is_noticed_on_its_own_day(self):
+        # Cross review of spec #633 (P3): kept at 23:59:59, its notice goes a moment past
+        # midnight; it uses its own day, so the next day's first one still sends.
+        before = datetime(2026, 11, 16, 15, 59, 59, tzinfo=UTC)  # 23:59:59 in Taipei
+        after = before + timedelta(seconds=2)
+        feedback = Feedback.objects.create(text="字太小了")
+        Feedback.objects.filter(pk=feedback.pk).update(created_at=before)
+        feedback.refresh_from_db()
+        with mock.patch("django.utils.timezone.now", return_value=after):
+            feedback_views.notify_owner(RequestFactory().get("/"), feedback)
+            self.send(REMOTE_ADDR="10.0.0.4")
+        self.assertEqual(
+            list(FeedbackNotice.objects.order_by("day").values_list("day", flat=True)),
+            [date(2026, 11, 16), date(2026, 11, 17)],
+        )
+        self.assertEqual(len(mail.outbox), 2)
+
     @override_settings(EMAIL_BACKEND=f"{__name__}.RefusingBackend")
     def test_a_notice_that_cannot_be_sent_keeps_the_feedback_and_tells_sentry(self):
         with self.assertLogs("screening.views.feedback", "ERROR") as logs:
@@ -407,6 +436,8 @@ class FeedbackPrivacyTests(TestCase):
         self.assertIn(f"意見回饋保存 {FEEDBACK_KEPT_FOR.days} 天後自動刪除", part)
         self.assertEqual(RESET_WINDOW, 60 * 60)
         self.assertIn("IP 位址換算過的代碼（不是原文），一小時後自動清除", part)
+        # Cross review of spec #633 (P4): the hour's count is the program's too.
+        self.assertIn(f"同一個網路每小時最多送 {FEEDBACKS_PER_ADDRESS} 次", part)
         storage = self.part("storage-title", "recipients-title")
         self.assertIn(f"<li>意見回饋保存 {FEEDBACK_KEPT_FOR.days} 天後自動刪除。</li>", storage)
         self.assertIn("超過 90 天的提問紀錄和意見回饋），在備份中最多再保留 10 天", storage)

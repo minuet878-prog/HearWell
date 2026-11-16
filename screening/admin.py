@@ -96,8 +96,10 @@ class QuestionLogAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         # #401: besides the VPS's daily 02:30 run (#452), opening the list clears those past
-        # 90 days first.
-        purge_question_log()
+        # 90 days first; only for one who may see it, so the refused delete nothing (cross
+        # review of spec #633).
+        if self.has_view_or_change_permission(request):
+            purge_question_log()
         return super().changelist_view(request, extra_context)
 
     # The owner's call (2026-10-27): one deleted early, alone or selected with others, is still
@@ -130,8 +132,10 @@ class FeedbackAdmin(admin.ModelAdmin):
         return False
 
     def changelist_view(self, request, extra_context=None):
-        # Besides the VPS's daily 02:30 run, opening the list clears those past 90 days first.
-        purge_feedback()
+        # Besides the VPS's daily 02:30 run, opening the list clears those past 90 days first;
+        # only for one who may see it, so the refused delete nothing (cross review, S1).
+        if self.has_view_or_change_permission(request):
+            purge_feedback()
         return super().changelist_view(request, extra_context)
 
     @admin.display(description="內容")

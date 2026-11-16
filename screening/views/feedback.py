@@ -94,11 +94,12 @@ def page_words(page):
 logger = logging.getLogger(__name__)
 
 
-def notify_owner(request):
+def notify_owner(request, feedback):
     """#638 (spec #633 Q10): the first 意見回饋 of a Taipei day sends the owner one 回饋通知信,
     the admin list's link and nothing that was sent. A notice that cannot go is not sent again:
-    the feedback is kept all the same, and the owner sees the error in Sentry."""
-    _, first = FeedbackNotice.objects.get_or_create(day=timezone.localdate())
+    the feedback is kept all the same, and the owner sees the error in Sentry. The day is the
+    feedback's own, so one kept at 23:59:59 never takes the next day's notice (cross review)."""
+    _, first = FeedbackNotice.objects.get_or_create(day=timezone.localdate(feedback.created_at))
     if not first:
         return
     admin_url = f"{PROTOCOL}://{request.get_host()}{reverse('admin:screening_feedback_changelist')}"
@@ -127,13 +128,13 @@ def feedback(request):
         # last, which Nginx adds). Only its hashed count is kept, for an hour. A mistake to fix
         # is no sending, so it does not count.
         address = BaseThrottle().get_ident(request)
-        if attempts("feedback", address) >= FEEDBACKS_PER_ADDRESS:
-            too_many = "hour"
-        # Q9: the box only robots fill. Told it was sent, whatever else it sent, so it learns
-        # nothing; nothing is kept. It counts as a sending.
-        elif request.POST.get("website"):
+        # Q9: the box only robots fill. Told it was sent, whatever else it sent and however many
+        # it sent before, so it learns nothing; nothing is kept. It counts as a sending.
+        if request.POST.get("website"):
             add_attempt("feedback", address)
             return redirect(sent)
+        if attempts("feedback", address) >= FEEDBACKS_PER_ADDRESS:
+            too_many = "hour"
         elif form.is_valid():
             # #637: the site's whole day, Taipei time.
             kept_today = Feedback.objects.filter(created_at__date=timezone.localdate()).count()
@@ -142,12 +143,12 @@ def feedback(request):
             else:
                 add_attempt("feedback", address)
                 # ADR 0064: anonymous, signed in or not.
-                Feedback.objects.create(
+                feedback = Feedback.objects.create(
                     text=form.cleaned_data["text"],
                     email=form.cleaned_data["email"],
                     page=page_words(page),
                 )
-                notify_owner(request)
+                notify_owner(request, feedback)
                 # Post/Redirect/Get: reloading the sent page sends nothing again.
                 return redirect(sent)
     return render(
