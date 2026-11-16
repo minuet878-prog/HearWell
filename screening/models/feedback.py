@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 
 # Spec #633: the longest 意見回饋 kept.
 FEEDBACK_MAX_LENGTH = 1000
+# ADR 0064: each is kept 90 days, as the 提問紀錄 is.
+FEEDBACK_KEPT_FOR = timedelta(days=90)
 
 
 class Feedback(models.Model):
@@ -21,3 +26,13 @@ class Feedback(models.Model):
     def __str__(self):
         # Not the words or the email: the admin keeps this in its history after a delete.
         return f"意見回饋 #{self.pk}"
+
+
+def purge_feedback():
+    """Delete each 意見回饋 over 90 days; returns how many (#639).
+
+    Run every day at 02:30 on the VPS, beside purge_question_log, and when the owner opens the
+    list in the admin. Nothing is counted first: no month stats are kept.
+    """
+    purged, _ = Feedback.objects.filter(created_at__lt=timezone.now() - FEEDBACK_KEPT_FOR).delete()
+    return purged
