@@ -291,7 +291,25 @@ class AccountSettingsT361Tests(TestCase):
                         self.assertEqual(rows[name], "未填")
                 group = self._group()
                 self.assertEqual(group.count(self.NOTE), 1)
-                self.assertTrue(group.endswith(self.NOTE))
+                # #580: 複製信箱 follows the sentence, the last thing under the details.
+                self.assertTrue(group.endswith(f"{self.NOTE} 複製信箱"))
+
+    # #580 (spec #576 acceptance 20): the button goes with the sentence, sent hidden like the
+    # footer's; with nothing blank there is neither.
+    COPY = 'data-copy="hearwellweb@gmail.com" hidden>'
+
+    def test_copy_button_comes_with_the_sentence_and_goes_with_it(self):
+        self.assertNotIn(self.NOTE, test_layout._text(self._main()))
+        self.assertEqual(self._main().count(self.COPY), 0)
+        for email, birth_year in (("", 1955), ("a@example.com", None), ("", None)):
+            with self.subTest(email=email, birth_year=birth_year):
+                self.user.email = email
+                self.user.birth_year = birth_year
+                self.user.save()
+                main = self._main()
+                self.assertEqual(main.count(self.COPY), 1)
+                self.assertLess(main.index("要修改請寫信到"), main.index(self.COPY))
+                self.assertLess(main.index(self.COPY), main.index("家人與資料"))
 
     def test_the_address_can_be_tapped(self):
         self.user.email = ""

@@ -278,3 +278,41 @@ class FooterOneRowTests(TestCase):
                 (reverse("account_settings"), "帳號設定"),
             ],
         )
+
+
+class FooterCopyAddressTests(TestCase):
+    """#580 (spec #576 acceptance 19 and 24): 複製信箱 beside the footer's contact address, on
+    every page; the page sends it hidden, and copy-link.js shows it where the browser can copy."""
+
+    BUTTON = re.compile(
+        r'<button type="button" class="btn btn-outline-primary copy-address" '
+        r'data-copy="hearwellweb@gmail.com" hidden>(.*?)</button>',
+        re.S,
+    )
+    MAIL = '<a href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a>'
+
+    def assert_footer_copies(self, name):
+        content = self.client.get(reverse(name)).content.decode()
+        footer = _footer(content)
+        # The address is still a mail link, and the button comes after it.
+        self.assertIn(self.MAIL, footer)
+        buttons = self.BUTTON.findall(footer)
+        self.assertEqual([_text(button) for button in buttons], ["複製信箱"])
+        self.assertLess(footer.index(self.MAIL), footer.index("data-copy="))
+        # Where 已複製 is said to a screen reader, for every such button of the page.
+        self.assertEqual(footer.count('aria-live="polite" data-copy-status'), 1)
+        # The one script behind every copy button, once (the share and family pages had it).
+        self.assertEqual(content.count("screening/copy-link.js"), 1)
+
+    def test_a_visitor_has_it_on_every_page(self):
+        for name in ("index", "privacy", "family_guide", "guide", "login"):
+            with self.subTest(page=name):
+                self.assert_footer_copies(name)
+
+    def test_a_signed_in_user_has_it_on_every_page(self):
+        user = consented_user(username="footer_copy")
+        self.client.force_login(user)
+        ReportShare.objects.create(user=user)
+        for name in ("index", "family_guide", "account_settings", "share_report", "my_hearing"):
+            with self.subTest(page=name):
+                self.assert_footer_copies(name)
