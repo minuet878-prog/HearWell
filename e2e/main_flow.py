@@ -613,7 +613,8 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
 
     def test_family_guide_marks_the_urgent_one(self):
         """#240: the urgent topic and 119 stand out. #469 (the #468 mockup A): the list has no
-        jump links left; 怎麼跟他說話 is a page of its own and 陪伴配戴助聽器 folds in its row."""
+        jump links left; 怎麼跟他說話 is a page of its own. Readability batch 2: every row opens a
+        page, the urgent box set apart from them."""
         with self.saving_artifacts():
             self.page.goto(f"{self.live_server_url}/family")
             entries = self.page.get_by_role("navigation", name="專區內容")
@@ -622,14 +623,14 @@ class NewUserScreeningTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             for link in entries.get_by_role("link").all():
                 self.assertNotIn("#", link.get_attribute("href"))
             urgent = self.main().locator("section", has=self.page.locator("#urgent-title"))
-            calm = self.main().locator("#aid-title")
+            calm = entries.get_by_role("link").first
 
             def style(locator, prop):
                 return locator.evaluate(f"el => getComputedStyle(el).{prop}")
 
             self.assertNotEqual(style(urgent, "backgroundColor"), style(calm, "backgroundColor"))
             title = urgent.locator("#urgent-title")
-            calm_title = calm.get_by_text("陪伴配戴助聽器", exact=True)
+            calm_title = calm.locator(".link-card-title")
             self.assertNotEqual(style(title, "color"), style(calm_title, "color"))
             number = urgent.get_by_text("119", exact=True)
             body = urgent.get_by_text("如果同時出現", exact=False)
@@ -4170,12 +4171,13 @@ class FamilyZoneHomeTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCa
                 '[aria-current="page"]'
             )
             expect(current).to_have_text("了解")
-            # #469: rows to other pages (#487: the hearing loss simulator first, so five), then
-            # 陪伴配戴助聽器's fold row.
+            # #469: rows to other pages (#487: the hearing loss simulator first, so five);
+            # readability batch 2 moved 陪伴配戴助聽器's fold row to the hearing aids page.
             zone = self.main().get_by_role("navigation", name="專區內容")
             entries = zone.get_by_role("link")
             expect(entries).to_have_count(5)
-            for entry in [*entries.all(), zone.locator("summary")]:
+            expect(zone.locator("summary")).to_have_count(0)
+            for entry in entries.all():
                 with self.subTest(entry=entry.inner_text()):
                     self.assertGreaterEqual(entry.bounding_box()["height"], 44)
             # The line under a title is words to read: at least the 18px body text's 1rem.
@@ -8052,14 +8054,15 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             for signed_in in (False, True):
                 with self.subTest(signed_in=signed_in):
                     # #469: the talk tips on their own page under its title, each under a
-                    # drawing; the aid tips in their fold on /family, opened.
+                    # drawing; the aid tips in their fold, opened (on the hearing aids page since
+                    # readability batch 2).
                     for path, name in (
                         ("/family/talk", "怎麼跟聽損的家人說話"),
-                        ("/family", "陪伴配戴助聽器"),
+                        ("/family/hearing-aids", "陪伴配戴助聽器"),
                     ):
                         with self.subTest(topic=name):
                             self.visit(signed_in, path)
-                            if path == "/family":
+                            if path == "/family/hearing-aids":
                                 self.main().locator("#aid-title > summary").click()
                                 tips = self.main().locator("#aid-title ul.tips")
                             else:
@@ -8079,6 +8082,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
                                     # The heading colour, not link blue.
                                     self.assertEqual(self.style(point, "color"), "rgb(33, 37, 41)")
                     # #469: the sources fold into a row; 傳給家人 is a button, not a part.
+                    self.visit(signed_in, "/family")
                     fold = self.main().locator("details.family-sources")
                     fold.locator("summary").click()
                     self.assertGreater(fold.get_by_role("link").count(), 0)
@@ -8139,7 +8143,7 @@ class WhiteCardRuleTest(SavesFailureArtifacts, OnAPhone, StaticLiveServerTestCas
             cards = help_block.get_by_role("link")
             self.assertEqual(
                 [card.get_attribute("href") for card in cards.all()],
-                ["/family/talk", "/family#aid-title", "/family#urgent-title"],
+                ["/family/talk", "/family/hearing-aids#aid-title", "/family#urgent-title"],
             )
             for card in cards.all():
                 with self.subTest(card=card.inner_text()):
@@ -9927,8 +9931,9 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
                         self.assertEqual(self.page.evaluate("document.getAnimations().length"), 0)
 
     # Acceptance 14: the family page's topics from the shared report light up whole. #469: the
-    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold row that lights as one, and
-    # 怎麼跟聽損的家人說話 opens a page of its own.
+    # zone's list has no jump links left; 陪伴配戴助聽器 is a fold that lights as one (on the
+    # hearing aids page since readability batch 2), and 怎麼跟聽損的家人說話 opens a page of its
+    # own.
     def test_family_topic_lights_from_the_shared_report(self):
         share = ReportShare.objects.create(user=self.user)
         report = f"{self.live_server_url}/shared/{share.token}/report"
@@ -9937,7 +9942,7 @@ class JumpHighlightTest(SavesFailureArtifacts, ScrollHelpersOnAPhone, StaticLive
             self.page.goto(report)
             self.sample_next_page("details#aid-title")
             self.page.get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(re.compile(r"/family#aid-title$"))
+            expect(self.page).to_have_url(re.compile(r"/family/hearing-aids#aid-title$"))
             self.assert_lights(self.samples())
 
             self.page.goto(report)
@@ -10444,6 +10449,51 @@ class NextScreeningTileTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
             self.open("/", (320, 640))
             self.assert_fits_a_phone_at_double_text_size("/ 離下次篩檢")
             self.assert_one_line(self.tile().locator(".journey-tile-score"))
+
+
+class TalkTipsSideBySideTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
+    """Readability batch 2 (docs/planning/redesign/mockup-readability-batch2.html, the owner's A):
+    怎麼跟他說話's nine tips each with its drawing 96px wide at the left and its words at the right;
+    at large text sizes the drawing goes back over the words."""
+
+    def tips(self):
+        tips = self.main().locator("ul.tips > li")
+        expect(tips).to_have_count(9)
+        return tips.all()
+
+    @staticmethod
+    def plain_stroke(tip):
+        # A line that is not .thin, .thick or a .dot has the plain width.
+        return tip.locator("svg.care-drawing").evaluate(
+            "svg => getComputedStyle(svg.querySelector("
+            "':scope > :not(.thin):not(.thick):not(.dot)')).strokeWidth"
+        )
+
+    def test_on_a_phone_each_drawing_is_at_the_left_of_its_words(self):
+        with self.saving_artifacts():
+            for width in (320, 390):
+                with self.subTest(width=width):
+                    self.open("/family/talk", (width, 844), signed_in=False)
+                    for tip in self.tips():
+                        drawing = tip.locator("svg.care-drawing").bounding_box()
+                        point = tip.locator("strong").bounding_box()
+                        with self.subTest(tip=tip.locator("strong").inner_text()):
+                            self.assertAlmostEqual(drawing["width"], 96, delta=2)
+                            self.assertLessEqual(drawing["x"] + drawing["width"], point["x"])
+                            self.assertAlmostEqual(drawing["y"], point["y"], delta=24)
+                            # Lighter lines at that size: 1.8 for the plain ones, not 2.4.
+                            self.assertEqual(self.plain_stroke(tip), "1.8px")
+
+    def test_double_text_size_puts_the_drawing_back_over_the_words(self):
+        with self.saving_artifacts():
+            self.open("/family/talk", (320, 640), signed_in=False)
+            self.assert_fits_a_phone_at_double_text_size("/family/talk")
+            for tip in self.tips():
+                drawing = tip.locator("svg.care-drawing").bounding_box()
+                point = tip.locator("strong").bounding_box()
+                with self.subTest(tip=tip.locator("strong").inner_text()):
+                    self.assertLessEqual(drawing["y"] + drawing["height"], point["y"] + 1)
+                    self.assertEqual(self.plain_stroke(tip), "2.4px")
 
 
 class TypeSizesT357Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServerTestCase):
@@ -12144,9 +12194,13 @@ class FamilyScenarioTest(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveServer
     # still lands on its section.
     def test_old_links_land_on_their_sections(self):
         with self.saving_artifacts():
-            for anchor in ("aid-title", "urgent-title"):
+            # Readability batch 2: aid-title went to the hearing aids page.
+            for path, anchor in (
+                ("/family/hearing-aids", "aid-title"),
+                ("/family", "urgent-title"),
+            ):
                 with self.subTest(anchor=anchor):
-                    self.open(f"/family#{anchor}", signed_in=False)
+                    self.open(f"{path}#{anchor}", signed_in=False)
                     self.page.wait_for_function(
                         "id => Math.abs(document.getElementById(id).getBoundingClientRect().top)"
                         " < 10 && window.scrollY > 0",
@@ -14334,7 +14388,13 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
             expect(threshold.get_by_text("怎麼算的", exact=True)).to_be_visible()
 
     LINKED_PARTS = (
-        ("form-9", "steps-title", "做評估，拿到九號表"),
+        # A step's words, shown only with the fold open (readability batch 2); step 1's are on
+        # a key card too, so step 2's.
+        (
+            "form-9",
+            "steps-title",
+            "帶申請表、身分證正本和九號表，到戶籍所在地的公所，也可以線上申請。",
+        ),
         ("form-9", "issuer-title", "各縣市輔具中心"),
         ("form-9", "reapply", "再次申請簡易型，不需要重新評估。"),
         ("form-9", "without-certificate", "低收入戶老人配戴助聽器補助"),
@@ -14365,6 +14425,53 @@ class GuideRedesign467Test(SavesFailureArtifacts, OnAPhone, StaticLiveServerTest
                             expect(opened).to_have_count(mine.count())
                         else:
                             expect(opened).to_have_count(folds.count())
+
+    # Readability batch 2 (the owner's A): 要怎麼辦？ shows the six steps' titles and time limits
+    # and step 4's warning; each step's words show once 看每一步的說明 is opened.
+    def test_form_9_steps_in_sight_their_words_behind_the_fold(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            section = self.main().locator("section", has=self.page.locator("#steps-title"))
+            expect(section.locator("ol.step-list > li")).to_have_count(6)
+            for words in (
+                "做評估，拿到九號表",
+                "到公所申請",
+                "等核定通知",
+                "購買並請款",
+                "使用效益驗證",
+                "核銷",
+                "3 個月內有效",
+                "10 天內核定",
+                "6 個月內",
+                "配戴 1–3 個月內",
+                "1 個月內撥款",
+                "先拿到核定通知再買，沒核定就先買的不補助。",
+            ):
+                with self.subTest(words=words):
+                    expect(section.get_by_text(words, exact=True)).to_be_visible()
+            words = section.get_by_text("找聽力師或縣市輔具中心。九號表 3 個月內有效。")
+            expect(words).to_be_hidden()
+            expect(section.get_by_text("身心障礙者輔具費用補助辦法").first).to_be_visible()
+            section.get_by_text("看每一步的說明", exact=True).click()
+            expect(words).to_be_visible()
+
+    # The steps' words are outside their fold, so they wait unseen while the guide's folds are
+    # pending too (the self-review): with guide.js held back they never show before the page's
+    # 3-second fallback, then show as the open fold says.
+    def test_form_9_steps_words_do_not_flash_before_the_folds_settle(self):
+        self.open()
+        with self.saving_artifacts():
+            self.page.route("**/guide.js", lambda route: route.abort())
+            self.page.goto(f"{self.live_server_url}/guide/form-9")
+            expect(self.page.locator("html")).to_have_class(re.compile(r"\bguide-folds-pending\b"))
+            words = self.main().get_by_text("帶申請表、身分證正本和九號表")
+            expect(words).to_be_hidden()
+            expect(self.main().get_by_text("做評估，拿到九號表", exact=True)).to_be_visible()
+            expect(self.page.locator("html")).not_to_have_class(
+                re.compile(r"\bguide-folds-pending\b"), timeout=5000
+            )
+            expect(words).to_be_visible()
 
     def test_a_chapter_opened_at_its_top_has_its_parts_folded(self):
         self.open()
@@ -14418,7 +14525,8 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
     def test_pages_fit_a_phone_at_double_text_size_with_their_folds_open(self):
         pages = (
             ("/learn", ()),
-            ("/family", ("#aid-title", "details.family-sources")),
+            ("/family", ("details.family-sources",)),
+            ("/family/hearing-aids", ("#aid-title", "details.family-sources")),
             ("/family/talk", ("details.family-sources",)),
             ("/family/visits", ("details.family-sources",)),
             ("/qa", ()),
@@ -14475,15 +14583,16 @@ class LearnFamilyQaT469Test(SavesFailureArtifacts, LayoutOnAPhone, StaticLiveSer
         with self.saving_artifacts():
             self.open(f"/shared/{share.token}/report", (390, 844), signed_in=False)
             self.main().get_by_role("link", name="陪伴配戴助聽器").click()
-            expect(self.page).to_have_url(f"{self.live_server_url}/family#aid-title")
+            expect(self.page).to_have_url(f"{self.live_server_url}/family/hearing-aids#aid-title")
             expect(aid()).to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_visible()
 
-            self.open("/family", (390, 844), signed_in=False)
+            self.open("/family/hearing-aids", (390, 844), signed_in=False)
             expect(aid()).not_to_have_attribute("open", "")
             expect(aid().get_by_text(tip)).to_be_hidden()
 
-            self.open("/family", (390, 844), signed_in=False, java_script_enabled=False)
+            aids = "/family/hearing-aids"
+            self.open(aids, (390, 844), signed_in=False, java_script_enabled=False)
             expect(aid().get_by_text(tip)).to_be_visible()
 
     # The assistant's urgent answer: the whole red box is one link, big enough to tap.

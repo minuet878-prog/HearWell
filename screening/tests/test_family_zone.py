@@ -33,8 +33,11 @@ FAMILY_CARD = "我是家人：怎麼陪伴聽損的家人"
 LEARN_CARD = "家人專區：溝通與陪伴"
 # The footer's short name since readability batch 1 (the owner's A, 2026-11-16).
 FOOTER_LINK = "家人專區"
-# As reviewed on 2026-10-17 (spec appendix A).
-INTRO = (
+# The zone's home page, since readability batch 2 (the owner's words, 2026-11-16): one sentence
+# over the list, which holds no tips of its own.
+INTRO = "想幫聽力不好的家人，可以從這裡開始。"
+# As reviewed on 2026-10-17 (spec appendix A): over the talking tips (family_talk).
+TALK_INTRO = (
     "家人有聽力困難時，日常對話常常要講好幾次，雙方都容易累、容易誤會。"
     "下面幾個小方法，可以讓溝通輕鬆一點。"
 )
@@ -159,10 +162,10 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
                 ("/family/hearing-aids", "ear", "助聽器", HEARING_AIDS_NOTE),
             ],
         )
-        # #469 (the #468 mockup A): 陪伴配戴助聽器 folds open in the last row (its words:
-        # test_family_redesign); the urgent box is never folded and has no row.
-        self.assertIn('<details id="aid-title"', self._entries(content))
-        self.assertIn(AID_NOTE, self._entries(content))
+        # Readability batch 2: five rows that open pages; 陪伴配戴助聽器's fold moved to the
+        # hearing aids page (test_family_redesign). The urgent box is never folded, has no row.
+        self.assertNotIn("<details", self._entries(content))
+        self.assertNotIn(AID_NOTE, content)
         nav = test_pages.RedesignLayoutTests.NAV.search(content).group()
         self.assertEqual(
             re.findall(r'aria-current="page"[^>]*>.*?<span>([^<]+)</span>', nav, re.S),
@@ -184,9 +187,10 @@ class FamilyZoneHomeTests(SignsInWithARecord, TestCase):
     def test_old_anchors_land_on_their_original_sections_with_the_reviewed_words(self):
         content = self._zone()
         self.assertIn(INTRO, content)
-        # #469: talk-title went with its tips to family_talk (test_family_redesign); 陪伴配戴助聽器
-        # is a fold's row.
-        self.assertRegex(content, r'(?s)<details id="aid-title"[^>]*>.*?陪伴配戴助聽器</span>')
+        self.assertNotIn(TALK_INTRO, content)
+        # #469: talk-title went with its tips to family_talk (test_family_redesign); readability
+        # batch 2: aid-title with its tips to family_hearing_aids.
+        self.assertNotIn('id="aid-title"', content)
         for anchor, heading in (("urgent-title", "什麼時候要馬上就醫"),):
             with self.subTest(anchor=anchor):
                 self.assertEqual(content.count(f'id="{anchor}"'), 1)
@@ -554,15 +558,18 @@ class ReviewedPagesTests(SimpleTestCase):
     took the 段落框 classes off its tags; by #467, which moved the reviewed words into the
     H1 + H2 layout and added draft key cards and question titles for the owner to review; and by
     #471, which only folded the privacy notice's sections into rows and took off its folded list
-    of them, mockup #470 privacy B). Failing here means reviewed words changed: have the owner
-    review them before updating the digest."""
+    of them, mockup #470 privacy B; and by readability batch 2, which put form 9's six steps in
+    sight with their words behind 看每一步的說明, moved the warning into step 4 and shortened it and
+    the first key card's line, as the owner picked in mockup-readability-batch2.html on
+    2026-11-16). Failing here means reviewed words changed: have the owner review them before
+    updating the digest."""
 
     # (page, the lines the batch may add or change, the digest without them)
     PAGES = (
         (
             "guide/form_9.html",
             ("{# #431 (spec #426): a line to 補助檢核", "<p>想知道還缺什麼？"),
-            "f3b4562acb75242808d6ba7ae3d762711d07535e2610c11c526e7397516c30c6",
+            "5528429633f9a489db6b5cbfacef0d0bc98ee1127def4505fef27972932ae5d1",
         ),
         (
             "guide/form_25.html",

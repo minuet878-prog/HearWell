@@ -172,7 +172,8 @@ class ChapterRedesignTests(TestCase):
     def test_form_9_key_cards_say_the_three_things(self):
         text = test_guide.text_of(self.client.get(reverse("guide_chapter", args=["form-9"])))
         for words in (
-            "先核定，再買 重要：一定要先拿到核定通知再買，沒核定就先買的不補助。",
+            # Readability batch 2: the big line says the first half; the small one the rest.
+            "先核定，再買 沒核定就先買的不補助。",
             "3 個月內有效 找聽力師或縣市輔具中心。九號表 3 個月內有效。",
         ):
             with self.subTest(words=words):

@@ -2282,6 +2282,19 @@
     font-weight: 700;
   }
 
+  /* Readability batch 2 (the owner's A): form 9's steps, each one's words under its title and
+     shown while 看每一步的說明 over the list is open. The words are outside that fold, so they
+     also wait unseen while the guide's folds are pending (guide.js below), not showing and then
+     shrinking. */
+  .step-detail {
+    display: block;
+  }
+
+  section:has(> details[data-step-details]:not([open])) .step-detail,
+  :root.guide-folds-pending section:has(> details[data-step-details]) .step-detail {
+    display: none;
+  }
+
   /* Numbers that matter (a threshold, a subsidy limit) large on the left, what they mean on the
      right. #367 (spec #354): two columns shared by the group's rows (subgrid), the numbers' as
      wide as the widest, so every meaning starts at one line and wraps evenly. Where that leaves
@@ -3921,6 +3934,31 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
+  }
+
+  /* Readability batch 2 (the owner's A): 怎麼跟他說話's tips, each drawing 96px wide at the left
+     of its words, its lines a little lighter at that size. Where the list is under 15rem wide
+     (large text sizes) the drawing stays over the words, as the care steps' are. */
+  .talk-tips {
+    container-type: inline-size;
+  }
+
+  @container (min-width: 15rem) {
+    .talk-tips > li {
+      display: grid;
+      grid-template-columns: 5.3333rem 1fr;
+      column-gap: 0.75rem;
+      align-items: start;
+    }
+
+    .talk-tips .care-drawing {
+      grid-row: span 2;
+      margin-bottom: 0;
+    }
+
+    .talk-tips .care-drawing * { stroke-width: 1.8; }
+    .talk-tips .care-drawing .thin { stroke-width: 1.2; }
+    .talk-tips .care-drawing .thick { stroke-width: 3; }
   }
 
   .care-drawing .soft { fill: var(--color-pull); }
