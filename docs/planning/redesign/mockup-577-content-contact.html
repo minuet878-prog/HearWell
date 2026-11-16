@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#577 設計圖：電話、下一章、複製信箱</title>
+<style>
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --line:#e3e7ec; --subtle:#dee2e6; --surface:#f4f6f8; --selected:#e8eef7; --normal:#14573c; --mark:#ffd166; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > h3 { font-size:1.2rem; margin:1.5rem 0 .25rem; color:var(--heading); }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col.w320 { width:322px; }
+  .col.wide { width:760px; max-width:100%; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:7.5em; }
+  .col .why.s { min-height:3em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .rec { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .phone.w320 { width:322px; }
+  .phone.desk { width:100%; }
+  .pad { padding:0 16px; }
+  .cut { text-align:center; color:#6b7684; font-size:1rem; padding:.4rem 0; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-bottom:1px dashed #8a96a8; }
+
+  /* 九號表：輔具中心清單 */
+  .g9 { padding:1rem 16px 1.25rem; }
+  .g9 h4 { font-size:1.3rem; margin:0 0 .4rem; color:var(--heading); }
+  .g9 h5 { font-size:1.11rem; margin:1rem 0 .5rem; color:var(--heading); }
+  .g9 > p { margin:0; }
+  .dd { border:2px solid var(--border); border-radius:.78rem; background:#fff; }
+  .dd .sum { display:flex; align-items:center; gap:.75rem; min-height:2.75rem; padding:.5rem 1rem; color:var(--primary); font-weight:700; }
+  .dd .sum span { margin-left:auto; font-size:1.3rem; line-height:1; }
+  .dd .src { margin:0 1rem .5rem; }
+  .dd .src u { color:var(--primary); }
+  .cl { margin:0 1rem 1rem; padding-left:1.2rem; }
+  .cl ul { padding-left:1.2rem; margin:0 0 .4rem; }
+  .cl.a { list-style:none; padding-left:0; }
+  .cl.a ul { list-style:none; padding-left:0; margin:0; }
+  .cl.a > li { border-top:1px solid var(--line); padding:.6rem 0 .2rem; }
+  .cl.a .cty { font-weight:700; color:var(--heading); }
+  .cl.a ul li { padding:.35rem 0 .1rem; }
+  .cl.a .nm { display:block; color:var(--body); }
+  .num { display:flex; flex-wrap:wrap; align-items:center; gap:0 .6rem; min-height:2.75rem; }
+  .num .lead { color:var(--muted); }
+  .tel { display:inline-flex; align-items:center; gap:.35rem; min-height:2.75rem; color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:.2em; white-space:nowrap; }
+  .cl.b .tel { display:inline-flex; vertical-align:middle; }
+  .ph { width:1.15rem; height:1.15rem; flex:none; fill:none; stroke:var(--primary); stroke-width:2; stroke-linejoin:round; }
+  .ext { color:var(--body); }
+  table { border-collapse:collapse; width:100%; font-size:.95rem; }
+  th, td { border:1px solid var(--subtle); padding:.3rem .5rem; text-align:left; vertical-align:top; }
+  th { background:var(--surface); }
+  td.old { color:var(--muted); }
+  td:nth-child(2), td:nth-child(1) { white-space:nowrap; }
+  .tw { overflow-x:auto; }
+  table .tel { min-height:0; }
+
+  /* 章節結尾 */
+  .end { padding:1rem 16px 1.25rem; }
+  .end > * + * { margin-top:1.25rem; }
+  .sec h4 { font-size:1.3rem; margin:0 0 .5rem; color:var(--heading); }
+  .sec p { margin:.4rem 0; }
+  .mut { color:var(--muted); }
+  .lnk { color:var(--primary); font-weight:700; }
+  .ph-box { border:2px dashed #8a96a8; border-radius:.78rem; padding:1rem; color:#5f6b7a; text-align:center; }
+  .btn { display:flex; align-items:center; justify-content:center; min-height:3.1rem; padding:.5rem 1.25rem; border-radius:.78rem; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; border:2px solid var(--primary); text-align:center; }
+  .btn.o { background:#fff; color:var(--primary); }
+  .lc { display:flex; align-items:center; gap:.75rem; min-height:4rem; padding:.875rem .25rem; border-top:1px solid var(--line); border-bottom:1px solid var(--line); text-decoration:none; color:inherit; }
+  .lcb { display:flex; flex:1; flex-direction:column; gap:.1rem; min-width:0; }
+  .lcs { color:var(--muted); }
+  .lct { color:var(--heading); font-weight:700; }
+  .lca { color:var(--primary); font-size:2rem; font-weight:700; line-height:1; }
+  .dd.closed .sum { }
+  .chk { font-size:.875rem; margin-top:.5rem !important; }
+
+  /* 頁尾 */
+  .ft { position:relative; margin-top:5.5rem; padding:1.5rem 0 calc(1.5rem + 5rem); background:var(--surface); text-align:center; color:var(--body); }
+  .ft.nt { padding-bottom:1.5rem; }
+  .ft::before { content:""; position:absolute; top:-3.25rem; left:50%; width:6.5rem; height:3.3rem; transform:translateX(-50%); border-radius:3.25rem 3.25rem 0 0; background:var(--surface); }
+  .ft::after { content:""; position:absolute; top:-2.4rem; left:50%; width:2.4rem; height:2.4rem; transform:translateX(-50%); border-radius:50%; background:var(--primary); }
+  .ft p { margin:0 0 .25rem; font-size:1rem; }
+  .ft a { color:var(--primary); font-weight:700; overflow-wrap:anywhere; }
+  .ft-cols svg { flex:none; width:1.6rem; height:1.6rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ft-cols { list-style:none; display:flex; justify-content:center; gap:.25rem; padding:0 8px; margin:0 0 .9rem; }
+  .ft-cols li { flex:1 1 0; min-width:0; }
+  .ft-cols a { display:flex; flex-direction:column; align-items:center; gap:.2rem; min-height:3.6rem; padding:.4rem .1rem; border-radius:.75rem; font-weight:500; text-decoration:none; white-space:nowrap; }
+  .tabbar { position:absolute; left:12px; right:12px; bottom:12px; height:66px; border-radius:1.5rem; background:rgba(255,255,255,.92); box-shadow:0 2px 12px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; font-weight:700; color:var(--muted); }
+  .tabbar b { background:var(--selected); color:var(--primary); border-radius:1.2rem; padding:.9rem 1.1rem; }
+  .cp { width:1.2rem; height:1.2rem; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .cbtn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:2.75rem; min-width:2.75rem; padding:.3rem 1rem; border:2px solid var(--primary); border-radius:.78rem; background:#fff; color:var(--primary); font-weight:700; vertical-align:middle; }
+  .cbtn.done { background:var(--normal); border-color:var(--normal); color:#fff; }
+  .clnk { display:inline-flex; align-items:center; gap:.3rem; min-height:2.75rem; padding:0 .4rem; color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:.2em; vertical-align:middle; }
+  .clnk.done { color:var(--normal); text-decoration:none; }
+  .cline { margin-top:.4rem !important; }
+
+  /* 帳號設定 */
+  .acc { padding:1rem 16px 1.25rem; }
+  .acc h4 { font-size:1.3rem; margin:0 0 .5rem; color:var(--heading); }
+  .acc dl { margin:0; }
+  .acc .sr { padding:.6rem 0; border-bottom:1px solid var(--line); }
+  .acc dt { color:var(--muted); }
+  .acc dd { margin:0; font-weight:700; color:var(--heading); }
+  .acc p { margin:.5rem 0 0; overflow-wrap:anywhere; }
+  .acc a { color:var(--primary); font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>#577 設計圖：電話、下一章、複製信箱</h1>
+  <p>規格 #576 的三件事各自選：<a href="#phone">一、電話可以按</a>　<a href="#next">二、每章最下面的下一章</a>　<a href="#copy">三、複製信箱</a></p>
+  <ul>
+    <li>每個手機框寬 375px（標「320」的是 320px），字級、顏色、間距照現在的網站。這一頁沒有 JavaScript，按了不會有反應，「已複製」是另外畫一張。</li>
+    <li>灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法，黃底「建議」是我建議的那一個。</li>
+    <li>電話的號碼數字一個都沒改（56 個號碼逐一用程式比對過），改的只有寫法；全部 47 列的新舊對照在第一段最下面。</li>
+    <li><strong>2026-11-16 本人選定：電話 A（一個號碼一行）、47 列對照表照右邊的寫法、下一章 A（清單列）、複製信箱 A（外框按鈕）。</strong></li>
+  </ul>
+</div>
+
+<section class="topic" id="phone">
+  <h2>一、電話可以按（九號表「看各縣市輔具中心電話」）</h2>
+  <p>挑了 7 列最不一樣的來畫：有分機、兩個號碼、分機是範圍、有「總機」、分機各有用途、兩個號碼各有名稱、中間有「或」。號碼是藍色粗體加底線、前面有電話圖示，按了跳出撥號；分機和說明是一般的字，不在連結裡。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>純文字</h3>
+      <p class="why">號碼不能按，要自己記下來再撥。</p>
+      <div class="phone"><div class="g9"><h5>各縣市輔具中心</h5><div class="dd"><div class="sum">看各縣市輔具中心電話<span>⌃</span></div><p class="src">資料來源：<u>輔具資源入口網</u></p><ul class="cl"><li>基隆市<ul><li>基隆市輔具資源中心：(02)2469-6966#211</li></ul></li><li>桃園市<ul><li>桃園市北區輔具資源中心：(03)368-3040 (03)373-2028</li><li>桃園市南區輔具資源中心：(03)4890298 分機 2000~2020</li></ul></li><li>新竹縣<ul><li>新竹縣北區輔具資源中心：(03)552-7316 總機9 分機10~16</li></ul></li><li>高雄市<ul><li>高雄市北區輔具資源中心 總站：07-6226730 分機145(輔具租借、諮詢) 分機112、113(輔具申請)</li></ul></li><li>金門縣<ul><li>金門縣輔具資源中心：服務電話：082-333629 意見專線：082-333269</li></ul></li><li>連江縣<ul><li>連江縣輔具資源中心：(0836)25022#302 或 (0836)23050</li></ul></li></ul></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>一個號碼一行 <span class="rec">建議</span></h3>
+      <p class="why">中心名稱一行，下面每個號碼自己一行（每行 49px 高，手指好按），分機和說明接在號碼後面。縣市之間有細線。代價：清單比現在長（47 個中心大約多三成）。</p>
+      <div class="phone"><div class="g9"><h5>各縣市輔具中心</h5><div class="dd"><div class="sum">看各縣市輔具中心電話<span>⌃</span></div><p class="src">資料來源：<u>輔具資源入口網</u></p><ul class="cl a"><li><span class="cty">基隆市</span><ul><li><span class="nm">基隆市輔具資源中心</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2469-6966</a> <span class="ext">轉 211</span></div></li></ul></li><li><span class="cty">桃園市</span><ul><li><span class="nm">桃園市北區輔具資源中心</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)368-3040</a></div><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)373-2028</a></div></li><li><span class="nm">桃園市南區輔具資源中心</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)4890298</a> <span class="ext">轉 2000～2020</span></div></li></ul></li><li><span class="cty">新竹縣</span><ul><li><span class="nm">新竹縣北區輔具資源中心</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)552-7316</a> <span class="ext">總機 9、轉 10～16</span></div></li></ul></li><li><span class="cty">高雄市</span><ul><li><span class="nm">高雄市北區輔具資源中心 總站</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)6226730</a> <span class="ext">轉 145（輔具租借、諮詢）；轉 112、113（輔具申請）</span></div></li></ul></li><li><span class="cty">金門縣</span><ul><li><span class="nm">金門縣輔具資源中心</span><div class="num"><span class="lead">服務電話</span><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333629</a></div><div class="num"><span class="lead">意見專線</span><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333269</a></div></li></ul></li><li><span class="cty">連江縣</span><ul><li><span class="nm">連江縣輔具資源中心</span><div class="num"><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)25022</a> <span class="ext">轉 302</span></div><div class="num"><span class="lead">或</span><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)23050</a></div></li></ul></li></ul></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>照現在的排法，號碼變連結</h3>
+      <p class="why">名稱和號碼接在同一段，放不下就換行。長度跟現在差不多。代價：兩個號碼會擠在同一行或斷在奇怪的地方，上下兩個號碼靠得近，容易按錯。</p>
+      <div class="phone"><div class="g9"><h5>各縣市輔具中心</h5><div class="dd"><div class="sum">看各縣市輔具中心電話<span>⌃</span></div><p class="src">資料來源：<u>輔具資源入口網</u></p><ul class="cl b"><li>基隆市<ul><li>基隆市輔具資源中心：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2469-6966</a> <span>轉 211</span></li></ul></li><li>桃園市<ul><li>桃園市北區輔具資源中心：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)368-3040</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)373-2028</a></li><li>桃園市南區輔具資源中心：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)4890298</a> <span>轉 2000～2020</span></li></ul></li><li>新竹縣<ul><li>新竹縣北區輔具資源中心：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)552-7316</a> <span>總機 9、轉 10～16</span></li></ul></li><li>高雄市<ul><li>高雄市北區輔具資源中心 總站：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)6226730</a> <span>轉 145（輔具租借、諮詢）；轉 112、113（輔具申請）</span></li></ul></li><li>金門縣<ul><li>金門縣輔具資源中心：<span>服務電話</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333629</a> <span>意見專線</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333269</a></li></ul></li><li>連江縣<ul><li>連江縣輔具資源中心：<a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)25022</a> <span>轉 302　或</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)23050</a></li></ul></li></ul></div></div></div>
+    </div>
+  </div>
+
+  <h3>47 列新舊對照</h3>
+  <p>左邊是現在頁面上的寫法，右邊是整理後。規則：號碼一律寫成「(區碼)號碼」，原本有連字號的照留、沒有的不自己加；「#」「分機」改成「轉」；範圍用「～」；半形括號改全形。請特別看第 10 列（新竹縣北區的「總機 9」）和第 32 列（高雄市北區總站），這兩列我加了標點。</p>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>縣市</th><th>中心</th><th>現在的寫法</th><th>整理後（藍色是可以按的號碼）</th></tr></thead>
+    <tbody><tr><td>1</td><td>基隆市</td><td>基隆市輔具資源中心</td><td class="old">(02)2469-6966#211</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2469-6966</a> <span>轉 211</span></td></tr><tr><td>2</td><td>臺北市</td><td>臺北市西區輔具中心</td><td class="old">(02)2523-7902</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2523-7902</a></td></tr><tr><td>3</td><td>臺北市</td><td>臺北市南區輔具中心</td><td class="old">(02)2720-7364</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2720-7364</a></td></tr><tr><td>4</td><td>臺北市</td><td>臺北市合宜輔具中心</td><td class="old">(02)7713-7760</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)7713-7760</a></td></tr><tr><td>5</td><td>新北市</td><td>新北市輔具資源中心(蘆洲)</td><td class="old">(02)8286-7045</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)8286-7045</a></td></tr><tr><td>6</td><td>新北市</td><td>新北市輔具資源中心(新店)</td><td class="old">(02)2912-1911</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(02)2912-1911</a></td></tr><tr><td>7</td><td>桃園市</td><td>桃園市北區輔具資源中心</td><td class="old">(03)368-3040 (03)373-2028</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)368-3040</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)373-2028</a></td></tr><tr><td>8</td><td>桃園市</td><td>桃園市南區輔具資源中心</td><td class="old">(03)4890298 分機 2000~2020</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)4890298</a> <span>轉 2000～2020</span></td></tr><tr><td>9</td><td>新竹市</td><td>新竹市輔具資源中心</td><td class="old">(03)562-3707#131-142</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)562-3707</a> <span>轉 131～142</span></td></tr><tr><td>10</td><td>新竹縣</td><td>新竹縣北區輔具資源中心</td><td class="old">(03)552-7316 總機9 分機10~16</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)552-7316</a> <span>總機 9、轉 10～16</span></td></tr><tr><td>11</td><td>新竹縣</td><td>新竹縣南區輔具資源中心</td><td class="old">(03)511-1015</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)511-1015</a></td></tr><tr><td>12</td><td>苗栗縣</td><td>北區輔具資源中心</td><td class="old">(037)268-462 (037)268-463</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(037)268-462</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(037)268-463</a></td></tr><tr><td>13</td><td>苗栗縣</td><td>南區輔具資源中心</td><td class="old">(037)752-642</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(037)752-642</a></td></tr><tr><td>14</td><td>臺中市</td><td>臺中市北區輔具資源中心</td><td class="old">04-2531-4200</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)2531-4200</a></td></tr><tr><td>15</td><td>臺中市</td><td>臺中市南區輔具資源中心</td><td class="old">04-2471-3589</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)2471-3589</a></td></tr><tr><td>16</td><td>臺中市</td><td>臺中市海線輔具資源中心</td><td class="old">04-2662-7152分機35-39</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)2662-7152</a> <span>轉 35～39</span></td></tr><tr><td>17</td><td>彰化縣</td><td>彰化縣二林輔具資源中心 總站</td><td class="old">(04)896-2178</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)896-2178</a></td></tr><tr><td>18</td><td>彰化縣</td><td>彰化縣二林輔具資源中心 彰化據點</td><td class="old">(04)722-9767</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)722-9767</a></td></tr><tr><td>19</td><td>彰化縣</td><td>彰化縣田尾輔具資源中心</td><td class="old">(04)883-6311</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(04)883-6311</a></td></tr><tr><td>20</td><td>南投縣</td><td>南投縣第一輔具資源中心</td><td class="old">(049)242-0338 (049)242-0390</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(049)242-0338</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(049)242-0390</a></td></tr><tr><td>21</td><td>南投縣</td><td>南投縣第二輔具資源中心</td><td class="old">(049)222-8086</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(049)222-8086</a></td></tr><tr><td>22</td><td>雲林縣</td><td>雲林縣輔助器具資源中心</td><td class="old">(05)533-9620</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)533-9620</a></td></tr><tr><td>23</td><td>雲林縣</td><td>雲林縣輔助器具資源中心虎尾站</td><td class="old">(05)633-9620</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)633-9620</a></td></tr><tr><td>24</td><td>嘉義市</td><td>嘉義市輔具資源中心 東區服務處</td><td class="old">(05)225-6686</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)225-6686</a></td></tr><tr><td>25</td><td>嘉義市</td><td>嘉義市輔具資源中心 西區服務處</td><td class="old">(05)285-8212</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)285-8212</a></td></tr><tr><td>26</td><td>嘉義縣</td><td>嘉義縣輔具資源中心 山線服務中心</td><td class="old">(05)279-3350</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)279-3350</a></td></tr><tr><td>27</td><td>嘉義縣</td><td>嘉義縣輔具資源中心 海線服務據點</td><td class="old">(05)379-1851</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)379-1851</a></td></tr><tr><td>28</td><td>嘉義縣</td><td>嘉義縣民雄輔具資源中心</td><td class="old">(05)226-8005</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(05)226-8005</a></td></tr><tr><td>29</td><td>臺南市</td><td>臺南市輔具資源中心 官田中心</td><td class="old">(06)579-0636</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(06)579-0636</a></td></tr><tr><td>30</td><td>臺南市</td><td>臺南市輔具資源中心 佳里中心</td><td class="old">(06)726-6700</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(06)726-6700</a></td></tr><tr><td>31</td><td>臺南市</td><td>臺南市輔具資源中心 永華中心</td><td class="old">(06)209-8938</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(06)209-8938</a></td></tr><tr><td>32</td><td>高雄市</td><td>高雄市北區輔具資源中心 總站</td><td class="old">07-6226730 分機145(輔具租借、諮詢) 分機112、113(輔具申請)</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)6226730</a> <span>轉 145（輔具租借、諮詢）；轉 112、113（輔具申請）</span></td></tr><tr><td>33</td><td>高雄市</td><td>高雄市北區輔具資源中心 鳳山據點</td><td class="old">(07)710-0366</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)710-0366</a></td></tr><tr><td>34</td><td>高雄市</td><td>高雄市北區輔具資源中心 旗山據點</td><td class="old">(07)662-5695</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)662-5695</a></td></tr><tr><td>35</td><td>高雄市</td><td>高雄市南區輔具資源中心 總站</td><td class="old">(07)841-6336 (07)815-1500#111</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)841-6336</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)815-1500</a> <span>轉 111</span></td></tr><tr><td>36</td><td>高雄市</td><td>高雄市南區輔具資源中心 楠梓據點</td><td class="old">(07)366-1130</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(07)366-1130</a></td></tr><tr><td>37</td><td>屏東縣</td><td>屏東縣屏北區輔具資源中心</td><td class="old">(08)736-5455</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(08)736-5455</a></td></tr><tr><td>38</td><td>屏東縣</td><td>屏東縣屏中區輔具資源中心 總站</td><td class="old">(08)789-9599</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(08)789-9599</a></td></tr><tr><td>39</td><td>屏東縣</td><td>屏東縣屏中區輔具資源中心 屏南工作站</td><td class="old">(08)8883741</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(08)8883741</a></td></tr><tr><td>40</td><td>臺東縣</td><td>臺東縣輔具資源中心</td><td class="old">(089)232-263</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(089)232-263</a></td></tr><tr><td>41</td><td>花蓮縣</td><td>花蓮縣輔具資源中心</td><td class="old">03-8225365 03-8241657 03-8241658</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)8225365</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)8241657</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)8241658</a></td></tr><tr><td>42</td><td>花蓮縣</td><td>花蓮縣南區輔具資源中心</td><td class="old">(03)888-6586 (03)888-7992</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)888-6586</a> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)888-7992</a></td></tr><tr><td>43</td><td>宜蘭縣</td><td>宜蘭縣溪北輔具資源中心</td><td class="old">03-9320920</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)9320920</a></td></tr><tr><td>44</td><td>宜蘭縣</td><td>宜蘭縣溪南輔具資源中心</td><td class="old">03-9544106 分機8114</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(03)9544106</a> <span>轉 8114</span></td></tr><tr><td>45</td><td>澎湖縣</td><td>澎湖縣輔具資源中心</td><td class="old">(06)926-2740</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(06)926-2740</a></td></tr><tr><td>46</td><td>金門縣</td><td>金門縣輔具資源中心</td><td class="old">服務電話：082-333629 意見專線：082-333269</td><td><span>服務電話</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333629</a> <span>意見專線</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(082)333269</a></td></tr><tr><td>47</td><td>連江縣</td><td>連江縣輔具資源中心</td><td class="old">(0836)25022#302 或 (0836)23050</td><td><a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)25022</a> <span>轉 302　或</span> <a class="tel" href="#phone"><svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h3.5l1.8 4.6-2.3 1.6a12 12 0 0 0 5.8 5.8l1.6-2.3L21 14.5V18a3 3 0 0 1-3 3C9.7 21 3 14.3 3 6a3 3 0 0 1 3-3z"/></svg>(0836)23050</a></td></tr></tbody>
+  </table></div>
+</section>
+
+<section class="topic" id="next">
+  <h2>二、每章最下面的「下一章」</h2>
+  <p>畫的是「身障鑑定與鑑定醫院」這一章的最下面，下一章是九號表。先選樣子（A 或 B），下面再看 A 在四種情況的排法。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>只有回目錄</h3>
+      <p class="why s">讀完要先回目錄，再找下一章。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>一列：小字「下一章」＋章名 <span class="rec">建議</span></h3>
+      <p class="why s">跟網站其他清單列同一種樣子（上下細線、右邊箭頭），不跟按鈕搶。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><a class="lc" href="#next"><span class="lcb"><span class="lcs">下一章</span><span class="lct">九號表：申請助聽器補助</span></span><span class="lca">›</span></a><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>外框按鈕</h3>
+      <p class="why s">比較醒目。代價：跟「回到助聽器選配與補助」兩顆長得一樣，分不出哪個是主要的；章名長會折成兩行。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><span class="btn o">下一章：九號表：申請助聽器補助 ›</span><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+  </div>
+
+  <h3>A 在四種情況</h3>
+  <p>順序照規格：題目或「已記下」→ 下一章 → 回目錄。任何情況一頁最多一顆實心按鈕。</p>
+  <div class="row">
+    <div class="col">
+      <h3>① 沒登入，或這一章沒有題目</h3>
+      <p class="why s">下一章 → 回目錄 → 資料來源。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><a class="lc" href="#next"><span class="lcb"><span class="lcs">下一章</span><span class="lct">九號表：申請助聽器補助</span></span><span class="lca">›</span></a><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+    <div class="col">
+      <h3>② 已登入，題目還沒回答</h3>
+      <p class="why s">先看到題目，下一章在它後面。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><div class="sec"><h4>看完了嗎？</h4><div class="ph-box">（這一站的題目和答案按鈕，照現在不動）</div><p class="mut">答了之後，選配路線會往下一站走。</p></div><a class="lc" href="#next"><span class="lcb"><span class="lcs">下一章</span><span class="lct">九號表：申請助聽器補助</span></span><span class="lca">›</span></a><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+    <div class="col">
+      <h3>③ 已記下</h3>
+      <p class="why s">實心按鈕還是「回選配路線看下一站」，下一章是多一條路。這時本來就沒有結尾的回目錄按鈕。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><div class="sec"><h4>已記下：看過了</h4><p><u class="lnk">修改</u></p><span class="btn">回選配路線看下一站</span></div><a class="lc" href="#next"><span class="lcb"><span class="lcs">下一章</span><span class="lct">九號表：申請助聽器補助</span></span><span class="lca">›</span></a><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+    <div class="col">
+      <h3>④ 最後一章（二十五號表）</h3>
+      <p class="why s">沒有下一章，跟現在一樣。</p>
+      <div class="phone"><div class="cut">…章節內容…</div><div class="end"><span class="btn o">回到助聽器選配與補助</span><div class="dd closed"><div class="sum">資料來源<span>⌄</span></div></div><p class="chk">本頁資料查核於 2026/10/20。法規、金額如有變動，以官方公告為準。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="copy">
+  <h2>三、複製信箱</h2>
+  <p>頁尾每一頁都有。三個連結那一列（第 1 批定的）不動，只在「聯絡我們」那裡加一顆。按了變綠色「✓ 已複製」，2 秒後變回來；信箱本身照樣可以按。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span></h3>
+      <p class="why s">信箱只能按（開郵件程式），沒設定郵件的手機按了沒反應。</p>
+      <div class="phone "><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>外框按鈕，在信箱下面 <span class="rec">建議</span></h3>
+      <p class="why s">看得出是按鈕，跟分享頁的「複製連結」同一種；按了整顆變綠。頁尾多一行（約 50px）。</p>
+      <div class="phone "><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>按了之後</h3>
+      <p class="why s">綠底白字「✓ 已複製」，2 秒後變回「複製信箱」。</p>
+      <div class="phone "><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn done"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已複製</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>文字連結，沒有框</h3>
+      <p class="why s">比較輕，頁尾看起來跟現在最像。代價：跟上面的信箱連結長得很像，不容易看出這是「按了會複製」。</p>
+      <div class="phone "><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="clnk"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>按了之後</h3>
+      <p class="why s">字變綠色「✓ 已複製」。</p>
+      <div class="phone "><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="clnk done"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已複製</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+  </div>
+
+  <h3>A 在窄手機和電腦</h3>
+  <div class="row">
+    <div class="col w320">
+      <h3>320px 寬</h3>
+      <p class="why s">三個連結仍然一列，按鈕自己一行。</p>
+      <div class="phone w320"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col wide">
+      <h3>電腦</h3>
+      <p class="why s">放得下，按鈕接在信箱後面同一行。（電腦沒有底部分頁列。）</p>
+      <div class="phone desk"><div class="cut">…頁面內容…</div><div class="ft nt"><ul class="ft-cols" style="max-width:30rem;margin-inline:auto">
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#copy"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#copy">hearwellweb@gmail.com</a>　<span class="cbtn"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p></div></div>
+    </div>
+  </div>
+
+  <h3>帳號設定</h3>
+  <p>「要修改請寫信到⋯」只在 Email 或出生年沒填時出現，按鈕跟著它；兩項都填了的人看不到這句話，也沒有這顆按鈕（頁尾那一顆還在）。畫的是 A 的樣子，選 B 的話這裡也跟著換。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span></h3>
+      <p class="why s">&nbsp;</p>
+      <div class="phone"><div class="acc"><h4>帳號資料</h4><dl><div class="sr"><dt>使用者名稱</dt><dd>wang1950</dd></div><div class="sr"><dt>Email</dt><dd>未填</dd></div><div class="sr"><dt>出生年</dt><dd>民國 39 年（1950）</dd></div></dl><p>要修改請寫信到 <a href="#copy">hearwellweb@gmail.com</a></p></div></div>
+    </div>
+    <div class="col">
+      <h3>加了之後</h3>
+      <p class="why s">按鈕在那句話下面，靠左。</p>
+      <div class="phone"><div class="acc"><h4>帳號資料</h4><dl><div class="sr"><dt>使用者名稱</dt><dd>wang1950</dd></div><div class="sr"><dt>Email</dt><dd>未填</dd></div><div class="sr"><dt>出生年</dt><dd>民國 39 年（1950）</dd></div></dl><p>要修改請寫信到 <a href="#copy">hearwellweb@gmail.com</a></p><p><span class="cbtn"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p></div></div>
+    </div>
+    <div class="col">
+      <h3>按了之後</h3>
+      <p class="why s">&nbsp;</p>
+      <div class="phone"><div class="acc"><h4>帳號資料</h4><dl><div class="sr"><dt>使用者名稱</dt><dd>wang1950</dd></div><div class="sr"><dt>Email</dt><dd>未填</dd></div><div class="sr"><dt>出生年</dt><dd>民國 39 年（1950）</dd></div></dl><p>要修改請寫信到 <a href="#copy">hearwellweb@gmail.com</a></p><p><span class="cbtn done"><svg class="cp" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已複製</span></p></div></div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -151,3 +151,130 @@ describe("family page copy button", () => {
     expect(button().hidden).toBe(true);
   });
 });
+
+// #580 (spec #576 acceptance 21 to 24): 複製信箱 beside the contact address, in the footer of
+// every page and beside the account page's sentence; several on one page, each its own.
+describe("contact address copy buttons", () => {
+  const ADDRESS = "hearwellweb@gmail.com";
+  const buttons = () => [...document.querySelectorAll("[data-copy]")];
+  const said = () => document.querySelector("[data-copy-status]");
+
+  function pageWithTwo() {
+    document.body.innerHTML = `
+      <p>要修改請寫信到 <a href="mailto:${ADDRESS}">${ADDRESS}</a></p>
+      <button type="button" class="btn btn-outline-primary" data-copy="${ADDRESS}" hidden><svg aria-hidden="true"></svg>複製信箱</button>
+      <footer>
+        <a href="mailto:${ADDRESS}">${ADDRESS}</a>
+        <button type="button" class="btn btn-outline-primary" data-copy="${ADDRESS}" hidden><svg aria-hidden="true"></svg>複製信箱</button>
+        <p aria-live="polite" data-copy-status></p>
+      </footer>`;
+    new Function(readFileSync(SCRIPT, "utf-8"))();
+  }
+
+  const press = async (button) => {
+    button.click();
+    await vi.advanceTimersByTimeAsync(0);
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("isSecureContext", true);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn(() => Promise.resolve()) },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    delete navigator.clipboard;
+    delete navigator.share;
+    document.body.innerHTML = "";
+  });
+
+  it("copies the address and only the pressed button says ✓ 已複製", async () => {
+    pageWithTwo();
+    const [inPage, inFooter] = buttons();
+    expect(inPage.hidden).toBe(false);
+    expect(inFooter.hidden).toBe(false);
+    await press(inFooter);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(ADDRESS);
+    expect(inFooter.textContent).toBe("已複製");
+    expect(inFooter.classList.contains("is-copied")).toBe(true);
+    expect(inPage.textContent).toBe("複製信箱");
+    expect(inPage.classList.contains("is-copied")).toBe(false);
+  });
+
+  it("goes back to 複製信箱 with its icon after 2 seconds", async () => {
+    pageWithTwo();
+    const [inPage] = buttons();
+    const before = inPage.innerHTML;
+    await press(inPage);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(inPage.textContent).toBe("已複製");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(inPage.innerHTML).toBe(before);
+    expect(inPage.classList.contains("is-copied")).toBe(false);
+  });
+
+  it("says 已複製 again on every press, the same button or the other", async () => {
+    pageWithTwo();
+    const [inPage, inFooter] = buttons();
+    await press(inPage);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(said().textContent).toBe("已複製");
+    await press(inPage);
+    expect(said().textContent).toBe("");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(said().textContent).toBe("已複製");
+    await press(inFooter);
+    expect(said().textContent).toBe("");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(said().textContent).toBe("已複製");
+  });
+
+  it("the mail link stays as it was", async () => {
+    pageWithTwo();
+    await press(buttons()[0]);
+    expect(document.querySelector("footer a").getAttribute("href")).toBe(`mailto:${ADDRESS}`);
+  });
+
+  // Spec #576 user story 28: no button that does nothing. The address is still beside it.
+  it("goes away when the browser refuses to copy, the other one staying", async () => {
+    navigator.clipboard.writeText.mockImplementation(() => Promise.reject(new Error("denied")));
+    pageWithTwo();
+    const [inPage, inFooter] = buttons();
+    await press(inPage);
+    expect(inPage.hidden).toBe(true);
+    expect(inFooter.hidden).toBe(false);
+    expect(said().textContent).toBe("");
+    expect(document.body.textContent).toContain(ADDRESS);
+  });
+
+  it("stay hidden where the browser cannot copy", () => {
+    delete navigator.clipboard;
+    pageWithTwo();
+    expect(buttons().map((b) => b.hidden)).toEqual([true, true]);
+  });
+
+  it("stay hidden on a page that is not secure", () => {
+    vi.stubGlobal("isSecureContext", false);
+    pageWithTwo();
+    expect(buttons().map((b) => b.hidden)).toEqual([true, true]);
+  });
+
+  it("work beside the family page's button that a share sheet keeps hidden", async () => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: vi.fn() });
+    document.body.innerHTML = `
+      <button id="copy-link" type="button" data-url="https://example.com/family" data-without-share-sheet hidden>複製網址</button>
+      <p id="copy-status" aria-live="polite"></p>
+      <button type="button" data-copy="${ADDRESS}" hidden>複製信箱</button>
+      <p aria-live="polite" data-copy-status></p>`;
+    new Function(readFileSync(SCRIPT, "utf-8"))();
+    expect(document.getElementById("copy-link").hidden).toBe(true);
+    await press(buttons()[0]);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(ADDRESS);
+    expect(buttons()[0].textContent).toBe("已複製");
+  });
+});

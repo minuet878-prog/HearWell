@@ -26,6 +26,18 @@
     <a class="btn btn-primary btn-lg w-full mt-2" href="{% url 'guide' %}#contents-title">回選配路線看下一站</a>
 </section>
 {% endif %}
+{# #579 (spec #576, the owner's A in the #577 mockup): the next chapter in reading order, a list row after the stop's question or its answer and never a second solid button; the last chapter has none. #}
+{% if next_chapter %}
+<div class="mt-6">
+    <a class="link-card" href="{% url 'guide_chapter' next_chapter.slug %}">
+        <span class="link-card-body">
+            <span>下一章</span>
+            <span class="link-card-title">{{ next_chapter.title }}</span>
+        </span>
+        <span class="link-card-arrow" aria-hidden="true">›</span>
+    </a>
+</div>
+{% endif %}
 {# #367 (spec #354): not answered (or nothing to answer), the chapter's end leads back to the guide too. #}
 {% if not answered %}
 <p class="mt-6 mb-0"><a class="btn btn-outline-primary btn-lg w-full" href="{% url 'guide' %}">回到助聽器選配與補助</a></p>

@@ -25,7 +25,8 @@
         </div>
     </dl>
     {# #361: a blank can only be filled in by writing to us (no edit form yet); said once under the details. #}
-    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>{% endif %}
+    {% if not user.email or roc_birth_year is None %}<p class="mt-2 mb-0 wrap-anywhere">要修改請寫信到 <a class="inline-link" href="mailto:hearwellweb@gmail.com">hearwellweb@gmail.com</a></p>
+    <p class="mt-2 mb-0">{% include "screening/copy_address_button.html" %}</p>{% endif %}
 </section>
 
 {# Spec #505 acceptance 22, 27, 28 (the #507 mockup 5, D5, W12) and #506 acceptance 15, 18 (the #539 mockup 5, D4): one row per way to sign in, 帳號密碼, Google, LINE; adding is a small blue frame, removing a red text link. A provider without its keys has no row; admin accounts have no group, nor anyone when no provider has keys. #}

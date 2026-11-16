@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
 
-from screening import assessment_hospitals, models
+from screening import assessment_hospitals, device_centres, models
 from screening.fitting_route import AUDIOGRAM, STOPS, fitting_state, not_applicable_stops
 from screening.forms import STOP_QUESTIONS
 from screening.journey_todos import stop_todos
@@ -33,6 +33,10 @@ def _assessment_context(request):
         "searched": "county" in request.GET,
         "hospitals": [h for h in roster["hospitals"] if h["county"] == county],
     }
+
+
+def _form_9_context(request):
+    return {"centres_by_county": device_centres.CENTRES_BY_COUNTY}
 
 
 def _after_fitting_context(request):
@@ -75,7 +79,9 @@ GUIDE_CHAPTERS = (
     GuideChapter(
         "assessment", "身障鑑定與鑑定醫院", "screening/guide/assessment.html", _assessment_context
     ),
-    GuideChapter("form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html"),
+    GuideChapter(
+        "form-9", "九號表：申請助聽器補助", "screening/guide/form_9.html", _form_9_context
+    ),
     GuideChapter("types-and-prices", "助聽器的種類與價格", "screening/guide/types_and_prices.html"),
     # F5: the first weeks wearing them come before the visit 1 to 3 months in.
     GuideChapter(
@@ -419,7 +425,10 @@ def _chapter_page(request, chapter, question=None):
     """A chapter, with its stop's question at the foot (#293) while a signed-in, consented
     user has not answered it, and 已記下 with the answer once they have (#294), but neither
     where the stop is 不適用 (#291 review); question is a form sent back with its errors."""
-    context = {"chapter": chapter}
+    # #579 (spec #576): the next chapter in reading order, the same for everyone; the route's
+    # progress is not read. None after the last.
+    following = GUIDE_CHAPTERS[GUIDE_CHAPTERS.index(chapter) + 1 :]
+    context = {"chapter": chapter, "next_chapter": following[0] if following else None}
     if chapter.extra_context:
         context.update(chapter.extra_context(request))
     user = request.user
