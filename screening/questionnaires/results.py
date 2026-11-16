@@ -14,7 +14,7 @@ import the definitions.
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cached_property
 
-from django.db.models import Prefetch, Q, prefetch_related_objects
+from django.db.models import Prefetch, prefetch_related_objects
 from django.utils import timezone
 
 
@@ -149,10 +149,7 @@ class GradedResult(Result):
                 questionnaire_id=submission.questionnaire_id,
                 wearing_hearing_aid=submission.wearing_hearing_aid,
             )
-            .filter(
-                Q(created_at__lt=submission.created_at)
-                | Q(created_at=submission.created_at, id__lt=submission.id)
-            )
+            .earlier_than(submission)
             .select_related("questionnaire")
             .with_scores()
             .first()

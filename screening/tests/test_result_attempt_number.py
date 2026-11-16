@@ -111,6 +111,20 @@ class AttemptNumberTests(TestCase):
         self.assertIsNone(Submission.objects.get(pk=first.pk).result.since_last)
         self.assertIsNotNone(Submission.objects.get(pk=second.pk).result.since_last)
 
+    def test_earlier_than_is_the_one_order_for_both(self):
+        # 第幾次 and since_last ask Submission.objects.earlier_than: before it, or at the same
+        # moment with a lower id; never itself.
+        first = self.record("hhie-s", (2026, 3, 1))
+        second = self.record("hhie-s", (2026, 3, 26))
+        third = self.record("hhie-s", (2026, 3, 26))
+        self.record("hhie-s", (2026, 6, 1))
+        # record() moves created_at in the database only.
+        first, second, third = (Submission.objects.get(pk=s.pk) for s in (first, second, third))
+        earlier = Submission.objects.order_by("pk")
+        self.assertQuerySetEqual(earlier.earlier_than(first), [])
+        self.assertQuerySetEqual(earlier.earlier_than(second), [first])
+        self.assertQuerySetEqual(earlier.earlier_than(third), [first, second])
+
     def test_one_query_counts_them_however_many_there_are(self):
         # CODING_STANDARDS 15: counted in the database, so one record or three, the same queries.
         oldest = self.record("hhie-s", (2026, 1, 1))

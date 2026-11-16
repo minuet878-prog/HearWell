@@ -1,5 +1,4 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
@@ -20,12 +19,12 @@ def submission_result(request, submission_id):
     # #455 (ADR 0044): the 照顧旅程's 現在這一步, by the user's state now, not this record's.
     suggested = next_step(request.user, timezone.localdate())
     # Spec #644 H3: which time this is, worn or not, in the order since_last uses (a tie by id).
-    attempt_number = Submission.objects.filter(
-        Q(created_at__lt=submission.created_at)
-        | Q(created_at=submission.created_at, id__lte=submission.id),
-        user=request.user,
-        questionnaire_id=submission.questionnaire_id,
-    ).count()
+    attempt_number = (
+        Submission.objects.filter(user=request.user, questionnaire_id=submission.questionnaire_id)
+        .earlier_than(submission)
+        .count()
+        + 1
+    )
     shared = {
         "submission": submission,
         "attempt_number": attempt_number,
