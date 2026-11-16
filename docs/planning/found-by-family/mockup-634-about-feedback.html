@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#634 設計圖：頁尾、意見回饋、關於聽伴</title>
+<style>
+  /* Values from frontend/src/site.css; the frames copy #577's mockup. No JavaScript: nothing reacts. */
+  :root { --primary:#1f4e8c; --heading:#212529; --body:#343a40; --muted:#4a5460; --border:#ced4da; --line:#e3e7ec; --surface:#f4f6f8; --selected:#e8eef7; --normal:#14573c; --normal-bg:#e3f4ec; --severe:#8f2a12; --severe-bg:#feece7; --mark:#ffd166; }
+  * { box-sizing:border-box; }
+  html { font-size:18px; }
+  body { margin:0; padding:16px; font-family:"Noto Sans TC",-apple-system,"PingFang TC",sans-serif; line-height:1.5; color:var(--body); background:#e8ebf0; }
+  h1 { font-size:1.5rem; margin:0 0 .25rem; color:var(--heading); }
+  .intro, .topic { max-width:1240px; margin:0 auto 16px; }
+  .intro ul { margin:.25rem 0; padding-left:1.2rem; }
+  .intro a { color:var(--primary); font-weight:700; }
+  .topic { background:#fff; border-radius:12px; padding:16px; margin-top:28px; }
+  .topic > h2 { font-size:1.35rem; margin:0 0 .25rem; color:var(--heading); border-left:6px solid var(--primary); padding-left:.6rem; }
+  .topic > h3 { font-size:1.2rem; margin:1.5rem 0 .25rem; color:var(--heading); }
+  .topic > p { margin:.25rem 0 .75rem; }
+  .row { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; align-items:flex-start; }
+  .col { width:377px; }
+  .col.w320 { width:322px; }
+  .col h3 { font-size:1.15rem; margin:0 0 .25rem; color:var(--heading); }
+  .col .why { margin:0 0 .5rem; min-height:6em; }
+  .col .why.s { min-height:3em; }
+  .pick { display:inline-block; background:var(--primary); color:#fff; border-radius:6px; padding:0 .5rem; font-weight:700; margin-right:.35rem; }
+  .now { background:#5f6b7a; }
+  .rec { display:inline-block; background:var(--mark); color:#000; border-radius:4px; padding:0 .4rem; font-weight:700; }
+  .phone { width:377px; border:1px solid #8a96a8; background:#fff; position:relative; overflow:hidden; }
+  .phone.w320 { width:322px; }
+  .phone.big { font-size:2rem; }
+  .pad { padding:0 16px; }
+  .cut { text-align:center; color:#6b7684; font-size:1rem; padding:.4rem 0; background:repeating-linear-gradient(135deg,#fff 0 8px,#f1f3f6 8px 16px); border-bottom:1px dashed #8a96a8; }
+  .page { padding:1rem 16px 1.5rem; }
+  .page h4 { font-size:1.5rem; margin:.25rem 0 .75rem; color:var(--heading); }
+  .page h5 { font-size:1.2rem; margin:1.5rem 0 .5rem; color:var(--heading); }
+  .page p { margin:.5rem 0; }
+  .owner { border:2px dashed #8a96a8; border-radius:.78rem; padding:.75rem 1rem; color:#5f6b7a; background:#fafbfc; }
+  .tbd { color:#5f6b7a; font-size:.8rem; font-weight:400; }
+  .from { background:var(--surface); border-radius:.78rem; padding:.6rem 1rem; color:var(--heading); }
+  .urgent { display:flex; align-items:center; gap:.75rem; background:var(--severe-bg); border-radius:.78rem; padding:.875rem 1rem; text-decoration:none; color:var(--body); }
+  .urgent b { display:block; color:var(--severe); font-size:1.15rem; }
+  .urgent .ar { margin-left:auto; color:var(--severe); font-size:2rem; font-weight:700; line-height:1; }
+  .tri { width:1.4rem; height:1.4rem; vertical-align:-.2rem; fill:none; stroke:var(--severe); stroke-width:2; stroke-linejoin:round; margin-right:.25rem; }
+  label { display:block; font-weight:700; color:var(--heading); margin:1rem 0 .3rem; }
+  .help { color:var(--muted); font-size:1rem; margin:.3rem 0 0; }
+  .ta, .in { display:block; width:100%; border:2px solid #6c757d; border-radius:.78rem; padding:.6rem .8rem; background:#fff; color:var(--body); min-height:3.1rem; }
+  .ta { min-height:8.5rem; white-space:pre-wrap; }
+  .ta.bad, .in.bad { border-color:var(--severe); }
+  .err { color:var(--severe); font-weight:700; margin:.3rem 0 0; }
+  .count { color:var(--muted); font-size:1rem; text-align:right; margin:.25rem 0 0; }
+  .btn { display:flex; align-items:center; justify-content:center; min-height:3.1rem; padding:.5rem 1.25rem; border-radius:.78rem; font-weight:700; font-size:1.11rem; background:var(--primary); color:#fff; border:2px solid var(--primary); text-align:center; margin-top:1.25rem; }
+  .btn.o { background:#fff; color:var(--primary); }
+  .alert { border-radius:.78rem; padding:.75rem 1rem; background:var(--severe-bg); color:var(--severe); font-weight:700; margin:0 0 1rem; }
+  .alert span { display:block; font-weight:400; color:var(--body); }
+  .alert a { color:var(--primary); }
+  .done { display:flex; align-items:center; gap:.6rem; background:var(--normal-bg); color:var(--normal); border-radius:.78rem; padding:1rem; font-size:1.3rem; font-weight:700; }
+  .done svg { width:2rem; height:2rem; flex:none; fill:none; stroke:var(--normal); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+  .tint { background:var(--surface); border-radius:.78rem; padding:.875rem 1rem; }
+  .tint h6 { font-size:1.05rem; margin:.6rem 0 .2rem; color:var(--primary); }
+  .tint h6:first-child { margin-top:0; }
+  .tint ul { margin:0; padding-left:1.2rem; }
+  .lnk { color:var(--primary); font-weight:700; text-decoration:underline; text-underline-offset:.2em; }
+  .chk { font-size:.875rem; color:var(--muted); margin-top:1.5rem !important; }
+  .fold { border:2px solid var(--border); border-radius:.78rem; margin:.6rem 0; }
+  .fold .sum { display:flex; align-items:center; min-height:3rem; padding:.5rem 1rem; color:var(--primary); font-weight:700; }
+  .fold .sum span { margin-left:auto; font-size:1.3rem; line-height:1; }
+  .fold .in-fold { padding:0 1rem 1rem; }
+
+  /* 頁尾 */
+  .ft { position:relative; margin-top:5.5rem; padding:1.5rem 0 calc(1.5rem + 5rem); background:var(--surface); text-align:center; color:var(--body); }
+  .ft::before { content:""; position:absolute; top:-3.25rem; left:50%; width:6.5rem; height:3.3rem; transform:translateX(-50%); border-radius:3.25rem 3.25rem 0 0; background:var(--surface); }
+  .ft::after { content:""; position:absolute; top:-2.4rem; left:50%; width:2.4rem; height:2.4rem; transform:translateX(-50%); border-radius:50%; background:var(--primary); }
+  .ft p { margin:0 0 .25rem; font-size:1rem; }
+  .ft a { color:var(--primary); font-weight:700; overflow-wrap:anywhere; }
+  .ft-cols svg { flex:none; width:1.6rem; height:1.6rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ft-cols { list-style:none; display:flex; justify-content:center; gap:.25rem; padding:0 8px; margin:0 0 .9rem; }
+  .ft-cols li { flex:1 1 0; min-width:0; }
+  .ft-cols a { display:flex; flex-direction:column; align-items:center; gap:.2rem; min-height:3.6rem; padding:.4rem .1rem; border-radius:.75rem; font-weight:500; text-decoration:none; white-space:nowrap; }
+  .ft-cols.grid { display:grid; grid-template-columns:repeat(3,1fr); row-gap:.4rem; }
+  .ft-cols.tight a { font-size:.85rem; }
+  .ft-cols.wrap { flex-wrap:wrap; }
+  .ft-cols.wrap li { min-width:max-content; }
+  .ft-text { list-style:none; display:flex; flex-wrap:wrap; justify-content:center; gap:0 1.25rem; padding:0 16px; margin:-.4rem 0 .8rem; }
+  .ft-text a { display:inline-flex; align-items:center; min-height:2.75rem; text-decoration:underline; text-underline-offset:.2em; }
+  .cbtn { display:inline-flex; align-items:center; justify-content:center; gap:.35rem; min-height:2.75rem; padding:.3rem 1rem; border:2px solid var(--primary); border-radius:.78rem; background:#fff; color:var(--primary); font-weight:700; }
+  .cp { width:1.2rem; height:1.2rem; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .cline { margin-top:.4rem !important; }
+  .tabbar { position:absolute; left:12px; right:12px; bottom:12px; height:66px; border-radius:1.5rem; background:rgba(255,255,255,.92); box-shadow:0 2px 12px rgba(0,0,0,.18); display:flex; align-items:center; justify-content:space-around; font-weight:700; color:var(--muted); font-size:1rem; }
+  .tabbar b { background:var(--selected); color:var(--primary); border-radius:1.2rem; padding:.9rem 1.1rem; }
+
+  /* 了解頁的卡片 */
+  .cards { list-style:none; padding:0; margin:0; }
+  .lc { display:flex; align-items:center; gap:.75rem; min-height:4rem; padding:.875rem .25rem; border-bottom:1px solid var(--line); text-decoration:none; color:var(--heading); font-weight:700; }
+  .lc .ic { width:2.6rem; height:2.6rem; border-radius:.75rem; background:var(--selected); display:flex; align-items:center; justify-content:center; flex:none; }
+  .lc .ic svg { width:1.5rem; height:1.5rem; fill:none; stroke:var(--primary); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .lc .sub { display:block; color:var(--muted); font-weight:400; font-size:1rem; }
+  .lc .ar { margin-left:auto; color:var(--primary); font-size:2rem; line-height:1; }
+  .lc.new { background:#fffbe8; }
+  .grouph { font-size:1.15rem; color:var(--heading); margin:1.5rem 0 .25rem; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>#634 設計圖：頁尾、意見回饋、關於聽伴</h1>
+  <p>規格 #633 的五個地方各自選：<a href="#footer">一、頁尾</a>　<a href="#form">二、意見回饋頁</a>　<a href="#sent">三、已送出頁</a>　<a href="#about">四、關於聽伴</a>　<a href="#learn">五、「了解」頁的卡片</a></p>
+  <ul>
+    <li>手機框寬 375px（標「320」的是 320px），字級、顏色、間距照現在的網站。這一頁沒有 JavaScript，按了不會有反應。</li>
+    <li>灰底標籤「現在」是目前的樣子，藍底英文字母是可以選的做法，黃底「建議」是我建議的那一個。</li>
+    <li><strong>虛線框是您要寫的字</strong>（#635），我沒有代寫。欄位名稱、按鈕、錯誤訊息是我擬的介面用字，標「暫定」，您可以順手改。</li>
+  </ul>
+</div>
+
+<section class="topic" id="footer">
+  <h2>一、頁尾</h2>
+  <p>多兩個入口：「關於聽伴」「意見回饋」。現在一排是三格圖示（沒登入時兩格）；五格在 375px 放不下五個字的「隱私權說明」。「聯絡我們」和「複製信箱」三個做法都保留。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick now">現在</span>（已登入）</h3>
+      <p class="why">三格圖示，下面是提醒和聯絡我們。</p>
+      <div class="phone"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">A</span>兩排圖示 <span class="rec">建議</span></h3>
+      <p class="why">五格排成兩排（每排三格），每一格都是一樣大的圖示按鈕，好按、好認。沒登入時少「帳號設定」，第二排只有一格。頁尾多一排（約 70px）。</p>
+      <div class="phone"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols grid">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>關於聽伴</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>意見回饋</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>圖示照舊，下面一行文字連結</h3>
+      <p class="why">三格圖示不動，下面多一行「關於聽伴　意見回饋」底線連結。頁尾只多一行（約 50px）。代價：新的兩個比較不顯眼，長輩可能不覺得能按。</p>
+      <div class="phone"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<ul class="ft-text"><li><a href="#footer">關於聽伴</a></li><li><a href="#footer">意見回饋</a></li></ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">C</span>一排五格，字縮小</h3>
+      <p class="why">頁尾高度不變。代價：字縮到 15px（已低於 ADR 0031 要讀的字至少 18px）「隱私權說明」還是擠出格子，每格也變窄、比較難按。不建議。</p>
+      <div class="phone"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols tight">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>關於聽伴</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>意見回饋</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><span>紀錄</span><b>了解</b></div></div></div>
+    </div>
+  </div>
+  <h3>A 在 320px 手機、沒登入時</h3>
+  <div class="row">
+    <div class="col w320">
+      <p class="why s">每格約 100px，「隱私權說明」放得下；沒登入時第二排只有「隱私權說明」一格，靠左。</p>
+      <div class="phone w320"><div class="cut">…頁面內容…</div><div class="ft"><ul class="ft-cols grid">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>關於聽伴</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>意見回饋</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+</ul>
+<p class="pad">結果僅供參考，不能取代聽力檢查與醫師診斷。</p><p class="pad">聯絡我們：<a href="#footer">hearwellweb@gmail.com</a></p><p class="pad cline"><span class="cbtn"><svg class="cp" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>複製信箱</span></p><div class="tabbar"><span>首頁</span><span>篩檢</span><b>了解</b><span>登入</span></div></div></div>
+    </div>
+    <div class="col">
+      <p class="why s"><strong>200% 字級</strong>（375px 手機）：放不下時照現在頁尾的做法自動換行，名字不斷開、不縮小、不左右捲。</p>
+      <div class="phone"><div style="width:187.5px;zoom:2"><div class="ft" style="margin-top:3.5rem;padding-bottom:1.5rem"><ul class="ft-cols wrap">
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg>家人專區</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>關於聽伴</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>意見回饋</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>隱私權說明</a></li>
+<li><a href="#footer"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>帳號設定</a></li>
+</ul></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="form">
+  <h2>二、意見回饋頁</h2>
+  <p>獨立一頁。差在您的提醒放在表單前面還是後面。急症那一塊照問答小助手的紅框，按了到「突然聽不到」那一題。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>先提醒，再寫 <span class="rec">建議</span></h3>
+      <p class="why">先看到「這裡不是諮詢」和急症，再開始寫；不會寫完才發現該先就醫。</p>
+      <div class="phone"><div class="page">
+        <h4>意見回饋 <span class="tbd">暫定</span></h4>
+        <p class="from">您是從「結果頁」過來的。</p>
+        <div class="owner">（您寫：這裡不是諮詢、不會馬上回覆；請不要輸入姓名、電話、病歷號；回饋怎麼存、存多久）</div>
+        <p></p>
+        <a class="urgent" href="#form"><span><b><svg class="tri" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>突然聽不到、耳朵流血？請盡快就醫</b>突然聽不到怎麼辦？</span><span class="ar">›</span></a>
+        <label>想跟我們說的話 <span class="tbd">暫定</span></label>
+        <div class="ta"></div>
+        <p class="count">最多 1,000 字</p>
+        <label>Email（選填）<span class="tbd">暫定</span></label>
+        <div class="in"></div>
+        <p class="help">想收到回覆才填。不填也可以送出。</p>
+        <span class="btn">送出</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>先寫，提醒在下面</h3>
+      <p class="why">一進來就是文字框，最快開始寫。代價：很多人寫完直接按送出，沒看到提醒和急症。</p>
+      <div class="phone"><div class="page">
+        <h4>意見回饋 <span class="tbd">暫定</span></h4>
+        <p class="from">您是從「結果頁」過來的。</p>
+        <label>想跟我們說的話 <span class="tbd">暫定</span></label>
+        <div class="ta"></div>
+        <p class="count">最多 1,000 字</p>
+        <label>Email（選填）<span class="tbd">暫定</span></label>
+        <div class="in"></div>
+        <p class="help">想收到回覆才填。不填也可以送出。</p>
+        <span class="btn">送出</span>
+        <p></p>
+        <div class="owner">（您寫：這裡不是諮詢……）</div>
+        <p></p>
+        <a class="urgent" href="#form"><span><b><svg class="tri" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>突然聽不到、耳朵流血？請盡快就醫</b>突然聽不到怎麼辦？</span><span class="ar">›</span></a>
+      </div></div>
+    </div>
+  </div>
+  <h3>A 的三種沒送成的樣子（字都留在框裡）</h3>
+  <div class="row">
+    <div class="col">
+      <p class="why s"><strong>填錯</strong>：框變紅、下面寫原因，游標回到第一個錯的框。</p>
+      <div class="phone"><div class="cut">…上面的提醒與急症…</div><div class="page">
+        <label>想跟我們說的話</label>
+        <div class="ta bad"></div>
+        <p class="err">！請先寫下想說的話</p>
+        <label>Email（選填）</label>
+        <div class="in bad">wang@gmail</div>
+        <p class="err">！Email 格式不對，請檢查，或清空不填</p>
+        <span class="btn">送出</span>
+      </div></div>
+    </div>
+    <div class="col">
+      <p class="why s"><strong>同一個網路一小時送了 5 次</strong>：表單上面一條紅底說明。</p>
+      <div class="phone"><div class="page">
+        <h4>意見回饋</h4>
+        <p class="alert">這一小時送太多次了<span>請一小時後再試。您寫的字還在下面。</span></p>
+        <div class="cut">…提醒、急症、表單（字還在）…</div>
+      </div></div>
+    </div>
+    <div class="col">
+      <p class="why s"><strong>全站今天滿 100 則</strong>：附信箱和複製信箱，可以改寫信。</p>
+      <div class="phone"><div class="page">
+        <h4>意見回饋</h4>
+        <p class="alert">今天收到的意見太多了<span>請明天再試，或寫信到 <a href="#form">hearwellweb@gmail.com</a>。您寫的字還在下面。</span></p>
+        <div class="cut">…提醒、急症、表單（字還在）…</div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="sent">
+  <h2>三、已送出頁</h2>
+  <p>只有一種合理做法：綠色打勾說送到了，下面一顆按鈕回原頁。從網址直接打開、不知道原頁時，按鈕改成「回到首頁」。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>打勾＋回原頁</h3>
+      <p class="why s">重新整理不會再送一次。這一頁不顯示您寫的內容。</p>
+      <div class="phone"><div class="page">
+        <h4>意見回饋</h4>
+        <div class="done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>已送出，謝謝您 <span class="tbd">暫定</span></div>
+        <p>我們會看每一則意見，但不一定會回覆。有填 email 的，需要時會寫信給您。<span class="tbd">暫定</span></p>
+        <span class="btn">回到剛才那一頁</span>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="about">
+  <h2>四、關於聽伴（骨架）</h2>
+  <p>四段，三段由您寫；「資料怎麼處理」直接放隱私權說明最上面的「先看重點」（文字照現在的，不另寫）。段落標題我先擬，您可以改。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>四段攤開 <span class="rec">建議</span></h3>
+      <p class="why">頁面不長，四段直接攤開，往下捲就讀完；讀螢幕軟體可以用標題跳段。「先看重點」放在淺灰底的框裡，跟隱私權說明同一個樣子。</p>
+      <div class="phone"><div class="page">
+        <h4>關於聽伴</h4>
+        <h5>誰做的 <span class="tbd">暫定</span></h5>
+        <div class="owner">（您寫：只寫「執業聽力師」，不寫姓名與單位）</div>
+        <h5>內容怎麼查核 <span class="tbd">暫定</span></h5>
+        <div class="owner">（您寫）</div>
+        <h5>資料怎麼處理 <span class="tbd">暫定</span></h5>
+        <div class="tint">
+          <h6>用來做什麼</h6><ul><li>只用來算分數、給建議、保存您的紀錄，不拿去賣或做廣告。</li><li>……</li></ul>
+          <h6>登入和寄信時</h6><ul><li>……</li></ul>
+          <h6>存在哪裡、您的權利</h6><ul><li>……</li></ul>
+        </div>
+        <p><a class="lnk" href="#about">看完整的隱私權說明 ›</a></p>
+        <h5>不能取代檢查 <span class="tbd">暫定</span></h5>
+        <div class="owner">（您寫）</div>
+        <p class="chk">本頁資料查核於 2026/11/xx。</p>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>四段摺疊</h3>
+      <p class="why">一進來看到四個標題，點開想看的。代價：多一次點擊；家屬最想知道的「誰做的」要點開才看得到；這頁內容本來就不多。</p>
+      <div class="phone"><div class="page">
+        <h4>關於聽伴</h4>
+        <div class="fold"><div class="sum">誰做的<span>⌃</span></div><div class="in-fold"><div class="owner">（您寫）</div></div></div>
+        <div class="fold"><div class="sum">內容怎麼查核<span>⌄</span></div></div>
+        <div class="fold"><div class="sum">資料怎麼處理<span>⌄</span></div></div>
+        <div class="fold"><div class="sum">不能取代檢查<span>⌄</span></div></div>
+        <p class="chk">本頁資料查核於 2026/11/xx。</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section class="topic" id="learn">
+  <h2>五、「了解」頁的卡片</h2>
+  <p>「了解」頁現在是四張一樣的卡片列。新的一張放最下面（淡黃底只是標出新的那一張，實際沒有底色）。</p>
+  <div class="row">
+    <div class="col">
+      <h3><span class="pick">A</span>接在最後一張 <span class="rec">建議</span></h3>
+      <p class="why">跟其他四張同一個樣子，圖示用「ⓘ」，下面一行小字說明。</p>
+      <div class="phone"><div class="page">
+        <h4>了解</h4>
+        <ul class="cards">
+          <li><a class="lc" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/></svg></span>了解助聽器選配與補助<span class="ar">›</span></a></li>
+          <li><a class="lc" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20a5.5 5.5 0 0 1 11 0M13 20a4 4 0 0 1 8 0"/></svg></span>家人專區：溝通與陪伴<span class="ar">›</span></a></li>
+          <li><a class="lc" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg></span>聽損模擬：聽聽看他聽到的聲音<span class="ar">›</span></a></li>
+          <li><a class="lc" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H9l-5 4z"/><path d="M9.5 8a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.4M12 13.8v.2"/></svg></span>問答小助手：常見問題一次查<span class="ar">›</span></a></li>
+          <li><a class="lc new" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></span><span>關於聽伴<span class="sub">誰做的、內容怎麼查核 <span class="tbd">暫定</span></span></span><span class="ar">›</span></a></li>
+        </ul>
+      </div></div>
+    </div>
+    <div class="col">
+      <h3><span class="pick">B</span>隔開一段小標</h3>
+      <p class="why">最下面加小標「關於這個網站」，跟上面四張學習內容分開。代價：「了解」頁原本刻意不分組（#469 選的 E），多一個小標就破例。</p>
+      <div class="phone"><div class="page">
+        <h4>了解</h4>
+        <div class="cut">…上面四張照舊…</div>
+        <p class="grouph">關於這個網站 <span class="tbd">暫定</span></p>
+        <ul class="cards">
+          <li><a class="lc new" href="#learn"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></span>關於聽伴<span class="ar">›</span></a></li>
+        </ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
