@@ -82,7 +82,7 @@ class GradedResultPageTests(TestCase):
         # block since readability batch 3.
         self.assertEqual(
             text(SCORE_BAR.sub("", banner)),
-            "總分 14 分（滿分 40） 輕度到中度影響 上次 2026/03/26 是 18 分，這次少 4 分",
+            "總分 14 分（滿分 40） 輕度到中度影響 比上次少 4 分 上次 2026/03/26 是 18 分",
         )
         for verdict in ("進步", "退步", "改善", "變好", "變差"):
             self.assertNotIn(verdict, main)
@@ -93,7 +93,7 @@ class GradedResultPageTests(TestCase):
         latest = self.hhie_s([4, 2, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 6
         banner = text(BANNER.search(self.main(latest)).group(2))
         change = "分級從「輕度到中度影響」變成「無／極輕微影響」"
-        self.assertTrue(banner.endswith(f"這次少 4 分 {change}"), banner)
+        self.assertTrue(banner.endswith(f"比上次少 4 分 上次 2026/03/26 是 10 分 {change}"), banner)
 
     def test_the_first_record_has_no_line_against_last_time(self):
         # Acceptance 25.
@@ -106,7 +106,8 @@ class GradedResultPageTests(TestCase):
         self.hhie_s([4, 4, 4, 4, 4, 0, 0, 0, 0, 0], (2026, 1, 5))  # 20
         old = self.hhie_s([4, 4, 4, 4, 0, 0, 0, 0, 0, 0], (2026, 3, 26))  # 16
         self.hhie_s([4, 0, 0, 0, 0, 0, 0, 0, 0, 0], (2026, 11, 12))  # 4
-        self.assertIn("上次 2026/01/05 是 20 分，這次少 4 分", self.main(old))
+        banner = text(BANNER.search(self.main(old)).group(2))
+        self.assertIn("比上次少 4 分 上次 2026/01/05 是 20 分", banner)
 
     def test_one_sentence_follows_the_block_then_the_suggestion_then_the_rows(self):
         # R1: the reviewed step 1 word for word, the 建議下一步 card, then the list rows.

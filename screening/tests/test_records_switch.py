@@ -128,18 +128,18 @@ class RecordsSwitchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         main = self._main(response)
         self.assertEqual(self._switch(main)[0], (QUESTIONNAIRES, "問卷", True))
-        self.assertIn("<p>您還沒有做過篩檢紀錄</p>", main)
+        self.assertIn('<h2 class="h4">還沒有紀錄</h2>', main)
 
     def test_no_records_keeps_the_empty_prompt(self):
         response = self.client.get(reverse("my_hearing"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("<p>您還沒有做過篩檢紀錄</p>", self._main(response))
+        self.assertIn('<h2 class="h4">還沒有紀錄</h2>', self._main(response))
 
     def test_someone_elses_audiograms_do_not_move_me(self):
         self._audiogram(user=self.other)
         response = self.client.get(reverse("my_hearing"))
         self.assertEqual(response.status_code, 200)
-        self.assertIn("<p>您還沒有做過篩檢紀錄</p>", self._main(response))
+        self.assertIn('<h2 class="h4">還沒有紀錄</h2>', self._main(response))
 
     def test_audiogram_list_keeps_its_address(self):
         self.assertEqual(reverse("audiogram_list"), "/audiograms")

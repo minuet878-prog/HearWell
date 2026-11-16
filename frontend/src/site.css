@@ -1455,6 +1455,32 @@
     }
   }
 
+  /* #648 (spec #644 H4, the #645 mockup's 3A): a page with nothing yet, all in the middle: the
+     action card's pale blue circle grown large, then the title, a sentence and its button. */
+  .empty-state {
+    margin: 1.5rem 0;
+    text-align: center;
+  }
+
+  .empty-state .action-card-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    margin: 0 auto 0.75rem;
+  }
+
+  .empty-state .action-card-icon svg {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+
+  .empty-state .h4 {
+    margin: 0;
+  }
+
+  .empty-state p {
+    margin: 0.25rem 0 1rem;
+  }
+
   /* Login and register forms */
   .narrow-form {
     max-width: var(--container-form);
@@ -2548,6 +2574,27 @@
     display: none;
   }
 
+  /* Result page header (spec #644 H3): which time this is sits right under the line before it, so
+     the result box moves down by that one line only. */
+  p:has(+ .result-attempt) {
+    margin-bottom: 0;
+  }
+
+  /* The owner's pick A (2026-11-16): for that line, less space outside the boxes, so the solid
+     button stays above the tab bar on a 390 x 844 phone; inside the boxes nothing changes. Only
+     after the sentence, so on a record's six result pages and nowhere else (not a guest's). */
+  .result-attempt {
+    margin-bottom: 0.5rem;
+  }
+
+  .result-attempt ~ .result-one-line {
+    margin-top: 0.5rem;
+  }
+
+  .result-attempt ~ .result-next {
+    margin-top: 0.75rem;
+  }
+
   /* Result page: level banner, L1 (#454, ADR 0043): the whole block in the level's pale colour,
      the level written in its text colour, no frame (the same pairs as the trend chart bands). */
   .result-banner {
@@ -2906,6 +2953,33 @@
 
   .trend-band-severe.trend-band-deep .trend-band-swatch {
     background-color: var(--color-severe-bg-deep);
+  }
+
+  /* #650 (spec #644 R2, the #645 mockup's A): the fitting day on the trend chart, a neutral dark
+     grey dashed line and 開始戴 in a small white box with a thin frame and rounded corners; never
+     a level's colour. */
+  .trend-fitting-line {
+    stroke: var(--color-muted);
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+  }
+
+  .trend-fitting-box {
+    fill: #fff;
+    stroke: var(--color-muted);
+    stroke-width: 1;
+    rx: 4px;
+  }
+
+  .trend-fitting-text {
+    fill: var(--color-heading);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* The sentence under the chart's frame that says the same day in words. */
+  .trend-fitted {
+    margin: 0.75rem 0 0;
   }
 
   /* #332 (spec #326 B3): the copy button says ✓ 已複製 in success green (ADR 0007) for 2
@@ -4647,6 +4721,21 @@
 
   .result-since-last > p {
     margin: 0;
+  }
+
+  /* #646 (spec #644 H2, the #645 mockup's A): 比上次多／少 N 分 as a small name tag on white,
+     a thin dark grey frame and bold heading-colour words; never a level's colour, no arrow
+     (ADR 0007, ADR 0017). It wraps inside the box rather than run out of it. */
+  .result-since-last > .change-label {
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 0.35rem;
+    padding: 0.15rem 0.6rem;
+    border: 2px solid var(--color-muted);
+    border-radius: var(--radius-small);
+    background-color: #fff;
+    color: var(--color-heading);
+    font-weight: 700;
   }
 
   /* Readability batch 3 (the owner's B6 A): the score bar in the result box, on white so its

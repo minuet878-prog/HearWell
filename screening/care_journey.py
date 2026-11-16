@@ -198,14 +198,20 @@ def _state(number, current, done, not_needed):
 
 
 def _life_impact_href(user, main):
-    # The one to do again, or by age; the catalogue, which recommends one, while the age is
-    # unknown.
+    # Step 1's 去做問卷, also the empty pages' 做第一份問卷 (#648), so both go to one place: the
+    # one to do again, or by age; the catalogue, which recommends one, while the age is unknown.
     questionnaire = life_impact_questionnaire(
         user, list(Questionnaire.objects.defined()), main, None
     )
     if questionnaire is None:
         return reverse("questionnaire_list")
     return reverse("screening", args=[questionnaire.pk])
+
+
+def first_questionnaire_url(user, today):
+    """An empty page's 做第一份問卷 (#648: 我的紀錄, the report, the share page): where the home
+    page's step 1 goes."""
+    return _life_impact_href(user, get_user_state(user, today))
 
 
 def _card(
