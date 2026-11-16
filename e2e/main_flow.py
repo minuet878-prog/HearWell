@@ -1269,12 +1269,16 @@ class CopyPasswordRegisterFeedbackTest(SavesFailureArtifacts, OnAPhone, StaticLi
                 expect(count).to_have_text("已經輸入 5 個字，還差 3 個")
                 colour = count.evaluate("el => getComputedStyle(el).color")
                 self.assertEqual(colour, self.COUNT_GREY)
-                # Right under the field, over the rules.
-                field = password.bounding_box()
-                line = count.bounding_box()
-                rules = self.page.locator("#id_password1_helptext").bounding_box()
-                self.assertGreaterEqual(line["y"], field["y"] + field["height"])
-                self.assertLessEqual(line["y"] + line["height"], rules["y"])
+                # Right under the field, over the rules. Measured in one go: typing scrolls the
+                # field into view, smoothly once the fonts are in, and boxes taken one by one
+                # can each catch the page at a different point of that scroll.
+                field, line, rules = self.page.evaluate(
+                    """() => ["#id_password1", ".password-count", "#id_password1_helptext"]
+                        .map((s) => document.querySelector(s).getBoundingClientRect())
+                        .map((r) => ({ top: r.top, bottom: r.bottom }))"""
+                )
+                self.assertGreaterEqual(line["top"], field["bottom"])
+                self.assertLessEqual(line["bottom"], rules["top"])
                 password.fill("Fake-pas")
                 expect(count).to_have_text("✓ 已經輸入 8 個字")
                 colour = count.evaluate("el => getComputedStyle(el).color")
