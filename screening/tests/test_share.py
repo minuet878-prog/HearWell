@@ -100,7 +100,7 @@ class ReportShareTests(TestCase):
         self.assertGreaterEqual(share.expires_at, before + timedelta(days=7))
         self.assertLessEqual(share.expires_at, timezone.now() + timedelta(days=7))
         content = self._share_page()
-        self.assertIn(f"https://testserver{reverse('shared_cover', args=[share.token])}", content)
+        self.assertIn(f"http://testserver{reverse('shared_cover', args=[share.token])}", content)
         self.assertIn(f"有效到 {_taipei(share.expires_at)}", content)
         self.assertIn("家人打開過 0 次", content)
         self.assertIn("還沒有人打開", content)
