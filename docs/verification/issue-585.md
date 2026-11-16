@@ -46,7 +46,7 @@
 
 | 項目 | 結果 |
 |---|---|
-| Django 測試（`--parallel 4`） | 2628 項通過 |
+| Django 測試（`--parallel 4`） | 2628 項通過；推送前併入 `main`（含 #594）後再跑，2633 項通過 |
 | `ruff check`、`ruff format --check` | 通過 |
 | e2e（`e2e.main_flow --parallel 4`） | 440 項通過（在自審修正前的 commit `6f47767` 跑；之後只改了測試和一個常數的名字） |
 
