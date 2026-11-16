@@ -6,8 +6,8 @@
 {% block extra_head %}<script type="module" src="{% static 'screening/frontend/guest-save.js' %}"></script>{% endblock %}
 
 {% block body %}
-{# Spec #492: guest-save.js sends the guest results kept in this browser to the records API, each with its receipt number, then goes to 我的紀錄; one that is not saved stays, named here. Not come from the save card, it asks first (#497, the #493 mockup's F2): 要 saves them, 不要 clears them all. #}
-<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-done-url="{% url 'index' %}?from=save" data-home-url="{% url 'index' %}"{% if asking %} data-asking{% endif %}>
+{# Spec #492: guest-save.js sends the guest results kept in this browser to the records API, each with its receipt number, then shows the box below (the feedback batch, F3); one that is not saved stays, named here. Not come from the save card, it asks first (#497, the #493 mockup's F2): 要 saves them, 不要 clears them all. #}
+<div id="guest-save" data-submissions-url="{% url 'api:submissions' %}" data-home-url="{% url 'index' %}"{% if asking %} data-asking{% endif %}>
     {# Codex cross review of #492: the question is always here, hidden, because from the card guest-results.js still asks when the save card was not pressed in this tab; the title then becomes data-ask-title. #}
     <h1 class="h3 mt-4" data-guest-title data-ask-title="要把這次結果存到這個帳號嗎？">{% if asking %}要把這次結果存到這個帳號嗎？{% else %}保存這次結果{% endif %}</h1>
     <div data-guest-ask hidden>
@@ -16,6 +16,17 @@
         <div class="flex flex-col gap-2">
             <button type="button" class="btn btn-primary btn-lg w-full" data-guest-ask-yes>要，存進這個帳號</button>
             <button type="button" class="btn btn-outline-primary btn-lg w-full" data-guest-ask-no>不要，清掉這次結果</button>
+        </div>
+    </div>
+    {# The feedback batch (the owner's F3, GOV.UK's end of a step-by-step flow): saved, the page stays and guest-results.js shows this box with its own title in place of the one above, focus on it. The same for an account just made and one signed in to (the owner left out 帳號也建好了). 看這次的紀錄 is 我的紀錄: more than one result may have been saved. #}
+    <div data-guest-done hidden>
+        <div class="guest-saved">
+            <h1 class="guest-saved-title" tabindex="-1" data-guest-done-title><span aria-hidden="true">✓ </span>結果已經保存</h1>
+        </div>
+        <p><strong>接下來</strong>　首頁會告訴您現在該做哪一步。</p>
+        <div class="flex flex-col gap-2">
+            <a class="btn btn-primary btn-lg w-full" href="{% url 'index' %}">看我的下一步</a>
+            <a class="btn btn-outline-primary btn-lg w-full" href="{% url 'my_hearing' %}">看這次的紀錄</a>
         </div>
     </div>
     <p data-guest-saving role="status" tabindex="-1"{% if asking %} hidden{% endif %}>正在保存，請稍候。</p>

@@ -1,5 +1,6 @@
 from urllib.parse import urlsplit
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -154,6 +155,8 @@ def audiogram_delete(request, audiogram_id):
     audiogram = _own_audiogram(request, audiogram_id)
     if request.method == "POST":
         audiogram.delete()
+        # The feedback batch (F2, the owner's words): which one went, by its date.
+        messages.success(request, f"已刪除 {audiogram.tested_on:%Y/%m/%d} 的聽力圖。")
         return redirect("audiogram_list")
     audiogram.thumbnail = thumbnail(audiogram.points.all())
     return render(request, "screening/audiogram_delete.html", {"audiogram": audiogram})

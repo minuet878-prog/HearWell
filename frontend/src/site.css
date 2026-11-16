@@ -1405,6 +1405,22 @@
     stroke-linejoin: round;
   }
 
+  /* The feedback batch (the owner's F4 B): 下載我的資料 pressed, its circle and line in the success
+     green (ADR 0007, 0028), as ✓ 已複製 is; only the colours change (ADR 0006). */
+  .action-card.is-download-started .action-card-icon {
+    background-color: var(--color-normal-bg);
+  }
+
+  .action-card.is-download-started .action-card-icon svg {
+    stroke: var(--color-normal);
+    stroke-width: 2.5;
+  }
+
+  .action-card.is-download-started .download-words {
+    color: var(--color-normal);
+    font-weight: 700;
+  }
+
   /* The row turns pale blue under a mouse or a finger; the circle turns white to stay apart. */
   .link-card:active :is(.action-card-icon, .questionnaire-icon) {
     background-color: #fff;
@@ -4813,6 +4829,83 @@
     background-color: var(--color-severe-bg);
   }
 
+  /* The feedback batch (the owner's F1 A): the words a page shows at its top after something was
+     done, a whole bar: done on the success green's pale (ADR 0007, 0028), failed on the form
+     error box's red, a note on the brand's pale blue; a white mark in a filled circle leads, as
+     in the mockup. Still: no fade or slide (ADR 0006). */
+  .system-message {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 1rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-medium);
+    font-weight: 700;
+  }
+
+  .system-message p {
+    margin: 0;
+  }
+
+  /* Focused when the page opens (system-message.js), so screen readers say it: the site's blue
+     ring for a keyboard, none for a finger or a mouse. */
+  .system-message:focus {
+    outline: 0;
+  }
+
+  .system-message:focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .system-message-mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.1rem;
+    border-radius: 50%;
+    color: #fff;
+  }
+
+  .system-message-mark svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .system-message-success {
+    background-color: var(--color-normal-bg);
+    color: var(--color-normal);
+  }
+
+  .system-message-success .system-message-mark {
+    background-color: var(--color-normal);
+  }
+
+  .system-message-error {
+    background-color: var(--color-severe-bg);
+    color: var(--color-severe);
+  }
+
+  .system-message-error .system-message-mark {
+    background-color: var(--color-severe);
+  }
+
+  .system-message-info {
+    background-color: var(--color-brand-soft);
+    color: var(--color-heading);
+  }
+
+  .system-message-info .system-message-mark {
+    background-color: var(--color-primary);
+  }
+
   /* D6: the login and register errors in the emergency box's pale red (P3's red box), the words
      bold in the red, a warning mark before them; never by colour alone. */
   .error-box {
@@ -5580,13 +5673,21 @@
     margin: 1rem 0 0;
   }
 
-  /* The 2026-11-14 walkthrough (mockup 6): a guest result just saved, said once on top. */
-  .saved-note {
-    margin: 0 0 1rem;
-    padding: 0.625rem 0.875rem;
+  /* The feedback batch (the owner's F3): a guest result just saved, the save page's box in the
+     success green (ADR 0007, 0028: the moment something is done), its title in large white type
+     (9.6:1). */
+  .guest-saved {
+    margin: 1.5rem 0 1rem;
+    padding: 1.25rem 1rem;
     border-radius: var(--radius-medium);
-    background-color: var(--color-normal-bg);
-    color: var(--color-normal);
+    background-color: var(--color-normal);
+    color: #fff;
+    text-align: center;
+  }
+
+  .guest-saved-title {
+    margin: 0;
+    font-size: 1.45rem;
     font-weight: 700;
   }
 
